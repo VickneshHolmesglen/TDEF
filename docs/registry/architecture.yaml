@@ -43,7 +43,106 @@ last_updated: ""
 # interface: how other systems access this state (read-only property, method call,
 #   signal, shared resource, etc.) — this is the contract other ADRs depend on.
 
-state_ownership: []
+state_ownership:
+  - state: event_catalogue
+    status: active
+    owner_system: event-bus
+    adr: docs/architecture/adr-0001-eventbus-architecture.md
+    interface: "70 typed GDScript signals declared on EventBus Autoload. Read-only for all systems — only EventBus declares signals; systems emit and subscribe."
+    write_access: event-bus-only
+    referenced_by:
+      - docs/architecture/adr-0001-eventbus-architecture.md
+    added: 2026-05-15
+    revised: ""
+
+  - state: autoload_boot_order
+    status: active
+    owner_system: scene-manager
+    adr: docs/architecture/adr-0002-scene-autoload-structure.md
+    interface: "Project Settings → Autoloads: EventBus(1), SavePersistence(2), Grid(3), Pathfinding(4), GameDataRegistry(5), SceneManager(6). Order is a build invariant — adding a new Autoload requires an ADR revision. GameDataRegistry added at position 5 by ADR-0009 (SceneManager shifted from 5 to 6)."
+    write_access: project-settings-only
+    referenced_by:
+      - docs/architecture/adr-0002-scene-autoload-structure.md
+      - docs/architecture/adr-0009-resource-data-model.md
+    added: 2026-05-16
+    revised: "2026-05-23 — ADR-0009 added GameDataRegistry at position 5; SceneManager shifted to 6"
+
+  - state: save_slot_data
+    status: active
+    owner_system: save-persistence
+    adr: docs/architecture/adr-0003-save-file-format.md
+    interface: "SavePersistence._read_slot(slot: int) -> Dictionary; SavePersistence._write_slot(slot: int, data: Dictionary) -> bool. Systems expose state via get_save_data() -> Dictionary and apply_save_data(data: Dictionary). No system reads or writes save files directly."
+    write_access: save-persistence-only
+    referenced_by:
+      - docs/architecture/adr-0003-save-file-format.md
+    added: 2026-05-16
+    revised: ""
+
+  - state: route_templates
+    status: active
+    owner_system: pathfinding
+    adr: docs/architecture/adr-0004-pathfinding-strategy.md
+    interface: "PathfindingSystem.get_path(from_cell: Vector2i, tier: int) -> Array[Vector2i]. PathfindingSystem.would_block_all_paths(cells: Array[Vector2i]) -> bool. No system accesses AStar2D instances or RouteTemplate structs directly — all path queries go through get_path()."
+    write_access: pathfinding-only
+    referenced_by:
+      - docs/architecture/adr-0004-pathfinding-strategy.md
+    added: 2026-05-16
+    revised: ""
+
+  - state: tower_mission_state
+    status: active
+    owner_system: tower-system
+    adr: docs/architecture/adr-0008-tower-placement-gate.md
+    interface: "TowerSystem internal — TowerMissionState Resources keyed by tower_id. Created via duplicate_deep() at placement commit; freed (RefCounted release) on remove_tower() or mission end. Not accessible to other systems — mission-instance state is private to Tower System."
+    write_access: tower-system-only
+    referenced_by:
+      - docs/architecture/adr-0008-tower-placement-gate.md
+    added: 2026-05-19
+    revised: ""
+
+  - state: grid_cell_data
+    status: active
+    owner_system: grid
+    adr: docs/architecture/adr-0005-grid-system-data-model.md
+    interface: "Grid read API (Autoload direct call — documented exception to EventBus rule): get_cell_type(), get_occupant(), is_placeable(), is_footprint_placeable(), get_all_occupied_cells(), get_occupied_cells_in_radius(), get_towers_in_range(), get_spawn_cells(), get_goal_cells(), get_walkable_cell_map(), world_to_cell(), cell_to_world(), is_in_bounds(). Write API restricted to Tower System: place_tower(tower_id, top_left, size) -> Error, remove_tower(tower_id)."
+    write_access: tower-system-only
+    referenced_by:
+      - docs/architecture/adr-0005-grid-system-data-model.md
+    added: 2026-05-16
+    revised: ""
+
+  - state: monster_entity_state
+    status: active
+    owner_system: monster-manager
+    adr: docs/architecture/adr-0006-monster-movement.md
+    interface: "MonsterManager internal — active_monsters: Array[MonsterEntity] (lifecycle_state, current_hp, current_path, path_step_index); _pending_damage: Array[MonsterDamageTaken] (buffered, drained each frame); _pending_absorbed: Dictionary[int, float] (frame-scoped, flushed each frame). Not accessible to other systems — all observable monster state exposed via EventBus events (monster_spawned, monster_died, boss_hp_changed, monster_hp_absorbed)."
+    write_access: monster-manager-only
+    referenced_by:
+      - docs/architecture/adr-0006-monster-movement.md
+    added: 2026-05-22
+    revised: ""
+
+  - state: game_entity_resource_lookup
+    status: active
+    owner_system: game-data-registry
+    adr: docs/architecture/adr-0009-resource-data-model.md
+    interface: "GameDataRegistry.get_monster_resource(monster_id: StringName) -> MonsterResource (null if not found). GameDataRegistry.get_perk_registry() -> TowerPerkRegistry. GameDataRegistry preloads all MonsterResources from assets/data/monsters/ at boot (position 5 in Autoload order) and validates each via validate(). No other system accesses MonsterResource or TowerPerkRegistry by direct path. WaveConfig loaded per-mission by Wave Manager via ResourceLoader.load(wave_config_path). TowerComponent Resources loaded by Save & Persistence."
+    write_access: game-data-registry-only
+    referenced_by:
+      - docs/architecture/adr-0009-resource-data-model.md
+    added: 2026-05-23
+    revised: ""
+
+  - state: damage_pipeline_state
+    status: active
+    owner_system: damage-status
+    adr: docs/architecture/adr-0007-damage-pipeline.md
+    interface: "D&S internal — _lifesteal_pending: Dictionary[int, float] (target_id → hero_lifesteal_fraction, registered before await defer, resolved on monster_hp_absorbed receipt, cleared on wave_completed). Not accessible to other systems. Observable outputs only via EventBus: monster_damage_taken (MonsterDamageTaken Resource), hero_healed(amount: int), hero_damage_taken(amount: int, source_type: int)."
+    write_access: damage-status-only
+    referenced_by:
+      - docs/architecture/adr-0007-damage-pipeline.md
+    added: 2026-05-23
+    revised: ""
 
 # Example:
 #
@@ -71,7 +170,120 @@ state_ownership: []
 #
 # pattern options: signal | direct_call | event_bus | shared_resource | rpc | none
 
-interfaces: []
+interfaces:
+  - contract: cross_system_communication
+    status: active
+    pattern: event_bus
+    producer: any-system
+    consumers:
+      - any-system
+    adr: docs/architecture/adr-0001-eventbus-architecture.md
+    signal_signature: "Varies per event — see design/gdd/event-bus.md for full 70-event catalogue. Typed params for ≤4 fields; Resource subclass for ≥5 fields."
+    referenced_by:
+      - docs/architecture/adr-0001-eventbus-architecture.md
+    added: 2026-05-15
+    revised: ""
+
+  - contract: scene_transition
+    status: active
+    pattern: direct_call
+    producer: scene-manager
+    consumers:
+      - sanctuary-scene
+      - mission-scene
+    adr: docs/architecture/adr-0002-scene-autoload-structure.md
+    signal_signature: "SceneManager.transition_to_mission(mission_id: String) / SceneManager.transition_to_sanctuary(). Callers must not call SceneTree.change_scene_to_file() directly."
+    referenced_by:
+      - docs/architecture/adr-0002-scene-autoload-structure.md
+    added: 2026-05-16
+    revised: ""
+
+  - contract: grid_spatial_query
+    status: active
+    pattern: direct_call
+    producer: grid
+    consumers:
+      - tower-system
+      - constellation-system
+      - pathfinding-system
+      - wave-manager
+      - tower-mastery-system
+      - monster-system
+    adr: docs/architecture/adr-0005-grid-system-data-model.md
+    signal_signature: "Direct Autoload call (e.g. Grid.get_cell_type(cell)). Documented exception to EventBus-only rule — per-frame spatial queries cannot route through EventBus without exceeding frame budget. All read functions return copies, never references. Write calls (place_tower, remove_tower) restricted to Tower System."
+    referenced_by:
+      - docs/architecture/adr-0005-grid-system-data-model.md
+    added: 2026-05-16
+    revised: ""
+
+  - contract: tower_placement_gate
+    status: active
+    pattern: direct_call
+    producer: tower-system
+    consumers:
+      - mission-hud
+      - input-handler
+    adr: docs/architecture/adr-0008-tower-placement-gate.md
+    signal_signature: "TowerSystem.place_tower(tower_id: String, top_left: Vector2i) -> bool. Returns false for any of: WAVE_ACTIVE, insufficient resources, footprint blocked, path blocked. Callers must not pre-check placement validity — react to the bool return only."
+    referenced_by:
+      - docs/architecture/adr-0008-tower-placement-gate.md
+    added: 2026-05-19
+    revised: ""
+
+  - contract: tower_placement_preview
+    status: active
+    pattern: direct_call
+    producer: tower-system
+    consumers:
+      - mission-hud
+    adr: docs/architecture/adr-0008-tower-placement-gate.md
+    signal_signature: "TowerSystem.get_placement_preview(tower_id: String, top_left: Vector2i) -> PlacementPreview. Runs Gate 1+2+3 only — never Gate 4 (path check). Returns PlacementPreview { valid: bool, reason: PlacementBlockReason }. PATH_BLOCKED is never set by this function."
+    referenced_by:
+      - docs/architecture/adr-0008-tower-placement-gate.md
+    added: 2026-05-19
+    revised: ""
+
+  - contract: monster_processing_order
+    status: active
+    pattern: none
+    producer: monster-manager
+    consumers:
+      - monster-manager
+    adr: docs/architecture/adr-0006-monster-movement.md
+    signal_signature: "MonsterManager._physics_process(delta) executes four sequential passes in fixed order: (1) damage pass — drain _pending_damage, apply to current_hp, mark DEAD; (2) BOSS logic pass — scan throttle, attack-prime, cooldown; (3) movement pass — advance ACTIVE entities, breach detection, rebuild active_monsters via filter(); (4) absorbed flush — emit monster_hp_absorbed per entity, clear _pending_absorbed. MonsterEntity nodes MUST NOT define their own _physics_process. This ordering is an architecture invariant — DEAD-priority over BREACHED depends on Pass 1 always preceding Pass 3."
+    referenced_by:
+      - docs/architecture/adr-0006-monster-movement.md
+    added: 2026-05-22
+    revised: ""
+
+  - contract: resource_validation
+    status: active
+    pattern: none
+    producer: any-data-resource
+    consumers:
+      - game-data-registry
+      - wave-manager
+      - save-persistence
+    adr: docs/architecture/adr-0009-resource-data-model.md
+    signal_signature: "Every persistent data Resource subclass (MonsterResource, WaveConfig, WaveScript, WaveSpawnEntry, FoundationComponent, WeaponComponent, FocusComponent, PowerComponent, TowerPerkRegistry) must implement validate() -> Array[String]. Empty array = valid. GameDataRegistry calls validate() on each MonsterResource and TowerPerkRegistry at boot. Wave Manager calls validate() on WaveConfig at mission load. Save & Persistence calls validate() on each TowerComponent at inventory load. push_error() per error string — does not abort the game in release builds. Event-payload Resources (MonsterDamageTaken, HeroAutoAttackEvent, TowerWaveSummary, TowerAuraPulseEvent) are exempt — they are never loaded from .tres files."
+    referenced_by:
+      - docs/architecture/adr-0009-resource-data-model.md
+    added: 2026-05-23
+    revised: ""
+
+  - contract: deferred_damage_dispatch
+    status: active
+    pattern: event_bus
+    producer: damage-status
+    consumers:
+      - monster-manager
+      - hero-system
+    adr: docs/architecture/adr-0007-damage-pipeline.md
+    signal_signature: "All damage events that feed Monster System or Hero System via HP application are deferred exactly one frame using 'await get_tree().process_frame' (not call_deferred). The guard 'if not is_instance_valid(self): return' must be the first statement after every await. monster_damage_taken carries a MonsterDamageTaken Resource subclass (5 fields). hero_healed(amount: int) and hero_damage_taken(amount: int, source_type: int) use typed params. Any future async EventBus subscriber in the project must follow the same await + is_instance_valid pattern."
+    referenced_by:
+      - docs/architecture/adr-0007-damage-pipeline.md
+    added: 2026-05-23
+    revised: ""
 
 # Example:
 #
@@ -100,7 +312,18 @@ interfaces: []
 # Register a budget when an ADR explicitly claims a frame time allocation.
 # The registry lets /architecture-review verify the total doesn't exceed the target.
 
-performance_budgets: []
+performance_budgets:
+  - system: event-bus
+    status: active
+    budget_ms: 1.667
+    target_fps: 60
+    platform: PC
+    adr: docs/architecture/adr-0001-eventbus-architecture.md
+    notes: "10% of 16.67 ms frame budget. Per-event-type budget ~0.208 ms (8 concurrent event types). Batch threshold: >20 firings/frame → switch to deferred batch event."
+    referenced_by:
+      - docs/architecture/adr-0001-eventbus-architecture.md
+    added: 2026-05-15
+    revised: ""
 
 # Example:
 #
@@ -131,7 +354,50 @@ performance_budgets: []
 # Register an API decision when the choice is non-obvious and other ADRs might
 # make a different choice for the same purpose without knowing this was decided.
 
-api_decisions: []
+api_decisions:
+  - purpose: cross_system_dispatch
+    status: active
+    api: "GDScript typed signals on EventBus Autoload (signal.connect(callable), signal.emit(...))"
+    not: "Direct node-to-node signal connections; untyped Dictionary payloads; message queue"
+    adr: docs/architecture/adr-0001-eventbus-architecture.md
+    reason: "Single pub/sub backbone enables cross-system synergies without direct dependencies. Godot signal system is C++ backed, zero overhead when no subscribers. 70-event catalogue is the single source of truth for all cross-system communication."
+    referenced_by:
+      - docs/architecture/adr-0001-eventbus-architecture.md
+    added: 2026-05-15
+    revised: ""
+
+  - purpose: pathfinding_computation
+    status: active
+    api: "AStar2D (GDScript subclass overriding _estimate_cost()). One instance per SPAWN cell. get_id_path() for route computation. Shared route templates with cell_index_map for O(1) monster path lookup."
+    not: "NavigationServer2D / NavigationAgent2D (post-cutoff API risk, continuous-space mismatch); per-monster A* queries during WAVE_ACTIVE; flow fields (over-engineered for 100-monster MVP scope)"
+    adr: docs/architecture/adr-0004-pathfinding-strategy.md
+    reason: "AStar2D is a stable pre-4.x API (unchanged through 4.6). Shared route templates reduce per-placement A* from O(monster_count) to O(SPAWN_count). NavigationServer2D had breaking changes in Godot 4.0 and 4.2 — avoidance decision made explicitly due to post-cutoff API risk."
+    referenced_by:
+      - docs/architecture/adr-0004-pathfinding-strategy.md
+    added: 2026-05-16
+    revised: ""
+
+  - purpose: tower_component_isolation
+    status: active
+    api: "Resource.duplicate_deep() called on each of the 4 component Resources (Foundation, Weapon, Focus, Power) at place_tower() commit. Stored in TowerMissionState keyed by tower_id."
+    not: "Resource.duplicate() (shallow — leaves nested Resources shared); manual recursive copy functions; serialise/deserialise round-trip at placement"
+    adr: docs/architecture/adr-0008-tower-placement-gate.md
+    reason: "duplicate_deep() (Godot 4.5+) handles the full Resource tree automatically. Shallow duplicate() is deprecated for nested Resources since 4.5. Mission-instance isolation prevents mid-mission mutations from corrupting inventory data."
+    referenced_by:
+      - docs/architecture/adr-0008-tower-placement-gate.md
+    added: 2026-05-19
+    revised: ""
+
+  - purpose: save_file_serialisation
+    status: active
+    api: "FileAccess.store_32(CURRENT_FORMAT_VERSION) + FileAccess.store_var(data, false). Atomic write via DirAccess.rename(.tmp → .dat)."
+    not: "JSON (JSON.stringify/parse_string); ConfigFile; store_var(data, true) — full_objects=true embeds Resource script paths that break on file rename; custom binary packing"
+    adr: docs/architecture/adr-0003-save-file-format.md
+    reason: "store_var() handles nested Dictionaries/Arrays natively with no per-field serialiser boilerplate. 4-byte store_32 version header enables migration before game data is parsed. full_objects=false prevents script-path embedding. Atomic rename prevents half-written save corruption."
+    referenced_by:
+      - docs/architecture/adr-0003-save-file-format.md
+    added: 2026-05-16
+    revised: ""
 
 # Example:
 #
@@ -157,7 +423,118 @@ api_decisions: []
 # Register a pattern when an ADR explicitly bans it AND other ADRs might
 # unknowingly use it (i.e., it's a tempting but wrong approach for this project).
 
-forbidden_patterns: []
+forbidden_patterns:
+  - pattern: direct_cross_system_node_reference
+    status: active
+    description: "A system must not hold a direct Node reference to any other system at runtime. All cross-system communication must pass through EventBus signals."
+    why: "Direct references create tight coupling that breaks the game's cross-system synergy model and makes systems untestable in isolation."
+    adr: docs/architecture/adr-0001-eventbus-architecture.md
+    added: 2026-05-15
+
+  - pattern: dictionary_event_payload
+    status: active
+    description: "EventBus signal payloads must not use untyped Dictionary. Use typed signal parameters for ≤4 fields; use a Resource subclass for ≥5 fields."
+    why: "Untyped Dictionaries lose type safety, break GDScript compiler optimisations, and make signal contracts invisible to tooling and code review."
+    adr: docs/architecture/adr-0001-eventbus-architecture.md
+    added: 2026-05-15
+
+  - pattern: synchronous_level1_cascade
+    status: active
+    description: "A subscriber that emits a further event (Level-1 cascade) must emit it deferred (call_deferred or signal.emit.call_deferred). Synchronous Level-1 cascade is forbidden."
+    why: "Synchronous Level-1 cascade multiplies frame cost by (1 + D × S_avg). At peak wave volume (10+ towers firing), a single Level-1 cascade chain consumes 50% of the entire EventBus frame budget. See EventBus GDD Formula 3 and EC-8."
+    adr: docs/architecture/adr-0001-eventbus-architecture.md
+    added: 2026-05-15
+
+  - pattern: direct_scene_transition
+    status: active
+    description: "Gameplay systems must not call SceneTree.change_scene_to_file() or change_scene_to_packed() directly. All scene transitions must go through SceneManager."
+    why: "Direct scene transitions bypass SceneManager's loading screen, cleanup, and EventBus broadcast. Bypassing this creates race conditions between scene teardown and active subscriptions."
+    adr: docs/architecture/adr-0002-scene-autoload-structure.md
+    added: 2026-05-16
+
+  - pattern: mid_wave_scene_transition
+    status: active
+    description: "SceneManager must never initiate a scene transition during WAVE_ACTIVE. Transitions are only triggered by terminal mission events (mission_complete, hero_died)."
+    why: "Transitioning mid-wave leaves MonsterManager, TowerManager, and WaveManager in partially-active states with live EventBus subscriptions — guaranteed crash."
+    adr: docs/architecture/adr-0002-scene-autoload-structure.md
+    added: 2026-05-16
+
+  - pattern: resource_object_in_save_data
+    status: active
+    description: "get_save_data() must not return Resource instances or engine types (Vector2i, Color, NodePath). All save data must be primitive GDScript types: int, float, bool, String, Array, Dictionary."
+    why: "store_var(data, true) embeds Resource script paths — a file rename silently corrupts every save. store_var(data, false) drops non-primitive objects without error. Primitive-only data is independently testable."
+    adr: docs/architecture/adr-0003-save-file-format.md
+    added: 2026-05-16
+
+  - pattern: unchecked_fileaccess_write
+    status: active
+    description: "Every FileAccess.store_32(), store_var(), store_string(), or store_buffer() call must check the returned bool. Void-return assumptions are pre-Godot-4.4 and will miss write failures silently."
+    why: "Godot 4.4 changed all store_* methods from void to bool return. Unchecked writes produce no error in normal conditions but silently fail on full disk or permission errors — data loss with no player feedback."
+    adr: docs/architecture/adr-0003-save-file-format.md
+    added: 2026-05-16
+
+  - pattern: per_monster_astar_during_wave
+    status: active
+    description: "Monster systems must not run individual A* queries during WAVE_ACTIVE. All path lookups during active waves must use PathfindingSystem.get_path() which reads pre-computed route templates. Standalone A* runs are only permitted in: (a) PathfindingSystem internal dirty rebuild (deferred, batched); (b) PathfindingSystem.would_block_all_paths() temp validation (never during WAVE_ACTIVE); (c) get_path() fallback for off-template monsters (push_warning required)."
+    why: "100 monsters × per-monster A* at wave spawn or on each path_invalidated = O(monster_count × SPAWN_count) A* runs per frame event. Profiled as frame budget risk. Route templates reduce this to O(SPAWN_count) per placement event and O(1) per monster per frame."
+    adr: docs/architecture/adr-0004-pathfinding-strategy.md
+    added: 2026-05-16
+
+  - pattern: would_block_all_paths_on_hover
+    status: active
+    description: "PathfindingSystem.would_block_all_paths() must only be called on placement confirmation (click/release), never on hover. The function builds temporary AStar2D instances — calling it at 60 FPS during cursor hover would consume the entire frame budget."
+    why: "would_block_all_paths() constructs a temp walkability copy and runs A* for every SPAWN cell. At one call per frame on hover, this is ~0.05–0.1 ms × 60 = 3–6 ms/second of unnecessary CPU overhead."
+    adr: docs/architecture/adr-0004-pathfinding-strategy.md
+    added: 2026-05-16
+
+  - pattern: stale_walkability_map
+    status: active
+    description: "Callers must not cache the return value of Grid.get_walkable_cell_map() across EventBus tower_placed or tower_removed events. Pathfinding must call get_walkable_cell_map() fresh whenever tower changes are processed."
+    why: "get_walkable_cell_map() includes unoccupied PLACEABLE cells as walkable and excludes occupied ones. A cached map from before tower placement will route monsters through occupied cells — a logic correctness failure, not just a performance issue."
+    adr: docs/architecture/adr-0005-grid-system-data-model.md
+    added: 2026-05-16
+
+  - pattern: grid_write_outside_tower_system
+    status: active
+    description: "Grid.place_tower() and Grid.remove_tower() must only be called by Tower System. No other system may write to Grid occupancy state."
+    why: "Grid occupancy is the authoritative record of what is built. If multiple systems can write to it, the single-writer ownership invariant breaks — Constellation, Pathfinding, and Tower Mastery all read occupancy and must trust it is consistent. Tower System is the only system that validates placement intent and emits tower_placed/tower_removed events to notify dependents."
+    adr: docs/architecture/adr-0005-grid-system-data-model.md
+    added: 2026-05-16
+
+  - pattern: shallow_duplicate_for_components
+    status: active
+    description: "Resource.duplicate() (shallow copy) must not be used to isolate TowerComponent Resources per placed tower instance. Resource.duplicate_deep() is required. Nested Resources inside a component (e.g. TowerPerkData inside FoundationComponent) must be Resource subclasses — non-Resource nested objects are not deep-copied and will be shared between mission instance and inventory."
+    why: "Shallow duplicate() leaves nested Resources shared between the mission-instance copy and the player's inventory item. Mission-time mutations (damaged := true, perk activation) would silently corrupt inventory state. duplicate_deep() (Godot 4.5+) is the correct API and is available in 4.6.2."
+    adr: docs/architecture/adr-0008-tower-placement-gate.md
+    added: 2026-05-19
+
+  - pattern: tower_mission_state_export
+    status: active
+    description: "TowerMissionState Resource instances must never be assigned to @export properties on Autoloads or any persistent node. Mission-instance Resources are RefCounted and must be freed automatically when the Tower System releases its reference. An @export assignment causes the Godot editor to hold a strong reference, preventing collection after tower removal."
+    why: "Accidental @export of a TowerMissionState on a persistent node (e.g. an Autoload) will leak all 4 duplicate_deep() component copies for the lifetime of the editor session — effectively turning a per-tower temporary into a permanent memory leak."
+    adr: docs/architecture/adr-0008-tower-placement-gate.md
+    added: 2026-05-19
+
+  - pattern: per_monster_physics_process
+    status: active
+    description: "MonsterEntity scene nodes (Area2D roots) must NOT define their own _physics_process. All per-entity logic — damage application, BOSS attack, movement, absorbed flush — must run inside MonsterManager._physics_process in the 4-pass centralized order. Per-entity _physics_process is forbidden because the engine calls each node's _physics_process in scene-tree order, which is not guaranteed stable, making the DEAD-priority invariant (Pass 1 before Pass 3) non-deterministic."
+    why: "If MonsterEntity defines its own _physics_process, a lethal hit and GOAL arrival in the same frame may be processed in either order depending on scene-tree position. This can produce a BREACHED entity with current_hp <= 0 — an invalid state that corrupts drop resolution and wave-clear accounting. The 4-pass centralized structure is the only way to guarantee DEAD-priority structurally rather than conditionally."
+    adr: docs/architecture/adr-0006-monster-movement.md
+    added: 2026-05-22
+
+  - pattern: data_resource_as_event_payload
+    status: active
+    description: "Persistent data Resources (MonsterResource, WaveConfig, FoundationComponent, etc.) must not be emitted as EventBus signal payloads. Event payloads use short-lived event-payload Resource subclasses (MonsterDamageTaken, HeroAutoAttackEvent, TowerWaveSummary, TowerAuraPulseEvent) which are never saved as .tres files. The two categories are distinct and must not be mixed."
+    why: "Emitting a data Resource as an event payload risks subscribers holding references that prevent GC, or mutating shared read-only data. Event-payload Resources are designed to be short-lived and fire-and-forget; data Resources are designed to be loaded once and shared immutably. Conflating them creates ownership ambiguity — which system can free the Resource? When?"
+    adr: docs/architecture/adr-0009-resource-data-model.md
+    added: 2026-05-23
+
+  - pattern: synchronous_damage_application
+    status: active
+    description: "D&S must not emit monster_damage_taken synchronously from within a tower_attacked or hero_auto_attacked subscriber. All damage events that feed Monster System HP application must be deferred exactly one frame via 'await get_tree().process_frame'. Similarly, any future async EventBus subscriber must use this pattern rather than call_deferred or synchronous emission."
+    why: "Synchronous emit creates a Level-1 cascade from tower_attacked at tower-attack volume (up to 20+/frame during WAVE_ACTIVE). Chained to MonsterManager's Pass 4 emission of monster_hp_absorbed, this produces a 3-level synchronous chain exceeding the ADR-0001 cascade limit (max 2 levels). call_deferred is also rejected: it schedules at end-of-current-frame and does not guarantee delivery in the next frame's _physics_process Pass 1 drain."
+    adr: docs/architecture/adr-0007-damage-pipeline.md
+    added: 2026-05-23
 
 # Example:
 #
