@@ -1,0 +1,517 @@
+# Hero System
+
+> **Status**: Approved (pass 1 — 2026-05-14; 2 blockers resolved in-session)
+> **Author**: Vicknesh + Claude Sonnet
+> **Last Updated**: 2026-05-14
+> **Implements Pillar**: Mastery-as-Vindication (The Architect-General)
+
+## Overview
+
+The Hero System is the direct-action layer of Sanctuary Defenders: the player character the player moves, aims, and activates skills for in real-time during every mission. The hero is not optional — they are mandatory in all phases (SCOUT through OUTCOME), and boss fights can only be completed with the hero present, as hero attacks deal 150% damage to elite and boss enemies that towers cannot reliably remove alone. This design ensures that no tower-only strategy can win a mission; the player is always both the architect of the tower network and the general fighting alongside it.
+
+Technically, the Hero System owns the hero's stats (health, damage, movement speed, cooldowns), the mapping of equipment affixes to those stats, real-time movement and collision, active skill activation, and the lifecycle events other systems subscribe to (health changes, death, position changes, skill use). It exposes its state changes exclusively through EventBus signals. It persists equipment loadout, tower mastery XP, and learned skill builds across sessions via Save & Persistence (restore_order 30). The hero's position, expressed as a world-space coordinate converted to grid cell via the Grid System's `world_to_cell()` function, is the spatial input that Tower Mastery uses to track proximity learning during missions.
+
+## Player Fantasy
+
+The hero is the one piece of your strategy that thinks. Towers are reliable but rigid — they do exactly what you designed them to do. The hero is your ability to be present in the moment: to read the field, improvise when the plan meets reality, and physically override a situation that static placement couldn't anticipate. The feeling is never "I am powerful." It is "I was the right person in the right place at the right time because I understood the battlefield" — and then, seconds later, "I somehow pulled that off."
+
+At the same time, the hero is not separate from the tower strategy. The hero grows *through* it. Standing near a frost tower for three missions teaches you a frost skill. Running alongside your siege battery teaches you its targeting logic. One day you realise the synergy your equipment affix has with a skill your hero learned by proximity — and nobody told you that was possible; you discovered it by paying attention to where you stood. The hero is the Architect-General's education: a record, in lived skill, of how you chose to fight.
+
+And sometimes the plan breaks. The boss is immune to fire and your entire kill corridor is built on fire towers. So you body-block. You drag the boss into the gap between lanes while your cooldowns reset, buying the ten seconds you need for the constellation bonus to proc. That moment — controlled desperation, solving a problem your past self created, with your own hands — is the hero's truest fantasy. Not the clean win, but the messy one. The one you weren't supposed to be able to pull off.
+
+## Detailed Design
+
+### Core Rules
+
+#### Group 1: Stats
+
+1. The hero has exactly **12 base stats**. Each has a floor of 0 and no hard ceiling unless noted. Equipment affixes, class perks, and skills modify these stats at the Sanctuary before a mission.
+
+| # | Stat | Governs |
+|---|------|---------|
+| 1 | Health (HP) | Total hit points. Hero dies at 0 → DEFEAT immediately. |
+| 2 | Damage | Base value for auto-attack and physical skill calculations. |
+| 3 | Movement Speed | World-units per second, all directions. |
+| 4 | Cooldown Reduction (CDR) | % reduction to skill cooldown durations. Cap: 75%. Does NOT affect auto-attack rate. |
+| 5 | Crit Chance | Probability (0–80%) a hit applies the Crit Multiplier. |
+| 6 | Armor | Reduces incoming damage via a mitigation formula (see Formulas). |
+| 7 | Skill Power | Multiplier for skills tagged `[SKILL_POWER_SCALING]`. Does not affect auto-attack. |
+| 8 | Attack Range | World-unit radius within which auto-attack acquires a target. |
+| 9 | Elemental Resistances | Per-element % damage reduction (fire, frost, poison, lightning, arcane). Cap: 75% per element. |
+| 10 | Lifesteal | % of auto-attack damage returned as HP. Cap: 40%. Cannot overheal. |
+| 11 | Tower Affinity | % bonus to Damage and Skill Power per tower placed, using a square-root scaling curve (see Formulas). |
+| 12 | Crit Multiplier | Damage multiplier when a crit is triggered. Base: 1.75×. Equipment and perks add additively. Floor: 1.0×. |
+
+2. Effective stat resolution uses the additive-bucket model: `effective_stat = (base_stat + flat_bonus) × (1 + additive_bonus_total)`. All flat bonuses sum first, then all percentage bonuses are collapsed into a single multiplier. The additive total is clamped to [−0.75, +3.00].
+
+#### Group 2: Auto-Attack
+
+3. The hero auto-attacks without player input. One attack fires per attack cycle. Auto-attack rate is a fixed base value; CDR does not affect it.
+
+4. Target priority (evaluated in order each cycle):
+   - (1) The enemy closest to a GOAL cell (furthest along the active path) within Attack Range.
+   - (2) If two enemies tie on path progress: the one with lower current HP.
+   - (3) If still tied: first enemy in the internal enemy list.
+
+5. Auto-attack always hits the current target. There is no miss chance. Dodge, if introduced, is resolved on the target's side.
+
+6. On each swing the Hero System: (a) rolls crit against `hero_crit_chance`, (b) reads the target's archetype tags to determine `hero_bonus_tier: int` (0 = STANDARD, 1 = ELITE, 2 = BOSS), (c) pre-computes `crit_multiplier_effective = hero_crit_multiplier_base + crit_multiplier_bonus`, and (d) emits `hero_auto_attacked` as a `HeroAutoAttackEvent` Resource with 6 fields: `base_damage`, `is_crit`, `target_id`, `crit_multiplier_effective`, `hero_lifesteal_fraction`, `hero_bonus_tier: int`. Actual damage arithmetic (tier multiplier, crit application, floor rounding) is performed by the Damage & Status System upon receiving this event — the Hero System does not resolve the final damage value itself.
+
+7. A swing already in progress completes normally even if the hero moves out of range mid-animation.
+
+#### Group 3: Skill System
+
+8. The hero has **4 active skill slots** (A, B, C, D) and a dedicated **Ultimate slot** (U). All 5 are independent bindings.
+
+9. Each active skill has its own passive slot pool (1–3 passive slots per skill, defined in skill data). Passive slots accept skill-modifier items.
+
+10. The **Ultimate** is not a standalone skill. It is derived at adventure start from the combination of the 4 equipped active skills via a lookup table. Different combinations produce different Ultimates. When any active skill slot changes mid-adventure, the Ultimate recomputes immediately. The Ultimate has its own cooldown defined by its data entry.
+
+11. Skills are **per-adventure**: they persist across all missions in a single playthrough and reset to empty on a new game.
+
+12. CDR applies to active skill cooldowns: `effective_cooldown = base_cooldown × (1 − CDR_fraction)`. Minimum effective cooldown: **0.5 seconds** regardless of CDR.
+
+#### Group 4: Tower-Synced Class System
+
+13. The hero has no fixed class. Class identity is earned by accumulating proximity time near towers of a given type.
+
+14. Proximity is measured via the Grid System's `world_to_cell(hero_world_pos)` call and Chebyshev distance. A tower of a given type contributes to proximity accumulation when it is within **3 cells** (Chebyshev) of the hero's current grid cell.
+
+15. Proximity time **accumulates cumulatively across all missions in a playthrough** during WAVE_ACTIVE and INTERMISSION phases. Scout Phase proximity does not count. The unlock thresholds are:
+
+| Unlock | Cumulative Time | Notes |
+|--------|-----------------|-------|
+| First class | 30 seconds | Achievable in 2–3 waves with deliberate positioning |
+| Second class | 90 seconds | Requires multi-mission commitment |
+
+16. When a class's time threshold is crossed, `hero_class_unlocked` is published to the EventBus (payload: `class_id: String`). The class is immediately available for designation but does not automatically overwrite the player's current Primary or Secondary choice.
+
+17. **Class perks**: Each class has exactly two perks — a Primary Perk and a Secondary Perk.
+   - A class designated as **Primary**: both Primary Perk and Secondary Perk are active.
+   - A class designated as **Secondary**: Secondary Perk only is active.
+   - All other unlocked classes: no perks active.
+
+18. The player designates their Primary and Secondary class at Sanctuary between missions. Designations lock at the start of SCOUT Phase and cannot be changed mid-mission.
+
+19. The player may hold any number of unlocked classes simultaneously but can only have one Primary and one Secondary active.
+
+#### Group 5: Tower Affinity
+
+20. Tower Affinity converts the number of live towers on the field into a bonus to the hero's Damage and Skill Power. It is recalculated whenever a tower is placed, voluntarily removed, or destroyed (triggered by `tower_placed`, `tower_removed`, and `tower_destroyed` EventBus events — not polled per frame).
+
+21. The bonus uses square-root scaling (see Formulas). A hero with 0 towers placed has 0 affinity bonus regardless of the Tower Affinity stat value.
+
+22. When the hero has a Primary class designated, **only towers whose archetype matches the Primary class contribute to the tower count**. If no Primary class is designated, all tower types count:
+
+| Primary Class | Tower types that count |
+|---|---|
+| Warrior | Physical / melee towers |
+| Archer | Ranged towers |
+| Mage / Elemental | Elemental towers (fire, frost, acid, lightning, arcane) |
+| Support / Engineer | Support and utility towers |
+| No primary class | All tower types |
+
+23. The full class list (all possible tower-synced classes and their perk definitions) is a separate design deliverable — the **class catalogue**. The Hero System GDD specifies the mechanics; the class catalogue specifies the content. The four archetypes above are the foundation-layer examples.
+
+#### Group 6: Hero Death
+
+24. Hero HP reaching 0 from any source triggers DEFEAT immediately. There is no respawn, revival item, or tower effect that can prevent this.
+
+25. Lifesteal and healing skills apply before the HP-reaches-0 check; they cannot trigger on the killing hit to prevent it.
+
+#### Group 7: Movement
+
+26. The hero moves in continuous world space, omnidirectionally. Keyboard/Mouse is the primary input; gamepad is supported. Velocity: `velocity = direction.normalized() × movement_speed` (instantaneous — no acceleration curve for MVP; feel pass deferred to Polish phase).
+
+27. Hero movement is blocked by `BLOCKED` cells and cells occupied by towers. The hero can traverse PATH, PLACEABLE (unoccupied), SPAWN, and GOAL cells freely.
+
+28. Each physics frame, the Hero System calls `Grid.world_to_cell(hero_world_pos)` to determine the current grid cell. When the result changes from the previous frame (`prev_cell != current_cell`), `hero_position_changed` is emitted to the EventBus with `grid_position: Vector2i`. This resolves EventBus Open Question #5: per-cell-boundary emission with an O(1) guard is sufficient — no frame throttling needed.
+
+---
+
+### States and Transitions
+
+| Hero State | Active During | Entry | Exit |
+|---|---|---|---|
+| `IDLE_SANCTUARY` | SANCTUARY | Mission ends or game starts | SCOUT phase begins |
+| `SCOUT` | SCOUT mission phase | `mission_phase_changed` → SCOUT | Timer expires or player confirms |
+| `COMBAT` | WAVE_ACTIVE | `mission_phase_changed` → WAVE_ACTIVE | Wave cleared or `hero_died` fires |
+| `INTERMISSION` | INTERMISSION | `mission_phase_changed` → INTERMISSION | Timer expires or player confirms |
+| `DEAD` | DEFEAT | HP reaches 0 | Mission restart (SCOUT) resets hero |
+
+Proximity accumulation is active only during `COMBAT` and `INTERMISSION`. Class designation is locked during `SCOUT`, `COMBAT`, and `INTERMISSION`.
+
+---
+
+### Interactions with Other Systems
+
+| System | Direction | Data | Mechanism |
+|---|---|---|---|
+| **EventBus** | Hero → | `hero_auto_attacked`, `hero_health_changed`, `hero_died`, `hero_position_changed`, `hero_equipment_changed`, `hero_skill_activated`, `hero_class_unlocked` | Direct signal emission. Note: `hero_damage_taken` is owned by D&S (moved from Hero System per EventBus catalogue update). |
+| **EventBus** | → Hero | `equipment_slot_changed`, `active_skill_equipped`, `ultimate_skill_changed`, `item_rune_imbued`, `mission_phase_changed`, `sanctuary_state_restored`, `tower_placed`, `tower_removed`, `tower_destroyed` | Signal subscriptions connected in `_ready()` |
+| **Grid** | Hero → Grid | `world_to_cell(hero_world_pos)` per physics frame | Direct read API (Autoload call) |
+| **Save & Persistence** | Bidirectional | `get_save_data()` / `restore_save_data()` / `reset_to_defaults()`; registers with `restore_order = 30` | Direct API call in `_ready()` |
+| **Tower Mastery System** | → Tower Mastery | `hero_position_changed` drives proximity tracking for skill acquisition | EventBus subscription |
+| **Damage & Status System** | → Hero | Processes incoming damage; applies armor reduction and status effects | EventBus (hero hit events) |
+| **Hero Skill Build System** | → Hero | `active_skill_equipped`, `ultimate_skill_changed` update active slots and recompute Ultimate | EventBus subscription |
+| **Mission HUD** | Hero → | Receives `hero_health_changed`, `hero_skill_activated` for real-time display | EventBus subscription |
+
+## Formulas
+
+### Formula 1: Effective Stat Calculation
+
+Applies to all 12 stats. Flat bonuses resolve before percentage bonuses, which means flat affixes feel more impactful at low base values (early-game equipment matters). All percentage bonuses collapse into a single additive bucket to prevent multiplicative stacking spirals.
+
+```
+effective_stat = (base_stat + flat_bonus) × (1 + additive_bonus_total)
+```
+
+| Variable | Symbol | Type | Range | Description |
+|----------|--------|------|-------|-------------|
+| Base stat | `base_stat` | float | stat-dependent | Hero's unmodified stat from class/equipment baseline |
+| Flat bonus | `flat_bonus` | float | −base_stat – unbounded | Sum of all flat +N bonuses from equipment affixes and class perks |
+| Additive bonus total | `additive_bonus_total` | float | −0.75 – +3.00 | Sum of all additive % bonuses as decimals (e.g. +30% = +0.30); clamped |
+| Effective stat | `effective_stat` | float | 0 – stat ceiling | Final resolved stat used by all game systems |
+
+**Output range:** Floor: 0 (no stat goes negative). Ceiling per stat in Tuning Knobs. The additive cap of +3.00 means any stat can at most reach 4× its flat-adjusted base.
+
+**Example (Damage stat):**
+```
+base_damage = 50, flat_bonus = +12 (equipment + class perk), additive_bonus_total = 0.45
+effective_damage = (50 + 12) × (1 + 0.45) = 62 × 1.45 = 89.9 → 90
+```
+
+---
+
+### Formula 2: Tower Affinity Bonus
+
+Converts Tower Affinity stat and live tower count into a bonus multiplier on Damage and Skill Power. Uses square-root scaling to reward early tower investment without creating a "place 30 towers" degenerate strategy.
+
+```
+tower_affinity_bonus = tower_affinity_stat × sqrt(qualifying_towers / TOWERS_AFFINITY_REFERENCE)
+
+effective_damage_final = effective_damage × (1 + tower_affinity_bonus)
+effective_skill_power_final = effective_skill_power × (1 + tower_affinity_bonus)
+```
+
+| Variable | Symbol | Type | Range | Description |
+|----------|--------|------|-------|-------------|
+| Tower affinity stat | `tower_affinity_stat` | float | 0.00 – 1.00 | Hero's Tower Affinity stat (0%–100%) |
+| Qualifying towers | `qualifying_towers` | int | 0 – field max | Count of live towers matching the Primary class archetype; all towers if no Primary class |
+| Affinity reference count | `TOWERS_AFFINITY_REFERENCE` | int | constant: 16 | Tower count at which the bonus equals the Tower Affinity stat face value |
+| Tower affinity bonus | `tower_affinity_bonus` | float | 0.00 – 2.00 (clamped) | Fractional bonus; clamped at 2.00 |
+
+**Output range:** At `TOWERS_AFFINITY_REFERENCE = 16`, a hero with 40% Tower Affinity placing 16 qualifying towers gains exactly +40% to Damage and Skill Power. Clamped at +200% maximum bonus.
+
+**Example:**
+```
+tower_affinity_stat = 0.40, qualifying_towers = 20, TOWERS_AFFINITY_REFERENCE = 16
+tower_affinity_bonus = 0.40 × sqrt(20/16) = 0.40 × 1.118 = 0.447
+effective_damage_final = 90 × 1.447 = 130
+```
+
+---
+
+### Formula 3: Class Proximity Accumulation
+
+Tracks cumulative time the hero spends near towers of a given type. Accumulated across all missions in a playthrough.
+
+```
+proximity_time[tower_type] += delta_time
+    while chebyshev(hero_cell, nearest_tower_cell_of_type) ≤ CLASS_PROXIMITY_RADIUS
+    and mission_phase ∈ {WAVE_ACTIVE, INTERMISSION}
+```
+
+Unlock condition:
+
+```
+class_unlocked[tower_type] = true  when proximity_time[tower_type] ≥ CLASS_UNLOCK_THRESHOLD
+```
+
+| Variable | Symbol | Type | Range | Description |
+|----------|--------|------|-------|-------------|
+| Proximity time | `proximity_time` | float | 0 – unbounded | Cumulative seconds near towers of this type (per type, per playthrough) |
+| Physics frame delta | `delta_time` | float | ~0.0167 | Godot `_physics_process` delta at 60 FPS |
+| Hero cell | `hero_cell` | Vector2i | grid bounds | `Grid.world_to_cell(hero_world_pos)` |
+| Proximity radius | `CLASS_PROXIMITY_RADIUS` | int | constant: 3 | Chebyshev cell radius for proximity accumulation |
+| Unlock threshold | `CLASS_UNLOCK_THRESHOLD` | float | 30 / 90 (by tier) | Seconds required to unlock each class tier |
+
+**Output range:** Binary unlock (bool). Accumulator is unbounded — it continues past the threshold to track mastery depth (usable by future Tower Mastery integration).
+
+**Example (first class unlock):**
+```
+Mission 1: 12s near frost towers → proximity_time[frost] = 12
+Mission 2: 22s near frost towers → proximity_time[frost] = 34 ≥ 30 → Frost class UNLOCKED
+```
+
+---
+
+### Formula 4: Auto-Attack Damage (Full Pipeline)
+
+```
+final_damage = effective_damage × elite_boss_multiplier
+             × [1 + (CRIT_MULTIPLIER_BASE − 1 + crit_multiplier_bonus) × is_crit]
+```
+
+| Variable | Symbol | Type | Range | Description |
+|----------|--------|------|-------|-------------|
+| Effective damage | `effective_damage` | float | 0 – unbounded | From Formula 1 + Formula 2 (after class perk and affinity) |
+| Elite/boss multiplier | `elite_boss_multiplier` | float | {1.0, 1.5} | 1.5× if target tagged `[ELITE]` or `[BOSS]`, else 1.0× |
+| Crit check | `is_crit` | bool | {0, 1} | `rand_float(0, 1) < effective_crit_chance` |
+| Base crit multiplier | `CRIT_MULTIPLIER_BASE` | float | constant: 1.75 | A crit deals 175% of base hit damage before bonuses |
+| Crit multiplier bonus | `crit_multiplier_bonus` | float | 0.00 – 1.50 | Additive bonus from equipment/class perks |
+
+**Output range:** Minimum 0. No hard cap. Maximum crit: `CRIT_MULTIPLIER_BASE + 1.50 = 3.25×`.
+
+**Example (elite hit, crit):**
+```
+effective_damage = 90, elite_boss_multiplier = 1.5, is_crit = true
+CRIT_MULTIPLIER_BASE = 1.75, crit_multiplier_bonus = 0.25
+final_damage = 90 × 1.5 × [1 + (0.75 + 0.25)] = 135 × 2.0 = 270
+```
+
+---
+
+### Formula 5: Armor Damage Reduction
+
+Uses an asymptotic coefficient formula — armor approaches but never reaches 100% reduction. Prevents breakpoints where small armor increments produce outsized damage reduction.
+
+```
+effective_damage_taken = incoming_damage × (ARMOR_COEFFICIENT / (armor + ARMOR_COEFFICIENT))
+```
+
+| Variable | Symbol | Type | Range | Description |
+|----------|--------|------|-------|-------------|
+| Incoming damage | `incoming_damage` | float | 0 – unbounded | Final attack damage after crit (Formula 4 output) |
+| Armor | `armor` | float | 0 – 500 (soft cap) | Hero's effective armor stat |
+| Armor coefficient | `ARMOR_COEFFICIENT` | float | constant: 100 | Armor value at which the hero takes exactly 50% damage |
+| Damage taken | `effective_damage_taken` | float | 0 – incoming_damage | HP deducted from hero |
+
+**Reduction curve:**
+
+| Armor | Damage taken % |
+|-------|---------------|
+| 0 | 100% |
+| 100 | 50% |
+| 200 | 33% |
+| 300 | 25% |
+| 500 | 17% |
+
+**Example:**
+```
+incoming_damage = 270, armor = 120
+effective_damage_taken = 270 × (100 / 220) = 270 × 0.4545 = 122.7 → 123
+```
+
+---
+
+### Formula 6: Lifesteal Healing
+
+```
+hp_recovered = damage_dealt × effective_lifesteal
+hp_recovered = min(hp_recovered, max_health − current_health)
+```
+
+| Variable | Symbol | Type | Range | Description |
+|----------|--------|------|-------|-------------|
+| Damage dealt | `damage_dealt` | float | 0 – unbounded | Actual damage applied to enemy (Formula 4 output) |
+| Effective lifesteal | `effective_lifesteal` | float | 0.00 – 0.40 | Hero's Lifesteal stat; clamped at 40% |
+| HP recovered | `hp_recovered` | float | 0 – `max_health − current_health` | HP added; cannot overheal |
+
+**Example:**
+```
+damage_dealt = 270, effective_lifesteal = 0.20
+hp_recovered = 270 × 0.20 = 54 HP (clamped to remaining HP headroom)
+```
+
+## Edge Cases
+
+**Stat Clamping**
+
+- **If `additive_bonus_total` is driven below −0.75 by stacked negative affixes**: clamp to −0.75 (minimum multiplier 0.25×). A hero cannot reduce their own stat below 25% of the flat-adjusted base via additive debuffs alone.
+
+- **If `(base_stat + flat_bonus)` is negative before the additive multiplier applies**: clamp the intermediate value to 0 before applying the multiplier. Without this guard, a large negative flat affix multiplied by a positive additive could produce a negative effective stat.
+
+**Class System**
+
+- **If the player has no classes unlocked when SCOUT begins**: both designation slots are empty, no class perks are active, and Tower Affinity uses all tower types. This is a valid early-game state; the UI shows empty slots without blocking SCOUT entry.
+
+- **If a tower type contributing to a class threshold is destroyed before the threshold is reached**: the `proximity_time` accumulator is not rolled back. Accumulation pauses while no qualifying tower exists within range; it resumes when another tower of the same type is placed within 3 cells.
+
+- **If the player attempts to designate the same class as both Primary and Secondary**: reject the assignment. The UI disables the "set as Secondary" option for whichever class is already set as Primary, and vice versa.
+
+- **If a save is loaded referencing a `class_id` that no longer exists in game data**: restore the proximity accumulator as orphaned data (do not discard — supports content re-addition). Mark the class `UNKNOWN` internally. Clear any Primary/Secondary designation pointing to the unknown class, treating the slot as empty. Log a warning. Never block the load.
+
+**Tower Affinity**
+
+- **If `qualifying_towers = 0`**: `tower_affinity_bonus = 0` exactly. No division-by-zero risk (0 is the numerator). Hero deals unmodified Damage and Skill Power. Intentional by Rule 21.
+
+- **If all qualifying towers are destroyed mid-wave**: Tower Affinity bonus drops to 0 immediately on the `tower_destroyed` event — same frame, no grace period. This is a meaningful consequence of aggressive monster play, not a bug.
+
+- **If `tower_affinity_stat` resolves to 0 via Formula 1**: `tower_affinity_bonus = 0 × sqrt(anything) = 0` regardless of tower count. A build with no Tower Affinity investment gains nothing from tower count. Correct and intentional.
+
+**Ultimate Recompute**
+
+- **If all 4 active skill slots are empty**: the Ultimate slot is set to `EMPTY`. The U binding is inactive. No error.
+
+- **If the 4-skill combination has no entry in the lookup table**: the Ultimate resolves to `NONE` gracefully. Every reachable combination in the skill catalogue must either have a table entry or explicitly map to NONE. A combination that causes a lookup panic is a content authoring error, not a runtime-defensible case.
+
+- **If a skill is removed from an active slot mid-adventure**: the Ultimate recomputes immediately from the new combination. Any active Ultimate cooldown timer is discarded. The old Ultimate cannot be used after its source skill is removed.
+
+**Hero Death**
+
+- **If lifesteal would overheal the hero**: `hp_recovered` is clamped to `max_health − current_health` before `hero_health_changed` fires. The HUD never displays >100% HP.
+
+- **If the killing hit is dealt by a DoT tick**: DEFEAT triggers identically. There is no grace window. Lifesteal does not apply to DoT (DoT ticks are not auto-attacks), but the death outcome is the same: `hero_died` fires and the mission ends.
+
+**Movement**
+
+- **If the hero occupies a cell that monsters need to route through**: the hero does not alter cell walkability. Monsters and the hero share world space and can occupy the same cell simultaneously. Combat is resolved by the Damage & Status System, not by blocking movement. Body-blocking is an intentional gameplay mechanic referenced in the Player Fantasy.
+
+- **If the hero stands on a GOAL cell**: permitted by Rule 27. The hero on a GOAL cell does NOT trigger a breach event — breach is triggered only by a monster reaching a GOAL cell. Implementors must not use a generic "entity-on-GOAL" handler that would incorrectly fire on the hero.
+
+## Dependencies
+
+### Upstream Dependencies (systems the Hero System depends on)
+
+| System | Dependency Type | What Hero needs from it |
+|--------|-----------------|-------------------------|
+| **EventBus System** | Infrastructure | All cross-system communication; Hero subscribes to 8 events, publishes 7 events. First Autoload — must exist before Hero calls `_ready()`. |
+| **Grid System** | Infrastructure | `world_to_cell(hero_world_pos)` called every physics frame for position tracking. Direct read API (Autoload). |
+| **Save & Persistence System** | Infrastructure | Hero implements `get_save_data()`, `restore_save_data()`, `reset_to_defaults()` and registers with `restore_order = 30`. Second Autoload — must exist before Hero's `_ready()` calls `register()`. |
+
+### Downstream Dependents (systems that depend on the Hero System)
+
+| System | What it needs from Hero | Constraint on Hero |
+|--------|-------------------------|--------------------|
+| **Tower Mastery System** | `hero_position_changed` events drive proximity tracking for skill acquisition | Hero must emit position events per cell-boundary crossing (not per-frame) to stay within EventBus budget |
+| **Hero Skill Build System** | Hero exposes 4 active skill slots and the resolved Ultimate; listens to `active_skill_equipped` and `ultimate_skill_changed` | Hero must recompute Ultimate immediately when any slot changes |
+| **Damage & Status System** | Outgoing: Hero emits `hero_auto_attacked` (`HeroAutoAttackEvent` Resource, 6 fields) — D&S resolves final damage and emits `monster_damage_taken`. Incoming: D&S emits `hero_healed` (lifesteal) and `hero_damage_taken` (armor-reduced incoming); Hero System applies both. | Hero must emit the full 6-field `HeroAutoAttackEvent` payload. Hero owns lifesteal clamping (`hero_lifesteal_cap=0.40`) and overheal clamping; D&S owns the heal-amount calculation. |
+| **Mission HUD** | Displays hero HP, skill cooldowns, active class — subscribes to `hero_health_changed`, `hero_skill_activated`, `hero_class_unlocked` | Hero must emit complete, accurate payloads on every HP change |
+| **Equipment Forge System** | Reads hero equipment loadout and perk structure to offer relevant forge options | Hero's equipment state must be accurately serialized via Save & Persistence |
+| **Tower Mastery System** (secondary) | `hero_class_unlocked` event — Tower Mastery may gate certain skill unlocks behind class ownership | Hero's class unlock event must carry the `class_id` string |
+
+### Notes
+
+- The Hero System introduces `hero_class_unlocked` as a new EventBus event not present in the current 52-event catalogue. This event must be added to `design/gdd/event-bus.md` at the next EventBus revision.
+- The Hero System and Tower Mastery System share the same proximity mechanic but serve different purposes: proximity → class identity (Hero System) vs proximity → skill acquisition (Tower Mastery System). These two systems must agree on the `CLASS_PROXIMITY_RADIUS` constant (3 cells) to avoid conflicting proximity radii.
+- Dependencies on **Inventory System** and **Equipment Forge System** are soft: Hero reads equipment state but does not call those systems directly — state flows through `equipment_slot_changed` EventBus events.
+
+## Tuning Knobs
+
+| Parameter | Default | Safe Range | Too High | Too Low |
+|---|---|---|---|---|
+| Hero base health | (TBD at production) | 100–500 | Hero survives everything; DEFEAT feels impossible | Hero dies to 1–2 hits; DEFEAT feels punishing rather than meaningful |
+| Hero base damage | (TBD at production) | 20–100 | Hero trivialises elites/bosses without tower support | Hero contribution feels irrelevant vs towers |
+| Hero movement speed | (TBD at production) | 100–400 world units/sec | Hero crosses the field instantly; positioning decisions lose meaning | Hero too slow to plug gaps; body-blocking becomes impossible |
+| Attack range | (TBD at production) | 60–180 world units | Hero can attack from across the field; tactical positioning irrelevant | Hero must enter melee range; high-damage enemies feel impossible |
+| `CLASS_UNLOCK_THRESHOLD` — first class | 30 seconds | 15–60 | Class identity appears too late to matter per mission | Class unlocks in the first wave from any passing proximity |
+| `CLASS_UNLOCK_THRESHOLD` — second class | 90 seconds | 60–180 | Second class effectively locked to extremely dedicated players | Second class unlocks in one mission; too easy to stack |
+| `CLASS_PROXIMITY_RADIUS` | 3 cells (Chebyshev) | 2–5 | Hero barely needs to be near a tower; proximity is trivial | Hero must stand on the tower's cell; conflicts with combat movement |
+| `TOWERS_AFFINITY_REFERENCE` | 16 towers | 8–24 | High tower counts needed for meaningful affinity bonus | Affinity maxes out at 8 towers; reward feels trivial |
+| `CRIT_MULTIPLIER_BASE` | 1.75× | 1.5–2.5 | Crit builds feel overwhelmingly powerful vs non-crit | Crits feel like normal hits; crit_chance stat irrelevant |
+| `ARMOR_COEFFICIENT` | 100 | 50–200 | Armor reduces damage steeply at low values; armor-stacking becomes dominant | Armor barely matters; survivability comes only from HP |
+| `effective_lifesteal` cap | 40% | 20–60% | Lifesteal sustain trivialises damage; hero is unkillable | Lifesteal stat has no observable impact on survivability |
+| `effective_crit_chance` cap | 80% | 60–90% | High crit builds guarantee crits; variance disappears | Crit chance cap too low for crit-focused builds to feel distinct |
+| CDR cap | 75% | 50–90% | Near-zero cooldowns; skill spam eliminates resource management | CDR affixes feel useless; skills feel too slow |
+| Min effective cooldown | 0.5 seconds | 0.3–1.0 | Floor too high; CDR stops feeling useful before cap | Spammable skills with zero CDR; game becomes trivial |
+| Tower affinity bonus cap | 200% (+2.00) | 100–300% | Tower-affinity builds dwarf all other build paths | Diminishing returns kick in too early; affinity feels like a minor bonus |
+
+**Note:** Hero base stat starting values (HP, damage, movement speed, attack range) are production-phase tuning decisions. These must be calibrated against the target wave difficulty curve defined in `design/gdd/game-concept.md` and will be set when the first playable mission is designed. Add them to `design/registry/entities.yaml` as constants once confirmed.
+
+## Visual/Audio Requirements
+
+### Event Feedback
+
+| Event | VFX | Animation | Audio |
+|---|---|---|---|
+| **Auto-attack hit** | White impact flash on target, 2 frames (~33ms), 0.5× cell_size radius. One-shot at target position. No projectile trail. | 4-frame attack cycle on hero (wind-up → strike → follow-through → recover). Strike frame = hit event frame. | Short metallic tap, 3D positioned at target. Category: `SFX_Combat`. Sits below skill activations in mix. |
+| **Critical hit** | Auto-attack flash + radial slash burst (4–6 lines, yellow-white, 6 frames, 1.5× normal flash size). Bold yellow-outlined damage number scales up to 120% then settles over 8 frames. | Same as auto-attack (hero animation unchanged). | Dedicated crit sound: normal impact + bright ringing overtone (metallic shatter / glass chime). 3D positioned at target. Category: `SFX_Combat_Crit`. 15–20% louder than normal hit. Overtone layer makes crits identifiable with eyes closed. |
+| **Elite/boss hit** | Auto-attack flash with colored edge glow (class palette, or neutral white). 3 frames. Damage number at 110% scale, orange tint. If also a crit: crit VFX takes priority; orange tint applied to crit number outline. | None. | Normal hit + short low-frequency sub-thump (60–80 Hz, very short). 3D positioned at target. Category: `SFX_Combat`. |
+| **Skill activation (A/B/C/D)** | Circular activation ring expands from hero feet, 1 cell_size radius, 8 frames (~133ms). Ring color = skill element (fire=orange-red, frost=ice-blue, poison=acid-green, lightning=electric-purple, arcane=magenta, physical=steel-grey). Skill icon flashes 3 frames at hero's HUD skill slot (UI-space). | 6-frame cast animation (arms raised / weapon flourish). Shared across all skills at MVP. Locks movement for duration (0.2–0.5s per skill data). | Layer 1: shared skill whoosh (2D stereo, always audible). Layer 2: per-element impact at AoE location, 3D positioned. Category: `SFX_Skill`. |
+| **Ultimate activation (U)** | Full-screen white flash (15% opacity, 4 frames). Burst ring expands from hero to 3× cell_size radius over 12 frames. 12–16 motes drift outward, fade over 0.5s. Hero sprite briefly scales to 110% for 6 frames. Ring color = Primary class palette (or white). | Dedicated 10-frame Ultimate animation. Movement locked for duration. Auto-attack pauses. | Layer 1: power surge riser (0.3s, low-to-high sweep, 2D stereo, `SFX_Ultimate` — unique to Ultimates). Layer 2: per-Ultimate impact, 3D positioned. Layer 3: low-frequency rumble (0.2s). Loudest hero-originated sound; 30% above skill activations. |
+| **Hero takes damage** | Hero sprite flashes red-white for 2 frames. 4–6 directional particles burst toward damage source, fade over 0.3s. If single hit > 25% max_health: flash extends to 4 frames + 2-pixel screen shake (6 frames, decaying sine). | 3-frame flinch recoil (opposite damage direction). Does NOT interrupt movement or auto-attack — cosmetic overlay only. | Short pain impact, 3D at hero. Category: `SFX_Combat_Hero`. Pitch varies ±5% per hit. Volume scales with damage proportion. |
+| **Hero low HP (< 20%)** | Screen-edge dark red vignette (~15% inset from each edge), looping, pulses opacity 40%–70% on 1.5s sine cycle. Hero sprite desaturates 40% + slight red hue shift (shader uniform). **Primary signal — fully readable with audio muted.** | None. | Enhancement only: low heartbeat sound synced to vignette pulse (1.5s), 2D stereo, `SFX_UI`. Volume: 60% of normal hit. Fades in/out at HP threshold crossings. |
+| **Hero death** | Hero flashes white (100%, 4 frames) then fades to 30% opacity over 12 frames. Shockwave ring expands to 2× cell_size, 16 frames. Screen desaturates to 60% over 0.5s. Low-HP vignette freezes at max opacity. | 12-frame death collapse animation. All inputs lock on HP = 0 frame. | Heavy resonant impact (3D at hero) + 0.5s descending minor tone (2D stereo, `SFX_Hero_Death`). All other combat SFX duck 40% for 1s. |
+| **Class unlock** | Vertical light beam (class palette color, 2× hero height, 1.0s). 8–12 sparkle particles drift upward. Badge icon materializes with scale-up ease (0%→115%→100% over 8 frames). First unlock: beam 50% wider, 1.5s. | 6-frame power-up pose. Overlay track — does not interrupt combat. | Ascending 3-note major arpeggio chime (0.8s), 2D stereo, `SFX_UI_Progression`. Volume: 20% above combat to cut through wave chaos. |
+| **Class perk active (mission start)** | Shimmer sweep up hero sprite over 12 frames (Primary class color). If both Primary + Secondary active: two sequential sweeps (0.3s gap). Perk name tooltip above hero (world-space, 2.0s auto-fades). | None (SCOUT idle state). | Soft activation hum (0.4s), 2D stereo, `SFX_UI`. Volume: 50% of normal hit. |
+| **Tower Affinity bonus active** | Looping gold outline on hero sprite (1–2px). Opacity scales linearly with `tower_affinity_bonus`: 0.0 = invisible, 2.0 = 80% max. Shader uniform driven. Updates on `tower_placed`/`tower_destroyed`, not per-frame. | None. | None — passive persistent bonus; audio would cause listener fatigue. |
+| **Lifesteal heal** | 3–5 green-white motes arc from enemy to hero over 0.3s (4–6px sprites). 2-frame green flash on hero on arrival. If heal pushes HP above 20%: vignette/tint fade out over 0.3s. | None. | Soft absorption chime (0.15s, single note), 3D at hero, `SFX_Combat_Heal`. Volume: 40% of normal hit. Audio cooldown: 0.3s between chime triggers (VFX still plays every proc). |
+
+---
+
+### Hero Idle Visual Identity
+
+The hero must be identifiable within 0.2 seconds at full battlefield zoom. Three redundant signals ensure this: (1) a humanoid silhouette with visible weapon — asymmetric and character-shaped, distinct from tower geometry and monster organics; (2) a persistent bright green health bar always visible below the sprite (unique color vs. tower and monster bars); (3) a 2-pixel vertical idle bob on a 1.5-second cycle (towers are static; monsters use lateral sway — only the hero bobs). The hero sprite occupies approximately 1 cell_size footprint, matching small towers, but the silhouette differentiates them at a glance.
+
+### Class Identity Display
+
+**Palette shift:** Implemented as shader uniform swap. Single base spritesheet for all classes (silhouette and animation frames identical). Hue rotation and saturation adjustments per class defined in `assets/data/class_palettes.tres`. 0.2-second crossfade interpolation on any palette change. Persists across scene loads.
+
+**Badge system:** 16×16 px source icon, rendered at 12×12 world-space. Anchored top-right of hero (+0.35 cell_size, −0.35 cell_size from center). Background tint = class accent color; icon in white. Both Primary and Secondary active: Primary badge top-right, Secondary badge top-left (mirrored). No badge if no class designated. Asset path: `assets/ui/class_badges/[class_id].png`. Foundation-layer required badges: `warrior.png`, `archer.png`, `mage.png`, `support.png`.
+
+### Art Bible Dependencies
+
+> Requirements below cannot be fully specified until the art bible is approved:
+> 1. Hero sprite pixel dimensions and proportions (requires cell_size reference and character scale standard)
+> 2. Class palette lookup table values (requires master color palette and colorblind accessibility standards)
+> 3. Damage number font, stroke weight, base size (requires UI typography standard)
+> 4. Particle art style — behavior locked; visual style (pixel-hard, soft glow, hand-drawn) depends on art style guide
+> 5. Blood/spark aesthetic on damage taken — violence tone decision (abstract sparks vs. stylized)
+> 6. Post-processing parameters for low-HP vignette and death desaturation
+
+📌 **Asset Spec** — Visual/Audio requirements are defined. After the art bible is approved, run `/asset-spec system:hero` to produce per-asset descriptions, dimensions, and generation prompts from this section.
+
+## UI Requirements
+
+[To be designed]
+
+## Acceptance Criteria
+
+- **AC-01** — **GIVEN** a hero with `base_stat = 50`, `flat_bonus = +12`, and `additive_bonus_total = 0.45`, **WHEN** the effective stat is calculated, **THEN** the result equals `(50 + 12) × (1 + 0.45) = 89.9`, rounded per implementation convention. No other value is accepted.
+
+- **AC-02** — **GIVEN** a hero with additive bonuses summing above `+3.00`, **WHEN** the effective stat formula is evaluated, **THEN** the additive total is clamped to `3.00` before multiplication — the maximum multiplier applied is `4.0×` the flat-adjusted base.
+
+- **AC-03** — **GIVEN** a hero with `effective_damage = 90` attacking a standard enemy with `is_crit = true`, `CRIT_MULTIPLIER_BASE = 1.75`, and `crit_multiplier_bonus = 0.25`, **WHEN** the auto-attack resolves, **THEN** `final_damage = 90 × [1 + (0.75 + 0.25)] = 180`.
+
+- **AC-04** — **GIVEN** a hero with `effective_damage = 90` attacking an enemy tagged `[BOSS]` or `[ELITE]` with `is_crit = false`, **WHEN** the auto-attack resolves, **THEN** `final_damage = 90 × 1.5 = 135` for both tags.
+
+- **AC-05** — **GIVEN** a hero with `armor = 100` receiving `incoming_damage = 200`, **WHEN** armor reduction is applied, **THEN** `effective_damage_taken = 200 × (100 / 200) = 100`. **AND** given `armor = 0`, the hero takes the full 200 — confirming the formula never reaches 100% reduction.
+
+- **AC-06** — **GIVEN** a hero with `effective_lifesteal = 0.20`, `max_health = 500`, `current_health = 450` (50 HP missing), who deals 270 damage, **WHEN** lifesteal is applied, **THEN** `hp_recovered = min(270 × 0.20, 50) = 50` — hero heals to exactly `max_health` with no overheal.
+
+- **AC-07** — **GIVEN** a hero with `tower_affinity_stat = 0.40` and `qualifying_towers = 20` (`TOWERS_AFFINITY_REFERENCE = 16`), **WHEN** Tower Affinity is calculated, **THEN** `tower_affinity_bonus ≈ 0.447` and both `effective_damage` and `effective_skill_power` are multiplied by `1.447`. **AND** given `qualifying_towers = 0`, the bonus is exactly `0.0`.
+
+- **AC-08** — **GIVEN** a hero has Mage as Primary class, with 6 elemental towers and 4 physical towers on the field, **WHEN** Tower Affinity recalculates after a `tower_placed` event, **THEN** `qualifying_towers = 6` (elemental only) — not 10. The physical towers contribute nothing to the count.
+
+- **AC-09** — **GIVEN** a hero is in WAVE_ACTIVE phase standing within 3 Chebyshev cells of a frost tower, **WHEN** 30 cumulative seconds of proximity have elapsed across any number of missions, **THEN** `hero_class_unlocked` fires with the correct frost `class_id` payload — and does NOT fire before 30 seconds have elapsed.
+
+- **AC-10** — **GIVEN** a hero stands within 3 cells of any tower during SCOUT phase, **WHEN** 30 seconds pass in that position, **THEN** the proximity accumulator does NOT increment — the class unlock threshold is not met from Scout time alone.
+
+- **AC-11** — **GIVEN** the player designates a Primary class before SCOUT begins, **WHEN** SCOUT phase starts, **THEN** the class designation is locked for the mission — no UI action can change Primary or Secondary class until the next Sanctuary visit.
+
+- **AC-12** — **GIVEN** a hero has skills A, B, C, D equipped resolving to Ultimate `U1` via the lookup table, **WHEN** skill B is removed from its slot mid-adventure, **THEN** the Ultimate recomputes immediately to the A/empty/C/D combination — `U1` is no longer available, its cooldown timer is discarded, and the U binding reflects the new Ultimate (or `NONE` if the combination has no table entry).
+
+- **AC-13** — **GIVEN** a hero's HP reaches 0 by any source (direct hit, DoT tick, or environmental damage), **WHEN** HP reaches 0, **THEN** `hero_died` fires and the mission transitions to DEFEAT that same frame — no effect, item, or lifesteal application can intercept the outcome on the killing hit.
+
+- **AC-14** `[Visual]` — **GIVEN** the hero is standing on a GOAL cell with no monsters present, **WHEN** the hero occupies that cell continuously, **THEN** the breach counter remains unchanged — a debug overlay must confirm no breach event fired from the hero's presence.
+
+**Test file targets:** AC-01 through AC-09, AC-12, AC-13 → `tests/unit/hero/` (Logic — BLOCKING). AC-10, AC-11 → `tests/integration/hero/` (Integration — BLOCKING). AC-14 → `production/qa/evidence/` (Visual — ADVISORY).
+
+## Open Questions
+
+1. **Class catalogue** — The Hero System defines the mechanics of Tower-Synced Classes (Rules 13–23) but the full class list, perk names, perk effects, and tower-type mappings are a separate design deliverable. *Owner: Game Designer. Resolve before Hero Skill Build GDD is authored.*
+
+2. **Hero base stat values** — HP, damage, movement speed, and attack range are marked `(TBD at production)` in Tuning Knobs. These require a first playable mission to calibrate against the wave difficulty curve. *Owner: Systems Designer / Producer. Resolve at first prototype milestone.*
+
+3. **Ultimate lookup table authorship** — Rule 10 specifies that 4 active skills deterministically select one Ultimate via a lookup table. The table itself is not authored here. All reachable combinations must have an entry or map to NONE. A combination that causes a lookup panic is a content authoring error. *Owner: Hero Skill Build GDD. Resolve when Hero Skill Build is authored.*
+
+4. **EventBus catalogue update required** — `hero_class_unlocked` (payload: `class_id: String`) was introduced by this GDD and is not in the current 52-event EventBus catalogue. Must be added to `design/gdd/event-bus.md` before implementation begins. *Owner: EventBus GDD revision. Resolve before Core layer implementation.*
+
+5. **`hero_position_changed` resolution** *(EventBus OQ-5 — RESOLVED)* — Emission fires per grid-cell boundary crossing via an O(1) `prev_cell != current_cell` guard each physics frame. No throttling beyond the cell-change guard is needed.
+
+6. **Grid OQ-1 partial resolution** — This GDD uses Chebyshev (3-cell radius) for class proximity. The Tower Mastery GDD must declare whether its proximity radius matches or differs. If Tower Mastery requires Euclidean feel, the Grid API will need `get_occupied_cells_in_euclidean_radius()`. *Owner: Tower Mastery GDD.*
+
+7. **Proximity accumulation and Tower Mastery overlap** — Both systems track hero proximity to towers independently. Implementors must confirm these are two separate accumulators with separate timers and thresholds — not one shared counter. *Owner: Tower Mastery GDD. Confirm at authoring time.*
+
+8. **Movement feel — acceleration curve** — Rule 26 specifies instantaneous velocity for MVP. A feel pass may introduce easing if playtesting reveals responsiveness issues. Deferred to Polish phase. *Owner: Gameplay Programmer.*

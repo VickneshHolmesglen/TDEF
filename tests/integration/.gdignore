@@ -1,0 +1,2 @@
+# Integration tests go here — one subdirectory per system
+# This file keeps the directory tracked by Git and tells Godot's importer to ignore the folder.

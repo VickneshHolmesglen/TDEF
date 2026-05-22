@@ -37,7 +37,7 @@
 #   Each entry: name, status, source, referenced_by[], attributes{}, added, revised
 
 version: 1
-last_updated: ""
+last_updated: "2026-05-15"
 
 # ─── ENTITIES ────────────────────────────────────────────────────────────────
 # Named game-world objects: enemies, NPCs, characters, factions, bosses.
@@ -106,7 +106,88 @@ items: []
 #   output_range[min, max], added
 # Optional: expression (the actual formula), notes
 
-formulas: []
+formulas:
+  - name: tower_max_hp
+    status: active
+    source: design/gdd/tower.md
+    referenced_by:
+      - design/gdd/tower.md
+    variables:
+      - hp_base
+      - tier_multiplier
+    output_range: [80, 1000]
+    expression: "hp_base × tier_multiplier"
+    notes: "hp_base range: 80–400 (Foundation component stat). tier_multiplier:
+      Tier 1=1.0, Tier 2=1.5, Tier 3=2.0, Tier 4=2.5. Output feeds boss damage
+      calibration (tower_hp_boss_damage_provisional_range). Monster GDD Formula 3
+      (boss_attack_damage) references this formula for calibration. HP resets to max on
+      wave_completed; pure HP with no mitigation at MVP."
+    added: 2026-04-22
+    revised: ""
+
+  - name: monster_hp_scaling
+    status: active
+    source: design/gdd/monster.md
+    referenced_by:
+      - design/gdd/monster.md
+    variables:
+      - base_hp
+      - wave_hp_multiplier
+      - difficulty_hp_multiplier
+    output_range: [40, 3840]
+    expression: "base_hp × (1 + hp_wave_growth_rate × (wave_index - 1)) × (1 + hp_difficulty_growth_rate × (difficulty_tier - 1))"
+    notes: "Linear HP scaling per wave. Default rates: hp_wave_growth_rate=0.15,
+      hp_difficulty_growth_rate=0.35. Ceiling 3840 = base_hp(800) × wave8_mult(2.40) ×
+      brutal_mult(2.00) at max knobs — STANDARD Wave 8. ELITE Penultimate Wave (N-1)
+      ceiling in a 5-wave mission (wave 4 is penultimate): 800 × 1.60 × 2.00 × 1.40 = 3584
+      — lower than STANDARD Wave 8 because elite_penultimate_wave_hp_amplifier applies only
+      on `is_penultimate_wave == true` (Wave Manager Rule 15c). STANDARD Wave 8 is always
+      the true HP ceiling. Output feeds Damage
+      & Status GDD (lethal hit threshold) and Wave Manager GDD (wave pacing calibration).
+      Referenced by tower_max_hp formula for boss calibration cross-check."
+    added: 2026-04-23
+    revised: "2026-05-12"
+
+  - name: monster_speed_scaling
+    status: active
+    source: design/gdd/monster.md
+    referenced_by:
+      - design/gdd/monster.md
+    variables:
+      - base_speed
+      - wave_speed_multiplier
+      - tarot_speed_scalar
+    output_range: [0.25, 10.2]
+    expression: "base_speed × (1 + speed_wave_growth_rate × (wave_index - 1)) × tarot_speed_scalar"
+    notes: "speed_wave_growth_rate default: 0.06 (deliberately lower than HP rate).
+      tarot_speed_scalar: 1.0 default, range 0.50–2.00 from mission_modifier_applied.
+      Floored at 0.1 cells/sec in implementation. Tarot GDD must use this formula
+      when defining monster_speed_scalar modifier bounds."
+    added: 2026-04-23
+    revised: ""
+
+  - name: boss_attack_damage
+    status: active
+    source: design/gdd/monster.md
+    referenced_by:
+      - design/gdd/monster.md
+      - design/gdd/tower.md
+    variables:
+      - base_damage
+      - boss_dmg_wave_growth_rate
+      - wave_index
+    output_range: [15, 136]
+    expression: "base_damage × (1 + boss_dmg_wave_growth_rate × (wave_index - 1))"
+    notes: "Two BOSS calibration tiers: early-wave BOSSes use base_damage 15–25
+      (Tier 1 falls in 3–5 hits); final-wave BOSSes use base_damage 40–80 (Tier 4
+      survives 8–15 hits). boss_dmg_wave_growth_rate default: 0.10. Output applied
+      directly to tower HP via boss_tower_attack_attempted event — no mitigation at MVP.
+      Must stay within tower_hp_boss_damage_provisional_range [40–200] for final-wave
+      BOSSes. Tower System GDD constraint tower_max_hp cross-referenced.
+      Output range corrected 2026-05-01: max was incorrectly listed as 164; formula
+      at max params (base_damage=80, wave_index=8, rate=0.10) gives 80 × 1.70 = 136."
+    added: 2026-04-23
+    revised: "2026-05-01"
 
 # Example:
 #
@@ -139,7 +220,394 @@ formulas: []
 #
 # Required fields: name, status, source, referenced_by, value, unit, added
 
-constants: []
+constants:
+  - name: eventbus_frame_budget_fraction
+    status: active
+    source: design/gdd/event-bus.md
+    referenced_by:
+      - design/gdd/event-bus.md
+    value: 0.10
+    unit: fraction of 16.67ms frame budget
+    notes: "10% of the frame budget allocated to all EventBus signal dispatch combined.
+      System authors must size subscriber code to stay within the T_chain derived from
+      this value. Revisit after first full-25-system profiling run."
+    added: 2026-04-21
+    revised: ""
+
+  - name: eventbus_batch_threshold
+    status: active
+    source: design/gdd/event-bus.md
+    referenced_by:
+      - design/gdd/event-bus.md
+    value: 20
+    unit: firings per frame
+    notes: "When a single event type fires more than 20 times in one physics frame,
+      the emitting system must switch to batched deferred dispatch. Derived from
+      Formula 2 (T_firing = T_chain / F_per_frame). Wave Manager GDD must reference
+      this constant when designing the monster_died batch accumulator."
+    added: 2026-04-21
+    revised: ""
+
+  - name: save_format_version
+    status: active
+    source: design/gdd/save-persistence.md
+    referenced_by:
+      - design/gdd/save-persistence.md
+    value: 1
+    unit: integer version number
+    notes: "CURRENT_FORMAT_VERSION — the save file schema version. Every save file
+      embeds this value. On load: if file version < this value, apply migration;
+      if file version > this value, abort load with downgrade error. Must be
+      incremented (never decremented) with every breaking save format change.
+      Each increment must ship with a migration function."
+    added: 2026-04-21
+    revised: ""
+
+  - name: towers_affinity_reference_count
+    status: active
+    source: design/gdd/hero.md
+    referenced_by:
+      - design/gdd/hero.md
+      - design/gdd/tower.md
+    value: 16
+    unit: tower count
+    notes: "Reference tower count for the Tower Affinity bonus formula. At this many
+      qualifying towers on the field, the hero's tower_affinity_bonus equals
+      tower_affinity_stat face value exactly. Square-root scaling means placing
+      more towers continues to give gains but at diminishing returns. Tower System
+      GDD must confirm the maximum placeable tower count does not trivialize this
+      reference value."
+    added: 2026-04-22
+    revised: ""
+
+  - name: hero_class_proximity_radius_cells
+    status: active
+    source: design/gdd/hero.md
+    referenced_by:
+      - design/gdd/hero.md
+    value: 3
+    unit: grid cells (Chebyshev distance)
+    notes: "Chebyshev cell radius within which the hero accumulates class proximity
+      time near a tower. Tower Mastery System GDD must declare whether it uses the
+      same radius or a different one for skill acquisition proximity. If both use 3
+      cells, confirm intentional. If different, add a second registry entry owned
+      by Tower Mastery."
+    added: 2026-04-22
+    revised: ""
+
+  - name: hero_crit_multiplier_base
+    status: active
+    source: design/gdd/hero.md
+    referenced_by:
+      - design/gdd/hero.md
+      - design/gdd/damage-status.md
+    value: 1.75
+    unit: damage multiplier
+    notes: "Base critical hit damage multiplier. A crit deals 175% of the resolved
+      pre-crit damage. Equipment affixes and class perks add additively to this base
+      (crit_multiplier_bonus range: 0.00-1.50, giving a maximum of 3.25x). Damage &
+      Status System GDD must reference this constant when processing final damage."
+    added: 2026-04-22
+    revised: ""
+
+  - name: hero_crit_chance_cap
+    status: active
+    source: design/gdd/hero.md
+    referenced_by:
+      - design/gdd/hero.md
+    value: 0.80
+    unit: probability (0.0-1.0)
+    notes: "Maximum effective crit chance after all bonuses. Clamped at 80% to ensure
+      roughly 1 in 5 attacks are guaranteed not to crit, preserving variance in
+      crit-heavy builds. Equipment Forge GDD must respect this cap when generating
+      crit_chance affixes."
+    added: 2026-04-22
+    revised: ""
+
+  - name: hero_armor_coefficient
+    status: active
+    source: design/gdd/hero.md
+    referenced_by:
+      - design/gdd/hero.md
+      - design/gdd/damage-status.md
+    value: 100
+    unit: armor units
+    notes: "The armor value at which the hero takes exactly 50% of incoming damage.
+      Formula: effective_damage_taken = incoming * (100 / (armor + 100)).
+      At armor=0, hero takes 100%. At armor=500 (soft cap), hero takes ~17%.
+      Damage & Status System GDD must use this constant when processing hero
+      incoming damage — it must not implement its own armor formula."
+    added: 2026-04-22
+    revised: ""
+
+  - name: hero_lifesteal_cap
+    status: active
+    source: design/gdd/hero.md
+    referenced_by:
+      - design/gdd/hero.md
+      - design/gdd/damage-status.md
+    value: 0.40
+    unit: fraction of damage dealt (0.0-1.0)
+    notes: "Maximum effective lifesteal fraction. At 40% lifesteal, a 200-damage
+      hit recovers 80 HP before overheal clamp. Cap ensures lifesteal remains a
+      sustain stat, not a substitute for positioning. Equipment Forge GDD must
+      respect this cap when generating lifesteal affixes."
+    added: 2026-04-22
+    revised: ""
+
+  - name: hero_additive_bonus_cap
+    status: active
+    source: design/gdd/hero.md
+    referenced_by:
+      - design/gdd/hero.md
+    value: 3.00
+    unit: additive decimal (e.g. 1.0 = +100%)
+    notes: "Maximum value of additive_bonus_total in the effective stat formula:
+      effective_stat = (base + flat) * (1 + additive). At this cap, a stat reaches
+      4x its flat-adjusted base. Equipment Forge GDD must validate generated affixes
+      against this ceiling to prevent outlier builds during content authoring."
+    added: 2026-04-22
+    revised: ""
+
+  - name: hero_additive_bonus_floor
+    status: active
+    source: design/gdd/hero.md
+    referenced_by:
+      - design/gdd/hero.md
+    value: -0.75
+    unit: additive decimal
+    notes: "Minimum value of additive_bonus_total. At this floor, a stat is reduced
+      to 25% of its flat-adjusted base. Prevents self-debuff builds from producing
+      zero or negative effective stats. Pairs with hero_additive_bonus_cap."
+    added: 2026-04-22
+    revised: ""
+
+  - name: tower_attack_range_cells_max
+    status: active
+    source: design/gdd/tower.md
+    referenced_by:
+      - design/gdd/tower.md
+    value: 8
+    unit: grid cells (Chebyshev distance)
+    notes: "Maximum attack_range_cells value permitted on any Focus component.
+      An 8-cell range covers roughly half the grid width (default 16 columns).
+      Pathfinding GDD must confirm monsters can still navigate viable lanes if
+      maximum-range towers cluster near choke points. Mission HUD GDD uses this
+      value to bound the range-circle rendering radius."
+    added: 2026-04-22
+    revised: ""
+
+  - name: tower_hp_boss_damage_provisional_range
+    status: active
+    source: design/gdd/tower.md
+    referenced_by:
+      - design/gdd/tower.md
+      - design/gdd/monster.md
+    value_min: 40
+    value_max: 200
+    unit: flat HP per boss attack hit (final-wave BOSS only)
+    notes: "Provisional calibration range for final-wave BOSS-to-tower attack damage.
+      Applies to BOSSes appearing on wave 5–8 (base_damage ~40–80 in MonsterResource).
+      Target: Tier 4 tower (1000 HP) survives 8–15 hits at wave 8. Calibrated example:
+      base_damage=50 gives boss_effective_damage=85 HP/hit; Tier 4 survives 12 hits.
+      SEPARATE calibration applies to early-wave BOSSes (wave 2–4, base_damage ~15–25):
+      these are designed to destroy Tier 1 towers in 3–5 hits, not to respect this
+      [40–200] range. Two-tier BOSS design confirmed in Monster GDD Formula 3.
+      No mitigation — towers use pure HP (MVP decision)."
+    added: 2026-04-22
+    revised: 2026-04-23
+
+  - name: hero_damage_bonus_multiplier
+    status: active
+    source: design/gdd/damage-status.md
+    referenced_by:
+      - design/gdd/damage-status.md
+      - design/gdd/monster.md
+    value: 1.50
+    unit: damage multiplier (hero vs ELITE/BOSS only)
+    notes: "The hero damage bonus applied to ELITE and BOSS targets via hero_bonus_tier: int
+      (0=STANDARD/no bonus, 1=ELITE/bonus applies, 2=BOSS/bonus applies) in HeroAutoAttackEvent
+      payload. Applied as the first multiplier in hero_damage_resolution formula (before crit).
+      Tuning knob safe range: 1.25–2.00. Below 1.25: hero advantage over tower damage is
+      imperceptible; above 2.00: hero trivially one-shots ELITE targets. Tower damage is NOT
+      affected by this multiplier — hero-source-only. Tarot GDD and any future modifier system
+      must not define a separate hero damage bonus multiplier without cross-referencing this entry."
+    added: 2026-04-23
+    revised: ""
+
+  - name: tower_placement_budget_target
+    status: active
+    source: design/gdd/tower.md
+    referenced_by:
+      - design/gdd/tower.md
+    value_min: 350
+    value_max: 400
+    unit: build points per mission
+    notes: "Provisional in-mission resource budget target for tower placement.
+      Calibrated so a player can field 10 towers at average cost 30 (=300 points)
+      with ~50–100 remaining for replacements. Resource Economy GDD must design the
+      total mission budget and per-wave earning rate to hit this target. All placement
+      cost formulas in Tower GDD are provisional until Resource Economy GDD is written."
+    added: 2026-04-22
+    revised: ""
+
+  - name: monster_hp_wave_growth_rate
+    status: active
+    source: design/gdd/monster.md
+    referenced_by:
+      - design/gdd/monster.md
+    value: 0.15
+    unit: fractional HP increase per wave
+    notes: "Default rate for monster_hp_scaling formula. At this rate, wave 8 monsters
+      have 2.05× their base_hp (before difficulty multiplier). Wave Manager GDD must
+      use this rate when computing wave pacing expectations. Safe range: 0.12–0.20.
+      Too high (>0.20): late waves become damage sponges; too low (<0.12): no escalation
+      felt."
+    added: 2026-04-23
+    revised: ""
+
+  - name: monster_speed_wave_growth_rate
+    status: active
+    source: design/gdd/monster.md
+    referenced_by:
+      - design/gdd/monster.md
+    value: 0.06
+    unit: fractional speed increase per wave
+    notes: "Default rate for monster_speed_scaling formula. Deliberately lower than
+      hp_wave_growth_rate (0.15) — speed escalation is reserved for Tarot modifiers;
+      natural wave scaling escalates endurance, not movement threat. Tarot GDD must
+      reference this rate when designing monster_speed_scalar modifier bounds (too-high
+      Tarot + natural scaling can combine to >10 cells/sec)."
+    added: 2026-04-23
+    revised: ""
+
+  - name: elite_penultimate_wave_hp_amplifier
+    status: active
+    source: design/gdd/monster.md
+    referenced_by:
+      - design/gdd/monster.md
+      - design/gdd/wave-manager.md
+    value: 1.35
+    unit: HP multiplier (penultimate wave ELITE only)
+    notes: "HP amplifier applied to ELITE-tier monsters on the penultimate wave (N-1)
+      only — triggered by `is_penultimate_wave == true` in monster_spawn_requested payload
+      (Wave Manager Rule 15c), not by checking wave_index directly. Applied AFTER
+      monster_hp_scaling formula, multiplicatively. HP ONLY — speed is not amplified.
+      Combined multiplier at penultimate wave (5-wave mission example: wave 4), Normal:
+      1.45 × 1.35 = 1.9575× base_hp. Escalation is monotonic: final wave remains the
+      hardest. Previously named elite_wave4_hp_amplifier. Reverted to old name 2026-05-11
+      when Monster GDD F4 still used wave_index==4; renamed again 2026-05-20 after B7 fix
+      updated Monster GDD F4 to use is_penultimate_wave trigger."
+    added: 2026-04-23
+    revised: "2026-05-20"
+
+  - name: hero_damage_resolution
+    status: active
+    source: design/gdd/damage-status.md
+    referenced_by:
+      - design/gdd/damage-status.md
+    variables:
+      - base_damage
+      - hero_bonus_tier
+      - is_crit
+      - hero_crit_multiplier_base
+      - crit_multiplier_bonus
+    output_range: [0, unbounded]
+    expression: "floor(base_damage × (hero_damage_bonus_multiplier if hero_bonus_tier > 0 else 1.0) × (crit_multiplier_eff if is_crit else 1.0))"
+    notes: "Canonical hero damage resolution formula. hero_bonus_tier: int — 0=STANDARD (no
+      bonus), 1=ELITE (bonus applies), 2=BOSS (bonus applies); read from HeroAutoAttackEvent
+      payload. crit_multiplier_eff = hero_crit_multiplier_base + crit_multiplier_bonus (range
+      1.75–3.25). Tier bonus applied before crit (canonical order). Maximum combined multiplier:
+      1.50 × 3.25 = 4.875× base_damage. Equipment Forge GDD must reference this formula when
+      defining crit_multiplier_bonus affix bounds. Outputs final_damage (int); also feeds
+      lifesteal_heal_amount formula. Uses hero_crit_multiplier_base registry constant (1.75)
+      — must not redefine. Revised 2026-05-14: hero_damage_bonus_eligible: bool replaced by
+      hero_bonus_tier: int (0/1/2) throughout."
+    added: 2026-04-23
+    revised: "2026-05-14"
+
+  - name: lifesteal_heal_amount
+    status: active
+    source: design/gdd/damage-status.md
+    referenced_by:
+      - design/gdd/damage-status.md
+    variables:
+      - absorbed
+      - hero_lifesteal_fraction
+    output_range: [0, unbounded]
+    expression: "floor(absorbed × hero_lifesteal_fraction)"
+    notes: "Hero HP recovered per auto-attack hit. Uses absorbed (actual HP removed from
+      target, as emitted by Monster System in monster_hp_absorbed — equals min(final_damage,
+      pre_hit_hp)). On overkill hits, heal is capped at HP the monster actually had, not
+      full resolved damage. heal_amount CAN be 0 due to floor rounding; no minimum enforced.
+      hero_lifesteal_fraction is pre-clamped to hero_lifesteal_cap (0.40) by Hero System
+      before event emit. Emitted via hero_healed event synchronously from monster_hp_absorbed
+      handler (not deferred). Hero System owns overheal clamping."
+    added: 2026-04-23
+    revised: "2026-05-12"
+
+  - name: wave_reward_scalar
+    status: active
+    source: design/gdd/wave-manager.md
+    referenced_by:
+      - design/gdd/wave-manager.md
+      - design/gdd/monster.md
+    variables:
+      - wave_index
+      - difficulty_growth_rate
+    output_range: [1.00, 4.768]
+    expression: "1.0 × (1 + r) ^ (w - 1)"
+    notes: "Exponential reward scalar passed as 'wave_reward_scalar' in every
+      monster_spawn_requested payload. Also emitted as 'wave_difficulty' field in
+      wave_started for Mission HUD display. Consumed by Resource Economy System for
+      two output dimensions: (1) drop quantity — number of material items dropped per
+      kill; (2) drop quality percentage — probability of higher-quality material tiers.
+      NOT used by Monster System for HP/speed (Monster System uses wave_index directly).
+      Default r=0.20 (safe range 0.15–0.25; runtime validated 0.10–0.25 — hard cap; at r>0.25 the base drop quality probability cap breaks).
+      Boundary values: r=0.15 w=8 = 2.660×; r=0.20 w=8 = 3.583×; r=0.25 w=8 = 4.768×.
+      Wave 1 always = 1.00×. Renamed from wave_difficulty_scalar (2026-04-26) after
+      design-review mandated semantic clarity. Monster GDD must update field reference."
+    added: 2026-04-23
+    revised: "2026-04-26"
+
+  - name: pathfinding_placeable_cost
+    status: active
+    source: design/gdd/pathfinding.md
+    referenced_by:
+      - design/gdd/pathfinding.md
+    value: 10
+    unit: A* step cost (relative to PATH cost = 1)
+    notes: "Cost per step on an unoccupied PLACEABLE cell in the A* graph.
+      PATH/SPAWN/GOAL cells cost 1. At ratio 10:1, a monster accepts a PLACEABLE
+      shortcut only when the PATH detour exceeds 9 additional cells — strong lane
+      preference. Safe range: 3–20. Below 3: monsters casually cut through buildable
+      terrain, undermining tower placement decisions. Above 20: monsters never route
+      through PLACEABLE even when the PATH detour spans the full grid width (may cause
+      perceived pathfinding failures on constrained maps). Level Design GDD and Mission
+      Select GDD must account for this value when specifying lane widths and PLACEABLE
+      cell clusters — a PLACEABLE detour of >9 PATH cells effectively becomes an
+      impassable barrier in player perception."
+    added: 2026-04-23
+    revised: ""
+
+  - name: WAVE_ERI_CEILING_COMBINED
+    status: active
+    source: design/gdd/wave-manager.md
+    referenced_by:
+      - design/gdd/wave-manager.md
+    value: 22.73
+    unit: combined economic return index multiplier (dimensionless)
+    notes: "Combined ERI ceiling at max wave settings (r=0.25, wave 8). Equals
+      wave_reward_scalar_max^2 = 4.768^2 = 22.729. Represents the maximum
+      simultaneous multiplier applied to both drop quantity AND drop quality
+      probability when the Resource Economy System consumes wave_reward_scalar.
+      Owner: Resource Economy GDD (pending authoring) must define MAX_COMBINED_ERI
+      anchored to this value and back-solve base drop rates from an absolute
+      mission-yield target. See wave-manager.md F1 Semantic Contract and Tuning
+      Knobs for the combined ERI math (sum of scalar^2 across 8 waves vs 5 waves
+      at r=0.20 gives 3.37x total economy disparity)."
+    added: 2026-05-21
+    revised: ""
 
 # Example:
 #

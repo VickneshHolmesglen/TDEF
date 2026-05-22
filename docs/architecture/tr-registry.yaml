@@ -24,33 +24,426 @@
 #
 # STATUS VALUES: active | deprecated | superseded-by: TR-[system]-NNN
 
-version: 1
-last_updated: ""
+version: 3
+last_updated: "2026-05-16"
 
-requirements: []
+requirements:
 
-# --- EXAMPLE ENTRIES (remove when first real entries are added) ---
-#
-# - id: TR-combat-001
-#   system: combat
-#   gdd: design/gdd/combat-system.md
-#   requirement: "Player takes damage from enemies based on attack power minus defence"
-#   created: 2026-03-10
-#   revised: ""
-#   status: active
-#
-# - id: TR-combat-002
-#   system: combat
-#   gdd: design/gdd/combat-system.md
-#   requirement: "Combo window timing is 0.4 seconds between hits"
-#   created: 2026-03-10
-#   revised: "2026-04-01"
-#   status: active
-#
-# - id: TR-combat-003
-#   system: combat
-#   gdd: design/gdd/combat-system.md
-#   requirement: "Old damage formula using raw stats"
-#   created: 2026-03-10
-#   revised: ""
-#   status: superseded-by: TR-combat-001
+  # --- EventBus (event-bus.md) ---
+  - id: TR-eb-001
+    system: event-bus
+    gdd: design/gdd/event-bus.md
+    requirement: "70-event typed signal catalogue"
+    created: 2026-05-16
+    revised: ""
+    status: active
+  - id: TR-eb-002
+    system: event-bus
+    gdd: design/gdd/event-bus.md
+    requirement: "Cascade depth <= 2 levels enforced at runtime"
+    created: 2026-05-16
+    revised: ""
+    status: active
+  - id: TR-eb-003
+    system: event-bus
+    gdd: design/gdd/event-bus.md
+    requirement: "Deferred dispatch for physics callers"
+    created: 2026-05-16
+    revised: ""
+    status: active
+  - id: TR-eb-004
+    system: event-bus
+    gdd: design/gdd/event-bus.md
+    requirement: "Batch threshold 20/frame for monster_died"
+    created: 2026-05-16
+    revised: ""
+    status: active
+  - id: TR-eb-005
+    system: event-bus
+    gdd: design/gdd/event-bus.md
+    requirement: "Resource subclass payloads for 5+ field events"
+    created: 2026-05-16
+    revised: ""
+    status: active
+  - id: TR-eb-006
+    system: event-bus
+    gdd: design/gdd/event-bus.md
+    requirement: "<= 1.667 ms/frame total EventBus processing"
+    created: 2026-05-16
+    revised: ""
+    status: active
+
+  # --- Grid System (grid-system.md) ---
+  - id: TR-grid-001
+    system: grid
+    gdd: design/gdd/grid-system.md
+    requirement: "16x12 default grid; 5 cell types (PLACEABLE, SPAWN, GOAL, PATH, BLOCKED)"
+    created: 2026-05-16
+    revised: ""
+    status: active
+  - id: TR-grid-002
+    system: grid
+    gdd: design/gdd/grid-system.md
+    requirement: "Direct read API (Autoload); write restricted to Tower System"
+    created: 2026-05-16
+    revised: ""
+    status: active
+  - id: TR-grid-003
+    system: grid
+    gdd: design/gdd/grid-system.md
+    requirement: "world_to_cell uses floor()"
+    created: 2026-05-16
+    revised: ""
+    status: active
+  - id: TR-grid-004
+    system: grid
+    gdd: design/gdd/grid-system.md
+    requirement: "Returns copies, not references"
+    created: 2026-05-16
+    revised: ""
+    status: active
+
+  # --- Save & Persistence (save-persistence.md) ---
+  - id: TR-save-001
+    system: save
+    gdd: design/gdd/save-persistence.md
+    requirement: "3 save slots; atomic write (.tmp -> .dat)"
+    created: 2026-05-16
+    revised: ""
+    status: active
+  - id: TR-save-002
+    system: save
+    gdd: design/gdd/save-persistence.md
+    requirement: "FileAccess bool return check (Godot 4.4+ MEDIUM risk)"
+    created: 2026-05-16
+    revised: ""
+    status: active
+  - id: TR-save-003
+    system: save
+    gdd: design/gdd/save-persistence.md
+    requirement: "Restore order 10-33; sanctuary_state_restored deferred 1 frame"
+    created: 2026-05-16
+    revised: ""
+    status: active
+  - id: TR-save-004
+    system: save
+    gdd: design/gdd/save-persistence.md
+    requirement: "Format version + migration registry"
+    created: 2026-05-16
+    revised: ""
+    status: active
+  - id: TR-save-005
+    system: save
+    gdd: design/gdd/save-persistence.md
+    requirement: "Save format decision (store_32 header + store_var master Dictionary)"
+    created: 2026-05-16
+    revised: ""
+    status: active
+  - id: TR-save-006
+    system: save
+    gdd: design/gdd/save-persistence.md
+    requirement: "4 auto-save triggers via EventBus"
+    created: 2026-05-16
+    revised: ""
+    status: active
+
+  # --- Hero (hero.md) ---
+  - id: TR-hero-001
+    system: hero
+    gdd: design/gdd/hero.md
+    requirement: "CharacterBody2D scene root"
+    created: 2026-05-16
+    revised: ""
+    status: active
+  - id: TR-hero-002
+    system: hero
+    gdd: design/gdd/hero.md
+    requirement: "12 stats; Tower-Synced Class (Chebyshev 3-cell)"
+    created: 2026-05-16
+    revised: ""
+    status: active
+  - id: TR-hero-003
+    system: hero
+    gdd: design/gdd/hero.md
+    requirement: "Tower Affinity sqrt scaling"
+    created: 2026-05-16
+    revised: ""
+    status: active
+  - id: TR-hero-004
+    system: hero
+    gdd: design/gdd/hero.md
+    requirement: "Event-driven targeting (no direct Monster refs)"
+    created: 2026-05-16
+    revised: ""
+    status: active
+  - id: TR-hero-005
+    system: hero
+    gdd: design/gdd/hero.md
+    requirement: "4 active skills + Ultimate"
+    created: 2026-05-16
+    revised: ""
+    status: active
+  - id: TR-hero-006
+    system: hero
+    gdd: design/gdd/hero.md
+    requirement: "6 stat formulas (crit, lifesteal, affinity, etc.)"
+    created: 2026-05-16
+    revised: ""
+    status: active
+
+  # --- Tower (tower.md) ---
+  - id: TR-tower-001
+    system: tower
+    gdd: design/gdd/tower.md
+    requirement: "4 component slots; 4 archetypes; 4 tiers"
+    created: 2026-05-16
+    revised: ""
+    status: active
+  - id: TR-tower-002
+    system: tower
+    gdd: design/gdd/tower.md
+    requirement: "Placement blocked during WAVE_ACTIVE"
+    created: 2026-05-16
+    revised: ""
+    status: active
+  - id: TR-tower-003
+    system: tower
+    gdd: design/gdd/tower.md
+    requirement: "Monster cache via EventBus; no direct Monster refs"
+    created: 2026-05-16
+    revised: ""
+    status: active
+  - id: TR-tower-004
+    system: tower
+    gdd: design/gdd/tower.md
+    requirement: "would_block_all_paths() gate before placement"
+    created: 2026-05-16
+    revised: ""
+    status: active
+  - id: TR-tower-005
+    system: tower
+    gdd: design/gdd/tower.md
+    requirement: "Pre-placement perk (Scout phase only)"
+    created: 2026-05-16
+    revised: ""
+    status: active
+  - id: TR-tower-006
+    system: tower
+    gdd: design/gdd/tower.md
+    requirement: "Support archetype aura pulse model"
+    created: 2026-05-16
+    revised: ""
+    status: active
+
+  # --- Monster (monster.md) ---
+  - id: TR-monster-001
+    system: monster
+    gdd: design/gdd/monster.md
+    requirement: "Area2D scene root (not CharacterBody2D)"
+    created: 2026-05-16
+    revised: ""
+    status: active
+  - id: TR-monster-002
+    system: monster
+    gdd: design/gdd/monster.md
+    requirement: "MonsterResource data-driven stats; 3 tiers"
+    created: 2026-05-16
+    revised: ""
+    status: active
+  - id: TR-monster-003
+    system: monster
+    gdd: design/gdd/monster.md
+    requirement: "_pending_damage buffer flushed in _physics_process"
+    created: 2026-05-16
+    revised: ""
+    status: active
+  - id: TR-monster-004
+    system: monster
+    gdd: design/gdd/monster.md
+    requirement: "Position-based movement (not physics-driven)"
+    created: 2026-05-16
+    revised: ""
+    status: active
+  - id: TR-monster-005
+    system: monster
+    gdd: design/gdd/monster.md
+    requirement: "Dual-layer AnimatedSprite2D"
+    created: 2026-05-16
+    revised: ""
+    status: active
+  - id: TR-monster-006
+    system: monster
+    gdd: design/gdd/monster.md
+    requirement: "Boss scan throttle + prepare-frames telegraph"
+    created: 2026-05-16
+    revised: ""
+    status: active
+
+  # --- Damage & Status (damage-status.md) ---
+  - id: TR-ds-001
+    system: damage-status
+    gdd: design/gdd/damage-status.md
+    requirement: "Two pipelines: direct hit + DoT"
+    created: 2026-05-16
+    revised: ""
+    status: active
+  - id: TR-ds-002
+    system: damage-status
+    gdd: design/gdd/damage-status.md
+    requirement: "await + is_instance_valid guard pattern"
+    created: 2026-05-16
+    revised: ""
+    status: active
+  - id: TR-ds-003
+    system: damage-status
+    gdd: design/gdd/damage-status.md
+    requirement: "_lifesteal_pending Dictionary[int, float]"
+    created: 2026-05-16
+    revised: ""
+    status: active
+  - id: TR-ds-004
+    system: damage-status
+    gdd: design/gdd/damage-status.md
+    requirement: "5 status effect types + stack/duration rules"
+    created: 2026-05-16
+    revised: ""
+    status: active
+  - id: TR-ds-005
+    system: damage-status
+    gdd: design/gdd/damage-status.md
+    requirement: "No direct call API - EventBus only"
+    created: 2026-05-16
+    revised: ""
+    status: active
+
+  # --- Pathfinding (pathfinding.md) ---
+  - id: TR-path-001
+    system: pathfinding
+    gdd: design/gdd/pathfinding.md
+    requirement: "AStar2D Autoload (not NavigationServer)"
+    created: 2026-05-16
+    revised: ""
+    status: active
+  - id: TR-path-002
+    system: pathfinding
+    gdd: design/gdd/pathfinding.md
+    requirement: "Route templates with cell_index_map"
+    created: 2026-05-16
+    revised: ""
+    status: active
+  - id: TR-path-003
+    system: pathfinding
+    gdd: design/gdd/pathfinding.md
+    requirement: "Super-goal node for multi-goal convergence"
+    created: 2026-05-16
+    revised: ""
+    status: active
+  - id: TR-path-004
+    system: pathfinding
+    gdd: design/gdd/pathfinding.md
+    requirement: "templates_ready event gates all spawning"
+    created: 2026-05-16
+    revised: ""
+    status: active
+  - id: TR-path-005
+    system: pathfinding
+    gdd: design/gdd/pathfinding.md
+    requirement: "would_block_all_paths() speculative check"
+    created: 2026-05-16
+    revised: ""
+    status: active
+  - id: TR-path-006
+    system: pathfinding
+    gdd: design/gdd/pathfinding.md
+    requirement: "Deferred dirty rebuild on tower changes"
+    created: 2026-05-16
+    revised: ""
+    status: active
+  - id: TR-path-007
+    system: pathfinding
+    gdd: design/gdd/pathfinding.md
+    requirement: "100+ simultaneous agents at 60 FPS"
+    created: 2026-05-16
+    revised: ""
+    status: active
+
+  # --- Wave Manager (wave-manager.md) ---
+  - id: TR-wave-001
+    system: wave-manager
+    gdd: design/gdd/wave-manager.md
+    requirement: "7-state phase lifecycle FSM"
+    created: 2026-05-16
+    revised: ""
+    status: active
+  - id: TR-wave-002
+    system: wave-manager
+    gdd: design/gdd/wave-manager.md
+    requirement: "WaveConfig/WaveScript/WaveSpawnEntry Resources"
+    created: 2026-05-16
+    revised: ""
+    status: active
+  - id: TR-wave-003
+    system: wave-manager
+    gdd: design/gdd/wave-manager.md
+    requirement: "BOSS breach = wave-clear"
+    created: 2026-05-16
+    revised: ""
+    status: active
+  - id: TR-wave-004
+    system: wave-manager
+    gdd: design/gdd/wave-manager.md
+    requirement: "templates_ready gate before first spawn"
+    created: 2026-05-16
+    revised: ""
+    status: active
+  - id: TR-wave-005
+    system: wave-manager
+    gdd: design/gdd/wave-manager.md
+    requirement: "Wave-stuck watchdog (30 s stalled / 60 s force-clear)"
+    created: 2026-05-16
+    revised: ""
+    status: active
+  - id: TR-wave-006
+    system: wave-manager
+    gdd: design/gdd/wave-manager.md
+    requirement: "wave_reward_scalar semantic contract"
+    created: 2026-05-16
+    revised: ""
+    status: active
+  - id: TR-wave-007
+    system: wave-manager
+    gdd: design/gdd/wave-manager.md
+    requirement: "Penultimate-wave rule (sub-boss at wave N-1)"
+    created: 2026-05-16
+    revised: ""
+    status: active
+
+  # --- Game Concept (game-concept.md) ---
+  - id: TR-gc-001
+    system: game-concept
+    gdd: design/gdd/game-concept.md
+    requirement: "All 9 systems communicate via EventBus only"
+    created: 2026-05-16
+    revised: ""
+    status: active
+  - id: TR-gc-002
+    system: game-concept
+    gdd: design/gdd/game-concept.md
+    requirement: "Autoload boot order: EventBus -> Save -> Grid -> Pathfinding"
+    created: 2026-05-16
+    revised: ""
+    status: active
+  - id: TR-gc-003
+    system: game-concept
+    gdd: design/gdd/game-concept.md
+    requirement: "Mission states: SCOUT/WAVE_ACTIVE/INTERMISSION/MISSION_COMPLETE/DEFEAT"
+    created: 2026-05-16
+    revised: ""
+    status: active
+  - id: TR-gc-004
+    system: game-concept
+    gdd: design/gdd/game-concept.md
+    requirement: "15-25 min default mission (session length formula)"
+    created: 2026-05-16
+    revised: ""
+    status: active

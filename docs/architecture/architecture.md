@@ -179,7 +179,7 @@ Returns copies, not references — callers cannot mutate Grid state through retu
 | Attribute | Detail |
 |-----------|--------|
 | **Owns** | `AStar2D` instance; route template cache (`spawn_id → Array[Vector2i]`); `_spawn_assignment: Dictionary[int, int]` (monster_id → spawn_id); super-goal node; dirty flag; `cell_index_map` |
-| **Exposes** | `get_path(from_cell: Vector2i) → Array[Vector2i]`; `would_block_all_paths(cell: Vector2i) → bool`; `is_rebuild_pending() → bool`; dispatches `templates_ready` on first successful build |
+| **Exposes** | `get_path(from_cell: Vector2i, tier: int) → Array[Vector2i]`; `would_block_all_paths(cell: Vector2i) → bool`; `is_rebuild_pending() → bool`; dispatches `templates_ready` on first successful build |
 | **Consumes** | Grid: reads cell types and walkability; EventBus: `tower_placed`, `tower_removed` → triggers dirty rebuild |
 | **Engine APIs** | `AStar2D` (C++ — unchanged through 4.6) |
 | **Engine Risk** | LOW |
@@ -497,9 +497,9 @@ func set_state(key: StringName, value: Variant) -> void
 ```gdscript
 # Autoload: Pathfinding
 
-func get_path(from_cell: Vector2i) -> Array[Vector2i]  # [] if not ready; caller supplies spawn cell
-func would_block_all_paths(cell: Vector2i) -> bool     # pure read; no graph mutation
-func is_rebuild_pending() -> bool                       # true if dirty flag set but rebuild not yet run
+func get_path(from_cell: Vector2i, tier: int) -> Array[Vector2i]  # [] if not ready; tier selects route template set
+func would_block_all_paths(cell: Vector2i) -> bool               # pure read; no graph mutation
+func is_rebuild_pending() -> bool                                 # true if dirty flag set but rebuild not yet run
 
 # Invariants:
 # 1. get_path() MUST NOT be called before templates_ready fires.
