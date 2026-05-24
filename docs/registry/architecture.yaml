@@ -59,11 +59,12 @@ state_ownership:
     status: active
     owner_system: scene-manager
     adr: docs/architecture/adr-0002-scene-autoload-structure.md
-    interface: "Project Settings → Autoloads: EventBus(1), SavePersistence(2), Grid(3), Pathfinding(4), GameDataRegistry(5), SceneManager(6). Order is a build invariant — adding a new Autoload requires an ADR revision. GameDataRegistry added at position 5 by ADR-0009 (SceneManager shifted from 5 to 6)."
+    interface: "Project Settings → Autoloads: EventBus(1), SavePersistence(2), Grid(3), Pathfinding(4), GameDataRegistry(5), SceneManager(6), WaveManager(7). Order is a build invariant — adding a new Autoload requires an ADR revision. GameDataRegistry added at position 5 by ADR-0009 (SceneManager shifted from 5 to 6). WaveManager added at position 7 by ADR-0012."
     write_access: project-settings-only
     referenced_by:
       - docs/architecture/adr-0002-scene-autoload-structure.md
       - docs/architecture/adr-0009-resource-data-model.md
+      - docs/architecture/adr-0012-wave-manager-fsm.md
     added: 2026-05-16
     revised: "2026-05-23 — ADR-0009 added GameDataRegistry at position 5; SceneManager shifted to 6"
 
@@ -142,6 +143,17 @@ state_ownership:
     referenced_by:
       - docs/architecture/adr-0007-damage-pipeline.md
     added: 2026-05-23
+    revised: ""
+
+  - state: wave_phase_state
+    status: active
+    owner_system: wave-manager
+    adr: docs/architecture/adr-0012-wave-manager-fsm.md
+    interface: "WaveManager internal — _phase: Phase enum (IDLE, SCOUT, PRE_WAVE, WAVE_ACTIVE, INTERMISSION, MISSION_COMPLETE, DEFEAT). Not accessible to other systems — observable only via EventBus events: mission_phase_changed(from_phase, to_phase), wave_started, wave_completed. All transitions go through WaveManager._transition_to(new_phase); direct _phase assignment outside this method is forbidden."
+    write_access: wave-manager-only
+    referenced_by:
+      - docs/architecture/adr-0012-wave-manager-fsm.md
+    added: 2026-05-24
     revised: ""
 
 # Example:
@@ -399,6 +411,17 @@ api_decisions:
     added: 2026-05-16
     revised: ""
 
+  - purpose: wave_manager_fsm_implementation
+    status: active
+    api: "GDScript enum Phase (7 members) + match statement; 5 scene-tree Timer nodes (one_shot=true) with named timeout callbacks; single _transition_to(new_phase) entry point for all transitions; GDScript coroutine _run_spawn_sequence() with _spawn_active bool cancellation flag."
+    not: "State class hierarchy per phase (GDScript coroutines cannot span class boundaries); _process(delta) timer accumulation (cannot inject timer expiry in unit tests); AnimationTree / StateMachine node (designed for animations, not game logic FSMs)"
+    adr: docs/architecture/adr-0012-wave-manager-fsm.md
+    reason: "Timer nodes are directly testable via callback invocation without Engine.time_scale (required by wave-manager.md AC timer mocking constraint). enum+match maps 1:1 to GDD's 7 states. Single _transition_to() entry point enforces timer-stop and signal-emit invariants on every transition."
+    referenced_by:
+      - docs/architecture/adr-0012-wave-manager-fsm.md
+    added: 2026-05-24
+    revised: ""
+
 # Example:
 #
 # api_decisions:
@@ -535,6 +558,13 @@ forbidden_patterns:
     why: "Synchronous emit creates a Level-1 cascade from tower_attacked at tower-attack volume (up to 20+/frame during WAVE_ACTIVE). Chained to MonsterManager's Pass 4 emission of monster_hp_absorbed, this produces a 3-level synchronous chain exceeding the ADR-0001 cascade limit (max 2 levels). call_deferred is also rejected: it schedules at end-of-current-frame and does not guarantee delivery in the next frame's _physics_process Pass 1 drain."
     adr: docs/architecture/adr-0007-damage-pipeline.md
     added: 2026-05-23
+
+  - pattern: direct_phase_assignment
+    status: active
+    description: "WaveManager._phase must not be assigned directly from any method other than _transition_to(new_phase). All FSM state transitions must go through _transition_to(), which enforces the _phase_locked check, stops current-phase timers, emits mission_phase_changed, and calls the phase entry method."
+    why: "Direct _phase assignment bypasses three invariants simultaneously: (1) _phase_locked check that enforces DEFEAT priority, (2) timer cancellation for the exiting phase, (3) mission_phase_changed EventBus emission that all downstream systems (Mission HUD, Constellation, Save) depend on for phase tracking. A single unguarded assignment can leave timers running, subscribers desynced, and DEFEAT suppressible."
+    adr: docs/architecture/adr-0012-wave-manager-fsm.md
+    added: 2026-05-24
 
 # Example:
 #

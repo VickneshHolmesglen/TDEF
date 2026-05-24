@@ -3,7 +3,7 @@
 <!-- STATUS -->
 Epic: Pre-Production
 Feature: Sprint 1
-Task: ADR-0007 (Damage pipeline) and ADR-0009 (Resource data model) WRITTEN (2026-05-23, Proposed). Coverage: 32/57 TRs (56%). Remaining core ADRs: ADR-0012 (Wave Manager FSM — recommended, TR-wave-001/003/005/006/007). Deferred: ADR-0010 (Hero Tower-Synced), ADR-0011 (UI dual-focus). ADR-0002 needs minor revision (GameDataRegistry at boot pos 5, SceneManager shifts to 6). Run /architecture-review in a FRESH session (never same session as /architecture-decision). Undocumented prototype: prototypes/stacked-sprite-seam/ needs README.
+Task: ADR-0012 WRITTEN + ADR-0002 REVISED + prototype README done (2026-05-24). All recommended core ADRs complete. Boot order now 7 Autoloads: EventBus(1)→SavePersistence(2)→Grid(3)→Pathfinding(4)→GameDataRegistry(5)→SceneManager(6)→WaveManager(7). Coverage: 37/57 TRs (65%) estimated — pending /architecture-review confirmation. Deferred: ADR-0010 (Hero Tower-Synced), ADR-0011 (UI dual-focus). READY FOR: /architecture-review — must be run in a FRESH session (never same session as /architecture-decision).
 <!-- /STATUS -->
 
 ## 2026-05-18 — Technical Setup → Pre-Production gate passed (CONCERNS)
