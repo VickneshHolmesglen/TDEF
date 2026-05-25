@@ -1,9 +1,57 @@
 # Session State — Sanctuary Defenders
 
 <!-- STATUS -->
-Epic: Pre-Production
-Feature: Sprint 1
-Task: ADR-0012 WRITTEN + ADR-0002 REVISED + prototype README done (2026-05-24). All recommended core ADRs complete. Boot order now 7 Autoloads: EventBus(1)→SavePersistence(2)→Grid(3)→Pathfinding(4)→GameDataRegistry(5)→SceneManager(6)→WaveManager(7). Coverage: 37/57 TRs (65%) estimated — pending /architecture-review confirmation. Deferred: ADR-0010 (Hero Tower-Synced), ADR-0011 (UI dual-focus). READY FOR: /architecture-review — must be run in a FRESH session (never same session as /architecture-decision).
+Epic: Pre-Production → Foundation Implementation
+Feature: Sprint 2 (2026-05-31 to 2026-06-11)
+Task: S2-02 COMPLETE. Next: S2-03 Grid System or S2-04 Pathfinding (both ready-for-dev, no blockers).
+Pending: EventBus + SavePersistence Autoloads not yet registered in project.godot — required before S2-05.
+<!-- /STATUS -->
+
+## Session Extract — /story-done S2-02 (2026-05-25)
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/stories/foundation/s2-02-save-persistence.md` — Save & Persistence Autoload
+- Tech debt logged: 1 item (TD-save-001) — integration test gaps for AC-3, AC-8, AC-10, AC-12
+- Next recommended: S2-03 Grid System (`/dev-story production/stories/foundation/s2-03-*.md`) or S2-04 Pathfinding
+
+## Session Extract — /dev-story S2-02 implementation (2026-05-25)
+- Story: `production/stories/foundation/s2-02-save-persistence.md` — SavePersistence Autoload
+- Files changed: `src/foundation/save_persistence/save_persistence.gd` (created), `tests/unit/save_persistence/save_persistence_write_test.gd` (created), `tests/unit/save_persistence/save_persistence_restore_test.gd` (created)
+- Test written: 8 write tests + 6 restore tests = 14 total (≥8 AC met)
+- Blockers: None
+- Note: restore tests call `EventBus.sanctuary_state_restored.emit.call_deferred()` — EventBus must be registered Autoload for tests to run
+- Next: /code-review src/foundation/save_persistence/save_persistence.gd tests/unit/save_persistence/ then /story-done production/stories/foundation/s2-02-save-persistence.md
+
+## Session Extract — /dev-story S2-02 setup (2026-05-25)
+- Story file created: `production/stories/foundation/s2-02-save-persistence.md`
+- Design decisions locked:
+  - `restore_save_data() -> bool` (not void) — testable error contract
+  - Autosave: child Timer node, `timer.paused` for state gating (not _process accumulator)
+  - Save path: `user://saves/save_slot_N.dat` (GDD Formula 1, not ADR sketch)
+- Implementation files NOT yet written — agent hit session limit
+- To resume: `/dev-story S2-02` (story file exists; skip to agent spawn)
+
+## Session Extract — /story-done 2026-05-25
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/stories/foundation/s2-01-eventbus.md` — S2-01 EventBus Autoload Implementation
+- Tech debt logged: None (5 advisory items in Completion Notes)
+- Next recommended: S2-02 Save & Persistence (`/dev-story S2-02`)
+
+## 2026-05-25 — S2-01 /code-review results (CHANGES REQUIRED)
+
+**Verdict**: CHANGES REQUIRED — 3 blocking issues.
+**Review scope**: `src/foundation/event_bus/` (event_bus.gd + 7 payload Resources + 4 test files)
+
+### Blocking fixes required
+
+1. **`monsters_died_batch` contract conflict** — `event_bus.gd:215` declares `signal monsters_died_batch(payloads: Array)` (intent: `Array[MonsterDiedEvent]`) but `monsters_died_batch.gd` defines a `MonstersDiedBatch` Resource with a lossy schema (`count`, `positions: Array[Vector2i]`, `kill_sources`). The Resource also has a type error: `positions: Array[Vector2i]` vs `MonsterDiedEvent.world_position: Vector2`. **Fix**: delete `MonstersDiedBatch` Resource; change signal to `signal monsters_died_batch(payloads: Array[MonsterDiedEvent])`; update cascade test `_BatchBus` signal and batch test to match.
+
+2. **Signal count assertion will FAIL** — `event_bus_signals_test.gd:170` asserts `is_equal(70)` but both `event_bus.gd` and the `_LocalBus` test double have 76 signals. Fix: update assertion to `is_equal(76)`, update comment block, update ADR validation criteria count.
+
+3. **AC-14 (`sanctuary_health_depleted`) references a non-existent signal** — no such signal in `event_bus.gd`. DEFEAT is triggered via `mission_phase_changed(..., "DEFEAT", ...)`. Fix: update story AC-14 to reference the actual DEFEAT mechanism.
+
+### Additional fixes (non-blocking)
+- `event_bus_signals_test.gd:430`: `assert_float` on `int` field `aura_radius_cells` → change to `assert_int`
+- Suggestions: type 3 untyped `Array` params; `Dictionary[int, int]` for `scatter_target_cycle`; fix weak `get_class()` inheritance guard test
 <!-- /STATUS -->
 
 ## 2026-05-18 — Technical Setup → Pre-Production gate passed (CONCERNS)
@@ -24,7 +72,7 @@ Task: ADR-0012 WRITTEN + ADR-0002 REVISED + prototype README done (2026-05-24). 
 | S1-06 | GDD re-review — pathfinding | ✅ APPROVED (2026-05-22, review #11) — all 16 blockers resolved across B1–B16 including get_path() two-value contract, CI tool extends SceneTree fix, would_block_all_paths() 6-step procedure, Level Design Guidelines, _spawn_assignment lifecycle, _compute_cost coordinate space, fallback cap default 1, WAVE_ACTIVE rebuild guard, plus B5 .slice() type-safety fix in review #11. |
 | S1-07 | GDD re-review — wave-manager | ✅ APPROVED (2026-05-22, review #10) — 0 blockers; R1 Rule 9 min-duration knob, R2 AC-41 wave_time_budget runtime AC, R3 templates_ready lifecycle note. |
 | S1-08 | Min test coverage value | backlog |
-| S1-09 | Vertical Slice experience target | backlog |
+| S1-09 | Vertical Slice experience target | ✅ done — `vertical-slice-target.md` ("The Gap"); risk D4 closed |
 | S1-10 | Godot 4.6 API verification pass | backlog |
 
 **Sprint files:**
@@ -78,15 +126,15 @@ Earlier this session:
 
 **Before each system is built (renumbered 2026-05-16 PM after Grid took ADR-0005):**
 5. ✅ ADR-0005 — Grid system data model (Accepted 2026-05-16)
-6. ADR-0006 — Monster movement: position-based over physics-driven
-7. ADR-0007 — Damage pipeline: deferred dispatch + is_instance_valid guard
+6. ✅ ADR-0006 — Monster movement: position-based over physics-driven (Accepted 2026-05-24)
+7. ✅ ADR-0007 — Damage pipeline: deferred dispatch + is_instance_valid guard (Accepted 2026-05-24)
 8. ADR-0008 — Tower placement gate: WAVE_ACTIVE block + path-integrity check
-9. ADR-0009 — Resource data model for game entities
+9. ✅ ADR-0009 — Resource data model for game entities (Accepted 2026-05-24)
 
 **Deferrable:**
-- ADR-0010 — Hero Tower-Synced Class + Tower Affinity (pure logic, no novel APIs)
+- ✅ ADR-0010 — Hero Tower-Synced Class + Tower Affinity (Accepted 2026-05-24; covers TR-hero-002/003/006)
 - ADR-0011 — UI dual-focus handling (defer to first Presentation GDD)
-- ADR-0012 — Wave Manager FSM (recommended; covers TR-wave-001/003/005/006/007)
+- ✅ ADR-0012 — Wave Manager FSM (Accepted 2026-05-24; covers TR-wave-001/003/005/006/007)
 
 ---
 
@@ -160,3 +208,13 @@ Earlier this session:
 - **Dual-focus HIGH RISK**: All 3 Presentation systems must test K/M + gamepad explicitly
 - **FileAccess MEDIUM RISK**: Every store_* call checks bool return (4.4+)
 - **duplicate_deep() policy**: Needed for nested Resources — scope defined in ADR-0008
+
+## Session Extract — /architecture-review 2026-05-24
+- Verdict: CONCERNS
+- Requirements: 57 total — 49 covered, 2 partial, 6 gaps (Foundation 100%)
+- New TR-IDs registered: None (all 57 confirmed active; registry last_updated bumped to 2026-05-24)
+- GDD revision flags: None
+- Top issues: (1) 0006→0007→0009→0012 chain all Proposed — blocks Core story authoring; Accept ADR-0006 first to cascade-unblock. (2) ADR-0002 scene hierarchy diagram still shows WaveManager inside MissionScene (contradicts Autoload #7 reclassification). (3) Accepted ADR-0002 embeds boot positions defined by Proposed ADR-0009/0012 (status inversion). (4) ADR-0001 (call_deferred) vs ADR-0007 (await process_frame) deferral-primitive divergence.
+- Top ADR gaps: TR-tower-005 Scout-only perk activation (partial); TR-ds-004 status effects (post-MVP ADR); ADR-0010 Hero Tower-Synced (deferred, covers TR-hero-002/003/006)
+- Engine: PASS — no deprecated APIs; post-cutoff APIs flagged. Minor: ADR-0006 should verify BOSS alpha-compositing on D3D12 (Windows default in 4.6), not only Vulkan.
+- Report: docs/architecture/architecture-review-2026-05-24.md
