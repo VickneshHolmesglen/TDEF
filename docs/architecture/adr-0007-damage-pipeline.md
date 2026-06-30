@@ -1,7 +1,7 @@
 # ADR-0007: Damage Pipeline — Deferred Dispatch with `await` + `is_instance_valid` Guard
 
 ## Status
-Proposed
+Accepted
 
 ## Date
 2026-05-22
@@ -24,7 +24,7 @@ Proposed
 | **Depends On** | ADR-0001 (EventBus — all cross-system communication routed through EventBus; cascade rules define which emissions require deferral); ADR-0006 (Monster movement — defines `monster_hp_absorbed` emission in MonsterManager Pass 4 and `MonsterDamageTaken` Resource type used by `_pending_damage: Array[MonsterDamageTaken]`) |
 | **Enables** | D&S implementation story; Monster System HP-application story (requires `monster_damage_taken` event shape Accepted); Hero System lifesteal story (requires `hero_healed` pattern Accepted) |
 | **Blocks** | D&S Core epic; Monster System Core epic (HP application cannot be implemented until `monster_damage_taken` payload is Accepted) |
-| **Ordering Note** | ADR-0006 must be Accepted before this ADR is Accepted — `monster_hp_absorbed` (Pass 4 emission defined in ADR-0006) is the trigger for lifesteal resolution in this ADR. Both ADRs can be Proposed simultaneously. |
+| **Ordering Note** | ADR-0006 must be Accepted before this ADR is Accepted — `monster_hp_absorbed` (Pass 4 emission defined in ADR-0006) is the trigger for lifesteal resolution in this ADR. Both ADRs can be Proposed simultaneously. ADR-0006 Accepted 2026-05-24; this ADR Accepted 2026-05-24 — ADR-0009 may now be promoted to Accepted. |
 
 ## Context
 

@@ -1,7 +1,7 @@
 # ADR-0006: Monster Movement — Position-Based Area2D with Centralized 4-Pass Physics
 
 ## Status
-Proposed
+Accepted
 
 ## Date
 2026-05-22
@@ -15,7 +15,7 @@ Proposed
 | **Knowledge Risk** | LOW — Area2D, AnimatedSprite2D, `_physics_process`, and `Array.filter()` are 2D APIs unchanged through Godot 4.6. Jolt physics default (4.6) affects 3D only; 2D physics is unaffected. |
 | **References Consulted** | `docs/engine-reference/godot/VERSION.md` |
 | **Post-Cutoff APIs Used** | None |
-| **Verification Required** | Confirm `AnimatedSprite2D` overlay alpha-compositing renders correctly on pinned Godot 4.6.2 build before shipping BOSS art. Confirm `Array.filter()` behaves as expected on `Array[MonsterEntity]` typed arrays. |
+| **Verification Required** | Confirm `AnimatedSprite2D` overlay alpha-compositing renders correctly on **both D3D12 (Windows default in 4.6) and Vulkan** renderers before shipping BOSS art. Confirm `Array.filter()` behaves as expected on `Array[MonsterEntity]` typed arrays. |
 
 ## ADR Dependencies
 
@@ -24,7 +24,7 @@ Proposed
 | **Depends On** | ADR-0001 (EventBus — Accepted: all cross-system comms via EventBus); ADR-0004 (Pathfinding — Accepted: `get_path(from_cell, tier)` API contract); ADR-0005 (Grid — Accepted: direct-call exception for spatial queries) |
 | **Enables** | ADR-0007 (Damage pipeline — `_pending_damage` buffer pattern locked here; D&S ADR references it) |
 | **Blocks** | Monster System implementation stories cannot start until this ADR is Accepted |
-| **Ordering Note** | Must be Accepted before ADR-0007 so the damage buffer and absorbed-accumulator pattern are established before the Damage & Status pipeline ADR references them |
+| **Ordering Note** | Must be Accepted before ADR-0007 so the damage buffer and absorbed-accumulator pattern are established before the Damage & Status pipeline ADR references them. Accepted 2026-05-24 — ADR-0007 and ADR-0009 may now be promoted to Accepted. |
 
 ## Context
 

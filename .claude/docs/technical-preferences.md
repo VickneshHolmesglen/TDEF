@@ -41,7 +41,7 @@
 ## Testing
 
 - **Framework**: GUT (Godot Unit Testing — gdUnit4)
-- **Minimum Coverage**: [TO BE CONFIGURED]
+- **Minimum Coverage**: 80% (applies to Logic and Integration stories; Visual/Feel and Config/Data stories exempt)
 - **Required Tests**: Balance formulas, gameplay systems, networking (if applicable)
 
 ## Forbidden Patterns

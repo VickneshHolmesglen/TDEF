@@ -25,7 +25,7 @@
 # STATUS VALUES: active | deprecated | superseded-by: TR-[system]-NNN
 
 version: 3
-last_updated: "2026-05-16"
+last_updated: "2026-05-24"  # /architecture-review 2026-05-24: no new TRs; all 57 entries confirmed active
 
 requirements:
 

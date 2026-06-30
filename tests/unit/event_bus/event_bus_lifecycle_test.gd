@@ -14,12 +14,12 @@ class _TestBus extends Node:
 var _bus: _TestBus
 var _received: Array  # accumulated callback args
 
-func before_each() -> void:
+func before_test() -> void:
 	_bus = _TestBus.new()
 	add_child(_bus)
 	_received = []
 
-func after_each() -> void:
+func after_test() -> void:
 	_bus.queue_free()
 
 func _on_wave_started(wave_number: int, _total: int, _difficulty: float) -> void:
@@ -56,37 +56,36 @@ func test_disconnect_stops_delivery() -> void:
 	assert_array(_received).is_empty()
 
 func test_double_connect_delivers_twice() -> void:
-	# Documents the failure mode: connecting the same callable twice
-	# causes the subscriber to fire twice per emission.
-	# Code review must prevent this — _ready() should guard with is_connected().
+	# Godot 4.6+: duplicate connections of the same callable are rejected — the
+	# second connect() produces an error log and the connection count stays 1.
+	# Only one delivery occurs per emission. Guard with is_connected() in _ready().
 	_bus.wave_started.connect(_on_wave_started)
-	_bus.wave_started.connect(_on_wave_started)
+	_bus.wave_started.connect(_on_wave_started)  # error logged in Godot 4.6+, rejected
 
 	_bus.wave_started.emit(5, 10, 1.0)
 
-	assert_int(_received.size()).is_greater(1)  # documents the hazard, not a desired outcome
+	assert_int(_received.size()).is_equal(1)  # Godot 4.6: rejected duplicate → single delivery
 
-	# Clean up both connections
+	# Clean up: second connect was rejected, so only one connection needs removing.
 	_bus.wave_started.disconnect(_on_wave_started)
-	_bus.wave_started.disconnect(_on_wave_started)
+	if _bus.wave_started.is_connected(_on_wave_started):
+		_bus.wave_started.disconnect(_on_wave_started)
 
 # --- Payload typing (ADR-0001 Rule 3: 1-4 fields typed inline, 5+ fields Resource) ---
 
 func test_typed_parameters_arrive_with_correct_types() -> void:
-	var captured_wave: int = -1
-	var captured_total: int = -1
-	var captured_diff: float = -1.0
+	var state := {"wave": -1, "total": -1, "diff": -1.0}
 
 	var cb := func(wave_number: int, total_waves: int, difficulty: float) -> void:
-		captured_wave = wave_number
-		captured_total = total_waves
-		captured_diff = difficulty
+		state.wave = wave_number
+		state.total = total_waves
+		state.diff = difficulty
 
 	_bus.wave_started.connect(cb)
 	_bus.wave_started.emit(3, 10, 1.5)
 
-	assert_int(captured_wave).is_equal(3)
-	assert_int(captured_total).is_equal(10)
-	assert_float(captured_diff).is_equal(1.5)
+	assert_int(state.wave).is_equal(3)
+	assert_int(state.total).is_equal(10)
+	assert_float(state.diff).is_equal(1.5)
 
 	_bus.wave_started.disconnect(cb)

@@ -16,10 +16,10 @@ Risk IDs: D = Deferred (from gate check), T = Technical, A = Art, S = Schedule
 | D1 | Art/Visual | Stacked-sprite seam non-viable — visual style pivot required | Medium | HIGH | ✅ Mitigated | Art Director | S1-01 |
 | D2 | Technical | ADR-0008 unresolved — Tower placement blocked in Vertical Slice | Low | HIGH | ✅ Mitigated | Tech Director | S1-04 |
 | D3 | Art/Design | Art bible Sec 5–6 incomplete — character art cannot begin | Medium | HIGH | ✅ Mitigated | Art Dir + CD | S1-05 |
-| T1 | Technical | Draw call budget: 8-layer stacked entities exceed 200 DC without atlas batching | Medium | HIGH | 🟡 Watch | Tech Director | Sprint 2 |
+| T1 | Technical | Draw call budget: 8-layer stacked entities exceed 200 DC without atlas batching | Medium | HIGH | ✅ Mitigated | Tech Director | Sprint 2 |
 | T2 | Technical | Godot 4.6 post-cutoff APIs unverified against 4.4–4.6 changes in 9 GDDs | Medium | Medium | 🟡 Watch | Tech Director | S1-10 |
-| D4 | Design | Vertical Slice experience target undefined — VS sprint planning blocked | High | Medium | 🔴 Open | Creative Dir | S1-09 |
-| D5 | Design | Pathfinding + Wave Manager GDDs revised but not re-reviewed — latent design debt | Low | Medium | 🟡 Watch | Creative Dir | S1-06/07 |
+| D4 | Design | Vertical Slice experience target undefined — VS sprint planning blocked | High | Medium | ✅ Closed | Creative Dir | S1-09 |
+| D5 | Design | Pathfinding + Wave Manager GDDs revised but not re-reviewed — latent design debt | Low | Medium | ✅ Closed | Creative Dir | S1-06/07 |
 
 ---
 
@@ -102,16 +102,17 @@ are written, those stories are auto-blocked.
 
 ---
 
-### T1 — Draw Call Budget: Stacked-Sprite Batching Required 🟡 Watch
+### T1 — Draw Call Budget: Stacked-Sprite Batching Required ✅ Mitigated
 
 **Category**: Technical
 **Probability**: Medium
 **Impact**: HIGH — 20+ towers × 8 layers = 160+ draw calls from stacking alone;
 exceeds 200 DC budget when combined with background and UI
-**Status**: 🟡 Watch (no blocker yet — production concern)
+**Status**: ✅ Mitigated (2026-06-30 — ADR-0013 Accepted)
 **Owner**: Technical Director
 **Sprint**: Sprint 2 (before Foundation Epic stories written)
 **Logged**: 2026-05-19 (S1-01 prototype finding)
+**Resolved**: 2026-06-30 (S2-06 — ADR-0013 shared atlas strategy accepted)
 
 **Description**: The stacked-sprite technique confirmed by S1-01 uses one draw
 call per layer per entity. At 8 layers, a scene with 20 towers and 30 enemies
@@ -155,13 +156,13 @@ broken API. The fix is to revise the GDD before writing the story.
 
 ---
 
-### D4 — Vertical Slice Experience Target Undefined 🔴 Open
+### D4 — Vertical Slice Experience Target Undefined ✅ Closed
 
 **Category**: Design
 **Probability**: High (currently undefined)
 **Impact**: Medium — sprint planning for the VS sprint cannot be done without a
 defined scripted moment; team has no shared north star for Pre-Production
-**Status**: 🔴 Open
+**Status**: ✅ Closed (2026-05-25 — `production/vertical-slice-target.md` written: scripted moment "The Gap", win/fail conditions, Foundation + Core system map)
 **Owner**: Creative Director
 **Sprint**: S1-09
 **Logged**: 2026-05-18 (gate check — CD concern)
@@ -181,13 +182,13 @@ blocked until the VS target is defined.
 
 ---
 
-### D5 — GDD Re-Reviews Pending 🔴 Open
+### D5 — GDD Re-Reviews Pending ✅ Closed
 
 **Category**: Design
 **Probability**: Low
 **Impact**: Medium — Pathfinding and Wave Manager GDDs were revised post-review
 but have not been re-reviewed; latent design debt may surface during implementation
-**Status**: 🔴 Open
+**Status**: ✅ Closed (2026-05-22 — both GDDs re-reviewed APPROVED)
 **Owner**: Creative Director
 **Sprint**: S1-06 / S1-07
 **Logged**: 2026-05-18 (gate check — CD concern)
@@ -217,3 +218,6 @@ Stories must reference the re-reviewed GDD version.
 | 2026-05-19 | D3 | Mitigated — S1-05 complete. Art bible Sections 5–6 written. Character + environment direction defined. |
 | 2026-05-19 | D5 | Partial — S1-06 (pathfinding re-review) complete. Verdict: NEEDS REVISION → REVISED (7 blockers, all resolved in-session). GDD now in "Revised" state pending clean re-review. S1-07 (wave-manager) still backlog. Risk status: 🟡 Watch. |
 | 2026-05-19 | D5 | Update — S1-07 (wave-manager re-review) complete. Verdict: NEEDS REVISION (9 blockers; prior APPROVED revoked). Design decisions captured in session. Revision deferred to next session (/design-review wave-manager.md after /clear). Both GDDs now re-reviewed. Risk remains 🟡 Watch pending Wave Manager revision + re-review. |
+| 2026-05-22 | D5 | **Closed** — both revisions re-reviewed clean. Pathfinding APPROVED (review #11, all 16 blockers resolved). Wave Manager APPROVED (review #10, 0 blockers). No latent design debt remains; implementation stories may reference the current GDD text. |
+| 2026-06-30 | T1 | **Mitigated** — ADR-0013 Accepted (S2-06). Shared per-class atlas strategy; ~40 DC estimated at MVP entity counts vs 200 DC budget. Sprint 3 entity stories unblocked. |
+| 2026-05-25 | D4 | **Closed** — `production/vertical-slice-target.md` defined. Scripted moment "The Gap": Scout-place 3 towers → Wave 2 side-lane breach → hero covers the gap. Win = core survives; Fail = hero down or 5 breaches. Exercises all 4 Foundation systems + Tower/Monster/Wave/Hero/Damage. Sprint 2 planning unblocked. |

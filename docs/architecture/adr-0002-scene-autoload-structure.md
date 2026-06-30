@@ -55,9 +55,9 @@ The game has 25 systems split across two top-level contexts (SANCTUARY and MISSI
 | 2 | `SavePersistence` | `src/core/save_persistence.gd` | Boots before Grid/Pathfinding; subscribes to EventBus auto-save triggers | ADR-0002 |
 | 3 | `Grid` | `src/core/grid.gd` | Pathfinding reads Grid at startup to build initial AStar2D graph | ADR-0002 |
 | 4 | `Pathfinding` | `src/core/pathfinding.gd` | Dispatches `templates_ready`; must exist before mission scenes load | ADR-0002 |
-| 5 | `GameDataRegistry` | `src/core/game_data_registry.gd` | Preloads all MonsterResources and TowerPerkRegistry at boot; must exist before WaveManager or any mission scene loads data | ADR-0009 |
+| 5 | `GameDataRegistry` | `src/core/game_data_registry.gd` | Preloads all MonsterResources and TowerPerkRegistry at boot; must exist before WaveManager or any mission scene loads data | ADR-0009 (Accepted 2026-05-24) |
 | 6 | `SceneManager` | `src/core/scene_manager.gd` | Owns SANCTUARY↔MISSION transitions; boots after all data Autoloads | ADR-0002 (revised) |
-| 7 | `WaveManager` | `src/gameplay/wave_manager.gd` | Mission FSM Autoload; initialises to IDLE; boots after all infrastructure and data Autoloads; communicates exclusively via EventBus | ADR-0012 |
+| 7 | `WaveManager` | `src/gameplay/wave_manager.gd` | Mission FSM Autoload; initialises to IDLE; boots after all infrastructure and data Autoloads; communicates exclusively via EventBus | ADR-0012 (Accepted 2026-05-24) |
 
 **This order is a build invariant.** Adding any new Autoload requires an ADR revision to verify boot dependency ordering.
 
@@ -93,9 +93,11 @@ MissionScene (Node)
 │     └── [MonsterInstance children — Area2D, one per live monster]
 ├── Hero (CharacterBody2D)
 ├── DamageStatusSystem (Node)
-├── WaveManager (Node)
 ├── ConstellationSystem (Node)
 └── MissionHUD (CanvasLayer)
+```
+> **Note**: `WaveManager` is Autoload #7 — not a scene-instanced child of MissionScene.
+> It initialises to IDLE at boot and activates on `mission_launched` via EventBus (see ADR-0012).
 ```
 
 **Sanctuary Scene** (`SanctuaryScene.tscn`, root: `Node`):

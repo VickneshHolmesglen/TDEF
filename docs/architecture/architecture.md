@@ -586,7 +586,7 @@ func spawn(monster_resource: MonsterResource, spawn_id: int) -> void
 
 ## ADR Audit
 
-Six ADRs accepted as of 2026-05-22. Coverage: **29 / 57** requirements covered (ADR-0001–0005 + ADR-0008). Full traceability detail in `docs/architecture/architecture-traceability.md` (TR Registry v3, last updated 2026-05-22).
+Eleven ADRs accepted as of 2026-05-24 (ADR-0001 through ADR-0010 + ADR-0012; ADR-0011 deferred to first Presentation GDD). Coverage: **52 / 57** requirements covered. Canonical per-TR detail lives in `docs/architecture/architecture-traceability.md` (refreshed 2026-05-24) — the matrix below is a snapshot and defers to it on any discrepancy.
 
 | ADR | System | Status | TRs Covered |
 |-----|--------|--------|-------------|
@@ -595,13 +595,13 @@ Six ADRs accepted as of 2026-05-22. Coverage: **29 / 57** requirements covered (
 | ADR-0003 | Save file format | Accepted | TR-save-001–006 |
 | ADR-0004 | Pathfinding strategy | Accepted | TR-path-001–006, TR-path-007 (partial), TR-wave-004 |
 | ADR-0005 | Grid system data model | Accepted | TR-grid-001–004 |
-| ADR-0006 | Monster movement | Pending | TR-monster-002–003, 005–006 |
-| ADR-0007 | Damage pipeline | Pending | TR-ds-001–005, TR-hero-004, TR-tower-003 |
+| ADR-0006 | Monster movement | **Accepted (2026-05-24)** | TR-monster-002–003, 005–006 |
+| ADR-0007 | Damage pipeline | **Accepted (2026-05-24)** | TR-ds-001–003, 005, TR-hero-004, TR-tower-003 |
 | ADR-0008 | Tower placement gate | **Accepted (2026-05-19)** | TR-tower-002, TR-tower-004, TR-tower-005 |
-| ADR-0009 | Resource data model | Pending | TR-monster-002, TR-wave-002, TR-tower-001, TR-tower-006 |
-| ADR-0010 | Hero Tower-Synced Class | Deferred | TR-hero-002, 003, 005, 006 |
+| ADR-0009 | Resource data model | **Accepted (2026-05-24)** | TR-monster-002, TR-wave-002, TR-tower-001, TR-tower-006 |
+| ADR-0010 | Hero Tower-Synced Class | **Accepted (2026-05-24)** | TR-hero-002, 003, 006 |
 | ADR-0011 | UI dual-focus | Deferred | All Presentation system TRs |
-| ADR-0012 | Wave Manager FSM | Recommended | TR-wave-001, 003, 005, 006, 007 |
+| ADR-0012 | Wave Manager FSM | **Accepted (2026-05-24)** | TR-wave-001, 003, 005, 006, 007 |
 
 ### Traceability Matrix
 
@@ -624,28 +624,28 @@ Six ADRs accepted as of 2026-05-22. Coverage: **29 / 57** requirements covered (
 | TR-save-005 | save-persistence | Save format decision | ADR-0003 | ✅ |
 | TR-save-006 | save-persistence | 4 auto-save triggers via EventBus | ADR-0003 | ✅ |
 | TR-hero-001 | hero | CharacterBody2D scene root | ADR-0002 | ✅ |
-| TR-hero-002 | hero | 12 stats; Tower-Synced Class (Chebyshev 3-cell) | — (ADR-0010 deferred) | ❌ |
-| TR-hero-003 | hero | Tower Affinity sqrt scaling | — (ADR-0010 deferred) | ❌ |
-| TR-hero-004 | hero | Event-driven targeting (no direct Monster refs) | — (ADR-0007 pending) | ❌ |
-| TR-hero-005 | hero | 4 active skills + Ultimate | — (ADR-0010 deferred) | ❌ |
-| TR-hero-006 | hero | 6 stat formulas (crit, lifesteal, affinity, etc.) | — (ADR-0010 deferred) | ❌ |
-| TR-tower-001 | tower | 4 component slots; 4 archetypes; 4 tiers | — (ADR-0009 pending) | ❌ |
+| TR-hero-002 | hero | 12 stats; Tower-Synced Class (Chebyshev 3-cell) | ADR-0010 | ✅ |
+| TR-hero-003 | hero | Tower Affinity sqrt scaling | ADR-0010 | ✅ |
+| TR-hero-004 | hero | Event-driven targeting (no direct Monster refs) | ADR-0007 | ✅ |
+| TR-hero-005 | hero | 4 active skills + Ultimate | — (Alpha-tier Hero Skill Build — post-MVP) | ❌ |
+| TR-hero-006 | hero | 6 stat formulas (crit, lifesteal, affinity, etc.) | ADR-0010 | ✅ |
+| TR-tower-001 | tower | 4 component slots; 4 archetypes; 4 tiers | ADR-0009 | ✅ |
 | TR-tower-002 | tower | Placement blocked during WAVE_ACTIVE | ADR-0008 | ✅ |
-| TR-tower-003 | tower | Monster cache via EventBus; no direct Monster refs | — (ADR-0007 pending) | ❌ |
+| TR-tower-003 | tower | Monster cache via EventBus; no direct Monster refs | ADR-0007 | ✅ |
 | TR-tower-004 | tower | would_block_all_paths() gate before placement | ADR-0008 | ✅ |
-| TR-tower-005 | tower | Pre-placement perk (Scout phase only) | ADR-0008 | ✅ |
-| TR-tower-006 | tower | Support archetype aura pulse model | — (ADR-0009 pending) | ❌ |
+| TR-tower-005 | tower | Pre-placement perk (Scout phase only) | ADR-0008, ADR-0009 | ⚠ Partial (perk schema covered; Scout-only activation rule needs its own decision) |
+| TR-tower-006 | tower | Support archetype aura pulse model | ADR-0009 | ✅ |
 | TR-monster-001 | monster | Area2D scene root (not CharacterBody2D) | ADR-0002 | ✅ |
-| TR-monster-002 | monster | MonsterResource data-driven stats; 3 tiers | — (ADR-0006, ADR-0009 pending) | ❌ |
-| TR-monster-003 | monster | _pending_damage buffer flushed in _physics_process | — (ADR-0006 pending) | ❌ |
+| TR-monster-002 | monster | MonsterResource data-driven stats; 3 tiers | ADR-0006, ADR-0009 | ✅ |
+| TR-monster-003 | monster | _pending_damage buffer flushed in _physics_process | ADR-0006 | ✅ |
 | TR-monster-004 | monster | Position-based movement (not physics-driven) | ADR-0002, ADR-0004 | ✅ |
-| TR-monster-005 | monster | Dual-layer AnimatedSprite2D | — (ADR-0006 pending) | ❌ |
-| TR-monster-006 | monster | Boss scan throttle + prepare-frames telegraph | — (ADR-0006 pending) | ❌ |
-| TR-ds-001 | damage-status | Two pipelines: direct hit + DoT | — (ADR-0007 pending) | ❌ |
-| TR-ds-002 | damage-status | await + is_instance_valid guard pattern | — (ADR-0007 pending) | ❌ |
-| TR-ds-003 | damage-status | _lifesteal_pending Dictionary[int, float] | — (ADR-0007 pending) | ❌ |
-| TR-ds-004 | damage-status | 5 status effect types + stack/duration rules | — (ADR-0007 pending) | ❌ |
-| TR-ds-005 | damage-status | No direct call API — EventBus only | — (ADR-0007 pending) | ❌ |
+| TR-monster-005 | monster | Dual-layer AnimatedSprite2D | ADR-0006 | ✅ |
+| TR-monster-006 | monster | Boss scan throttle + prepare-frames telegraph | ADR-0006 | ✅ |
+| TR-ds-001 | damage-status | Two pipelines: direct hit + DoT | ADR-0007 | ✅ |
+| TR-ds-002 | damage-status | await + is_instance_valid guard pattern | ADR-0007 | ✅ |
+| TR-ds-003 | damage-status | _lifesteal_pending Dictionary[int, float] | ADR-0007 | ✅ |
+| TR-ds-004 | damage-status | 5 status effect types + stack/duration rules | — (status-effects ADR pending — post-MVP) | ❌ |
+| TR-ds-005 | damage-status | No direct call API — EventBus only | ADR-0007 | ✅ |
 | TR-path-001 | pathfinding | AStar2D Autoload (not NavigationServer) | ADR-0004 | ✅ |
 | TR-path-002 | pathfinding | Route templates with cell_index_map | ADR-0004 | ✅ |
 | TR-path-003 | pathfinding | Super-goal node for multi-goal convergence | ADR-0004 | ✅ |
@@ -653,19 +653,19 @@ Six ADRs accepted as of 2026-05-22. Coverage: **29 / 57** requirements covered (
 | TR-path-005 | pathfinding | would_block_all_paths() speculative check | ADR-0004 | ✅ |
 | TR-path-006 | pathfinding | Deferred dirty rebuild on tower changes | ADR-0004 | ✅ |
 | TR-path-007 | pathfinding | 100+ simultaneous agents at 60 FPS | ADR-0004 | ⚠ Partial (budgeted; C1 HIGH risk — stress prototype required Sprint 1/2) |
-| TR-wave-001 | wave-manager | 7-state phase lifecycle FSM | — (ADR-0012 recommended) | ❌ |
-| TR-wave-002 | wave-manager | WaveConfig/WaveScript/WaveSpawnEntry Resources | — (ADR-0009 pending) | ❌ |
-| TR-wave-003 | wave-manager | BOSS breach = wave-clear | — (ADR-0012 recommended) | ❌ |
+| TR-wave-001 | wave-manager | 7-state phase lifecycle FSM | ADR-0012 | ✅ |
+| TR-wave-002 | wave-manager | WaveConfig/WaveScript/WaveSpawnEntry Resources | ADR-0009 | ✅ |
+| TR-wave-003 | wave-manager | BOSS breach = wave-clear | ADR-0012 | ✅ |
 | TR-wave-004 | wave-manager | templates_ready gate before first spawn | ADR-0004 | ✅ |
-| TR-wave-005 | wave-manager | Wave-stuck watchdog (30s stalled / 60s force-clear) | — (ADR-0012 recommended) | ❌ |
-| TR-wave-006 | wave-manager | wave_reward_scalar semantic contract | — (ADR-0012 recommended) | ❌ |
-| TR-wave-007 | wave-manager | Penultimate-wave rule (sub-boss at wave N-1) | — (ADR-0012 recommended) | ❌ |
+| TR-wave-005 | wave-manager | Wave-stuck watchdog (30s stalled / 60s force-clear) | ADR-0012 | ✅ |
+| TR-wave-006 | wave-manager | wave_reward_scalar semantic contract | ADR-0012 | ✅ |
+| TR-wave-007 | wave-manager | Penultimate-wave rule (sub-boss at wave N-1) | ADR-0012 | ✅ |
 | TR-gc-001 | game-concept | All 9 systems communicate via EventBus only | ADR-0001 | ✅ |
 | TR-gc-002 | game-concept | Autoload boot order: EB → Save → Grid → Path | ADR-0002 | ✅ |
 | TR-gc-003 | game-concept | Mission states: SCOUT/WAVE_ACTIVE/INTERMISSION/etc. | ADR-0002 | ⚠ Partial (outer FSM only; Wave Manager inner FSM → ADR-0012) |
 | TR-gc-004 | game-concept | 15–25 min default mission (session length formula) | — (design tuning, not architecture) | N/A |
 
-**Coverage**: 29 / 57 requirements covered (51%). Remaining gaps closed by ADR-0006 (Monster movement), ADR-0007 (Damage pipeline), ADR-0009 (Resource data model), ADR-0012 (Wave Manager FSM), ADR-0010 (Hero, deferred), ADR-0011 (UI dual-focus, deferred).
+**Coverage**: 52 / 57 requirements covered (91%) as of 2026-05-24 — all of ADR-0001 through ADR-0010 + ADR-0012 are Accepted. Remaining: 2 partial (TR-tower-005 Scout-only perk activation rule; TR-path-007 100-agent perf, budgeted but unverified) and 3 not-covered (TR-hero-005 Alpha-tier Hero skills — post-MVP; TR-ds-004 status effects — needs its own ADR when the status system is designed; TR-gc-004 session-length formula — design tuning, not architecture).
 
 ---
 

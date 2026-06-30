@@ -28,13 +28,13 @@ func _ready() -> void:
 	_ensure_save_dir()
 	_cleanup_tmp_files()
 	_setup_autosave_timer()
-	EventBus.mission_launched.connect(_on_mission_launched)
-	EventBus.mission_phase_changed.connect(_on_mission_phase_changed)
+	GEventBus.mission_launched.connect(_on_mission_launched)
+	GEventBus.mission_phase_changed.connect(_on_mission_phase_changed)
 
 
 func _exit_tree() -> void:
-	EventBus.mission_launched.disconnect(_on_mission_launched)
-	EventBus.mission_phase_changed.disconnect(_on_mission_phase_changed)
+	GEventBus.mission_launched.disconnect(_on_mission_launched)
+	GEventBus.mission_phase_changed.disconnect(_on_mission_phase_changed)
 
 
 ## Register a saveable system. Call from the system's _ready().
@@ -59,12 +59,12 @@ func set_active_slot(slot: int) -> void:
 
 
 ## Serialise all registered systems and write slot to disk atomically.
-## Emits EventBus.game_saved on success.
+## Emits GEventBus.game_saved on success.
 func save_slot(slot: int) -> bool:
 	var data := _collect_save_data()
 	var ok := _write_slot(slot, data)
 	if ok:
-		EventBus.game_saved.emit(slot, Time.get_unix_time_from_system())
+		GEventBus.game_saved.emit(slot, Time.get_unix_time_from_system())
 	return ok
 
 
@@ -75,7 +75,7 @@ func save_checkpoint(slot: int) -> bool:
 
 
 ## Read slot from disk and restore all registered systems in restore_order.
-## Emits EventBus.sanctuary_state_restored deferred 1 frame after restore loop.
+## Emits GEventBus.sanctuary_state_restored deferred 1 frame after restore loop.
 ## Returns false if the file is absent or corrupt.
 func load_slot(slot: int) -> bool:
 	var data := _read_slot(slot)
@@ -150,7 +150,7 @@ func _restore_all_systems(data: Dictionary, slot: int) -> void:
 
 ## Overridable seam for unit tests — subclass stubs this to avoid EventBus dependency.
 func _emit_state_restored(slot: int) -> void:
-	EventBus.sanctuary_state_restored.emit.call_deferred(slot)
+	GEventBus.sanctuary_state_restored.emit.call_deferred(slot)
 
 
 # ---------------------------------------------------------------------------

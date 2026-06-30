@@ -6,7 +6,7 @@ goal: "Implement all 4 Foundation-layer autoloads to VS-playable depth with pass
 start: "2026-05-31"
 end: "2026-06-11"
 generated: "2026-05-25"
-updated: "2026-05-25"  # S2-02 closed
+updated: "2026-06-30"  # S2-07 + S2-08 complete — all Should Have done
 
 stories:
   - id: "S2-01"
@@ -33,61 +33,61 @@ stories:
     name: "Grid System autoload implementation"
     file: "production/sprints/sprint-02.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: "godot-gdscript-specialist"
     estimate_days: 1.5
     blocker: ""
-    completed: ""
+    completed: "2026-06-29"
 
   - id: "S2-04"
     name: "Pathfinding autoload implementation"
     file: "production/sprints/sprint-02.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: "godot-gdscript-specialist"
     estimate_days: 2
     blocker: ""
-    completed: ""
+    completed: "2026-06-30"
 
   - id: "S2-05"
     name: "Foundation boot-order integration test"
-    file: "production/sprints/sprint-02.md"
+    file: "production/stories/foundation/s2-05-boot-order-integration.md"
     priority: must-have
-    status: backlog
+    status: done
     owner: "godot-gdscript-specialist"
     estimate_days: 0.5
-    blocker: "S2-01, S2-02, S2-03, S2-04"
-    completed: ""
+    blocker: ""
+    completed: "2026-06-30"
 
   - id: "S2-06"
     name: "T1 draw-call batching ADR (ADR-0013)"
-    file: "production/sprints/sprint-02.md"
+    file: "production/stories/foundation/s2-06-adr-draw-call-batching.md"
     priority: should-have
-    status: backlog
+    status: done
     owner: "technical-director"
     estimate_days: 0.5
     blocker: ""
-    completed: ""
+    completed: "2026-06-30"
 
   - id: "S2-07"
     name: "Author design/gdd/game-pillars.md"
-    file: "production/sprints/sprint-02.md"
+    file: "production/stories/foundation/s2-07-game-pillars.md"
     priority: should-have
-    status: backlog
+    status: done
     owner: "creative-director"
     estimate_days: 0.5
     blocker: ""
-    completed: ""
+    completed: "2026-06-30"
 
   - id: "S2-08"
     name: "S1-08 carryover — set min test coverage in technical-preferences.md"
-    file: "production/sprints/sprint-02.md"
+    file: "production/stories/foundation/s2-08-min-test-coverage.md"
     priority: should-have
-    status: ready-for-dev
+    status: done
     owner: "technical-director"
     estimate_days: 0.25
     blocker: ""
-    completed: ""
+    completed: "2026-06-30"
 
   - id: "S2-09"
     name: "S1-10 carryover — Godot 4.6 API verification pass on 9 MVP GDDs"

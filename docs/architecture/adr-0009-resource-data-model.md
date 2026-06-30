@@ -1,7 +1,7 @@
 # ADR-0009: Resource Data Model for Game Entities
 
 ## Status
-Proposed
+Accepted
 
 ## Date
 2026-05-23
@@ -24,7 +24,7 @@ Proposed
 | **Depends On** | ADR-0002 (Scene/Autoload structure — this ADR adds `GameDataRegistry` as Autoload position 5, shifting `SceneManager` to position 6; ADR-0002 boot order must be updated to reflect this); ADR-0006 (establishes `MonsterDamageTaken` Resource type and `MonsterResource` as the data source for monster entity state); ADR-0008 (establishes `duplicate_deep()` as the TowerComponent isolation pattern for mission instances) |
 | **Enables** | Monster System implementation (MonsterRegistry lookup defined); Tower System implementation (TowerComponent schema and TowerPerkRegistry lookup defined); Wave Manager implementation (WaveConfig/WaveScript/WaveSpawnEntry schema defined) |
 | **Blocks** | Monster System Core epic; Tower System Core epic; Wave Manager Feature epic (all depend on the Resource schemas being Accepted before stories can be authored) |
-| **Ordering Note** | ADR-0002 revision is required before implementation. This ADR is self-sufficient for authoring; the boot order update in ADR-0002 (SceneManager shifted from position 5 to 6) is a registry-and-doc edit, not a blocking prerequisite for writing content `.tres` files. |
+| **Ordering Note** | ADR-0002 revision is required before implementation. This ADR is self-sufficient for authoring; the boot order update in ADR-0002 (SceneManager shifted from position 5 to 6) is a registry-and-doc edit, not a blocking prerequisite for writing content `.tres` files. Accepted 2026-05-24 — ADR-0012 may now be promoted to Accepted. |
 
 ## Context
 

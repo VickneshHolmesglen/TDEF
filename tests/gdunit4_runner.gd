@@ -3,7 +3,7 @@
 extends SceneTree
 
 func _init() -> void:
-	var runner := load("res://addons/gdunit4/GdUnitRunner.gd")
+	var runner := load("res://addons/gdUnit4/src/core/runners/GdUnitTestCIRunner.gd")
 	if runner == null:
 		push_error("GdUnit4 not found. Install via AssetLib or addons/.")
 		quit(1)

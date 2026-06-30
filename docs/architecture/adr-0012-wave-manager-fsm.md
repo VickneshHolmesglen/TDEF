@@ -1,7 +1,7 @@
 # ADR-0012: Wave Manager FSM Architecture
 
 ## Status
-Proposed
+Accepted
 
 ## Date
 2026-05-24
@@ -24,7 +24,7 @@ Proposed
 | **Depends On** | ADR-0001 (EventBus — WaveManager subscribes to 10+ signals); ADR-0002 (Autoload structure — WaveManager added at position 7; requires ADR-0002 revision); ADR-0004 (Pathfinding strategy — `templates_ready` event and `PathfindingSystem.is_rebuild_pending()` are external APIs this FSM gates on); ADR-0009 (Resource data model — WaveConfig, WaveScript, WaveSpawnEntry are the data inputs to this FSM) |
 | **Enables** | Wave Manager implementation stories; Monster System integration (receives `monster_spawn_requested`); Mission HUD phase-driven display (receives all phase signals) |
 | **Blocks** | Wave Manager implementation story cannot begin until this ADR is Accepted |
-| **Ordering Note** | ADR-0002 must be revised to add WaveManager at boot position 7 (after SceneManager at 6) before any implementation begins. This is the only new Autoload added by this ADR. |
+| **Ordering Note** | ADR-0002 must be revised to add WaveManager at boot position 7 (after SceneManager at 6) before any implementation begins. This is the only new Autoload added by this ADR. Accepted 2026-05-24 — all Proposed ADRs in the 0006→0007→0009→0012 chain are now Accepted; Core and Feature story authoring is fully unblocked. |
 
 ## Context
 

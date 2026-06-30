@@ -30,7 +30,7 @@
 #   Superseded entries:     Grep pattern="status: superseded"
 
 version: 1
-last_updated: ""
+last_updated: "2026-05-24"
 
 # ─── STATE OWNERSHIP ─────────────────────────────────────────────────────────
 # Who is the authoritative owner of each piece of shared game state.
@@ -153,6 +153,39 @@ state_ownership:
     write_access: wave-manager-only
     referenced_by:
       - docs/architecture/adr-0012-wave-manager-fsm.md
+    added: 2026-05-24
+    revised: ""
+
+  - state: hero_tower_cache
+    status: active
+    owner_system: hero-system
+    adr: docs/architecture/adr-0010-hero-tower-synced-class.md
+    interface: "HeroSystem internal — _tower_cache: Dictionary (tower_id:int → {archetype:StringName, cell:Vector2i}). Populated exclusively via EventBus subscriptions: tower_placed, tower_removed, tower_destroyed. Not accessible to other systems. Exposed indirectly via get_tower_affinity_bonus() and get_primary_class() read-only methods."
+    write_access: hero-system-only
+    referenced_by:
+      - docs/architecture/adr-0010-hero-tower-synced-class.md
+    added: 2026-05-24
+    revised: ""
+
+  - state: hero_proximity_time
+    status: active
+    owner_system: hero-system
+    adr: docs/architecture/adr-0010-hero-tower-synced-class.md
+    interface: "HeroSystem internal — _proximity_time: Dictionary (archetype:StringName → elapsed_seconds:float). Accumulated in _physics_process during WAVE_ACTIVE + INTERMISSION only. Not accessible to other systems. Observable only via hero_class_unlocked EventBus event when a threshold is crossed."
+    write_access: hero-system-only
+    referenced_by:
+      - docs/architecture/adr-0010-hero-tower-synced-class.md
+    added: 2026-05-24
+    revised: ""
+
+  - state: hero_tower_affinity_bonus
+    status: active
+    owner_system: hero-system
+    adr: docs/architecture/adr-0010-hero-tower-synced-class.md
+    interface: "HeroSystem internal — _tower_affinity_bonus: float (range [0.0, 2.0]). Recomputed on every tower_placed, tower_removed, tower_destroyed event via _recompute_tower_affinity(). Not per-frame. Accessible read-only via HeroSystem.get_tower_affinity_bonus() -> float. Applied as a multiplier to affinity_stat after Formula 1."
+    write_access: hero-system-only
+    referenced_by:
+      - docs/architecture/adr-0010-hero-tower-synced-class.md
     added: 2026-05-24
     revised: ""
 
@@ -297,6 +330,21 @@ interfaces:
     added: 2026-05-23
     revised: ""
 
+  - contract: hero_class_unlock_notification
+    status: active
+    pattern: event_bus
+    producer: hero-system
+    consumers:
+      - mission-hud
+      - constellation-system
+      - save-persistence
+    adr: docs/architecture/adr-0010-hero-tower-synced-class.md
+    signal_signature: "hero_class_unlocked(archetype: StringName, is_deep: bool). Emitted by HeroSystem when proximity_time[archetype] crosses CLASS_UNLOCK_THRESHOLD_S (30 s, is_deep=false) or CLASS_DEEP_UNLOCK_THRESHOLD_S (90 s, is_deep=true). Each threshold fires exactly once per archetype per mission. NOTE: this signal is not yet in the event-bus.md EventBus catalogue — must be added before Hero System implementation begins."
+    referenced_by:
+      - docs/architecture/adr-0010-hero-tower-synced-class.md
+    added: 2026-05-24
+    revised: ""
+
 # Example:
 #
 # interfaces:
@@ -419,6 +467,17 @@ api_decisions:
     reason: "Timer nodes are directly testable via callback invocation without Engine.time_scale (required by wave-manager.md AC timer mocking constraint). enum+match maps 1:1 to GDD's 7 states. Single _transition_to() entry point enforces timer-stop and signal-emit invariants on every transition."
     referenced_by:
       - docs/architecture/adr-0012-wave-manager-fsm.md
+    added: 2026-05-24
+    revised: ""
+
+  - purpose: hero_proximity_distance_metric
+    status: active
+    api: "Chebyshev distance computed inline: maxi(abs(hero_cell.x - tower_cell.x), abs(hero_cell.y - tower_cell.y)). No Grid API extension. No Vector2i helper method."
+    not: "Grid.get_towers_in_range() extension (Grid scope is spatial queries for placement/pathfinding, not hero proximity); Vector2i distance methods; Euclidean distance (GDD specifies Chebyshev)"
+    adr: docs/architecture/adr-0010-hero-tower-synced-class.md
+    reason: "Grid API is restricted to Tower System writes and spatial queries needed by Pathfinding and Placement. Adding a hero-proximity query to Grid would expand its scope beyond ADR-0005 definition. Inline Chebyshev is 2 integer operations — no helper needed."
+    referenced_by:
+      - docs/architecture/adr-0010-hero-tower-synced-class.md
     added: 2026-05-24
     revised: ""
 
@@ -564,6 +623,13 @@ forbidden_patterns:
     description: "WaveManager._phase must not be assigned directly from any method other than _transition_to(new_phase). All FSM state transitions must go through _transition_to(), which enforces the _phase_locked check, stops current-phase timers, emits mission_phase_changed, and calls the phase entry method."
     why: "Direct _phase assignment bypasses three invariants simultaneously: (1) _phase_locked check that enforces DEFEAT priority, (2) timer cancellation for the exiting phase, (3) mission_phase_changed EventBus emission that all downstream systems (Mission HUD, Constellation, Save) depend on for phase tracking. A single unguarded assignment can leave timers running, subscribers desynced, and DEFEAT suppressible."
     adr: docs/architecture/adr-0012-wave-manager-fsm.md
+    added: 2026-05-24
+
+  - pattern: hero_queries_tower_system_directly
+    status: active
+    description: "Hero System must not hold a direct reference to Tower System, call any Tower System method, or read Tower System internal state. All tower data required by Hero System (archetype, cell) must arrive exclusively via EventBus subscriptions (tower_placed, tower_removed, tower_destroyed) into a local _tower_cache Dictionary."
+    why: "Tower System is not an Autoload — Hero System is. A direct reference from an Autoload to a scene-instanced system creates a boot-order dependency that cannot be resolved without changing Autoload order, and a lifecycle dependency that crashes if the mission scene is freed while the Hero Autoload holds a reference. The EventBus tower cache pattern (identical to D&S monster cache in ADR-0007) resolves both issues."
+    adr: docs/architecture/adr-0010-hero-tower-synced-class.md
     added: 2026-05-24
 
 # Example:

@@ -14,8 +14,8 @@ Accepted
 | **Domain** | Core / GDScript Scripting |
 | **Knowledge Risk** | LOW — GDScript signal system and `call_deferred()` are in LLM training data and unchanged through Godot 4.6 |
 | **References Consulted** | `docs/engine-reference/godot/VERSION.md`, `docs/engine-reference/godot/breaking-changes.md`, `docs/engine-reference/godot/deprecated-apis.md` |
-| **Post-Cutoff APIs Used** | None — signal declaration, `emit_signal()`, `call_deferred()`, and Autoload lifecycle are all pre-4.4 |
-| **Verification Required** | Verify `signal.connect(callable)` typed-signal syntax works for all 70 declared signals at startup. Verify `call_deferred("emit_signal", ...)` fires on the correct frame boundary when called from `_physics_process`. |
+| **Post-Cutoff APIs Used** | None — signal declaration, `emit_signal()`, `call_deferred()`, `await get_tree().process_frame`, and Autoload lifecycle are all pre-4.4 |
+| **Verification Required** | Verify `signal.connect(callable)` typed-signal syntax works for all 70 declared signals at startup. Verify `call_deferred("emit_signal", ...)` fires on the correct frame boundary when called from `_physics_process`. Verify `await get_tree().process_frame` in a physics-context coroutine resumes at the top of the next frame (not end-of-current-frame). |
 
 ## ADR Dependencies
 
@@ -55,6 +55,7 @@ A single `EventBus` GDScript Autoload declares all 70 cross-system signals. Syst
 
 **Rule 2 — Physics callers and Level-1 cascade emitters use deferred dispatch.**
 Any `emit_signal()` originating inside `_physics_process`, `area_body_entered`, or similar physics callbacks must use `call_deferred("emit_signal", "event_name", payload)`. Any subscriber that emits a further event (Level-1 cascade) must also emit it deferred to avoid cascade cost stacking in a single frame.
+When *guaranteed next-frame* delivery is required (i.e. the event must not fire until after all `_physics_process` callbacks in the current frame have completed), use `await get_tree().process_frame` before emitting instead of `call_deferred`. This distinction matters when the emitting system itself runs in `_physics_process` Pass 1 and must guarantee that its own drain loop has fully completed before subscribers react. `call_deferred` fires end-of-current-frame (before `_process`); `await process_frame` fires at the top of the next frame. Both are approved mechanisms under this rule — choose based on required delivery timing. See ADR-0007 (Damage pipeline) for the canonical next-frame pattern.
 
 **Rule 3 — Payload convention: typed parameters for 1–4 fields; Resource subclass for 5+ fields.**
 Signal parameters must be typed GDScript types. Events with 5 or more data fields must package their payload into a custom `Resource` subclass (e.g., `MonsterDiedEvent`, `HeroAutoAttackEvent`). Untyped `Dictionary` payloads are prohibited.
@@ -116,8 +117,12 @@ EventBus.monster_died.disconnect(_on_monster_died)
 # Synchronous dispatch (non-physics callers):
 EventBus.wave_started.emit(wave_number, total_waves, difficulty)
 
-# Deferred dispatch (physics callers and Level-1 cascade emitters):
+# Deferred dispatch — end-of-frame (physics callers and Level-1 cascade emitters):
 EventBus.monster_damage_taken.emit.call_deferred(payload)
+
+# Deferred dispatch — next-frame (when pass-1 drain must complete first; see ADR-0007):
+await get_tree().process_frame
+EventBus.monster_damage_taken.emit(payload)
 ```
 
 ### Performance Budget
