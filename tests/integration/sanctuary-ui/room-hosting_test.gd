@@ -3,14 +3,13 @@
 ## mount/unmount mechanism (GDD Core Rule 4, AC Group 4 + States/Transitions
 ## room-entry regression items).
 ##
-## ROOM_INVENTORY_CRAFTING, ROOM_MENAGERIE, and (as of 2026-07-25)
-## ROOM_DEFENSE_BUILDING now have real scenes -- Equipment Forge still
-## doesn't exist anywhere in this project (confirmed by direct search,
-## matches the GDD's own OQ-5). These tests cover what IS real: InventoryScreen
-## docks cleanly with no CanvasLayer (the Core Rule 1 z-order guarantee this
-## whole shell depends on), mounts/unmounts correctly through the tab strip,
-## and the 1 remaining unmapped room fails safe (no crash, no fabricated
-## content) rather than being silently skipped from test coverage.
+## As of 2026-07-25, all 4 rooms (ROOM_INVENTORY_CRAFTING, ROOM_MENAGERIE,
+## ROOM_DEFENSE_BUILDING, ROOM_EQUIPMENT_FORGE) have real scenes -- the
+## "unmapped room fails safe" tests this file used to cover no longer have
+## a real example to test against, so they were retargeted (2026-07-25) to
+## verify Equipment Forge -- the last room to gain a real scene -- mounts and
+## unmounts correctly, mirroring the InventoryScreen tests below rather than
+## a fail-safe/no-op assertion.
 extends GdUnitTestSuite
 
 var _runner: GdUnitSceneRunner
@@ -66,26 +65,28 @@ func test_leaving_inventory_crafting_unmounts_it() -> void:
 
 
 # ---------------------------------------------------------------------------
-# Unmapped rooms (no real scene yet) fail safe -- no crash, RoomHost stays
-# empty rather than hosting fabricated content
+# Selecting Equipment Forge via the tab strip mounts the real screen
+# (retargeted 2026-07-25 -- was the "unmapped room fails safe" case until
+# Equipment Forge, the last room, gained a real scene)
 # ---------------------------------------------------------------------------
 
-func test_unmapped_room_selection_does_not_crash_and_hosts_nothing() -> void:
-	_shell.get_tab_strip_for_test().get_tab_button(4).pressed.emit()  # Equipment Forge -- no scene yet
+func test_selecting_equipment_forge_tab_mounts_the_real_screen() -> void:
+	_shell.get_tab_strip_for_test().get_tab_button(4).pressed.emit()  # Equipment Forge
 
 	assert_that(_shell.get_active_state()).is_equal(&"ROOM_EQUIPMENT_FORGE")
-	assert_object(_shell.get_room_host().get_current_room()).is_null()
-	# RoomHost is still the visible content zone (Story 001's own AC-2/AC-3
-	# contract) even with nothing mounted into it -- this is "empty," not
-	# "broken."
+	assert_object(_shell.get_room_host().get_current_room()).is_not_null()
+	assert_that(_shell.get_room_host().get_current_room_state()).is_equal(&"ROOM_EQUIPMENT_FORGE")
 	assert_bool(_shell.get_room_host().visible).is_true()
 	assert_bool(_shell.get_diorama().visible).is_false()
 
 
-func test_switching_from_inventory_crafting_to_an_unmapped_room_unmounts_cleanly() -> void:
+func test_switching_from_inventory_crafting_to_equipment_forge_unmounts_and_remounts_cleanly() -> void:
 	_shell.get_tab_strip_for_test().get_tab_button(1).pressed.emit()  # Inventory & Crafting
-	assert_object(_shell.get_room_host().get_current_room()).is_not_null()
+	var inventory_room: Node = _shell.get_room_host().get_current_room()
+	assert_object(inventory_room).is_not_null()
 
-	_shell.get_tab_strip_for_test().get_tab_button(4).pressed.emit()  # Equipment Forge -- no scene yet
+	_shell.get_tab_strip_for_test().get_tab_button(4).pressed.emit()  # Equipment Forge
 
-	assert_object(_shell.get_room_host().get_current_room()).is_null()
+	var forge_room: Node = _shell.get_room_host().get_current_room()
+	assert_object(forge_room).is_not_null()
+	assert_bool(forge_room == inventory_room).is_false()

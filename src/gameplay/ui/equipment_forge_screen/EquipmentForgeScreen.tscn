@@ -1,0 +1,65 @@
+[gd_scene load_steps=3 format=3 uid="uid://equipmentforgescreen0"]
+
+[ext_resource type="Script" path="res://src/gameplay/ui/equipment_forge_screen/equipment_forge_screen.gd" id="1_ctrl"]
+[ext_resource type="Script" path="res://src/ui/input_mode_tracker.gd" id="2_tracker"]
+
+[node name="EquipmentForgeScreen" type="Control"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_ctrl")
+
+[node name="InputModeTracker" type="Node" parent="."]
+script = ExtResource("2_tracker")
+
+[node name="MainLayout" type="VBoxContainer" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 8
+
+[node name="HeaderRow" type="HBoxContainer" parent="MainLayout"]
+layout_mode = 2
+
+[node name="TabToggleButton" type="Button" parent="MainLayout/HeaderRow"]
+layout_mode = 2
+text = "Craft / Imbue"
+
+[node name="CraftView" type="PanelContainer" parent="MainLayout"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="RecipeList" type="VBoxContainer" parent="MainLayout/CraftView"]
+layout_mode = 2
+
+[node name="ImbueView" type="HBoxContainer" parent="MainLayout"]
+visible = false
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 16
+
+[node name="ItemColumn" type="VBoxContainer" parent="MainLayout/ImbueView"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="ItemList" type="VBoxContainer" parent="MainLayout/ImbueView/ItemColumn"]
+layout_mode = 2
+
+[node name="CancelSelectionButton" type="Button" parent="MainLayout/ImbueView/ItemColumn"]
+layout_mode = 2
+visible = false
+text = "Cancel Selection"
+
+[node name="RuneColumn" type="VBoxContainer" parent="MainLayout/ImbueView"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="RuneList" type="VBoxContainer" parent="MainLayout/ImbueView/RuneColumn"]
+layout_mode = 2
+
+[node name="ImbueConfirmDialog" type="ConfirmationDialog" parent="."]
+title = "Confirm Imbue"

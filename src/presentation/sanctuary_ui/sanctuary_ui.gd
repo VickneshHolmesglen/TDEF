@@ -45,13 +45,8 @@ const DEPARTING_STATE: StringName = &"DEPARTING"
 const DEPARTING_TO_LOADOUT_STATE: StringName = &"DEPARTING_TO_LOADOUT"
 
 ## Story 005 (Room Hosting) — which real room scene backs each ROOM_* state.
-## Equipment Forge still has no entry (no .tscn exists yet, matching the
-## GDD's own OQ-5). Selecting it still works exactly as Story 001/002 already
-## built (tab switches, RoomHost becomes the visible content), it just has
-## nothing to mount — RoomHost stays empty rather than crashing or
-## fabricating placeholder content. Add an entry here the moment that room's
-## own screen exists; no other code in this file needs to change to support
-## that.
+## As of 2026-07-25, all 4 rooms have real scenes (see each addition's own
+## note below for honestly-scoped deviations from its GDD's literal wording).
 ##
 ## Menagerie added 2026-07-25: `MenagerieScreen.tscn`, built directly against
 ## menagerie.md's UI Requirements section (roster review, tend, breeding
@@ -67,10 +62,21 @@ const DEPARTING_TO_LOADOUT_STATE: StringName = &"DEPARTING_TO_LOADOUT"
 ## both). See that scene's own doc comment for the honestly-scoped deviation
 ## (flat ordered list instead of a literal branching-graph tech tree, since
 ## no graph-layout art exists).
+##
+## Equipment Forge added 2026-07-25: `EquipmentForgeScreen.tscn`, built
+## directly against equipment-forge.md's UI Requirements section (persistent
+## Craft/Imbue tab toggle, equipment-recipe crafting, rune-imbuing with a
+## Menagerie-sacrifice-style two-step confirmation). See that scene's own
+## doc comment for the honestly-scoped deviations (own recipe list instead
+## of literally reusing a nonexistent Crafting panel; 2-way item→rune
+## selection instead of the GDD's literal 3-way item→slot→rune selection,
+## since `Inventory.apply_rune_to_item()` has no per-slot targeting to
+## select in the first place).
 const ROOM_SCENES: Dictionary[StringName, PackedScene] = {
 	&"ROOM_INVENTORY_CRAFTING": preload("res://src/gameplay/ui/inventory_screen/InventoryScreen.tscn"),
 	&"ROOM_MENAGERIE": preload("res://src/gameplay/ui/menagerie_screen/MenagerieScreen.tscn"),
 	&"ROOM_DEFENSE_BUILDING": preload("res://src/gameplay/ui/defense_building_screen/DefenseBuildingScreen.tscn"),
+	&"ROOM_EQUIPMENT_FORGE": preload("res://src/gameplay/ui/equipment_forge_screen/EquipmentForgeScreen.tscn"),
 }
 
 ## GDD Tuning Knobs default (56-96px safe range) — Story 002 owns tuning this.

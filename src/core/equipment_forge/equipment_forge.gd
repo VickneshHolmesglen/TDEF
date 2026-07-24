@@ -98,7 +98,21 @@ var _forge_resolving: bool = false
 var _available_runes: Dictionary[StringName, Dictionary] = {}  ## rune_id -> {rune_source, stat_delta, is_known}
 
 
+## Group membership added 2026-07-25: EquipmentForge is deliberately
+## scene-instanced, not an Autoload (ADR-0025) — its one real instance lives
+## as a shell-owned child of SanctuaryUI.tscn (persists across room switches
+## within one Sanctuary visit, resets on Sanctuary scene reload, per that
+## ADR's own explicit design). The Equipment Forge SCREEN (a RoomHost-hosted,
+## destroy-and-recreate room, unlike this node) discovers the shell-owned
+## instance via `get_tree().get_first_node_in_group(&"equipment_forge")`
+## rather than a direct node-path reference, since RoomHost's generic mount
+## mechanism has no room-specific injection seam (and shouldn't gain one just
+## for this).
+const GROUP_NAME: StringName = &"equipment_forge"
+
+
 func _ready() -> void:
+	add_to_group(GROUP_NAME)
 	GEventBus.tech_unlocked.connect(_on_tech_unlocked)
 	GEventBus.item_added.connect(_on_item_added)
 	GEventBus.constellation_rune_discovered.connect(_on_constellation_rune_discovered)
@@ -168,6 +182,14 @@ func is_rune_id_known(rune_id: StringName) -> bool:
 ## or already imbued/consumed — Story 013's own scope removes it from here).
 func get_available_rune(rune_id: StringName) -> Dictionary:
 	return _available_runes.get(rune_id, {})
+
+
+## Read-only roster query for the Equipment Forge screen's own Imbue-tab
+## rune-pool panel (added 2026-07-25 — no enumeration API existed before,
+## only the single-ID get_available_rune() lookup). Returns a shallow copy
+## so callers can't mutate the ledger directly.
+func get_all_available_runes() -> Dictionary[StringName, Dictionary]:
+	return _available_runes.duplicate()
 
 
 ## Rune Imbuing Action (Rule 14, AC-16(a-d)): imbues rune_id (must currently

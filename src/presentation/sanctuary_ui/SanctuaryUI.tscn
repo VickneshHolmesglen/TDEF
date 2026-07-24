@@ -1,9 +1,10 @@
-[gd_scene load_steps=5 format=3 uid="uid://sanctuaryui0scene"]
+[gd_scene load_steps=6 format=3 uid="uid://sanctuaryui0scene"]
 
 [ext_resource type="Script" path="res://src/presentation/sanctuary_ui/sanctuary_ui.gd" id="1_su"]
 [ext_resource type="Script" path="res://src/presentation/sanctuary_ui/tab_strip.gd" id="2_ts"]
 [ext_resource type="Script" path="res://src/presentation/sanctuary_ui/resource_header.gd" id="3_rh"]
 [ext_resource type="Script" path="res://src/presentation/sanctuary_ui/room_host.gd" id="4_rmh"]
+[ext_resource type="Script" path="res://src/core/equipment_forge/equipment_forge.gd" id="5_ef"]
 
 [node name="SanctuaryUI" type="Control"]
 layout_mode = 3
@@ -15,6 +16,9 @@ layout_mode = 1
 [node name="RoomHost" type="Control" parent="."]
 layout_mode = 1
 script = ExtResource("4_rmh")
+
+[node name="EquipmentForge" type="Node" parent="."]
+script = ExtResource("5_ef")
 
 [node name="Chrome" type="Control" parent="."]
 layout_mode = 1
