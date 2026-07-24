@@ -12,6 +12,22 @@ extends Control
 ##      discovers the shell-owned instance via the "tarot" group, mirroring
 ##      equipment_forge_screen.gd's own identical pattern)
 ##
+## Conflict Indicator (epic-11 Story 004, GDD Core Rule 6): closes a real gap
+## found 2026-07-25 — Story 004 built the mapping/query engine
+## (`ConflictIndicator`, shell-owned) against a screen that didn't exist yet;
+## once this screen was built the same session, it never actually queried
+## that engine, leaving the badge permanently dark. Discovers the shell
+## (`TarotDeckUI`) via the "tarot_deck_ui" group (same pattern as the "tarot"
+## group above) to reach `get_conflict_indicator()`. Rendered as a plain-text
+## "[CONFLICT: modifier_id, ...]" tag appended to the tray button's own label
+## — matches this screen's own established plain-text-tag convention
+## ("[LOCKED]"/"[EQUIPPED]"/"[AVAILABLE]" below), not a corner-anchored glyph
+## overlay, since no card art/badge iconography exists anywhere in this
+## project (same honestly-scoped deviation class as this file's other 2
+## documented gaps above). Only tray cards ever show the tag — the GDD
+## anchors the badge to "the conflicting tray slot" specifically, never the
+## pool.
+##
 ## Scope, honestly bounded:
 ## - The GDD's pick-up-then-place gamepad model (select a pool card ->
 ##   "picked up" -> select a tray slot -> placed, supporting in-place swap)
@@ -35,6 +51,10 @@ const FOCUS_RING_COLOR: Color = Color(1.0, 0.85, 0.2, 1.0)  ## placeholder — a
 ## the "tarot" group (Tarot is scene-instanced per ADR-0027, not an Autoload).
 @export var tarot: Tarot
 
+## Injectable for tests; defaults to the shell-owned instance discovered via
+## the "tarot_deck_ui" group (TarotDeckUI is scene-instanced, not an Autoload).
+@export var conflict_indicator: ConflictIndicator
+
 @onready var _input_mode_tracker: InputModeTracker = $InputModeTracker
 @onready var _deck_tray_list: VBoxContainer = $MainLayout/DeckTray/DeckList
 @onready var _card_pool_list: VBoxContainer = $MainLayout/CardPool/PoolList
@@ -46,9 +66,15 @@ var _pool_buttons: Dictionary[StringName, Button] = {}
 func _ready() -> void:
 	if tarot == null:
 		tarot = get_tree().get_first_node_in_group(&"tarot") as Tarot
+	if conflict_indicator == null:
+		var shell: Node = get_tree().get_first_node_in_group(&"tarot_deck_ui")
+		if shell != null and shell.has_method(&"get_conflict_indicator"):
+			conflict_indicator = shell.call(&"get_conflict_indicator") as ConflictIndicator
 
 	_input_mode_tracker.input_mode_changed.connect(_on_input_mode_changed)
 	GEventBus.tarot_deck_changed.connect(_on_deck_changed)
+	GEventBus.run_modifier_selected.connect(_on_run_modifier_selected)
+	GEventBus.mission_selected.connect(_on_mission_selected)
 
 	_rebuild_deck_tray()
 	_rebuild_card_pool()
@@ -56,11 +82,26 @@ func _ready() -> void:
 
 func disconnect_own_subscriptions() -> void:
 	GEventBus.tarot_deck_changed.disconnect(_on_deck_changed)
+	GEventBus.run_modifier_selected.disconnect(_on_run_modifier_selected)
+	GEventBus.mission_selected.disconnect(_on_mission_selected)
 
 
 func _on_deck_changed(_new_count: int) -> void:
 	_rebuild_deck_tray()
 	_rebuild_card_pool()
+
+
+## Conflict Indicator badge (GDD Core Rule 6) must update live as Mission
+## Select's active modifiers change, without requiring a deck edit — these
+## 2 subscriptions exist solely to refresh the tray's own conflict tags;
+## `ConflictIndicator` itself already tracks the underlying state, this
+## screen only needs to re-render against it.
+func _on_run_modifier_selected(_modifier_id: String, _modifier_value: float) -> void:
+	_rebuild_deck_tray()
+
+
+func _on_mission_selected(_mission_id: String) -> void:
+	_rebuild_deck_tray()
 
 
 # ---------------------------------------------------------------------------
@@ -85,10 +126,42 @@ func _create_deck_button(card_id: StringName) -> Button:
 	button.name = "Deck_%s" % String(card_id)
 	button.focus_mode = Control.FOCUS_ALL
 	button.clip_text = true
-	button.text = String(card_id)
+	button.text = _deck_entry_text(card_id)
 	button.pressed.connect(_on_deck_card_pressed.bind(card_id))
 	_wire_focus_ring(button)
 	return button
+
+
+## GDD Core Rule 6: plain-text conflict tag, tray slots only (see class doc
+## comment for why this is text, not a corner-anchored badge glyph).
+func _deck_entry_text(card_id: StringName) -> String:
+	var conflicts: Array[String] = _get_card_conflicts(card_id)
+	if conflicts.is_empty():
+		return String(card_id)
+	return "%s [CONFLICT: %s]" % [String(card_id), ", ".join(conflicts)]
+
+
+## Every distinct Mission Select modifier_id any of this card's modifier
+## entries conflicts with (GDD Core Rule 6 — a card can conflict with more
+## than one selection simultaneously, only possible for
+## tarot_wave_config_override today).
+func _get_card_conflicts(card_id: StringName) -> Array[String]:
+	var conflicts: Array[String] = []
+	if conflict_indicator == null:
+		return conflicts
+	var card: TarotCardResource = GGameDataRegistry.get_tarot_card(card_id)
+	if card == null:
+		return conflicts
+	for entry: TarotModifierEntry in card.modifiers:
+		for modifier_id: String in conflict_indicator.get_conflicting_modifier_ids(entry.modifier_type):
+			if not conflicts.has(modifier_id):
+				conflicts.append(modifier_id)
+	return conflicts
+
+
+## Test/inspection accessor.
+func has_conflict(card_id: StringName) -> bool:
+	return not _get_card_conflicts(card_id).is_empty()
 
 
 ## GDD: unequipping is a single, immediate action -- no confirmation dialog

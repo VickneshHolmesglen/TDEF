@@ -21,11 +21,17 @@ var _runner: GdUnitSceneRunner
 var _screen: Control
 
 
+var _conflict_indicator: ConflictIndicator
+
+
 func before_test() -> void:
 	_tarot = Tarot.new()
+	_conflict_indicator = ConflictIndicator.new()
+	add_child(_conflict_indicator)
 	_runner = scene_runner("res://src/gameplay/ui/tarot_screen/TarotScreen.tscn")
 	_screen = _runner.scene() as Control
 	_screen.set("tarot", _tarot)
+	_screen.set("conflict_indicator", _conflict_indicator)
 	_rebuild_all()
 
 
@@ -33,6 +39,10 @@ func after_test() -> void:
 	if _tarot != null and is_instance_valid(_tarot):
 		_tarot.free()
 	_tarot = null
+	if _conflict_indicator != null and is_instance_valid(_conflict_indicator):
+		_conflict_indicator.disconnect_own_subscriptions()
+		_conflict_indicator.queue_free()
+	_conflict_indicator = null
 
 
 func _rebuild_all() -> void:
@@ -122,6 +132,70 @@ func test_deck_changed_event_triggers_a_live_rebuild() -> void:
 	_tarot.equip_card(CARD_LUCKY_CHARM)  # fires tarot_deck_changed -- screen listens for this
 
 	assert_object(_screen.call("get_deck_button", CARD_LUCKY_CHARM)).is_not_null()
+
+
+# ---------------------------------------------------------------------------
+# Conflict Indicator (epic-11 Story 004, GDD Core Rule 6)
+# ---------------------------------------------------------------------------
+
+func test_no_conflict_tag_when_no_run_modifier_is_active() -> void:
+	_unlock(CARD_IRON_RESOLVE)  # tarot_difficulty_growth_rate
+	_tarot.equip_card(CARD_IRON_RESOLVE)
+	_rebuild_all()
+
+	var button: Button = _screen.call("get_deck_button", CARD_IRON_RESOLVE)
+	assert_str(button.text).not_contains("CONFLICT")
+	assert_bool(_screen.call("has_conflict", CARD_IRON_RESOLVE)).is_false()
+
+
+func test_conflict_tag_appears_when_a_mapped_run_modifier_is_active() -> void:
+	_unlock(CARD_IRON_RESOLVE)  # tarot_difficulty_growth_rate -> conflicts with difficulty_growth_boost
+	_tarot.equip_card(CARD_IRON_RESOLVE)
+	_rebuild_all()
+
+	GEventBus.run_modifier_selected.emit("difficulty_growth_boost", 0.03)
+
+	var button: Button = _screen.call("get_deck_button", CARD_IRON_RESOLVE)
+	assert_str(button.text).contains("CONFLICT")
+	assert_bool(_screen.call("has_conflict", CARD_IRON_RESOLVE)).is_true()
+
+
+func test_conflict_tag_clears_when_mission_selected_resets_modifiers() -> void:
+	_unlock(CARD_IRON_RESOLVE)
+	_tarot.equip_card(CARD_IRON_RESOLVE)
+	_rebuild_all()
+	GEventBus.run_modifier_selected.emit("difficulty_growth_boost", 0.03)
+	assert_bool(_screen.call("has_conflict", CARD_IRON_RESOLVE)).is_true()
+
+	GEventBus.mission_selected.emit("some_other_mission")
+
+	var button: Button = _screen.call("get_deck_button", CARD_IRON_RESOLVE)
+	assert_str(button.text).not_contains("CONFLICT")
+
+
+func test_conflict_tag_never_blocks_unequipping_the_card() -> void:
+	_unlock(CARD_IRON_RESOLVE)
+	_tarot.equip_card(CARD_IRON_RESOLVE)
+	_rebuild_all()
+	GEventBus.run_modifier_selected.emit("difficulty_growth_boost", 0.03)
+	assert_bool(_screen.call("has_conflict", CARD_IRON_RESOLVE)).is_true()
+
+	@warning_ignore("unsafe_method_access")
+	_screen.call("_on_deck_card_pressed", CARD_IRON_RESOLVE)
+
+	assert_array(_tarot.get_current_deck()).is_empty()
+
+
+func test_unmapped_modifier_type_never_shows_a_conflict_tag() -> void:
+	_unlock(CARD_LUCKY_CHARM)  # tarot_reward_scalar_mult -- no MAPPING entry, no analog
+	_tarot.equip_card(CARD_LUCKY_CHARM)
+	_rebuild_all()
+
+	GEventBus.run_modifier_selected.emit("difficulty_growth_boost", 0.03)
+	GEventBus.run_modifier_selected.emit("extend_waves", 1.0)
+
+	var button: Button = _screen.call("get_deck_button", CARD_LUCKY_CHARM)
+	assert_str(button.text).not_contains("CONFLICT")
 
 
 # ---------------------------------------------------------------------------

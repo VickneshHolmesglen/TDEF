@@ -66,6 +66,7 @@ var _snapshot_chip: SnapshotChip
 
 
 func _ready() -> void:
+	add_to_group(&"tarot_deck_ui")
 	_configure_chrome_layout()
 	set_active_state(HERO_SKILL_BUILD_STATE)
 	_tab_strip.tab_target_selected.connect(_on_tab_target_selected)
