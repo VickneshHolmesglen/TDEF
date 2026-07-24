@@ -48,9 +48,27 @@ const DEFAULT_VOLUME_PERCENT: float = 80.0
 ## other way around.
 var _bus_volumes: Dictionary[StringName, float] = {}
 
+## Story 002: the Music/Ambient state machine. Owned here (not a separate
+## Autoload) since the GDD frames bus management and music-cue state as one
+## architectural module ("Audio System").
+var music_ambient: MusicAmbientController
+
+## Story 003: the data-driven one-shot cue dispatcher.
+var cue_dispatcher: AudioCueDispatcher
+
 
 func _ready() -> void:
 	_configure_buses()
+	if music_ambient == null:
+		music_ambient = MusicAmbientController.new()
+		music_ambient.name = &"MusicAmbientController"
+	if music_ambient.get_parent() == null:
+		add_child(music_ambient)
+	if cue_dispatcher == null:
+		cue_dispatcher = AudioCueDispatcher.new()
+		cue_dispatcher.name = &"AudioCueDispatcher"
+	if cue_dispatcher.get_parent() == null:
+		add_child(cue_dispatcher)
 
 
 ## Builds the bus graph if it doesn't already exist, and applies the

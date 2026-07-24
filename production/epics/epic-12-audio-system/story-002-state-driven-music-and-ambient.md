@@ -1,7 +1,7 @@
 # Story 002: State-Driven Music and Ambient — Crossfades, Anticipation, and the One Hard-Cut Exception
 
 > **Epic**: Audio System
-> **Status**: Ready
+> **Status**: Complete (2026-07-25)
 > **Layer**: Presentation
 > **Type**: Integration
 > **Estimate**: 4h
@@ -27,10 +27,12 @@
 
 *From GDD `design/gdd/audio-system.md`, AC Group 2 + States and Transitions table:*
 
-- [ ] **AC-3**: GIVEN Music state is `Measured` (SCOUT), WHEN `wave_countdown_warning(seconds_remaining=10)` fires, THEN a crossfade to `Urgent` begins, timed to complete as the countdown reaches 0.
-- [ ] **AC-4**: GIVEN Music state is `Urgent` (WAVE_ACTIVE), WHEN the wave-clear signal fires (`mission_phase_changed` → INTERMISSION), THEN Music ducks/cuts to `Measured-urgent` within the Tuning Knobs' 0.2–0.5s window — not a multi-second crossfade.
-- [ ] **AC-5**: GIVEN any `mission_phase_changed` fires with `previous_phase == new_phase`, THEN no music retrigger or restart occurs.
-- [ ] **AC-6**: GIVEN INTERMISSION's Ambient combat layer is fading out, WHEN a new wave begins (`Measured-urgent` → `Urgent`), THEN the base Ambient bed is never interrupted or restarted — only layers change.
+- [x] **AC-3**: GIVEN Music state is `Measured` (SCOUT), WHEN `wave_countdown_warning(seconds_remaining=10)` fires, THEN a crossfade to `Urgent` begins, timed to complete as the countdown reaches 0. Implemented as `duration = seconds_remaining` (explicit interpretation call, see Implementation Notes addendum below) — verified via `test_countdown_warning_during_measured_state_begins_a_crossfade_to_urgent`, `test_countdown_warning_with_short_remaining_time_still_schedules_matching_duration`, `test_countdown_warning_outside_measured_state_is_ignored`.
+- [x] **AC-4**: GIVEN Music state is `Urgent` (WAVE_ACTIVE), WHEN the wave-clear signal fires (`mission_phase_changed` → INTERMISSION), THEN Music ducks/cuts to `Measured-urgent` within the Tuning Knobs' 0.2–0.5s window — not a multi-second crossfade. Verified via `test_wave_clear_to_intermission_is_a_hard_cut_within_tuning_bounds`, `test_wave_clear_hard_cut_is_not_a_multi_second_crossfade`.
+- [x] **AC-5**: GIVEN any `mission_phase_changed` fires with `previous_phase == new_phase`, THEN no music retrigger or restart occurs. Verified via `test_identical_phase_transition_does_not_retrigger_in_measured_state`, `test_identical_phase_transition_does_not_retrigger_in_urgent_state`.
+- [x] **AC-6**: GIVEN INTERMISSION's Ambient combat layer is fading out, WHEN a new wave begins (`Measured-urgent` → `Urgent`), THEN the base Ambient bed is never interrupted or restarted — only layers change. Verified via `test_ambient_base_bed_is_never_restarted_across_any_transition`, `test_next_wave_during_combat_layer_fade_out_reactivates_it_without_touching_base_bed`, `test_intermission_after_full_settle_still_leaves_base_bed_untouched`.
+
+**Implementation Notes addendum (AC-3 interpretation call)**: this story's own QA Test Case for AC-3 states the crossfade's "scheduled completion time equals the countdown's own remaining-time-to-zero" — implemented literally as `duration = seconds_remaining` at the moment `wave_countdown_warning` fires, rather than the GDD prose's separate "3.5s Tuning Knob default" (which describes the expected real-world *tuned* value once real music-stem content and real wave-timing exist to tune against). Flagged honestly rather than silently guessed — no real audio content exists yet to validate either interpretation against, and the QA spec is the more authoritative, testable source per this project's own `/dev-story` convention ("the developer implements against these — do not invent new test cases").
 
 ---
 
@@ -89,7 +91,9 @@
 **Story Type**: Integration
 **Required evidence**: `tests/integration/audio/state-driven-music-and-ambient_test.gd`
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing — 10/10 test cases, 0 errors, 0 failures, 0 orphans (`tests/integration/audio/state-driven-music-and-ambient_test.gd`, run 2026-07-25). Real scene instantiation (`add_child()`) exercising the real `GEventBus` signals — not mocked.
+
+**Content note**: no real music/ambient stem assets exist yet (matches every other system's own "no content authored yet" gap) — `MusicAmbientController` implements the full state machine, timing, and Tween-based crossfade/duck mechanism for real; it does not yet drive an `AudioStreamPlayer` with actual audio, since there is nothing to play. This mirrors the Diorama's placeholder-`ColorRect`-but-real-mechanism precedent from Epic 10.
 
 ---
 

@@ -1,7 +1,7 @@
 # Story 003: Data-Driven Cue Dispatch — AudioCueMap, 7 Families, One-Shot Triggering
 
 > **Epic**: Audio System
-> **Status**: Ready
+> **Status**: Complete (2026-07-25)
 > **Layer**: Presentation
 > **Type**: Integration
 > **Estimate**: 4h
@@ -27,11 +27,13 @@
 
 *From GDD `design/gdd/audio-system.md`, AC Group 3:*
 
-- [ ] **AC-7**: GIVEN `boss_died` fires, THEN a Discovery/Milestone Fanfare-family cue plays (per whatever `AudioCueMap` entry exists for that event), respecting the family's voice cap.
-- [ ] **AC-8**: GIVEN `tower_attacked` fires, THEN a Combat Impact-family cue plays with world-space distance attenuation (Formula F2) applied.
-- [ ] **AC-9**: GIVEN `sanctuary_structure_built` fires, THEN a Progress Blip or Discovery/Milestone Fanfare-family cue plays (per the `AudioCueMap`'s own categorization), at full volume regardless of the structure's world position (not spatial per Formula F2's own exclusion).
-- [ ] **AC-10**: GIVEN `AudioCueMap` entries exist for at least 2 arbitrarily-different subscribed events (e.g. `boss_died` and `component_crafted`), WHEN each fires in turn, THEN each plays its own correctly-mapped cue on its own configured bus — confirming generic dispatch works across genuinely different events using the same lookup path, without the test itself needing per-event branching.
-- [ ] **AC-10a**: GIVEN an event fires with no matching `AudioCueMap` entry, THEN no cue plays and no error or exception occurs.
+- [x] **AC-7**: GIVEN `boss_died` fires, THEN a Discovery/Milestone Fanfare-family cue plays (per whatever `AudioCueMap` entry exists for that event), respecting the family's voice cap. Verified via `test_boss_died_dispatches_its_mapped_fanfare_cue` (voice-cap enforcement itself is Story 004's scope, not this story's).
+- [x] **AC-8**: GIVEN `tower_attacked` fires, THEN a Combat Impact-family cue plays with world-space distance attenuation (Formula F2) applied. Verified against the GDD's own worked example (V_base=0.7, d=8, R=15 → 0.327) via `test_tower_attacked_spatial_cue_applies_formula_f2_worked_example`, plus edge cases `test_spatial_cue_at_zero_distance_plays_at_full_base_volume`, `test_spatial_cue_beyond_max_audible_radius_is_silent`, `test_negative_distance_is_clamped_to_zero_not_treated_as_an_error`.
+- [x] **AC-9**: GIVEN `sanctuary_structure_built` fires, THEN a Progress Blip or Discovery/Milestone Fanfare-family cue plays (per the `AudioCueMap`'s own categorization), at full volume regardless of the structure's world position (not spatial per Formula F2's own exclusion). Verified via `test_sanctuary_structure_built_plays_full_volume_regardless_of_distance`, `test_non_spatial_cue_ignores_distance_argument_entirely`.
+- [x] **AC-10**: GIVEN `AudioCueMap` entries exist for at least 2 arbitrarily-different subscribed events (e.g. `boss_died` and `component_crafted`), WHEN each fires in turn, THEN each plays its own correctly-mapped cue on its own configured bus — confirming generic dispatch works across genuinely different events using the same lookup path, without the test itself needing per-event branching. Verified via `test_two_different_events_each_dispatch_their_own_mapped_cue`.
+- [x] **AC-10a**: GIVEN an event fires with no matching `AudioCueMap` entry, THEN no cue plays and no error or exception occurs. Verified via `test_event_with_no_map_entry_is_a_silent_no_op`, `test_dispatch_with_empty_cue_map_never_errors`.
+
+**Implementation note (world-space distance)**: Formula F2 needs a real distance-from-camera-focus value; this project has no scrolling-camera/camera-focus concept built yet (fixed top-down viewport). `AudioCueDispatcher.dispatch_cue()` accepts `distance` directly so the formula itself is fully real and tested; the real `tower_attacked` signal wiring currently passes `distance = 0.0` pending that future camera-focus integration — flagged honestly as a separate, real gap (not this story's to close), not silently faked.
 
 ---
 
@@ -96,7 +98,7 @@
 **Story Type**: Integration
 **Required evidence**: `tests/integration/audio/data-driven-cue-dispatch_test.gd`
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing — 10/10 test cases, 0 errors, 0 failures, 0 orphans (`tests/integration/audio/data-driven-cue-dispatch_test.gd`, run 2026-07-25). Real scene instantiation exercising the real `GEventBus` — not mocked.
 
 ---
 
