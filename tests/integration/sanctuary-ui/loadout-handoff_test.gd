@@ -4,22 +4,46 @@
 ## latch with Launch/Depart, and double-selection guard (GDD Core Rule 10,
 ## AC Group 10).
 ##
-## See sanctuary_ui.gd's own select_loadout() doc comment for a real, flagged
-## gap: Tarot Deck UI (epic-11-tarot-deck-ui) has no built scene yet, mirroring
-## Story 009's identical Mission Select gap. These tests cover the ordered
-## sequence and state machine, which ARE fully real, not the unresolved
-## cross-shell hand-off call itself.
+## Gap closed 2026-07-25: select_loadout()'s Step 4 now calls the real
+## GSceneManager.transition_to_tarot_deck_ui(), landing on the real,
+## fully-built TarotDeckUIScene.tscn. Exercised safely using this project's
+## own established test seam (GSceneManager._inject(), matching
+## tests/integration/tarot-deck-ui/exit-and-lifecycle_test.gd's identical
+## pattern for the equivalent Cancel/return-to-Sanctuary call) rather than
+## letting each test actually swap the running SceneTree's current_scene.
 extends GdUnitTestSuite
+
+const STUB_SCENE_PATH: String = "res://tests/fixtures/scene_manager/StubScene.tscn"
+
+var _original_mission_path: String
+var _original_sanctuary_path: String
+var _original_tarot_deck_path: String
+var _original_current_scene: Node
 
 var _runner: GdUnitSceneRunner
 var _shell: SanctuaryUI
 
 
 func before_test() -> void:
+	_original_mission_path = GSceneManager._mission_scene_path
+	_original_sanctuary_path = GSceneManager._sanctuary_scene_path
+	_original_tarot_deck_path = GSceneManager._tarot_deck_scene_path
+	GSceneManager._inject(STUB_SCENE_PATH, STUB_SCENE_PATH, STUB_SCENE_PATH)
+	_original_current_scene = get_tree().current_scene
+
 	TabStrip.reset_onboarding_flag_for_tests()
 	_runner = scene_runner("res://src/presentation/sanctuary_ui/SanctuaryUI.tscn")
 	@warning_ignore("unsafe_cast")
 	_shell = _runner.scene() as SanctuaryUI
+
+
+func after_test() -> void:
+	if GSceneManager._transition_in_progress:
+		await GEventBus.scene_transition_completed
+	GSceneManager._inject(_original_mission_path, _original_sanctuary_path, _original_tarot_deck_path)
+	GSceneManager._transition_in_progress = false
+	if is_instance_valid(_original_current_scene):
+		get_tree().current_scene = _original_current_scene
 
 
 # ---------------------------------------------------------------------------
@@ -149,3 +173,22 @@ func test_loadout_discards_staged_room_state_via_the_same_teardown_as_any_switch
 	# Story 007's own nested-state test already covers, exercised here via
 	# Loadout specifically rather than a lateral tab switch.
 	assert_object(_shell.get_room_host().get_current_room()).is_null()
+
+
+# ---------------------------------------------------------------------------
+# The real Tarot Deck UI hand-off call (gap closed 2026-07-25)
+# ---------------------------------------------------------------------------
+
+func test_loadout_triggers_a_real_transition_to_tarot_deck_ui_call() -> void:
+	var spy := EventBusSpy.new()
+	spy.watch(GEventBus.scene_transition_started)
+	spy.watch(GEventBus.scene_transition_completed)
+
+	_shell.select_loadout()
+
+	await GEventBus.scene_transition_completed
+
+	assert_int(spy.count("scene_transition_started")).is_equal(1)
+	var started_args: Array = (spy.emissions["scene_transition_started"] as Array)[0] as Array
+	assert_str(started_args[0] as String).is_equal("TAROT_DECK")
+	spy.disconnect_all()

@@ -23,6 +23,7 @@ extends Node
 
 const DEFAULT_MISSION_SCENE_PATH: String = "res://src/scenes/MissionScene.tscn"
 const DEFAULT_SANCTUARY_SCENE_PATH: String = "res://src/scenes/SanctuaryScene.tscn"
+const DEFAULT_TAROT_DECK_SCENE_PATH: String = "res://src/scenes/TarotDeckUIScene.tscn"
 
 # Test injection seam — override via _inject() before add_child() triggers _ready().
 # SanctuaryScene.tscn was created 2026-07-20 (src/scenes/sanctuary_scene.gd) as a
@@ -33,6 +34,18 @@ const DEFAULT_SANCTUARY_SCENE_PATH: String = "res://src/scenes/SanctuaryScene.ts
 # the_gap.tscn as a directly-booted concrete mission.
 var _mission_scene_path: String = DEFAULT_MISSION_SCENE_PATH
 var _sanctuary_scene_path: String = DEFAULT_SANCTUARY_SCENE_PATH
+## Added 2026-07-25, closing Sanctuary UI Epic 10 Story 010's/Tarot Deck UI
+## Epic 11 Story 002's own flagged gap: Sanctuary UI's Loadout tab had a
+## fully-real 4-step ordered hand-off sequence with no actual scene-
+## transition call at the end (no SceneManager method existed to reach
+## Tarot Deck UI at all). ADR-0002's own Decision text currently enumerates
+## exactly 2 top-level contexts ("SANCTUARY and MISSION") — this is a real,
+## not-yet-formally-classified expansion to a 3rd lateral context
+## (TAROT_DECK), flagged here rather than silently treated as already
+## covered by that ADR. TarotDeckUI itself already calls
+## transition_to_sanctuary() on its own real, working Cancel/return path
+## (Tarot Deck UI Story 003) — this closes the missing other direction.
+var _tarot_deck_scene_path: String = DEFAULT_TAROT_DECK_SCENE_PATH
 
 var _transition_in_progress: bool = false
 
@@ -53,9 +66,10 @@ func _exit_tree() -> void:
 ## second instance (see tests/unit/scene_manager/scene_manager_test.gd header
 ## comment for why). GDScript has no real access modifiers to enforce
 ## "tests only" — this is convention, matching game_data_registry.gd.
-func _inject(mission_scene_path: String, sanctuary_scene_path: String) -> void:
+func _inject(mission_scene_path: String, sanctuary_scene_path: String, tarot_deck_scene_path: String = DEFAULT_TAROT_DECK_SCENE_PATH) -> void:
 	_mission_scene_path = mission_scene_path
 	_sanctuary_scene_path = sanctuary_scene_path
+	_tarot_deck_scene_path = tarot_deck_scene_path
 
 # =============================================================================
 # Public API (ADR-0002 SceneManager Responsibilities)
@@ -71,6 +85,15 @@ func transition_to_mission(mission_id: String) -> void:
 ## transition is already in flight — see _do_transition's guard.
 func transition_to_sanctuary() -> void:
 	_do_transition("SANCTUARY", "", _sanctuary_scene_path)
+
+
+## Transition from SANCTUARY to the Tarot Deck UI scene (Sanctuary UI's
+## Loadout hand-off, added 2026-07-25). Idempotent no-op if a transition is
+## already in flight — see _do_transition's guard. Return path is
+## TarotDeckUI's own existing transition_to_sanctuary() call (Story 003),
+## not a separate method here.
+func transition_to_tarot_deck_ui() -> void:
+	_do_transition("TAROT_DECK", "", _tarot_deck_scene_path)
 
 # =============================================================================
 # Transition sequencing

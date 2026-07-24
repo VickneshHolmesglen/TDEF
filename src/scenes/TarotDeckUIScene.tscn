@@ -1,0 +1,17 @@
+[gd_scene load_steps=3 format=3 uid="uid://tarotdeckuiscene0stub"]
+
+[ext_resource type="Script" path="res://src/scenes/tarot_deck_ui_scene.gd" id="1_stub"]
+[ext_resource type="PackedScene" uid="uid://tarotdeckui0scene" path="res://src/presentation/tarot_deck_ui/TarotDeckUI.tscn" id="2_shell"]
+
+[node name="TarotDeckUIScene" type="Control"]
+script = ExtResource("1_stub")
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="TarotDeckUI" parent="." instance=ExtResource("2_shell")]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0

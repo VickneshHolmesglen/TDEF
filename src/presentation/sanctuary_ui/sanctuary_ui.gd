@@ -343,17 +343,15 @@ func select_loadout() -> void:
 	_active_state = DEPARTING_TO_LOADOUT_STATE
 	_diorama.visible = false
 	_room_host.visible = false
-	# REAL GAP, FLAGGED NOT SILENTLY WORKED AROUND (same class of gap as
-	# confirm_launch_depart()'s Mission Select hand-off): stale note corrected
-	# 2026-07-24 -- Epic 11 (Tarot Deck UI) is now implemented (TarotDeckUI.tscn
-	# exists), but no scene-transition entry point to it is wired anywhere in
-	# this project -- SceneManager has no tarot/loadout-related method and no
-	# Autoload exposes one either, so there is still no real call to make here.
-	# The GDD's own OQ-9 already flags this
-	# call as "not yet classified under ADR-0020's Criterion A/B framework,"
-	# mirroring OQ-2's identical status for confirm_launch_depart()'s call.
-	# No fabricated call is made -- the state transition above is genuine and
-	# fully tested; the actual hand-off is deferred until Epic 11 exists.
+	# Gap closed 2026-07-25: SceneManager.transition_to_tarot_deck_ui() now
+	# exists (a real, tested top-level SANCTUARY->TAROT_DECK scene
+	# transition, mirroring transition_to_sanctuary() exactly) and
+	# TarotDeckUIScene.tscn hosts the real, fully-built TarotDeckUI.tscn
+	# shell. The GDD's own OQ-9 (ADR-0020 Criterion A/B classification of
+	# this call) remains formally open -- shipped ahead of that
+	# classification per this epic's own established precedent, not
+	# silently treated as resolved.
+	GSceneManager.transition_to_tarot_deck_ui()
 
 
 ## Test/inspection accessor -- true once the active state is
