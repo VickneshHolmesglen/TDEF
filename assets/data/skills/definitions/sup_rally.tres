@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="SkillDefinitionResource" format=3]
+
+[ext_resource type="Script" path="res://src/core/skill_definition_resource.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+skill_id = &"sup_rally"
+category = "support"
+passive_slot_count = 1
+source_build_signature = &"found_support_t1|weap_support_t1|focus_rally_t1|power_none"
+mastery_threshold_seconds = 45.0

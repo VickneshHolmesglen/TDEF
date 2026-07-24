@@ -1,9 +1,18 @@
 # Hero System
 
-> **Status**: Approved (pass 1 — 2026-05-14; 2 blockers resolved in-session)
+> **Status**: Needs Revision (pass 1 Approved 2026-05-14; 2 blockers resolved in-session. **Re-flagged by `/review-all-gdds` 2026-07-15** — 3 formulas corrected same-day, see below; re-review recommended before returning to Approved. **2026-07-15d (5th pass)**: added a defensive `state == DEAD` guard on `hero_healed` receipt [Formula 6] and new AC-15, as defense-in-depth for damage-status.md's Rule VIII hero-death/lifesteal-race fix — see systems-index.md for full context.)
 > **Author**: Vicknesh + Claude Sonnet
-> **Last Updated**: 2026-05-14
+> **Last Updated**: 2026-07-15
 > **Implements Pillar**: Mastery-as-Vindication (The Architect-General)
+> **Revision (2026-07-15)**: `/review-all-gdds` flagged Formula 4 as duplicating D&S's Formula D2 (double-multiplication risk — never marked superseded) and Formula 6 as using a stale pre-overkill-cap lifesteal basis vs. D&S's authoritative `absorbed`. Both fixed: Formula 4 now clearly marks itself as a full-pipeline reference, with Rule 6 (already correct) cited as the authoritative description of what Hero actually emits (`base_damage` unmultiplied); Formula 6 now uses `absorbed` (overkill-capped, matching D&S Rule VI.4) instead of raw `damage_dealt`, and renamed `effective_lifesteal`→`hero_lifesteal_fraction` to match the actual EventBus payload field. **Also found and fixed in the same pass** (not originally flagged, but the identical disease immediately adjacent): Formula 5 duplicated D&S's incoming-hero-damage armor formula without D&S's `max(1, ...)` floor guard, and its "Incoming damage" variable incorrectly cited "Formula 4 output" (Formula 4 is Hero's own outgoing damage — unrelated). All three formulas now explicitly split "what Hero computes/emits" from "what D&S computes," with Owner columns added. **`/review-all-gdds` re-run (same day) found the corresponding ACs weren't updated to match**: AC-06 still used the exact stale pre-overkill-cap lifesteal basis Formula 6's own revision note called out as the bug (its old numbers coincidentally landed at the overheal clamp ceiling, masking the error); the Tuning Knobs table still said `effective_lifesteal` instead of `hero_lifesteal_fraction`; AC-05 was missing the `max(1, floor(...))` guard added to Formula 5. All three fixed. **Also added OQ-9** (game-design-holism finding): Formula 2's Tower Affinity bonus rewards raw tower count with no cost/DPS weighting, in tension with Tower System's own cost-efficiency design — flagged as a tracked design question pending real playtest data, not redesigned unilaterally.
+
+## Engine Risk Notes (Godot 4.6.2)
+
+| API | Used for | Risk | Status |
+|-----|---------|------|--------|
+| `sqrt()` (Tower Affinity Formula 2) | Diminishing-returns bonus curve | LOW | **Already verified** — S4-12 session confirmed `sqrt()` works and `sqrtf()` does NOT exist in Godot 4.6.2 GDScript, via an actual engine run. |
+| Shader uniform — Tower Affinity aura glow, low-HP vignette | VFX described in Visual/Audio Requirements | HIGH (Godot 4.6 glow rework) | **Partially characterized 2026-07-13** — live MCP test on the pinned 4.6.2.stable binary found no visible bloom on an overbright 2D element in the project's default (non-HDR) rendering path, and that enabling `Viewport.use_hdr_2d` (needed for glow to respond meaningfully) darkens the *entire* scene globally, not just the emissive element — confirmed independent of glow being on/off. This aura/vignette VFX will need `use_hdr_2d` opted in deliberately with a full scene brightness/contrast re-pass, not a simple glow-enable toggle. Still needs a follow-up test with real VFX assets before locking texture import presets — see `docs/engine-reference/godot/VERSION.md`. |
+| Shader uniform — class palette hue rotation | Palette swap system (`assets/data/class_palettes.tres`) | LOW (shader texture-type changes were 4.4's risk area, not hue rotation on a uniform) | No verification needed unless palette texture sampling changes |
 
 ## Overview
 
@@ -246,46 +255,51 @@ Mission 2: 22s near frost towers → proximity_time[frost] = 34 ≥ 30 → Frost
 
 ---
 
-### Formula 4: Auto-Attack Damage (Full Pipeline)
+### Formula 4: Auto-Attack Damage (Full Pipeline — Reference Only, Split Ownership)
+
+*(Corrected 2026-07-15 — flagged by `/review-all-gdds` as a double-multiplication risk. This formula previously read as if the Hero System computes and forwards the fully-multiplied `final_damage` shown below. It does not. Rule 6 (Group 2, above) is the authoritative description of what Hero actually emits: `HeroAutoAttackEvent.base_damage` = this formula's `effective_damage` term ONLY, with the elite/boss and crit multipliers left unapplied — Hero forwards `is_crit`, `crit_multiplier_effective`, and `hero_bonus_tier` as separate flags/values instead. The actual multiplication is performed by the **Damage & Status System**, which owns this arithmetic per its Formula D2 (`damage-status.md`, Pipeline III, steps 2–4) and owns the `hero_damage_bonus_multiplier` tuning constant (renamed below from this formula's old `elite_boss_multiplier` — same concept, same value, D&S is the single owner). This formula is retained here as a **full end-to-end reference** — useful for balance tuning to see the actual damage a player experiences across both systems — but it is not what Hero System code computes or sends. If Hero code ever computed and forwarded this formula's `final_damage` as `base_damage`, D&S's Pipeline III would apply the tier and crit multipliers a second time.)*
 
 ```
-final_damage = effective_damage × elite_boss_multiplier
-             × [1 + (CRIT_MULTIPLIER_BASE − 1 + crit_multiplier_bonus) × is_crit]
+effective_damage      = [Hero System computes and emits this as `base_damage` — Formula 1 + Formula 2 output]
+final_damage           = effective_damage × hero_damage_bonus_multiplier
+                        × [1 + (CRIT_MULTIPLIER_BASE − 1 + crit_multiplier_bonus) × is_crit]
+                        [D&S computes this — see Formula D2, damage-status.md]
 ```
 
-| Variable | Symbol | Type | Range | Description |
-|----------|--------|------|-------|-------------|
-| Effective damage | `effective_damage` | float | 0 – unbounded | From Formula 1 + Formula 2 (after class perk and affinity) |
-| Elite/boss multiplier | `elite_boss_multiplier` | float | {1.0, 1.5} | 1.5× if target tagged `[ELITE]` or `[BOSS]`, else 1.0× |
-| Crit check | `is_crit` | bool | {0, 1} | `rand_float(0, 1) < effective_crit_chance` |
-| Base crit multiplier | `CRIT_MULTIPLIER_BASE` | float | constant: 1.75 | A crit deals 175% of base hit damage before bonuses |
-| Crit multiplier bonus | `crit_multiplier_bonus` | float | 0.00 – 1.50 | Additive bonus from equipment/class perks |
+| Variable | Symbol | Type | Range | Description | Owner |
+|----------|--------|------|-------|-------------|-------|
+| Effective damage | `effective_damage` | float | 0 – unbounded | From Formula 1 + Formula 2 (after class perk and affinity). Sent to D&S as `HeroAutoAttackEvent.base_damage`, unmultiplied. | Hero System |
+| Hero damage bonus multiplier | `hero_damage_bonus_multiplier` | float | 1.25 – 2.00 (default 1.50) | Applied if target tagged `[ELITE]` or `[BOSS]` (`hero_bonus_tier > 0`), else 1.0×. **Renamed from `elite_boss_multiplier`** — same value, owned and tuned by D&S (see `damage-status.md` Tuning Knobs), not Hero. Hero only reads the target's tags to set `hero_bonus_tier`; it does not apply this multiplier. | Damage & Status |
+| Crit check | `is_crit` | bool | {0, 1} | `rand_float(0, 1) < effective_crit_chance`. Rolled by Hero, applied by D&S. | Hero rolls / D&S applies |
+| Base crit multiplier | `CRIT_MULTIPLIER_BASE` | float | constant: 1.75 | A crit deals 175% of base hit damage before bonuses | Hero System (tunable here per D&S's own Tuning Knobs cross-reference) |
+| Crit multiplier bonus | `crit_multiplier_bonus` | float | 0.00 – 1.50 | Additive bonus from equipment/class perks. Pre-folded by Hero into `crit_multiplier_effective = CRIT_MULTIPLIER_BASE + crit_multiplier_bonus` and forwarded as a single value — D&S does not read `crit_multiplier_bonus` independently. | Hero System |
 
 **Output range:** Minimum 0. No hard cap. Maximum crit: `CRIT_MULTIPLIER_BASE + 1.50 = 3.25×`.
 
-**Example (elite hit, crit):**
+**Example (elite hit, crit) — full pipeline result, spanning both systems:**
 ```
-effective_damage = 90, elite_boss_multiplier = 1.5, is_crit = true
-CRIT_MULTIPLIER_BASE = 1.75, crit_multiplier_bonus = 0.25
-final_damage = 90 × 1.5 × [1 + (0.75 + 0.25)] = 135 × 2.0 = 270
+effective_damage = 90 (Hero computes, emits as base_damage)
+hero_damage_bonus_multiplier = 1.5, is_crit = true (D&S applies)
+CRIT_MULTIPLIER_BASE = 1.75, crit_multiplier_bonus = 0.25 (Hero pre-folds into crit_multiplier_effective = 2.0, forwards to D&S)
+final_damage = 90 × 1.5 × [1 + (0.75 + 0.25)] = 135 × 2.0 = 270  (D&S computes this; Hero never sees this number)
 ```
 
 ---
 
-### Formula 5: Armor Damage Reduction
+### Formula 5: Armor Damage Reduction (Reference Only — D&S Owns Implementation)
 
-Uses an asymptotic coefficient formula — armor approaches but never reaches 100% reduction. Prevents breakpoints where small armor increments produce outsized damage reduction.
+*(Corrected 2026-07-15 — found while fixing Formula 4/6's ownership annotations, same disease: this formula duplicates the Damage & Status System's own incoming-hero-damage formula (`damage-status.md` Rule V) rather than deferring to it, and its "Incoming damage" variable wrongly cited "Formula 4 output" — Formula 4 is Hero's own OUTGOING auto-attack damage against monsters, not an incoming source. D&S's Rule V computes `effective_damage = max(1, floor(incoming × (100 / (hero_armor + 100))))` on the `hero_incoming_damage` event (scaffolding only at MVP — no active damage source exists yet) and emits `hero_damage_taken`; Hero System applies the result to its own HP but does not compute the reduction itself. D&S's version also has a `max(1, ...)` floor (no hit can be fully negated) that this formula previously omitted. Uses an asymptotic coefficient formula — armor approaches but never reaches 100% reduction. Prevents breakpoints where small armor increments produce outsized damage reduction.)*
 
 ```
-effective_damage_taken = incoming_damage × (ARMOR_COEFFICIENT / (armor + ARMOR_COEFFICIENT))
+effective_damage_taken = max(1, floor(incoming_damage × (ARMOR_COEFFICIENT / (armor + ARMOR_COEFFICIENT))))   [D&S computes this — Rule V, damage-status.md]
 ```
 
-| Variable | Symbol | Type | Range | Description |
-|----------|--------|------|-------|-------------|
-| Incoming damage | `incoming_damage` | float | 0 – unbounded | Final attack damage after crit (Formula 4 output) |
-| Armor | `armor` | float | 0 – 500 (soft cap) | Hero's effective armor stat |
-| Armor coefficient | `ARMOR_COEFFICIENT` | float | constant: 100 | Armor value at which the hero takes exactly 50% damage |
-| Damage taken | `effective_damage_taken` | float | 0 – incoming_damage | HP deducted from hero |
+| Variable | Symbol | Type | Range | Description | Owner |
+|----------|--------|------|-------|-------------|-------|
+| Incoming damage | `incoming_damage` | float | 0 – unbounded | Raw damage from a `hero_incoming_damage` event (any future monster/boss attack source — scaffolding only, no active source at MVP). **Not** Formula 4's output — Formula 4 is Hero's outgoing damage, unrelated to this formula. | Attack source (future) |
+| Armor | `armor` | float | 0 – 500 (soft cap) | Hero's effective armor stat | Hero System |
+| Armor coefficient | `ARMOR_COEFFICIENT` | float | constant: 100 | Armor value at which the hero takes exactly 50% damage | Hero System (tunable, D&S reads it) |
+| Damage taken | `effective_damage_taken` | float | 1 – incoming_damage | HP deducted from hero. Floored at 1 — armor cannot fully negate a hit. | Damage & Status |
 
 **Reduction curve:**
 
@@ -300,28 +314,36 @@ effective_damage_taken = incoming_damage × (ARMOR_COEFFICIENT / (armor + ARMOR_
 **Example:**
 ```
 incoming_damage = 270, armor = 120
-effective_damage_taken = 270 × (100 / 220) = 270 × 0.4545 = 122.7 → 123
+effective_damage_taken = max(1, floor(270 × (100 / 220))) = max(1, floor(122.7)) = 122
 ```
 
 ---
 
 ### Formula 6: Lifesteal Healing
 
+*(Corrected 2026-07-15 — flagged by `/review-all-gdds` as using a stale pre-overkill-cap basis. This formula previously computed healing from `damage_dealt`, the raw resolved damage before Monster System applies it to the target's HP — which can exceed the target's remaining HP on a killing blow (overkill). The actual, authoritative resolution is owned by the Damage & Status System (Rule VI, `damage-status.md`): D&S waits for `monster_hp_absorbed` from the Monster System, whose `absorbed: int` field is `min(amount_received, pre_hit_hp)` — the real HP removed, capped at what the monster had. Lifesteal off an overkill hit heals based on the monster's remaining HP, not the full (possibly much larger) damage number. Hero System does not compute `hp_recovered` itself at all — D&S computes `heal_amount` and emits `hero_healed`; Hero only applies the overheal clamp on receipt (Rule 6's sibling rule for `hero_healed` handling) and owns the `hero_lifesteal_cap` tuning constant. This formula is retained as a reference showing the actual healing math, corrected to the real basis and variable names.)*
+
 ```
-hp_recovered = damage_dealt × effective_lifesteal
-hp_recovered = min(hp_recovered, max_health − current_health)
+heal_amount = floor(absorbed × hero_lifesteal_fraction)     [D&S computes this — Rule VI.4, damage-status.md]
+hp_recovered = min(heal_amount, max_health − current_health) [Hero applies the overheal clamp on hero_healed receipt]
 ```
 
-| Variable | Symbol | Type | Range | Description |
-|----------|--------|------|-------|-------------|
-| Damage dealt | `damage_dealt` | float | 0 – unbounded | Actual damage applied to enemy (Formula 4 output) |
-| Effective lifesteal | `effective_lifesteal` | float | 0.00 – 0.40 | Hero's Lifesteal stat; clamped at 40% |
-| HP recovered | `hp_recovered` | float | 0 – `max_health − current_health` | HP added; cannot overheal |
+| Variable | Symbol | Type | Range | Description | Owner |
+|----------|--------|------|-------|-------------|-------|
+| Absorbed damage | `absorbed` | int | 0 – target's pre-hit HP | Actual HP removed from the target, overkill-capped: `min(amount_received, pre_hit_hp)`. Computed by Monster System, emitted in `monster_hp_absorbed`. **Replaces the old `damage_dealt` basis**, which used the uncapped raw damage number and over-healed on overkill hits. | Monster System computes / D&S consumes |
+| Lifesteal fraction | `hero_lifesteal_fraction` | float | 0.00 – 0.40 | Hero's Lifesteal stat, clamped at `hero_lifesteal_cap = 0.40` (Hero-owned tuning knob). Forwarded to D&S in `HeroAutoAttackEvent.hero_lifesteal_fraction`, cached in D&S's `_lifesteal_pending` until the deferred `monster_hp_absorbed` arrives. **Renamed from `effective_lifesteal`** — same concept, matches the actual EventBus payload field name. | Hero System |
+| Heal amount | `heal_amount` | int | 0 – `absorbed` | `floor(absorbed × hero_lifesteal_fraction)`. Suppressed (no `hero_healed` emitted) if 0. | Damage & Status |
+| HP recovered | `hp_recovered` | float | 0 – `max_health − current_health` | HP actually added to the hero; cannot overheal. Applied by Hero System on `hero_healed` receipt. | Hero System |
+
+**Defensive guard on `hero_healed` receipt** *(added 2026-07-15d — `/review-all-gdds` 5th pass)*: if `state == DEAD` when `hero_healed` is received, Hero System discards the event — no HP change, no visual/audio. D&S's own Rule VIII (`damage-status.md`) is verified to prevent a stale post-death heal from ever being emitted in the first place (clears `_lifesteal_pending` synchronously on `hero_died`), so this guard should never trigger in practice — it exists as defense-in-depth against a future refactor of either system's timing silently reopening the race, consistent with the `is_instance_valid` / zero-damage / sentinel guards used elsewhere across these GDDs for "should never happen but cheap to check" conditions.
 
 **Example:**
 ```
-damage_dealt = 270, effective_lifesteal = 0.20
-hp_recovered = 270 × 0.20 = 54 HP (clamped to remaining HP headroom)
+A hero lands a killing blow: raw resolved damage = 270, but the target only had 180 HP remaining.
+absorbed = min(270, 180) = 180 (Monster System caps it — this is the overkill case Formula 6 previously got wrong)
+hero_lifesteal_fraction = 0.20
+heal_amount = floor(180 × 0.20) = 36 HP (NOT 54 — the old formula would have used the full 270 raw damage: floor(270 × 0.20) = 54, over-healing by 18 HP on every overkill hit)
+hp_recovered = min(36, remaining HP headroom)
 ```
 
 ## Edge Cases
@@ -411,7 +433,7 @@ hp_recovered = 270 × 0.20 = 54 HP (clamped to remaining HP headroom)
 | `TOWERS_AFFINITY_REFERENCE` | 16 towers | 8–24 | High tower counts needed for meaningful affinity bonus | Affinity maxes out at 8 towers; reward feels trivial |
 | `CRIT_MULTIPLIER_BASE` | 1.75× | 1.5–2.5 | Crit builds feel overwhelmingly powerful vs non-crit | Crits feel like normal hits; crit_chance stat irrelevant |
 | `ARMOR_COEFFICIENT` | 100 | 50–200 | Armor reduces damage steeply at low values; armor-stacking becomes dominant | Armor barely matters; survivability comes only from HP |
-| `effective_lifesteal` cap | 40% | 20–60% | Lifesteal sustain trivialises damage; hero is unkillable | Lifesteal stat has no observable impact on survivability |
+| `hero_lifesteal_cap` (`hero_lifesteal_fraction` ceiling) | 40% | 20–60% | Lifesteal sustain trivialises damage; hero is unkillable | Lifesteal stat has no observable impact on survivability |
 | `effective_crit_chance` cap | 80% | 60–90% | High crit builds guarantee crits; variance disappears | Crit chance cap too low for crit-focused builds to feel distinct |
 | CDR cap | 75% | 50–90% | Near-zero cooldowns; skill spam eliminates resource management | CDR affixes feel useless; skills feel too slow |
 | Min effective cooldown | 0.5 seconds | 0.3–1.0 | Floor too high; CDR stops feeling useful before cap | Spammable skills with zero CDR; game becomes trivial |
@@ -464,7 +486,40 @@ The hero must be identifiable within 0.2 seconds at full battlefield zoom. Three
 
 ## UI Requirements
 
-[To be designed]
+The Hero System has no HUD-chrome UI of its own — players do not click the hero, drag it, or
+open a hero-specific menu screen at MVP. All hero-facing HUD elements (HP bar, skill buttons,
+Ultimate button, low-HP vignette) are owned by the Mission HUD (`design/ux/mission-hud.md`),
+which subscribes to Hero System events. Requirements listed here are forward specs: data that
+must be available in event payloads for the Mission HUD to implement correctly, mirroring the
+pattern already established in `monster.md`'s UI Requirements section.
+
+### Data the Hero System Must Expose via Events
+
+| UI Element (owned by Mission HUD) | Data source from Hero System | Event carrying it |
+|---|---|---|
+| Hero HP bar (Zone D) | `current_health: float`, `max_health: float` | `hero_health_changed` |
+| Low-HP vignette (< 20% threshold) | Derived from `hero_health_changed` — HUD computes `current_health / max_health < 0.20` itself; Hero does not emit a separate threshold-crossing event | `hero_health_changed` |
+| Skill buttons 1–4 cooldown fill (Zone D) | `skill_slot: int` (0-3), `cooldown_remaining: float`, `cooldown_max: float` | `hero_skill_cooldown_updated` — **wired 2026-07-08** (`TD-hero-003`, fixed): Hero broadcasts once per second for any of the 4 skill-slot timers currently running |
+| Ultimate button "READY" state (Zone D) | Same mechanism as skill buttons — `cooldown_remaining == 0` for the ultimate's slot | `hero_skill_cooldown_updated`, `skill_slot = 4` (`Hero.ULTIMATE_SLOT_INDEX`) reserved for the Ultimate's own cooldown timer — **wired 2026-07-08** (`TD-hero-003`, fixed) |
+| Ultimate activation trigger | *(reverse direction)* Mission HUD fires `hero_ultimate_activated` when the player presses the button; Hero System is the consumer, not the source — **wired 2026-07-08** (`TD-hero-003`, fixed): no-ops if no Ultimate is resolved or still on cooldown, otherwise starts the Ultimate's own cooldown Timer using its data-defined cooldown (`UltimateComboTable.ultimate_cooldowns`) — CDR does not apply here, per Rule 12's explicit "active skill cooldowns" scope. No effect resolution (same gap as skill activation — no consumer of the resulting effect exists anywhere yet). |
+| Skill activation trigger | *(reverse direction)* Mission HUD fires `hero_skill_activated(skill_slot: int)` on button press; **payload mismatch flagged in `mission-hud.md` Open Question 2** — the shipped `hero_skill_activated` event currently carries `skill_id: String, target_position: Vector2`, not `skill_slot: int`. Must be resolved before Mission HUD's skill buttons can be implemented. |
+
+### Hero-Owned World-Space Visuals (not Mission HUD chrome)
+
+Some hero-facing visual feedback is **not** Mission HUD's responsibility — it renders directly
+on the hero sprite in world-space and is fully specified in this GDD's Visual/Audio Requirements
+section above, not delegated to a UI spec:
+
+- **Tower Affinity bonus glow** (looping gold outline, opacity scales with `tower_affinity_bonus`) — driven by `tower_placed`/`tower_destroyed`, not a HUD element
+- **Class palette shift** (shader uniform hue rotation) and **class badge** (top-right/top-left icon anchor) — both render on the hero sprite itself
+- **Damage/crit/skill/death VFX** (flashes, particles, screen shake) — world-space and screen-space effects owned by this GDD, distinct from Mission HUD's floating damage numbers (D&S-owned, Pattern 8)
+
+### No Hero Selection or Inspection UI
+
+Unlike towers (which have a Contextual Info Panel, Pattern 2), the hero has no player-facing
+inspection panel at MVP — there is no "click the hero to see stats" interaction. If a future
+Sanctuary or pause-menu character sheet is added, it is out of this GDD's scope and belongs to
+whichever system owns that screen.
 
 ## Acceptance Criteria
 
@@ -476,9 +531,9 @@ The hero must be identifiable within 0.2 seconds at full battlefield zoom. Three
 
 - **AC-04** — **GIVEN** a hero with `effective_damage = 90` attacking an enemy tagged `[BOSS]` or `[ELITE]` with `is_crit = false`, **WHEN** the auto-attack resolves, **THEN** `final_damage = 90 × 1.5 = 135` for both tags.
 
-- **AC-05** — **GIVEN** a hero with `armor = 100` receiving `incoming_damage = 200`, **WHEN** armor reduction is applied, **THEN** `effective_damage_taken = 200 × (100 / 200) = 100`. **AND** given `armor = 0`, the hero takes the full 200 — confirming the formula never reaches 100% reduction.
+- **AC-05** — **GIVEN** a hero with `armor = 100` receiving `incoming_damage = 200`, **WHEN** armor reduction is applied, **THEN** `effective_damage_taken = max(1, floor(200 × (100 / 200))) = 100`. **AND** given `armor = 0`, the hero takes the full 200 — confirming the formula never reaches 100% reduction. *(Corrected 2026-07-15: added the `max(1, floor(...))` guard to match Formula 5's correction — does not change this AC's numeric result, but the AC previously omitted the guard entirely.)*
 
-- **AC-06** — **GIVEN** a hero with `effective_lifesteal = 0.20`, `max_health = 500`, `current_health = 450` (50 HP missing), who deals 270 damage, **WHEN** lifesteal is applied, **THEN** `hp_recovered = min(270 × 0.20, 50) = 50` — hero heals to exactly `max_health` with no overheal.
+- **AC-06** — **GIVEN** a hero lands a killing blow dealing 270 raw resolved damage against a target with only 180 HP remaining (`absorbed = min(270, 180) = 180`), `hero_lifesteal_fraction = 0.20`, `max_health = 500`, `current_health = 450` (50 HP missing), **WHEN** lifesteal resolves on `monster_hp_absorbed`, **THEN** `heal_amount = floor(180 × 0.20) = 36`, `hp_recovered = min(36, 50) = 36` HP. *(Corrected 2026-07-15: this AC previously used the raw 270 as the healing basis — `hp_recovered = min(270 × 0.20, 50) = 50` — the exact pre-overkill-cap error Formula 6's revision fixed. The old AC's numbers coincidentally landed at the overheal clamp ceiling, masking the bug. This AC now matches Formula 6's corrected worked example and basis.)*
 
 - **AC-07** — **GIVEN** a hero with `tower_affinity_stat = 0.40` and `qualifying_towers = 20` (`TOWERS_AFFINITY_REFERENCE = 16`), **WHEN** Tower Affinity is calculated, **THEN** `tower_affinity_bonus ≈ 0.447` and both `effective_damage` and `effective_skill_power` are multiplied by `1.447`. **AND** given `qualifying_towers = 0`, the bonus is exactly `0.0`.
 
@@ -496,7 +551,9 @@ The hero must be identifiable within 0.2 seconds at full battlefield zoom. Three
 
 - **AC-14** `[Visual]` — **GIVEN** the hero is standing on a GOAL cell with no monsters present, **WHEN** the hero occupies that cell continuously, **THEN** the breach counter remains unchanged — a debug overlay must confirm no breach event fired from the hero's presence.
 
-**Test file targets:** AC-01 through AC-09, AC-12, AC-13 → `tests/unit/hero/` (Logic — BLOCKING). AC-10, AC-11 → `tests/integration/hero/` (Integration — BLOCKING). AC-14 → `production/qa/evidence/` (Visual — ADVISORY).
+- **AC-15** *(added 2026-07-15d — defense-in-depth regression guard, `/review-all-gdds` 5th pass)* — **GIVEN** `state == DEAD` (test setup: force hero HP to 0 and let `hero_died` fire), **WHEN** a `hero_healed` event is subsequently received (test setup: emit directly, simulating a race the upstream D&S Rule VIII guard is expected to prevent), **THEN** Hero System discards it — no HP change, no `hero_health_changed` emission, no visual/audio triggered. This AC should never fail under normal D&S behavior; it exists to catch a regression if D&S's own `hero_died` cleanup (Rule VIII) is ever broken by a future change.
+
+**Test file targets:** AC-01 through AC-09, AC-12, AC-13, AC-15 → `tests/unit/hero/` (Logic — BLOCKING). AC-10, AC-11 → `tests/integration/hero/` (Integration — BLOCKING). AC-14 → `production/qa/evidence/` (Visual — ADVISORY).
 
 ## Open Questions
 
@@ -515,3 +572,5 @@ The hero must be identifiable within 0.2 seconds at full battlefield zoom. Three
 7. **Proximity accumulation and Tower Mastery overlap** — Both systems track hero proximity to towers independently. Implementors must confirm these are two separate accumulators with separate timers and thresholds — not one shared counter. *Owner: Tower Mastery GDD. Confirm at authoring time.*
 
 8. **Movement feel — acceleration curve** — Rule 26 specifies instantaneous velocity for MVP. A feel pass may introduce easing if playtesting reveals responsiveness issues. Deferred to Polish phase. *Owner: Gameplay Programmer.*
+
+9. **Tower Affinity rewards raw tower count, in tension with Tower System's own cost-efficiency curve** *(added 2026-07-15 — `/review-all-gdds` game-design-holism pass)* — Formula 2's `tower_affinity_bonus = tower_affinity_stat × sqrt(qualifying_towers / 16)` scales Hero Damage/Skill Power off the number of live qualifying towers, with no weighting for their cost or DPS contribution. `tower.md` deliberately makes T1/T2 cost-inefficient "budget-gating" tiers with "no mechanical niche" versus T3 (`tower.md` line ~395, D3-A). Because Tower Affinity only counts bodies, the mechanically rational strategy is spamming the cheapest qualifying tower (T1) to maximize count-per-gold — directly against Tower System's own designed efficiency curve, and against `game-pillars.md` Pillar 2's anti-pattern ("features that add options without adding meaningful decisions"). Neither GDD currently accounts for the other's design intent here. **Not resolved this session** — a redesign (e.g., weighting `qualifying_towers` by cost or DPS contribution) is a balance change that needs real playtesting data this project doesn't have yet, not a documentation fix; inventing a new weighting formula without that data would be guessing, not designing. Flagged here as a tracked design tension rather than silently left undocumented. *Owner: Game Designer / Economy Designer. Resolve during first balance-calibration pass (see hero.md OQ-2, which already defers hero base stats to the same milestone) — evaluate live playtest data on whether T1-spam-for-Affinity is actually a dominant strategy in practice before redesigning the formula.* **User confirmed 2026-07-15**: presented with 4 options (leave deferred / gate qualification by minimum tier-cost / weight by cost-DPS / declare intentional board-presence design) — explicitly chose to keep this deferred to the first balance-calibration pass rather than guess at a fix without playtest data. Not a gap in follow-through; a deliberate decision to wait for evidence.

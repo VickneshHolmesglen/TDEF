@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="MonsterResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/core/monster/monster_resource.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+monster_id = &"goblin_warlord_boss"
+display_name = "Goblin Warlord"
+tier = 2
+archetype_tag = &""
+base_hp = 1200.0
+base_speed = 1.0
+drop_table_id = &"warlord_drops"
+menagerie_attraction_drop_chance = 0.5
+boss_attack_range_cells = 3
+base_damage = 60.0
+base_attack_interval = 3.0

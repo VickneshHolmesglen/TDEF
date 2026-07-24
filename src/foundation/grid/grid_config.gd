@@ -12,7 +12,18 @@ extends Resource
 @export var cell_size: float = 64.0
 ## Cell type map. Key: Vector2i coordinate. Value: Grid.CellType (as int).
 ## Cells absent from this dict are implicitly Grid.CellType.BLOCKED.
-var cells: Dictionary[Vector2i, int] = {}  # values are Grid.CellType
+##
+## Bug found and fixed (2026-07-20): this field was missing @export, so no
+## GridConfig authored as a .tres could ever actually persist its cell layout
+## — ResourceSaver.save() silently dropped it, despite this class's own doc
+## comment (line 2) claiming ".tres authoring" was supported. Discovered via
+## `the_gap_entry.tres` (Mission Select's own real mission entry) shipping
+## with 0 cells for this exact reason — the real Mission Select launch/retry
+## pipeline would hand WaveManager a 0-spawn-cell grid, hard-failing any
+## mission launched that way (the_gap.tscn's own direct-boot path was
+## unaffected — it builds its GridConfig programmatically at runtime, never
+## round-tripping through a .tres).
+@export var cells: Dictionary[Vector2i, int] = {}  # values are Grid.CellType
 
 ## Returns validation errors. Empty array means the config is valid.
 func validate() -> Array[String]:

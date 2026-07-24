@@ -1,3 +1,3 @@
 # Memory Index
 
-- [Project: Sanctuary Defenders Visual Identity](project_sanctuary_defenders.md) — tone, art bible status, hero visual decisions, color recommendations from first session
+- [Project: Sanctuary Defenders Visual Identity](project_sanctuary_defenders.md) — tone, complete art bible palette incl. Boss Purple hex anchors, hero visual decisions

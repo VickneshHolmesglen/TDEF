@@ -1,0 +1,177 @@
+[gd_resource type="Resource" script_class="WaveConfig" format=3]
+
+[ext_resource type="Script" path="res://src/gameplay/wave_config.gd" id="1_1yeja"]
+[ext_resource type="Script" path="res://src/gameplay/wave_script.gd" id="2_u8tgu"]
+[ext_resource type="Script" path="res://src/gameplay/wave_spawn_entry.gd" id="3_8bnhg"]
+
+[sub_resource type="Resource" id="Resource_iw3x4"]
+script = ExtResource("3_8bnhg")
+monster_id = &"goblin_runner"
+
+[sub_resource type="Resource" id="Resource_cb0k2"]
+script = ExtResource("3_8bnhg")
+monster_id = &"goblin_runner"
+pre_delay = 3.0
+
+[sub_resource type="Resource" id="Resource_ewobe"]
+script = ExtResource("3_8bnhg")
+monster_id = &"goblin_runner"
+pre_delay = 3.0
+
+[sub_resource type="Resource" id="Resource_jdi8h"]
+script = ExtResource("3_8bnhg")
+monster_id = &"goblin_runner"
+pre_delay = 3.0
+
+[sub_resource type="Resource" id="Resource_ojowb"]
+script = ExtResource("2_u8tgu")
+entries = Array[ExtResource("3_8bnhg")]([SubResource("Resource_iw3x4"), SubResource("Resource_cb0k2"), SubResource("Resource_ewobe"), SubResource("Resource_jdi8h")])
+
+[sub_resource type="Resource" id="Resource_c6sga"]
+script = ExtResource("3_8bnhg")
+monster_id = &"goblin_runner"
+
+[sub_resource type="Resource" id="Resource_0yldt"]
+script = ExtResource("3_8bnhg")
+monster_id = &"goblin_runner"
+pre_delay = 2.5
+
+[sub_resource type="Resource" id="Resource_ptxab"]
+script = ExtResource("3_8bnhg")
+monster_id = &"goblin_runner"
+pre_delay = 2.5
+
+[sub_resource type="Resource" id="Resource_0qpav"]
+script = ExtResource("3_8bnhg")
+monster_id = &"goblin_runner"
+pre_delay = 2.5
+
+[sub_resource type="Resource" id="Resource_qwbcg"]
+script = ExtResource("3_8bnhg")
+monster_id = &"goblin_runner"
+pre_delay = 2.5
+
+[sub_resource type="Resource" id="Resource_ediou"]
+script = ExtResource("2_u8tgu")
+entries = Array[ExtResource("3_8bnhg")]([SubResource("Resource_c6sga"), SubResource("Resource_0yldt"), SubResource("Resource_ptxab"), SubResource("Resource_0qpav"), SubResource("Resource_qwbcg")])
+
+[sub_resource type="Resource" id="Resource_xu56m"]
+script = ExtResource("3_8bnhg")
+monster_id = &"goblin_runner"
+
+[sub_resource type="Resource" id="Resource_fhohb"]
+script = ExtResource("3_8bnhg")
+monster_id = &"goblin_runner"
+pre_delay = 2.0
+
+[sub_resource type="Resource" id="Resource_v6dce"]
+script = ExtResource("3_8bnhg")
+monster_id = &"goblin_runner"
+pre_delay = 2.0
+
+[sub_resource type="Resource" id="Resource_aciry"]
+script = ExtResource("3_8bnhg")
+monster_id = &"goblin_runner"
+pre_delay = 2.0
+
+[sub_resource type="Resource" id="Resource_n4a3d"]
+script = ExtResource("3_8bnhg")
+monster_id = &"goblin_runner"
+pre_delay = 2.0
+
+[sub_resource type="Resource" id="Resource_xdvbl"]
+script = ExtResource("3_8bnhg")
+monster_id = &"goblin_runner"
+pre_delay = 2.0
+
+[sub_resource type="Resource" id="Resource_i6pu8"]
+script = ExtResource("2_u8tgu")
+entries = Array[ExtResource("3_8bnhg")]([SubResource("Resource_xu56m"), SubResource("Resource_fhohb"), SubResource("Resource_v6dce"), SubResource("Resource_aciry"), SubResource("Resource_n4a3d"), SubResource("Resource_xdvbl")])
+
+[sub_resource type="Resource" id="Resource_c26hd"]
+script = ExtResource("3_8bnhg")
+monster_id = &"goblin_runner"
+
+[sub_resource type="Resource" id="Resource_nwxwh"]
+script = ExtResource("3_8bnhg")
+monster_id = &"goblin_runner"
+pre_delay = 2.0
+
+[sub_resource type="Resource" id="Resource_7trml"]
+script = ExtResource("3_8bnhg")
+monster_id = &"goblin_runner"
+pre_delay = 2.0
+
+[sub_resource type="Resource" id="Resource_a1f4k"]
+script = ExtResource("3_8bnhg")
+monster_id = &"goblin_runner"
+pre_delay = 2.0
+
+[sub_resource type="Resource" id="Resource_hjpl7"]
+script = ExtResource("3_8bnhg")
+monster_id = &"forest_troll_elite"
+pre_delay = 3.0
+
+[sub_resource type="Resource" id="Resource_qvka1"]
+script = ExtResource("2_u8tgu")
+entries = Array[ExtResource("3_8bnhg")]([SubResource("Resource_c26hd"), SubResource("Resource_nwxwh"), SubResource("Resource_7trml"), SubResource("Resource_a1f4k"), SubResource("Resource_hjpl7")])
+
+[sub_resource type="Resource" id="Resource_l68ea"]
+script = ExtResource("3_8bnhg")
+monster_id = &"forest_troll_elite"
+
+[sub_resource type="Resource" id="Resource_0emdc"]
+script = ExtResource("3_8bnhg")
+monster_id = &"forest_troll_elite"
+pre_delay = 4.0
+
+[sub_resource type="Resource" id="Resource_q0a7f"]
+script = ExtResource("3_8bnhg")
+monster_id = &"forest_troll_elite"
+pre_delay = 4.0
+
+[sub_resource type="Resource" id="Resource_vxrea"]
+script = ExtResource("3_8bnhg")
+monster_id = &"forest_troll_elite"
+pre_delay = 4.0
+
+[sub_resource type="Resource" id="Resource_xknpw"]
+script = ExtResource("2_u8tgu")
+entries = Array[ExtResource("3_8bnhg")]([SubResource("Resource_l68ea"), SubResource("Resource_0emdc"), SubResource("Resource_q0a7f"), SubResource("Resource_vxrea")])
+
+[sub_resource type="Resource" id="Resource_wvk4b"]
+script = ExtResource("3_8bnhg")
+monster_id = &"goblin_runner"
+
+[sub_resource type="Resource" id="Resource_emome"]
+script = ExtResource("3_8bnhg")
+monster_id = &"goblin_runner"
+pre_delay = 2.0
+
+[sub_resource type="Resource" id="Resource_4idh6"]
+script = ExtResource("3_8bnhg")
+monster_id = &"forest_troll_elite"
+pre_delay = 3.0
+
+[sub_resource type="Resource" id="Resource_euf3f"]
+script = ExtResource("3_8bnhg")
+monster_id = &"goblin_runner"
+pre_delay = 2.0
+
+[sub_resource type="Resource" id="Resource_tel22"]
+script = ExtResource("3_8bnhg")
+monster_id = &"forest_troll_elite"
+pre_delay = 3.0
+
+[sub_resource type="Resource" id="Resource_l1vfn"]
+script = ExtResource("3_8bnhg")
+monster_id = &"goblin_warlord_boss"
+pre_delay = 5.0
+
+[sub_resource type="Resource" id="Resource_x4oen"]
+script = ExtResource("2_u8tgu")
+entries = Array[ExtResource("3_8bnhg")]([SubResource("Resource_wvk4b"), SubResource("Resource_emome"), SubResource("Resource_4idh6"), SubResource("Resource_euf3f"), SubResource("Resource_tel22"), SubResource("Resource_l1vfn")])
+
+[resource]
+script = ExtResource("1_1yeja")
+wave_scripts = Array[ExtResource("2_u8tgu")]([SubResource("Resource_ojowb"), SubResource("Resource_ediou"), SubResource("Resource_i6pu8"), SubResource("Resource_qvka1"), SubResource("Resource_xknpw"), SubResource("Resource_x4oen")])

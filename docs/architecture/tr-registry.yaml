@@ -24,8 +24,25 @@
 #
 # STATUS VALUES: active | deprecated | superseded-by: TR-[system]-NNN
 
-version: 3
-last_updated: "2026-05-24"  # /architecture-review 2026-05-24: no new TRs; all 57 entries confirmed active
+version: 7
+last_updated: "2026-07-17"  # /architecture-review 2026-07-17 (architecture-review-2026-07-17.md, scoped gap-analysis pass):
+                             # appended 27 new TR-IDs (9 first-time system registrations: constellation,
+                             # crafting, tarot, menagerie, defense-building, tower-mastery, mission-select,
+                             # hero-skill-build, equipment-forge). All 27 are GAPs - zero ADR coverage exists
+                             # for any of these 9 systems, confirmed via grep of all 19 ADR files. Verdict:
+                             # CONCERNS (no Foundation/Core gaps, all 9 systems are Feature/Advanced tier).
+                             # Pre-existing 90 TR-IDs (065-090 range) from the 2026-07-13 baseline unchanged.
+                             # --- Prior entry (2026-07-13, Pass 4, architecture-review-2026-07-13d.md): ---
+                             # appended 25 new TR-IDs (065 -> 090) — cross-system binding contracts, gotchas,
+                             # and known gaps surfaced by a full GDD re-read that were not previously
+                             # registered. Curated to genuinely architectural items only (excluded ~225
+                             # implementation-detail-level candidates to preserve the registry's deliberately
+                             # coarse granularity). New systems: mission-hud (first registration, 3 IDs,
+                             # GDD still a skeleton with no ADR). Two new gaps flagged as needing follow-up:
+                             # TR-hero-007 (payload contract conflict, blocks Mission HUD skill buttons) and
+                             # TR-inv-005 (missing Tower->Inventory cross-system wiring). All 65 pre-existing
+                             # entries confirmed still active/unchanged. TR-gc-004 reclassification flag from
+                             # Pass 2 still outstanding (not auto-changed, awaiting user decision).
 
 requirements:
 
@@ -33,9 +50,9 @@ requirements:
   - id: TR-eb-001
     system: event-bus
     gdd: design/gdd/event-bus.md
-    requirement: "70-event typed signal catalogue"
+    requirement: "Typed signal catalogue (74 events as of 2026-07-13 — event-bus.md is the authoritative running count)"
     created: 2026-05-16
-    revised: ""
+    revised: "2026-07-13 — updated count from 70 to 74 (Pause System +2, Inventory item_pickup_rejected +1, Resource Economy resources_changed +1); same intent, no ID change"
     status: active
   - id: TR-eb-002
     system: event-bus
@@ -234,6 +251,17 @@ requirements:
     created: 2026-05-16
     revised: ""
     status: active
+  # Added 2026-07-13, /architecture-review full run — tower.md Rules 18/19 firmly
+  # mandate projectile pooling ("Projectiles must be pooled — fixed-size pool at
+  # mission start"; projectile_pool_size=192; max_reacquisitions_per_frame=8).
+  # No registry entry or ADR previously existed for this requirement.
+  - id: TR-tower-007
+    system: tower
+    gdd: design/gdd/tower.md
+    requirement: "Projectile pooling: fixed-size pool at mission start (projectile_pool_size=192) + re-acquisition rate limit (max_reacquisitions_per_frame=8)"
+    created: 2026-07-13
+    revised: "2026-07-13 — ADR-0019 Accepted, requirement now fully covered; same intent, no ID change"
+    status: active
 
   # --- Monster (monster.md) ---
   - id: TR-monster-001
@@ -417,6 +445,19 @@ requirements:
     created: 2026-05-16
     revised: ""
     status: active
+  # Added 2026-07-07 to close the TR-wave-004 registry gap flagged during Story 005's
+  # story-readiness check (2026-07-05) — TR-wave-004's text ("templates_ready gate
+  # before first spawn") covers only the wave-1 gate; no TR-ID existed for the
+  # waves-2+ rebuild-pending gate Story 005 actually implements. Retroactively
+  # documents that already-shipped requirement. See docs/tech-debt-register.md
+  # and production/epics/epic-04-wave-manager/EPIC.md for the original gap.
+  - id: TR-wave-008
+    system: wave-manager
+    gdd: design/gdd/wave-manager.md
+    requirement: "Waves 2+ rebuild-pending gate (_rebuild_pending_gate / is_rebuild_pending() check at INTERMISSION→PRE_WAVE)"
+    created: 2026-07-07
+    revised: ""
+    status: active
 
   # --- Game Concept (game-concept.md) ---
   - id: TR-gc-001
@@ -445,5 +486,452 @@ requirements:
     gdd: design/gdd/game-concept.md
     requirement: "15-25 min default mission (session length formula)"
     created: 2026-05-16
+    revised: ""
+    status: active
+
+  # --- Inventory (inventory.md) --- added 2026-07-13, /architecture-review
+  - id: TR-inv-001
+    system: inventory
+    gdd: design/gdd/inventory.md
+    requirement: "10-slot start; type-driven stack caps (Equipment/Tower Components=1, Materials/Crafted Goods=99)"
+    created: 2026-07-13
+    revised: ""
+    status: active
+  - id: TR-inv-002
+    system: inventory
+    gdd: design/gdd/inventory.md
+    requirement: "instance_id-keyed unique-item identity - stat-rolled duplicates never merge (AC-18)"
+    created: 2026-07-13
+    revised: ""
+    status: active
+  - id: TR-inv-003
+    system: inventory
+    gdd: design/gdd/inventory.md
+    requirement: "SaveRestorer interface + restore_order strictly below Hero's 30"
+    created: 2026-07-13
+    revised: ""
+    status: active
+
+  # --- Resource Economy (resource-economy.md) --- added 2026-07-13, /architecture-review
+  - id: TR-econ-001
+    system: resource-economy
+    gdd: design/gdd/resource-economy.md
+    requirement: "Stateless calculator pattern (no owned persistent state)"
+    created: 2026-07-13
+    revised: ""
+    status: active
+  - id: TR-econ-002
+    system: resource-economy
+    gdd: design/gdd/resource-economy.md
+    requirement: "DropTableResource/DropEntry schema + drop quantity/quality Formulas 1-4"
+    created: 2026-07-13
+    revised: ""
+    status: active
+  - id: TR-econ-003
+    system: resource-economy
+    gdd: design/gdd/resource-economy.md
+    requirement: "Gold track via resources_changed, separate from materials_earned/materials_spent"
+    created: 2026-07-13
+    revised: ""
+    status: active
+
+  # --- Added 2026-07-13, /architecture-review Pass 4 (architecture-review-2026-07-13d.md) ---
+  # Curated selection of cross-system binding contracts, gotchas, and known gaps surfaced by a
+  # full GDD re-read. Excludes implementation-detail-level candidates (e.g. coding-standard
+  # patterns like "disconnect signals in _exit_tree()") to preserve the registry's existing
+  # coarse granularity.
+
+  - id: TR-eb-007
+    system: event-bus
+    gdd: design/gdd/event-bus.md
+    requirement: "hero_healed permitted synchronous cascade-depth-1 exemption from monster_hp_absorbed handler"
+    created: 2026-07-13
+    revised: ""
+    status: active
+  - id: TR-eb-008
+    system: event-bus
+    gdd: design/gdd/event-bus.md
+    requirement: "EventBus Autoload must be first entry in Project Settings -> Autoloads (boot-order invariant)"
+    created: 2026-07-13
+    revised: ""
+    status: active
+
+  - id: TR-grid-005
+    system: grid
+    gdd: design/gdd/grid-system.md
+    requirement: "ACTIVE_WRITABLE/ACTIVE_READONLY transitions driven exclusively by mission_phase_changed subscription"
+    created: 2026-07-13
+    revised: ""
+    status: active
+  - id: TR-grid-006
+    system: grid
+    gdd: design/gdd/grid-system.md
+    requirement: "Grid never emits EventBus events directly; Tower System includes cell data in tower_placed/tower_removed payloads"
+    created: 2026-07-13
+    revised: ""
+    status: active
+
+  - id: TR-save-007
+    system: save
+    gdd: design/gdd/save-persistence.md
+    requirement: "Exclusive disk-I/O contract - no system other than SavePersistence may call FileAccess directly"
+    created: 2026-07-13
+    revised: ""
+    status: active
+  - id: TR-save-008
+    system: save
+    gdd: design/gdd/save-persistence.md
+    requirement: "SaveRestorer 3-function interface (get_save_data/restore_save_data/reset_to_defaults) mandatory for all registered systems"
+    created: 2026-07-13
+    revised: ""
+    status: active
+
+  - id: TR-hero-007
+    system: hero
+    gdd: design/gdd/hero.md
+    requirement: "hero_skill_activated payload contract (skill_id:String, target_position:Vector2) - CONFLICTS with mission-hud.md's skill_slot:int assumption, blocks HUD skill-button implementation until reconciled"
+    created: 2026-07-13
+    revised: ""
+    status: active
+  - id: TR-hero-008
+    system: hero
+    gdd: design/gdd/hero.md
+    requirement: "hero_position_changed emitted only on cell-boundary crossing, not per-frame (O(1) perf guard)"
+    created: 2026-07-13
+    revised: ""
+    status: active
+
+  - id: TR-tower-008
+    system: tower
+    gdd: design/gdd/tower.md
+    requirement: "Monster-cache subscription-mode table (sync vs CONNECT_DEFERRED per event) is authoritative per AC B-13"
+    created: 2026-07-13
+    revised: ""
+    status: active
+  - id: TR-tower-009
+    system: tower
+    gdd: design/gdd/tower.md
+    requirement: "Wave Manager must yield >=1 frame between wave_completed and next wave_started (CONNECT_DEFERRED) or Tower's cache-clear races the next spawn"
+    created: 2026-07-13
+    revised: ""
+    status: active
+  - id: TR-tower-010
+    system: tower
+    gdd: design/gdd/tower.md
+    requirement: "is_siege:bool must be read by Monster/Boss System on tower_attacked (not boss_tower_attack_attempted) for T4 siege towers to penetrate boss shield phases"
+    created: 2026-07-13
+    revised: ""
+    status: active
+
+  - id: TR-monster-007
+    system: monster
+    gdd: design/gdd/monster.md
+    requirement: "MAX_ACTIVE_MONSTERS=150 hard ceiling - spawns above cap silently discarded"
+    created: 2026-07-13
+    revised: ""
+    status: active
+  - id: TR-monster-008
+    system: monster
+    gdd: design/gdd/monster.md
+    requirement: "hero_damage_bonus_eligible field is deprecated - must not be read by any system"
+    created: 2026-07-13
+    revised: ""
+    status: active
+
+  - id: TR-path-008
+    system: pathfinding
+    gdd: design/gdd/pathfinding.md
+    requirement: "Exactly one SPAWN cell per mission is an MVP hard constraint - CI must hard-fail multi-SPAWN missions"
+    created: 2026-07-13
+    revised: ""
+    status: active
+  - id: TR-path-009
+    system: pathfinding
+    gdd: design/gdd/pathfinding.md
+    requirement: "Row-major point-ID encoding is a binding convention - deviation silently corrupts the A* graph"
+    created: 2026-07-13
+    revised: ""
+    status: active
+  - id: TR-path-010
+    system: pathfinding
+    gdd: design/gdd/pathfinding.md
+    requirement: "get_path() is not thread-safe - forbidden from Thread/WorkerThreadPool"
+    created: 2026-07-13
+    revised: ""
+    status: active
+  - id: TR-path-011
+    system: pathfinding
+    gdd: design/gdd/pathfinding.md
+    requirement: "_compute_cost() override for zero-cost super-goal edges is mandatory (separate from _estimate_cost()) - omitting it silently biases A* toward GOAL cells near grid origin"
+    created: 2026-07-13
+    revised: ""
+    status: active
+
+  - id: TR-wave-009
+    system: wave-manager
+    gdd: design/gdd/wave-manager.md
+    requirement: "hero_died always transitions to DEFEAT, taking priority over same-frame wave-clear (non-negotiable invariant)"
+    created: 2026-07-13
+    revised: ""
+    status: active
+  - id: TR-wave-010
+    system: wave-manager
+    gdd: design/gdd/wave-manager.md
+    requirement: "MAX_BASE_QUALITY_PROBABILITY=0.2097 is a cross-system constant Resource Economy must calibrate against"
+    created: 2026-07-13
+    revised: ""
+    status: active
+
+  - id: TR-inv-004
+    system: inventory
+    gdd: design/gdd/inventory.md
+    requirement: "item_pickup_rejected signal shipped but missing from event-bus.md's catalogue"
+    created: 2026-07-13
+    revised: ""
+    status: active
+  - id: TR-inv-005
+    system: inventory
+    gdd: design/gdd/inventory.md
+    requirement: "Tower System must call item_added with metadata.damaged on tower destruction (currently missing, non-blocking)"
+    created: 2026-07-13
+    revised: ""
+    status: active
+
+  - id: TR-econ-004
+    system: resource-economy
+    gdd: design/gdd/resource-economy.md
+    requirement: "resources_changed(gold) is a signed delta, not an absolute balance - MissionEconomy must accumulate it"
+    created: 2026-07-13
+    revised: ""
+    status: active
+
+  # --- Mission HUD (mission-hud.md) --- added 2026-07-13, /architecture-review Pass 4
+  # First registration for this system. GDD is still a design skeleton ("[TO BE DESIGNED]"
+  # throughout most sections) with no governing ADR yet - these 3 signal-response contracts
+  # are the only parts of the design currently locked and independently testable.
+  - id: TR-hud-001
+    system: mission-hud
+    gdd: design/gdd/mission-hud.md
+    requirement: "On path_invalidated, call get_path() to re-derive route - never render affected_cells directly as a route line"
+    created: 2026-07-13
+    revised: ""
+    status: active
+  - id: TR-hud-002
+    system: mission-hud
+    gdd: design/gdd/mission-hud.md
+    requirement: "On tower_placement_blocked, distinguish primary_blocking_cell sentinel (-1,-1) uniform-highlight case from single-cell case"
+    created: 2026-07-13
+    revised: ""
+    status: active
+  - id: TR-hud-003
+    system: mission-hud
+    gdd: design/gdd/mission-hud.md
+    requirement: "On tower_destroyed during WAVE_ACTIVE, display path-update-queued-for-next-intermission messaging"
+    created: 2026-07-13
+    revised: ""
+    status: active
+
+  # --- Constellation (constellation.md) --- added 2026-07-17, /architecture-review (scoped gap-analysis pass)
+  # First registration. No ADR exists for this system yet - all 3 entries are GAPs.
+  - id: TR-const-001
+    system: constellation
+    gdd: design/gdd/constellation.md
+    requirement: "Localized Chebyshev-radius (radius=3) pattern-detection algorithm, triggered per tower_placed/tower_removed/tower_destroyed; must stay O(local neighborhood), not O(total tower count)"
+    created: 2026-07-17
+    revised: ""
+    status: active
+  - id: TR-const-002
+    system: constellation
+    gdd: design/gdd/constellation.md
+    requirement: "Discovery Ledger persistence (restore_order=24) - first-discovered timestamps per pattern_id, survives save/load"
+    created: 2026-07-17
+    revised: ""
+    status: active
+  - id: TR-const-003
+    system: constellation
+    gdd: design/gdd/constellation.md
+    requirement: "constellation_eligibility_tag subscriber-side read path (field added to tower_placed/tower_removed/tower_destroyed 2026-07-17)"
+    created: 2026-07-17
+    revised: ""
+    status: active
+
+  # --- Crafting (crafting.md) --- added 2026-07-17, /architecture-review (scoped gap-analysis pass)
+  - id: TR-craft-001
+    system: crafting
+    gdd: design/gdd/crafting.md
+    requirement: "RecipeResource data schema via GameDataRegistry, extending ADR-0009's existing Resource-subclass convention"
+    created: 2026-07-17
+    revised: ""
+    status: active
+  - id: TR-craft-002
+    system: crafting
+    gdd: design/gdd/crafting.md
+    requirement: "Dual-gate discovery trigger architecture (tech_unlocked AND item_added, both required, fires recipe_discovered once permanently); a third initialization-time sweep for AC-1 is still an open implementability gap"
+    created: 2026-07-17
+    revised: ""
+    status: active
+  - id: TR-craft-003
+    system: crafting
+    gdd: design/gdd/crafting.md
+    requirement: "Inventory API-boundary additions (has_room_for, clear_damaged_flag, has_items) plus component_repaired event (Crafting-owned, Inventory-subscribed) - shared scope with Equipment Forge's TR-equipforge-001"
+    created: 2026-07-17
+    revised: ""
+    status: active
+
+  # --- Tarot (tarot.md) --- added 2026-07-17, /architecture-review (scoped gap-analysis pass)
+  - id: TR-tarot-001
+    system: tarot
+    gdd: design/gdd/tarot.md
+    requirement: "Modifier aggregation architecture - 4 registered modifier_types, each MULTIPLICATIVE or REPLACE, aggregated per Formula F2/F3 before mission_modifier_applied emission at SCOUT entry"
+    created: 2026-07-17
+    revised: ""
+    status: active
+  - id: TR-tarot-002
+    system: tarot
+    gdd: design/gdd/tarot.md
+    requirement: "5-tier mastery progression persistence (restore_order=22) and mastery_tier_scalar lookup (Formula F6)"
+    created: 2026-07-17
+    revised: ""
+    status: active
+  - id: TR-tarot-003
+    system: tarot
+    gdd: design/gdd/tarot.md
+    requirement: "Rune discovery layer data model (tarot_rune_discovered, additive rune_bonus_flat stacking clamped [0.00, 0.30])"
+    created: 2026-07-17
+    revised: ""
+    status: active
+
+  # --- Menagerie (menagerie.md) --- added 2026-07-17, /architecture-review (scoped gap-analysis pass)
+  - id: TR-menag-001
+    system: menagerie
+    gdd: design/gdd/menagerie.md
+    requirement: "3-state creature lifecycle (RESERVE/HABITAT/BREEDING_PEN, terminal SACRIFICED) - state ownership and transition-validation architecture; sacrifice signature request_sacrifice(creature_id, target_item_id) adopted 2026-07-17"
+    created: 2026-07-17
+    revised: ""
+    status: active
+  - id: TR-menag-002
+    system: menagerie
+    gdd: design/gdd/menagerie.md
+    requirement: "Happiness decay/tend formulas ticking on mission_launched, not wall-clock or _process()"
+    created: 2026-07-17
+    revised: ""
+    status: active
+  - id: TR-menag-003
+    system: menagerie
+    gdd: design/gdd/menagerie.md
+    requirement: "Save persistence for creature instances + aggregate menagerie_quality_bonus (restore_order=20)"
+    created: 2026-07-17
+    revised: ""
+    status: active
+
+  # --- Defense Building (defense-building.md) --- added 2026-07-17, /architecture-review (scoped gap-analysis pass)
+  - id: TR-defbuild-001
+    system: defense-building
+    gdd: design/gdd/defense-building.md
+    requirement: "5-node tech tree data schema (2 categories: production_tech/structural_tech) and unlock-gating logic"
+    created: 2026-07-17
+    revised: ""
+    status: active
+  - id: TR-defbuild-002
+    system: defense-building
+    gdd: design/gdd/defense-building.md
+    requirement: "sanctuary_structure_built contract for Habitat Expansion's 3-tier structure (verified 2026-07-17 to match menagerie.md's expected contract exactly)"
+    created: 2026-07-17
+    revised: ""
+    status: active
+  - id: TR-defbuild-003
+    system: defense-building
+    gdd: design/gdd/defense-building.md
+    requirement: "Persistence for unlock-tree state (restore_order=21)"
+    created: 2026-07-17
+    revised: ""
+    status: active
+
+  # --- Tower Mastery (tower-mastery.md) --- added 2026-07-17, /architecture-review (scoped gap-analysis pass)
+  # Flagged HIGH RISK in systems-index.md's own risk table - proximity-based learning during
+  # live combat is untested in the tower-defense genre; recommend prototyping before finalizing.
+  - id: TR-towermast-001
+    system: tower-mastery
+    gdd: design/gdd/tower-mastery.md
+    requirement: "Live proximity-detection performance during WAVE_ACTIVE - per-frame or per-tick Chebyshev-radius check against hero position against N placed towers"
+    created: 2026-07-17
+    revised: ""
+    status: active
+  - id: TR-towermast-002
+    system: tower-mastery
+    gdd: design/gdd/tower-mastery.md
+    requirement: "TowerSystem.get_component_loadout(tower_id) query API (added to tower.md 2026-07-17) - direct Autoload call, narrow EventBus exception"
+    created: 2026-07-17
+    revised: ""
+    status: active
+  - id: TR-towermast-003
+    system: tower-mastery
+    gdd: design/gdd/tower-mastery.md
+    requirement: "build_signature cross-mission persistence keying (restore_order=34, assigned 2026-07-17); open ordering question vs. Hero Skill Build's restore (TR-heroskill-002) not yet resolved"
+    created: 2026-07-17
+    revised: ""
+    status: active
+
+  # --- Mission Select (mission-select.md) --- added 2026-07-17, /architecture-review (scoped gap-analysis pass)
+  - id: TR-missel-001
+    system: mission-select
+    gdd: design/gdd/mission-select.md
+    requirement: "retry_current_mission() - deliberate, narrow direct-Autoload-call exception to EventBus-only communication (3rd instance of this pattern project-wide, alongside Grid Rule 8/9 and Mission HUD's new DEFEAT Retry button)"
+    created: 2026-07-17
+    revised: ""
+    status: active
+  - id: TR-missel-002
+    system: mission-select
+    gdd: design/gdd/mission-select.md
+    requirement: "GridConfig same-instance guarantee across a DEFEAT-then-retry restart (Rule 10/EC-6)"
+    created: 2026-07-17
+    revised: ""
+    status: active
+  - id: TR-missel-003
+    system: mission-select
+    gdd: design/gdd/mission-select.md
+    requirement: "Save persistence for completion flags/best times (restore_order=11)"
+    created: 2026-07-17
+    revised: ""
+    status: active
+
+  # --- Hero Skill Build (hero-skill-build.md) --- added 2026-07-17, /architecture-review (scoped gap-analysis pass)
+  - id: TR-heroskill-001
+    system: hero-skill-build
+    gdd: design/gdd/hero-skill-build.md
+    requirement: "Ultimate-derivation lookup-table architecture - 4-skill category-count profile maps 35 raw profiles to 19 fixed Ultimate IDs (independently re-derived and confirmed correct 2026-07-17)"
+    created: 2026-07-17
+    revised: ""
+    status: active
+  - id: TR-heroskill-002
+    system: hero-skill-build
+    gdd: design/gdd/hero-skill-build.md
+    requirement: "Save persistence for unlocked skills/slot assignment (restore_order=31); open ordering question vs. Tower Mastery's restore (TR-towermast-003) not yet resolved"
+    created: 2026-07-17
+    revised: ""
+    status: active
+
+  # --- Equipment Forge (equipment-forge.md) --- added 2026-07-17, /architecture-review (scoped gap-analysis pass)
+  # Most convergent system in the project - depends on 7 others. Per systems-index.md's own
+  # guidance, its ADR should be written last among Sanctuary systems.
+  - id: TR-equipforge-001
+    system: equipment-forge
+    gdd: design/gdd/equipment-forge.md
+    requirement: "Inventory.apply_rune_to_item() in-place mutation API (added to inventory.md 2026-07-17) - shared scope with Crafting's TR-craft-003"
+    created: 2026-07-17
+    revised: ""
+    status: active
+  - id: TR-equipforge-002
+    system: equipment-forge
+    gdd: design/gdd/equipment-forge.md
+    requirement: "Menagerie.request_sacrifice(creature_id, target_item_id) cross-system call boundary (signature adopted into menagerie.md 2026-07-17)"
+    created: 2026-07-17
+    revised: ""
+    status: active
+  - id: TR-equipforge-003
+    system: equipment-forge
+    gdd: design/gdd/equipment-forge.md
+    requirement: "Persistence for crafted/imbued gear (restore_order=32); Constellation's restore_order dependency (AC-26) now assigned 2026-07-17 and should be confirmed unblockable"
+    created: 2026-07-17
     revised: ""
     status: active

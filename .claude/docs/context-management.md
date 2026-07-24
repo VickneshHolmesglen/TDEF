@@ -97,6 +97,50 @@ When context is compacted, preserve the following in the summary:
 actively worked on to recover full context. The files contain the decisions; the
 conversation history is secondary.
 
+## Godot MCP Session Gotchas
+
+**Stale global script class cache after headless-only sessions** (discovered
+2026-07-18, Sprint 6 S6-01): Godot's `.godot/global_script_class_cache.cfg` —
+the registry every `class_name` declaration resolves through — is only
+rebuilt by an **editor-mode filesystem scan**. The MCP `run_project` /
+`attach_project` tools spawn the *game runtime*, not the editor, and do
+**not** trigger this scan. If a session has only ever driven this project
+via those tools (never opened the actual editor), any `class_name` added
+since the cache was last built is invisible to the engine — scripts
+referencing it fail to parse with errors like:
+
+```
+SCRIPT ERROR: Parse Error: Could not find type "SomeNewClass" in the current scope.
+```
+
+This can look exactly like a real code bug (missing type, broken class) when
+the code is actually correct — the symptom is identical. Before concluding a
+"type not found" error is a real defect, check whether the referenced
+`class_name` is a new addition and whether the cache has been rebuilt since:
+
+```bash
+grep -c "ClassNameHere" .godot/global_script_class_cache.cfg   # 0 = stale/missing
+```
+
+**Fix** — force a full editor-mode rescan without opening any GUI:
+
+```bash
+"path/to/Godot.exe" --headless --editor --path "<project-dir>" --quit
+```
+
+This runs Godot's `update_scripts_classes` step (visible in the console
+output) and rewrites the cache to include every `class_name` in the project.
+Re-run `mcp__godot__run_project` afterward to confirm a clean boot (zero
+errors in `get_debug_output`).
+
+**When to proactively run this**: after any session (yours or a prior one)
+adds new `class_name` scripts and before trusting a "boot works" or "tests
+pass" claim based only on MCP `run_project`/`run_script` calls — especially
+notable because story completion notes in this project have repeatedly said
+"tests created, not yet executed — no headless Godot runner available,"
+which masked this exact gap for an entire epic (Epic 05, Sprint 6 discovery)
+until a live MCP run was finally attempted.
+
 ## Recovery After Session Crash
 
 If a session dies ("prompt too long") or you start a new session to continue work:

@@ -1,0 +1,27 @@
+[gd_scene load_steps=2 format=3 uid="uid://planningcluster0scene"]
+
+[ext_resource type="Script" path="res://src/presentation/mission_hud/planning_cluster.gd" id="1_pc"]
+
+[node name="PlanningCluster" type="Control"]
+script = ExtResource("1_pc")
+
+[node name="RouteOverlayHost" type="Node2D" parent="."]
+
+[node name="BlockedCellHost" type="Node2D" parent="."]
+
+[node name="BossTelegraphHost" type="Node2D" parent="."]
+
+[node name="CompositionPreviewHost" type="VBoxContainer" parent="."]
+
+[node name="ReadyButton" type="Button" parent="."]
+text = "Ready"
+
+[node name="SellButton" type="Button" parent="."]
+visible = false
+text = "Sell"
+
+[node name="NonReadyControls" type="Control" parent="."]
+
+[node name="BuildListPlaceholder" type="Control" parent="NonReadyControls"]
+
+[node name="CellOverlayPlaceholder" type="Control" parent="NonReadyControls"]

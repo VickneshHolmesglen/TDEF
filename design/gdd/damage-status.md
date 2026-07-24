@@ -2,9 +2,13 @@
 
 > **Status**: Revised (post-re-review — pending re-review)
 > **Author**: Vicknesh + Claude Sonnet
-> **Last Updated**: 2026-05-14
-> **Review Date**: 2026-05-14 — NEEDS REVISION (4 of 12 pass-5 blockers resolved in-session)
+> **Last Updated**: 2026-07-15
+> **Review Date**: 2026-05-14 — NEEDS REVISION (4 of 12 pass-5 blockers resolved in-session). **Cross-doc staleness pass (2026-07-15)**: the Dependencies table's Wave Manager/Mission HUD rows still said "Not yet designed" though both GDDs now exist — fixed (Mission HUD's subscription confirmed accurate; Wave Manager's was speculative and never actually true, corrected to point at the real, already-documented relationship). A stray `is_siege` reference in the Tower System row was removed (that mechanic was struck from tower.md this session). All 5 items in the Bidirectionality notes follow-up list were verified against their target GDDs directly and confirmed already resolved — none required new changes here, only marking as closed. **`/review-all-gdds` re-run (same day) found 4 more leftover `is_siege` references** (Interactions table's Tower System row, AC-1/AC-2/AC-3) that the first pass missed — fixed, no `is_siege` remains anywhere in this document. **Also found and fixed a genuine structural bug via cross-system scenario walkthrough**: Rule VII's "preserve lifesteal heals on the killing blow of a wave" was previously unachievable in all cases — root-caused to `monster.md`'s Rule 21f, which explicitly suppressed `monster_hp_absorbed` on lethal hits (fixed there, see monster.md's Pass 7 revision note). Rule VII.2 annotated to confirm the corrected timing holds. **`/review-all-gdds` 4th pass (2026-07-15d)** found a related, previously-undetected race: a lifesteal heal from a hit landed just before the hero's own death had no cleanup hook — Rule VII's cleanup is scoped only to `wave_completed`, which DEFEAT never emits, so a `hero_healed` event could arrive after `hero_died` and visually contradict the death sequence (hero.md's death VFX vs. lifesteal's green flash/heal chime). **Fixed same-day**: new Rule VIII — D&S adds a fifth subscription (`hero_died`) and clears `_lifesteal_pending` synchronously (no frame delay, unlike Rule VII's drain-then-clear) the instant the hero dies; Rule VI's existing "if not present: ignore" guard then naturally suppresses any heal whose `monster_hp_absorbed` arrives afterward. New AC-25. **`/review-all-gdds` 5th pass (same day)**: re-verified Rule VIII at the engine-loop level (not just doc-level) — confirmed structurally sound, but its correctness depends on an undocumented timing dependency (Monster's physics-tied flush vs. D&S's idle-tied defer). Documented same-day as Rule VIII.6; hero.md gained a matching defensive `state == DEAD` guard (Formula 6, AC-15) as defense-in-depth.
 > **Implements Pillar**: Mastery-as-Vindication · The Fight Must Be Worth It
+
+## Engine Risk Notes (Godot 4.6.2)
+
+No post-cutoff engine API dependency identified. This GDD's payload/formula surface (floats, ints, bools passed through EventBus events) has no direct engine API surface — no FileAccess, physics, or shader calls. Clean.
 
 ## Overview
 
@@ -27,7 +31,7 @@ Sometimes the plan doesn't hold. The pack is already past your chokepoint, the t
 **I. System Scope**
 
 1. The Damage & Status System is the single authoritative pipeline for all damage applied to **monsters and the hero**. It does not own damage applied to towers — BOSS→Tower direct damage is routed through the Tower System and is a named exception to this scope (see Tower System GDD Rule 18 and Monster GDD Rule 18).
-2. At MVP this system owns **four** event subscriptions and two active pipelines: (a) outgoing damage from towers and the hero to monsters, and (b) incoming damage to the hero with armor applied. Incoming hero damage is scaffolded but has no active sources at MVP. The third subscription (`monster_hp_absorbed`) drives lifesteal resolution only — it is not a damage pipeline. The fourth subscription (`wave_completed`) drives `_lifesteal_pending` cleanup — see Rule VII.
+2. At MVP this system owns **five** event subscriptions and two active pipelines: (a) outgoing damage from towers and the hero to monsters, and (b) incoming damage to the hero with armor applied. Incoming hero damage is scaffolded but has no active sources at MVP. The third subscription (`monster_hp_absorbed`) drives lifesteal resolution only — it is not a damage pipeline. The fourth subscription (`wave_completed`) drives `_lifesteal_pending` cleanup — see Rule VII. The fifth subscription (`hero_died`, added 2026-07-15d) drives an earlier, narrower `_lifesteal_pending` cleanup for the hero's own death — see Rule VIII.
 3. Status effects (burn, slow, poison) are explicitly out of scope for MVP.
 4. The system is nearly stateless. The only cross-event state is `_lifesteal_pending: Dictionary[int, float]` — a map from `target_id` to `hero_lifesteal_fraction`, populated when D&S emits a hero-hit `monster_damage_taken` for a hero with `hero_lifesteal_fraction > 0`, and cleared when the corresponding `monster_hp_absorbed` arrives. All other processing is fully event-independent. Pending `await get_tree().process_frame` coroutines are transient — they exist only within the one-frame deferral window and carry no cross-event state. If the D&S node is freed mid-wave (which must not happen during WAVE_ACTIVE), pending coroutines will attempt to resume on `SceneTree.process_frame` — which outlives the node — and will error. This is prevented by the lifecycle invariant, not by silent cancellation. Add `is_instance_valid(self)` as the first guard after every `await` in the implementation. Pending deferred `monster_damage_taken` events that arrive after `wave_completed` are safely absorbed — the Monster System is idle in that phase and discards them.
 
@@ -90,8 +94,18 @@ Note: At MVP, the hero attacks once per animation cycle. If a future mechanic in
 **VII. Wave Boundary Cleanup** (event: `wave_completed`)
 
 1. D&S subscribes to `wave_completed` (fourth subscription — see Rule I.2).
-2. When `wave_completed` is received, D&S must **drain pending heals before clearing**: defer the clear by one frame to allow any in-flight `monster_hp_absorbed` events (deferred from the final wave frame) to resolve naturally before the dictionary is cleared. This preserves lifesteal heals on the killing blow of a wave. See Rule VII.3 for the exact implementation.
+2. When `wave_completed` is received, D&S must **drain pending heals before clearing**: defer the clear by one frame to allow any in-flight `monster_hp_absorbed` events (deferred from the final wave frame) to resolve naturally before the dictionary is cleared. This preserves lifesteal heals on the killing blow of a wave. See Rule VII.3 for the exact implementation. *(Verified 2026-07-15 — `/review-all-gdds` cross-system scenario walkthrough: this rule's stated purpose depends on `monster.md`'s absorbed-flush pass (pass 4 of its per-frame algorithm) running after the `monster_died`→`wave_completed` cascade (pass 3) within the same Monster System `_physics_process` call. Confirmed this ordering holds and correctly resolves the killing-blow's `monster_hp_absorbed` before this rule's deferred clear resumes on the next frame — see `monster.md` Rule 21f's 2026-07-15 correction, which fixed a prior bug where lethal hits never emitted `monster_hp_absorbed` at all, making this rule's purpose previously unachievable regardless of timing.)*
 3. Implementation note: the `wave_completed` handler is: `await get_tree().process_frame` (if any `_lifesteal_pending` entries exist) → `_lifesteal_pending.clear()`. If `_lifesteal_pending` is already empty, skip the await and clear immediately.
+
+**VIII. Hero-Death Cleanup** (event: `hero_died`) *(added 2026-07-15d — `/review-all-gdds` 4th pass)*
+
+1. D&S subscribes to `hero_died` (fifth subscription — see Rule I.2).
+2. On `hero_died` received: `_lifesteal_pending.clear()` **immediately, synchronously — no `await`, unlike Rule VII's wave-boundary clear.**
+3. **Rationale:** a lifesteal hit landed just before the hero's own death defers its heal by one frame (Rule III.6-7) before `monster_damage_taken`/`monster_hp_absorbed` resolve on the Monster System side. The hero's own incoming-damage pipeline (Rule V) is independently deferred. Because these are two unrelated deferred chains, their relative arrival order within a frame is not guaranteed. If `monster_hp_absorbed` for a pending lifesteal hit arrives *after* `hero_died` has already fired, Rule VI would otherwise emit `hero_healed` on a hero already in the `DEAD` state — contradicting `hero.md`'s death sequence (Visual/Audio table: "screen desaturates... vignette freezes at max opacity") with a simultaneous green heal flash and absorption chime. Clearing `_lifesteal_pending` the instant `hero_died` fires means any `monster_hp_absorbed` that arrives afterward finds no entry — Rule VI.2's existing "if not present: ignore" guard suppresses the heal with no new logic needed there. If `monster_hp_absorbed` arrives *before* `hero_died` (the hero was still alive when the heal resolved), the heal is legitimate and unaffected — this rule only ever discards entries for hits whose heal would otherwise land on a corpse.
+4. This clear does **not** wait a frame the way Rule VII's does — Rule VII drains pending heals before clearing (preserving legitimate end-of-wave killing-blow lifesteal); Rule VIII does the opposite, discarding immediately, because by definition no heal received after `hero_died` can be legitimate — the hero the heal targets is already dead.
+5. `wave_completed` and `hero_died` are mutually exclusive triggers within a mission — Wave Manager's own DEFEAT-priority rule (`wave-manager.md` Rule 14: "if `hero_died` and a wave-clear signal arrive in the same frame, DEFEAT takes priority") guarantees D&S never receives both cleanup triggers for the same pending state. No double-clear ordering hazard exists between Rule VII and Rule VIII.
+
+6. **Timing dependency this rule's correctness relies on** *(documented 2026-07-15d — `/review-all-gdds` 5th pass, cross-system scenario walkthrough)*: Rule VIII only reliably wins the race against a pending lifesteal heal because Monster System's `monster_hp_absorbed` flush is pinned to `_physics_process` (monster.md Rule 21e's accumulator pattern) while D&S's own dispatch defer uses `await get_tree().process_frame` (an idle-step callback, not `call_deferred` — see Rule IV.1's note on why that distinction matters). Godot's frame loop always runs pending physics ticks before the idle step in the same frame, so any `monster_hp_absorbed` not yet flushed by the time `hero_died`'s idle-step callback runs cannot be flushed until a later physics tick — after Rule VIII's synchronous clear has already landed. **This guarantee is structural, not incidental, but it depends on both of the specific mechanisms named above staying as they are.** If Monster System's absorbed-flush is ever moved off `_physics_process`, or D&S's dispatch defer is ever changed to `call_deferred` or another mechanism with different timing semantics, this ordering guarantee must be re-verified — it is not independently enforced by any test or assertion. Hero System's `hero_healed` handler carries a defensive `state == DEAD` guard (`hero.md`, Formula 6) as a second layer in case this dependency is ever silently broken.
 
 ---
 
@@ -115,12 +129,13 @@ Per-subscriber cost estimates are TBD from profiling — document in `production
 | System | Direction | Data | Notes |
 |--------|-----------|------|-------|
 | Hero System | ← upstream | `HeroAutoAttackEvent` payload: `base_damage`, `is_crit`, `target_id`, `crit_multiplier_effective`, `hero_lifesteal_fraction`, `hero_bonus_tier` | Hero System rolls crit and reads target archetype tier before emitting — D&S never rolls RNG or reads monster state directly |
-| Tower System | ← upstream | `tower_attacked` (`damage_amount`, `target_monster_id`, `is_siege`, `is_armored`) | Tower System pre-resolves `is_armored` from target's `MonsterResource.archetype_tag` at fire time — D&S never reads monster state directly |
+| Tower System | ← upstream | `tower_attacked` (`damage_amount`, `target_monster_id`, `is_armored`) | Tower System pre-resolves `is_armored` from target's `MonsterResource.archetype_tag` at fire time — D&S never reads monster state directly. *(`is_siege` removed 2026-07-15 — struck along with tower.md's T4 Siege mechanic.)* |
 | Monster System | → downstream | `monster_damage_taken` (deferred one frame) | Monster System applies `amount` to target HP |
 | Monster System | ← upstream | `monster_hp_absorbed` (`entity_id: int`, `absorbed: int`) | Monster System emits (deferred one frame from `monster_damage_taken`) after HP application — D&S uses to resolve lifesteal |
 | Hero System | → downstream | `hero_healed` (fires within Monster System's `_physics_process` flush) | Hero System clamps at max HP — overheal behavior owned by Hero System |
 | EventBus | constraint | Cascade budget rule | `monster_damage_taken` must always defer one frame; `hero_healed` fires at cascade depth 1 from `monster_hp_absorbed` (permitted — within 2-level chain rule) |
 | Wave Manager | ← upstream | `wave_completed` (no payload fields consumed) | D&S clears `_lifesteal_pending` on receipt — see Rule VII |
+| Hero System | ← upstream | `hero_died` (no payload fields consumed) | D&S clears `_lifesteal_pending` synchronously on receipt — see Rule VIII (added 2026-07-15d) |
 
 **Multiplier summary by source × target:**
 
@@ -318,7 +333,7 @@ A `tower_attacked` event with `is_armored=true` and `damage_amount=80.7` resolve
 |--------|-----|-------------------|
 | EventBus System | `design/gdd/event-bus.md` | All inter-system communication. D&S subscribes to `tower_attacked`, `hero_auto_attacked`, `monster_hp_absorbed`, and `wave_completed`; emits `monster_damage_taken` (deferred) and `hero_healed` (synchronous from `monster_hp_absorbed` handler). Cascade budget rule: `monster_damage_taken` must defer one frame. `hero_healed` is a permitted synchronous emission at cascade depth 1 from `monster_hp_absorbed` (within the 2-level chain rule — no exemption needed). **Follow-up required:** EventBus GDD must be updated to (a) confirm `is_armored: bool` is in the `tower_attacked` payload, (b) confirm `monster_hp_absorbed` is in the event catalogue with payload `entity_id: int`, `absorbed: int`, and (c) update `HeroAutoAttackEvent` Resource payload to replace `hero_damage_bonus_eligible: bool` with `hero_bonus_tier: int`. |
 | Hero System | `design/gdd/hero.md` | Emits `HeroAutoAttackEvent` Resource carrying `base_damage`, `is_crit`, `target_id`, `crit_multiplier_effective` (pre-computed), `hero_lifesteal_fraction` (pre-clamped to `hero_lifesteal_cap`), and `hero_bonus_tier` (read from target archetype tier at attack-roll time: 0=STANDARD, 1=ELITE, 2=BOSS). Owns the crit roll and target-tier check — D&S never rolls RNG or reads monster state. Receives `hero_healed` and owns overheal clamping behavior. **Follow-up required:** Hero GDD must be updated to replace `hero_damage_bonus_eligible: bool` with `hero_bonus_tier: int` in the `HeroAutoAttackEvent` payload definition and in the attack-roll emission logic. |
-| Tower System | `design/gdd/tower.md` | Emits `tower_attacked` with `damage_amount`, `target_monster_id`, `is_siege`, and `is_armored`. Tower System reads the target's `MonsterResource.archetype_tag` at fire time and pre-resolves `is_armored` — D&S never reads monster state directly. **Follow-up required:** Tower System GDD must be updated to document this `archetype_tag` read and the `is_armored` flag. |
+| Tower System | `design/gdd/tower.md` | Emits `tower_attacked` with `damage_amount`, `target_monster_id`, and `is_armored`. Tower System reads the target's `MonsterResource.archetype_tag` at fire time and pre-resolves `is_armored` — D&S never reads monster state directly. **Resolved (2026-05-11, confirmed still current 2026-07-15):** tower.md Rule 20a documents the `archetype_tag` read and `is_armored` field. *(`is_siege` removed 2026-07-15 — the T4 Siege mechanic was struck from tower.md; see `tower.md`'s T4 Boss-Lane Identity section and `event-bus.md`'s `tower_attacked` catalogue row.)* |
 | Monster System | `design/gdd/monster.md` | Receives `monster_damage_taken` (deferred) and applies `amount` to target HP. Owns dead-monster guard (ignores events for entities with `hp <= 0`). **Emits `monster_hp_absorbed`** (deferred one frame from receiving `monster_damage_taken`) with `entity_id: int` and `absorbed: int` — the actual HP removed, capped at pre-hit HP. D&S subscribes to this event for lifesteal resolution. When Monster System discards a `monster_damage_taken` event (dead entity), it must NOT emit `monster_hp_absorbed` for that entity_id. **Follow-up required:** Monster System GDD must be updated to document `monster_hp_absorbed` emission. |
 
 #### Systems that depend on this GDD
@@ -327,18 +342,23 @@ A `tower_attacked` event with `is_armored=true` and `damage_amount=80.7` resolve
 |--------|-----|---------------------------|
 | Monster System | `design/gdd/monster.md` | `monster_damage_taken` event — applies `amount` to target HP each frame |
 | Hero System | `design/gdd/hero.md` | `hero_healed` event — applies `amount` to hero HP |
-| Wave Manager | Not yet designed | May subscribe to `monster_damage_taken` for damage-dealt tracking and kill attribution |
-| Mission HUD | Not yet designed | Subscribes to `monster_damage_taken` for floating damage numbers; uses `is_crit` and `hero_bonus_tier` fields to style the display |
+| Mission HUD | `design/gdd/mission-hud.md` | Subscribes to `monster_damage_taken` for floating damage numbers; uses `is_crit` and `hero_bonus_tier` fields to style the display. **Confirmed 2026-07-15** — mission-hud.md's own Dependencies table lists this event, added during its own review pass. |
 | Audio System | Not yet designed | Subscribes to `monster_damage_taken.is_crit` and `source_type` for hit sound selection |
 | Equipment Forge | Not yet designed | Must respect `crit_multiplier_bonus` maximum of 1.50 (cap defined in Formula D2) |
 
+**Correction (2026-07-15):** this table previously also listed a speculative "Wave Manager — may subscribe to `monster_damage_taken`" row. Now that `wave-manager.md` is designed and Approved, its actual dependency on D&S is confirmed to be the reverse relationship already documented in the Interactions table above (D&S subscribes to Wave Manager's `wave_completed` for `_lifesteal_pending` cleanup) — Wave Manager does not consume `monster_damage_taken` at all; its kill tracking uses `monster_died`/`monsters_died_batch` directly from Monster System. The speculative row was removed as stale rather than propagated forward incorrectly.
+
 #### Bidirectionality notes
 
-- Monster GDD must be updated to reference D&S as the owner of `monster_damage_taken` (this resolves Monster GDD OQ-4) and to document `monster_hp_absorbed` emission after HP application.
-- Hero GDD must be updated to reference D&S as the owner of `hero_healed` and the lifesteal resolution formula (D3), and to replace `hero_damage_bonus_eligible: bool` with `hero_bonus_tier: int` in `HeroAutoAttackEvent`.
-- EventBus GDD must be updated to confirm `monster_hp_absorbed` in the event catalogue, confirm `is_armored: bool` in `tower_attacked` payload, update `HeroAutoAttackEvent` payload to `hero_bonus_tier: int`, and update `monster_damage_taken` payload to `hero_bonus_tier: int` replacing `hero_bonus_applied: bool`.
-- Tower System GDD must be updated to document the `archetype_tag` read and `is_armored` forwarding.
-- Wave Manager GDD must note that D&S subscribes to `wave_completed` for `_lifesteal_pending` cleanup.
+**All 5 follow-ups below are now confirmed RESOLVED (verified 2026-07-15 — each target GDD checked directly, not assumed):**
+
+- ~~Monster GDD must be updated to reference D&S as the owner of `monster_damage_taken` (this resolves Monster GDD OQ-4) and to document `monster_hp_absorbed` emission after HP application.~~ **RESOLVED** — monster.md's own OQ-4 is marked Resolved, citing this exact `MonsterDamageTaken` schema; Rules 20-21 document `monster_hp_absorbed` emission (and non-emission on dead-entity discard).
+- ~~Hero GDD must be updated to reference D&S as the owner of `hero_healed` and the lifesteal resolution formula (D3), and to replace `hero_damage_bonus_eligible: bool` with `hero_bonus_tier: int` in `HeroAutoAttackEvent`.~~ **RESOLVED** — hero.md's Dependencies table credits D&S with damage resolution and `hero_healed`/`hero_damage_taken`; `HeroAutoAttackEvent` uses `hero_bonus_tier: int` throughout, no trace of `hero_damage_bonus_eligible`.
+- ~~EventBus GDD must be updated to confirm `monster_hp_absorbed` in the event catalogue, confirm `is_armored: bool` in `tower_attacked` payload, update `HeroAutoAttackEvent` payload to `hero_bonus_tier: int`, and update `monster_damage_taken` payload to `hero_bonus_tier: int` replacing `hero_bonus_applied: bool`.~~ **RESOLVED** — event-bus.md's catalogue has all four: `monster_hp_absorbed` (entity_id, absorbed), `tower_attacked.is_armored`, `HeroAutoAttackEvent.hero_bonus_tier`, `monster_damage_taken.hero_bonus_tier`.
+- ~~Tower System GDD must be updated to document the `archetype_tag` read and `is_armored` forwarding.~~ **RESOLVED** — tower.md Rule 20a, marked Resolved 2026-05-11.
+- ~~Wave Manager GDD must note that D&S subscribes to `wave_completed` for `_lifesteal_pending` cleanup.~~ **RESOLVED** — wave-manager.md's Interactions table lists "Damage & Status System — `wave_completed` for end-of-wave state cleanup (D&S cross-GDD follow-up from D&S pass 6)".
+
+No outstanding cross-GDD follow-ups remain from this list.
 
 ## Tuning Knobs
 
@@ -397,17 +417,17 @@ D&S does not own any UI widgets directly. It is the source system for floating d
 All criteria are verifiable via GUT unit tests or a controlled test harness. Pass/fail is binary.
 
 **AC-1: Tower damage pipeline — basic resolution**
-GIVEN a `tower_attacked` event with `damage_amount=47.3`, `target_monster_id=99`, `is_armored=false`, `is_siege=false`
+GIVEN a `tower_attacked` event with `damage_amount=47.3`, `target_monster_id=99`, `is_armored=false`
 WHEN D&S processes it
 THEN `monster_damage_taken` is emitted with `entity_id=99`, `amount=47`, `source_type=0`, `is_crit=false`, `hero_bonus_tier=0`
 
 **AC-2: Tower damage pipeline — armored mitigation**
-GIVEN a `tower_attacked` event with `damage_amount=80.7`, `target_monster_id=42`, `is_armored=true`, `is_siege=false`
+GIVEN a `tower_attacked` event with `damage_amount=80.7`, `target_monster_id=42`, `is_armored=true`
 WHEN D&S processes it
 THEN `monster_damage_taken` is emitted with `entity_id=42`, `amount=40` (`floor(80.7 × 0.50) = floor(40.35) = 40`), `source_type=0`, `is_crit=false`, `hero_bonus_tier=0`
 
 **AC-3: Tower damage pipeline — ELITE/BOSS target with no tier multiplier**
-GIVEN a `tower_attacked` event with `damage_amount=80.7`, `target_monster_id=42`, `is_armored=false`, `is_siege=false`
+GIVEN a `tower_attacked` event with `damage_amount=80.7`, `target_monster_id=42`, `is_armored=false`
 WHEN D&S processes it
 THEN `monster_damage_taken` is emitted with `entity_id=42`, `amount=80`, `source_type=0`, `is_crit=false`, `hero_bonus_tier=0`
 NOTE: This scenario represents a tower firing at an ELITE monster. The tower pipeline reads only `damage_amount` from the event payload — it has no access to monster tier and applies no tier multiplier. `hero_bonus_tier=0` on all tower hits regardless of target archetype.
@@ -565,6 +585,14 @@ WHEN D&S processes it
 THEN `hero_armor` is clamped to `0.0` before formula evaluation
 AND `hero_damage_taken` is emitted with `amount=50` (`max(1, floor(50 × 100/100)) = 50`), `source_type=3` (forwarded)
 NOTE: Validates EC-13 defensive clamp. A negative armor value must not crash (division by zero at armor=-100) and must degrade to full-damage passthrough, not mitigation.
+
+**AC-25: `hero_died` clears `_lifesteal_pending` synchronously, suppressing a post-death heal** *(Integration test — requires live SceneTree + Monster System)* *(added 2026-07-15d)*
+GIVEN a `HeroAutoAttackEvent` creates a `_lifesteal_pending` entry for target_id=99 with `hero_lifesteal_fraction=0.40`
+AND `hero_died` fires before `monster_hp_absorbed` for entity_id=99 arrives (simulating the hero dying to an unrelated hit while this lifesteal hit is still in-flight)
+WHEN D&S processes `hero_died`
+THEN `_lifesteal_pending` is cleared immediately, synchronously, with no frame delay
+AND when the previously-in-flight `monster_hp_absorbed(entity_id=99, ...)` subsequently arrives, Rule VI.2 finds no pending entry and emits no `hero_healed`
+NOTE: Tests the Rule VIII cleanup path. Verifies a heal cannot visually land on the hero after the death sequence has begun. Contrast with AC-23 (Rule VII): that path drains pending heals with a one-frame delay before clearing (preserving legitimate wave-end lifesteal); this path clears with zero delay (no heal after death can ever be legitimate).
 
 ## Open Questions
 

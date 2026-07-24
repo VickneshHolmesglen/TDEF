@@ -37,7 +37,7 @@
 #   Each entry: name, status, source, referenced_by[], attributes{}, added, revised
 
 version: 1
-last_updated: "2026-05-15"
+last_updated: "2026-07-16" # crafting.md formulas added
 
 # ─── ENTITIES ────────────────────────────────────────────────────────────────
 # Named game-world objects: enemies, NPCs, characters, factions, bosses.
@@ -179,15 +179,292 @@ formulas:
     output_range: [15, 136]
     expression: "base_damage × (1 + boss_dmg_wave_growth_rate × (wave_index - 1))"
     notes: "Two BOSS calibration tiers: early-wave BOSSes use base_damage 15–25
-      (Tier 1 falls in 3–5 hits); final-wave BOSSes use base_damage 40–80 (Tier 4
+      (Tier 1 falls in 3–5 hits); final-wave BOSSes use base_damage 55–80 (Tier 4
       survives 8–15 hits). boss_dmg_wave_growth_rate default: 0.10. Output applied
       directly to tower HP via boss_tower_attack_attempted event — no mitigation at MVP.
       Must stay within tower_hp_boss_damage_provisional_range [40–200] for final-wave
       BOSSes. Tower System GDD constraint tower_max_hp cross-referenced.
       Output range corrected 2026-05-01: max was incorrectly listed as 164; formula
-      at max params (base_damage=80, wave_index=8, rate=0.10) gives 80 × 1.70 = 136."
+      at max params (base_damage=80, wave_index=8, rate=0.10) gives 80 × 1.70 = 136.
+      base_damage floor corrected 2026-07-15 (/design-review monster.md): was 40,
+      raised to 55 to fix an 18-hits-vs-15-target boundary failure at wave 5."
     added: 2026-04-23
-    revised: "2026-05-01"
+    revised: "2026-07-15"
+
+  - name: crafting_material_qty
+    status: active
+    source: design/gdd/crafting.md
+    referenced_by:
+      - design/gdd/crafting.md
+      - design/gdd/equipment-forge.md
+    variables:
+      - base_qty[rarity]
+      - T
+      - tier_dps_multiplier
+    output_range: [2, 32]
+    expression: "round(base_qty[rarity] × tier_dps_multiplier(T))"
+    notes: "Tower Component recipe material cost, per rarity tier (Common/Uncommon/Rare)
+      and recipe quality_tier T (1-4). base_qty defaults: Common=8, Uncommon=4, Rare=2.
+      Deliberately reuses tower.md's tier_dps_multiplier {1.0, 1.6, 2.4, 4.0} (not
+      redefined here) so material cost-per-power stays constant across the tier ladder.
+      Worked table: T1=8 Common only; T2=13 Common+6 Uncommon; T3=19 Common+10 Uncommon;
+      T4=32 Common+16 Uncommon+8 Rare. Any change to tower.md's tier_dps_multiplier
+      automatically re-scales this formula's output — do not fork a separate copy.
+      Formula 3 (crafting_repair_common_qty) shares the same tier_dps_multiplier
+      dependency."
+    added: 2026-07-16
+    revised: ""
+
+  - name: crafting_repair_common_qty
+    status: active
+    source: design/gdd/crafting.md
+    referenced_by:
+      - design/gdd/crafting.md
+    variables:
+      - base_repair_common
+      - T
+      - tier_dps_multiplier
+    output_range: [4, 16]
+    expression: "round(base_repair_common × tier_dps_multiplier(T))"
+    notes: "Component repair material cost — Common material only regardless of the
+      component's original tier's rarity requirements (deliberate: keeps repair
+      cheaper than recrafting and avoids re-demanding Uncommon/Rare). base_repair_common
+      default: 4. T is the component instance's own quality_tier at crafting time, read
+      from the instance, not re-rolled. Closes tower.md's OQ-12 (component repair,
+      previously unowned by any system). Worked table: T1=4, T2=6, T3=10, T4=16 Common,
+      roughly 46-53% of the equivalent fresh-craft Common-only cost at each tier."
+    added: 2026-07-16
+    revised: ""
+
+  - name: equipment_forge_sacrifice_quality_tier
+    status: active
+    source: design/gdd/equipment-forge.md
+    referenced_by:
+      - design/gdd/equipment-forge.md
+      - design/gdd/menagerie.md
+    variables:
+      - species_tier
+    output_range: [2, 4]
+    expression: "quality_tier(species_tier) = clamp(species_tier + 1, 1, 4)"
+    notes: "Formula 2 in equipment-forge.md. Closes menagerie.md's own open
+      question — what creature_sacrificed's target_item_id refers to: a NEW item
+      Equipment Forge creates in the same operation that requests the sacrifice
+      (via a new, not-yet-implemented Menagerie.request_sacrifice(creature_id,
+      target_item_id) API). species_tier comes from menagerie.md Core Rule 1
+      (Common=1/Uncommon=2/Rare=3). Deliberate design intent: a sacrifice-born
+      item is never quality_tier 1 (the +1 offset), reflecting that surrendering
+      a tended creature is a costlier, more special source than a baseline
+      material-only craft. The clamp floor is defensive only — never actually
+      reached given species_tier's bounded [1,3] range."
+    added: 2026-07-17
+    revised: ""
+
+  - name: hero_ultimate_id_derivation
+    status: active
+    source: design/gdd/hero-skill-build.md
+    referenced_by:
+      - design/gdd/hero-skill-build.md
+      - design/gdd/hero.md
+    variables:
+      - category_count
+      - shape
+      - dominant
+      - catA
+      - catB
+    output_range: []
+    expression: "Formula 3 in hero-skill-build.md: 4 active skill slots -> category_count vector (Formula 1) -> one of 5 partition shapes (Formula 2: PURE/TRIPLE/DOUBLE_DOUBLE/DOUBLE_SINGLE_SINGLE/ALL_DIFFERENT) -> one of 19 fixed ultimate_id strings (Formula 3), or EMPTY if fewer than 4 slots filled"
+    notes: "SOLVES the combinatorial-explosion risk explicitly named in game-concept.md's
+      High-Risk Systems table ('4 active skills x N possible combinations... without
+      constraints, the balance surface becomes unmanageable'). Ultimate is derived
+      from the CATEGORY-COUNT PROFILE of the 4 equipped skills, not their literal
+      skill_id identities — categories are the 4 fixed values physical/ranged/
+      elemental/support (reused verbatim from tower.md's Foundation archetype enum,
+      see hero_skill_category below). This collapses C(7,4)=35 raw category-count
+      profiles (a proven combinatorics identity, size-4 multisets over 4 categories)
+      onto exactly 19 distinct ultimate_id values — and this matrix is provably
+      catalogue-size-independent: growing the skill catalogue from 8 to 20+ skills
+      never grows the 35/19 counts, since only category membership matters, not
+      skill count per category. Closes hero.md's own Open Question 3 ('Ultimate
+      lookup table authorship'). The full 19-entry table is hand-authored in
+      hero-skill-build.md Formula 3 with a mathematical exhaustiveness proof (5
+      partitions of the integer 4 is a closed, complete enumeration in elementary
+      number theory) — no NONE/unclassified fallback is ever reachable for valid
+      catalogue data; it exists only as a defensive guard against a data-integrity
+      bug, per hero.md's own pre-existing 'if no table entry, resolve to NONE'
+      edge case."
+    added: 2026-07-17
+    revised: ""
+
+  - name: cell_size
+    status: active
+    source: design/gdd/mission-select.md
+    referenced_by:
+      - design/gdd/mission-select.md
+      - design/gdd/grid-system.md
+    value: 64.0
+    unit: world units per grid cell
+    notes: "CLOSES grid-system.md's Open Question OQ-4 ('Is cell_size a constant
+      per project or truly per-mission?'). Resolution (mission-select.md Core Rule
+      2): cell_size is a FIXED project-wide constant, 64.0, for every mission,
+      always — not per-mission. Rationale: no other GDD's formulas/tuning
+      knobs/visual calibration scale with a varying cell_size (tower_attack_range_cells_max=8,
+      hero_class_proximity_radius_cells=3 are both calibrated once, in cell units,
+      against a single implicit physical scale). The actual mission-shape/pacing
+      lever is grid_cols x grid_rows + _cell_types layout (already per-mission via
+      GridConfig), not cell_size. GridConfig's schema is unchanged (still carries
+      a cell_size field, unbroken API) — only the content-authoring discipline
+      changes: Mission Select's MissionEntry authoring tool must always populate
+      it with this fixed value."
+    added: 2026-07-17
+    revised: ""
+
+  - name: tower_mastery_build_signature
+    status: active
+    source: design/gdd/tower-mastery.md
+    referenced_by:
+      - design/gdd/tower-mastery.md
+    variables:
+      - foundation_component_id
+      - weapon_component_id
+      - focus_component_id
+      - power_component_id
+    output_range: []
+    expression: "foundation_component_id + \"|\" + weapon_component_id + \"|\" + focus_component_id + \"|\" + power_component_id"
+    notes: "Formula 4 in tower-mastery.md. Solves a real structural gap: tower.md's
+      tower_id is per-mission, sequential, and resets to 0 each mission (Rule 11a),
+      so it cannot be used to key cross-mission-persistent mastery progress. This
+      build_signature (a 4-part pipe-delimited string of the tower's full component
+      loadout) is the stable key used instead for all persistent storage
+      (mastery_time, unlocked_skills); tower_id is still used, unchanged, as the
+      live per-mission field in the frozen mastery_progress_updated/skill_unlocked
+      event payloads. Requires a NEW Tower System API this GDD depends on but does
+      not implement: TowerSystem.get_component_loadout(tower_id) ->
+      Dictionary[String, String] — tower_placed's current payload does not carry
+      the 4-slot component loadout. Assumption flagged: component ID strings are
+      assumed to never contain the '|' delimiter."
+    added: 2026-07-16
+    revised: ""
+
+  - name: defense_building_tech_node_cost
+    status: active
+    source: design/gdd/defense-building.md
+    referenced_by:
+      - design/gdd/defense-building.md
+    variables:
+      - branch_tier
+      - base_qty[rarity]
+      - node_tier_multiplier
+      - base_tech_gold
+    output_range: [4, 45]
+    expression: "material_qty = round(base_qty[rarity] × node_tier_multiplier(branch_tier)); gold_cost = round(base_tech_gold × node_tier_multiplier(branch_tier))"
+    notes: "Tech node unlock cost, per rarity tier and branch_tier (1-3). base_qty
+      defaults: Common=15, Uncommon=8, Rare=4. node_tier_multiplier {1.0, 1.8, 3.0} is
+      a new, Defense-Building-owned constant — deliberately NOT the same as
+      tower.md's tier_dps_multiplier (that scales combat power; tech cost has no
+      combat referent). base_tech_gold default 50. Both tech categories
+      (production_tech, structural_tech) share this one cost curve. Gates the
+      5-node tech tree (tech_production_2/3/4, tech_structural_1/2) whose
+      tech_unlocked events Crafting's RecipeResource.tech_prerequisite consumes."
+    added: 2026-07-16
+    revised: ""
+
+  - name: defense_building_habitat_expansion_cost
+    status: active
+    source: design/gdd/defense-building.md
+    referenced_by:
+      - design/gdd/defense-building.md
+      - design/gdd/menagerie.md
+    variables:
+      - tier
+    output_range: [20, 55]
+    expression: "hand-tuned table, not derived (same precedent as inventory.md's slot-expansion table): tier1=20 Common+60 gold; tier2=35 Common+12 Uncommon+120 gold; tier3=55 Common+25 Uncommon+8 Rare+200 gold"
+    notes: "Satisfies menagerie.md Core Rule 4's exact contract: structure_id =
+      habitat_expansion_tier_1/_tier_2/_tier_3, structure_type = literal
+      'habitat_expansion' on all three tiers, emitted via sanctuary_structure_built.
+      Tier 1 ungated; Tier 2 requires tech_structural_1 unlocked; Tier 3 requires
+      tech_structural_2 unlocked (sequential-tier enforcement — cannot skip tiers).
+      Each tier adds +2 Menagerie HABITAT slots (4->6->8->10 total), per
+      menagerie.md's own already-fixed slot-count curve — this GDD only ever
+      defines the cost, never the slot count, which menagerie.md owns."
+    added: 2026-07-16
+    revised: ""
+
+  - name: tarot_wave_reward_scalar_final
+    status: active
+    source: design/gdd/tarot.md
+    referenced_by:
+      - design/gdd/tarot.md
+      - design/gdd/wave-manager.md
+    variables:
+      - wave_reward_scalar_natural
+      - tarot_reward_multiplier
+      - rune_reward_bonus
+    output_range: [1.00, 4.768]
+    expression: "clamp(wave_reward_scalar_natural × tarot_reward_multiplier + rune_reward_bonus, 1.00, 4.768)"
+    notes: "Formula F3 in tarot.md — extends wave-manager.md's own wave_reward_scalar
+      formula (Formula 1 there) with Tarot's reward-side modifier layer, without
+      introducing any new Tarot-to-Resource-Economy interface. The final value is
+      forwarded unchanged through the existing monster_spawn_requested.wave_reward_scalar
+      field into Monster System's monster_died payload. Hard-clamped to 4.768 —
+      wave-manager.md's own natural F1 ceiling at r=0.25/wave 8 — so Tarot's reward
+      layer can accelerate a mission's reward curve but never exceed the absolute
+      ceiling Resource Economy's drop-rate math was calibrated against
+      (WAVE_ERI_CEILING_COMBINED). tarot_reward_multiplier is itself an aggregate
+      (multiplicative stacking across equipped tarot_reward_scalar_mult cards, clamped
+      [0.50, 2.00] before this formula consumes it) plus rune_reward_bonus (additive,
+      permanent, [0.00, 0.30], Formula F5)."
+    added: 2026-07-16
+    revised: ""
+
+  - name: menagerie_quality_bonus_aggregate
+    status: active
+    source: design/gdd/menagerie.md
+    referenced_by:
+      - design/gdd/menagerie.md
+      - design/gdd/resource-economy.md
+    variables:
+      - N_habitat
+      - H_avg
+    output_range: [1.0, 1.5]
+    expression: "1.0 if N_habitat=0, else clamp(1.0 + 0.5 × (H_avg / 100), 1.0, 1.5)"
+    notes: "The concrete formula behind the pre-existing registered constant
+      menagerie_quality_bonus (source: resource-economy.md) — resource-economy.md
+      only ever specified the [1.0, 1.5] range and consumption contract; this GDD is
+      where the actual aggregate expression is originated. H_avg is the arithmetic
+      mean happiness across only HABITAT-state creatures (RESERVE/BREEDING_PEN
+      excluded per menagerie.md Rule 5). quality_bonus_coefficient=0.5 is fixed —
+      changing it would push output outside the registered [1.0,1.5] bounds and
+      require a coordinated revision with resource-economy.md. Menagerie pushes this
+      value via creature_happiness_changed's quality_bonus field; Resource Economy
+      caches, never recomputes (resource-economy.md Rule 3)."
+    added: 2026-07-16
+    revised: ""
+
+  - name: constellation_bonus_value
+    status: active
+    source: design/gdd/constellation.md
+    referenced_by:
+      - design/gdd/constellation.md
+    variables:
+      - base_unit_bonus
+      - size_growth_rate
+      - N
+      - N_min
+      - shape_complexity_bonus
+      - bonus_cap
+    output_range: [0.10, 0.25]
+    expression: "min(bonus_cap, base_unit_bonus × (1 + size_growth_rate × (N - N_min)) + shape_complexity_bonus)"
+    notes: "Emitted as bonus_value in the constellation_activated event payload (see
+      event-bus.md). Defaults: base_unit_bonus=0.10, size_growth_rate=0.35, bonus_cap=0.25,
+      shape_complexity_bonus per shape (triad_line=0.00, quad_line=0.00, l_corner=0.02,
+      cross_plus=0.03). Worked outputs at default tuning: triad_line=0.100, quad_line=0.135,
+      l_corner=0.155, cross_plus=0.200. Deliberately capped because multiple overlapping
+      pattern instances stack additively at Tower System (constellation.md Core Rule 6) —
+      an uncapped per-instance value would let 2-3 overlapping patterns break tower balance
+      calibrated independently in tower.md. Tower System applies bonus_type/bonus_value to
+      its own stats; Constellation System does not modify Tower state directly."
+    added: 2026-07-16
+    revised: ""
 
 # Example:
 #
@@ -285,15 +562,24 @@ constants:
     source: design/gdd/hero.md
     referenced_by:
       - design/gdd/hero.md
+      - design/gdd/tower-mastery.md
     value: 3
     unit: grid cells (Chebyshev distance)
     notes: "Chebyshev cell radius within which the hero accumulates class proximity
       time near a tower. Tower Mastery System GDD must declare whether it uses the
       same radius or a different one for skill acquisition proximity. If both use 3
       cells, confirm intentional. If different, add a second registry entry owned
-      by Tower Mastery."
+      by Tower Mastery.
+      CONFIRMED 2026-07-16 (tower-mastery.md Core Rule 1, closes hero.md OQ6 and
+      grid-system.md OQ-1): Tower Mastery uses this identical 3-cell Chebyshev
+      radius (registered as TOWER_MASTERY_PROXIMITY_RADIUS in its own Formula 1),
+      not a separate value — intentional shared constant, not a coincidence. No
+      Euclidean Grid API variant was needed as a result. Tower Mastery's own
+      proximity accumulator (mastery_time[build_signature]) remains fully
+      independent from this hero_class_proximity_radius_cells-gated accumulator
+      (closes hero.md OQ7) — same radius value, two separate trackers."
     added: 2026-04-22
-    revised: ""
+    revised: "2026-07-16"
 
   - name: hero_crit_multiplier_base
     status: active
@@ -333,12 +619,15 @@ constants:
     value: 100
     unit: armor units
     notes: "The armor value at which the hero takes exactly 50% of incoming damage.
-      Formula: effective_damage_taken = incoming * (100 / (armor + 100)).
+      Formula: effective_damage_taken = max(1, floor(incoming * (100 / (armor + 100)))).
+      # was: 'effective_damage_taken = incoming * (100 / (armor + 100))' before 2026-07-15 —
+      # missing the max(1, floor(...)) guard that both hero.md Formula 5 and
+      # damage-status.md Rule V actually implement (no hit can be fully negated by armor).
       At armor=0, hero takes 100%. At armor=500 (soft cap), hero takes ~17%.
       Damage & Status System GDD must use this constant when processing hero
       incoming damage — it must not implement its own armor formula."
     added: 2026-04-22
-    revised: ""
+    revised: "2026-07-15"
 
   - name: hero_lifesteal_cap
     status: active
@@ -407,15 +696,17 @@ constants:
     value_max: 200
     unit: flat HP per boss attack hit (final-wave BOSS only)
     notes: "Provisional calibration range for final-wave BOSS-to-tower attack damage.
-      Applies to BOSSes appearing on wave 5–8 (base_damage ~40–80 in MonsterResource).
+      Applies to BOSSes appearing on wave 5–8 (base_damage ~55–80 in MonsterResource).
       Target: Tier 4 tower (1000 HP) survives 8–15 hits at wave 8. Calibrated example:
       base_damage=50 gives boss_effective_damage=85 HP/hit; Tier 4 survives 12 hits.
       SEPARATE calibration applies to early-wave BOSSes (wave 2–4, base_damage ~15–25):
       these are designed to destroy Tier 1 towers in 3–5 hits, not to respect this
       [40–200] range. Two-tier BOSS design confirmed in Monster GDD Formula 3.
-      No mitigation — towers use pure HP (MVP decision)."
+      No mitigation — towers use pure HP (MVP decision).
+      base_damage floor corrected 2026-07-15 (/design-review monster.md): was ~40,
+      raised to ~55 to fix an 18-hits-vs-15-target boundary failure at wave 5."
     added: 2026-04-22
-    revised: 2026-04-23
+    revised: "2026-07-15"
 
   - name: hero_damage_bonus_multiplier
     status: active
@@ -423,8 +714,12 @@ constants:
     referenced_by:
       - design/gdd/damage-status.md
       - design/gdd/monster.md
+      - design/gdd/hero.md
     value: 1.50
     unit: damage multiplier (hero vs ELITE/BOSS only)
+    # added hero.md to referenced_by 2026-07-15: hero.md's Formula 4 was corrected to
+    # explicitly cite this exact constant by name (renamed from its own former
+    # elite_boss_multiplier, which duplicated this value under a different name/model).
     notes: "The hero damage bonus applied to ELITE and BOSS targets via hero_bonus_tier: int
       (0=STANDARD/no bonus, 1=ELITE/bonus applies, 2=BOSS/bonus applies) in HeroAutoAttackEvent
       payload. Applied as the first multiplier in hero_damage_resolution formula (before crit).
@@ -433,23 +728,42 @@ constants:
       affected by this multiplier — hero-source-only. Tarot GDD and any future modifier system
       must not define a separate hero damage bonus multiplier without cross-referencing this entry."
     added: 2026-04-23
-    revised: ""
+    revised: "2026-07-15"
 
   - name: tower_placement_budget_target
     status: active
     source: design/gdd/tower.md
     referenced_by:
       - design/gdd/tower.md
+      - design/gdd/resource-economy.md
     value_min: 350
-    value_max: 400
+    value_max: 550
     unit: build points per mission
-    notes: "Provisional in-mission resource budget target for tower placement.
+    # was: value_min: 350, value_max: 400 before 2026-07-15 — range only covered the
+    # 6-wave default; Tower's Tuning Knobs table now states a wave-count-dependent
+    # figure once Resource Economy's gold faucet was calibrated (see below).
+    notes: "In-mission resource budget target for tower placement, now formula-backed
+      by resource-economy.md Rule 8 (Scout starting grant) + Rule 10/Formula 5 (per-wave
+      completion grant) as of 2026-07-14 — no longer provisional pending an undesigned
+      Resource Economy GDD. **Corrected 2026-07-15 (/design-review re-review #2 on
+      resource-economy.md):** the ~375 figure previously stated here for '6-wave
+      missions (default)' was only reachable at Wave Manager's r=0.25 safe-range
+      ceiling, not its actual documented default r=0.20. At the true default, the
+      6-wave total is 349 — 1 point below the historical [350,400] sub-range, not
+      comfortably inside it. Both cases: at r=0.20 (default), 349 build points
+      (150 scout + 199 across waves 1-6); at r=0.25 (ceiling), 375 (150 + 225).
+      7-8-wave missions: ~481 at r=0.20, ~546 at r=0.25 — both exceed the 6-wave
+      sub-range, which is why value_max was raised from 400 to 550. This is a
+      documentation-precision fix, not a balance change — base_wave_gold stays at 20;
+      raising it to 21 (which would land both r-cases inside [350,400] for 6-wave
+      missions) was considered and deliberately deferred to a future real-content
+      calibration pass, since the [350,400] target is itself still provisional.
       Calibrated so a player can field 10 towers at average cost 30 (=300 points)
-      with ~50–100 remaining for replacements. Resource Economy GDD must design the
-      total mission budget and per-wave earning rate to hit this target. All placement
-      cost formulas in Tower GDD are provisional until Resource Economy GDD is written."
+      with the remainder for replacements. Tower GDD's own T4 base_cost cap (≤30,
+      added 2026-07-15 resolving OQ-11) keeps a single Tier 4 tower's cost from
+      consuming a disproportionate share of this budget."
     added: 2026-04-22
-    revised: ""
+    revised: "2026-07-15"
 
   - name: monster_hp_wave_growth_rate
     status: active
@@ -494,12 +808,21 @@ constants:
       (Wave Manager Rule 15c), not by checking wave_index directly. Applied AFTER
       monster_hp_scaling formula, multiplicatively. HP ONLY — speed is not amplified.
       Combined multiplier at penultimate wave (5-wave mission example: wave 4), Normal:
-      1.45 × 1.35 = 1.9575× base_hp. Escalation is monotonic: final wave remains the
-      hardest. Previously named elite_wave4_hp_amplifier. Reverted to old name 2026-05-11
+      1.45 × 1.35 = 1.9575× base_hp. **Corrected 2026-07-15 (/design-review pass 7 on
+      monster.md):** the prior claim 'escalation is monotonic: final wave remains the
+      hardest' (meaning penultimate ELITE HP < next-wave STANDARD HP) was found to be
+      false at this GDD's own default worked example — 587.25 HP already exceeds this
+      5-wave mission's actual final-wave (wave 5) STANDARD HP of 480. The invariant is
+      now reframed: penultimate-wave ELITE HP must stay below the mission's final-wave
+      BOSS HP (authored independently, not derived from this formula), not the
+      following wave's generic STANDARD HP — this holds by construction across the
+      full documented safe range and requires no numeric co-dependency check against
+      hp_wave_growth_rate, unlike the old (and arithmetically impossible) invariant.
+      Previously named elite_wave4_hp_amplifier. Reverted to old name 2026-05-11
       when Monster GDD F4 still used wave_index==4; renamed again 2026-05-20 after B7 fix
       updated Monster GDD F4 to use is_penultimate_wave trigger."
     added: 2026-04-23
-    revised: "2026-05-20"
+    revised: "2026-07-15"
 
   - name: hero_damage_resolution
     status: active
@@ -552,6 +875,7 @@ constants:
     referenced_by:
       - design/gdd/wave-manager.md
       - design/gdd/monster.md
+      - design/gdd/resource-economy.md
     variables:
       - wave_index
       - difficulty_growth_rate
@@ -566,7 +890,11 @@ constants:
       Default r=0.20 (safe range 0.15–0.25; runtime validated 0.10–0.25 — hard cap; at r>0.25 the base drop quality probability cap breaks).
       Boundary values: r=0.15 w=8 = 2.660×; r=0.20 w=8 = 3.583×; r=0.25 w=8 = 4.768×.
       Wave 1 always = 1.00×. Renamed from wave_difficulty_scalar (2026-04-26) after
-      design-review mandated semantic clarity. Monster GDD must update field reference."
+      design-review mandated semantic clarity. Monster GDD must update field reference.
+      Resource Economy GDD (2026-07-11) resolved as Formula 2 (quantity, unbounded multiplier)
+      and Formula 3 (quality, clamped probability roll) — the two dimensions use structurally
+      different math specifically so they cannot compound into a raw multiplier at the
+      WAVE_ERI_CEILING_COMBINED value; see that constant's own notes."
     added: 2026-04-23
     revised: "2026-04-26"
 
@@ -595,18 +923,174 @@ constants:
     source: design/gdd/wave-manager.md
     referenced_by:
       - design/gdd/wave-manager.md
+      - design/gdd/resource-economy.md
     value: 22.73
     unit: combined economic return index multiplier (dimensionless)
     notes: "Combined ERI ceiling at max wave settings (r=0.25, wave 8). Equals
       wave_reward_scalar_max^2 = 4.768^2 = 22.729. Represents the maximum
       simultaneous multiplier applied to both drop quantity AND drop quality
       probability when the Resource Economy System consumes wave_reward_scalar.
-      Owner: Resource Economy GDD (pending authoring) must define MAX_COMBINED_ERI
-      anchored to this value and back-solve base drop rates from an absolute
-      mission-yield target. See wave-manager.md F1 Semantic Contract and Tuning
-      Knobs for the combined ERI math (sum of scalar^2 across 8 waves vs 5 waves
-      at r=0.20 gives 3.37x total economy disparity)."
+      CORRECTED 2026-07-14 during /design-review: Resource Economy GDD's Formula 4
+      was found to be mathematically unsatisfiable by in-spec content — the original
+      shape multiplied a worst-case quantity maximum from one hypothetical DropEntry
+      against a worst-case quality-probability ratio from a different hypothetical
+      entry, a product no single kill actually produces. Formula 4 was rebuilt as a
+      per-entry wave-1-to-max-wave yield-growth ratio:
+      combined_ERI(entry) = [quantity(wave_max)/quantity(wave_1)] × [quality_roll(wave_max)/quality_roll(wave_1)],
+      evaluated using that entry's own authored base_quantity/base_quality_probability
+      at both wave points, must satisfy ≤ 22.73 × 1.10 (25.0, a rounding-tolerance
+      allowance). This matches Wave Manager's literal definition of the ceiling as
+      wave_reward_scalar_max² — i.e., the idealized per-axis growth ratio (4.768) squared.
+      # was (2026-07-11): 'RESOLVED 2026-07-11: Resource Economy GDD's Formula 4 uses
+      # this as a design-time content-authoring validation check (not a runtime formula) —
+      # anyone authoring a DropTableResource must verify (max quantity multiplier) ×
+      # (quality_probability_ceiling / min base_quality_probability) does not exceed
+      # this value.' — this formulation is what was found broken and replaced above.
+      See wave-manager.md F1 Semantic Contract and Tuning Knobs for the combined ERI
+      math (sum of scalar^2 across 8 waves vs 5 waves at r=0.20 gives 3.37x total
+      economy disparity)."
     added: 2026-05-21
+    revised: "2026-07-14"
+
+  - name: inventory_starting_slot_count
+    status: active
+    source: design/gdd/inventory.md
+    referenced_by:
+      - design/gdd/inventory.md
+    value: 10
+    unit: slots
+    notes: "Base Inventory slot count before any craftable expansion. Mission HUD
+      and any future progression/tutorial system referencing starting capacity
+      must agree with this value."
+    added: 2026-07-10
+    revised: ""
+
+  - name: inventory_stack_cap_unique
+    status: active
+    source: design/gdd/inventory.md
+    referenced_by:
+      - design/gdd/inventory.md
+    value: 1
+    unit: max stack quantity
+    notes: "Stack cap for stat-rolled unique-instance items (Equipment, stat-rolled
+      Tower Components). Fixed — not a balance tuning lever per this GDD's own
+      Tuning Knobs section."
+    added: 2026-07-10
+    revised: ""
+
+  - name: inventory_stack_cap_stackable
+    status: active
+    source: design/gdd/inventory.md
+    referenced_by:
+      - design/gdd/inventory.md
+    value: 99
+    unit: max stack quantity
+    notes: "Stack cap for Materials and generic (non-stat-rolled) Crafted Goods.
+      Overflow beyond this cap auto-creates a new stack in the next open slot."
+    added: 2026-07-10
+    revised: ""
+
+  - name: inventory_max_slot_tier_count
+    status: active
+    source: design/gdd/inventory.md
+    referenced_by:
+      - design/gdd/inventory.md
+    value: 5
+    unit: expansion tiers
+    notes: "Total number of craftable slot-expansion tiers, taking base capacity
+      10 to a max of 40 slots (10→16→22→28→34→40). Full per-tier material cost
+      table lives in inventory.md's Formulas section (hand-tuned, not a single
+      registrable scalar)."
+    added: 2026-07-10
+    revised: ""
+
+  - name: inventory_rare_material_gate_tier
+    status: active
+    source: design/gdd/inventory.md
+    referenced_by:
+      - design/gdd/inventory.md
+    value: 4
+    unit: expansion tier index
+    notes: "First expansion tier requiring Rare-rarity material. Uncommon-rarity
+      is gated at tier 2. Crafting's GDD (not yet authored) must assign real
+      material names within these rarity tiers, not invent a separate rarity
+      vocabulary."
+    added: 2026-07-10
+    revised: ""
+
+  - name: base_drop_rate
+    status: active
+    source: design/gdd/resource-economy.md
+    referenced_by:
+      - design/gdd/resource-economy.md
+      - design/gdd/game-concept.md
+    value_min: 0.3
+    value_max: 0.6
+    unit: probability (0.0-1.0) of a drop-table resolving per kill
+    notes: "Per-kill chance a monster's drop table produces anything at all (Resource
+      Economy GDD Formula 1). First appeared as a provisional variable in
+      game-concept.md's Resource Flow formula with the same range; Resource Economy
+      GDD (2026-07-11) is now the authoritative definition — game-concept.md's
+      version should be read as the earlier placeholder this formalizes, not a
+      conflicting value."
+    added: 2026-07-11
+    revised: ""
+
+  - name: menagerie_quality_bonus
+    status: active
+    source: design/gdd/resource-economy.md
+    referenced_by:
+      - design/gdd/menagerie.md
+      - design/gdd/resource-economy.md
+      - design/gdd/game-concept.md
+    value_min: 1.0
+    value_max: 1.5
+    unit: multiplier on drop quantity (dimensionless)
+    notes: "Menagerie creature-happiness quality bonus, applied only to the drop
+      QUANTITY term (Resource Economy GDD Formula 2/Rule 3) — explicitly NOT applied
+      to the drop quality-probability term. First appeared as a provisional variable
+      in game-concept.md's Resource Flow formula with the same range; Resource Economy
+      GDD (2026-07-11) is now the authoritative definition. Menagerie System GDD
+      (not yet authored) must not redefine this bonus independently — it consumes
+      creature_happiness_changed events that feed this constant."
+    added: 2026-07-11
+    revised: ""
+
+  - name: hero_skill_category
+    status: active
+    source: design/gdd/tower.md
+    referenced_by:
+      - design/gdd/tower.md
+      - design/gdd/hero-skill-build.md
+    value: "physical | ranged | elemental | support (4 fixed values)"
+    unit: enum (Foundation component archetype, reused)
+    notes: "hero-skill-build.md's skill catalogue tags every learnable skill with
+      one of these 4 categories — reused verbatim from tower.md's Foundation
+      component 'archetype' field (Tower System 2a schema), not a new taxonomy.
+      This is the sole input to the Ultimate derivation (see
+      hero_ultimate_id_derivation above) — deliberately chosen so the Ultimate
+      matrix never needs its own separate category vocabulary from Tower's
+      existing archetype system, and so hero-skill-build.md's visual language
+      (archetype icon/color per slot) reuses tower.md's existing icon/accent
+      vocabulary directly with zero new iconography."
+    added: 2026-07-17
+    revised: ""
+
+  - name: constellation_pattern_search_radius
+    status: active
+    source: design/gdd/constellation.md
+    referenced_by:
+      - design/gdd/constellation.md
+    value: 3
+    unit: grid cells (Chebyshev distance)
+    notes: "Derived, not hand-tuned — equals the largest member-to-anchor Chebyshev
+      offset across the constellation pattern catalogue (currently quad_line's span
+      of 3). Grid.get_occupied_cells_in_radius(changed_cell, this_value) bounds every
+      pattern-detection recheck to a localized neighborhood instead of a full-board
+      scan (constellation.md Core Rule 8, Formula 2). Must be recomputed and this
+      value updated whenever a larger pattern is added to the catalogue — see
+      constellation.md Open Question OQ-6."
+    added: 2026-07-16
     revised: ""
 
 # Example:

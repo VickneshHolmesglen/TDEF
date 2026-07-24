@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="MissionEntry" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/core/mission_entry.gd" id="1_entry"]
+[ext_resource type="Script" path="res://src/foundation/grid/grid_config.gd" id="2_grid"]
+
+[sub_resource type="Resource" id="Resource_grid_narrows"]
+script = ExtResource("2_grid")
+cols = 10
+rows = 8
+cell_size = 64.0
+
+[resource]
+script = ExtResource("1_entry")
+mission_id = "the_narrows"
+display_name = "The Narrows"
+grid_config = SubResource("Resource_grid_narrows")
+wave_config_path = "res://assets/data/waves/the_narrows_waves.tres"
+base_wave_count = 1
+recommended_difficulty_tier = 2

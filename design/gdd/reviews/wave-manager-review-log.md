@@ -2,6 +2,31 @@
 
 ---
 
+## Cross-Doc Correction — 2026-07-15 (same day, second pass) — Stale Siege Reference + Frame-Yield Contract Formalized
+`/review-all-gdds` re-run found 2 more items.
+
+**(1) Stale Siege reference**: the Boss-lane telegraph design-rationale note (below Rule 11) still cited "`tier_boss_dps_multiplier`, Siege shield-penetration" as T4's boss-lane investment — the Siege mechanic was struck from tower.md earlier this session. Fixed.
+
+**(2) Frame-yield contract formalized**: an earlier cross-review (`gdd-cross-review-2026-07-15.md`) flagged that `tower.md` depends on Wave Manager guaranteeing at least one frame between `wave_completed` and the next `wave_started` (Tower's `_monster_cache` needs that frame for in-flight `CONNECT_DEFERRED` mutations to drain), but this guarantee was never stated in this document — it only held "incidentally," emergent from the state machine's own structure (a non-final wave's clear passes through 2 full phase transitions, each timer- or input-gated, before the next `wave_started`). Investigated the actual state machine (Rules 10-13) and confirmed the guarantee does hold under every current code path — no legal sequence collapses `wave_completed` and the next `wave_started` into the same frame. Formalized as new **Rule 12a**: an explicit binding invariant, with a note that any future phase-transition-collapsing change (e.g., skipping PRE_WAVE) must preserve it or renegotiate with Tower System first. New **AC-43** added, testing both the fastest-timer path and the instant-skip (player-Ready) path.
+Prior verdict resolved: N/A — closes a Warning-tier finding from an earlier same-session cross-review; not a defect in review #11/#12's own scope.
+
+---
+
+## Cross-Doc Correction — 2026-07-15 (review #11→#12) — Propagation-Debt Fix
+`/review-all-gdds` re-run (2026-07-15b) found that event-bus.md's Pass 2 fix — promoting `wave_preview_available.composition` from `Array[Dictionary]` to `Array[WaveCompositionEntry]` / a `WavePreviewEvent` Resource subclass, closing a Core Rule 4 violation — had not been carried into this document's own 4 references to that payload (Rule 8, Rule 11, the UI Requirements Phase Display Data Contract table, and AC-27), which still specified `Array[Dictionary]`. As documented, this would have failed event-bus.md's own AC-03 on implementation. Fixed same-session: all 4 references corrected to match event-bus.md's Resource subclass.
+Prior verdict resolved: N/A — this was a propagation gap (fix landed in event-bus.md, not carried to this sibling doc), not a defect in this document's own review #11.
+
+---
+
+## Review — 2026-07-15 (eleventh review, scoped) — Verdict: NEEDS REVISION → REVISED (same session)
+Scope signal: S
+Specialists: game-designer, systems-designer, economy-designer, level-designer, qa-lead, performance-analyst, creative-director (full mode)
+Blocking items: 3 | Recommended: 4
+Summary: Scoped re-review triggered by a single proposed addition (not a general re-audit of the Approved 10-review document): `design/gdd/tower.md`'s OQ-11 resolution required a "boss-lane telegraph" on `wave_preview_available` (Rule 11) so T4 boss-lane tower placement could be an informed decision rather than a blind Scout-Phase gamble. The originally proposed fields, `has_boss: bool` and `boss_entry_lane: StringName`, were found broken by 4 of 6 specialists independently: systems-designer, level-designer, game-designer, and qa-lead all separately identified that "lane" is an undefined concept nowhere in this document's schema (only `spawn_cell: Vector2i` / `spawn_cells: Array[Vector2i]` exist) and that round-robin boss entries (`spawn_cell_index = -1`) can't be resolved at INTERMISSION preview time since `_round_robin_counter` only advances during WAVE_ACTIVE spawn sequencing. game-designer and economy-designer independently converged on `has_boss` being redundant — economy-designer's stronger finding: the boss's `monster_id` is already present in the existing `composition` payload, so `has_boss` isn't just cheaply-derivable, it's a second source of truth for a fact the payload already carries. Fixed same-session: `boss_entry_lane: StringName` replaced with a single always-present `boss_spawn_cell: Vector2i` field (sentinel `Vector2i(-1,-1)` on non-boss waves); Rule 6 now requires the final wave's BOSS entry to use an explicit `spawn_cell_index` (round-robin forbidden), enforced by a new AC-19b hard-fail check; `has_boss` dropped entirely; AC-42 added, closing a confirmed pre-existing gap (no prior AC — including AC-27 and AC-29 — actually exercised `wave_preview_available`'s payload for the wave that is itself the boss wave). Non-blocking findings recorded but not actioned this session: game-designer flagged a real but acceptable pillar tension (does revealing boss location convert a "read" into a "checklist," undermining the retrospective-vindication fantasy) — creative-director ruled this was already adjudicated upstream at Tower OQ-11 and the mitigation (revealing *where*, not *what*) is structurally sound; performance-analyst confirmed no performance blockers and that this was not a first performance pass on this document (was on the roster for reviews #7 and #9); level-designer's suggestion to formalize "lane" as a first-class Grid System concept was deferred as unneeded now that `boss_spawn_cell: Vector2i` sidesteps it.
+Prior verdict resolved: Yes — this session's 3 blockers (field type/vocabulary, round-robin restriction, redundant field removal) all fixed in-session; the underlying Approved document (10 reviews, 0 blockers) is otherwise unaffected — this was a scoped delta review.
+
+---
+
 ## Review — 2026-05-22 (tenth review) — Verdict: APPROVED
 Scope signal: L
 Specialists: lean mode (no specialist agents)

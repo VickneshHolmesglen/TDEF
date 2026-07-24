@@ -6,6 +6,19 @@ Accepted
 ## Date
 2026-05-24
 
+> **Revised 2026-07-13** — resolves part of the BLOCKING "`tower_id` type & signal arity"
+> conflict found by `/architecture-review` (`docs/architecture/architecture-review-2026-07-13b.md`).
+> Checked against the shipped `src/core/hero/hero.gd`, `src/core/tower/tower_system.gd`, and
+> `src/foundation/event_bus/event_bus.gd`: the actual `tower_placed`/`tower_removed`/
+> `tower_destroyed` signal signatures (5/3/4 typed args respectively) are richer than what
+> this ADR's Key Interfaces section originally sketched, and the shipped Hero subscriber
+> handlers already match them exactly. The sections below are corrected to show the real,
+> already-catalogued signatures instead of the placeholder guesses — no behavioral/code
+> change. Also fixes two unrelated one-line drifts found while revising: a phantom
+> "after Grid = 25" restore_order reference (Grid has no save state — ADR-0005/ADR-0003
+> both confirm this), and a citation of `docs/engine-reference/godot/modules/core.md`,
+> which does not exist (confirmed by godot-specialist consultation during the review).
+
 ## Engine Compatibility
 
 | Field | Value |
@@ -13,7 +26,7 @@ Accepted
 | **Engine** | Godot 4.6.2 |
 | **Domain** | Core / Scripting |
 | **Knowledge Risk** | HIGH — post-LLM-cutoff |
-| **References Consulted** | `docs/engine-reference/godot/VERSION.md`, `docs/engine-reference/godot/modules/core.md` |
+| **References Consulted** | `docs/engine-reference/godot/VERSION.md` |
 | **Post-Cutoff APIs Used** | `Dictionary` typed hints (`Dictionary[K, V]` — 4.4+); `maxi()` builtin (4.x confirmed); `@export` on Resource subclass fields (ADR-0009 pattern) |
 | **Verification Required** | Confirm `Dictionary[int, Dictionary]` typed-hint syntax accepted in Godot 4.6 GDScript; confirm `_physics_process(delta)` accumulation does not exceed 0.3 ms frame budget when 1 hero active |
 
@@ -22,7 +35,7 @@ Accepted
 | Field | Value |
 |-------|-------|
 | **Depends On** | ADR-0001 (EventBus signal contract), ADR-0002 (Autoload structure + mission state), ADR-0005 (Grid world_to_cell), ADR-0007 (damage dispatch — Hero receives damage via EventBus), ADR-0008 (Tower placement gate — WAVE_ACTIVE context), ADR-0009 (Resource data model — HeroResource, TowerResource) |
-| **Enables** | ADR-0011 (UI dual-focus — Hero stat display) |
+| **Enables** | — (ADR-0011's original framing cited this ADR's "Hero stat display" as its driver; ADR-0011 itself corrects this — Hero's HUD elements are non-interactive Labels/ProgressBars needing no focus handling. ADR-0011's actual driver was Inventory's Story 007.) |
 | **Blocks** | None — Hero System implementation may now begin |
 | **Ordering Note** | Accepted 2026-05-24. ADR-0001 through ADR-0009 (excl. ADR-0010/0011) must all be Accepted before Hero System is authored. ADR-0011 (UI dual-focus) may be deferred until first Presentation GDD lands. |
 
@@ -50,10 +63,10 @@ Tower Affinity without any cross-system coupling.
 
 ### Constraints
 
-- Hero System is an Autoload; Tower System is not — no reverse dependency allowed.
+- Hero System is scene-instanced (`CharacterBody2D`, per ADR-0002); Tower System is also scene-instanced — no reverse dependency allowed.
 - EventBus cascade depth ≤ 2 (ADR-0001 Rule 2).
 - `_physics_process` budget for all non-physics systems: ≤ 0.3 ms/frame.
-- Class designation must persist across save/load (restore_order = 30, after Grid = 25).
+- Class designation must persist across save/load (`restore_order = 30` — Core band 10–49 per ADR-0003's `SaveRestorer` band table; Grid has no save state, so there is no "after Grid" ordering dependency).
 - Tower Affinity recomputation must not run every frame — only on tower lifecycle events.
 - Chebyshev radius constant `CLASS_PROXIMITY_RADIUS = 3` is a tuning knob (GDD).
 - `TOWERS_AFFINITY_REFERENCE = 16` is a tuning knob (GDD).
@@ -79,10 +92,15 @@ The Hero System maintains a single local cache of all live towers:
 ```gdscript
 var _tower_cache: Dictionary = {}
 # Key:   tower_id: int
-# Value: { archetype: StringName, cell: Vector2i }
+# Value: { "archetype": StringName, "cell": Vector2i }
 ```
 
-The cache is populated and maintained exclusively through EventBus subscriptions:
+The cache is populated and maintained exclusively through EventBus subscriptions.
+The signal signatures below are the canonical, already-catalogued ones from
+`event-bus.md`/`event_bus.gd` (see ADR-0008 for the emitting side) — this ADR's
+original text sketched narrower placeholder signatures before the full contract
+was finalized; corrected here to match what was actually built and shipped in
+`src/core/hero/hero.gd`:
 
 ```gdscript
 func _ready() -> void:
@@ -90,18 +108,31 @@ func _ready() -> void:
     EventBus.tower_removed.connect(_on_tower_removed)
     EventBus.tower_destroyed.connect(_on_tower_destroyed)
 
-func _on_tower_placed(tower_id: int, archetype: StringName, cell: Vector2i) -> void:
-    _tower_cache[tower_id] = { archetype = archetype, cell = cell }
+func _exit_tree() -> void:
+    EventBus.tower_placed.disconnect(_on_tower_placed)
+    EventBus.tower_removed.disconnect(_on_tower_removed)
+    EventBus.tower_destroyed.disconnect(_on_tower_destroyed)
+
+func _on_tower_placed(tower_id: int, grid_position: Vector2i, archetype: String,
+        _footprint: Vector2i, _placed_in_scout: bool) -> void:
+    _tower_cache[tower_id] = {"archetype": StringName(archetype), "cell": grid_position}
     _recompute_tower_affinity()
 
-func _on_tower_removed(tower_id: int) -> void:
+func _on_tower_removed(tower_id: int, _grid_position: Vector2i, _archetype: String) -> void:
     _tower_cache.erase(tower_id)
     _recompute_tower_affinity()
 
-func _on_tower_destroyed(tower_id: int) -> void:
+func _on_tower_destroyed(tower_id: int, _grid_position: Vector2i, _archetype: String,
+        _footprint: Array) -> void:
     _tower_cache.erase(tower_id)
     _recompute_tower_affinity()
 ```
+
+`_on_tower_placed` explicitly converts the signal's `archetype: String` payload to
+`StringName` for the cache entry, since `_recompute_tower_affinity()`'s archetype
+filter compares against `_primary_class: StringName`. `tower_destroyed` fires from
+Tower System's boss-attack HP-zero path (see ADR-0008's "Tower Destroyed" section)
+— a real, shipped emitter, not a dangling reference.
 
 This mirrors the monster cache pattern in Tower System (ADR-0007) and requires no
 Grid API extension.
@@ -270,17 +301,17 @@ HeroSystem._recompute_tower_affinity()  [called on every cache mutation]
 ### Key Interfaces
 
 ```gdscript
-# EventBus signals consumed by Hero System (ADR-0001 catalogue additions needed):
-#   tower_placed(tower_id: int, archetype: StringName, cell: Vector2i)
-#   tower_removed(tower_id: int)
-#   tower_destroyed(tower_id: int)
+# EventBus signals consumed by Hero System (canonical signatures, event-bus.md/event_bus.gd):
+#   tower_placed(tower_id: int, grid_position: Vector2i, archetype: String, footprint: Vector2i, placed_in_scout: bool)
+#   tower_removed(tower_id: int, grid_position: Vector2i, archetype: String)
+#   tower_destroyed(tower_id: int, grid_position: Vector2i, archetype: String, footprint: Array)
 #   mission_phase_changed(phase: StringName)
 #   sanctuary_state_restored()
 
-# EventBus signals emitted by Hero System (new — must be added to event-bus.md):
+# EventBus signals emitted by Hero System (catalogued in event-bus.md):
 #   hero_class_unlocked(archetype: StringName, is_deep: bool)
-#   hero_hp_changed(current: float, maximum: float)          # already flagged in mission-hud.md OQ-1
-#   hero_skill_cooldown_updated(skill_index: int, ratio: float)  # already flagged in mission-hud.md OQ-2
+#   hero_hp_changed(current: float, maximum: float)
+#   hero_skill_cooldown_updated(skill_index: int, ratio: float)
 
 # Public read API (no write API — all state is internal):
 func get_effective_stat(stat_name: StringName) -> float: ...
@@ -341,13 +372,12 @@ const TOWER_AFFINITY_BONUS_CAP: float = 2.0
   (16×12 grid; realistic max ~30–50 towers) the Chebyshev check is trivially fast.
 
 ### Risks
-- **Risk**: `hero_class_unlocked` signal not yet in EventBus catalogue (GDD OQ-4).
-  **Mitigation**: Must be added to `design/gdd/event-bus.md` before Hero System is
-  implemented. Flagged as GDD sync action below.
-- **Risk**: `tower_placed` signal shape (args: tower_id, archetype, cell) must be
-  verified against ADR-0008 (Tower Placement Gate). If ADR-0008 emits a different
-  signature, this ADR takes the ADR-0008 contract as authoritative.
-  **Mitigation**: Implementer must read ADR-0008 Key Interfaces before coding.
+- ~~**Risk**: `hero_class_unlocked` signal not yet in EventBus catalogue.~~ **RESOLVED** —
+  catalogued in `event-bus.md`/`event_bus.gd`, shipped.
+- ~~**Risk**: `tower_placed` signal shape must be verified against ADR-0008.~~ **RESOLVED
+  2026-07-13** — verified against the shipped implementation; both ADRs and the code now
+  agree on the 5-arg `tower_placed`/3-arg `tower_removed`/4-arg `tower_destroyed`
+  signatures (see Tower Cache section above and ADR-0008's revised Decision).
 - **Risk**: Proximity accumulation running in `_physics_process` could spike if
   `_tower_cache` grows unexpectedly large (bug scenario).
   **Mitigation**: Add `assert(_tower_cache.size() <= 200)` guard in debug builds.

@@ -2,7 +2,7 @@
 
 > **Status**: In Design (seed catalogue — v1, bootstrapped from GDD UI Requirements)
 > **Author**: solo dev (ux-designer role)
-> **Last Updated**: 2026-05-18
+> **Last Updated**: 2026-07-07
 > **Template**: Interaction Pattern Library
 > **Accessibility Tier**: Standard (per `design/accessibility-requirements.md`)
 > **Input Methods**: Keyboard/Mouse (primary), Gamepad (partial — all interactions must be completable with K/M)
@@ -37,6 +37,8 @@ This library catalogues the reusable interaction patterns used across Sanctuary 
 | 10 | Phase Transition Banner | Feedback | Mission HUD (Zone B — phase transitions) |
 | 11 | Phase Indicator Label | Feedback / Data Display | Mission HUD (Zone A — always visible) |
 | 12 | Skill Cooldown Button | Input + Feedback | Mission HUD (Zone D — skills 1–4, Ultimate) |
+| 13 | Modal Dialog (decision required) | Input + Feedback | Main Menu (Overwrite Confirmation, EC-3 Recovery Choice) |
+| 14 | Save Slot Card | Data Display + Input | Main Menu (Load Game → Slot Selection) |
 
 ---
 
@@ -459,6 +461,73 @@ This library catalogues the reusable interaction patterns used across Sanctuary 
 
 ---
 
+### 13. Modal Dialog (decision required)
+
+**Category**: Input + Feedback
+**Used In**: Main Menu (`design/ux/main-menu.md` — Overwrite Confirmation, EC-3 Recovery Choice)
+
+**Description**: A blocking overlay that requires the player to make an explicit choice before returning control to the underlying screen. Distinct from `Phase Transition Banner` (pattern #10), which is non-blocking feedback — this pattern blocks input to everything except itself until resolved.
+
+**Specification**:
+- **Scrim**: darkens the background behind the modal (60% opacity) to visually separate it from the underlying screen.
+- **Focus trap**: keyboard/gamepad focus is trapped inside the modal — Tab / D-pad cycling only reaches modal elements until the modal closes.
+- **Default focus**: at least one option is focused by default when the modal opens (never opens with no focus target).
+- **No auto-dismiss**: never times out or auto-resolves. If the underlying decision is not truly actionable (pure status info), use `Phase Transition Banner` instead — not this pattern.
+- **Cancel path is per-instance**: some instances have a valid "cancel/dismiss" (Esc / click-outside / B returns to the prior screen with no state change); others do not (e.g., EC-3 Recovery — every option is destructive/resolving, there is no valid "do nothing"). Whether a cancel path exists is defined by the screen spec that uses this pattern, not by this pattern itself.
+
+**Input binding**:
+| Action | K/M | Gamepad |
+|--------|-----|---------|
+| Select option | Left click on option | A on focused option |
+| Cancel/dismiss (only if a cancel path exists for this instance) | Esc or click outside modal | B / East face button |
+| Move focus between options | Tab / arrow keys | D-pad / left stick |
+
+**Accessibility (Standard tier)**:
+- Scrim + modal content contrast meets ≥ 4.5:1 (WCAG AA body text).
+- Focus indicator ≥ 3 px on the default-focused option, consistent with other focusable patterns in this library.
+- When no cancel path exists, this must be communicated through the visible option labels themselves — never a silent trap. The options presented ARE the only ways out; the modal must never appear to have a hidden or implied cancel.
+- Modal open/close respects the reduced-motion toggle (scale-and-fade animations collapse to instant show/hide).
+
+**When to Use**: Any player choice that must be resolved before the game can safely continue — particularly data-loss risk (overwrite) or ambiguous persistent state (save/checkpoint recovery).
+
+**When NOT to Use**: Transient status info with no decision required (use `Phase Transition Banner`). Non-blocking notifications (use a toast pattern — still a gap, see below).
+
+**Reference**: `design/ux/main-menu.md` Interaction Map (Overwrite Confirmation, EC-3 Recovery).
+
+---
+
+### 14. Save Slot Card
+
+**Category**: Data Display + Input
+**Used In**: Main Menu (`design/ux/main-menu.md` — Load Game → Slot Selection)
+
+**Description**: A selectable card summarizing one save slot's metadata. Composes `Cost-Labelled Button`-style layout conventions (pattern #4) but surfaces slot metadata instead of a resource cost.
+
+**Specification**:
+- **Content**: slot number/label, last-played timestamp (locale-formatted, not hardcoded), a short progress summary string.
+- **Corrupt state (EC-5)**: shows a non-blocking warning badge ("Could not be loaded — reset to defaults") when the slot's save file failed to load per `save-persistence.md` EC-5. Does not block selecting other slots.
+- **Selection target**: the entire card is the click/focus target — not just a label or icon within it.
+- **Update behaviour**: metadata is read once when the Slot Selection modal opens (save files don't change while this modal is open).
+
+**Input binding**:
+| Action | K/M | Gamepad |
+|--------|-----|---------|
+| Select slot | Left click anywhere on card | A when card is focused |
+| Move focus between cards | Mouse hover / Tab | D-pad up/down |
+
+**Accessibility (Standard tier)**:
+- Timestamp and summary text ≥ 22 px (stat-block minimum, matches `Contextual Info Panel`).
+- Corrupt badge uses an icon + text label, not color alone — per Color-as-Only-Indicator commitment.
+- Focus indicator ≥ 3 px around the full card boundary (not just the text).
+
+**When to Use**: Any list of save slots that needs at-a-glance comparison before the player selects one.
+
+**When NOT to Use**: Single-slot-only save systems where no comparison is needed (a plain confirm button suffices).
+
+**Reference**: `design/ux/main-menu.md` Component Inventory (Slot Selection panel) and States & Variants (Corrupt save / EC-5 row).
+
+---
+
 ## Gaps & Patterns Needed
 
 Patterns expected by GDDs or future screens but not yet specced. Add to the library as the first screen that needs them lands a UX spec.
@@ -468,13 +537,11 @@ Patterns expected by GDDs or future screens but not yet specced. Add to the libr
 | **Tooltip on hover** | Tower stat blocks, monster info, ability descriptions | High | Brief delay-triggered text overlay; smaller than `Contextual Info Panel`. Needs explicit hover-delay convention + gamepad-focus alternative. |
 | **Target reticle** | Future hero abilities, spells, AoE indicators | Medium | Distinct from `Grid Placement Cursor` — targets entities, not cells. |
 | **Status-effect icon stack** | Hero (incoming buffs/debuffs), Monster (DoT/CC stack) | High | 5 status types per D&S. Need stack-count + remaining-duration display per icon. |
-| **Modal dialog (decision required)** | Save EC-3 recovery choice, "Are you sure?" prompts, settings reset | High | True modal — blocks input. Distinct from `Phase Transition Banner` (which is non-blocking). |
 | **Floating notification toast** | Achievement unlock, sanctuary upgrade complete, save success | Medium | Brief slide-in from screen edge; auto-dismisses after read time. Distinct from `Phase Transition Banner` (smaller, screen corner, non-critical). |
 | **Settings slider with live preview** | Volume sliders, UI scale, brightness | High | Standard tier requires these. Slider + numeric readout + live-preview behaviour. |
 | **Tab navigation container** | Settings menu sections, sanctuary subscreens | Medium | Tab strip + page region. Gamepad needs shoulder-button cycling. |
 | **Confirmation hold prompt** | Hold-to-confirm-tower-delete, hold-to-skip-dialog | High | Standard tier requires toggle alternatives — the pattern entry must spec both modes. |
 | **Constellation overlay** | Tower constellation patterns | Low | System-specific; defer until Constellation System GDD is authored. |
-| **Save slot card** | Mission Select / Main Menu save slot screen | Medium | Composes `Cost-Labelled Button`-style metadata with a select action. Needs delete affordance. |
 
 ---
 

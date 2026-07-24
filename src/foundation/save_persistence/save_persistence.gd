@@ -23,6 +23,23 @@ var _registered_systems: Array = []
 var _active_slot: int = 0
 var _autosave_timer: Timer
 
+## Mid-session-restore fix (ADR-0003, 2026-07-18 revision). Caches the last
+## successfully loaded master Dictionary so a SaveRestorer that registers
+## AFTER load_slot() already ran (a scene-instanced system recreated on a
+## Sanctuary<->Mission transition — Constellation, Crafting, Tarot, Equipment
+## Forge, Tower Mastery) is still restored, instead of silently sitting at
+## @export defaults for the rest of the session.
+var _last_loaded_data: Dictionary = {}
+var _has_loaded_data: bool = false
+
+## TD-save-001 (fixed 2026-07-08): test-only injection seams forcing store_32()
+## or store_var() to be treated as failed, without needing a full FileAccess
+## mock (FileAccess's write methods are native/non-virtual and cannot be
+## subclassed to fake a failure). Separate flags so each abort branch
+## (AC-3) is independently testable. Production code never sets these.
+var _force_store_32_failure: bool = false
+var _force_store_var_failure: bool = false
+
 
 func _ready() -> void:
 	_ensure_save_dir()
@@ -37,13 +54,38 @@ func _exit_tree() -> void:
 	GEventBus.mission_phase_changed.disconnect(_on_mission_phase_changed)
 
 
+## restore_order registry (TD-hero-004, fixed 2026-07-08) — every system that
+## calls register() below, listed here so a reviewer can check a new
+## registration for collisions without grepping the whole codebase. ADR-0003's
+## Decision Summary reserves the band: Foundation 0-9, Core 10-49, Feature 50+.
+## Update this list whenever a new SaveRestorer implementor is added.
+##
+##   restore_order | System    | Layer      | Source
+##   --------------|-----------|------------|----------------------------------
+##   10            | Inventory | Core       | src/core/inventory/inventory.gd
+##                 |           |            | (Story-001, ADR-0016) —
+##                 |           |            | GSavePersistence.register(self, 10)
+##   30            | Hero      | Core       | src/core/hero/hero.gd (Story-008,
+##                 |           |            | ADR-0003) — GSavePersistence.register(self, 30)
+##
+## Inventory (restore_order=10) now runs before Hero (restore_order=30) during a
+## restore pass, giving the first real cross-system verification of ADR-0003's
+## "runs after Foundation, before Feature layer" / ascending-restore_order
+## ordering claim — see tests/unit/save_persistence/save_persistence_restore_test.gd's
+## ordering test for the general mechanism this relies on.
+
 ## Register a saveable system. Call from the system's _ready().
+## If a save has already been loaded this session, the newly-registered
+## system is immediately restored (or defaulted) from the cached data —
+## see _restore_one() / ADR-0003's 2026-07-18 revision.
 func register(system_ref: Object, restore_order: int) -> void:
 	_registered_systems.append({
 		"ref": system_ref,
 		"key": system_ref.get_save_key(),
 		"restore_order": restore_order,
 	})
+	if _has_loaded_data:
+		_restore_one(system_ref)
 
 
 ## Unregister a system. Call from _exit_tree() to prevent stale refs.
@@ -133,19 +175,29 @@ func _collect_save_data() -> Dictionary:
 
 
 func _restore_all_systems(data: Dictionary, slot: int) -> void:
+	_last_loaded_data = data
+	_has_loaded_data = true
 	var sorted: Array = _registered_systems.duplicate()
 	sorted.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
 		return a.restore_order < b.restore_order
 	)
 	for entry in sorted:
-		var sys_data: Dictionary = data.get(entry.key, {})
-		if sys_data.is_empty():
-			entry.ref.reset_to_defaults()
-			continue
-		if not entry.ref.restore_save_data(sys_data):
-			push_error("SavePersistence: restore failed for '%s' — calling reset_to_defaults()" % entry.key)
-			entry.ref.reset_to_defaults()
+		_restore_one(entry.ref)
 	_emit_state_restored(slot)
+
+
+## Restores a single system from the cached _last_loaded_data. Shared by both
+## the initial full-load pass (_restore_all_systems) and late registration
+## (register(), above) so the two code paths can never drift out of sync.
+func _restore_one(system_ref: Object) -> void:
+	var key: String = system_ref.get_save_key()
+	var sys_data: Dictionary = _last_loaded_data.get(key, {})
+	if sys_data.is_empty():
+		system_ref.reset_to_defaults()
+		return
+	if not system_ref.restore_save_data(sys_data):
+		push_error("SavePersistence: restore failed for '%s' — calling reset_to_defaults()" % key)
+		system_ref.reset_to_defaults()
 
 
 ## Overridable seam for unit tests — subclass stubs this to avoid EventBus dependency.
@@ -164,11 +216,11 @@ func _write_slot(slot: int, data: Dictionary) -> bool:
 	if file == null:
 		push_error("SavePersistence: cannot open '%s' for write" % tmp_path)
 		return false
-	if not file.store_32(CURRENT_FORMAT_VERSION):
+	if _force_store_32_failure or not file.store_32(CURRENT_FORMAT_VERSION):
 		push_error("SavePersistence: failed to write version header to '%s'" % tmp_path)
 		file.close()
 		return false
-	if not file.store_var(data, false):
+	if _force_store_var_failure or not file.store_var(data, false):
 		push_error("SavePersistence: failed to write data to '%s'" % tmp_path)
 		file.close()
 		return false
@@ -186,11 +238,11 @@ func _write_checkpoint(slot: int, data: Dictionary) -> bool:
 	if file == null:
 		push_error("SavePersistence: cannot open checkpoint '%s' for write" % path)
 		return false
-	if not file.store_32(CURRENT_FORMAT_VERSION):
+	if _force_store_32_failure or not file.store_32(CURRENT_FORMAT_VERSION):
 		push_error("SavePersistence: failed to write checkpoint version header")
 		file.close()
 		return false
-	if not file.store_var(data, false):
+	if _force_store_var_failure or not file.store_var(data, false):
 		push_error("SavePersistence: failed to write checkpoint data")
 		file.close()
 		return false
@@ -242,7 +294,7 @@ func _migrate_step(data: Dictionary, from_version: int) -> Dictionary:
 # EventBus handlers
 # ---------------------------------------------------------------------------
 
-func _on_mission_launched(_mission_id: String, _modifiers: PackedStringArray) -> void:
+func _on_mission_launched(_mission_id: String, _modifiers: PackedStringArray, _difficulty_tier: int) -> void:
 	save_checkpoint(_active_slot)
 
 

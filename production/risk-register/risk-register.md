@@ -17,7 +17,7 @@ Risk IDs: D = Deferred (from gate check), T = Technical, A = Art, S = Schedule
 | D2 | Technical | ADR-0008 unresolved — Tower placement blocked in Vertical Slice | Low | HIGH | ✅ Mitigated | Tech Director | S1-04 |
 | D3 | Art/Design | Art bible Sec 5–6 incomplete — character art cannot begin | Medium | HIGH | ✅ Mitigated | Art Dir + CD | S1-05 |
 | T1 | Technical | Draw call budget: 8-layer stacked entities exceed 200 DC without atlas batching | Medium | HIGH | ✅ Mitigated | Tech Director | Sprint 2 |
-| T2 | Technical | Godot 4.6 post-cutoff APIs unverified against 4.4–4.6 changes in 9 GDDs | Medium | Medium | 🟡 Watch | Tech Director | S1-10 |
+| T2 | Technical | Godot 4.6 post-cutoff APIs — annotation complete, 2 gaps remain (FileAccess, glow rework) | Medium | Medium | 🔴 Active | Tech Director | S3-07 |
 | D4 | Design | Vertical Slice experience target undefined — VS sprint planning blocked | High | Medium | ✅ Closed | Creative Dir | S1-09 |
 | D5 | Design | Pathfinding + Wave Manager GDDs revised but not re-reviewed — latent design debt | Low | Medium | ✅ Closed | Creative Dir | S1-06/07 |
 
@@ -130,15 +130,15 @@ implementation stories are written, those stories are blocked pending the ADR.
 
 ---
 
-### T2 — Godot 4.6 Post-Cutoff API Risks Unverified 🟡 Watch
+### T2 — Godot 4.6 Post-Cutoff API Risks 🔴 Active
 
 **Category**: Technical
 **Probability**: Medium
 **Impact**: Medium — individual GDD rules may reference APIs changed in 4.4–4.6;
 late discovery means rework during implementation
-**Status**: 🟡 Watch
+**Status**: 🔴 Active — 2 specific unmitigated gaps identified (see below); systematic annotation pass is complete, but these 2 items require live-engine verification before their respective systems' next milestone
 **Owner**: Technical Director
-**Sprint**: S1-10 (Nice to Have)
+**Sprint**: S3-07 (annotation pass complete 2026-07-07)
 **Logged**: 2026-05-18 (gate check carry-forward)
 
 **Description**: The LLM knowledge cutoff predates Godot 4.4–4.6. Nine MVP GDDs
@@ -147,12 +147,19 @@ changes. Known risk areas (documented in `docs/engine-reference/godot/VERSION.md
 Jolt default physics (4.6), FileAccess return type changes (4.4), glow rework (4.6),
 D3D12 default on Windows (4.6), variadic args / @abstract (4.5).
 
-**Mitigation**: S1-10 API verification pass (Nice to Have — defers to Sprint 2 if
-Sprint 1 runs long). Each GDD annotated with any post-cutoff risks found.
-High-risk GDDs (Pathfinding, Save) are highest priority for verification.
+**Mitigation applied (2026-07-07 — S3-07)**: All 9 MVP GDDs annotated with
+"Engine Risk Notes" sections. Findings:
+- **Verified working, no risk**: `sqrt()` (hero.md/tower.md, confirmed via S4-12 engine run), `AStar2D` (pathfinding.md, stable API + separately performance-verified in S4-10), typed Dictionaries (`Dictionary[K,V]` — grid-system.md/pathfinding.md, a previously-untracked 4.4+ feature, now added to `VERSION.md`, exercised by the passing test suite).
+- **Pre-emptively mitigated**: monster.md's `Area2D` choice (not `CharacterBody2D`) incidentally sidesteps Jolt-as-default collision-response differences.
+- **Still unverified (2 genuine gaps)**: `FileAccess.open()` in save-persistence.md (return-type changes flagged for 4.4, not yet re-tested against the specific usage), and the Godot 4.6 glow rework's effect on emissive-to-bloom mapping (affects hero.md's Tower Affinity aura/vignette VFX and tower.md's multiple glow-based VFX — same unresolved item as Art Bible Section 8).
+- **Design inconsistency found (not an engine risk)**: event-bus.md's `wave_preview_available.composition: Array[Dictionary]` appears to violate its own Core Rule 4 ("Dictionary payloads are prohibited") — flagged for a separate `/design-review` pass, out of scope for this annotation pass.
+- damage-status.md and wave-manager.md have no unresolved post-cutoff API risk.
 
 **Trigger**: Becomes a blocker if an implementation story references a verified
-broken API. The fix is to revise the GDD before writing the story.
+broken API. The two remaining unverified items (FileAccess, glow rework) should
+be checked against the live engine before their respective systems' next
+implementation or art-lock milestone — not before, since neither is currently
+blocking any in-progress work.
 
 ---
 
@@ -221,3 +228,4 @@ Stories must reference the re-reviewed GDD version.
 | 2026-05-22 | D5 | **Closed** — both revisions re-reviewed clean. Pathfinding APPROVED (review #11, all 16 blockers resolved). Wave Manager APPROVED (review #10, 0 blockers). No latent design debt remains; implementation stories may reference the current GDD text. |
 | 2026-06-30 | T1 | **Mitigated** — ADR-0013 Accepted (S2-06). Shared per-class atlas strategy; ~40 DC estimated at MVP entity counts vs 200 DC budget. Sprint 3 entity stories unblocked. |
 | 2026-05-25 | D4 | **Closed** — `production/vertical-slice-target.md` defined. Scripted moment "The Gap": Scout-place 3 towers → Wave 2 side-lane breach → hero covers the gap. Win = core survives; Fail = hero down or 5 breaches. Exercises all 4 Foundation systems + Tower/Monster/Wave/Hero/Damage. Sprint 2 planning unblocked. |
+| 2026-07-07 | T2 | **Annotation pass complete (S3-07)** — all 9 MVP GDDs now carry Engine Risk Notes sections. 2 genuine gaps remain unverified (FileAccess.open() in save-persistence.md; Godot 4.6 glow rework affecting hero.md/tower.md VFX). Status escalated 🟡 Watch → 🔴 Active per the story's own AC-4 (gaps found, not fully mitigated). Not a severe/blocking escalation — neither gap is confirmed broken, both are scheduled for verification before their respective systems' next milestone. |

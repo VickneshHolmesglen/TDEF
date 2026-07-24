@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="SacrificeRecipeResource" format=3]
+
+[ext_resource type="Script" path="res://src/core/equipment_forge/sacrifice_recipe_resource.gd" id="1_sacrifice"]
+
+[resource]
+script = ExtResource("1_sacrifice")
+sacrifice_recipe_id = &"sacrifice_glimmer_hare"
+required_species = &"glimmer_hare"
+output_slot = "trinket"
+output_base_item_id = &"lucky_charm_trinket"
+rune_id = &"rune_menagerie_glimmer_hare"
+stat_delta = {&"additive_bonus_total": 0.02}

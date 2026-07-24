@@ -1,0 +1,8 @@
+[gd_resource type="Resource" script_class="MissionResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/core/mission_resource.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+mission_id = &"the_gap"
+objective_text = "Defend the sanctuary core. Place towers to hold the lane, then use your hero to cover any gap they can't."

@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="SkillDefinitionResource" format=3]
+
+[ext_resource type="Script" path="res://src/core/skill_definition_resource.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+skill_id = &"phys_bulwark"
+category = "physical"
+passive_slot_count = 2
+source_build_signature = &"found_bulwark_t1|weap_bulwark_t1|focus_bulwark_t1|power_bulwark_t1"
+mastery_threshold_seconds = 45.0

@@ -2,8 +2,9 @@
 
 > **Status**: In Design
 > **Author**: Vicknesh + Claude Sonnet
-> **Last Updated**: 2026-05-15
+> **Last Updated**: 2026-07-15
 > **Implements Pillar**: All pillars (root vision document)
+> **Revision (2026-07-15)**: `/review-all-gdds` game-design-holism pass found the "Wave Difficulty Scaling" section mislabeled `wave_reward_scalar` (an economy-only formula owned by `wave-manager.md` Formula 1) as combat difficulty — actual combat threat uses a separate linear formula (`monster.md` Formula 1). Renamed to "Wave Reward Scalar" throughout (formula, variable names, Tuning Knobs row) and cross-referenced `monster.md` Formula 1 as the real difficulty reference. The registry renamed the underlying constant on 2026-04-26 for the same reason; this document had not caught up until now.
 
 ## Summary
 
@@ -86,16 +87,18 @@ default_mission_length = scout_phase + (wave_count × avg_wave_duration) + (wave
 
 ---
 
-### Wave Difficulty Scaling
+### Wave Reward Scalar
+
+*(Renamed from "Wave Difficulty Scaling" 2026-07-15 — `/review-all-gdds` game-design-holism pass. This is `wave_reward_scalar` (`wave-manager.md` Formula 1, `design/registry/entities.yaml`) — it drives Resource Economy's drop quantity/quality scaling, not combat difficulty. Actual monster combat threat uses a separate, deliberately linear formula (`monster.md` Formula 1, `monster_hp_scaling`, 1.0×–2.40× by wave 8) that explicitly rejects exponential scaling as a "damage-sponge" negative-feedback pattern. Labeling this exponential reward curve "difficulty" risked misleading anyone balancing combat off this document alone — see `monster.md` Formula 1 for the actual combat-difficulty reference. The registry already renamed the underlying constant from `wave_difficulty_scalar` to `wave_reward_scalar` on 2026-04-26 "after design-review mandated semantic clarity"; this section had not yet been updated to match.)*
 
 ```
-wave_difficulty = base_difficulty × (1 + difficulty_growth_rate) ^ (wave_number - 1)
+wave_reward_scalar = base_reward × (1 + reward_growth_rate) ^ (wave_number - 1)
 ```
 
 | Variable | Symbol | Type | Range | Description |
 |---|---|---|---|---|
-| Base difficulty | base_difficulty | float | 1.0 | Difficulty multiplier at wave 1 |
-| Difficulty growth rate | difficulty_growth_rate | float | 0.15–0.25 | Per-wave escalation rate |
+| Base reward | base_reward | float | 1.0 | Reward multiplier at wave 1 |
+| Reward growth rate | reward_growth_rate | float | 0.15–0.25 | Per-wave escalation rate |
 | Wave number | wave_number | int | 1–8 | Current wave index |
 
 **Output Range:** 1.0× at wave 1 → 1.95–4.77× at wave 8 (r=0.15–0.25 range). See Wave Manager GDD F1 for exact boundary table.
@@ -106,14 +109,14 @@ wave_difficulty = base_difficulty × (1 + difficulty_growth_rate) ^ (wave_number
 ### Resource Flow (Material Drop Rate)
 
 ```
-materials_per_wave = base_drop_rate × monster_count × wave_difficulty × menagerie_quality_bonus
+materials_per_wave = base_drop_rate × monster_count × wave_reward_scalar × menagerie_quality_bonus
 ```
 
 | Variable | Symbol | Type | Range | Description |
 |---|---|---|---|---|
 | Base drop rate | base_drop_rate | float | 0.3–0.6 | Materials per monster killed |
 | Monster count | monster_count | int | 10–40 | Monsters spawned per wave |
-| Wave difficulty | wave_difficulty | float | 1.0–3.0 | From difficulty scaling formula above |
+| Wave reward scalar | wave_reward_scalar | float | 1.0–3.0 | From the Wave Reward Scalar formula above |
 | Menagerie quality bonus | menagerie_quality_bonus | float | 1.0–1.5 | Creature happiness multiplier on material quality tier |
 
 **Output Range:** 3–36 materials per wave under default settings. Menagerie investment increases material quality tier, not raw quantity.
@@ -145,12 +148,30 @@ materials_per_wave = base_drop_rate × monster_count × wave_difficulty × menag
 | Default wave count | 6 | 5–8 | Mission feels endless | Mission ends before build pays off |
 | Scout phase duration | 60 sec | 30–120 sec | Kills urgency | Not enough time to plan |
 | Intermission duration | 30 sec | 25–40 sec | Breaks mission tension | Too rushed to make decisions |
-| Wave difficulty growth rate | 0.20 | 0.10–0.35 | Late waves impossible | No escalation felt |
+| Wave reward growth rate (`wave_reward_scalar`'s `r`) | 0.20 | 0.10–0.35 | Late-wave rewards feel excessive relative to escalating cost | No reward escalation felt. *(Renamed 2026-07-15 from "Wave difficulty growth rate" — this knob controls reward scaling, not combat difficulty; see the Wave Reward Scalar section above. Combat difficulty escalation is `monster.md`'s separate `hp_wave_growth_rate`.)* |
 | Extended mode ceiling | 45 min | 30–90 min | Session fatigue | Modifiers feel cosmetic |
 | Base material drop rate | 0.45 | 0.3–0.6 | Crafting trivialised | Meta-progression grinds to a halt |
 | Menagerie quality bonus ceiling | 1.5× | 1.0–2.0× | Replaces crafting skill | Menagerie investment feels pointless |
 
 ## Visual/Audio Requirements
+
+**Visual Identity Anchor** (added 2026-07-10, closing the gap flagged at the
+`systems-design-2026-07-10-revalidation.md` gate check): full visual direction lives in
+`design/art/art-bible.md`, Section 1 (Visual Identity Statement). The anchoring rule:
+
+> "If it could sit inside a wizard's cabinet as a hand-carved diorama, it belongs in this
+> game. If it looks like a flat tilemap or a web browser game, it is wrong."
+
+Supporting principles (art-bible.md Section 1 in full): every object reads as a physical,
+weighted presence via stacked-sprite layering with cast shadows (never flat decals); scale
+reads as precious/hand-crafted-miniature, not epic/heroic — camera and asset design always
+serve the standard oblique play angle over a cinematic one; the Hero is the deliberate sole
+3D-model exception to an otherwise 2D-diorama world (see art-bible.md's own rationale for
+the hybrid rendering split).
+
+Audio direction is not yet authored — no `design/audio/` bible exists at time of writing.
+
+## UI Requirements
 
 [To be designed]
 

@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "godot": {
+      "command": "npx",
+      "args": ["-y", "godot-mcp-runtime"],
+      "env": {
+        "GODOT_PATH": "C:\\Users\\Shaukan\\Desktop\\Godot_v4.6.2-stable_win64.exe"
+      }
+    },
+    "godot-solo": {
+      "command": "npx",
+      "args": ["-y", "@coding-solo/godot-mcp"]
+    }
+  }
+}

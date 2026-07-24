@@ -30,7 +30,7 @@
 #   Superseded entries:     Grep pattern="status: superseded"
 
 version: 1
-last_updated: "2026-05-24"
+last_updated: "2026-07-24"  # ADR-0032 added — formalizes the shared destroy-and-recreate + terminal-latch presentation-shell hosting pattern both sanctuary-ui.md and tarot-deck-ui.md independently re-derived through their own multi-pass design reviews, closing the "no dedicated ADR yet" gap both Epic 10 and Epic 11 flagged. Prior entry: ADR-0020-0030 (all 11 originally-required ADRs from the 2026-07-17 architecture review now written). ADR-0029 surfaced a project-wide gap: SavePersistence has no mid-session re-restore for scene-instanced systems recreated on scene transition — flagged on Crafting/Constellation/Tarot/EquipmentForge/TowerMastery entries, blocked their implementation pending resolution. ADR-0030 amended ADR-0029's SkillDefinitionResource in place to unify both systems' field needs. During /create-epics research: found and fixed restore_order errors in ADR-0029 (31->34) and ADR-0030 (32->31) that had drifted from save-persistence.md's own authoritative table (itself corrected same-day, after these ADRs were drafted from the GDDs' stale self-proposed values) — also resolved that doc's own flagged Hero-Skill-Build-vs-Tower-Mastery ordering question. **2026-07-18 (Sprint 6, S6-01): the mid-session-restore gap is now RESOLVED** — ADR-0003 revised to cache the last-loaded master Dictionary and restore late-registering SaveRestorers immediately from that cache (see ADR-0003's 2026-07-18 revision note). The "do not implement until resolved" WARNING on Crafting/Constellation/Tarot/EquipmentForge/TowerMastery's entries below is stale and has been updated accordingly.
 
 # ─── STATE OWNERSHIP ─────────────────────────────────────────────────────────
 # Who is the authoritative owner of each piece of shared game state.
@@ -59,14 +59,20 @@ state_ownership:
     status: active
     owner_system: scene-manager
     adr: docs/architecture/adr-0002-scene-autoload-structure.md
-    interface: "Project Settings → Autoloads: EventBus(1), SavePersistence(2), Grid(3), Pathfinding(4), GameDataRegistry(5), SceneManager(6), WaveManager(7). Order is a build invariant — adding a new Autoload requires an ADR revision. GameDataRegistry added at position 5 by ADR-0009 (SceneManager shifted from 5 to 6). WaveManager added at position 7 by ADR-0012."
+    interface: "Project Settings → Autoloads: EventBus(1), SavePersistence(2), Grid(3), Pathfinding(4), GameDataRegistry(5), SceneManager(6), WaveManager(7), MissionEconomy(8), Inventory(9), DefenseBuilding(10), Menagerie(11), MissionSelect(12), HeroSkillBuild(13). Order is a build invariant — adding a new Autoload requires an ADR revision. GameDataRegistry added at position 5 by ADR-0009 (SceneManager shifted from 5 to 6). WaveManager added at position 7 by ADR-0012. MissionEconomy added at position 8 by ADR-0018. Inventory added at position 9 — resolved 2026-07-17 (ADR-0016's Last Verified section): required so ADR-0021's cross-system methods are callable as bare globals (ADR-0020 Criterion A), not merely for boot ordering; appended after MissionEconomy since Inventory has no Autoload-time dependency on anything booting after it. DefenseBuilding added at position 10 by ADR-0024 — originally assigned #9, renumbered to #10 in the same session once Inventory claimed #9, since Defense Building calls Inventory's methods and must boot after it. Menagerie added at position 11 by ADR-0026 — required so request_sacrifice() is callable as a bare global by Equipment Forge (ADR-0020 Criterion B), resolving a gap ADR-0025 explicitly flagged and left open; appended after DefenseBuilding since neither has an Autoload-time dependency on the other. MissionSelect added at position 12 by ADR-0028 — the fourth reclassification this session, and the first driven by scene-transition state survival (MissionRuntimeState) rather than solely the direct-call requirement (retry_current_mission(), Criterion B) — both reasons independently required Autoload status; appended after Menagerie since neither has an Autoload-time dependency on the other. HeroSkillBuild added at position 13 by ADR-0030 — the fifth reclassification, for the same scene-transition-survival class of reason as MissionSelect: its resolved Ultimate/active-slot state must exist continuously across the SANCTUARY->MISSION boundary so a freshly-instantiated Hero receives it at mission_launched; appended after MissionSelect."
     write_access: project-settings-only
     referenced_by:
       - docs/architecture/adr-0002-scene-autoload-structure.md
       - docs/architecture/adr-0009-resource-data-model.md
       - docs/architecture/adr-0012-wave-manager-fsm.md
+      - docs/architecture/adr-0018-mission-economy-gold-balance.md
+      - docs/architecture/adr-0016-inventory-storage-model.md
+      - docs/architecture/adr-0024-defense-building-tech-tree-data-model.md
+      - docs/architecture/adr-0026-menagerie-creature-lifecycle.md
+      - docs/architecture/adr-0028-mission-select-runtime-state.md
+      - docs/architecture/adr-0030-hero-skill-build-ultimate-lookup.md
     added: 2026-05-16
-    revised: "2026-05-23 — ADR-0009 added GameDataRegistry at position 5; SceneManager shifted to 6"
+    revised: "2026-07-17 — HeroSkillBuild added at Autoload #13 (ADR-0030) (was: MissionSelect added at Autoload #12 (ADR-0028); Menagerie added at Autoload #11 (ADR-0026); Inventory resolved to Autoload #9 (ADR-0016 correction), DefenseBuilding renumbered #9 -> #10 (ADR-0024); 2026-07-13 — ADR-0018 added MissionEconomy at position 8; 2026-05-23 — ADR-0009 added GameDataRegistry at position 5, SceneManager shifted to 6)"
 
   - state: save_slot_data
     status: active
@@ -189,6 +195,154 @@ state_ownership:
     added: 2026-05-24
     revised: ""
 
+  - state: inventory_item_data
+    status: active
+    owner_system: inventory
+    adr: docs/architecture/adr-0016-inventory-storage-model.md
+    interface: "Inventory internal — Array[InventorySlot] (runtime RefCounted objects, never exposed by reference). InventorySlot: item_id, quantity, instance_id (-1 = stackable, >=0 = unique-instance identity), stat_overrides: Dictionary, locked: bool, damaged: bool (ADR-0021), imbued_runes: Array[String] (ADR-0021). Static item data (ItemDefinitionResource) loaded via GameDataRegistry per ADR-0009's existing convention. Implements SaveRestorer (ADR-0003): get_save_key()/get_save_data()/restore_save_data()/reset_to_defaults(), restore_order=10 (matches save-persistence.md's own Formula 4 assignment; below Hero's 30). Query/mutation API finalized by ADR-0021: has_items(cost: Dictionary) -> bool, has_room_for(item_type, quantity) -> bool, clear_damaged_flag(item_id) -> bool, apply_rune_to_item(item_id, rune_id, stat_delta) -> bool — the latter two are in-place mutations that deliberately do NOT check locked (locked gates removal only, per ADR-0021)."
+    write_access: inventory-only
+    referenced_by:
+      - docs/architecture/adr-0016-inventory-storage-model.md
+      - docs/architecture/adr-0021-inventory-cross-system-api.md
+    added: 2026-07-11
+    revised: "2026-07-17 — ADR-0021 added damaged/imbued_runes fields and finalized has_room_for()/clear_damaged_flag()/apply_rune_to_item() (was: 2026-07-13 — restore_order corrected from 20 to 10, colliding with Menagerie's slot in save-persistence.md's Formula 4 table)"
+
+  - state: resource_economy_menagerie_cache
+    status: active
+    owner_system: resource-economy
+    adr: docs/architecture/adr-0017-resource-economy-drop-resolution.md
+    interface: "ResourceEconomy internal — _menagerie_quality_bonus: float. The system's sole owned mutable state; updated synchronously on creature_happiness_changed/creature_moved_to_breeding_pen/creature_returned_from_breeding_pen. Not accessible to other systems. No save/restore requirement — resets naturally via fresh node instance per mission (Menagerie, not yet designed, expected to re-broadcast current happiness at mission start — unresolved forward dependency, see ADR-0017 Open Questions)."
+    write_access: resource-economy-only
+    referenced_by:
+      - docs/architecture/adr-0017-resource-economy-drop-resolution.md
+    added: 2026-07-11
+    revised: ""
+
+  - state: mission_economy_gold_balance
+    status: active
+    owner_system: mission-economy
+    adr: docs/architecture/adr-0018-mission-economy-gold-balance.md
+    interface: "MissionEconomy internal — _gold_balance: int (Autoload #8). Mutated ONLY via EventBus subscription to resources_changed(gold: int, source: StringName) — gold is a signed delta, accumulated (_gold_balance += gold). Reset to 0 on mission_launched. No external write path. Read via direct-call API (same exception class as Grid's read API / GameDataRegistry's lookup methods): get_gold_balance() -> int, can_afford(cost: int) -> bool. No SaveRestorer — ephemeral per-mission state, resets naturally, never persisted (matches save-persistence.md's existing exclusion list for other mission-runtime scalars)."
+    write_access: mission-economy-only
+    referenced_by:
+      - docs/architecture/adr-0018-mission-economy-gold-balance.md
+      - docs/architecture/adr-0008-tower-placement-gate.md   # Gate 2 can_afford() consumer
+      - docs/architecture/adr-0017-resource-economy-drop-resolution.md   # resources_changed emitter
+    added: 2026-07-13
+    revised: ""
+
+  - state: projectile_pool_state
+    status: active
+    owner_system: tower-system
+    adr: docs/architecture/adr-0019-projectile-pooling-strategy.md
+    interface: "ProjectileManager internal — composed as a child node of Tower System (not a top-level scene-tree peer, not Autoload). _pool: Array[Projectile] (192, pre-instantiated at mission start); _free_indices: Array[int] (O(1) acquire/release stack). Not accessible to other systems — the only observable output is the existing tower_attacked EventBus signal (ADR-0007), unmodified, emitted on arrival instead of at fire time for HOMING/BALLISTIC weapons. Fire path: TowerSystem._try_attack() calls ProjectileManager.fire(...) as an intra-system method call (not a cross-system reference, since ProjectileManager is owned by Tower System's own domain)."
+    write_access: tower-system-only
+    referenced_by:
+      - docs/architecture/adr-0019-projectile-pooling-strategy.md
+    added: 2026-07-13
+    revised: ""
+
+  - state: constellation_pattern_state
+    status: active
+    owner_system: constellation-system
+    adr: docs/architecture/adr-0022-constellation-pattern-detection.md
+    interface: "Constellation internal (scene-instanced node) — _active_instances: Dictionary[String, ConstellationInstance] (pattern_id key, mission-scoped, not persisted); _tower_membership: Dictionary[int, Array[String]] (tower_id -> pattern_ids, reverse index); _tag_cache: Dictionary[int, String] (tower_id -> constellation_eligibility_tag, populated from tower_placed/tower_removed/tower_destroyed payloads). Not accessible to other systems. _discovery_ledger: Dictionary[String, bool] (shape_id -> discovered) IS persisted via SaveRestorer, restore_order=24. Observable only via constellation_activated/constellation_deactivated/constellation_rune_discovered EventBus events. RESOLVED (flagged 2026-07-17 by ADR-0029, fixed 2026-07-18): as a MissionScene child, this node is destroyed/recreated every mission — SavePersistence (ADR-0003, 2026-07-18 revision) now caches the last-loaded save Dictionary and restores any late-registering SaveRestorer immediately at register() time, so this node's Discovery Ledger is correctly re-applied on every mid-session reload."
+    write_access: constellation-system-only
+    referenced_by:
+      - docs/architecture/adr-0022-constellation-pattern-detection.md
+    added: 2026-07-17
+    revised: ""
+
+  - state: crafting_discovery_ledger
+    status: active
+    owner_system: crafting-system
+    adr: docs/architecture/adr-0023-crafting-recipe-data-model.md
+    interface: "Crafting internal (scene-instanced node) — _discovery_ledger: Dictionary[StringName, bool] (recipe_id -> discovered), _craft_resolving: bool (single-frame double-confirm guard). Not accessible to other systems. Persisted via SaveRestorer, restore_order must be strictly greater than Inventory's (10) and Defense Building's (21, confirmed by ADR-0024) — must therefore be assigned > 21 in save-persistence.md's Formula 4 table. Observable only via component_crafted/recipe_discovered/component_repaired EventBus events. RESOLVED (flagged 2026-07-17 by ADR-0029, fixed 2026-07-18): as a SanctuaryScene child, this node is destroyed/recreated on every Mission<->Sanctuary transition — SavePersistence (ADR-0003, 2026-07-18 revision) now caches the last-loaded save Dictionary and restores any late-registering SaveRestorer immediately at register() time, so this node's Discovery Ledger is correctly re-applied on every mid-session reload."
+    write_access: crafting-system-only
+    referenced_by:
+      - docs/architecture/adr-0023-crafting-recipe-data-model.md
+    added: 2026-07-17
+    revised: ""
+
+  - state: defense_building_ledgers
+    status: active
+    owner_system: defense-building
+    adr: docs/architecture/adr-0024-defense-building-tech-tree-data-model.md
+    interface: "DefenseBuilding (Autoload #10, renumbered from #9 once Inventory claimed #9 in this session's ADR-0016 correction) — _tech_ledger: Dictionary[StringName, bool] (tech_id -> unlocked), _structure_ledger: Dictionary[StringName, bool] (structure_id -> built), _action_resolving: bool (single guard shared across both ledgers). LOCKED_PREREQ/AVAILABLE states are derived at query time, never persisted. Read-only direct-call exception (ADR-0020 Criterion A): is_tech_unlocked(tech_id) -> bool, callable by any system whose own restore_order > 21 if called from that system's restore_save_data(). Persisted via SaveRestorer, restore_order=21. Write access to the ledgers themselves is defense-building-only; observable to other systems only via tech_unlocked/sanctuary_structure_built EventBus events or the read-only is_tech_unlocked() call."
+    write_access: defense-building-only
+    referenced_by:
+      - docs/architecture/adr-0024-defense-building-tech-tree-data-model.md
+      - docs/architecture/adr-0023-crafting-recipe-data-model.md   # is_tech_unlocked() consumer, boot sweep ordering dependency
+    added: 2026-07-17
+    revised: ""
+
+  - state: equipment_forge_ledgers
+    status: active
+    owner_system: equipment-forge
+    adr: docs/architecture/adr-0025-equipment-forge-cross-system-aggregation.md
+    interface: "EquipmentForge (scene-instanced node — nothing calls into it directly, so it needs no Autoload status) — _equipment_discovery_ledger: Dictionary[StringName, bool] (recipe_id -> discovered), _available_runes: Dictionary[StringName, Dictionary] (rune_id -> {rune_source, stat_delta}, Constellation/Tarot-sourced ONLY — Menagerie-sourced runes never enter this structure by construction), _forge_resolving: bool (single guard shared across 3 operation types: equipment craft, rune imbue, creature sacrifice). Persisted via SaveRestorer, restore_order=32 (confirmed compatible with Tarot=22, Menagerie=20, Constellation=24, Hero=30, all of which must restore first). Does NOT own per-item rune-slot data — that is InventorySlot.imbued_runes (ADR-0021)."
+    write_access: equipment-forge-only. RESOLVED (flagged 2026-07-17 by ADR-0029, fixed 2026-07-18) — SavePersistence's mid-session-restore gap for scene-instanced nodes is closed by ADR-0003's 2026-07-18 revision (cached late-registration restore); see ADR-0003 for the fix.
+    referenced_by:
+      - docs/architecture/adr-0025-equipment-forge-cross-system-aggregation.md
+    added: 2026-07-17
+    revised: ""
+
+  - state: menagerie_creature_state
+    status: active
+    owner_system: menagerie
+    adr: docs/architecture/adr-0026-menagerie-creature-lifecycle.md
+    interface: "Menagerie (Autoload #11) — _creatures: Array[CreatureInstance] (RefCounted; creature_id: int, species: StringName, state enum, happiness: float, missions_since_tended: int), _breeding_pens: Array[BreedingPen] (fixed size 2), _habitat_capacity: int, _next_creature_id: int. Read-only direct-call exception (ADR-0020 Criterion B): request_sacrifice(creature_id: int, target_item_id: int) -> bool, callable by Equipment Forge — resolves ADR-0025's flagged gap. Persisted via SaveRestorer, restore_order=20 (after Inventory's 10). Write access is menagerie-only; observable to other systems only via creature_acquired/creature_happiness_changed/creature_bred/creature_sacrificed/creature_moved_to_breeding_pen/creature_returned_from_breeding_pen EventBus events or the request_sacrifice() call."
+    write_access: menagerie-only
+    referenced_by:
+      - docs/architecture/adr-0026-menagerie-creature-lifecycle.md
+      - docs/architecture/adr-0025-equipment-forge-cross-system-aggregation.md   # request_sacrifice() consumer
+    added: 2026-07-17
+    revised: ""
+
+  - state: tarot_progress_ledger
+    status: active
+    owner_system: tarot
+    adr: docs/architecture/adr-0027-tarot-modifier-aggregation-pipeline.md
+    interface: "Tarot (scene-instanced node — nothing calls into it directly, so it needs no Autoload status) — _mastery_missions_played: Dictionary[StringName, int] (card_id -> count; mastery_tier is ALWAYS derived via F6, never independently stored), _rune_discovered: Dictionary[StringName, bool] (linked_rune_id -> discovered, one-way terminal, mirrors ADR-0022/0023's Discovery Ledger shape), _card_unlocked: Dictionary[StringName, bool] (card_id -> unlocked; READ-ONLY from Tarot's own logic — write side is a genuinely unresolved external dependency, no system currently owns it), _deck_template: Array[StringName] (persisted Sanctuary-time equipped list). _active_mission_deck (mission-locked snapshot) is explicitly NOT persisted — ephemeral runtime-only. Persisted via SaveRestorer, restore_order=22."
+    write_access: tarot-only (except _card_unlocked, whose writer is unresolved — see ADR Risks). RESOLVED (flagged 2026-07-17 by ADR-0029, fixed 2026-07-18) — SavePersistence's mid-session-restore gap for scene-instanced nodes is closed by ADR-0003's 2026-07-18 revision (cached late-registration restore); see ADR-0003 for the fix.
+    referenced_by:
+      - docs/architecture/adr-0027-tarot-modifier-aggregation-pipeline.md
+    added: 2026-07-17
+    revised: ""
+
+  - state: mission_select_state
+    status: active
+    owner_system: mission-select
+    adr: docs/architecture/adr-0028-mission-select-runtime-state.md
+    interface: "MissionSelect (Autoload #12) — _completion_ledger: Dictionary[String, Dictionary] (mission_id -> {tier: MissionCompletionRecord}, RefCounted), persisted via SaveRestorer, restore_order=11. _runtime_mission_id/_runtime_grid_config/_runtime_difficulty_tier/_runtime_modifiers (MissionRuntimeState, Autoload-lifetime, explicitly NOT persisted per Rule 10) — _runtime_grid_config holds the exact GridConfig instance reference from MissionEntry, never duplicated, satisfying the same-instance guarantee (Rule 10/EC-6). Direct-call exception (ADR-0020 Criterion B): retry_current_mission() -> void, callable by Mission HUD (a MissionScene child) — the fourth system this session reclassified from scene-instanced to Autoload (after Inventory, DefenseBuilding, Menagerie), and the first case where the deciding reason was scene-transition state survival, not only the direct-call requirement."
+    write_access: mission-select-only
+    referenced_by:
+      - docs/architecture/adr-0028-mission-select-runtime-state.md
+    added: 2026-07-17
+    revised: ""
+
+  - state: tower_mastery_progress
+    status: active
+    owner_system: tower-mastery
+    adr: docs/architecture/adr-0029-tower-mastery-proximity-detection.md
+    interface: "TowerMastery (scene-instanced, MissionScene child — nothing calls into it directly, no Autoload status needed) — _mastery_time: Dictionary[String, float] and _unlocked_skills: Dictionary[String, bool] (both keyed by build_signature/skill_id, persisted via SaveRestorer, restore_order=34 — corrected from an original 31, which collided with Hero Skill Build; save-persistence.md's authoritative table is the source of truth). _active_signature_by_tower: Dictionary[int, String] and _signatures_in_range: Dictionary[String, bool] are ephemeral, per-mission, EventBus-sourced only — never a direct Tower System call. RESOLVED (flagged 2026-07-17 by ADR-0029, fixed 2026-07-18): this system's persisted state was subject to the project-wide scene-reload restore gap flagged in ADR-0029's Risks — SavePersistence (ADR-0003, 2026-07-18 revision) now caches the last-loaded save Dictionary and restores any late-registering SaveRestorer immediately at register() time, so this system's ledgers are correctly re-applied on every mid-session reload."
+    write_access: tower-mastery-only
+    referenced_by:
+      - docs/architecture/adr-0029-tower-mastery-proximity-detection.md
+    added: 2026-07-17
+    revised: ""
+
+  - state: hero_skill_build_state
+    status: active
+    owner_system: hero-skill-build
+    adr: docs/architecture/adr-0030-hero-skill-build-ultimate-lookup.md
+    interface: "HeroSkillBuild (Autoload #13) — _equippable_skills: Dictionary[String, bool] (mirror of Tower Mastery's unlock state, populated only via skill_unlocked subscription, never independently derived), _active_slots: Array[String] (size 4), _passive_slots: Dictionary[String, Array] (skill_id -> item_ids). Persisted via SaveRestorer, restore_order=31 — corrected from an original self-proposed 32, which collided with Equipment Forge; restores immediately after Hero (30), before Equipment Forge (32) and Tower Mastery (34). Resolves save-persistence.md's own flagged open question: Hero Skill Build's restore does NOT need Tower Mastery already restored, since it only reads its own independently-persisted mirror, never Tower Mastery's live restored state. The resolved Ultimate ID is explicitly NEVER persisted — always recomputed from restored slot bindings via a pure function (Formulas 1-3), eliminating stale-cache drift. Re-emits active_skill_equipped/ultimate_skill_changed (deferred, per ADR-0001 Core Rule 2) at every mission_launched so a freshly-instantiated Hero receives the current build regardless of scene-transition timing."
+    write_access: hero-skill-build-only
+    referenced_by:
+      - docs/architecture/adr-0030-hero-skill-build-ultimate-lookup.md
+    added: 2026-07-17
+    revised: ""
+
 # Example:
 #
 # state_ownership:
@@ -223,7 +377,7 @@ interfaces:
     consumers:
       - any-system
     adr: docs/architecture/adr-0001-eventbus-architecture.md
-    signal_signature: "Varies per event — see design/gdd/event-bus.md for full 70-event catalogue. Typed params for ≤4 fields; Resource subclass for ≥5 fields."
+    signal_signature: "Varies per event — see design/gdd/event-bus.md for the full catalogue (74 events as of 2026-07-13). Typed params for ≤4 fields; Resource subclass for ≥5 fields."
     referenced_by:
       - docs/architecture/adr-0001-eventbus-architecture.md
     added: 2026-05-15
@@ -330,6 +484,19 @@ interfaces:
     added: 2026-05-23
     revised: ""
 
+  - contract: resource_economy_lifecycle
+    status: active
+    pattern: event_bus
+    producer: monster-manager
+    consumers:
+      - resource-economy
+    adr: docs/architecture/adr-0017-resource-economy-drop-resolution.md
+    signal_signature: "ResourceEconomy is a scene-instanced node (NOT an Autoload) per ADR-0002's own Autoload/Scene-Instanced boundary table (Resource Economy is classified scene-instanced there directly). Subscribes at _ready() to monster_died, monsters_died_batch, mission_phase_changed, creature_happiness_changed, creature_moved_to_breeding_pen, creature_returned_from_breeding_pen; disconnects all at _exit_tree(). Relies on the pre-existing project-wide exclusivity guarantee that a given kill fires exactly one of monster_died/monsters_died_batch, never both (confirmed against shipped Wave Manager handler code) — a violation would silently double-award materials/gold. Corrected 2026-07-13: originally miscited as 'mirroring Wave Manager's non-Autoload, mission-scoped lifecycle' — Wave Manager is actually Autoload #7 (ADR-0002/ADR-0012); the scene-instanced classification here never depended on that comparison."
+    referenced_by:
+      - docs/architecture/adr-0017-resource-economy-drop-resolution.md
+    added: 2026-07-11
+    revised: "2026-07-13 — corrected inaccurate Wave Manager precedent citation"
+
   - contract: hero_class_unlock_notification
     status: active
     pattern: event_bus
@@ -343,6 +510,94 @@ interfaces:
     referenced_by:
       - docs/architecture/adr-0010-hero-tower-synced-class.md
     added: 2026-05-24
+    revised: ""
+
+  - contract: ui_input_mode_tracking
+    status: active
+    pattern: none
+    producer: input-mode-tracker
+    consumers:
+      - inventory-ui
+    adr: docs/architecture/adr-0011-ui-dual-focus-handling.md
+    signal_signature: "InputModeTracker (src/ui/input_mode_tracker.gd) — a reusable, NON-Autoload Node instanced as a child of each interactive UI screen (Godot 4.6 split mouse focus from keyboard/gamepad focus; grab_focus() only ever moves the latter). Detects mode via _input(event): InputEventMouseMotion/MouseButton -> MOUSE; InputEventKey/JoypadButton/JoypadMotion -> KEYBOARD_GAMEPAD (uses _input, not _unhandled_input, so Controls with mouse_filter=STOP don't swallow the detection event). Emits input_mode_changed(mode) only when mode actually changes. Exposes is_focus_ring_visible() -> bool (true iff mode == KEYBOARD_GAMEPAD). Consumer contract: any focusable widget on a tracked screen must gate its focus-ring visual on has_focus() AND tracker.is_focus_ring_visible() — mouse hover remains a fully separate visual driven by mouse_entered/mouse_exited, never merged into one 'highlighted' state. focus_neighbor_* must be wired explicitly per grid (not left to automatic traversal) wherever tab-wrap-at-edge or similar custom adjacency is required."
+    referenced_by:
+      - docs/architecture/adr-0011-ui-dual-focus-handling.md
+      - docs/architecture/adr-0010-hero-tower-synced-class.md   # original (corrected) reference to this ADR
+    added: 2026-07-13
+    revised: ""
+
+  - contract: mission_retry_action
+    status: active   # confirmed implementable by ADR-0028 — Mission Select reclassified Autoload #12
+    pattern: direct_call
+    producer: mission-select
+    consumers:
+      - mission-hud
+    adr: docs/architecture/adr-0028-mission-select-runtime-state.md
+    signal_signature: "MissionSelect.retry_current_mission() -> void — Criterion B (narrow single-caller UI action, ADR-0020). Called only by Mission HUD's DEFEAT Retry button (a MissionScene child) — no other caller exists by design. Guarded by an explicit MissionRuntimeState-presence check; logs and no-ops if absent (mission-select.md Rule 10/EC-6). Re-delivers the exact cached GridConfig instance to Grid.initialize() (same reference, never duplicated) then re-emits mission_launched with the cached values. Mission Select is Autoload #12 — required both for this call's Criterion-B callability AND because MissionRuntimeState must survive the SANCTUARY->MISSION scene transition (ADR-0028)."
+    referenced_by:
+      - docs/architecture/adr-0020-direct-autoload-call-exception-pattern.md
+      - docs/architecture/adr-0028-mission-select-runtime-state.md
+    added: 2026-07-17
+    revised: "2026-07-17 — ADR-0028 confirmed Mission Select as Autoload #12, resolving implementability"
+
+  - contract: inventory_cross_system_api
+    status: active
+    pattern: direct_call
+    producer: inventory
+    consumers:
+      - crafting-system
+      - equipment-forge-system
+      - menagerie-system
+      - defense-building-system
+    adr: docs/architecture/adr-0021-inventory-cross-system-api.md
+    signal_signature: "Criterion A (read/mutate query, ADR-0020) — has_items(cost: Dictionary) -> bool (pre-existing, ADR-0016); has_room_for(item_type: String, quantity: int) -> bool (read-only pre-check); clear_damaged_flag(item_id: String) -> bool and apply_rune_to_item(item_id: String, rune_id: String, stat_delta: Dictionary) -> bool (both in-place mutations, do NOT check InventorySlot.locked, do NOT fire item_added/item_removed — callers must key UI refresh off component_repaired/item_rune_imbued instead); reserve_instance_id() -> int (added for ADR-0025 — mints a collision-safe instance_id from Inventory's own _next_instance_id counter before the item it belongs to is constructed, for callers like Equipment Forge's sacrifice flow that must pass an item_id to another system before creating the item)."
+    referenced_by:
+      - docs/architecture/adr-0021-inventory-cross-system-api.md
+      - docs/architecture/adr-0025-equipment-forge-cross-system-aggregation.md
+    added: 2026-07-17
+    revised: "2026-07-17 — ADR-0025 added reserve_instance_id()"
+
+  - contract: defense_building_tech_query
+    status: active
+    pattern: direct_call
+    producer: defense-building
+    consumers:
+      - crafting-system
+    adr: docs/architecture/adr-0024-defense-building-tech-tree-data-model.md
+    signal_signature: "DefenseBuilding.is_tech_unlocked(tech_id: StringName) -> bool — Criterion A (read-only, sole-owner callee, ADR-0020). DefenseBuilding is an Autoload (position 10) specifically so this call is a valid bare-global direct call, not a node reference. Safe to call from another system's own restore_save_data() ONLY IF that system's restore_order > 21 (DefenseBuilding's own restore_order) — this is the exact guarantee Crafting's boot-time discovery sweep (ADR-0023) depends on."
+    referenced_by:
+      - docs/architecture/adr-0024-defense-building-tech-tree-data-model.md
+      - docs/architecture/adr-0023-crafting-recipe-data-model.md
+    added: 2026-07-17
+    revised: ""
+
+  - contract: menagerie_sacrifice_request
+    status: active   # RESOLVED 2026-07-17 by ADR-0026 — implementable
+    pattern: direct_call
+    producer: menagerie
+    consumers:
+      - equipment-forge
+    adr: docs/architecture/adr-0026-menagerie-creature-lifecycle.md
+    signal_signature: "Menagerie.request_sacrifice(creature_id: int, target_item_id: int) -> bool — Criterion B (narrow single-caller action, ADR-0020), mirroring MissionSelect.retry_current_mission() and DefenseBuilding.is_tech_unlocked() (ADR-0024). Menagerie is Autoload #11 (ADR-0026), resolving the gap ADR-0025 originally flagged. Types corrected from the GDDs' own String prose to int, matching Inventory.reserve_instance_id() -> int (ADR-0021/0025) and CreatureInstance.creature_id: int (ADR-0026) — ADR-0025's own Key Interfaces code sample corrected in lockstep."
+    referenced_by:
+      - docs/architecture/adr-0026-menagerie-creature-lifecycle.md
+      - docs/architecture/adr-0025-equipment-forge-cross-system-aggregation.md
+    added: 2026-07-17
+    revised: "2026-07-17 — resolved by ADR-0026 (was: pending Menagerie's ADR, types corrected String -> int)"
+
+  - contract: presentation_shell_hosting
+    status: active
+    pattern: none
+    producer: presentation-shell
+    consumers:
+      - sanctuary-ui
+      - tarot-deck-ui
+    adr: docs/architecture/adr-0032-presentation-shell-hosting-pattern.md
+    signal_signature: "A shell owns a Control host node (RoomHost/ScreenHost, full-rect minus chrome). Hosted content is destroyed and recreated on every switch, never kept alive-hidden. Outgoing content teardown runs 2 synchronous steps in order BEFORE queue_free(): (1) disconnect every EventBus subscription the instance itself owns, (2) set_process_unhandled_input(false). Any shell-level transition tween is host-owned, never content-instance-owned. Hand-off transitions (to a different top-level shell) share one _departing flag per shell; whichever handler fires first, its first EventBus-touching/state-mutating statement sets the flag AND synchronously disconnects every EventBus subscription the shell itself owns — flag-check alone does not stop an already-queued CONNECT_DEFERRED call. Generalizes mission_hud.gd's existing Planning Cluster / _terminal precedent (Epic 09, shipped) to shells with more than one hosted-content type and more than one hand-off trigger."
+    referenced_by:
+      - docs/architecture/adr-0032-presentation-shell-hosting-pattern.md
+      - docs/architecture/adr-0031-mission-hud-architecture.md   # direct precedent this pattern generalizes
+    added: 2026-07-24
     revised: ""
 
 # Example:
@@ -420,7 +675,7 @@ api_decisions:
     api: "GDScript typed signals on EventBus Autoload (signal.connect(callable), signal.emit(...))"
     not: "Direct node-to-node signal connections; untyped Dictionary payloads; message queue"
     adr: docs/architecture/adr-0001-eventbus-architecture.md
-    reason: "Single pub/sub backbone enables cross-system synergies without direct dependencies. Godot signal system is C++ backed, zero overhead when no subscribers. 70-event catalogue is the single source of truth for all cross-system communication."
+    reason: "Single pub/sub backbone enables cross-system synergies without direct dependencies. Godot signal system is C++ backed, zero overhead when no subscribers. The event catalogue (74 events as of 2026-07-13) is the single source of truth for all cross-system communication."
     referenced_by:
       - docs/architecture/adr-0001-eventbus-architecture.md
     added: 2026-05-15
@@ -479,6 +734,149 @@ api_decisions:
     referenced_by:
       - docs/architecture/adr-0010-hero-tower-synced-class.md
     added: 2026-05-24
+    revised: ""
+
+  - purpose: drop_table_data_model
+    status: active
+    api: "DropTableResource/DropEntry Resource subclasses loaded via GameDataRegistry at boot (Autoload position 5), each implementing validate() -> Array[String] per the resource_validation contract."
+    not: "Plain Dictionary-based drop tables (no Resource subclass, no GameDataRegistry integration); folding drop-table fields directly into MonsterResource (couples an already-Approved, already-implemented schema to Resource Economy's concerns and breaks content reuse across monster types sharing one table)"
+    adr: docs/architecture/adr-0017-resource-economy-drop-resolution.md
+    reason: "Mirrors ADR-0016's ItemDefinitionResource and ADR-0009's MonsterResource pattern — the project's established data-driven-Resource convention. MonsterResource.drop_table_id is already an indirection (StringName reference, not inline data) per monster.md, so a separate shared DropTableResource honors that existing field design rather than collapsing it."
+    referenced_by:
+      - docs/architecture/adr-0017-resource-economy-drop-resolution.md
+    added: 2026-07-11
+    revised: ""
+
+  - purpose: unique_instance_isolation
+    status: active
+    api: "Dictionary.duplicate(true) (deep dictionary copy) applied to InventorySlot.stat_overrides at equip/install time."
+    not: "Resource.duplicate_deep() — reserved for actual Resource-to-Resource reference graphs (e.g. TowerComponent per ADR-0008); stat_overrides is a flat primitive Dictionary with no nested Resources, so the heavier Resource-tree API is unnecessary overhead"
+    adr: docs/architecture/adr-0016-inventory-storage-model.md
+    reason: "InventorySlot is a plain RefCounted, not a Resource — duplicate_deep() doesn't apply to it at all. Dictionary.duplicate(true) correctly deep-copies the flat primitive stat_overrides Dictionary, confirmed idiomatic by godot-specialist validation during ADR authoring."
+    referenced_by:
+      - docs/architecture/adr-0016-inventory-storage-model.md
+    added: 2026-07-11
+    revised: ""
+
+  - purpose: projectile_pooling
+    status: active
+    api: "Fixed-size pool (192) of pre-instantiated plain Node2D Projectile instances, warmed up once at mission start. Release/reuse toggles visible = false + process_mode = Node.PROCESS_MODE_DISABLED (both required — visible alone does not stop a child AnimatedSprite2D's internal animation timer from advancing)."
+    not: "Area2D-based Projectile (no physical overlap detection needed — arrival/re-acquisition is cache/ID-driven against TowerSystem._monster_cache, not spatial); instantiate()/queue_free() per shot (violates zero-allocation-hot-path rule, explicitly ruled out by tower.md's own pool-sizing tuning knobs); PROCESS_MODE_PAUSABLE (reacts to SceneTree.paused, irrelevant to pool release)."
+    adr: docs/architecture/adr-0019-projectile-pooling-strategy.md
+    reason: "tower.md's tuning knobs (projectile_pool_size, max_reacquisitions_per_frame) presuppose a fixed-size pool. Cache/ID-driven re-acquisition (bounded to the firing tower's range/cone) makes Area2D unnecessary overhead. Confirmed idiomatic by godot-specialist validation during ADR authoring."
+    referenced_by:
+      - docs/architecture/adr-0019-projectile-pooling-strategy.md
+    added: 2026-07-13
+    revised: ""
+
+  - purpose: constellation_pattern_detection
+    status: active
+    api: "Incremental, event-driven data structures: Dictionary[String, ConstellationInstance] active-instance table (keyed pattern_id) + Dictionary[int, Array[String]] reverse index (tower_id -> pattern_ids) + Dictionary[int, String] per-tower tag cache, all Constellation-internal RefCounted/Dictionary state. Detection per tower_placed/tower_removed/tower_destroyed calls Grid.get_occupied_cells_in_radius(changed_cell, pattern_search_radius) exactly once per event."
+    not: "Full-board rescan (Grid.get_all_occupied_cells()) on every event — explicitly forbidden by constellation.md Core Rule 8/AC-17; storing pattern membership on Tower System's TowerMissionState instead of a Constellation-owned reverse index — would violate ADR-0008's tower-system-only write access to tower_mission_state."
+    adr: docs/architecture/adr-0022-constellation-pattern-detection.md
+    reason: "Per-event detection cost must not scale with total tower count (constellation.md AC-30) — an incremental reverse-index lookup for deactivation and a radius-bounded Grid query for activation both satisfy this by construction, unlike a full rescan."
+    referenced_by:
+      - docs/architecture/adr-0022-constellation-pattern-detection.md
+    added: 2026-07-17
+    revised: ""
+
+  - purpose: recipe_data_model
+    status: active
+    api: "RecipeResource Resource subclass, GameDataRegistry-backed at boot (Autoload position 5), validated via validate() -> Array[String] per the resource_validation contract (ADR-0009). Discovery tracked via a Crafting-owned Dictionary[StringName, bool] Discovery Ledger (SaveRestorer, ADR-0003), checked from 3 trigger paths: tech_unlocked, item_added, and a one-time boot/restore-time sweep in restore_save_data()."
+    not: "Flat Dictionary/JSON recipe catalogue with no GameDataRegistry integration (breaks from the project's established Resource-subclass convention); modeling Repair as a RecipeResource instance (Repair has no recipe_id, never fires recipe_discovered, and is gated on InventorySlot.damaged directly — ADR-0021)."
+    adr: docs/architecture/adr-0023-crafting-recipe-data-model.md
+    reason: "Mirrors ADR-0009's MonsterResource/WaveConfig pattern and ADR-0016's ItemDefinitionResource extension of it — the project's established data-driven-Resource convention. The 3rd discovery trigger (boot sweep) resolves a confirmed qa-lead-flagged implementability gap (TR-craft-002) where Rule 4's original 2 triggers left AC-1 unimplementable."
+    referenced_by:
+      - docs/architecture/adr-0023-crafting-recipe-data-model.md
+    added: 2026-07-17
+    revised: ""
+
+  - purpose: tech_tree_and_structure_data_model
+    status: active
+    api: "Two parallel Resource subclasses (TechNodeResource, StructureResource), both GameDataRegistry-backed at boot, following ADR-0009's convention. Two independent Dictionary[StringName, bool] ledgers (terminal state only — LOCKED_PREREQ/AVAILABLE derived at query time, never persisted), one shared _action_resolving guard across both ledgers."
+    not: "A single unified 'progression point' currency spanning both ledgers (explicitly forbidden by defense-building.md Core Rule 1); persisting the full 3-state (LOCKED_PREREQ/AVAILABLE/UNLOCKED) per entry (would require re-deriving AVAILABLE on load anyway since it depends on live affordability, making the persisted value a stale-data risk)."
+    adr: docs/architecture/adr-0024-defense-building-tech-tree-data-model.md
+    reason: "Mirrors ADR-0023's RecipeResource/Discovery-Ledger pattern exactly — the project's established shape for permanent-unlock content gated by prerequisite chains. Deriving locked/available state from one terminal-state source of truth eliminates a 3-state-consistency class of bug entirely."
+    referenced_by:
+      - docs/architecture/adr-0024-defense-building-tech-tree-data-model.md
+    added: 2026-07-17
+    revised: ""
+
+  - purpose: equipment_forge_data_model
+    status: active
+    api: "Two Resource subclasses (EquipmentRecipeResource, SacrificeRecipeResource), GameDataRegistry-backed, mirroring (not subclassing) RecipeResource's field shape and validation convention (ADR-0023). Two persisted Dictionary ledgers (Equipment Recipe Discovery, Available Runes); a third conceptual state (per-item rune slot occupancy) deliberately NOT owned here — it's InventorySlot.imbued_runes (ADR-0021). One shared _forge_resolving guard across 3 distinct operation types (craft, imbue, sacrifice)."
+    not: "A single polymorphic RuneSourceResource unifying Constellation/Tarot/Menagerie acquisition (would force Menagerie's atomic consume-on-create into a ledger-write-then-immediate-read pattern it doesn't need, per equipment-forge.md Rule 13's deliberate asymmetry); Equipment Forge itself becoming an Autoload (nothing calls into it directly — only Inventory and, pending Menagerie's ADR, Menagerie need Autoload status as callees, not Equipment Forge as caller)."
+    adr: docs/architecture/adr-0025-equipment-forge-cross-system-aggregation.md
+    reason: "Mirrors ADR-0023's RecipeResource/Discovery-Ledger/resolving-guard pattern, extended to 2 recipe schemas and 3 operation types instead of 1. The Menagerie-sourced-rune exclusion is enforced at the data-structure level (never written to available_runes) rather than left as a convention, closing equipment-forge.md's own explicitly-flagged asymmetry risk."
+    referenced_by:
+      - docs/architecture/adr-0025-equipment-forge-cross-system-aggregation.md
+    added: 2026-07-17
+    revised: ""
+
+  - purpose: menagerie_creature_data_model
+    status: active
+    api: "CreatureInstance as plain RefCounted (not Resource — mirrors ADR-0016's InventorySlot precedent for flat-primitive runtime entities), Array[CreatureInstance] on the Menagerie Autoload. Fixed-size Array[BreedingPen] (2 pens, not Dictionary-keyed, since pen count is fixed and small per menagerie.md Rule 12). Minimal SpeciesResource (GameDataRegistry-backed) for the 5-species roster's tier data only. Single _recompute_and_push_aggregate() call site for Rule 6's aggregate push, invoked from all 4 HABITAT-composition-changing call sites."
+    not: "CreatureInstance as a Resource with duplicate_deep() (no nested Resource references exist on this entity — same rejection reasoning ADR-0016 already established for InventorySlot's Alternative C); Dictionary-keyed breeding pens (pen count is fixed at 2, never expandable, per Rule 12 — array indexing is simpler); a Menagerie.request_sacrifice() implemented as an EventBus request/response pair (Equipment Forge's Rule 19 resolution flow requires the validation result synchronously in the same call stack — see ADR-0026 Alternative B)."
+    adr: docs/architecture/adr-0026-menagerie-creature-lifecycle.md
+    reason: "Mirrors ADR-0016's RefCounted-entity precedent and ADR-0022/0023's single-call-site-for-cross-cutting-invariant pattern (Constellation's reverse-index scrub, Crafting's guard flag). The single aggregate-push call site directly targets menagerie.md's own 'highest-risk rule' framing for Rule 6."
+    referenced_by:
+      - docs/architecture/adr-0026-menagerie-creature-lifecycle.md
+    added: 2026-07-17
+    revised: ""
+
+  - purpose: tarot_static_runtime_split
+    status: active
+    api: "TarotCardResource (static, GameDataRegistry-backed, immutable) split from TarotProgressLedger (runtime, 3 typed Dictionaries on the Tarot node) — resolves an inconsistency in tarot.md's own Rule 1, which listed mastery_tier/mastery_missions_played/unlocked as fields directly on the Resource. Single _resolve_scout_modifiers() call site performs F1 mastery scaling at emission time; F2-stage aggregation/clamping is explicitly NOT Tarot's responsibility — Wave Manager and Monster System each aggregate their own consumed modifier_type independently."
+    not: "Mutable per-instance TarotCardResource (would violate ADR-0003's resource_object_in_save_data forbidden pattern the moment mastery/discovery state needs to persist); mastery_tier stored independently of mastery_missions_played (would reintroduce the tier-desync risk tarot.md's own Rule 11 explicitly rules out); Tarot performing F2 aggregation itself (contradicts tarot.md's own Interactions table, which names Monster System/Wave Manager as the aggregating subscribers)."
+    adr: docs/architecture/adr-0027-tarot-modifier-aggregation-pipeline.md
+    reason: "Mirrors ADR-0016's ItemDefinitionResource/InventorySlot split and ADR-0023's RecipeResource/Discovery-Ledger split — the project's established resolution for 'GDD describes a Resource with mutable per-instance state' tension. Scope boundary (Tarot=F1 only, not F2) prevents future duplicate/conflicting aggregation logic between Tarot and its consumers."
+    referenced_by:
+      - docs/architecture/adr-0027-tarot-modifier-aggregation-pipeline.md
+    added: 2026-07-17
+    revised: ""
+
+  - purpose: mission_select_static_runtime_split
+    status: active
+    api: "MissionEntry (static, GameDataRegistry-backed) split from CompletionLedger (runtime, Dictionary[String, Dictionary]) — resolves the same class of GDD-level inconsistency ADR-0027 fixed for Tarot (mission-select.md's Rule 1 listed completion_records directly on the shared Resource). MissionRuntimeState (4 scalar/reference fields, NOT a wrapped class) held directly on the MissionSelect Autoload, explicitly excluded from get_save_data() (Rule 10: never persisted). GridConfig same-instance guarantee satisfied via GDScript's default reference semantics (no .duplicate() call), not an explicit copy-prevention mechanism."
+    not: "completion_records as a mutable field on MissionEntry (violates ADR-0003's resource_object_in_save_data pattern once persisted); MissionRuntimeState surviving scene transitions via a SceneManager-forwarded parameter while keeping Mission Select scene-instanced (couples SceneManager to Mission-Select-specific data shape for no benefit — ADR-0028 Alternative A); retry_current_mission() as an EventBus request/response pair (doesn't resolve the scene-transition survival problem, which exists independently of how retry is triggered — ADR-0028 Alternative B)."
+    adr: docs/architecture/adr-0028-mission-select-runtime-state.md
+    reason: "Mirrors ADR-0027's Tarot fix and ADR-0016/0023's earlier instances of the same static/runtime split. Mission Select's Autoload reclassification is the first in this session driven primarily by scene-transition state survival rather than solely a direct-call requirement, though both apply here."
+    referenced_by:
+      - docs/architecture/adr-0028-mission-select-runtime-state.md
+    added: 2026-07-17
+    revised: ""
+
+  - purpose: tower_component_loadout_query
+    status: active
+    api: "tower_placed (already a Resource subclass) extended with 4 new loadout fields; tower_component_equipped PROMOTED from 3 bare typed params to a 7-field Resource subclass (TowerComponentEquippedEvent), carrying the tower's complete current 4-slot loadout (not just the changed slot), per event-bus.md Core Rule 4's 5+-field threshold."
+    not: "TowerSystem.get_component_loadout(tower_id) as a new direct-call API (would require reclassifying Tower System as Autoload, reopening the Accepted ADR-0008's tower_mission_state privacy boundary — a materially higher-cost fix for the same problem)."
+    adr: docs/architecture/adr-0029-tower-mastery-proximity-detection.md
+    reason: "Mirrors ADR-0022's resolution of the structurally identical gap for Constellation (constellation_eligibility_tag added to event payloads instead of a new Tower System query API). Confirmed by godot-specialist review that ADR-0008's reasoning genuinely would be reopened by the Autoload alternative, making the event-payload extension the lower-cost fix."
+    referenced_by:
+      - docs/architecture/adr-0029-tower-mastery-proximity-detection.md
+    added: 2026-07-17
+    revised: ""
+
+  - purpose: hero_skill_build_ultimate_derivation
+    status: active
+    api: "Pure-function pipeline (category_profile -> classify_shape -> derive_ultimate_id) recomputed fresh on every active-slot change, never a persisted/cached lookup table. Shared SkillDefinitionResource (amended in ADR-0029) between Tower Mastery and Hero Skill Build — one Resource, two consumers, one canonical assets/data/skills/ path."
+    not: "A stored/persisted ultimate_id value (Alternative B — a content patch changing category values could silently desync a stored Ultimate from what current slots would actually produce); a separate HeroSkillDefinitionResource duplicating Tower Mastery's catalogue (Alternative A — contradicts hero-skill-build.md's own explicit single-Resource intent)."
+    adr: docs/architecture/adr-0030-hero-skill-build-ultimate-lookup.md
+    reason: "The pure-function shape is what makes the GDD's own risk-mitigation claim (catalogue growth never grows the Ultimate matrix) durable in code, not just true in the design doc — there's no lookup table to forget to update."
+    referenced_by:
+      - docs/architecture/adr-0030-hero-skill-build-ultimate-lookup.md
+    added: 2026-07-17
+    revised: ""
+
+  - purpose: mission_hud_planning_cluster_lifecycle
+    status: active
+    api: "Planning Cluster is a separate PackedScene (planning_cluster.tscn), re-instantiated fresh on every SCOUT/INTERMISSION entry and torn down on every WAVE_ACTIVE entry. Teardown sequence is synchronous remove_child() first (forces immediate _exit_tree()/subscription disconnect), then queue_free() to actually free memory — NOT queue_free() alone, which defers node removal to end-of-frame and leaves EventBus subscriptions live/double-connected against a freshly-instantiated replacement for the rest of that frame."
+    not: "A single persistent PlanningCluster node toggled visible/invisible per phase (Alternative A, rejected) — Godot 4.6.2 does not re-fire _ready() on remove_child()/add_child() of an already-initialized node (live-MCP-verified 2026-07-14, mission-hud.md Rule 6), so a persistent instance's EventBus subscriptions would silently stop reconnecting after the first wave cycle. Also not: queue_free() alone as the teardown step (would-have-been first draft of this ADR, corrected by engine-specialist review) — leaves two Planning Cluster instances simultaneously subscribed during the deferred-delete window."
+    adr: docs/architecture/adr-0031-mission-hud-architecture.md
+    reason: "Only synchronous remove_child()-then-queue_free() plus fresh instantiate() guarantees exactly one Planning Cluster instance's subscriptions are ever live at a time, on every wave cycle — required because path_invalidated/tower_placement_blocked handlers double-firing would cause visibly duplicated route-preview renders."
+    referenced_by:
+      - docs/architecture/adr-0031-mission-hud-architecture.md
+    added: 2026-07-19
     revised: ""
 
 # Example:
@@ -631,6 +1029,20 @@ forbidden_patterns:
     why: "Tower System is not an Autoload — Hero System is. A direct reference from an Autoload to a scene-instanced system creates a boot-order dependency that cannot be resolved without changing Autoload order, and a lifecycle dependency that crashes if the mission scene is freed while the Hero Autoload holds a reference. The EventBus tower cache pattern (identical to D&S monster cache in ADR-0007) resolves both issues."
     adr: docs/architecture/adr-0010-hero-tower-synced-class.md
     added: 2026-05-24
+
+  - pattern: per_projectile_physics_process
+    status: active
+    description: "Pooled Projectile scene nodes must NOT define their own _physics_process. All per-instance update logic — movement, re-acquisition, arrival/damage-emission, release-back-to-pool — must run inside ProjectileManager's single centralized _physics_process pass over the entire pool, in the same array-iteration order each frame."
+    why: "Mirrors ADR-0006's per_monster_physics_process reasoning exactly: per-node _physics_process execution order is not guaranteed stable by the engine, which would make throttled re-acquisition (max_reacquisitions_per_frame) and pool release non-deterministic across a 192-instance pool. Centralizing in one manager pass guarantees deterministic ordering structurally rather than conditionally."
+    adr: docs/architecture/adr-0019-projectile-pooling-strategy.md
+    added: 2026-07-13
+
+  - pattern: keep_alive_hidden_shell_content
+    status: active
+    description: "A Presentation-layer shell (Sanctuary UI, Tarot Deck UI, or any future sibling) must not keep hosted content (rooms/screens) instantiated-but-hidden via visible/process_mode toggling instead of destroying and recreating it on every switch."
+    why: "Keeping content alive-but-hidden keeps its EventBus subscriptions live for the shell's entire lifetime regardless of visibility, multiplying the subscription-leak surface by the number of hosted content types — the exact defect class both sanctuary-ui.md's and tarot-deck-ui.md's own multi-pass design-review histories found and fixed repeatedly. It also lets nested in-content state (e.g. a breeding-pen flow) persist across switches, contradicting both GDDs' explicit 'always resumes at root' requirement."
+    adr: docs/architecture/adr-0032-presentation-shell-hosting-pattern.md
+    added: 2026-07-24
 
 # Example:
 #

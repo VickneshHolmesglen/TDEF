@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="TechNodeResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/core/defense_building/tech_node_resource.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+tech_id = &"tech_production_4"
+tech_category = "production_tech"
+prerequisite_tech_id = &"tech_production_3"
+branch_tier = 3
+gold_cost = 150
+material_costs = {
+&"Common": 45,
+&"Uncommon": 24,
+&"Rare": 12
+}
+gates = "Crafting quality_tier=4"

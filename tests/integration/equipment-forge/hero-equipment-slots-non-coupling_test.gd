@@ -1,0 +1,184 @@
+## Integration tests for Story 008 (TR-equipforge-001 slot-model portion,
+## ADR-0025): Hero equipment slots & non-coupling (AC-1/AC-2). AC-3 (no
+## direct Equipment Forge -> Hero call anywhere in the codebase) is a
+## documented code-path review, not an automated test — see this story's
+## Completion Notes.
+##
+## Inventory is instantiated directly (Inventory.new()) and
+## reset_to_defaults() is called explicitly rather than add_child()-ing it —
+## mirrors this project's established Inventory test convention
+## (tests/unit/inventory/slot_stack_model_test.gd).
+extends GdUnitTestSuite
+
+var _inventory: Inventory
+
+
+func before_test() -> void:
+	_inventory = Inventory.new()
+	_inventory.reset_to_defaults()
+
+
+func after_test() -> void:
+	if _inventory != null and is_instance_valid(_inventory):
+		_inventory.free()
+	_inventory = null
+
+
+func _make_item(item_id: String, category: String) -> ItemDefinitionResource:
+	var definition := ItemDefinitionResource.new()
+	definition.item_id = StringName(item_id)
+	definition.item_type = &"Equipment"
+	definition.display_name = item_id
+	definition.is_unique_instance = true
+	definition.equipment_category = category
+	return definition
+
+
+# ---------------------------------------------------------------------------
+# AC-1: exactly 5 named slots exist; 5 discretionary slots remain free
+# ---------------------------------------------------------------------------
+
+func test_exactly_5_equipment_slot_names_exist() -> void:
+	assert_int(Inventory.EQUIPMENT_SLOT_NAMES.size()).is_equal(5)
+	assert_array(Inventory.EQUIPMENT_SLOT_NAMES).contains_exactly(
+		["weapon", "armor", "accessory_a", "accessory_b", "trinket"])
+
+
+func test_5_discretionary_slots_remain_free_at_starting_capacity() -> void:
+	assert_int(_inventory.get_slot_count()).is_equal(10)  # unchanged — equipment slots are carved out, not additive
+
+	var discretionary_free: int = 0
+	for i: int in range(_inventory.get_slot_count()):
+		if _inventory.is_slot_empty(i):
+			discretionary_free += 1
+	assert_int(discretionary_free).is_equal(5)
+
+
+func test_fresh_equipment_slots_have_no_item_equipped() -> void:
+	for slot_name: String in Inventory.EQUIPMENT_SLOT_NAMES:
+		assert_dict(_inventory.get_equipped_item(slot_name)).is_empty()
+
+
+# ---------------------------------------------------------------------------
+# AC-2: accessory dual-slot; category mismatch rejected
+# ---------------------------------------------------------------------------
+
+func test_accessory_item_equips_into_accessory_a() -> void:
+	var item: ItemDefinitionResource = _make_item("ring_of_power", "accessory")
+	var result: bool = _inventory.equip_item("accessory_a", item)
+
+	assert_bool(result).is_true()
+	assert_str(_inventory.get_equipped_item("accessory_a")["item_id"] as String).is_equal("ring_of_power")
+
+
+func test_accessory_item_equips_into_accessory_b() -> void:
+	var item: ItemDefinitionResource = _make_item("amulet_of_haste", "accessory")
+	var result: bool = _inventory.equip_item("accessory_b", item)
+
+	assert_bool(result).is_true()
+	assert_str(_inventory.get_equipped_item("accessory_b")["item_id"] as String).is_equal("amulet_of_haste")
+
+
+func test_accessory_item_rejected_for_weapon_armor_trinket_slots() -> void:
+	var item: ItemDefinitionResource = _make_item("ring_of_power", "accessory")
+	assert_bool(_inventory.equip_item("weapon", item)).is_false()
+	assert_bool(_inventory.equip_item("armor", item)).is_false()
+	assert_bool(_inventory.equip_item("trinket", item)).is_false()
+
+
+func test_weapon_item_rejected_for_non_weapon_slots() -> void:
+	var item: ItemDefinitionResource = _make_item("iron_sword", "weapon")
+	assert_bool(_inventory.equip_item("armor", item)).is_false()
+	assert_bool(_inventory.equip_item("accessory_a", item)).is_false()
+	assert_bool(_inventory.equip_item("trinket", item)).is_false()
+	assert_bool(_inventory.equip_item("weapon", item)).is_true()
+
+
+# ---------------------------------------------------------------------------
+# equip/unequip mechanics and equipment_slot_changed emission
+# ---------------------------------------------------------------------------
+
+func test_equip_item_emits_equipment_slot_changed() -> void:
+	var spy: EventBusSpy = EventBusSpy.new()
+	spy.watch(GEventBus.equipment_slot_changed)
+
+	var item: ItemDefinitionResource = _make_item("iron_sword", "weapon")
+	_inventory.equip_item("weapon", item)
+
+	assert_int(spy.count("equipment_slot_changed")).is_equal(1)
+	var emission: Array = (spy.emissions["equipment_slot_changed"] as Array)[0]
+	assert_str(emission[0] as String).is_equal("weapon")
+	assert_str(emission[1] as String).is_equal("iron_sword")
+	assert_str(emission[2] as String).is_equal("")
+	spy.disconnect_all()
+
+
+func test_equip_item_rejects_when_slot_already_occupied() -> void:
+	var item_a: ItemDefinitionResource = _make_item("iron_sword", "weapon")
+	var item_b: ItemDefinitionResource = _make_item("steel_sword", "weapon")
+	_inventory.equip_item("weapon", item_a)
+
+	var result: bool = _inventory.equip_item("weapon", item_b)
+
+	assert_bool(result).is_false()
+	assert_str(_inventory.get_equipped_item("weapon")["item_id"] as String).is_equal("iron_sword")
+
+
+func test_unequip_item_clears_slot_and_emits_event() -> void:
+	var item: ItemDefinitionResource = _make_item("iron_sword", "weapon")
+	_inventory.equip_item("weapon", item)
+	var spy: EventBusSpy = EventBusSpy.new()
+	spy.watch(GEventBus.equipment_slot_changed)
+
+	var result: bool = _inventory.unequip_item("weapon")
+
+	assert_bool(result).is_true()
+	assert_dict(_inventory.get_equipped_item("weapon")).is_empty()
+	var emission: Array = (spy.emissions["equipment_slot_changed"] as Array)[0]
+	assert_str(emission[0] as String).is_equal("weapon")
+	assert_str(emission[1] as String).is_equal("")
+	assert_str(emission[2] as String).is_equal("iron_sword")
+	spy.disconnect_all()
+
+
+func test_unequip_item_rejected_when_already_empty() -> void:
+	assert_bool(_inventory.unequip_item("weapon")).is_false()
+
+
+func test_equip_item_rejects_unknown_slot_name() -> void:
+	var item: ItemDefinitionResource = _make_item("iron_sword", "weapon")
+	assert_bool(_inventory.equip_item("boots", item)).is_false()
+
+
+func test_equipment_slots_do_not_consume_generic_pickup_capacity() -> void:
+	# _find_first_empty_slot() must skip the 5 reserved equipment indices —
+	# a generic stackable pickup should land in a discretionary slot, never
+	# silently occupy a reserved equipment slot.
+	var material := ItemDefinitionResource.new()
+	material.item_id = &"iron_ore"
+	material.item_type = &"Material"
+	material.display_name = "Iron Ore"
+	material.is_unique_instance = false
+
+	for i: int in 5:
+		_inventory.add_stackable(material, 1)
+
+	for slot_name: String in Inventory.EQUIPMENT_SLOT_NAMES:
+		assert_dict(_inventory.get_equipped_item(slot_name)).is_empty()
+
+
+# ---------------------------------------------------------------------------
+# Persistence: equipment slots survive a save/load round-trip
+# ---------------------------------------------------------------------------
+
+func test_equipped_item_survives_save_load_round_trip() -> void:
+	var item: ItemDefinitionResource = _make_item("iron_sword", "weapon")
+	_inventory.equip_item("weapon", item)
+
+	var saved: Dictionary = _inventory.get_save_data()
+	var restored := Inventory.new()
+	var ok: bool = restored.restore_save_data(saved)
+
+	assert_bool(ok).is_true()
+	assert_str(restored.get_equipped_item("weapon")["item_id"] as String).is_equal("iron_sword")
+	restored.free()

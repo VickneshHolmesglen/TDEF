@@ -74,7 +74,11 @@ Resource (short-lived — NOT .tres files)
 ├── MonsterDamageTaken       (ADR-0006, ADR-0007 — carries monster_damage_taken payload)
 ├── HeroAutoAttackEvent      (ADR-0007 — carries hero_auto_attacked payload)
 ├── TowerWaveSummary         (tower.md Rule 23 — carries tower_wave_summary payload)
-└── TowerAuraPulseEvent      (tower.md Rule 5a — carries tower_aura_pulse payload)
+├── TowerAuraPulseEvent      (tower.md Rule 5a — carries tower_aura_pulse payload)
+└── WaveCompositionEntry     (event-bus.md — array element of wave_preview_available's
+                               `composition` field, not itself a signal's sole payload;
+                               added 2026-07-07 to replace an `Array[Dictionary]` that
+                               violated event-bus.md Core Rule 4's Dictionary-payload ban)
 ```
 
 These two categories must never be mixed: a data Resource must never be emitted as an EventBus payload; an event-payload Resource must never be saved as a `.tres` file.

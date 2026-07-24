@@ -1,8 +1,8 @@
 # Sanctuary Defenders — Art Bible
 
-> **Status**: Sections 1–6 Complete (Visual Identity Core + Production Guides)
+> **Status**: All 9 Sections Complete
 > **Author**: Vicknesh + Art Director
-> **Last Updated**: 2026-05-19
+> **Last Updated**: 2026-07-06
 > **AD-ART-BIBLE Sign-Off**: Skipped — Lean mode (director gate deferred to Full review)
 
 ---
@@ -17,9 +17,9 @@
 | 4. Color System | Complete |
 | 5. Character Design Direction | Complete |
 | 6. Environment Design Language | Complete |
-| 7. UI/HUD Visual Direction | Placeholder |
-| 8. Asset Standards | Placeholder |
-| 9. Reference Direction | Placeholder |
+| 7. UI/HUD Visual Direction | Complete |
+| 8. Asset Standards | Complete |
+| 9. Reference Direction | Complete |
 
 ---
 
@@ -752,6 +752,45 @@ feel muted.
 
 ---
 
+#### Boss Purple — RESERVED, escalation-only
+**HSL:** 275, 60%, 45% | **Hex:** `#7E2EB8`
+**Marker variant (desaturated):** HSL 275, 45%, 40% | Hex `#6B3B8F`
+
+**Role:** The sole boss-escalation color. Not part of the ambient primary palette —
+held in reserve so its two sanctioned appearances stay legible against everything
+else in the game. Formalized with a concrete hex anchor **2026-07-15** (Art
+Director decision, closing Mission HUD GDD's PC-5 open question); previously
+described only qualitatively in 4.2/4.3/5.2.4 as "purple," with an explicit
+placeholder (`HSL ×, 30%, ×`) for the Boss-surface embedded-purple use.
+
+**World logic:** Purple means one thing in this game — boss. It never
+communicates anything else, which is what gives it its power. There are exactly
+two sanctioned appearances, both boss-specific, using different intensities of
+the same hue so the relationship between them reads as escalation rather than
+two unrelated effects:
+
+1. **Full-saturation** (`#7E2EB8`) — the WAVE_ACTIVE boss-wave ambient push
+   (Section 4.3's shadow-fill light + edge vignette) and the trace embedded-purple
+   permitted in a Boss's own deep-shadow surface zones (Section 5.2.4). This is
+   the "dread" register — active, escalating, tied to imminent or ongoing boss
+   presence.
+2. **Desaturated marker variant** (`#6B3B8F`) — Mission HUD's PC-5 boss-lane
+   telegraph marker (`design/gdd/mission-hud.md`), shown on the grid during
+   SCOUT/INTERMISSION to reveal the cell a boss will spawn at on the final wave.
+   This is the "information" register — a settled, authored fact about the
+   future, not yet the dread of an imminent threat. It renders well before the
+   ambient push's WAVE_ACTIVE window, which is what satisfies the existing
+   Boss-Purple-signal-ordering constraint (a HUD element rhyming with the ambient
+   push must be the *primary* signal, not an echo of it — see the WAVE_ACTIVE HUD
+   addendum near the end of this document).
+
+**Critical constraint:** No third use is permitted without an Art Director
+decision. Purple must never be used for UI chrome, generic "magic," decorative
+effects, or any non-boss threat signal — its scarcity (now exactly two sanctioned
+appearances, both boss-specific) is the entire mechanism by which it works.
+
+---
+
 ### 4.2 Semantic Color Vocabulary
 
 **Binding rules. Consult before placing any color in game.**
@@ -798,7 +837,11 @@ is reserved for critical hit sparkle accents only.
 Purple does not appear in the primary world palette. It is held in reserve as the
 boss encounter escalation color. The moment purple appears on screen, the player
 should register threat-above-red. Must never be used for UI chrome, decorative
-elements, or generic "magic." Its power comes from its scarcity.
+elements, or generic "magic." Its power comes from its scarcity. Formalized as
+**Boss Purple** (`#7E2EB8`, desaturated marker variant `#6B3B8F`) — see the new
+entry in Section 4.1 for the full hex anchor and its exactly-two sanctioned uses
+(WAVE_ACTIVE ambient push / Boss surface trace, and Mission HUD's PC-5 boss-lane
+telegraph marker).
 
 ---
 
@@ -2303,16 +2346,155 @@ the first frame of the Mission Field must already be fully composed and correctl
 
 ## Section 7: UI/HUD Visual Direction
 
-[To be designed]
+### 7.1 HUD Visual Language — Distinct Register, Same Family
+
+The HUD is **screen-space, not diegetic**, and this is deliberate rather than a default. Section 3.3 already establishes the rule: "the UI is a frame, not a painting" — it must read as a distinct register from the world so the player never has to ask "is this screen or world?" (Section 4.4). A fully diegetic HUD (health bars painted onto banners, resource counts carved into stone) would violate Principle 3 (color/shape carries information before mood) by forcing world-diorama material logic to also serve legibility at WAVE_ACTIVE speed — those two jobs conflict under pressure. This choice is independently confirmed correct from the UX/readability side (see 7.5) — a diegetic-only readout would fail the game-concept's requirement for real-time tower monitoring across a 16×12 grid, since it forces the player to look at each object's location rather than reading state at a glance.
+
+However, the HUD is not visually unrelated to the world — it is the world's **chamfered-rectangle grammar, flattened and regularized** (per 3.3), rendered in the UI Chrome/Parchment palette (4.4) that intentionally never appears in world space. Practically: HUD panels are simplified architectural-stone shapes (the player's command instruments — map table, ledger, banner — abstracted into UI), not glassy sci-fi overlays and not hand-painted parchment scrolls. This keeps the HUD feeling like it belongs to *this* world's craft register (Architect-General pillar) without letting it compete with the diorama for the player's diorama-read attention.
+
+**Binding constraint:** No HUD element uses Sanctum Amber, Parchment Cream, Verdant Green, or Threat Crimson at world-saturation values — always the UI-shifted siblings (UI Chrome, UI Parchment, UI Accent Cyan) per 4.4, so a glance always tells world from screen.
+
+### 7.2 Typography Direction
+
+| Attribute | Direction | Rationale |
+|---|---|---|
+| Personality | A sturdy slab-serif or humanist serif with squared terminals — "engraved ledger," not "fantasy calligraphy" | Matches warden-smith register (5.1): a craftsperson's technical documentation, not a wizard's scroll |
+| Weight hierarchy | 3 weights only: Bold (headers, wave counters, damage numbers), Regular (body/tooltip text), Medium (button labels) | Everything Connects pillar demands players parse dense synergy tooltips fast — weight, not size alone, should carry hierarchy |
+| Size hierarchy | HUD combat numbers largest on screen (crit numbers 1.4x base per 4.5); tooltips smallest, readable at arm's-length monitor distance | Combat readability is Pillar 1's non-negotiable; tooltips are read during SCOUT/SANCTUARY calm states, not combat |
+| Forbidden | No script/handwritten fonts, no thin/light weights anywhere in combat-critical text | Thin weights fail at 24px HUD scale (echoes the 3.3 icon-at-24px rule); script fonts break the "technical documentation" register |
+
+### 7.3 Iconography Style
+
+**Flat-with-single-inset-shade**, not outlined-only and not illustrated/painterly. Rationale: Section 3.3 already mandates icons read at 24×24px minimum during WAVE_ACTIVE with hero, towers, and monsters all on screen — full illustrative icons (matching the world's painterly texture) would lose all information at that scale and under motion. A flat silhouette-first icon with one inset shade for depth (echoing Principle 1's "everything has weight" but scaled to icon size — a subtle bevel, not stacked sprite layers) keeps icons legible at a glance while still feeling hand-crafted rather than sterile.
+
+Icon color follows the semantic vocabulary (4.2) exactly — a heal icon is Verdant Green, a crit icon is Herald Gold, no exceptions for "brand" styling. Icons never rely on color alone (4.5 colorblind rules apply identically to icon design — shape must differentiate first).
+
+**HUD icons use a convergent, learnable shape family — not the world's divergent-silhouette logic.** Section 3.1.3 deliberately gives world towers distinct, even compound-hybrid silhouettes per archetype so players identify them at a glance in the diorama. HUD icons must do the opposite: a shared base shape (rounded square frame) with a single differentiating glyph inside, so the icon set reads as one coherent language a player learns once rather than N distinct shapes to memorize under time pressure.
+
+### 7.4 Animation Feel for UI Elements
+
+UI motion should be **snappy-in, eased-out** — fast confirmation, gentle settle — never elastic/bouncy (bouncy reads as "casual mobile game," breaking the Architect-General's composed-stoicism register from 5.1.4). This is a deliberate contrast with Principle 1's "everything has weight and depth" in the world: the world moves with mass and inertia (stacked sprites, cast shadows, physical weight); the *UI* moves with the crispness of a well-oiled mechanism — weight expressed as precision, not sluggishness. A button press should feel like a well-machined switch, not a rubber blob.
+
+Specific timings for the UI/animation implementer: state changes (button press, panel open) ≤120ms in; ease-out settle 150–200ms; no overshoot/spring on primary actions. Reserve any bounce/overshoot exclusively for MISSION_COMPLETE reward reveals, where a warmer, more celebratory motion register is earned (mirrors the golden-hour lighting shift in Section 2's state profile).
+
+No flashing HUD element may exceed standard photosensitivity flash thresholds (no more than 3 flashes per second for any element covering a significant portion of the screen) — binding for both the boss-warning pulse (7.5) and crit-flash treatments.
+
+### 7.5 Combat Readability Constraints (UX Alignment)
+
+The following constraints were surfaced during UX review specifically because Sections 1–6's world-facing color and shape decisions were not originally evaluated against WAVE_ACTIVE's specific demands (simultaneous hero control + real-time tower monitoring, warm-keyed lighting, peripheral scanning under time pressure). They are binding on all HUD implementation, not advisory:
+
+- **Boss Purple signal ordering**: Section 4.3's Boss Wave Early Warning System requires the ambient color push to follow a primary signal by 8–12 seconds. If a HUD boss-warning element uses Boss Purple to visually rhyme with the incoming ambient shift, the HUD element MUST be the primary (first) signal — it cannot merely echo the world change after the fact, or the warning system's own timing contract is violated.
+- **Herald Gold overload risk (new pair, not in 4.5)**: Herald Gold means crit/affinity/exceptional in world space (4.2), and WAVE_ACTIVE already spawns gold crit-flash VFX. Any HUD element using gold (e.g., "ability ready" or "resource available" pulses) risks being misread as a world crit event during peripheral scanning, or vice versa. Resolution: HUD gold indicators must use a distinct pulse shape/rhythm from world crit-flash (e.g., a steady glow vs. a sharp flash) so the two are distinguishable without full attention.
+- **UI Warning Orange contrast against the warm WAVE_ACTIVE key**: Section 4.4 already flags that UI Warning Orange sits close to Sanctum Amber and world firelight from a world-contamination angle. The unaddressed direction: WAVE_ACTIVE's background is warm-keyed (3000–3500K) across roughly 90% of the screen — UI Warning Orange must be contrast-checked against that warm key specifically, not just against neutral UI Chrome, before it ships as a combat-critical alert color.
+- **Combat-scan icon minimum (32px, not 24px)**: Section 3.3's 24×24px icon minimum is a static-scene baseline. Any icon representing a time-critical action during WAVE_ACTIVE (skill cooldown, tower under attack) needs a larger effective minimum — 32px — since peripheral/under-load recognition thresholds are higher than focused-read thresholds. This is a delta from 3.3 for combat-critical icons specifically, not a replacement of the general rule.
+- **WCAG-equivalent contrast against the warm key**: HUD text and icons require a minimum 4.5:1 contrast ratio measured against the actual WAVE_ACTIVE warm-keyed background, not just against UI Chrome in isolation — some HUD elements sit near diegetic-adjacent world content and inherit its lighting.
+- **Colorblind backups must be inherited into HUD elements**: Section 4.5's BLOCKING colorblind-safety pairs (heal/damage, UI-disabled-grey/world-grey, green-VFX/vegetation) apply identically to any HUD element using those same colors — e.g., a HUD HP bar or heal indicator must carry the same shape/directional-motion backup as its world-space counterpart, not a color-only treatment.
+- **Placement-feedback icons are SCOUT/INTERMISSION-only**: Tower placement and removal are blocked during WAVE_ACTIVE (game-concept.md Core Rule 5). Placement-feedback iconography (valid/invalid cell indicators) is therefore irrelevant during combat and should not consume WAVE_ACTIVE HUD real estate or icon-legibility budget — it only needs to exist for SCOUT and INTERMISSION states.
 
 ---
 
 ## Section 8: Asset Standards
 
-[To be designed]
+### 8.1 Rendering Approach (Confirms Section 1's Hybrid Note)
+
+This game has exactly **one 3D asset — the Hero**. Every other entity (Standard/Elite/Boss monsters, towers, environment, VFX) is a stacked-2D-sprite construction viewed at a fixed oblique angle (per Section 1's "hybrid rendering technique"). Standards below are scoped accordingly — poly budgets apply only to the Hero; every other category uses pixel-canvas/sprite-sheet budgets.
+
+### 8.2 File Format Preferences
+
+| Asset Class | Source Format | Export Format | Why |
+|---|---|---|---|
+| World sprites (towers, monsters, env, VFX) | Layered `.psd`/`.clip` (per-layer = per depth-stack layer) | `.png`, 8-bit + alpha | Alpha is load-bearing — stacked-sprite depth (Principle 1) requires clean per-layer cutouts, not baked composites. Sprite sheets pack per animation, not per object, so shadow-layer and object-layer stay separable for the "remove shadow → looks pasted" design test (1.1). |
+| Hero 3D model | Source DCC file (`.blend`/`.ma`) | glTF/`.glb` → Godot import | Standard 3D pipeline; texture maps `.png` (see 8.3 memory budgets). |
+| UI icons/chrome | Vector source (`.svg`/`.ai`) | `.png` raster at fixed sizes | Chamfered-rectangle grammar (3.3) is geometric — vector source keeps corner radii exact across the icon set; raster export locks scale for the 24/32px minimums (3.3, 7.5). |
+| Animated VFX | Frame-sequence source | Sprite sheet `.png` (packed by effect, not atlas-wide) | Keeps information-bearing effects (crit, damage) separable from ambient ones for the opacity rules in 2.3. |
+
+### 8.3 Naming Convention
+
+The project's existing code naming logic (test files: `[system]_[feature]_test`; classes: PascalCase; files: snake_case) is category-first, purpose-second. Asset names mirror that logic: `[category]_[name]_[variant]_[size].[ext]` (e.g. `char_hero_idle_01.png`, `env_wall_mossy_large.png`). The `[variant]` slot carries **art-meaningful** state, not arbitrary numbering — tower archetype fusion tiers encode as `_tier1`–`_tier4` (5.5), wave-prop wear states as `_pristine/_used/_marked` (6.4.2), Boss material zones as `_core/_secondary/_tell` (5.2.4) — so the filename documents which binding rule the asset instantiates.
+
+### 8.4 Texture Resolution Tiers (Art Logic)
+
+Tiering follows the Play-Angle Contract (5.4.1) — fidelity is earned by *where the player looks*, not by asset importance alone:
+
+| Tier | Driver | Example |
+|---|---|---|
+| **Inspection-tier** | Viewed close/static — Sanctuary UI, inventory, character screens | Hero portrait, item icons |
+| **Game-tier** | Viewed at fixed play-angle, in motion, at listed on-screen heights (5.4.1 table) | Towers, Elites, Hero in-field |
+| **Swarm-tier** | Viewed at game-tier height but ×20-30 simultaneously | Standard monsters — budget caps complexity, not just resolution (5.4.3) |
+| **Backdrop-tier** | Peripheral, never a read-layer (3.4) | Path/terrain textures, ambient props |
+
+Rule: no asset gets Inspection-tier fidelity budget if it never appears at Inspection distance — reallocate per 5.2.4's priority order (silhouette > zones > animation > surface). **Open item**: whether a dedicated Hero close-up inspection screen (Sanctuary/inventory) exists is not yet confirmed in scope — resolve before budgeting Hero Inspection-tier assets.
+
+### 8.5 LOD Expectations (Art Perspective)
+
+Not a runtime LOD system — a design-time detail ceiling tied to 5.4's Play-Angle Contract and Section 3's shape language. Simplification budget: **silhouette never simplifies** (binding at every distance); **material zone count simplifies** (Boss 3 → Elite 2 → Standard 1 zone, 5.2.2–5.2.4); **surface texture simplifies first and most** (grip wrap, edge bevel — 5.4.2 table). Any asset that needs zoom-in to read its silhouette has failed regardless of texture fidelity.
+
+### 8.6 Export Settings Philosophy
+
+- **Alpha channel**: mandatory on all stacked-sprite layers (Principle 1) — never baked drop-shadows; shadow sprites are separate alpha-cut layers per Principle 1's design test.
+- **Frame counts**: weight-per-motion, not motion-smoothness — Standard monsters 4–6 walk frames (enough to read "tide," 5.4.3), Bosses 6–8 frames per action incl. dedicated wind-up frames (skill-communication priority, 5.2.4/5.3.3), Hero idle capped at one micro-action per 3–4s cycle (5.3.2) rather than continuous animation — fewer, more deliberate frames read as *weight*, not stiffness.
+- **Sprite-sheet packing**: pack by animation-and-shadow-layer together per object, never atlas-wide, so runtime can always isolate the shadow layer per Principle 1's non-negotiable contact-shadow rule (2.3).
+
+### 8.7 Engine Constraints (Godot 4.6.2)
+
+**Poly budgets (Hero only — no other asset category uses poly counts):**
+
+| Asset | On-screen height | Poly budget (game-distance) | Notes |
+|---|---|---|---|
+| Hero 3D model (gameplay LOD) | 48–56px | ≤ 6,000 tris | Fixed oblique cam, no zoom-in during play — spend poly on silhouette/rim readability, not surface fidelity |
+| Hero 3D model (inspection LOD) | close-up | ≤ 15,000 tris | Only if a close-up screen is confirmed in scope (see 8.4's open item) |
+
+**Texture memory (within the project's 1GB ceiling, `technical-preferences.md`):**
+
+| Category | Per-asset VRAM budget | Rationale |
+|---|---|---|
+| Standard monster sprite sheet | ≤ 256KB compressed | 64×64px canvas × ≤6 frames, atlased |
+| Boss sprite sheet | ≤ 2MB compressed | 128–192px canvas, up to 27 frames across states |
+| Environment/tile atlases | ≤ 4MB per atlas, ≤6 atlases resident | Path/floor/stone material library (6.2.3) |
+| Hero 3D texture set (albedo/normal/ORM) | ≤ 8MB total | Only 3D asset — can afford more per-texture budget since there's one instance |
+| VFX (crit-flash, ambient push, tower-damage particles) | ≤ 1MB per effect sheet | Herald Gold/Boss Purple VFX (Section 4) |
+
+Target aggregate texture VRAM ≤ 400–500MB, leaving headroom under the 1GB ceiling for audio, code, and runtime overhead.
+
+**Material slot constraints:**
+- Hero: ≤ 3 material slots (body/armor, metal-trim, emissive-accent) — Godot 4.6 Forward+ renders each unique material as a separate pass; more slots fragment the one 3D draw call.
+- 2D sprites: 1 CanvasItem material per tier (Standard/Elite/Boss/Tower), shared across all instances of that tier — this is what keeps batching intact (see draw-call budget below).
+
+**Godot 4.6.2 importer settings:**
+- **Compression**: VRAM Compressed, format BPTC for desktop-only PC target (better quality than S3TC at same size).
+- **Mipmaps**: OFF for 2D sprites (fixed-zoom oblique camera per 5.4.1 — no scale-down aliasing to correct for); ON for Hero 3D textures (standard practice for the one 3D asset).
+- **Filter**: Linear, no mipmap filter for sprites (painterly, not pixel-art — Nearest would fight the painted-miniature register in 6.2.1).
+
+**⚠ Verification Required (post-cutoff Godot 4.6 behavior — do not assume from pre-4.6 knowledge):**
+- **BPTC compression under D3D12-as-default**: `docs/engine-reference/godot/VERSION.md` flags D3D12-as-default-on-Windows as a HIGH-risk 4.6 change. Verify the BPTC decode path is unaffected before locking this import preset.
+- **Glow rework vs. emissive intensity**: Section 4's crit-flash/Boss-Purple ambient VFX rely on emissive/HDR-range textures feeding glow. Godot 4.6's glow rework (also flagged HIGH-risk in VERSION.md) may change how emissive intensity maps to bloom threshold versus pre-4.4 behavior — check against a live 4.6.2 build before VFX authors lock emissive values.
+
+**Draw calls (100+ monsters vs. the 200/frame budget in `technical-preferences.md`):**
+
+2D CanvasItem batching in Godot merges draw calls by shared texture + material + z-index. With per-tier atlases (see material slots above), 100 Standard monsters sharing one atlas/material should collapse to 1–3 draw calls for the whole swarm, not 100. Reserve draw-call budget roughly: ~20–30 environment/tilemap layers, ~10–20 monster swarm (multiple tiers/atlases), ~5 the single Hero 3D pass, ~20–40 UI/HUD, remainder as headroom for VFX (the most likely uncontrolled source of batch breaks). **Binding constraint**: any per-instance shader override (e.g., unique hit-flash tint per monster) breaks batching — hit-flash tinting must use a shared shader uniform or vertex-color approach, not a per-instance material.
 
 ---
 
 ## Section 9: Reference Direction
 
-[To be designed]
+> Each reference targets a single locked decision from Sections 1–8. None of these are "look at the whole game" references — pull the named technique only, and apply the stated divergence to avoid a derivative read.
+
+**1. Bastion (Supergiant Games) — painterly texture on stacked 2D layers**
+Draw: the hand-painted brushwork on flat sprite surfaces that still reads as physically weathered material — apply this directly to texture-painting stacked sprite layers under Principle 1 (Section 1), so cast-shadow-sprite seams (8.6 shadow-layer packing) disappear into painterly continuity rather than looking like cutout edges.
+Avoid: Bastion's narrator-driven camera pushes and cinematic reframing. Our camera is locked to the Play-Angle Contract (5.4.1) at all times — no zoom, no tilt, ever.
+
+**2. Tabletop wargame miniature painting (e.g., competition-standard Warhammer basing/paint schemes) — distance-calibrated readability**
+Draw: the practice of painting for "table read" (recognizable unit role at arm's length) versus "judging read" (fine detail up close) — this is the exact logic behind the Play-Angle Contract's game-distance vs. inspection-distance split (5.4.1–5.4.2) and the Boss/Elite/Standard material-zone tiering (3 zones → 2 → 1).
+Avoid: the dense freehand ornamentation wargame painters add for judging tables. Our game-distance budget is strict (Standard monsters: silhouette + one color zone + one specular catch only, 5.4.3) — do not let inspection-tier richness creep into game-distance assets.
+
+**3. Pikmin — precious-scale creature swarms against a legible ground plane**
+Draw: how Pikmin choreographs large creature counts so the swarm reads as a coherent moving mass rather than noise, while individual creatures stay tiny and "collectible-precious" — directly supports Principle 2's miniature register and the Standard-monster swarm-as-tide design test (5.4.3).
+Avoid: Pikmin's photoreal/high-frequency ground textures (real grass, dirt, water caustics). Our ground plane must stay in the chamfered, hand-carved geometric register of Section 3.2 — organic texture is permitted only as ground-level detail, capped and stylized, never photographic.
+
+**4. Octopath Traveler's "HD-2D" compositing — 3D character inside a constructed 2D world**
+Draw: the specific technique of matching directional lighting and shadow-casting behavior between the 3D character and the 2D environment, plus edge-of-frame depth-of-field softening, so the 3D model reads as embedded rather than pasted — this is the literal implementation precedent for Section 1's Hybrid Rendering Note and the Hero's mandatory sprite-style shadow footprint (3.4).
+Avoid: Octopath's aggressive tilt-shift/bloom and its rotatable, dynamic camera. Our DoF and bloom must stay subtle enough not to compromise WAVE_ACTIVE's contrast-discipline rule (Section 2.3), and the camera never leaves the fixed oblique angle.
+
+**5. Kingdom Rush — genre-precedent HUD docking**
+Draw: strict edge-docked HUD panels with the center screen reserved entirely for the battlefield — the direct genre ancestor of Section 3.3's Rule 1 (center third reserved for gameplay, no persistent UI there).
+Avoid: Kingdom Rush's saturated cartoon palette and rounded-bubble icon shapes. Our UI icons use the chamfered-rectangle-with-2px-inset grammar (3.3) on the desaturated, blue-grey-anchored UI palette (4.4) — never KR's bright primary flatness.

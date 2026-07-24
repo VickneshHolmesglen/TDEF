@@ -5,6 +5,9 @@
 ├── CLAUDE.md                    # Master configuration
 ├── .claude/                     # Agent definitions, skills, hooks, rules, docs
 ├── src/                         # Game source code (core, gameplay, ai, networking, ui, tools)
+│                                 # .tscn scenes colocate with their controlling script
+│                                 # (e.g. src/core/monster/MonsterEntity.tscn beside monster_entity.gd);
+│                                 # no separate top-level scenes/ directory
 ├── assets/                      # Game assets (art, audio, vfx, shaders, data)
 ├── design/                      # Game design documents (gdd, narrative, levels, balance)
 ├── docs/                        # Technical documentation (architecture, api, postmortems)

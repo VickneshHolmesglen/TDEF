@@ -65,11 +65,16 @@ None. No bugs filed this sprint.
    measurement) are deferred to the first playtest session in Sprint 3. These ACs are not
    satisfied until profiler measurements are recorded.
 
-3. **S2-04 PLACEABLE cost advisory**: PLACEABLE cost is currently 10.0 in implementation.
-   ADR-0004 implies a monster would take >19 PATH-cell detours before the shortcut is preferred;
-   however, the actual detour threshold may be lower due to A* heuristic behaviour. Game designer
-   must confirm the acceptable monster shortcut threshold before Vertical Slice. This is a design
-   decision, not a bug, but must not be deferred past the VS gate.
+3. **S2-04 PLACEABLE cost advisory — CLOSED (2026-07-06, S3-09)**: PLACEABLE cost is currently
+   10.0 in implementation. ADR-0004 implies a monster would take >19 PATH-cell detours before
+   the shortcut is preferred; however, the actual detour threshold may be lower due to A*
+   heuristic behaviour. Game designer must confirm the acceptable monster shortcut threshold
+   before Vertical Slice. This is a design decision, not a bug, but must not be deferred past
+   the VS gate. **Resolution**: Game designer confirmed 10.0 as-is — see
+   `design/gdd/pathfinding.md`'s `pathfinding_placeable_cost` Tuning Knob row for the full
+   confirmation rationale and `production/stories/core/s3-09-placeable-cost-confirmation.md`
+   for the closed story. No code change — `PLACEABLE_COST` in
+   `src/foundation/pathfinding/pathfinding_system.gd` remains 10.0.
 
 ---
 

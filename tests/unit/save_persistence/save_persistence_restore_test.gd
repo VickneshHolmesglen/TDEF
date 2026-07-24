@@ -149,3 +149,129 @@ func test_migrate_noop_when_already_current_version() -> void:
 	# range(1, 1) is empty — no steps executed.
 	var result: Dictionary = _sp._migrate(input, 1)
 	assert_that(result).is_equal(input)
+
+
+# ---------------------------------------------------------------------------
+# TD-save-001 debt closure: AC-12 — EventBus signal wiring for mission_launched
+# ---------------------------------------------------------------------------
+
+## AC-12 (part 1): _on_mission_launched() handler writes a checkpoint file for
+## the currently active slot. Tests the handler logic directly.
+func test_mission_launched_handler_saves_checkpoint_for_active_slot() -> void:
+	# Arrange: real SavePersistence (not stub) so checkpoint I/O actually runs.
+	var sp := SavePersistence.new()
+	sp._ensure_save_dir()
+	sp.set_active_slot(97)  # high slot to avoid collision with real saves
+	# Act
+	sp._on_mission_launched("forest_01", PackedStringArray([]), 1)
+	# Assert
+	var checkpoint_path: String = "user://saves/save_slot_97_checkpoint.dat"
+	assert_bool(FileAccess.file_exists(checkpoint_path)).is_true()
+	# Cleanup
+	DirAccess.remove_absolute(checkpoint_path)
+	sp.free()
+
+
+## AC-12 (part 2): after _ready() connects to GEventBus, emitting
+## GEventBus.mission_launched routes to _on_mission_launched() and creates
+## the checkpoint — verifying the full signal-wiring chain end-to-end.
+func test_mission_launched_signal_wired_after_ready_triggers_checkpoint() -> void:
+	# Arrange: add to scene tree so _ready() fires and EventBus connections are made.
+	var sp := SavePersistence.new()
+	sp._ensure_save_dir()
+	sp.set_active_slot(96)
+	add_child(sp)
+	await get_tree().process_frame  # allow _ready() to complete
+	# Act: emit via GEventBus — should route to _on_mission_launched → save_checkpoint
+	GEventBus.mission_launched.emit("forest_01", PackedStringArray([]), 1)
+	await get_tree().process_frame  # allow any deferred processing
+	# Assert
+	var checkpoint_path: String = "user://saves/save_slot_96_checkpoint.dat"
+	assert_bool(FileAccess.file_exists(checkpoint_path)).is_true()
+	# Cleanup: remove_child disconnects _exit_tree (which removes EventBus connections)
+	remove_child(sp)
+	sp.free()
+	DirAccess.remove_absolute(checkpoint_path)
+
+
+# ---------------------------------------------------------------------------
+# ADR-0003 (2026-07-18 revision): mid-session-restore for late registration.
+# A SaveRestorer that calls register() AFTER load_slot() has already run
+# (e.g. a scene-instanced system recreated on a Sanctuary<->Mission
+# transition) must still be restored from the cached data, not left at
+# @export defaults for the rest of the session.
+# ---------------------------------------------------------------------------
+
+func test_late_registration_after_load_restores_from_cached_data() -> void:
+	# Arrange: a full load already happened with sys_a registered.
+	var sys_a := _MockSystem.new()
+	sys_a.save_key = "sys_a"
+	_sp._registered_systems.append({"ref": sys_a, "key": "sys_a", "restore_order": 10})
+	_sp._restore_all_systems({"sys_a": {"v": 1}, "sys_b": {"v": 2}}, 0)
+
+	# Act: sys_b registers AFTER the load already completed (e.g. its owning
+	# scene was just instanced for the first time this session).
+	var sys_b := _MockSystem.new()
+	sys_b.save_key = "sys_b"
+	_sp.register(sys_b, 24)
+
+	# Assert: sys_b was restored immediately from the cached data, not left default.
+	assert_bool(sys_b.reset_called).is_false()
+	assert_that(sys_b.restore_called_with).is_equal({"v": 2})
+
+
+func test_late_registration_with_no_matching_key_calls_reset_to_defaults() -> void:
+	# Arrange: a full load already happened, but the loaded save predates sys_c.
+	var sys_a := _MockSystem.new()
+	sys_a.save_key = "sys_a"
+	_sp._registered_systems.append({"ref": sys_a, "key": "sys_a", "restore_order": 10})
+	_sp._restore_all_systems({"sys_a": {"v": 1}}, 0)
+
+	# Act: sys_c registers late, but the loaded save has no "sys_c" entry.
+	var sys_c := _MockSystem.new()
+	sys_c.save_key = "sys_c"
+	_sp.register(sys_c, 24)
+
+	# Assert: falls back to defaults, exactly like the initial-load missing-key case.
+	assert_bool(sys_c.reset_called).is_true()
+	assert_that(sys_c.restore_called_with).is_equal({})
+
+
+func test_repeated_unregister_register_cycle_restores_identically_each_time() -> void:
+	# Arrange: simulates a scene-instanced system reloading multiple times
+	# within one continuous play session (Sanctuary <-> Mission <-> Sanctuary),
+	# with no new save/load in between.
+	_sp._restore_all_systems({"sys_d": {"v": 42}}, 0)
+
+	# Act: register, unregister, register again — twice.
+	var first_instance := _MockSystem.new()
+	first_instance.save_key = "sys_d"
+	_sp.register(first_instance, 24)
+	_sp.unregister(first_instance)
+
+	var second_instance := _MockSystem.new()
+	second_instance.save_key = "sys_d"
+	_sp.register(second_instance, 24)
+	_sp.unregister(second_instance)
+
+	var third_instance := _MockSystem.new()
+	third_instance.save_key = "sys_d"
+	_sp.register(third_instance, 24)
+
+	# Assert: every re-instantiation restored identically from the same cached data.
+	assert_that(first_instance.restore_called_with).is_equal({"v": 42})
+	assert_that(second_instance.restore_called_with).is_equal({"v": 42})
+	assert_that(third_instance.restore_called_with).is_equal({"v": 42})
+
+
+func test_registration_before_any_load_does_not_restore() -> void:
+	# Arrange/Act: register with no load_slot()/_restore_all_systems() having run yet
+	# (e.g. main menu boot, before a save is loaded) — _has_loaded_data is false.
+	var sys := _MockSystem.new()
+	sys.save_key = "sys_e"
+	_sp.register(sys, 10)
+
+	# Assert: neither restore_save_data() nor reset_to_defaults() was called —
+	# the system simply keeps its own @export defaults, exactly as before this fix.
+	assert_bool(sys.reset_called).is_false()
+	assert_that(sys.restore_called_with).is_equal({})

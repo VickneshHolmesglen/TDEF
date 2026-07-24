@@ -10,7 +10,7 @@ extends GdUnitTestSuite
 ## Each test class covers one Resource subclass:
 ##   MonsterDiedEvent (8 fields)
 ##   MonsterSpawnedEvent (5 fields)
-##   MonsterSpawnRequest (5 fields)
+##   MonsterSpawnRequest (6 fields)
 ##   HeroAutoAttackEvent (6 fields)
 ##   MonsterDamageTaken (5 fields)
 ##   TowerAuraPulseEvent (4 fields)
@@ -107,7 +107,7 @@ func test_monster_spawned_event_all_fields_round_trip() -> void:
 	assert_float(p.hp_max).is_equal(250.0)
 
 # =============================================================================
-# MonsterSpawnRequest (5 fields)
+# MonsterSpawnRequest (6 fields — is_penultimate_wave added, Story 004)
 # =============================================================================
 
 func test_monster_spawn_request_default_spawn_cell_is_sentinel() -> void:
@@ -135,11 +135,17 @@ func test_monster_spawn_request_all_fields_round_trip() -> void:
 	p.wave_index = 1
 	p.difficulty_tier = 0
 	p.wave_reward_scalar = 1.1
+	p.is_penultimate_wave = true
 	assert_str(p.monster_id).is_equal("goblin_runner")
 	assert_that(p.spawn_cell).is_equal(Vector2i(0, 5))
 	assert_int(p.wave_index).is_equal(1)
 	assert_int(p.difficulty_tier).is_equal(0)
 	assert_float(p.wave_reward_scalar).is_equal(1.1)
+	assert_bool(p.is_penultimate_wave).is_true()
+
+func test_monster_spawn_request_default_is_penultimate_wave_is_false() -> void:
+	var p := MonsterSpawnRequest.new()
+	assert_bool(p.is_penultimate_wave).is_false()
 
 # =============================================================================
 # HeroAutoAttackEvent (6 fields)

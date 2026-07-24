@@ -1,0 +1,28 @@
+[gd_resource type="Resource" script_class="TowerPerkRegistry" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/core/tower/tower_perk_registry.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+entries = {
+"DAMAGE_BOOST": {
+"label": "Damage Boost",
+"description": "Weapon DPS multiplied by (1.0 + perk_power) for the tower's lifetime on that mission.",
+"archetype_restrictions": ["Physical", "Ranged", "Elemental"]
+},
+"RANGE_BOOST": {
+"label": "Range Boost",
+"description": "attack_range_cells increased by round(perk_power x 8) cells.",
+"archetype_restrictions": ["Physical", "Ranged", "Elemental"]
+},
+"SPEED_BOOST": {
+"label": "Speed Boost",
+"description": "attack_speed multiplied by (1.0 + perk_power), hard-capped at 4.0.",
+"archetype_restrictions": ["Physical", "Ranged", "Elemental"]
+},
+"AURA_EXTEND": {
+"label": "Aura Extend",
+"description": "aura_radius_cells increased by round(perk_power x 6) cells, clamped to 6.",
+"archetype_restrictions": ["Support"]
+}
+}

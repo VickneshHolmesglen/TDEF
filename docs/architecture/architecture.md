@@ -2,12 +2,12 @@
 
 ## Document Status
 
-- Version: 2
-- Last Updated: 2026-05-22
+- Version: 3
+- Last Updated: 2026-07-13 (full re-validation pass — ADR Audit, Traceability Matrix, Module Ownership, Required ADRs, and Open Questions all refreshed against the current ADR set and `tr-registry.yaml` v4)
 - Engine: Godot 4.6.2 / GDScript
-- GDDs Covered: game-concept, event-bus, grid-system, save-persistence, hero, tower, monster, damage-status, pathfinding, wave-manager (10 GDDs; 9 MVP systems + root concept)
-- ADRs Referenced: ADR-0001 (EventBus — Accepted), ADR-0002 (Scene/Autoload — Accepted), ADR-0003 (Save format — Accepted), ADR-0004 (Pathfinding — Accepted), ADR-0005 (Grid data model — Accepted), ADR-0008 (Tower placement gate — Accepted 2026-05-19)
-- Technical Director Sign-Off: 2026-05-15 — APPROVED WITH CONDITIONS (OQ-2: performance budgets must be configured in technical-preferences.md before Pre-Production gate check)
+- GDDs Covered: game-concept, game-pillars, event-bus, grid-system, save-persistence, hero, tower, monster, damage-status, pathfinding, wave-manager, inventory, resource-economy, mission-hud (skeleton) (14 GDDs; 9 MVP systems + 2 Vertical Slice systems + root concept/pillars + HUD skeleton)
+- ADRs Referenced: all 19 present ADRs (ADR-0001 through ADR-0019) — **all Accepted**, no Proposed or missing ADRs remain (ADR-0019, Projectile Pooling, Accepted 2026-07-13 via `/architecture-review` Pass 4 follow-up)
+- Technical Director Sign-Off: 2026-05-15 — APPROVED WITH CONDITIONS (OQ-2, below — **now resolved**: performance budgets are configured in `technical-preferences.md`)
 - Lead Programmer Feasibility: N/A (lean mode — LP-FEASIBILITY skipped)
 
 ---
@@ -20,7 +20,7 @@
 
 | Domain | Key Change | Systems Affected |
 |--------|-----------|-----------------|
-| UI / Focus | Dual-focus system (4.6): `grab_focus()` sets keyboard/gamepad focus only; mouse focus is independent. All interactive widgets must be tested under both K/M and gamepad. | Mission HUD, Sanctuary UI, Tarot Deck UI |
+| UI / Focus | Dual-focus system (4.6): `grab_focus()` sets keyboard/gamepad focus only; mouse focus is independent. All interactive widgets must be tested under both K/M and gamepad. **Mechanism now specified**: ADR-0011 (Accepted 2026-07-13) — reusable `InputModeTracker` helper, scene-instanced per screen. The HIGH rating stands regardless — ADR-0011 supplies the implementation, but live gamepad verification per screen is still required (see ADR-0011's Verification Required item). | Mission HUD, Sanctuary UI, Tarot Deck UI, Inventory (Story 007) |
 | Rendering | Glow applied before tonemapping (4.6) — visual output differs from pre-4.6 expectations. D3D12 is now the default renderer on Windows (4.6). Shader uniforms use `Texture`, not `Texture2D`. | Any system with post-processing or custom shaders |
 
 ### MEDIUM RISK Domains
@@ -45,9 +45,10 @@
 | System | Domain | Risk |
 |--------|--------|------|
 | Save & Persistence | FileAccess | MEDIUM — must check every store_* bool return |
-| Mission HUD | UI dual-focus | HIGH — verify all widgets under K/M and gamepad |
-| Sanctuary UI | UI dual-focus | HIGH — multi-panel gamepad d-pad navigation |
-| Tarot Deck UI | UI dual-focus | HIGH |
+| Mission HUD | UI dual-focus | HIGH — verify all widgets under K/M and gamepad; use ADR-0011's `InputModeTracker` pattern when built |
+| Sanctuary UI | UI dual-focus | HIGH — multi-panel gamepad d-pad navigation; ADR-0011 pattern applies |
+| Tarot Deck UI | UI dual-focus | HIGH — ADR-0011 pattern applies |
+| Inventory (Story 007, two-panel screen) | UI dual-focus | HIGH — first concrete consumer of ADR-0011's `InputModeTracker`; live gamepad smoke test required before merge |
 | Any future shader work | Rendering | HIGH — shader texture type + glow timing |
 | Any Resource copying | Resources | MEDIUM — use duplicate_deep() for nested Resources |
 
@@ -133,7 +134,7 @@ Monster, and Wave Manager all depend on it being ready before they can act.
 
 | Attribute | Detail |
 |-----------|--------|
-| **Owns** | All 70 named signal declarations; cascade depth counter per dispatch chain; deferred dispatch queue for physics-thread callers |
+| **Owns** | All 74 named signal declarations (catalogue count last verified in `event-bus.md`, 2026-07-13 — `item_pickup_rejected`/`resources_changed` catalogued); cascade depth counter per dispatch chain; deferred dispatch queue for physics-thread callers |
 | **Exposes** | One signal per event (e.g. `signal monster_died(payload: MonsterDiedEvent)`); `dispatch(event_name: StringName, payload)` method; `dispatch_deferred(event_name, payload)` for physics callers |
 | **Consumes** | Nothing — pure pub/sub; no subscriptions of its own |
 | **Engine APIs** | `Signal` (GDScript built-in), `Callable`, `call_deferred()` |
@@ -244,25 +245,44 @@ Every `await get_tree().process_frame` is immediately followed by `if not is_ins
 
 ---
 
-#### Inventory *(GDD not authored — interface provisional)*
+#### Inventory *(GDD authored 2026-07-10; ADR-0016 Accepted 2026-07-13)*
 
 | Attribute | Detail |
 |-----------|--------|
-| **Owns** | Item slot array; item Resource definitions; stack counts |
-| **Exposes** | `add_item(item: Resource)`; `remove_item(item_id: int)`; `get_items() → Array[Resource]` |
-| **Consumes** | EventBus: `item_dropped`, `item_crafted`; Save & Persistence for serialization |
-| **Engine Risk** | LOW (inherits Save MEDIUM risk at persistence boundary) |
+| **Owns** | `Array[InventorySlot]` (runtime `RefCounted` objects, never exposed by reference) — each slot: `item_id`, `quantity`, `instance_id` (`-1` = stackable, `>=0` = unique-instance identity), `stat_overrides: Dictionary`, `locked: bool`. Static `ItemDefinitionResource` data loaded via `GameDataRegistry` (position 5), per ADR-0009's convention. |
+| **Exposes** | Not yet finalized at implementation level — anticipated query API (e.g. `has_items(cost: Dictionary) -> bool`) for Crafting/Menagerie/Defense Building/Equipment Forge once those GDDs exist |
+| **Consumes** | EventBus: `materials_earned`, `materials_spent`, `tower_destroyed` (component return, pending a `tower.md`/`event-bus.md` follow-up); implements `SaveRestorer` (ADR-0003): `get_save_key()`/`get_save_data()`/`restore_save_data()`/`reset_to_defaults()`, `restore_order=10` (matches `save-persistence.md`'s own Formula 4 table; below Hero's 30) |
+| **Engine Risk** | MEDIUM (inherits Save & Persistence boundary risk; see ADR-0016) |
+
+> Source: `design/gdd/inventory.md`, `docs/architecture/adr-0016-inventory-storage-model.md`. `restore_order` corrected 2026-07-13 (was 20, colliding with Menagerie's slot — see ADR-0016's Last Verified note).
 
 ---
 
-#### Resource Economy *(GDD not authored — interface provisional)*
+#### Resource Economy *(GDD authored 2026-07-11; ADR-0017 Accepted 2026-07-13)*
 
 | Attribute | Detail |
 |-----------|--------|
-| **Owns** | Per-resource-type counts; transaction log |
-| **Exposes** | `get_amount(resource_type: StringName) → int`; `spend(type, amount) → bool`; `earn(type, amount)` |
-| **Consumes** | EventBus: `monster_died` (material drop), `wave_completed` (wave reward) |
+| **Owns** | Exactly one mutable field: `_menagerie_quality_bonus: float` (cached scalar, updated on Menagerie happiness events). All other computation is a pure function of the incoming event payload — no transaction log, no accumulator (deliberate stateless-service design, GDD Core Rule 1). |
+| **Exposes** | No public call API — pure event-reactive service, consistent with Damage & Status's precedent (ADR-0007) |
+| **Consumes** | EventBus: `monster_died`, `monsters_died_batch`, `mission_phase_changed` (Scout Phase starting gold grant), `creature_happiness_changed`/`creature_moved_to_breeding_pen`/`creature_returned_from_breeding_pen`; reads `DropTableResource`/`DropEntry` via `GameDataRegistry` |
+| **Implementation** | Scene-instanced node (**not** an Autoload) — mission-scoped subscription lifecycle, per ADR-0002's own Autoload/Scene-Instanced boundary table (Resource Economy is classified scene-instanced there directly); subscribes at `_ready()`, disconnects at `_exit_tree()` |
+| **Engine Risk** | MEDIUM (same profile as Inventory; see ADR-0017) |
+
+> Source: `design/gdd/resource-economy.md`, `docs/architecture/adr-0017-resource-economy-drop-resolution.md`. Gold-balance *emission* is fully specified here; gold-balance *ownership* (the actual running total) is owned by Mission Economy — see below. ADR-0017's earlier "mirrors Wave Manager's non-Autoload lifecycle" precedent was corrected 2026-07-13 (Wave Manager is Autoload #7; the underlying scene-instanced decision was unaffected).
+
+---
+
+#### Mission Economy *(new — ADR-0018 Accepted 2026-07-13)*
+
+| Attribute | Detail |
+|-----------|--------|
+| **Owns** | `_gold_balance: int` — the runtime gold balance for the current mission. Sole owned state. |
+| **Exposes** | Direct-call read API (same exception class as Grid/GameDataRegistry): `get_gold_balance() -> int`, `can_afford(cost: int) -> bool` |
+| **Consumes** | EventBus: `resources_changed(gold: int, source: StringName)` (accumulates as a signed delta — mutation path), `mission_launched` (resets balance to 0) |
+| **Implementation** | Autoload #8 (boots after WaveManager). No `SaveRestorer` — ephemeral per-mission state, resets naturally, never persisted. |
 | **Engine Risk** | LOW |
+
+> Source: `docs/architecture/adr-0018-mission-economy-gold-balance.md`. Resolves ADR-0017's previously-open gold-balance-ownership question and ADR-0008 Gate 2's `ResourceSystem.can_afford()` placeholder.
 
 ---
 
@@ -281,9 +301,9 @@ Every `await get_tree().process_frame` is immediately followed by `if not is_ins
 | Hero Skill Build | Skill loadout; Ultimate combination matrix | Reads Tower Mastery state via EventBus |
 | Equipment Forge | Equipment assembly rules | Aggregates Hero, Crafting, Menagerie, Constellation, Tarot, Inventory state |
 | Encyclopedia | Discovery registry | Subscribes to numerous events |
-| Mission HUD | Real-time display widgets | Read-only EventBus subscriber ⚠️ HIGH: dual-focus (4.6) |
-| Sanctuary UI | Tab/panel navigation | ⚠️ HIGH: dual-focus + gamepad d-pad |
-| Tarot Deck UI | Card selection interface | ⚠️ HIGH: dual-focus |
+| Mission HUD | Real-time display widgets | Read-only EventBus subscriber ⚠️ HIGH: dual-focus (4.6) — non-interactive HUD elements (HP bar, cooldowns) need no focus handling; any interactive HUD widget uses ADR-0011's `InputModeTracker` |
+| Sanctuary UI | Tab/panel navigation | ⚠️ HIGH: dual-focus + gamepad d-pad — use ADR-0011's `InputModeTracker` pattern |
+| Tarot Deck UI | Card selection interface | ⚠️ HIGH: dual-focus — use ADR-0011's `InputModeTracker` pattern |
 | Audio System | Sound bus management; music cue state | EventBus subscriber — responds with audio |
 
 ---
@@ -307,7 +327,9 @@ CORE
   │    └─ route query ──────► Pathfinding.get_path()
   ├─ D&S ───────────────► EventBus
   ├─ Inventory ─────────► EventBus, Save
-  └─ Resource Economy ──► EventBus, Save
+  ├─ Resource Economy ──► EventBus, Save
+  │    └─ gold deltas ──────► Mission Economy (accumulates balance)
+  └─ Mission Economy ───► EventBus (Autoload #8; direct-call read API for Tower/HUD)
 ```
 
 ---
@@ -406,6 +428,12 @@ ENGINE BOOT — Autoloads in declared order:
   3. Grid              — initializes 16×12 cell array from level data
   4. Pathfinding       — reads Grid; builds initial AStar2D graph
        └─ dispatches templates_ready when first build complete
+  5. GameDataRegistry  — preloads MonsterResource/TowerPerkRegistry/ItemDefinitionResource/
+                         DropTableResource; validates each (ADR-0009, ADR-0016, ADR-0017)
+  6. SceneManager      — owns SANCTUARY↔MISSION transitions; idle at boot
+  7. WaveManager       — mission FSM Autoload; initializes to IDLE; activates on mission_launched
+  8. MissionEconomy    — gold balance Autoload; _gold_balance = 0 at boot; resets again on
+                         every mission_launched (ADR-0018)
 
 SCENE LOAD (mission or sanctuary):
   └─► SceneManager loads scene → instantiates system nodes
@@ -586,28 +614,35 @@ func spawn(monster_resource: MonsterResource, spawn_id: int) -> void
 
 ## ADR Audit
 
-Eleven ADRs accepted as of 2026-05-24 (ADR-0001 through ADR-0010 + ADR-0012; ADR-0011 deferred to first Presentation GDD). Coverage: **52 / 57** requirements covered. Canonical per-TR detail lives in `docs/architecture/architecture-traceability.md` (refreshed 2026-05-24) — the matrix below is a snapshot and defers to it on any discrepancy.
+All 19 ADRs accepted as of 2026-07-13 (ADR-0001 through ADR-0019 — no Proposed, Deferred, or missing ADRs remain; ADR-0019 Accepted same-day as a Pass 4 follow-up, closing TR-tower-007). **`docs/architecture/architecture-traceability.md` is the canonical, current source of truth for coverage counts and the full per-TR matrix** (90 TR-IDs as of Pass 4, 2026-07-13d — 25 more than this document's snapshot below, which predates that pass's registrations). The matrix below is a snapshot as of Pass 3 (2026-07-13c) and is retained for historical context; defer to `architecture-traceability.md` on any discrepancy rather than reconciling the two numbers here.
 
 | ADR | System | Status | TRs Covered |
 |-----|--------|--------|-------------|
 | ADR-0001 | EventBus architecture | Accepted | TR-eb-001–006, TR-gc-001 |
 | ADR-0002 | Scene and Autoload structure | Accepted | TR-gc-002, TR-gc-003 (partial), TR-hero-001, TR-monster-001, TR-monster-004, TR-path-001 |
 | ADR-0003 | Save file format | Accepted | TR-save-001–006 |
-| ADR-0004 | Pathfinding strategy | Accepted | TR-path-001–006, TR-path-007 (partial), TR-wave-004 |
+| ADR-0004 | Pathfinding strategy | Accepted | TR-path-001–006, TR-path-007 (partial), TR-wave-004, TR-wave-008 |
 | ADR-0005 | Grid system data model | Accepted | TR-grid-001–004 |
-| ADR-0006 | Monster movement | **Accepted (2026-05-24)** | TR-monster-002–003, 005–006 |
-| ADR-0007 | Damage pipeline | **Accepted (2026-05-24)** | TR-ds-001–003, 005, TR-hero-004, TR-tower-003 |
-| ADR-0008 | Tower placement gate | **Accepted (2026-05-19)** | TR-tower-002, TR-tower-004, TR-tower-005 |
-| ADR-0009 | Resource data model | **Accepted (2026-05-24)** | TR-monster-002, TR-wave-002, TR-tower-001, TR-tower-006 |
-| ADR-0010 | Hero Tower-Synced Class | **Accepted (2026-05-24)** | TR-hero-002, 003, 006 |
-| ADR-0011 | UI dual-focus | Deferred | All Presentation system TRs |
-| ADR-0012 | Wave Manager FSM | **Accepted (2026-05-24)** | TR-wave-001, 003, 005, 006, 007 |
+| ADR-0006 | Monster movement | Accepted | TR-monster-002–003, 005–006 |
+| ADR-0007 | Damage pipeline | Accepted | TR-ds-001–003, 005, TR-hero-004, TR-tower-003 |
+| ADR-0008 | Tower placement gate | Accepted (2026-05-19) | TR-tower-002, TR-tower-004, TR-tower-005 (partial) |
+| ADR-0009 | Resource data model | Accepted | TR-monster-002, TR-wave-002, TR-tower-001, TR-tower-006 |
+| ADR-0010 | Hero Tower-Synced Class | Accepted | TR-hero-002, 003, 006 |
+| ADR-0011 | UI dual-focus handling | **Accepted (2026-07-13)** | Presentation-layer interactive-widget requirements (Inventory Story 007; future Sanctuary UI/Tarot Deck UI) |
+| ADR-0012 | Wave Manager FSM | Accepted | TR-wave-001, 003, 005, 006, 007 |
+| ADR-0013 | Sprite atlas / draw-call batching | Accepted (2026-06-30) | Draw-call performance budget (technical-preferences.md, no TR-ID — implementation guardrail) |
+| ADR-0014 | Pause system | Accepted (2026-07-08) | Accessibility-requirements pause commitment (no TR-ID — closes `TD-pause-001`) |
+| ADR-0015 | Collision layer convention | Accepted (2026-07-08) | Foundational — no direct TR; documentation promotion of an already-shipped convention |
+| ADR-0016 | Inventory storage model | **Accepted (2026-07-13)** | TR-inv-001, 002, 003 |
+| ADR-0017 | Resource Economy drop resolution | **Accepted (2026-07-13)** | TR-econ-001, 002, 003 (emission half) |
+| ADR-0018 | Mission Economy — gold balance ownership | **Accepted (2026-07-13)** | TR-econ-003 (ownership half — completes coverage) |
+| ADR-0019 | Projectile pooling strategy | **Accepted (2026-07-13)** | TR-tower-007 (fixed-size pool + re-acquisition throttle — closes the gap) |
 
 ### Traceability Matrix
 
 | Req ID | GDD | Requirement | ADR Coverage | Status |
 |--------|-----|-------------|--------------|--------|
-| TR-eb-001 | event-bus | 70-event typed signal catalogue | ADR-0001 | ✅ |
+| TR-eb-001 | event-bus | Typed signal catalogue (74 events as of 2026-07-13) | ADR-0001 | ✅ |
 | TR-eb-002 | event-bus | Cascade depth ≤ 2 levels enforced at runtime | ADR-0001 | ✅ |
 | TR-eb-003 | event-bus | Deferred dispatch for physics callers | ADR-0001 | ✅ |
 | TR-eb-004 | event-bus | Batch threshold 20/frame for monster_died | ADR-0001 | ✅ |
@@ -660,18 +695,27 @@ Eleven ADRs accepted as of 2026-05-24 (ADR-0001 through ADR-0010 + ADR-0012; ADR
 | TR-wave-005 | wave-manager | Wave-stuck watchdog (30s stalled / 60s force-clear) | ADR-0012 | ✅ |
 | TR-wave-006 | wave-manager | wave_reward_scalar semantic contract | ADR-0012 | ✅ |
 | TR-wave-007 | wave-manager | Penultimate-wave rule (sub-boss at wave N-1) | ADR-0012 | ✅ |
+| TR-wave-008 | wave-manager | Waves 2+ rebuild-pending gate (is_rebuild_pending() check at INTERMISSION→PRE_WAVE) | ADR-0004, ADR-0012 | ✅ (retroactively registered 2026-07-07, closes the TR-wave-004 registry gap; already shipped in Story 005) |
 | TR-gc-001 | game-concept | All 9 systems communicate via EventBus only | ADR-0001 | ✅ |
 | TR-gc-002 | game-concept | Autoload boot order: EB → Save → Grid → Path | ADR-0002 | ✅ |
 | TR-gc-003 | game-concept | Mission states: SCOUT/WAVE_ACTIVE/INTERMISSION/etc. | ADR-0002 | ⚠ Partial (outer FSM only; Wave Manager inner FSM → ADR-0012) |
 | TR-gc-004 | game-concept | 15–25 min default mission (session length formula) | — (design tuning, not architecture) | N/A |
+| TR-inv-001 | inventory | 10-slot start; type-driven stack caps (1 vs 99) | ADR-0016 | ✅ |
+| TR-inv-002 | inventory | instance_id-keyed unique-item identity — stat-rolled duplicates never merge (AC-18) | ADR-0016 | ✅ |
+| TR-inv-003 | inventory | SaveRestorer + restore_order below Hero's 30 | ADR-0016 | ✅ (restore_order=10, fixed 2026-07-13) |
+| TR-econ-001 | resource-economy | Stateless calculator pattern (Core Rule 1) | ADR-0017 | ✅ |
+| TR-econ-002 | resource-economy | DropTableResource/DropEntry schema + Formulas 1-4 | ADR-0017 | ✅ |
+| TR-econ-003 | resource-economy | Gold track via resources_changed, separate from materials (incl. balance ownership) | ADR-0017, ADR-0018 | ✅ (ownership resolved 2026-07-13) |
 
-**Coverage**: 52 / 57 requirements covered (91%) as of 2026-05-24 — all of ADR-0001 through ADR-0010 + ADR-0012 are Accepted. Remaining: 2 partial (TR-tower-005 Scout-only perk activation rule; TR-path-007 100-agent perf, budgeted but unverified) and 3 not-covered (TR-hero-005 Alpha-tier Hero skills — post-MVP; TR-ds-004 status effects — needs its own ADR when the status system is designed; TR-gc-004 session-length formula — design tuning, not architecture).
+**Coverage snapshot (Pass 3, 2026-07-13c) — superseded, see note above**: 58 / 63 requirements covered (92%). All 19 ADRs are now Accepted (ADR-0019 added 2026-07-13, closing TR-tower-007, which is not yet reflected in this snapshot matrix). Remaining known gaps per the current canonical matrix in `architecture-traceability.md`: 2 partial (TR-tower-005 Scout-only perk activation rule; TR-path-007 100-agent perf, budgeted but unverified) and 3 not-covered (TR-hero-005 Alpha-tier Hero skills — post-MVP; TR-ds-004 status effects — needs its own ADR when the status system is designed; TR-gc-004 session-length formula — design tuning, not architecture). None of the remaining gaps are Foundation- or Core-blocking.
 
 ---
 
 ## Required ADRs
 
-### Accepted (Foundation + Core baseline)
+All 19 ADRs identified for the current GDD/system set are written and Accepted (ADR-0019, Projectile Pooling, Accepted 2026-07-13). None remain Pending or Deferred.
+
+### Accepted
 
 **ADR-0001 — EventBus architecture** ✅ Accepted
 Covers: TR-eb-001–006, TR-gc-001
@@ -679,53 +723,74 @@ Decision: single Autoload pub/sub backbone; typed signals; cascade depth limit; 
 
 **ADR-0002 — Scene and Autoload structure** ✅ Accepted
 Covers: TR-gc-002, TR-gc-003 (partial), TR-hero-001, TR-monster-001, TR-monster-004, TR-path-001
-Decision: Autoload boot order (EventBus → Save → Grid → Pathfinding); Autoloads vs scene-instanced nodes; CharacterBody2D vs Area2D scene root rationale.
+Decision: 8-Autoload boot order (EventBus → Save → Grid → Pathfinding → GameDataRegistry → SceneManager → WaveManager → MissionEconomy); Autoloads vs scene-instanced nodes; CharacterBody2D vs Area2D scene root rationale.
 
 **ADR-0003 — Save file format and serialization strategy** ✅ Accepted
 Covers: TR-save-001–006
 Decision: file format, atomic write protocol, version migration, FileAccess bool-return handling (4.4+ MEDIUM risk).
 
 **ADR-0004 — Pathfinding: AStar2D route templates over NavigationServer** ✅ Accepted
-Covers: TR-path-001–007, TR-wave-004
+Covers: TR-path-001–007, TR-wave-004, TR-wave-008
 Decision: AStar2D over NavigationServer (post-cutoff risk avoidance); route template caching; super-goal node; deferred dirty rebuild; templates_ready gate; `get_path(from_cell)` API; `is_rebuild_pending()` for Wave Manager dual gate.
 
 **ADR-0005 — Grid system data model** ✅ Accepted
 Covers: TR-grid-001–004
 Decision: 16×12 array; 5 CellTypes; Autoload with restricted write API (Tower System only); returns copies not references.
 
-**ADR-0008 — Tower placement gate: 4-gate sequential check** ✅ Accepted (2026-05-19)
-Covers: TR-tower-002, TR-tower-004, TR-tower-005
-Decision: Phase → Resource → Footprint → Path integrity gates; `get_placement_preview()` runs Gates 1–3 only (no path check on hover); `duplicate_deep()` at commit for WaveConfig/TowerComponent (MEDIUM risk — 4.5+ API); `TowerMissionState` as RefCounted mission copy.
-
-### Pending — write before the relevant system is implemented
-
-**ADR-0006 — Monster movement: position-based over physics-driven**
+**ADR-0006 — Monster movement: position-based over physics-driven** ✅ Accepted
 Covers: TR-monster-002, TR-monster-003, TR-monster-005, TR-monster-006
-Decision scope: Area2D root; position-based movement in _physics_process; _pending_damage buffer pattern; MonsterResource data model; dual-layer AnimatedSprite2D; why not CharacterBody2D.
+Decision: Area2D root; position-based movement in `_physics_process`; centralized 4-pass `MonsterManager` architecture; `_pending_damage` buffer pattern; MonsterResource data model; dual-layer `AnimatedSprite2D` for BOSS.
 
-**ADR-0007 — Damage pipeline: deferred dispatch and is_instance_valid guard**
+**ADR-0007 — Damage pipeline: deferred dispatch and is_instance_valid guard** ✅ Accepted
 Covers: TR-ds-001–005, TR-hero-004, TR-tower-003
-Decision scope: EventBus-only D&S API surface; await + guard pattern; _lifesteal_pending; no direct node refs between combat systems.
+Decision: EventBus-only D&S API surface; `await get_tree().process_frame` + `is_instance_valid` guard pattern (now a project-wide standing idiom); `_lifesteal_pending` round-trip; no direct node refs between combat systems.
 
-**ADR-0009 — Resource data model for game entities**
+**ADR-0008 — Tower placement gate: 4-gate sequential check** ✅ Accepted (2026-05-19)
+Covers: TR-tower-002, TR-tower-004, TR-tower-005 (partial)
+Decision: Phase → Resource → Footprint → Path integrity gates; `get_placement_preview()` runs Gates 1–3 only (no path check on hover); `duplicate_deep()` at commit for TowerComponent Resources; `TowerMissionState` as RefCounted mission copy. Gate 2's resource check now resolves to `MissionEconomy.can_afford()` per ADR-0018.
+
+**ADR-0009 — Resource data model for game entities** ✅ Accepted
 Covers: TR-monster-002, TR-wave-002, TR-tower-001, TR-tower-006
-Decision scope: MonsterResource, WaveConfig, WaveScript, WaveSpawnEntry, TowerComponent as Resource subclasses; which systems use Resources vs Dictionaries.
+Decision: `GameDataRegistry` Autoload; MonsterResource, WaveConfig, WaveScript, WaveSpawnEntry, TowerComponent as Resource subclasses; persistent-data-Resource vs event-payload-Resource categories kept strictly separate; `validate()` contract.
 
-**ADR-0012 — Wave Manager FSM** (recommended)
+**ADR-0010 — Hero Tower-Synced Class and Tower Affinity scaling** ✅ Accepted
+Covers: TR-hero-002, TR-hero-003, TR-hero-006 (TR-hero-005 is Alpha-tier, out of scope)
+Decision: `_tower_cache` populated exclusively via EventBus (`tower_placed`/`removed`/`destroyed`); Tower Affinity recomputed only on tower lifecycle events, never per-frame.
+
+**ADR-0011 — UI dual-focus handling for Godot 4.6** ✅ Accepted (2026-07-13)
+Covers: Presentation-layer interactive-widget requirements
+Decision: reusable, scene-instanced (not Autoload) `InputModeTracker` helper; `_input()` event-type sniffing distinguishes mouse from keyboard/gamepad; widgets gate their focus ring on `has_focus() AND is_focus_ring_visible()`; `focus_neighbor_*` wired explicitly per grid. First concrete consumer: Inventory Story 007. Corrects ADR-0010's original "Hero stat display" framing — Hero's HUD elements are non-interactive and need no focus handling.
+
+**ADR-0012 — Wave Manager FSM** ✅ Accepted
 Covers: TR-wave-001, TR-wave-003, TR-wave-005, TR-wave-006, TR-wave-007
-Decision scope: 7-state FSM lifecycle; _wave_clear_fired latch; watchdog timer (30s stalled / 60s force-clear); BOSS breach = wave-clear; wave_reward_scalar contract; penultimate-wave sub-boss rule.
+Decision: `enum Phase` + `match` + single `_transition_to()` entry point; 5 scene-tree `Timer` nodes for direct-callback testability; spawn coroutine three-guard pattern; `_wave_clear_fired` latch; `_phase_locked` DEFEAT-priority guard.
 
-### Deferred — write when relevant GDDs land
+**ADR-0013 — Sprite atlas / draw-call batching** ✅ Accepted (2026-06-30)
+Decision: shared per-entity-class texture atlas; `z_index`-based layering (never `CanvasLayer` per entity); target ≤ 60 draw calls for a complete scene at MVP entity counts, within the project's 200 DC/frame budget.
 
-**ADR-0010 — Hero Tower-Synced Class and Tower Affinity scaling**
-Covers: TR-hero-002, TR-hero-003, TR-hero-005, TR-hero-006
-Deferred: pure design logic with no novel engine APIs — fully specified in hero.md GDD.
+**ADR-0014 — Pause system** ✅ Accepted (2026-07-08)
+Decision: engine-native `SceneTree.paused` as the single source of truth; Pause Menu `CanvasLayer` with `PROCESS_MODE_ALWAYS`; any future `create_timer()` call for a gameplay duration must pass `process_always: false`. Closes `TD-pause-001`.
 
-**ADR-0011 — UI dual-focus handling for Godot 4.6**
-Covers: HIGH risk in all Presentation systems
-Deferred: no Presentation GDDs authored yet. Write when Mission HUD GDD moves beyond skeleton.
+**ADR-0015 — Collision layer convention** ✅ Accepted (2026-07-08)
+Decision: documentation promotion (no behavior change) of an already-shipped convention — Layer 1 = Environment, Layer 2 = Hero; Monster (`Area2D`) is deliberately exempt from this layer system.
 
-**Next ADRs to write**: ADR-0006 (Monster movement) and ADR-0007 (Damage pipeline) — both required before Monster and Damage & Status enter implementation. ADR-0012 (Wave Manager FSM) recommended before Wave Manager implementation.
+**ADR-0016 — Inventory storage model** ✅ Accepted (2026-07-13)
+Covers: TR-inv-001, 002, 003
+Decision: two-tier `ItemDefinitionResource` (static, via `GameDataRegistry`) + runtime `InventorySlot` (`RefCounted`, not a Resource); `instance_id` monotonic counter for unique-instance identity; `restore_order=10`.
+
+**ADR-0017 — Resource Economy drop resolution** ✅ Accepted (2026-07-13)
+Covers: TR-econ-001, 002, 003 (emission half)
+Decision: scene-instanced node (mission-scoped subscription lifecycle, per ADR-0002's boundary table); `DropTableResource`/`DropEntry` via `GameDataRegistry`; sole owned state is one cached scalar (`_menagerie_quality_bonus`).
+
+**ADR-0018 — Mission Economy: runtime gold balance ownership** ✅ Accepted (2026-07-13)
+Covers: TR-econ-003 (ownership half — completes coverage)
+Decision: new `MissionEconomy` Autoload (position 8) owns `_gold_balance: int`, mutated only via `resources_changed`, reset on `mission_launched`; direct-call read API (`get_gold_balance()`, `can_afford()`). Resolves ADR-0017's open question and ADR-0008 Gate 2's placeholder.
+
+### Still needed (post-MVP, non-blocking)
+
+- **Status-effects ADR** — for TR-ds-004 (5 status effect types + stack/duration rules), when the status system GDD is authored.
+- **Scout-only perk activation rule** — TR-tower-005 is only partially covered; the perk *data schema* is in ADR-0009, but the Scout-phase-only *activation* rule has no dedicated architectural decision.
+- **`ADR-0011`'s numbering gap is now closed** — no other numbering gaps remain in the ADR sequence.
 
 ---
 
@@ -755,7 +820,10 @@ Where a post-cutoff Godot API exists that the LLM cannot reliably reason about (
 | # | Question | Blocking | Resolved By |
 |---|----------|----------|-------------|
 | OQ-1 | ~~Save file format: ConfigFile vs JSON vs binary store_var?~~ **RESOLVED** — ADR-0003 Accepted 2026-05-15. Decision recorded in ADR-0003. | — | ✅ ADR-0003 |
-| OQ-2 | Performance target for frame budget, draw calls, and memory ceiling are not yet configured in technical-preferences.md. These are needed before any performance AC can be written for implementation stories. | Blocks implementation story sign-off | User decision — update technical-preferences.md |
-| OQ-3 | SceneManager ownership: which node/Autoload owns scene transitions between SANCTUARY and MISSION states? This was not covered by any MVP GDD. | Blocks ADR-0002 | ADR-0002 |
+| OQ-2 | ~~Performance target for frame budget, draw calls, and memory ceiling are not yet configured in technical-preferences.md.~~ **RESOLVED** — `technical-preferences.md`'s Performance Budgets section is populated (60 FPS target, 16.67 ms frame budget, 200 draw calls, 1 GB memory ceiling). ADR-0013 additionally sets a tighter ≤60 DC guideline for a complete entity scene at MVP counts. | — | ✅ `technical-preferences.md` + ADR-0013 |
+| OQ-3 | ~~SceneManager ownership: which node/Autoload owns scene transitions between SANCTUARY and MISSION states?~~ **RESOLVED** — ADR-0002 Accepted. SceneManager (Autoload #6) owns SANCTUARY↔MISSION transitions, only in response to terminal mission events. | — | ✅ ADR-0002 |
 | OQ-4 | ~~duplicate_deep() usage policy.~~ **RESOLVED** — ADR-0008 Accepted 2026-05-19. Decision: `duplicate_deep()` required at Tower placement commit and WaveConfig copy; `TowerMissionState` as RefCounted mission copy. MEDIUM risk: 4.5+ API (Knowledge Risk: MEDIUM in ADR-0008). | — | ✅ ADR-0008 |
-| OQ-5 | Grid dimensions are 16×12 default but the GDD notes this is configurable per mission. The architecture does not yet specify how per-mission grid dimensions are communicated to Grid at mission load time. | Blocks mission-variable layout support | Mission Select GDD (not yet authored) |
+| OQ-5 | Grid dimensions are 16×12 default but the GDD notes this is configurable per mission. The architecture does not yet specify how per-mission grid dimensions are communicated to Grid at mission load time. | Blocks mission-variable layout support | Mission Select GDD (not yet authored) — still open |
+| OQ-6 | *(new, 2026-07-13)* Who owns the runtime gold balance? | — | ✅ **RESOLVED** — ADR-0018, `MissionEconomy` Autoload |
+| OQ-7 | *(new, 2026-07-13)* UI dual-focus handling under Godot 4.6 — no ADR existed despite being referenced by ADR-0010. | — | ✅ **RESOLVED** — ADR-0011, `InputModeTracker` pattern |
+| OQ-8 | *(new, 2026-07-13)* `resources_changed` and `item_pickup_rejected` are real, shipped/needed EventBus signals still undocumented in `event-bus.md`'s formal catalogue. | Housekeeping only — not architecturally blocking | Still open — see `production/epics/epic-03-core-economy/EPIC.md` |

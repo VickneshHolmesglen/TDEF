@@ -24,7 +24,7 @@ Accepted
 | **Depends On** | None — this is the root architectural decision |
 | **Enables** | ADR-0002 (Scene/Autoload structure); ADR-0003 (Save format — subscribes to EventBus triggers); ADR-0004 (Pathfinding — dispatches `templates_ready`); ADR-0005 (Grid); ADR-0006 through ADR-0009 (all Core layer ADRs) |
 | **Blocks** | All Foundation + Core implementation stories. No cross-system story can be implemented before EventBus signals are declared and the Autoload is in place. |
-| **Ordering Note** | This ADR must be Accepted before any other ADR is written. Changing any event name or payload shape after dependent ADRs are written is a breaking change to every subscriber. The 70-event catalogue is a frozen public API once this ADR is Accepted. |
+| **Ordering Note** | This ADR must be Accepted before any other ADR is written. Changing any event name or payload shape after dependent ADRs are written is a breaking change to every subscriber. The event catalogue (74 events as of 2026-07-13 — `event-bus.md` is the authoritative running count; treat any specific number here as a snapshot, not a ceiling) is a frozen public API once this ADR is Accepted. |
 
 ## Context
 
@@ -56,6 +56,8 @@ A single `EventBus` GDScript Autoload declares all 70 cross-system signals. Syst
 **Rule 2 — Physics callers and Level-1 cascade emitters use deferred dispatch.**
 Any `emit_signal()` originating inside `_physics_process`, `area_body_entered`, or similar physics callbacks must use `call_deferred("emit_signal", "event_name", payload)`. Any subscriber that emits a further event (Level-1 cascade) must also emit it deferred to avoid cascade cost stacking in a single frame.
 When *guaranteed next-frame* delivery is required (i.e. the event must not fire until after all `_physics_process` callbacks in the current frame have completed), use `await get_tree().process_frame` before emitting instead of `call_deferred`. This distinction matters when the emitting system itself runs in `_physics_process` Pass 1 and must guarantee that its own drain loop has fully completed before subscribers react. `call_deferred` fires end-of-current-frame (before `_process`); `await process_frame` fires at the top of the next frame. Both are approved mechanisms under this rule — choose based on required delivery timing. See ADR-0007 (Damage pipeline) for the canonical next-frame pattern.
+
+> **Amendment (2026-07-08, closes `TD-monster-001`)**: `MonsterManager` (`src/core/monster/monster_manager.gd`) emits `monster_died`, `monster_breached`, `boss_died`, and `monster_cell_entered` **synchronously** from `_physics_process`, a literal deviation from this rule (`monster_spawned` remains the pre-existing documented synchronous exception per Tower GDD Rule 14a). This deviation is accepted, not accidental: a full audit of every real subscriber that has since shipped — `WaveManager._on_boss_died()`, `WaveManager._on_monster_breached()`, `TowerSystem._on_monster_cell_entered()`, `Hero._on_monster_cell_entered()` — confirms none of them reads `MonsterManager`'s live `active_monsters`/`_entity_lookup` collections; each maintains its own independent local counter or cache (e.g. `WaveManager._enemies_alive`, decremented on the event rather than derived from `MonsterManager`'s collection size). The original 2026-07-01 risk this rule protects against (a subscriber observing a collection mid-mutation, before the physics-frame swap-buffer prunes dead entities) does not apply to any shipped subscriber. Converting these 4 signals to deferred dispatch now would introduce a real 1-frame delay into stable, fully-tested wave-clear and targeting-cache timing for a compliance technicality with no corresponding safety gain — assessed as a worse trade than the deviation itself. Revisit this deviation if a future subscriber is added that reads `MonsterManager`'s collections directly rather than tracking its own state.
 
 **Rule 3 — Payload convention: typed parameters for 1–4 fields; Resource subclass for 5+ fields.**
 Signal parameters must be typed GDScript types. Events with 5 or more data fields must package their payload into a custom `Resource` subclass (e.g., `MonsterDiedEvent`, `HeroAutoAttackEvent`). Untyped `Dictionary` payloads are prohibited.
@@ -159,7 +161,7 @@ EventBus.monster_damage_taken.emit(payload)
 ### Positive
 - No system has a direct Node reference to another — systems develop, test, and modify in isolation.
 - New cross-system synergies add a subscriber to an existing event without touching the emitting system.
-- The 70-event catalogue documents all cross-system communication in one file.
+- The event catalogue (74 events as of 2026-07-13 — `event-bus.md` is the authoritative running count; treat any specific number here as a snapshot, not a ceiling) documents all cross-system communication in one file.
 - Typed signals enforce payload types at connection time — wrong-type errors caught immediately by GDScript.
 
 ### Negative
@@ -170,7 +172,7 @@ EventBus.monster_damage_taken.emit(payload)
 ### Risks
 - **Risk**: A subscriber retains a connection after its node is freed → "call to freed object" crash. **Mitigation**: Mandatory `_exit_tree()` disconnect enforced in code review. EventBus GDD EC-2 documents the exact failure mode.
 - **Risk**: A Level-1 cascade is implemented synchronously by mistake, blowing the frame budget at peak wave volume. **Mitigation**: GDD EC-8 documents the failure mode. Design review of any Level-1 emitter must verify deferred usage. The control manifest lists synchronous Level-1 cascade as Forbidden.
-- **Risk**: The 70-event catalogue grows unbounded as features are added. **Mitigation**: Core Rule 9 (only cross-system events in catalogue) limits growth. Internal system events are not registered.
+- **Risk**: The event catalogue (74 events as of 2026-07-13 — `event-bus.md` is the authoritative running count; treat any specific number here as a snapshot, not a ceiling) grows unbounded as features are added. **Mitigation**: Core Rule 9 (only cross-system events in catalogue) limits growth. Internal system events are not registered.
 
 ## GDD Requirements Addressed
 
@@ -209,4 +211,4 @@ No existing code to migrate — greenfield project. The EventBus Autoload is the
 ## Related Decisions
 - ADR-0002 — Scene and Autoload structure (enforces Autoload #1 boot position)
 - ADR-0007 — Damage pipeline (D&S deferred dispatch is a direct consequence of Rule 2)
-- `design/gdd/event-bus.md` — canonical source for the 70-event catalogue and performance formulas
+- `design/gdd/event-bus.md` — canonical source for the event catalogue (74 events as of 2026-07-13 — `event-bus.md` is the authoritative running count; treat any specific number here as a snapshot, not a ceiling) and performance formulas

@@ -1,8 +1,8 @@
 # UX Spec: Mission HUD
 
-> **Status**: Approved — post-review revision applied 2026-05-18
+> **Status**: Approved — corrected 2026-07-14 (Ready/PRE_WAVE conflict resolved against `wave-manager.md`; see Open Questions #9 and the affected rows below); second correction pass 2026-07-14 via `/design-review design/gdd/mission-hud.md` (Information Hierarchy row 7 missed by the first pass; PC-1/PC-2/PC-3 added to Accessibility and Localization tables — see Open Questions #10); third pass 2026-07-15 adds PC-5's full asset/animation spec (Boss-Lane Telegraph Marker — icon, hatch/outline/opacity, confirmation pulse, first-appearance callout — see Open Questions #11)
 > **Author**: Vicknesh + ux-designer
-> **Last Updated**: 2026-05-18
+> **Last Updated**: 2026-07-15
 > **Journey Phase(s)**: SCOUT → WAVE_ACTIVE → INTERMISSION → MISSION_COMPLETE / DEFEAT
 > **Template**: UX Spec
 
@@ -72,7 +72,7 @@ The HUD is always present during an active mission regardless of phase. It canno
 | 4 | Active enemy count | WAVE_ACTIVE | Wave-clear progress; drives engagement decisions |
 | 5 | Breach counter | Always | Permanent HP loss tracker; low number is fine, spikes demand attention |
 | 6 | Build points (resource counter) | SCOUT, INTERMISSION | Gates all placement decisions during build phases |
-| 7 | Ready button | SCOUT, INTERMISSION | Primary action in build phases; state-gated |
+| 7 | Ready button | SCOUT, PRE_WAVE, INTERMISSION | Primary action in build phases; also active (relabeled "skip countdown") during PRE_WAVE per `wave-manager.md` Rule 10/EC-8 — **corrected 2026-07-14 (this row was missed by the original five-row correction; see `/design-review` follow-up)** |
 | 8 | Tower Info Panel | Always (read-only in WAVE_ACTIVE) | Tower inspection; no interaction affordances during combat |
 | 9 | Hero skills (1–4) + Ultimate | Always | Cooldown tracking; ultimate-ready is a key decision signal |
 | 10 | BOSS HP bar + nameplate | WAVE_ACTIVE (contextual — BOSS present) | Highest-stakes combat feedback; shown only when BOSS is alive |
@@ -123,7 +123,7 @@ The HUD is always present during an active mission regardless of phase. It canno
 
 | Component | Type | Content | Interactive | Pattern |
 |---|---|---|---|---|
-| Phase indicator | Status label | Current phase name (SCOUT / WAVE ACTIVE / INTERMISSION) + color | No | New pattern candidate — Phase Indicator Label |
+| Phase indicator | Status label | Current phase name (SCOUT / WAVE ACTIVE / INTERMISSION) + color | No | Pattern 11 (Phase Indicator Label) |
 | Wave counter | Data display | "Wave N / M" | No | — |
 | Phase timer | Countdown bar + number | Seconds remaining; active in SCOUT/PRE_WAVE/INTERMISSION | No | Pattern 9 (Phase Countdown Timer) |
 | Enemy count | Data display | "Enemies: N" — replaces timer in WAVE_ACTIVE | No | — |
@@ -135,6 +135,7 @@ The HUD is always present during an active mission regardless of phase. It canno
 | Grid Placement Cursor | World-space cursor | Footprint preview on hovered cell; valid/invalid/insufficient states | Yes — confirm/cancel placement | Pattern 1 (Grid Placement Cursor) — active only in SCOUT/INTERMISSION |
 | Floating Damage Number | World-space label | Damage amount at target world position; crit/tier/source variants | No | Pattern 8 (Floating Damage Number) — active only in WAVE_ACTIVE |
 | Cell type overlay | World-space tint | PLACEABLE/PATH/SPAWN/GOAL/BLOCKED cell highlighting | No | — active only in SCOUT/INTERMISSION; part of Grid Placement Cursor context |
+| Boss-Lane Telegraph Marker | World-space marker | Diamond-outline + cross-hatch fill + skull badge glyph at `_boss_telegraph_cell`; contextual — only when the previewed wave contains a boss | No | — active only in SCOUT/INTERMISSION when a boss-spawn cell is cached (PC-5); asset/animation spec below — added 2026-07-15 |
 
 #### Zone C — Boss Bar
 
@@ -147,8 +148,8 @@ The HUD is always present during an active mission regardless of phase. It canno
 | Component | Type | Content | Interactive | Pattern |
 |---|---|---|---|---|
 | Hero HP bar | Resource bar | `current_hp` / `max_hp`; pulses at <20% | No | Pattern 6 (Contextual HP Bar) |
-| Skill buttons (×4) | Cooldown icon buttons | Skill icon + cooldown fill; dims when on cooldown | Yes — activate skill | New pattern candidate — Skill Cooldown Button |
-| Ultimate button | Cooldown icon button | Larger than skills; "READY" overlay when off cooldown | Yes — activate ultimate | New pattern candidate — Skill Cooldown Button (Ultimate variant) |
+| Skill buttons (×4) | Cooldown icon buttons | Skill icon + cooldown fill; dims when on cooldown | Yes — activate skill | Pattern 12 (Skill Cooldown Button) |
+| Ultimate button | Cooldown icon button | Larger than skills; "READY" overlay when off cooldown | Yes — activate ultimate | Pattern 12 (Skill Cooldown Button — Ultimate variant) |
 | Breach counter | Data display | Breach count; scale-pops on increment | No | Pattern 5 (Resource Counter) |
 
 #### Zone E — Build Panel
@@ -157,15 +158,8 @@ The HUD is always present during an active mission regardless of phase. It canno
 |---|---|---|---|---|
 | Build points counter | Resource counter | Current build points; flashes on deduct/award | No | Pattern 5 (Resource Counter) |
 | Tower build list | Scrollable list | Available tower configs; grayed if unaffordable, not hidden | Yes — select for placement | — |
-| Ready button | State-gated action button | "Ready" label; disabled during PRE_WAVE and WAVE_ACTIVE | Yes | Pattern 3 (State-Gated Action Button) |
+| Ready button | State-gated action button | "Ready" label in SCOUT/INTERMISSION; relabels to a "skip countdown" affordance during PRE_WAVE (remains active — pressing it cancels the countdown and jumps to WAVE_ACTIVE, per `wave-manager.md` Rule 10/EC-8); not present during WAVE_ACTIVE | Yes | Pattern 3 (State-Gated Action Button) — **corrected 2026-07-14 via `/design-system mission-hud`'s consistency pass: this row previously said "disabled during PRE_WAVE," contradicting `wave-manager.md`'s Approved rule** |
 | Tower Info Panel | Contextual info panel | Tower name, archetype, stats, Sell button (SCOUT/INTERMISSION only) | Yes — Sell action | Pattern 2 (Contextual Info Panel) |
-
-#### New Pattern Candidates
-
-| Pattern Name | Description | Owner |
-|---|---|---|
-| Phase Indicator Label | State-driven label with phase-specific text + color + icon; non-color backup is the text label itself | Flag for `interaction-patterns.md` |
-| Skill Cooldown Button | Icon button with cooldown fill-drain overlay; dims when on cooldown; "READY" overlay variant for Ultimate | Flag for `interaction-patterns.md` |
 
 ### ASCII Wireframe
 
@@ -217,6 +211,27 @@ Legend: `░░` = PLACEABLE cell · `▒▒` = cursor footprint (valid) · `PAT
 
 Legend: `▶` = skill ready · `3s` = cooldown remaining · Boss bar slides down from top-center of Zone B · Tower Info Panel collapses to read-only strip at right edge
 
+### PC-5 — Boss-Lane Telegraph Marker: Asset & Animation Spec
+
+*(Added 2026-07-15, closing `design/gdd/mission-hud.md`'s PC-5 UX Flag — Tower GDD OQ-11.)* Color/hue is already locked by Art Director decision (Boss Purple, `#7E2EB8` full-saturation anchor / `#6B3B8F` desaturated marker variant — see that GDD's Visual/Audio Requirements). This section defines everything that decision deferred: iconography, the shape-before-color treatment, the confirmation pulse's motion, and the first-appearance callout.
+
+**Icon/glyph**: the marker reuses the skull glyph (`☠`) already established in this document's own WAVE_ACTIVE wireframe as the Boss nameplate icon (Zone C). This is a deliberate reuse, not a new symbol — it means "this is a boss" reads identically in the pre-fight telegraph (SCOUT/INTERMISSION) and the mid-fight nameplate (WAVE_ACTIVE), with zero new iconographic vocabulary for the player to learn. The skull sits centered on a small opaque badge, `#F0EAF7` (near-white), sized to ~40% of the cell. The badge is solid (not tinted or translucent) and renders above the route-preview line's z-order, so a PC-1 route line passing through the cell cannot visually cut through the glyph — this is what actually satisfies the GDD's "distinguishable... under line-occlusion" requirement, not color alone.
+
+**Shape-before-color cell treatment** (single-tier — PC-5 has no Tier-1/Tier-2 split, unlike PC-2):
+
+| Channel | Value |
+|---|---|
+| Fill | Cross-hatch (both diagonals — deliberately distinct from PC-2's single-direction hatch), ~35% opacity, desaturated Boss Purple `#6B3B8F` |
+| Outline | Closed diamond (rotated-square) ring, inset ~15% from the cell edges, 2px, full-saturation Boss Purple `#7E2EB8`, static |
+| Glyph | Skull (`☠`) on a centered opaque `#F0EAF7` badge, ~40% of cell size |
+| Motion (idle) | None — matches PC-1's static register; the marker's only motion is the one-shot confirmation pulse below |
+
+The diamond outline (vs. PC-2's full-square outline), the cross-hatch (vs. PC-2's single-diagonal hatch), and the skull glyph (vs. PC-2's lock/X glyph) give three independent shape channels separating PC-5 from PC-2, on top of the hue difference — holds up in grayscale and matches the project's shape-before-color discipline.
+
+**Confirmation pulse** (fires on Rule 11d — a single one-shot event, never a loop, which is itself the primary distinguisher from PC-2's continuous slow breathing): badge + outline scale-punch 100% → 130% → 100%, plus one expanding ring (60% → 0% opacity) emanating outward from the marker, 0.5s total, ease-out. The marker is removed immediately after the pulse completes (matches Rule 11d's "single confirming pulse... then clears"). This is a fast one-shot punch against PC-2's continuous slow oscillation — distinct cadence, not just distinct duration, so the two "something is happening here" motions read as different classes of event at a glance. Well under the 3-flashes/sec accessibility threshold (it is one flash, not a repeating one).
+
+**First-appearance callout**: reuses Pattern 10 (Phase Transition Banner), same mechanism as PC-3. Boss Purple accent border (ties the banner visually to the marker itself — deliberately not amber like PC-3, since this isn't a "state changed, being handled" message). Skull glyph inline with the text: "Boss will spawn at the marked cell." Fires once per mission — a session-scoped flag set the first time `_boss_telegraph_cell` ever goes non-sentinel — not on every wave that has a boss, to avoid repeat-banner fatigue across a mission with multiple boss waves. Snappy-in, eased-out, no bounce (same restraint as PC-3). Holds 2.5s (longer than PC-3's 1.5s) since this is onboarding a genuinely new information category with no precedent elsewhere in this HUD.
+
 ---
 
 ## States & Variants
@@ -224,9 +239,11 @@ Legend: `▶` = skill ready · `3s` = cooldown remaining · Boss bar slides down
 | State / Variant | Trigger | What Changes |
 |---|---|---|
 | **SCOUT** | `mission_phase_changed → SCOUT` | Zone E (build panel) slides in; cell overlay active; timer counts down from 60s; Ready button enabled |
-| **PRE_WAVE** | `wave_countdown_warning` emitted | Timer switches to 10s PRE_WAVE countdown; Ready button disabled; build panel still visible but grayed; placement cursor deactivates |
+| **PRE_WAVE** | `wave_countdown_warning` emitted | Timer switches to 10s PRE_WAVE countdown; Ready button remains active, relabeled as "skip countdown" (per `wave-manager.md` Rule 10/EC-8 — corrected 2026-07-14, previously said "disabled"); build panel still visible but grayed (build list, cell overlay/cursor, Sell inert); placement cursor deactivates |
 | **WAVE_ACTIVE** | `wave_started` | Zone E slides out (Tower Info Panel collapses to read-only strip); enemy count replaces timer in Zone A; placement cursor gone |
 | **WAVE_ACTIVE + BOSS** | `monster_spawned` (tier=BOSS) | Zone C (boss bar) slides down from top-center |
+| **Boss-lane telegraph appears** | `wave_preview_available` (`boss_spawn_cell` non-sentinel) | Marker fades in at the target cell in the Planning Cluster (SCOUT/INTERMISSION only); first-ever occurrence in the mission also fires the Pattern 10 first-appearance callout (PC-5) |
+| **Boss-lane telegraph confirms** | `monster_spawned` (tier=BOSS) during WAVE_ACTIVE, `_boss_telegraph_cell` non-sentinel | One-shot confirmation pulse fires at the cached cell, then the marker's state clears (PC-5, Rule 11d) — see PC-5 Asset & Animation Spec |
 | **INTERMISSION** | `wave_completed` | Wave-cleared banner fires (Pattern 10); Zone E slides back in; timer resets to intermission duration; enemy count replaced by timer in Zone A |
 | **MISSION_COMPLETE** | `mission_phase_changed → MISSION_COMPLETE` | HUD fades out; mission complete overlay mounts on top |
 | **DEFEAT** | `mission_phase_changed → DEFEAT` | Hero death VFX fires; HUD fades out; defeat screen overlays |
@@ -234,6 +251,7 @@ Legend: `▶` = skill ready · `3s` = cooldown remaining · Boss bar slides down
 | **Breach event** | `monster_breached` | Screen-edge flash (goal-side for STANDARD/ELITE; all-edge ring for BOSS tier); breach counter scale-pops |
 | **Paused** | Pause input (any phase) | Pause menu overlays; HUD dims to ~40% opacity beneath |
 | **Empty state — no tower selected** | SCOUT/INTERMISSION with no tower selected or hovered | Tower Info Panel shows "No tower selected" placeholder; Sell button absent |
+| **Wave stalled** | `wave_stalled` (wave has not progressed for 30s) | HUD warning text "Wave stalled — check spawn area" appears in Zone A alongside the phase indicator; camera nudges toward the spawn cell; no layout shift to other zones |
 
 ---
 
@@ -275,9 +293,10 @@ Interactions mapped for: **Keyboard/Mouse (primary), Gamepad (partial)**. All in
 | `mission_phase_changed` | Phase indicator updates; Zone E slides in/out; banner fires (Pattern 10) |
 | `wave_started` | Wave counter updates; enemy count initialises |
 | `wave_completed` | Wave-cleared banner fires; Zone E slides in; timer resets |
-| `wave_countdown_warning` | PRE_WAVE countdown displayed; Ready button disabled |
+| `wave_countdown_warning` | PRE_WAVE countdown displayed; Ready button relabels to "skip countdown" (remains active — corrected 2026-07-14) |
 | `phase_timer_tick` | Phase timer bar and number update |
-| `monster_spawned` (tier=BOSS) | Zone C mounts; boss nameplate populates from MonsterResource |
+| `monster_spawned` (tier=BOSS) | Zone C mounts; boss nameplate populates from MonsterResource. If `_boss_telegraph_cell` is non-sentinel, this also fires PC-5's one-shot confirmation pulse at that cell, then clears it (Rule 11d) |
+| `wave_preview_available` | If `boss_spawn_cell` is non-sentinel: Boss-Lane Telegraph Marker mounts in the current Planning Cluster instance at that cell (PC-5); first-ever occurrence in the mission also fires the Pattern-10-based first-appearance callout banner |
 | `monster_died` | Enemy count decrements |
 | `monster_breached` | Breach counter increments + scale-pop; screen-edge flash fires |
 | `boss_hp_changed` | Boss HP bar updates |
@@ -287,6 +306,7 @@ Interactions mapped for: **Keyboard/Mouse (primary), Gamepad (partial)**. All in
 | `tower_destroyed` | Tower HP bar (if shown) dismounts |
 | `hero_health_changed` | Hero HP bar updates; low-HP vignette activates if `current_health / max_health < 0.20` |
 | `tower_damaged` | Tower HP bar mounts (first event for that tower) or updates (subsequent events) |
+| `wave_stalled` | HUD warning text "Wave stalled — check spawn area" appears in Zone A; camera nudges toward the spawn cell. Satisfies `design/accessibility-requirements.md`'s Gameplay-Critical SFX Audit commitment (visual backup for the wave-stuck watchdog audio cue). Dismisses when the stall condition clears (next `monster_spawn_requested` or `wave_completed`). |
 
 ### Architecture Flag
 
@@ -301,7 +321,7 @@ All timings are design targets pending art direction sign-off. All transitions m
 | Transition | Trigger | Animation | Duration | Reduced-Motion Variant |
 |---|---|---|---|---|
 | HUD mount | Mission launch | Fade in from 0% opacity | 0.3s | Instant show |
-| SCOUT → PRE_WAVE | `wave_countdown_warning` | Ready button grays; build panel dims; placement cursor fades out | 0.2s | Instant state change |
+| SCOUT → PRE_WAVE | `wave_countdown_warning` | Ready button relabels (stays active, does not gray — corrected 2026-07-14); build panel dims; placement cursor fades out | 0.2s | Instant state change |
 | PRE_WAVE → WAVE_ACTIVE | `wave_started` | Build panel (Zone E) slides out to right | 0.25s | Instant hide |
 | WAVE_ACTIVE → INTERMISSION | `wave_completed` | Build panel (Zone E) slides in from right; wave-cleared banner fires (Pattern 10) | 0.25s | Instant show + banner |
 | Boss spawns | `monster_spawned` (tier=BOSS) | Boss bar (Zone C) slides down from above Zone B top edge | 0.3s ease-out | Instant show |
@@ -311,6 +331,9 @@ All timings are design targets pending art direction sign-off. All transitions m
 | Hero HP < 20% | HP threshold crossing | Screen-edge vignette fades in over 0.5s; pulses on 1.5s sine cycle | Looping until HP recovers above threshold | Vignette shows at fixed opacity; no pulse |
 | MISSION_COMPLETE / DEFEAT | `mission_phase_changed` (terminal) | HUD fades to 0% opacity; outcome screen fades in after HUD clears | 0.5s HUD out; outcome in after | Cut to outcome screen |
 | Phase Transition Banner | Phase changes | Slides down from top-center, holds 1.5s, slides back up (Pattern 10) | ~2s total | Instant show, hold 1.5s, instant hide |
+| Boss-lane telegraph appears | `wave_preview_available` (`boss_spawn_cell` non-sentinel) | Marker (fill + outline + badge) fades in together at the target cell | 0.2s | Instant show |
+| Boss-lane telegraph confirms | `monster_spawned` (tier=BOSS) during WAVE_ACTIVE | Badge + outline scale-punch 100%→130%→100% plus one expanding ring fade (60%→0% opacity), then marker removed | 0.5s ease-out | Single 0.15s opacity flash, hold 0.3s, then removed — no scaling |
+| First-appearance callout banner (PC-5) | First-ever `wave_preview_available` with a non-sentinel `boss_spawn_cell` in the mission | Slides down from top-center, holds 2.5s, slides back up (Pattern 10, Boss Purple accent) | ~3s total | Instant show, hold 2.5s, instant hide |
 
 ---
 
@@ -384,7 +407,15 @@ Accessibility tier: **Standard** — per `design/accessibility-requirements.md`.
 | Phase transitions | Reduced motion | All slide and fade transitions have instant show/hide reduced-motion variants (see Transitions section) | Screen-edge breach flashes exempt — gameplay-critical |
 | Hero low-HP vignette | Reduced motion | Pulsing replaced with static vignette at fixed opacity when reduced motion is enabled | Per Transitions section |
 | Pause | Motor accessibility | Pause input works in all phases including WAVE_ACTIVE and boss encounters — no exceptions | Per accessibility-requirements.md Motor section |
+| Wave-stalled warning | Auditory-to-visual backup | `wave_stalled` HUD warning text + camera nudge is the committed Standard-tier visual backup for the wave-stuck watchdog audio cue | Per accessibility-requirements.md Gameplay-Critical SFX Audit table — added to this spec 2026-07-07 |
 | HUD scale | Visual accessibility | HUD scale slider independent from menu scale; range 75%–150%; layout must not break at either extreme | Test all HUD zones at 75% and 150% before ship |
+| Route-preview overlay (PC-1) | Color-as-only-indicator | Directional chevrons at turn points are a non-color reinforcement of path direction, independent of the Scout Blue line color | Per `design/gdd/mission-hud.md` Visual/Audio Requirements — added 2026-07-14 |
+| Blocked-cell two-tier emphasis (PC-2) | Color-as-only-indicator | Tier distinguished by four independent non-color channels (hatch density, outline weight, fill opacity, icon glyph) — colorblind players distinguish tiers without relying on the Threat Crimson hue at all | Per `design/gdd/mission-hud.md` Visual/Audio Requirements — added 2026-07-14 |
+| Blocked-cell Tier-2 breathing motion (PC-2) | Reduced motion | **Gap — not yet specified.** No reduced-motion fallback or explicit exemption defined for the Tier-2 outline "breathe" animation. Flagged by `/design-review` (2026-07-14) as a Recommended Revision on `design/gdd/mission-hud.md`; must be resolved (fallback or exemption, plus an explicit cycle duration) before implementation. | Open — see `design/gdd/mission-hud.md` Visual/Audio Requirements, PC-2 |
+| "Path update queued" banner (PC-3) | Color-as-only-indicator | Reuses Pattern 10 (Phase Transition Banner) with a map-mark icon in addition to its warm-amber accent color — icon is the non-color channel | Per `design/gdd/mission-hud.md` Visual/Audio Requirements — added 2026-07-14 |
+| Boss-lane telegraph marker (PC-5) | Color-as-only-indicator | Diamond outline + cross-hatch fill + skull badge glyph are non-color channels — distinguishable from the PC-1 route-preview line and PC-2 blocked-cell highlighting in grayscale and under line-occlusion (the opaque badge renders above the route line's z-order) | Per this doc's own PC-5 Asset & Animation Spec (Layout Specification) — added 2026-07-15, closes `design/gdd/mission-hud.md`'s PC-5 UX Flag |
+| Boss-lane telegraph confirmation pulse (PC-5) | Reduced motion | One-shot scale-punch + expanding ring replaced with a single 0.15s opacity flash (no scaling) when reduced motion is enabled. Not exempt like breach flashes — this pulse is a defense-in-depth confirmation, not gameplay-critical feedback | Per Transitions & Animations section — added 2026-07-15 |
+| First-appearance callout banner (PC-5) | Color-as-only-indicator | Skull glyph + explanatory text are the primary signal; Boss Purple border is redundant reinforcement, not the sole indicator | Reuses Pattern 10 — added 2026-07-15 |
 
 ---
 
@@ -402,8 +433,10 @@ A 40% text expansion (typical for English → German / French) must not break an
 | BOSS nameplate | Variable (content-authored) | Medium | Max nameplate width = 50% of screen width; overflow truncates with ellipsis at 1 line |
 | Floating damage numbers | Numbers only | None | Use locale number formatter; no translated text required |
 | Skill / Ultimate labels | Icon-only (no text in default state) | None | Tooltip on hover shows localised text — tooltip width can flex freely |
+| "Path update queued for next intermission" banner (PC-3) | 42 chars | **HIGH** | At 40% expansion this can run ~59 chars in a top-center zone with no stated width constraint. Cap translated string at 50 chars or wrap to two lines; added 2026-07-14 per `design/gdd/mission-hud.md`'s new PC-3 element — was missing from this table until `/design-review` flagged it |
+| "Boss will spawn at the marked cell" banner (PC-5) | 36 chars | **HIGH** | At 40% expansion this can run ~50 chars in the same top-center zone as PC-3's banner. Cap translated string at 45 chars or wrap to two lines; added 2026-07-15 with PC-5's first-appearance callout |
 
-**HIGH PRIORITY for localization engineer:** Phase indicator label, Ready button label, Sell button label. All three are layout-critical at default UI scale — flag for string-length audit before each locale ships.
+**HIGH PRIORITY for localization engineer:** Phase indicator label, Ready button label, Sell button label, PC-3 "Path update queued" banner, PC-5 first-appearance callout. All five are layout-critical at default UI scale — flag for string-length audit before each locale ships.
 
 ---
 
@@ -412,6 +445,7 @@ A 40% text expansion (typical for English → German / French) must not break an
 - [ ] GIVEN a mission scene becomes active, WHEN the scene tree enters, THEN the HUD is fully mounted and all Zone A elements are visible within 200ms — independent of any EventBus event.
 - [ ] GIVEN a mission is launched, WHEN the HUD mounts, THEN the phase indicator reads "SCOUT", the wave counter reads "Wave 1 / N", and the phase timer shows the configured scout duration — all within 1 frame of the `mission_phase_changed → SCOUT` event.
 - [ ] GIVEN the HUD is in SCOUT or INTERMISSION, WHEN the player presses the Ready button, THEN `player_ready` fires within 1 frame and the PRE_WAVE countdown appears within 1 frame of `wave_countdown_warning`.
+- [ ] GIVEN the HUD is in PRE_WAVE, WHEN the player presses the Ready button, THEN `player_ready` fires within 1 frame and the countdown is cancelled, transitioning immediately to WAVE_ACTIVE — the button is active (not disabled) throughout PRE_WAVE. *(Added 2026-07-14 — this GDD previously specified Ready as disabled during PRE_WAVE, contradicting `wave-manager.md`'s Approved Rule 10/EC-8.)*
 - [ ] GIVEN WAVE_ACTIVE begins, WHEN `wave_started` fires, THEN the build panel (Zone E) is fully hidden within 0.25s; the enemy count is visible in Zone A; the Ready button is not present or interactable.
 - [ ] GIVEN a BOSS spawns, WHEN `monster_spawned` (tier=BOSS) fires, THEN the boss bar (Zone C) is visible within 1 frame, showing the correct `display_name` and a full HP bar.
 - [ ] GIVEN a breach event fires, WHEN `monster_breached` is received, THEN the breach counter increments and scale-pops within 1 frame; the screen-edge flash fires and completes within 0.7s.
@@ -423,6 +457,11 @@ A 40% text expansion (typical for English → German / French) must not break an
 - [ ] GIVEN reduced motion is enabled in accessibility settings, WHEN any phase transition occurs, THEN no slide animations play — elements appear or disappear instantly; breach screen-edge flashes still fire normally.
 - [ ] GIVEN MISSION_COMPLETE fires, WHEN the HUD dismisses, THEN it is at 0% opacity within 0.5s and the outcome screen is the only visible UI layer.
 - [ ] GIVEN no tower is selected or hovered during SCOUT, WHEN the Tower Info Panel is visible, THEN it shows a "No tower selected" placeholder and no Sell button is present.
+- [ ] GIVEN `wave_preview_available` fires with a non-sentinel `boss_spawn_cell`, WHEN the marker renders, THEN it shows the diamond outline + cross-hatch fill + skull badge treatment specified above — confirmed distinguishable from a PC-2 blocked-cell highlight and a PC-1 route-preview line on the same cell by greyscale screenshot.
+- [ ] GIVEN a boss-lane telegraph marker is visible and a PC-1 route-preview line passes through the same cell, WHEN both are rendered simultaneously, THEN the skull badge remains fully legible (unobscured by the route line), confirmed by screenshot evidence.
+- [ ] GIVEN `monster_spawned` (tier=BOSS) fires during WAVE_ACTIVE with `_boss_telegraph_cell` non-sentinel, WHEN the confirmation pulse plays, THEN it completes its scale-punch + ring-fade within 0.5s and the marker is removed immediately after.
+- [ ] GIVEN reduced motion is enabled, WHEN the confirmation pulse fires, THEN no scaling or ring animation plays — a single 0.15s opacity flash plays instead, holding 0.3s before removal.
+- [ ] GIVEN this is the first time in the current mission that `_boss_telegraph_cell` has gone non-sentinel, WHEN the marker mounts, THEN the Pattern 10 first-appearance callout banner fires with the Boss Purple accent and holds for 2.5s; GIVEN a subsequent boss-lane telegraph appears later in the same mission, THEN the callout banner does not fire again.
 
 ---
 
@@ -441,3 +480,11 @@ A 40% text expansion (typical for English → German / French) must not break an
 6. **Kill feed (post-MVP)** — Monster GDD lists a kill feed (monster type + kill source, driven by `monster_died` payload: `monster_id`, `tier`, `kill_source`) as a Mission HUD forward requirement. Deferred to Alpha — breach counter + enemy count + floating damage numbers cover core kill feedback at MVP. Revisit when kill-source attribution becomes a player-facing design goal.
 
 7. **Floating number stagger** — D&S GDD EC-8 requires simultaneous hits on the same target to stagger floating numbers to avoid overlap. This is an implementation constraint on the floating damage number spawner, not a layout concern. Must be documented in the Skill Cooldown Button / floating number pattern when added to `interaction-patterns.md`.
+
+8. **`wave_preview_available` forewarning display (deferred, added 2026-07-07)** — `event-bus.md`'s catalogue names Mission HUD as the sole consumer of `wave_preview_available` (`next_wave_number`, `composition: Array[WaveCompositionEntry]`), emitted on INTERMISSION entry to deliver the upcoming wave's composition for a "forewarning" display. This spec does not yet implement any such display — deferred to Alpha, same tier as the Kill Feed item above. Breach counter + enemy count + Phase Countdown Timer cover core INTERMISSION-phase feedback at MVP; a next-wave composition preview is a nice-to-have, not core legibility. Revisit when forewarning becomes a player-facing design goal, or when Sanctuary/Mission Select UX work needs the same composition-preview pattern.
+
+9. **Ready button PRE_WAVE conflict — RESOLVED 2026-07-14.** This spec previously stated the Ready button is disabled during PRE_WAVE (Layout Hierarchy, States & Variants, Interaction Map, Transitions, and Acceptance Criteria all said so). `wave-manager.md`'s Approved Rule 10/EC-8 requires it to remain active during PRE_WAVE — pressing it cancels the countdown and jumps directly to WAVE_ACTIVE (rewards decisive players who resolve their intermission debrief quickly; explicitly states "Mission HUD should NOT disable the Ready button during PRE_WAVE"). Found during `design/gdd/mission-hud.md`'s authoring pass and corrected here in Wave Manager's favor — all five affected rows above are updated.
+
+10. **Information Hierarchy row 7 + PC-1/2/3 accessibility/localization gaps — RESOLVED 2026-07-14.** The `/design-review design/gdd/mission-hud.md` pass caught two gaps this spec's first correction (#9 above) missed: (a) the Information Hierarchy table's Ready button row still read "SCOUT, INTERMISSION" only, contradicting the five rows already corrected elsewhere in this same document; (b) the three new visual elements `design/gdd/mission-hud.md` introduces (PC-1 route-preview overlay, PC-2 blocked-cell two-tier emphasis, PC-3 "path update queued" banner) were asserted accessibility/localization-compliant only in that GDD's prose, never entered into this spec's actual binding Accessibility and Localization tables. Both fixed in this pass. One item remains genuinely open (not resolved, tracked here rather than silently fixed): PC-2's Tier-2 breathing animation still has no reduced-motion fallback/exemption or defined cycle duration — see the Accessibility table's PC-2 row above.
+
+11. **PC-5 asset/animation spec — RESOLVED 2026-07-15.** `design/gdd/mission-hud.md`'s PC-5 (Boss-Lane Telegraph Marker, Group 3b) had its color/hue resolved by Art Director decision but deferred iconography, the shape-before-color treatment, the confirmation pulse's motion cadence, and the first-appearance callout to this spec (see that GDD's UI Requirements UX Flag). All four resolved in this pass — see "PC-5 — Boss-Lane Telegraph Marker: Asset & Animation Spec" under Layout Specification, plus the corresponding rows added to Component Inventory (Zone B), States & Variants, Events Fired, Transitions & Animations, Accessibility, Localization Considerations, and Acceptance Criteria above.

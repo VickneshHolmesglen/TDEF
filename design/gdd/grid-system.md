@@ -1,9 +1,16 @@
 # Grid System
 
-> **Status**: Approved (pass 1 — 2026-05-15; 1 blocker + 4 recommended resolved in-session)
+> **Status**: Approved (pass 1 — 2026-05-15; 1 blocker + 4 recommended resolved in-session. **2026-07-17**: `mission-select.md`'s `/design-review` re-review found this doc's Tuning Knobs table, coordinate-conversion prose, and Formula variable tables still described `cell_size` as "(set per mission), 48–128" — silently contradicting OQ-4's own resolution (`cell_size` fixed at 64.0) two sections below. Fixed same-day across all 3 locations; does not reopen Approved status, this was a leftover propagation gap from OQ-4's original close, not a new defect.)
 > **Author**: Vicknesh + Claude Sonnet
-> **Last Updated**: 2026-05-15
+> **Last Updated**: 2026-07-17
 > **Implements Pillar**: Placement is the Puzzle
+
+## Engine Risk Notes (Godot 4.6.2)
+
+| API | Used for | Risk | Status |
+|-----|---------|------|--------|
+| `Dictionary[Vector2i, CellType]`, `Dictionary[Vector2i, int]`, `Dictionary[Vector2i, bool]` (typed Dictionaries) | `_cell_types`, `_occupancy`, `get_walkable_cell_map()` | MEDIUM (Godot 4.4+ feature — post-cutoff) | Verified working — exercised by the existing passing test suite. Not previously tracked in `docs/engine-reference/godot/VERSION.md`; added by this pass. |
+| `Array[Vector2i]`, `Array[int]` (typed Arrays) | Cell/entity ID lists (`get_all_occupied_cells()`, `get_towers_in_range()`, etc.) | LOW (stable since Godot 4.0) | No verification needed |
 
 ## Overview
 
@@ -21,7 +28,7 @@ The Grid System has no player fantasy of its own — it is pure infrastructure. 
 
 2. Each cell is addressed by `Vector2i(col, row)` where `(0, 0)` is the top-left cell and `(15, 11)` is the bottom-right cell (default dimensions).
 
-3. World space conversion: `cell_to_world(cell) = Vector2(cell.x * cell_size, cell.y * cell_size) + Vector2(cell_size * 0.5, cell_size * 0.5)`. The `cell_size` parameter is set per mission and determines the physical scale of the grid in the game world. The inverse `world_to_cell(world_pos) = Vector2i(floor(world_pos.x / cell_size), floor(world_pos.y / cell_size))` converts a world position to its containing cell. Uses `floor()` not integer truncation — see Formula 1.
+3. World space conversion: `cell_to_world(cell) = Vector2(cell.x * cell_size, cell.y * cell_size) + Vector2(cell_size * 0.5, cell_size * 0.5)`. `cell_size` is a fixed project-wide constant, 64.0 (see OQ-4) — not a per-mission value. The inverse `world_to_cell(world_pos) = Vector2i(floor(world_pos.x / cell_size), floor(world_pos.y / cell_size))` converts a world position to its containing cell. Uses `floor()` not integer truncation — see Formula 1.
 
 4. Each cell has exactly one `CellType`. Cells not explicitly listed in the mission's `GridConfig` are implicitly `BLOCKED`:
    - **`PLACEABLE`**: Open terrain. Towers and player-placed mission structures may be built here. Monster pathing does not route through PLACEABLE cells unless the Pathfinding System has no walkable alternative.
@@ -110,7 +117,7 @@ cell = Vector2i( floor(world_pos.x / cell_size), floor(world_pos.y / cell_size) 
 | Variable | Type | Description |
 |---|---|---|
 | `world_pos` | Vector2 | World space position (pixels or units from origin) |
-| `cell_size` | float | Size of one cell in world units (tuning knob; set per mission) |
+| `cell_size` | float | Size of one cell in world units — fixed project-wide constant, 64.0 (see OQ-4), not a per-mission value |
 | `cell` | Vector2i | Output: grid column and row |
 
 **Notes**: Uses `floor()` not integer truncation — negative world positions must round toward negative infinity to avoid off-by-one at the origin boundary. If `world_pos` is outside grid bounds, `is_in_bounds(cell)` will return false; callers must check before using the result.
@@ -187,7 +194,7 @@ validation_checks = footprint_width * footprint_height
 > A system calls a Grid read function before Mission Select System has passed a `GridConfig` (Grid state = `UNINITIALIZED`). All read functions return safe defaults: `get_cell_type` returns `BLOCKED`, `is_placeable` returns false, `get_all_occupied_cells` returns an empty array, `get_spawn_cells` returns an empty array. No assert or error is thrown — safe defaults prevent crashes during engine startup order edge cases.
 
 **EC-8: Two SPAWN cells in the same column with different rows**
-> Wave Manager calls `get_spawn_cells()` and receives multiple spawn cells. This is intentional — maps may have multiple entry points. Wave Manager is responsible for distributing monster spawns across all SPAWN cells as defined in its own GDD. The Grid makes no assumption about how spawn cells are used.
+> Wave Manager calls `get_spawn_cells()` and receives multiple spawn cells. This is intentional — maps may have multiple entry points. Wave Manager is responsible for distributing monster spawns across all SPAWN cells as defined in its own GDD. The Grid makes no assumption about how spawn cells are used. **Note (added 2026-07-15d, `/review-all-gdds` 5th pass, informational only — no change to this system's own contract):** Grid System's schema and API are spawn-count-agnostic by design, as stated above. `pathfinding.md`'s own `AC-13d` currently restricts *authored mission content* to exactly one SPAWN cell at MVP (a downstream, implementation-specific CI gate — the nearest-SPAWN routing algorithm is not yet correct for N>1), independent of what the Grid layer itself supports. This is not a contradiction between the two documents — Grid's capability is broader than what Pathfinding currently enables — but a reader should not infer multi-SPAWN maps are MVP-shippable from this entry alone.
 
 **EC-9: Pathfinding System walkability vs. PLACEABLE cell occupancy**
 > An occupied PLACEABLE cell (has a tower on it) must not be walkable for monsters. The `get_walkable_cell_map()` function returns `false` for any PLACEABLE cell where `get_occupant(cell) != -1`. This means the walkability map changes whenever towers are placed or removed. The Pathfinding System must call `get_walkable_cell_map()` fresh after each `tower_placed` or `tower_removed` event, not cache a stale version.
@@ -221,12 +228,12 @@ validation_checks = footprint_width * footprint_height
 |---|---|---|---|
 | `grid_cols` | 16 | 10–24 | Map width in cells. Lower = tighter, higher-pressure placement decisions. Higher = more room for creative layouts and multi-path constellation builds. |
 | `grid_rows` | 12 | 8–18 | Map height in cells. Pairs with `grid_cols` — together they define total buildable area. |
-| `cell_size` | (set per mission) | 48–128 (world units) | Physical size of each cell in the game world. Affects hero movement feel relative to the grid. Smaller cells = hero feels larger; larger cells = more room to navigate within a lane. |
+| `cell_size` | **64.0 (fixed project-wide constant)** *(corrected 2026-07-17 — this row previously said "(set per mission), 48–128 (world units)," contradicting OQ-4's own resolution below and `mission-select.md` Rule 2/entities.yaml's registered value; the per-mission-configurable framing was never actually implemented, only ever an unedited artifact of the pre-OQ-4 design)* | N/A — no longer a tunable range; the value is fixed | Physical size of each cell in the game world. This is no longer a per-mission or per-content-author knob — see OQ-4. |
 | `max_placeable_cells` | (derived from map layout) | — | Number of PLACEABLE cells in a mission. This is a map-design knob controlled by the `GridConfig` layout, not a code constant. |
 
 **Notes**:
 - `grid_cols` and `grid_rows` are set by Mission Select System via `GridConfig`. Different missions may have different grid sizes.
-- `cell_size` is the primary lever for visual scale without changing logical grid size. It must remain constant within a mission.
+- `cell_size` is fixed at 64.0 project-wide (see OQ-4 and the Tuning Knobs row above) — it is not a per-mission or content-authoring lever at all, contrary to this note's pre-2026-07-17 wording.
 - The default 16×12 (192 cells) is calibrated for the 15–25 minute mission target. Larger maps will extend mission length as players spend more time repositioning.
 
 ## Visual/Audio Requirements
@@ -286,8 +293,7 @@ N/A — the Grid System does not own any UI. The placement cursor, cell validity
 **OQ-3: Can maps have multiple GOAL cells (multi-lane exit)?**
 > The GDD supports this by design. Wave Manager and breach tracking must be designed to handle multiple GOAL cells. This is a Wave Manager GDD responsibility to confirm.
 
-**OQ-4: Is `cell_size` a constant per project or truly per-mission?**
-> Current spec allows per-mission `cell_size`. If all missions use the same value, it becomes a project constant suitable for registration in `design/registry/entities.yaml`. Defer to Mission Select GDD.
+**OQ-4 — RESOLVED (`design/gdd/mission-select.md` Core Rule 2, 2026-07-17):** `cell_size` is a fixed project-wide constant, **64.0** world units, for every mission — not per-mission. Registered in `design/registry/entities.yaml` as `cell_size`. `GridConfig`'s schema is unchanged (still carries a `cell_size` field); only the content-authoring discipline changes — Mission Select always populates it with this fixed value. The per-mission variation lever remains `grid_cols`/`grid_rows`/`_cell_types`, unaffected by this resolution.
 
 **OQ-5: How does the Constellation System communicate pattern detection results back through EventBus?**
 > The Grid exposes the spatial query API; Constellation performs the geometry. Constellation must emit its activation event via EventBus including the triggering cell and tower IDs. This is a Constellation System GDD responsibility — no Grid changes required.

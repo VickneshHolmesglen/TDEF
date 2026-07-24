@@ -1,0 +1,8 @@
+[gd_scene load_steps=2 format=3 uid="uid://c3m0nst3r3nt1ty"]
+
+[ext_resource type="Script" path="res://src/core/monster/monster_entity.gd" id="1_entity"]
+
+[node name="MonsterEntity" type="Area2D"]
+script = ExtResource("1_entity")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]

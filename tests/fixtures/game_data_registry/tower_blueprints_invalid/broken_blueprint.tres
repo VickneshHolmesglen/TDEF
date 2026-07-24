@@ -1,0 +1,41 @@
+[gd_resource type="Resource" script_class="TowerBlueprintData" load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://src/core/tower/tower_blueprint_data.gd" id="1"]
+[ext_resource type="Script" path="res://src/core/tower/foundation_component.gd" id="2"]
+[ext_resource type="Script" path="res://src/core/tower/weapon_component.gd" id="3"]
+[ext_resource type="Script" path="res://src/core/tower/focus_component.gd" id="4"]
+[ext_resource type="Script" path="res://src/core/tower/power_component.gd" id="5"]
+
+[sub_resource type="Resource" id="Foundation_broken"]
+script = ExtResource("2")
+archetype = "physical"
+hp_base = 100.0
+tier = 1
+tier_multiplier = 1.0
+tier_dps_multiplier = 1.0
+tier_cost_factor = 1.0
+tier_boss_dps_multiplier = 1.0
+footprint = Vector2i(1, 1)
+
+[sub_resource type="Resource" id="Weapon_broken"]
+script = ExtResource("3")
+weapon_damage = 200.0
+attack_speed = 1.0
+
+[sub_resource type="Resource" id="Focus_broken"]
+script = ExtResource("4")
+attack_range_cells = 3
+cone_half_angle = 180.0
+
+[sub_resource type="Resource" id="Power_broken"]
+script = ExtResource("5")
+
+[resource]
+script = ExtResource("1")
+tower_id = &"broken_tower"
+display_name = "Broken Tower"
+placement_cost = 10
+foundation = SubResource("Foundation_broken")
+weapon = SubResource("Weapon_broken")
+focus = SubResource("Focus_broken")
+power = SubResource("Power_broken")

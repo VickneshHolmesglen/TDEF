@@ -21,13 +21,16 @@ class _LocalBus extends Node:
 	# Wave Manager
 	signal mission_phase_changed(previous_phase: String, new_phase: String, timestamp: float)
 	signal wave_started(wave_number: int, total_waves: int, wave_difficulty: float)
-	signal wave_completed(wave_number: int, enemies_remaining: int)
+	signal wave_completed(wave_number: int, enemies_remaining: int, was_boss_breached: bool)
 	signal wave_countdown_warning(seconds_remaining: int)
 	signal phase_timer_tick(phase: String, seconds_remaining: float)
 	signal monster_spawn_requested(payload: MonsterSpawnRequest)
-	signal wave_preview_available(next_wave_number: int, composition: Array)
+	signal wave_preview_available(next_wave_number: int, composition: Array, boss_spawn_cell: Vector2i)
 	signal wave_stalled(wave_number: int, enemies_remaining: int)
 	signal player_ready()
+	# Scene Manager
+	signal scene_transition_started(target_context: String, mission_id: String)
+	signal scene_transition_completed(target_context: String, mission_id: String)
 	# Hero System
 	signal hero_auto_attacked(payload: HeroAutoAttackEvent)
 	signal hero_health_changed(current_health: float, max_health: float)
@@ -37,14 +40,14 @@ class _LocalBus extends Node:
 	signal hero_skill_activated(skill_id: String, target_position: Vector2)
 	signal hero_skill_cooldown_updated(skill_slot: int, cooldown_remaining: float, cooldown_max: float)
 	signal hero_ultimate_activated()
-	signal hero_class_unlocked(class_id: String)
+	signal hero_class_unlocked(archetype: StringName, is_deep: bool)
 	# Tower System
-	signal tower_placed(tower_id: int, grid_position: Vector2i, archetype: String, footprint: Vector2i, placed_in_scout: bool)
-	signal tower_removed(tower_id: int, grid_position: Vector2i, archetype: String)
-	signal tower_destroyed(tower_id: int, grid_position: Vector2i, archetype: String, footprint: Array)
+	signal tower_placed(payload: TowerPlacedEvent)
+	signal tower_removed(tower_id: int, grid_position: Vector2i, archetype: String, constellation_eligibility_tag: String)
+	signal tower_destroyed(tower_id: int, grid_position: Vector2i, archetype: String, footprint: Array, constellation_eligibility_tag: String)
 	signal tower_damaged(tower_id: int, damage_dealt: float, current_hp: float, max_hp: float)
 	signal tower_sell_requested(tower_id: int)
-	signal tower_component_equipped(tower_id: int, slot: String, component_id: String)
+	signal tower_component_equipped(payload: TowerComponentEquippedEvent)
 	signal tower_attacked(tower_id: int, target_monster_id: int, damage_amount: float, is_siege: bool, is_armored: bool)
 	signal tower_aura_pulse(payload: TowerAuraPulseEvent)
 	signal pre_placement_perk_activated(tower_id: int, perk_type: String)
@@ -110,7 +113,7 @@ class _LocalBus extends Node:
 	# Mission Select System
 	signal mission_selected(mission_id: String)
 	signal run_modifier_selected(modifier_id: String, modifier_value: float)
-	signal mission_launched(mission_id: String, modifiers: PackedStringArray)
+	signal mission_launched(mission_id: String, modifiers: PackedStringArray, difficulty_tier: int)
 	# Encyclopedia System
 	signal encyclopedia_entry_added(category: String, entry_id: String)
 
@@ -154,8 +157,9 @@ func test_bus_has_all_70_signals_declared() -> void:
 	# Subtract Node's built-in signals (robust to Godot version changes).
 	var node_signal_count: int = Node.new().get_signal_list().size()
 	var game_signal_count: int = signal_list.size() - node_signal_count
-	# Assert: live catalogue has 76 signals (70 original + 6 added during sprint 1 UX/system design).
-	assert_int(game_signal_count).is_equal(76)
+	# Assert: live catalogue has 78 signals (70 original + 6 added during sprint 1
+	# UX/system design + 2 added by S4-01: scene_transition_started/completed).
+	assert_int(game_signal_count).is_equal(78)
 
 # ---------------------------------------------------------------------------
 # Zero-parameter signal (player_ready, hero_died)
@@ -228,23 +232,16 @@ func test_monster_breached_delivers_stringname_and_tier() -> void:
 func test_tower_placed_delivers_all_five_typed_params() -> void:
 	# Arrange
 	var state := {"tower_id": -1, "pos": Vector2i(-1, -1), "arch": "", "foot": Vector2i(-1, -1), "scout": false}
-	var cb := func(
-		tower_id: int,
-		grid_position: Vector2i,
-		archetype: String,
-		footprint: Vector2i,
-		placed_in_scout: bool
-	) -> void:
-		state.tower_id = tower_id
-		state.pos = grid_position
-		state.arch = archetype
-		state.foot = footprint
-		state.scout = placed_in_scout
+	var cb := func(payload: TowerPlacedEvent) -> void:
+		state.tower_id = payload.tower_id
+		state.pos = payload.grid_position
+		state.arch = payload.archetype
+		state.foot = payload.footprint
+		state.scout = payload.placed_in_scout
 	_bus.tower_placed.connect(cb)
 
 	# Act
-	_bus.tower_placed.emit(10, Vector2i(3, 4), "RANGED", Vector2i(2, 2), true)
-
+	_bus.tower_placed.emit(TowerPlacedEvent.make(10, Vector2i(3, 4), "RANGED", Vector2i(2, 2), true, ""))
 	# Assert
 	assert_int(state.tower_id).is_equal(10)
 	assert_that(state.pos).is_equal(Vector2i(3, 4))

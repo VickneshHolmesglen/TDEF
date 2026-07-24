@@ -1,0 +1,328 @@
+class_name PlanningCluster
+extends Control
+
+## Planning Cluster scaffold (Story 002, TR-hud-000, ADR-0031).
+##
+## GDD source: design/gdd/mission-hud.md — Core Rules Group 2 (Rules 5-8).
+## Instantiated fresh from PlanningCluster.tscn on every SCOUT/INTERMISSION
+## mount, torn down (remove_child() then queue_free(), never queue_free()
+## alone) on every WAVE_ACTIVE entry — owned by MissionHud (Story 002's own
+## MissionHud extension).
+##
+## This story owns only the phase-gated interactivity toggle (Rule 6's
+## PRE_WAVE partial-interactivity requirement, set_pre_wave_interactivity())
+## and the empty scaffold structure. Stories 003-007 fill in the actual
+## content of each element below (route-preview overlay, blocked-cell
+## highlight, Tower Build Panel, boss-lane telegraph marker, wave-composition
+## display) — none of that rendering logic belongs here.
+
+## Story 003 (TR-hud-001, PC-1): fires whenever this instance recomputes its
+## own route (in response to path_invalidated) — MissionHud (the outer root)
+## listens so its "last-known route" cache (Rule 11) stays in sync for the
+## NEXT Planning Cluster mount, without this node needing a reference back
+## to its own parent.
+signal route_updated(routes: Array)
+
+@onready var _ready_button: Button = $ReadyButton
+## Story 010: Sell has its own phase+selection-driven visibility (AC-52),
+## decoupled from NonReadyControls' group-level disable — it must actually
+## disappear during PRE_WAVE, not just become non-interactive, so it's a
+## sibling of NonReadyControls rather than a child of it.
+@onready var _sell_button: Button = $SellButton
+## Everything except Ready/Sell — build list, cell overlay/cursor.
+## During PRE_WAVE, every child of this container becomes non-interactive
+## (Rule 6) without being destroyed or hidden.
+@onready var _non_ready_controls: Control = $NonReadyControls
+## Holds one Line2D per SPAWN cell's rendered route (Story 003, Rules 9-11).
+@onready var _route_overlay_host: Node2D = $RouteOverlayHost
+## Holds one marker per blocked cell from the most recent tower_placement_blocked (Story 004, Rule 12).
+@onready var _blocked_cell_host: Node2D = $BlockedCellHost
+## Holds the single boss-lane telegraph marker, if any (Story 006, Rule 11c).
+@onready var _boss_telegraph_host: Node2D = $BossTelegraphHost
+## Holds the wave-composition preview lines (Story 007, Rules 11f-11i).
+@onready var _composition_preview_host: VBoxContainer = $CompositionPreviewHost
+
+## MonsterResource.tier index -> display bucket name (matches MissionHud's
+## BOSS_TIER=2 comment: 0=STANDARD 1=ELITE 2=BOSS). Fixed engine-side vocabulary,
+## not game-balance data — not a gameplay-code-rules violation to keep local.
+const TIER_NAMES: Array[String] = ["STANDARD", "ELITE", "BOSS"]
+
+## cell_size is a fixed project-wide constant (mission-select.md's OQ-4
+## resolution, registered in design/registry/entities.yaml) — not a local
+## guess. Used only to size the blocked-cell highlight markers.
+const CELL_SIZE_PX: float = 64.0
+
+## Test hook (AC-9/AC-12): true once _exit_tree() has actually run, proving
+## the synchronous remove_child()-then-queue_free() teardown sequence
+## disconnected this instance before a replacement could connect.
+var _exit_tree_fired: bool = false
+
+## Story 008 (ADR-0011): handed down by MissionHud right after instantiate()
+## via set_input_mode_tracker() — not available yet inside this node's own
+## _ready() (add_child() fires _ready() before the caller's next line runs),
+## so the focus-ring's initial state/connection is established there instead.
+var _input_mode_tracker: InputModeTracker = null
+var _ready_focus_ring: Panel = null
+
+const READY_LABEL: String = "Ready"
+const SKIP_LABEL: String = "Skip Countdown"  ## AC-42 — exact copy is a UX Spec concern, this is a placeholder
+
+## Story 010: -1 = no tower currently inspected (sentinel, matches this
+## story's own Implementation Notes). Tower Info Panel selection mechanics
+## themselves are out of scope — this cluster only reads/holds the id.
+var _inspected_tower_id: int = -1
+var _is_pre_wave: bool = false
+var _sell_focus_ring: Panel = null
+
+
+func _ready() -> void:
+	GEventBus.path_invalidated.connect(_on_path_invalidated)
+	GEventBus.tower_placement_blocked.connect(_on_tower_placement_blocked)
+	_ready_button.pressed.connect(_on_ready_pressed)
+	_build_ready_focus_ring()
+	_ready_button.focus_entered.connect(_update_ready_focus_ring)
+	_ready_button.focus_exited.connect(_update_ready_focus_ring)
+	_sell_button.pressed.connect(_on_sell_pressed)
+	_build_sell_focus_ring()
+	_sell_button.focus_entered.connect(_update_sell_focus_ring)
+	_sell_button.focus_exited.connect(_update_sell_focus_ring)
+	_update_sell_button_existence()
+
+
+func _exit_tree() -> void:
+	if GEventBus.path_invalidated.is_connected(_on_path_invalidated):
+		GEventBus.path_invalidated.disconnect(_on_path_invalidated)
+	if GEventBus.tower_placement_blocked.is_connected(_on_tower_placement_blocked):
+		GEventBus.tower_placement_blocked.disconnect(_on_tower_placement_blocked)
+	if _input_mode_tracker != null and _input_mode_tracker.input_mode_changed.is_connected(_update_ready_focus_ring):
+		_input_mode_tracker.input_mode_changed.disconnect(_update_ready_focus_ring)
+	if _input_mode_tracker != null and _input_mode_tracker.input_mode_changed.is_connected(_update_sell_focus_ring):
+		_input_mode_tracker.input_mode_changed.disconnect(_update_sell_focus_ring)
+	_exit_tree_fired = true
+
+
+# ---------------------------------------------------------------------------
+# Story 008 (Rules 16-18, Rules 23-24): Ready Button + InputModeTracker wiring.
+# ---------------------------------------------------------------------------
+
+## AC-41: fires synchronously, no HUD-side phase guard — Wave Manager is the
+## sole authority (defense in depth pattern, same as Sell/Ultimate). AC-44:
+## a stray press in the one-frame lag before this instance's own teardown is
+## a non-issue by design (Wave Manager already silently ignores player_ready
+## during WAVE_ACTIVE) — no debounce needed here.
+func _on_ready_pressed() -> void:
+	GEventBus.player_ready.emit()
+
+
+## AC-43: instanced once at MissionHud's root, shared across this epic's
+## focusable controls — this cluster only holds a reference, connects to its
+## input_mode_changed signal, and disconnects on its own teardown (_exit_tree()).
+func set_input_mode_tracker(tracker: InputModeTracker) -> void:
+	_input_mode_tracker = tracker
+	_input_mode_tracker.input_mode_changed.connect(_update_ready_focus_ring)
+	_input_mode_tracker.input_mode_changed.connect(_update_sell_focus_ring)
+	_update_ready_focus_ring()
+	_update_sell_focus_ring()
+
+
+## Overlay child of ReadyButton, gated on has_focus() AND
+## tracker.is_focus_ring_visible() — never merged into one boolean (ADR-0011),
+## matching inventory_screen.gd's established FocusRing pattern.
+func _build_ready_focus_ring() -> void:
+	_ready_focus_ring = FocusRingFactory.build(_ready_button)
+
+
+func _update_ready_focus_ring(_arg: Variant = null) -> void:
+	if _input_mode_tracker == null:
+		return
+	_ready_focus_ring.visible = _ready_button.has_focus() and _input_mode_tracker.is_focus_ring_visible()
+
+
+## Story 004 (Rule 12, PC-2): highlights blocked_cells to indicate the
+## rejected footprint. AC-20/AC-21: primary_blocking_cell's sentinel
+## (Vector2i(-1,-1)) branches between "one cell anchors attention" and
+## "uniform, no single load-bearing cell" — both driven by the same event,
+## a single function, never two independently-drifting code paths. No phase
+## guard (AC-22) — tower_placement_blocked can only fire during SCOUT/
+## INTERMISSION, enforced upstream by Tower/Pathfinding.
+func _on_tower_placement_blocked(blocked_cells: Array, primary_blocking_cell: Vector2i) -> void:
+	for child: Node in _blocked_cell_host.get_children():
+		_blocked_cell_host.remove_child(child)
+		child.queue_free()
+	for cell: Vector2i in blocked_cells:
+		var marker := ColorRect.new()
+		var is_primary: bool = primary_blocking_cell != Vector2i(-1, -1) and cell == primary_blocking_cell
+		marker.color = Color(1.0, 0.85, 0.0, 0.9) if is_primary else Color(1.0, 0.2, 0.2, 0.5)
+		marker.size = Vector2(CELL_SIZE_PX, CELL_SIZE_PX)
+		var world_pos: Vector2 = GGrid.cell_to_world(cell) - Vector2(CELL_SIZE_PX, CELL_SIZE_PX) * 0.5
+		marker.position = get_viewport().get_canvas_transform() * world_pos
+		marker.set_meta("cell", cell)
+		marker.set_meta("is_primary", is_primary)
+		_blocked_cell_host.add_child(marker)
+
+
+## Story 006 (Rule 11c, AC-30): renders the boss-lane telegraph marker at
+## cell, or clears it if cell is the sentinel. Called by MissionHud (the
+## outer root) whenever it caches a new value from wave_preview_available
+## (Story 006's own AC-28) or hands off to a freshly-spawned instance.
+func set_boss_telegraph_cell(cell: Vector2i) -> void:
+	for child: Node in _boss_telegraph_host.get_children():
+		_boss_telegraph_host.remove_child(child)
+		child.queue_free()
+	if cell == Vector2i(-1, -1):
+		return
+	var marker := ColorRect.new()
+	marker.color = Color(0.494, 0.180, 0.722, 0.7)  # Boss Purple (#7E2EB8), art-bible reference
+	marker.size = Vector2(CELL_SIZE_PX, CELL_SIZE_PX)
+	var world_pos: Vector2 = GGrid.cell_to_world(cell)
+	marker.position = get_viewport().get_canvas_transform() * world_pos - marker.size * 0.5
+	marker.set_meta("cell", cell)
+	_boss_telegraph_host.add_child(marker)
+
+
+## AC-14: re-derives the route via find_path() — NEVER renders affected_cells
+## (the union of changed-walkability cells, a tower's footprint) directly as
+## a route line. AC-17/AC-18: no phase guard here by construction — this
+## instance does not exist during WAVE_ACTIVE (Story 002's teardown), so it
+## structurally cannot receive path_invalidated in that phase; PRE_WAVE is
+## treated identically to INTERMISSION simply by having no special case for it.
+func _on_path_invalidated(_affected_cells: Array) -> void:
+	var routes: Array = []
+	for spawn_cell: Vector2i in GGrid.get_spawn_cells():
+		routes.append(GPathfindingSystem.find_path(spawn_cell, 0))
+	render_route(routes)
+	route_updated.emit(routes)
+
+
+## Renders one Line2D per route, screen-space via Grid.cell_to_world()
+## composed with the viewport's canvas transform (matching ADR-0031's own
+## established cell-to-screen conversion for this CanvasLayer-hosted HUD).
+##
+## Clears prior children via synchronous remove_child() before queue_free()
+## — the same double-connected/stale-state bug class ADR-0031's own
+## engine-specialist review caught in the Planning Cluster's swap sequence:
+## queue_free() alone defers removal to end-of-frame, so a second
+## render_route() call within the same frame (e.g. templates_ready
+## immediately followed by a path_invalidated) would see the old, not-yet-
+## freed children still present.
+func render_route(routes: Array) -> void:
+	for child: Node in _route_overlay_host.get_children():
+		_route_overlay_host.remove_child(child)
+		child.queue_free()
+	for route: Array in routes:
+		var line := Line2D.new()
+		for cell: Vector2i in route:
+			var world_pos: Vector2 = GGrid.cell_to_world(cell)
+			line.add_point(get_viewport().get_canvas_transform() * world_pos)
+		_route_overlay_host.add_child(line)
+
+
+## Story 007 (Rules 11f-11i, PC-5 composition half): dispatches to the full
+## per-monster breakdown (SCOUT, AC-36) or the tier-bucketed summary
+## (INTERMISSION, AC-35). current_planning_phase is the phase this specific
+## instance was (re)instantiated into (MissionHud's _current_phase at mount
+## time, handed down synchronously) — never re-derived from composition's own
+## shape (AC-37). AC-38: this instance's host starts empty by construction
+## every mount, so no explicit clear-before-first-render is needed here; the
+## clear inside each render helper only guards a second wave_preview_available
+## arriving within the same mount (should not happen per Rule 11h, but keeps
+## this symmetric with render_route()/_on_tower_placement_blocked()'s own
+## clear-then-repopulate pattern).
+func render_composition_preview(composition: Array, current_planning_phase: String) -> void:
+	if current_planning_phase == "SCOUT":
+		_render_full_breakdown(composition)  # AC-36
+	else:  # INTERMISSION
+		_render_tier_bucketed(composition)  # AC-35
+
+
+## AC-35: one line per non-zero tier bucket (never a bucket with count 0),
+## e.g. 2 lines for "10 STANDARD, 2 ELITE" when no BOSS entry is present.
+func _render_tier_bucketed(composition: Array) -> void:
+	_clear_composition_preview_host()
+	var totals: Dictionary[String, int] = {"STANDARD": 0, "ELITE": 0, "BOSS": 0}
+	for entry: Dictionary in composition:
+		var resource: MonsterResource = GGameDataRegistry.get_monster_resource(entry["monster_id"])
+		if resource == null:
+			continue
+		totals[TIER_NAMES[resource.tier]] += entry["count"] as int
+	for tier_name: String in TIER_NAMES:
+		if totals[tier_name] > 0:
+			var label := Label.new()
+			label.text = "%d %s" % [totals[tier_name], tier_name]
+			_composition_preview_host.add_child(label)
+
+
+## AC-36: one line per WaveSpawnEntry-aggregated composition entry, resolved
+## to display_name — NO tier aggregation, full information per tower.md
+## Rule 8's "complete information" mandate for SCOUT's Wave 1 preview.
+func _render_full_breakdown(composition: Array) -> void:
+	_clear_composition_preview_host()
+	for entry: Dictionary in composition:
+		var resource: MonsterResource = GGameDataRegistry.get_monster_resource(entry["monster_id"])
+		if resource == null:
+			continue
+		var label := Label.new()
+		label.text = "%s x%d" % [resource.display_name, entry["count"] as int]
+		_composition_preview_host.add_child(label)
+
+
+func _clear_composition_preview_host() -> void:
+	for child: Node in _composition_preview_host.get_children():
+		_composition_preview_host.remove_child(child)
+		child.queue_free()
+
+
+## AC-10: Ready remains interactive; every other child in this cluster
+## becomes non-interactive. Reversed automatically on the next SCOUT/
+## INTERMISSION mount, since a fresh instance always starts fully
+## interactive by construction (never called with is_pre_wave=false
+## explicitly — a new instance simply never enters this state).
+func set_pre_wave_interactivity(is_pre_wave: bool) -> void:
+	_ready_button.text = SKIP_LABEL if is_pre_wave else READY_LABEL  # AC-42
+	_is_pre_wave = is_pre_wave
+	_update_sell_button_existence()  # AC-52 — Sell disappears during PRE_WAVE regardless of selection
+	for child: Node in _non_ready_controls.get_children():
+		if child is BaseButton:
+			(child as BaseButton).disabled = is_pre_wave
+		elif child is Control:
+			(child as Control).mouse_filter = Control.MOUSE_FILTER_IGNORE if is_pre_wave else Control.MOUSE_FILTER_STOP
+
+
+# ---------------------------------------------------------------------------
+# Story 010 (Rules 21-22): Sell Button.
+# ---------------------------------------------------------------------------
+
+## AC-52: exists (visible) only outside PRE_WAVE AND while a tower is
+## inspected. Called by set_pre_wave_interactivity() and set_inspected_tower()
+## — the two independent axes this AC gates on.
+func _update_sell_button_existence() -> void:
+	_sell_button.visible = not _is_pre_wave and _inspected_tower_id != -1
+
+
+## Public setter for the (out-of-scope, assumed-external) Tower Info Panel
+## selection state — this story only reads/holds the id, per its own scope note.
+func set_inspected_tower(tower_id: int) -> void:
+	_inspected_tower_id = tower_id
+	_update_sell_button_existence()
+
+
+## AC-53: synchronous, current tower_id. AC-54: clears the Info Panel
+## selection optimistically (i.e. this cluster's own knowledge of it) — does
+## NOT remove the tower visually or touch any counter; that only happens on
+## the separate, later tower_removed confirmation (Tower System's job, not
+## this story's). AC-55: no HUD-side "one sell at a time" guard — a second,
+## different tower_id can be inspected and sold immediately after, both
+## tower_sell_requested calls independently in flight.
+func _on_sell_pressed() -> void:
+	GEventBus.tower_sell_requested.emit(_inspected_tower_id)
+	set_inspected_tower(-1)
+
+
+func _build_sell_focus_ring() -> void:
+	_sell_focus_ring = FocusRingFactory.build(_sell_button)
+
+
+func _update_sell_focus_ring(_arg: Variant = null) -> void:
+	if _input_mode_tracker == null:
+		return
+	_sell_focus_ring.visible = _sell_button.has_focus() and _input_mode_tracker.is_focus_ring_visible()

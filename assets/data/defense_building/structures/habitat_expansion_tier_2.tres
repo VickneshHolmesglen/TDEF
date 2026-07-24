@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="StructureResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/core/defense_building/structure_resource.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+structure_id = &"habitat_expansion_tier_2"
+structure_type = "habitat_expansion"
+tier = 2
+prerequisite_structure_id = &"habitat_expansion_tier_1"
+tech_gate = &"tech_structural_1"
+gold_cost = 120
+material_costs = {
+&"Common": 35,
+&"Uncommon": 12
+}

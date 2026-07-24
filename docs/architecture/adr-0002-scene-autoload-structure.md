@@ -24,7 +24,7 @@ Accepted
 | **Depends On** | ADR-0001 (EventBus must be Accepted — SceneManager uses EventBus for scene-state broadcasts) |
 | **Enables** | ADR-0005 (Grid system — Autoload #3); ADR-0006 (Monster movement — confirms Area2D scene root); all Foundation and Core implementation stories |
 | **Blocks** | All implementation stories. Autoload boot order must be set in Project Settings before any scene can be run. |
-| **Ordering Note** | Autoload #1 (EventBus) confirmed by ADR-0001. This ADR confirms the full 7-Autoload order and the Autoload/scene-instanced boundary for all 25 systems. Revised 2026-05-23: ADR-0009 added GameDataRegistry at position 5, SceneManager shifted to 6. Revised 2026-05-24: ADR-0012 confirmed WaveManager as Autoload at position 7, superseding the scene-instanced classification in the original decision (see Alternative C revision note). |
+| **Ordering Note** | Autoload #1 (EventBus) confirmed by ADR-0001. This ADR confirms the full Autoload order and the Autoload/scene-instanced boundary for all 25 systems. Revised 2026-05-23: ADR-0009 added GameDataRegistry at position 5, SceneManager shifted to 6. Revised 2026-05-24: ADR-0012 confirmed WaveManager as Autoload at position 7, superseding the scene-instanced classification in the original decision (see Alternative C revision note). Revised 2026-07-13: ADR-0018 added MissionEconomy at position 8 (owns the runtime gold balance; boots after WaveManager). **Revised 2026-07-17 (five times, same session)**: (1) Inventory reclassified **Autoload #9** (ADR-0016 correction) — ADR-0021's cross-system methods must be callable as bare globals (ADR-0020 Criterion A). (2) **DefenseBuilding added Autoload #10** (ADR-0024) for the identical reason (`is_tech_unlocked()`), renumbered from an original #9 once Inventory claimed that slot. (3) **Menagerie added Autoload #11** (ADR-0026) for the identical reason again (`request_sacrifice()`, Criterion B, called by Equipment Forge/ADR-0025). (4) **MissionSelect added Autoload #12** (ADR-0028) — this one for a *second*, independent reason beyond the Criterion-B `retry_current_mission()` call: `MissionRuntimeState` must survive the SANCTUARY→MISSION scene transition, which a scene-instanced node (its original classification here) cannot do since it is freed on scene unload. (5) **HeroSkillBuild added Autoload #13** (ADR-0030) for the same scene-transition-survival class of reason as MissionSelect — its resolved Ultimate/active-slot state must exist continuously across the SANCTUARY→MISSION boundary so a freshly-instantiated Hero receives it at `mission_launched`. Five Sanctuary-context systems in a row were originally designed as scene-instanced per this ADR's own Boundary table and each had to be corrected once their actual GDD-specified requirements were examined — exactly the recurring pattern this ADR's own Risks section (added after the third correction, and explicitly not sufficient to prevent the fourth or fifth) flagged as worth checking for on every new ADR. With all 11 originally-required ADRs from the 2026-07-17 review now written, this pattern should be considered closed for this batch — any future Sanctuary-context system ADR should check this boundary table *first*. The tables below are updated accordingly; this remains a 13-Autoload build invariant, not 8. |
 
 ## Context
 
@@ -44,6 +44,7 @@ The game has 25 systems split across two top-level contexts (SANCTUARY and MISSI
 - Hero requires physics-based movement (`move_and_slide()`).
 - Monster requires overlap detection but position-based movement (no physics-driven velocity).
 - Wave Manager owns the inner mission phase FSM — it is an Autoload (position 7) that initialises to IDLE and communicates exclusively via EventBus (no direct references to scene-instanced nodes). See ADR-0012.
+- Mission Economy owns the runtime gold balance — it is an Autoload (position 8) that resets to 0 on `mission_launched`, mutates only via the `resources_changed` EventBus subscription, and exposes a direct-call read API (`get_gold_balance()`, `can_afford()`) for latency-sensitive callers such as Tower's placement gate. See ADR-0018.
 
 ## Decision
 
@@ -58,6 +59,12 @@ The game has 25 systems split across two top-level contexts (SANCTUARY and MISSI
 | 5 | `GameDataRegistry` | `src/core/game_data_registry.gd` | Preloads all MonsterResources and TowerPerkRegistry at boot; must exist before WaveManager or any mission scene loads data | ADR-0009 (Accepted 2026-05-24) |
 | 6 | `SceneManager` | `src/core/scene_manager.gd` | Owns SANCTUARY↔MISSION transitions; boots after all data Autoloads | ADR-0002 (revised) |
 | 7 | `WaveManager` | `src/gameplay/wave_manager.gd` | Mission FSM Autoload; initialises to IDLE; boots after all infrastructure and data Autoloads; communicates exclusively via EventBus | ADR-0012 (Accepted 2026-05-24) |
+| 8 | `MissionEconomy` | `src/core/mission_economy.gd` | Owns the runtime gold balance (`_gold_balance: int`); resets on `mission_launched`, mutates only via `resources_changed`; boots after WaveManager | ADR-0018 (Accepted 2026-07-13) |
+| 9 | `Inventory` | `src/core/inventory.gd` | Owns `inventory_item_data`; exposes `has_items()`/`has_room_for()`/`clear_damaged_flag()`/`apply_rune_to_item()` as direct-call methods (ADR-0020 Criterion A) to Crafting, Equipment Forge, Menagerie, Defense Building; only depends on GameDataRegistry (#5), appended after MissionEconomy to avoid renumbering 1–8 | ADR-0016 (Accepted 2026-07-11; Autoload status resolved 2026-07-17), ADR-0021 |
+| 10 | `DefenseBuilding` | `src/core/defense_building.gd` | Owns the tech/structure ledgers; exposes `is_tech_unlocked()` as a direct-call method (ADR-0020 Criterion A) to Crafting; boots after Inventory since it calls Inventory's methods | ADR-0024 (Proposed 2026-07-17) |
+| 11 | `Menagerie` | `src/core/menagerie.gd` | Owns creature lifecycle state; exposes `request_sacrifice()` as a direct-call method (ADR-0020 Criterion B) to Equipment Forge; boots after DefenseBuilding, no Autoload-time dependency between the two | ADR-0026 (Proposed 2026-07-17) |
+| 12 | `MissionSelect` | `src/core/mission_select.gd` | Owns mission catalogue completion state and `MissionRuntimeState`; exposes `retry_current_mission()` as a direct-call method (ADR-0020 Criterion B) to Mission HUD; MissionRuntimeState must survive the SANCTUARY→MISSION scene transition, which requires Autoload status independent of the direct-call reason; boots after Menagerie, no Autoload-time dependency between the two | ADR-0028 (Proposed 2026-07-17) |
+| 13 | `HeroSkillBuild` | `src/core/hero_skill_build.gd` | Owns equippable-skill library, active/passive slot bindings, and Ultimate derivation; resolved Ultimate/slot state must exist continuously across the SANCTUARY→MISSION transition so a freshly-instantiated Hero receives it at `mission_launched`; boots after MissionSelect, no Autoload-time dependency between the two | ADR-0030 (Proposed 2026-07-17) |
 
 **This order is a build invariant.** Adding any new Autoload requires an ADR revision to verify boot dependency ordering.
 
@@ -72,13 +79,20 @@ The game has 25 systems split across two top-level contexts (SANCTUARY and MISSI
 | GameDataRegistry | Autoload #5 | Preloads entity Resource definitions at boot; read by WaveManager and Monster System |
 | SceneManager | Autoload #6 | Cross-context transition owner |
 | WaveManager | Autoload #7 | Mission FSM Autoload; IDLE between missions; EventBus-only cross-system communication; no direct scene-node references (see ADR-0012) |
+| MissionEconomy | Autoload #8 | Owns the runtime gold balance; resets on `mission_launched`; EventBus-only mutation, direct-call read API (see ADR-0018) |
+| Inventory | Autoload #9 | Owns `inventory_item_data`; direct-call query/mutation API consumed by 4 Sanctuary systems (see ADR-0016 correction, ADR-0021) — **reclassified 2026-07-17**, was originally scene-instanced in this ADR |
+| DefenseBuilding | Autoload #10 | Owns the tech/structure ledgers; direct-call read API (`is_tech_unlocked()`) consumed by Crafting (see ADR-0024) — **added 2026-07-17** |
+| Menagerie | Autoload #11 | Owns creature lifecycle state; direct-call action API (`request_sacrifice()`) consumed by Equipment Forge (see ADR-0026) — **reclassified 2026-07-17**, was originally scene-instanced in this ADR |
+| MissionSelect | Autoload #12 | Owns mission completion ledger and `MissionRuntimeState`; direct-call action API (`retry_current_mission()`) consumed by Mission HUD (see ADR-0028) — **reclassified 2026-07-17**, was originally scene-instanced in this ADR; `MissionRuntimeState` survival across the SANCTUARY→MISSION scene transition is an independent, additional reason for Autoload status beyond the direct-call requirement |
+| HeroSkillBuild | Autoload #13 | Owns equippable-skill library, active/passive slot bindings, Ultimate derivation (see ADR-0030) — **new system, added 2026-07-17**; resolved Ultimate/slot state must exist continuously across the SANCTUARY→MISSION transition so a freshly-instantiated Hero receives it at `mission_launched` |
 | Hero | Scene-instanced | Mission-only; recreated each mission |
 | TowerManager | Scene-instanced | Mission-only |
 | MonsterManager | Scene-instanced | Mission-only |
 | DamageStatusSystem | Scene-instanced | Mission-only |
 | ConstellationSystem | Scene-instanced | Mission-only |
-| Inventory, Resource Economy | Scene-instanced | State owned by Save; subscribe to EventBus |
-| Crafting, Menagerie, Defense Building | Scene-instanced | Sanctuary context only |
+| Resource Economy | Scene-instanced | State owned by Save; subscribes to EventBus; no direct-call surface (see ADR-0017) |
+| Crafting | Scene-instanced | Sanctuary context only; no other system calls into it directly |
+| Equipment Forge | Scene-instanced | Sanctuary context only; calls Inventory/Menagerie as caller, but nothing calls into it directly (see ADR-0025) |
 | All Presentation (HUD, UI) | Scene-instanced | Context-specific |
 
 ### Scene Hierarchy
@@ -105,13 +119,11 @@ MissionScene (Node)
 SanctuaryScene (Node)
 ├── SanctuaryWorld (Node2D — background, structures, visual state)
 ├── CraftingSystem (Node)
-├── MenagerieSystem (Node)
-├── DefenseBuildingSystem (Node)
-├── InventorySystem (Node)
+├── EquipmentForgeSystem (Node)
 ├── ResourceEconomy (Node)
-├── MissionSelectSystem (Node)
 └── SanctuaryUI (CanvasLayer)
 ```
+> **Note** (revised 2026-07-17, four times, same session): `InventorySystem`, `DefenseBuildingSystem`, `MenagerieSystem`, and `MissionSelectSystem` are **not** children of this scene — all four are Autoloads (#9, #10, #11, #12 respectively, see Autoload Boot Order above), each reclassified from an original scene-instanced listing here so their query/mutation/action methods are callable as direct-Autoload calls (ADR-0020 Criterion A/B) by Crafting, Equipment Forge, Mission HUD, and each other, without any of those callers holding a node reference into this scene. MissionSelect's reclassification (ADR-0028) has a second, independent justification beyond the direct-call requirement: its `MissionRuntimeState` must survive the SANCTUARY→MISSION scene transition, which this scene's own teardown would otherwise destroy. `EquipmentForgeSystem` remains scene-instanced (added to this hierarchy 2026-07-17) — nothing calls into it directly, only out of it, so it needs no Autoload status (see ADR-0025 Alternative B).
 
 ### Entity Scene Root Choices
 
@@ -148,19 +160,21 @@ func transition_to_sanctuary() -> void
 PROJECT LAUNCH
   │
   ▼ Autoloads boot in order
-  EventBus(1) → SavePersistence(2) → Grid(3) → Pathfinding(4) → GameDataRegistry(5) → SceneManager(6) → WaveManager(7)
+  EventBus(1) → SavePersistence(2) → Grid(3) → Pathfinding(4) → GameDataRegistry(5) → SceneManager(6) → WaveManager(7) → MissionEconomy(8) → Inventory(9) → DefenseBuilding(10) → Menagerie(11) → MissionSelect(12) → HeroSkillBuild(13)
   │
   ▼ SceneManager loads initial scene
   ┌──────────────────┐         ┌─────────────────────────┐
   │  SanctuaryScene  │  Scene  │     MissionScene        │
   │  Crafting        │  Mgr    │  Hero (CharacterBody2D) │
-  │  Menagerie       │  loads  │  MonsterMgr (Area2D)    │
-  │  Defense Bldg    │ ◄─────► │  TowerMgr (Node2D)      │
-  │  Inventory       │         │  D&S, Constellation     │
-  │  Resource Econ   │         │  MissionHUD             │
+  │  EquipmentForge  │  loads  │  MonsterMgr (Area2D)    │
+  │  Resource Econ   │ ◄─────► │  TowerMgr (Node2D)      │
+  │                  │         │  D&S, Constellation     │
+  │                  │         │  MissionHUD             │
   └──────────────────┘         └─────────────────────────┘
-  Autoloads persist across both scenes (EventBus, Save, Grid, Pathfinding, GameDataRegistry, SceneManager, WaveManager)
+  Autoloads persist across both scenes (EventBus, Save, Grid, Pathfinding, GameDataRegistry, SceneManager, WaveManager, MissionEconomy, Inventory, DefenseBuilding, Menagerie, MissionSelect, HeroSkillBuild)
   WaveManager idles in IDLE state during SanctuaryScene; activates on mission_launched
+  MissionEconomy holds a stale balance during SanctuaryScene; resets to 0 on the next mission_launched
+  Inventory, DefenseBuilding, Menagerie, MissionSelect, and HeroSkillBuild are always live (both scenes) but their screens are only reachable while SanctuaryScene is loaded — Sanctuary-only per their own GDDs' Rule 11/similar. MissionSelect's MissionRuntimeState and HeroSkillBuild's resolved Ultimate/slot bindings are the two pieces of this group actively read DURING MissionScene (the former by retry_current_mission() on DEFEAT; the latter by the freshly-instantiated Hero at mission_launched) — the others are read only in Sanctuary.
 ```
 
 ## Alternatives Considered
@@ -185,17 +199,21 @@ PROJECT LAUNCH
 ## Consequences
 
 ### Positive
-- The 7-Autoload order is a single, verifiable invariant — simple to audit in Project Settings.
+- The 10-Autoload order is a single, verifiable invariant — simple to audit in Project Settings.
 - Scene-instanced systems reset cleanly on scene reload without Autoload cleanup complexity.
 - SceneManager owns loading screens and transition cleanup as a single responsibility.
 - Area2D monster roots allow 100+ simultaneous entities within the performance budget.
+- Inventory/DefenseBuilding/Menagerie/MissionSelect/HeroSkillBuild as Autoloads means their direct-call query/action APIs (ADR-0021, ADR-0024, ADR-0026, ADR-0028, ADR-0030) never require a caller to hold a node reference into any of the five — closes the gap that would otherwise force Crafting/Equipment Forge/Mission HUD/Hero into an ADR-0001 violation just to read their state or trigger their actions.
+- MissionSelect's and HeroSkillBuild's Autoload status additionally means their session-critical state (`MissionRuntimeState`, resolved Ultimate/slot bindings) genuinely survives the SANCTUARY→MISSION transition — bugs both ADR-0028 and ADR-0030 caught before they could manifest as runtime data-loss defects.
 
 ### Negative
-- 5 global Autoload singletons — GDScript has no access modifiers to prevent misuse. Convention and code review are the only enforcement mechanisms.
+- 13 global Autoload singletons — GDScript has no access modifiers to prevent misuse. Convention and code review are the only enforcement mechanisms.
 - SceneManager exists in Sanctuary even when idle. Its idle state must be well-defined (no active mission reference held).
+- Inventory, DefenseBuilding, Menagerie, MissionSelect, and HeroSkillBuild now persist for the entire game lifetime rather than being freed/recreated with the Sanctuary scene — their internal state must be explicitly reset only via `SaveRestorer.reset_to_defaults()` (a new-game path), never implicitly by scene teardown, since there is no scene teardown for an Autoload. (MissionSelect's `MissionRuntimeState` and HeroSkillBuild's resolved Ultimate are the exceptions within this group — both are explicitly never persisted, so `reset_to_defaults()` need not clear them, only each system's actually-persisted structures.)
 
 ### Risks
-- **Risk**: A developer adds an 8th Autoload without checking boot order → systems subscribe to EventBus before it exists. **Mitigation**: Boot order documented here and in the control manifest. New Autoloads require an ADR revision.
+- **Risk**: A developer adds a 14th Autoload without checking boot order → systems subscribe to EventBus before it exists. **Mitigation**: Boot order documented here and in the control manifest. New Autoloads require an ADR revision.
+- **Risk** (pattern observed 2026-07-17, five times in one session — the strengthened mitigation added after the third occurrence did not prevent the fourth or fifth): a system's GDD specifies a cross-system call, or a state-survival requirement, that only becomes possible once that system is reclassified from scene-instanced to Autoload, and this ADR — despite self-declaring the Autoload boundary a "build invariant" — was not updated in lockstep each time until an explicit follow-up pass caught it. **Mitigation (closed for this batch)**: any future ADR that (a) adds a direct-call exception (ADR-0020 Criterion A/B) to a system currently listed as scene-instanced in this ADR's Boundary table, OR (b) requires state to survive a SANCTUARY↔MISSION scene transition for a system not already an Autoload, must update this ADR's boot-order table, boundary table, scene hierarchy, and validation criteria in the same pass. All 11 originally-required ADRs from the 2026-07-17 architecture review are now written (ADR-0020 through ADR-0030) — five of them needed this correction. Any *future* system's ADR (beyond this batch) should check this Boundary table **before** drafting, not after; this pattern should now be considered a known, closed risk for the current batch rather than an open one.
 - **Risk**: SceneManager initiates a transition mid-wave. **Mitigation**: SceneManager only responds to terminal mission events (`mission_complete`, `hero_died`) which Wave Manager emits only from terminal FSM states.
 
 ## GDD Requirements Addressed
@@ -212,7 +230,7 @@ PROJECT LAUNCH
 **Technical Requirements covered**: TR-gc-002, TR-gc-003, TR-hero-001, TR-monster-001, TR-monster-004, TR-path-001
 
 ## Performance Implications
-- **CPU**: 5 Autoloads with negligible per-frame overhead (EventBus and Grid have no `_process`).
+- **CPU**: 8 Autoloads with negligible per-frame overhead (EventBus, Grid, and MissionEconomy have no `_process`).
 - **Memory**: Area2D instances have a smaller physics footprint than CharacterBody2D — no velocity integration or dynamic collision resolution against other monsters.
 - **Load Time**: SceneManager enables async loading screens — mission scene loads while transition UI is visible.
 - **Network**: Not applicable.
@@ -221,7 +239,7 @@ PROJECT LAUNCH
 Greenfield project. Set Project Settings → Autoloads in this exact order before creating any scene.
 
 ## Validation Criteria
-- [ ] Project Settings → Autoloads lists all 7 in correct order: EventBus, SavePersistence, Grid, Pathfinding, GameDataRegistry, SceneManager, WaveManager.
+- [ ] Project Settings → Autoloads lists all 13 in correct order: EventBus, SavePersistence, Grid, Pathfinding, GameDataRegistry, SceneManager, WaveManager, MissionEconomy, Inventory, DefenseBuilding, Menagerie, MissionSelect, HeroSkillBuild.
 - [ ] All scene-instanced systems connect to EventBus in `_ready()` without null-reference errors.
 - [ ] SceneManager.transition_to_mission() and transition_to_sanctuary() complete without orphaned nodes or dangling connections.
 - [ ] 100 simultaneous Area2D monster instances on a 16×12 grid at 60 FPS on minimum-spec PC hardware — confirmed by performance test.
@@ -234,4 +252,12 @@ Greenfield project. Set Project Settings → Autoloads in this exact order befor
 - ADR-0006 — Monster movement (Area2D root confirmed here)
 - ADR-0009 — Resource data model (introduced GameDataRegistry as Autoload #5; SceneManager shifted to #6)
 - ADR-0012 — Wave Manager FSM (confirmed WaveManager as Autoload #7; superseded Alternative C scene-instanced classification)
+- ADR-0018 — Mission Economy gold balance (added MissionEconomy as Autoload #8)
+- ADR-0016 — Inventory Storage Model (resolved Inventory's Autoload status to #9, 2026-07-17)
+- ADR-0021 — Inventory cross-system query/mutation API (the reason Inventory needed Autoload status)
+- ADR-0024 — Defense Building tech tree data model (added DefenseBuilding as Autoload #10, 2026-07-17)
+- ADR-0025 — Equipment Forge cross-system aggregation (the reason Menagerie needed Autoload status)
+- ADR-0026 — Menagerie creature lifecycle state machine (added Menagerie as Autoload #11, 2026-07-17)
+- ADR-0028 — Mission Select runtime state and retry architecture (added MissionSelect as Autoload #12, 2026-07-17)
+- ADR-0030 — Hero Skill Build Ultimate lookup-table architecture (added HeroSkillBuild as Autoload #13, 2026-07-17)
 - `design/gdd/game-concept.md` — States and Transitions table

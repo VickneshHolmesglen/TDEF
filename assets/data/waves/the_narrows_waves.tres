@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="WaveConfig" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://src/gameplay/wave_config.gd" id="1_config"]
+[ext_resource type="Script" path="res://src/gameplay/wave_script.gd" id="2_script"]
+[ext_resource type="Script" path="res://src/gameplay/wave_spawn_entry.gd" id="3_entry"]
+
+[sub_resource type="Resource" id="Resource_narrows_entry_1"]
+script = ExtResource("3_entry")
+monster_id = &"goblin_runner"
+
+[sub_resource type="Resource" id="Resource_narrows_wave_1"]
+script = ExtResource("2_script")
+entries = Array[ExtResource("3_entry")]([SubResource("Resource_narrows_entry_1")])
+
+[resource]
+script = ExtResource("1_config")
+wave_scripts = Array[ExtResource("2_script")]([SubResource("Resource_narrows_wave_1")])
+difficulty_growth_rate = 0.2
+wave_time_budget = 90.0
+reward_base = 1.0

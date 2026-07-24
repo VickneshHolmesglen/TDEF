@@ -100,6 +100,16 @@ func _inject(grid: Grid, event_bus: Node) -> void:
 # Public API
 # ---------------------------------------------------------------------------
 
+## Read-only readiness probe (Mission HUD Story 003, ADR-0020 Criterion A) —
+## lets a caller check "are templates already built" without triggering
+## find_path()'s own push_error()-and-empty-array behavior for the
+## not-yet-ready case. Used by Mission HUD's boot-race fallback: if
+## templates_ready fired before Mission HUD finished connecting its own
+## subscription, polling this directly still lets the initial route render.
+func is_templates_ready() -> bool:
+	return _templates_built
+
+
 ## Returns remaining path from from_cell to GOAL (from_cell excluded).
 ## Two-value contract: [] means GOAL arrival, unreachable, or fallback cap exhausted.
 ## Never returns null. O(1) template lookup + O(k) slice. Thread-unsafe — main thread only.
@@ -220,17 +230,19 @@ func _on_mission_phase_changed(previous_phase: String, new_phase: String, _times
 			_clear_all_state()
 
 
-func _on_tower_placed(tower_id: int, grid_position: Vector2i, _archetype: String, footprint_size: Vector2i, _placed_in_scout: bool) -> void:
+## Amendment 2026-07-19 (Epic 06 Story 008): tower_placed promoted to a
+## TowerPlacedEvent Resource payload.
+func _on_tower_placed(payload: TowerPlacedEvent) -> void:
 	if _current_phase == "WAVE_ACTIVE":
 		push_error("PathfindingSystem: tower_placed received during WAVE_ACTIVE — Grid lock failure detected. Setting _tower_destroyed_during_wave for INTERMISSION recovery.")
 		_tower_destroyed_during_wave = true
 		return
-	var cells: Array[Vector2i] = _cells_from_footprint(grid_position, footprint_size)
-	_tower_footprint_cache[tower_id] = cells
+	var cells: Array[Vector2i] = _cells_from_footprint(payload.grid_position, payload.footprint)
+	_tower_footprint_cache[payload.tower_id] = cells
 	_queue_dirty_rebuild(cells)
 
 
-func _on_tower_removed(tower_id: int, _grid_position: Vector2i, _archetype: String) -> void:
+func _on_tower_removed(tower_id: int, _grid_position: Vector2i, _archetype: String, _constellation_eligibility_tag: String) -> void:
 	if _current_phase == "WAVE_ACTIVE":
 		push_error("PathfindingSystem: tower_removed received during WAVE_ACTIVE — Grid lock failure detected.")
 		_tower_destroyed_during_wave = true
@@ -243,7 +255,7 @@ func _on_tower_removed(tower_id: int, _grid_position: Vector2i, _archetype: Stri
 		_queue_dirty_rebuild(cells)
 
 
-func _on_tower_destroyed(tower_id: int, _grid_position: Vector2i, _archetype: String, _footprint: Array) -> void:
+func _on_tower_destroyed(tower_id: int, _grid_position: Vector2i, _archetype: String, _footprint: Array, _constellation_eligibility_tag: String) -> void:
 	_tower_footprint_cache.erase(tower_id)
 	if _current_phase == "WAVE_ACTIVE":
 		# Do NOT rebuild now — defer to INTERMISSION entry (GDD EC-11, Rule 11).

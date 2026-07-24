@@ -2,6 +2,15 @@
 
 ---
 
+## Review — 2026-07-15 (pass 2) — Verdict: MAJOR REVISION NEEDED → REVISED (same session)
+Scope signal: L
+Specialists: game-designer, systems-designer, qa-lead, performance-analyst, godot-specialist, creative-director (synthesis)
+Blocking items: 7 | Recommended: 5
+Summary: Triggered by `/review-all-gdds` finding 2 missing catalogue fields (`wave_preview_available` missing `boss_spawn_cell`, `monster_spawn_requested` missing `is_penultimate_wave`). What started as a scoped 2-field patch found the catalogue had structurally drifted from the systems it governs — this document was Approved 2026-05-14 and incrementally patched many times since without a full re-review. Five specialists converged strongly: 3 independently found `monsters_died_batch` was referenced 4+ times (Formula 2, EC-9, AC-10, OQ-3) but had zero catalogue entry; 2 independently found `tower_placed` and `tower_attacked` (both pre-existing, unrelated to this session's trigger) violate the catalogue's own Core Rule 4 at 5 bare typed parameters; 2 independently found former OQ-3's proposed `MonstersDiedBatch` payload didn't match what Wave Manager actually shipped. performance-analyst additionally found Formula 1's worked example used a stale `E_concurrent=8` against ~18 real concurrent event types at peak WAVE_ACTIVE (halving the real per-subscriber budget every downstream GDD's performance design was calibrated against), and that the catalogue's own documented Damage & Status chain (`hero_auto_attacked`→`monster_damage_taken`→`monster_hp_absorbed`→`hero_healed`) is a 3-hop chain against Core Rule 5's stated 2-level cap, papered over by an unwritten ad hoc exemption. qa-lead found AC-01 would false-positive against documented Accepted-ADR direct-call exceptions, AC-13's "duplicate data" was undefined, and AC-08's event count (74) didn't match the changelog's own count (75) even before this session's fixes. creative-director adjudicated two design questions: `wave_preview_available` should be promoted to a Resource subclass proactively (matches the `tower_aura_pulse` precedent of promoting below-threshold specifically to avoid a future breaking change, and this event just grew a field this session); the deferred-emission cascade exemption is sound and should be formalized into Rule 5/Formula 3 rather than left as marginalia, since downstream cascade math depends on which reading is canonical. All fixed same-session: 3 catalogue-completeness gaps closed, 2 Core Rule 4 violations fixed, Formula 1/2/3 recalibrated and propagated, Core Rule 5 formalized, 3 ACs corrected, event count reconciled 74/75→76.
+Prior verdict resolved: Partially — pass 1's 2 blockers remain resolved; this session's 7 new blockers (accumulated drift across 14 months of incremental patches, not regressions from pass 1) all fixed in-session.
+
+---
+
 ## Review — 2026-05-14 (pass 1) — Verdict: NEEDS REVISION → APPROVED (in-session)
 Scope signal: L
 Specialists: None (lean mode)

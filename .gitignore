@@ -31,6 +31,9 @@ builds/
 bin/
 obj/
 out/
+
+# === Test Runner Artifacts (gdUnit4 headless run output) ===
+reports/
 dist/
 *.exe
 *.dll

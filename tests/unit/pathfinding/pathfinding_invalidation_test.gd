@@ -135,7 +135,7 @@ func test_pathfinding_tower_destroyed_during_wave_active_does_not_emit_path_inva
 	_pathfinding._on_mission_phase_changed("SCOUT", "WAVE_ACTIVE", 0.0)
 	var invalidated_count: int = 0
 	_event_bus.path_invalidated.connect(func(_c): invalidated_count += 1)
-	_event_bus.tower_destroyed.emit(1, Vector2i(1, 0), "basic", [Vector2i(1, 0)])
+	_event_bus.tower_destroyed.emit(1, Vector2i(1, 0), "basic", [Vector2i(1, 0)], "")
 	await get_tree().process_frame
 	assert_int(invalidated_count).is_equal(0)
 
@@ -147,7 +147,7 @@ func test_pathfinding_boss_destroyed_during_wave_causes_rebuild_at_intermission(
 	_pathfinding._on_mission_phase_changed("", "SCOUT", 0.0)
 	_pathfinding._on_mission_phase_changed("SCOUT", "WAVE_ACTIVE", 0.0)
 	# BOSS destroys a tower during WAVE_ACTIVE
-	_event_bus.tower_destroyed.emit(1, Vector2i(1, 0), "basic", [Vector2i(1, 0)])
+	_event_bus.tower_destroyed.emit(1, Vector2i(1, 0), "basic", [Vector2i(1, 0)], "")
 	var state := {"count": 0}
 	_event_bus.path_invalidated.connect(func(_c): state.count += 1)
 	# Transition to INTERMISSION should trigger auto-rebuild.
@@ -176,8 +176,7 @@ func test_pathfinding_tower_placed_on_non_route_cell_does_not_queue_rebuild() ->
 # ---------------------------------------------------------------------------
 
 func _simulate_tower_placed(tower_id: int, grid_position: Vector2i, footprint_size: Vector2i) -> void:
-	_event_bus.tower_placed.emit(tower_id, grid_position, "basic", footprint_size, true)
-
+	_event_bus.tower_placed.emit(TowerPlacedEvent.make(tower_id, grid_position, "basic", footprint_size, true, ""))
 
 func _place_tower_on_route_cell() -> void:
 	# PATH cell (1,0) is in the template — triggers dirty marking

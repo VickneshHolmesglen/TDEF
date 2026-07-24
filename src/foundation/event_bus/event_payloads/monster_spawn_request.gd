@@ -3,7 +3,7 @@ extends Resource
 
 ## Event-payload Resource for the monster_spawn_requested EventBus signal.
 ##
-## ADR-0001 Rule 3: 5 fields — requires Resource subclass payload.
+## ADR-0001 Rule 3: 6 fields — requires Resource subclass payload.
 ## ADR-0009: Event-payload Resources are short-lived; never saved as .tres files.
 ## GDD source: design/gdd/event-bus.md — Wave Manager event catalogue.
 ##
@@ -20,3 +20,4 @@ extends Resource
 @export var wave_index: int = -1
 @export var difficulty_tier: int = 0
 @export var wave_reward_scalar: float = 1.0
+@export var is_penultimate_wave: bool = false

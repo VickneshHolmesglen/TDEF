@@ -56,8 +56,12 @@ signal mission_phase_changed(previous_phase: String, new_phase: String, timestam
 signal wave_started(wave_number: int, total_waves: int, wave_difficulty: float)
 
 ## All wave enemies are dead or boss is killed.
+## was_boss_breached: true only when the wave-clear cause was a BOSS breach
+## (Story 003 territory, epic-04-wave-manager) — every clear path this
+## codebase currently implements (standard clear, watchdog force-clear)
+## emits false (Story 002).
 ## Key subscribers: Monster, Resource Economy, Mission HUD.
-signal wave_completed(wave_number: int, enemies_remaining: int)
+signal wave_completed(wave_number: int, enemies_remaining: int, was_boss_breached: bool)
 
 ## 10 seconds before wave launch.
 ## Key subscribers: Mission HUD, Audio.
@@ -72,9 +76,15 @@ signal phase_timer_tick(phase: String, seconds_remaining: float)
 ## Key subscribers: Monster System.
 signal monster_spawn_requested(payload: MonsterSpawnRequest)
 
-## Immediately on INTERMISSION entry (non-final wave). Delivers upcoming wave composition.
+## Immediately on INTERMISSION entry (non-final wave), and once at SCOUT
+## entry for wave 1. Delivers upcoming wave composition.
+## boss_spawn_cell (Mission HUD ADR-0031, Story 006): Vector2i(-1,-1) if the
+## previewed wave has no BOSS-tier entry, otherwise the cell that entry will
+## resolve to when it actually spawns — closes tower.md's OQ-11 (boss-lane
+## telegraph). Added when this signal's real shipped payload was found to be
+## missing the field the GDD/tower.md had already assumed existed.
 ## Key subscribers: Mission HUD.
-signal wave_preview_available(next_wave_number: int, composition: Array)
+signal wave_preview_available(next_wave_number: int, composition: Array, boss_spawn_cell: Vector2i)
 
 ## 30s after _all_spawns_fired if _enemies_alive > 0. Precedes 60s force-clear watchdog.
 ## Key subscribers: Mission HUD.
@@ -83,6 +93,35 @@ signal wave_stalled(wave_number: int, enemies_remaining: int)
 ## Emitted by Mission HUD when player presses Ready button. Wave Manager gates SCOUT/INTERMISSION.
 ## Wave Manager ignores this event outside SCOUT and INTERMISSION (Rules 9 and 12).
 signal player_ready()
+
+# =============================================================================
+# Pause System
+# =============================================================================
+
+## Player toggles pause on (ADR-0014). SceneTree.paused is the source of truth —
+## this signal is informational only, for systems that react to a pause boundary
+## without gating their own _process/_physics_process/Timer logic on it (that is
+## handled natively by SceneTree.paused propagation). Fired by the Pause Menu.
+## Key subscribers: none yet (future Audio ducking, analytics).
+signal game_paused()
+
+## Player toggles pause off (ADR-0014). See game_paused for the informational-only note.
+## Key subscribers: none yet (future Audio ducking, analytics).
+signal game_unpaused()
+
+# =============================================================================
+# Scene Manager
+# =============================================================================
+
+## Fires before SceneManager unloads the current scene during a SANCTUARY<->MISSION
+## transition. target_context is "SANCTUARY" or "MISSION"; mission_id is "" for
+## sanctuary transitions (ADR-0002).
+## Key subscribers: Presentation-layer loading screens (future).
+signal scene_transition_started(target_context: String, mission_id: String)
+
+## Fires after the new scene's _ready() has run, following scene_transition_started.
+## Key subscribers: Presentation-layer loading screens (future).
+signal scene_transition_completed(target_context: String, mission_id: String)
 
 # =============================================================================
 # Hero System
@@ -122,8 +161,9 @@ signal hero_skill_cooldown_updated(skill_slot: int, cooldown_remaining: float, c
 signal hero_ultimate_activated()
 
 ## Hero accumulates enough proximity time to unlock a new class identity.
+## is_deep: false for the 30s primary-class unlock, true for the 90s deep-class unlock.
 ## Key subscribers: Tower Mastery, Mission HUD, Audio.
-signal hero_class_unlocked(class_id: String)
+signal hero_class_unlocked(archetype: StringName, is_deep: bool)
 
 # =============================================================================
 # Tower System
@@ -133,27 +173,35 @@ signal hero_class_unlocked(class_id: String)
 ## Key subscribers: Constellation, Hero, Pathfinding (dirty-check + deferred rebuild),
 ##   Mission HUD, Audio.
 ## placed_in_scout: true only for SCOUT placements.
-signal tower_placed(
-	tower_id: int,
-	grid_position: Vector2i,
-	archetype: String,
-	footprint: Vector2i,
-	placed_in_scout: bool
-)
+## constellation_eligibility_tag added 2026-07-18 (Sprint 6, S6-08): closes
+## constellation.md OQ-4 — this field was already documented as "added
+## 2026-07-17" in event-bus.md's own table and assumed live by ADR-0022, but
+## the actual signal declaration here was never updated to match. Found while
+## implementing Constellation Story 001 (Core Rule 2's eligibility check reads
+## this field directly off the payload). Empty string means not
+## constellation-eligible, mirrors TowerData's own field of the same name.
+## Promoted to a TowerPlacedEvent Resource subclass 2026-07-19 (Sprint 7,
+## Epic 06 Story 008): adds foundation/weapon/focus/power_component_id
+## fields for Tower Mastery's build_signature derivation (Formula 4) — see
+## event_payloads/tower_placed_event.gd.
+signal tower_placed(payload: TowerPlacedEvent)
 
 ## Tower voluntarily removed during SCOUT or INTERMISSION.
 ## Key subscribers: Constellation, Hero (Tower Affinity recalc),
 ##   Pathfinding (dirty-check + deferred rebuild), Mission HUD.
-signal tower_removed(tower_id: int, grid_position: Vector2i, archetype: String)
+## constellation_eligibility_tag added 2026-07-18 (Sprint 6, S6-08) — see tower_placed's note.
+signal tower_removed(tower_id: int, grid_position: Vector2i, archetype: String, constellation_eligibility_tag: String)
 
 ## Tower HP reaches 0 mid-wave.
 ## Key subscribers: Constellation, Grid, Inventory (component recovery), Mission HUD,
 ##   Pathfinding (sets _tower_destroyed_during_wave = true for auto-rebuild at INTERMISSION).
+## constellation_eligibility_tag added 2026-07-18 (Sprint 6, S6-08) — see tower_placed's note.
 signal tower_destroyed(
 	tower_id: int,
 	grid_position: Vector2i,
 	archetype: String,
-	footprint: Array
+	footprint: Array,
+	constellation_eligibility_tag: String
 )
 
 ## Boss attack reduces tower HP and tower survives. Primary HP observable.
@@ -165,8 +213,13 @@ signal tower_damaged(tower_id: int, damage_dealt: float, current_hp: float, max_
 signal tower_sell_requested(tower_id: int)
 
 ## Component swapped in a tower slot.
-## Key subscribers: Constellation, Mission HUD.
-signal tower_component_equipped(tower_id: int, slot: String, component_id: String)
+## Key subscribers: Constellation, Mission HUD, Tower Mastery.
+## Promoted to a TowerComponentEquippedEvent Resource subclass 2026-07-19
+## (Sprint 7, Epic 06 Story 008) — carries the tower's complete resulting
+## loadout (all 4 slots), not just the changed slot. No real emitter exists
+## yet (Equipment Forge, Epic 08, not implemented) — see
+## event_payloads/tower_component_equipped_event.gd.
+signal tower_component_equipped(payload: TowerComponentEquippedEvent)
 
 ## Tower fires at a monster.
 ## is_siege: derived from originating tower's Foundation.siege flag (true for T4 only).
@@ -340,6 +393,16 @@ signal tarot_deck_changed(active_card_count: int)
 ## Key subscribers: Inventory, Mission HUD, Audio.
 signal component_crafted(component_id: String, component_type: String, quality_tier: int)
 
+## Crafting's repair action confirms a Common-material-only cost payment and
+## mutates an existing damaged component in place (Rule 6). Documented in
+## event-bus.md's catalogue (78 events, 2026-07-17) but missing from this
+## file until Story 005 (Component Repair) added it — the mutation itself is
+## a direct Inventory.clear_damaged_flag() call (ADR-0021 Criterion A), not
+## an EventBus-subscribed side effect; this signal is purely the confirming
+## notification, mirroring component_crafted's own emit-after-mutation order.
+## Key subscribers: Mission HUD, Audio.
+signal component_repaired(item_id: String, component_type: String)
+
 ## New recipe becomes available (tech unlock or first time materials available).
 ## Key subscribers: Encyclopedia, Crafting UI.
 signal recipe_discovered(recipe_id: String, recipe_category: String)
@@ -348,25 +411,36 @@ signal recipe_discovered(recipe_id: String, recipe_category: String)
 # Menagerie System
 # =============================================================================
 
+## New creature created via Lure (Story 007, ADR-0026). Documented in
+## ADR-0021's "Enables" note as already merged into event-bus.md's catalogue,
+## but missing from this file until Story 007 added it.
+## Key subscribers: Mission HUD, Encyclopedia.
+signal creature_acquired(creature_id: int, species: String)
+
 ## Creature happiness value updates.
 ## Key subscribers: Resource Economy, Mission HUD.
-signal creature_happiness_changed(creature_id: String, new_happiness: float, quality_bonus: float)
+## creature_id corrected from String to int (ADR-0026 Risks: matches
+## ADR-0016/ADR-0021's int-typed instance-identity convention; the GDD's own
+## prose said String, but the ADR is authoritative per the established
+## "ADR corrects GDD" precedent from ADR-0024).
+signal creature_happiness_changed(creature_id: int, new_happiness: float, quality_bonus: float)
 
 ## Breeding pen produces offspring.
 ## Key subscribers: Encyclopedia, Mission HUD.
-signal creature_bred(offspring_id: String, species: String)
+signal creature_bred(offspring_id: int, species: String)
 
-## Creature consumed in Equipment Forge operation.
+## Creature consumed in Equipment Forge operation. target_item_id corrected
+## to int (ADR-0026 Risks) — minted via Inventory.reserve_instance_id() -> int.
 ## Key subscribers: Equipment Forge, Mission HUD.
-signal creature_sacrificed(creature_id: String, target_item_id: String)
+signal creature_sacrificed(creature_id: int, target_item_id: int)
 
 ## Player moves creature out of habitat.
 ## Key subscribers: Resource Economy (reduce quality bonus).
-signal creature_moved_to_breeding_pen(creature_id: String)
+signal creature_moved_to_breeding_pen(creature_id: int)
 
 ## Player returns creature to habitat.
 ## Key subscribers: Resource Economy (restore quality bonus).
-signal creature_returned_from_breeding_pen(creature_id: String)
+signal creature_returned_from_breeding_pen(creature_id: int)
 
 # =============================================================================
 # Defense Building System
@@ -392,6 +466,12 @@ signal item_added(item_id: String, item_type: String, quantity: int)
 ## Key subscribers: Mission HUD, Crafting.
 signal item_removed(item_id: String, item_type: String, quantity: int)
 
+## Mid-mission pickup could not be stored (inventory full, no room in any
+## stack). Fires instead of item_added; not queued or retried — the pickup
+## is lost (Epic 03 Story 005, AC-15).
+## Key subscribers: Mission HUD (toast/notification).
+signal item_pickup_rejected(item_id: String, item_type: String, quantity: int, reason: String)
+
 ## Equipment change at Sanctuary.
 ## Key subscribers: Hero System (stat recalc), Damage & Status, Mission HUD.
 signal equipment_slot_changed(slot: String, new_item_id: String, previous_item_id: String)
@@ -407,6 +487,11 @@ signal materials_earned(material_type: String, quantity: int, source: String)
 ## Crafting or Equipment Forge consumes materials.
 ## Key subscribers: Inventory, Mission HUD.
 signal materials_spent(material_type: String, quantity: int, destination: String)
+
+## Player's gold balance changes (earned from drops, spent on placements/sells).
+## source examples: "monster_drop", "tower_placed", "tower_sold".
+## Key subscribers: Tower System (Gate 2 gold cache), Mission HUD.
+signal resources_changed(gold: int, source: StringName)
 
 # =============================================================================
 # Tower Mastery System
@@ -473,8 +558,12 @@ signal mission_selected(mission_id: String)
 signal run_modifier_selected(modifier_id: String, modifier_value: float)
 
 ## Player confirms launch with current modifiers.
+## `difficulty_tier` added by Story 006 (epic-04-wave-manager, 2026-07-05) —
+## Wave Manager reads it directly off this signal (GDD wave-manager.md Rule 8
+## says Wave Manager "Reads difficulty_tier: int from the mission launch
+## data"); the field did not exist on this signal until this story added it.
 ## Key subscribers: Wave Manager, Save & Persistence (pre-mission checkpoint).
-signal mission_launched(mission_id: String, modifiers: PackedStringArray)
+signal mission_launched(mission_id: String, modifiers: PackedStringArray, difficulty_tier: int)
 
 # =============================================================================
 # Encyclopedia System

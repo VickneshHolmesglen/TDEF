@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="TarotCardResource" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/core/tarot/tarot_card_resource.gd" id="1"]
+[ext_resource type="Script" path="res://src/core/tarot/tarot_modifier_entry.gd" id="2"]
+
+[sub_resource type="Resource" id="Modifier_golden_ticket"]
+script = ExtResource("2")
+modifier_type = &"tarot_reward_scalar_mult"
+base_modifier_value = 1.10
+
+[resource]
+script = ExtResource("1")
+card_id = &"golden_ticket"
+rarity = "Common"
+modifiers = [SubResource("Modifier_golden_ticket")]
+linked_rune_id = &"rune_golden_ticket"
+rune_bonus_flat = 0.05

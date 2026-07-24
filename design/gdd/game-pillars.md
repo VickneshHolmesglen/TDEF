@@ -126,6 +126,32 @@ Use this checklist before writing any story in Sprint 3 or later:
 - [ ] What cross-system connection does it open (if any)?
 - [ ] What does the player's sanctuary look like differently because of it?
 
+## Naming Reconciliation Note (added 2026-07-10)
+
+Every individual system GDD's `> **Implements Pillar**:` header tag was written before this
+document existed (GDDs dated 2026-05-15; this document dated 2026-06-30) and uses earlier,
+less formal pillar phrasing that was never reconciled to the 3 canonical names above:
+
+| GDD tag phrasing in use | Likely canonical pillar (unconfirmed mapping) |
+|--------------------------|-----------------------------------------------|
+| "Placement is the Puzzle" (`grid-system.md`, `pathfinding.md`, `mission-hud.md`, `tower.md`, `monster.md`) | Mastery-as-Vindication (spatial preparation paying off) |
+| "The Fight Must Be Worth It" (`wave-manager.md`, `damage-status.md`, `monster.md`) | Mastery-as-Vindication (combat preparation paying off) |
+| "The Sanctuary is Yours" (`save-persistence.md`) | The Sanctuary Is Your Statement (near-exact match) |
+| "Endless Theorist" (`tower.md`, Player Fantasy) | Everything Connects |
+| "The Living Sanctuary" (`design/art/art-bible.md` Section 1, Principle 1) | The Sanctuary Is Your Statement |
+| "Combinatorial Discovery" (`design/art/art-bible.md` Section 1, Principle 2) | Everything Connects |
+
+A third naming variant surfaced in the art bible itself, confirming this isn't confined to
+GDD headers — the pillar vocabulary drifted across at least 3 documents authored at
+different times without ever being reconciled against a single canonical list, until now.
+
+This mapping is a reasonable inference, not a confirmed decision — flagged here rather than
+silently rewritten across 9+ GDD files. A future pass should either (a) update each GDD's
+`Implements Pillar` tag to cite the 3 canonical pillar names directly, or (b) confirm the
+older phrasing was meant as a more specific sub-statement of a canonical pillar and leave
+both in place with an explicit cross-reference. Do not assume this table is correct without
+that follow-up decision.
+
 ## Dependencies
 
 - `design/gdd/game-concept.md` — root vision; pillars derive from the Player Fantasy section

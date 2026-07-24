@@ -1,0 +1,305 @@
+## Integration tests for Story 011 (TR-hud-000, ADR-0031): Combat Cluster Live
+## Data Widgets (Core Rules Rule 4 visual half, PC-4, Interactions table).
+##
+## MissionHud IS added to the test's own scene tree (add_child()), matching
+## this epic's established convention (mission_hud_test_helper.gd).
+extends GdUnitTestSuite
+
+const SPAWN_CELL := Vector2i(0, 0)
+
+
+func _make_config() -> GridConfig:
+	var cfg := GridConfig.new()
+	cfg.cols = 1
+	cfg.rows = 1
+	cfg.cell_size = 64.0
+	cfg.cells = {SPAWN_CELL: Grid.CellType.SPAWN}
+	return cfg
+
+
+var _hud: MissionHud
+
+
+func before_test() -> void:
+	GGrid.initialize(_make_config())
+	_hud = MissionHudTestHelper.build_hud()
+	add_child(_hud)
+
+
+func after_test() -> void:
+	if _hud != null and is_instance_valid(_hud):
+		_hud.queue_free()
+	_hud = null
+
+
+func _boss_spawn(entity_id: int, hp_max: float = 500.0) -> MonsterSpawnedEvent:
+	var payload := MonsterSpawnedEvent.new()
+	payload.entity_id = entity_id
+	payload.monster_id = &"goblin_warlord_boss"
+	payload.hp_max = hp_max
+	return payload
+
+
+# ---------------------------------------------------------------------------
+# AC-57: Hero HP bar
+# ---------------------------------------------------------------------------
+
+func test_hero_health_changed_updates_label() -> void:
+	GEventBus.hero_health_changed.emit(42.0, 100.0)
+
+	assert_str(_hud._hero_hp_label.text).is_equal("Hero HP: 42/100")
+
+
+# ---------------------------------------------------------------------------
+# AC-58: skill cooldown fills, slots 0-3, discard slot 4
+# ---------------------------------------------------------------------------
+
+func test_skill_slot_cooldown_updates_its_own_label() -> void:
+	GEventBus.hero_skill_cooldown_updated.emit(1, 2.5, 5.0)
+
+	assert_str(_hud._skill_cooldown_labels[1].text).is_equal("Skill 2: 2.5s")
+
+
+func test_skill_slot_ready_at_zero_cooldown() -> void:
+	GEventBus.hero_skill_cooldown_updated.emit(1, 0.0, 5.0)
+
+	assert_str(_hud._skill_cooldown_labels[1].text).is_equal("Skill 2: Ready")
+
+
+func test_ultimate_slot_does_not_touch_skill_cooldown_labels() -> void:
+	var original: String = _hud._skill_cooldown_labels[3].text
+
+	GEventBus.hero_skill_cooldown_updated.emit(Hero.ULTIMATE_SLOT_INDEX, 3.0, 5.0)
+
+	assert_str(_hud._skill_cooldown_labels[3].text).is_equal(original)
+
+
+# ---------------------------------------------------------------------------
+# AC-59: breach counter
+# ---------------------------------------------------------------------------
+
+func test_breach_updates_counter_label() -> void:
+	_hud._on_mission_phase_changed("IDLE", "SCOUT", 0.0)
+
+	_hud._on_monster_breached(1, &"goblin_runner", 0)
+
+	assert_str(_hud._breach_counter_label.text).is_equal("Breaches: 1")
+
+
+# ---------------------------------------------------------------------------
+# AC-60/AC-66: boss bar mount/update/dismount, stray discard
+# ---------------------------------------------------------------------------
+
+func test_boss_spawn_mounts_the_boss_bar() -> void:
+	_hud._on_mission_phase_changed("IDLE", "SCOUT", 0.0)
+
+	_hud._on_monster_spawned(_boss_spawn(1, 500.0))
+
+	assert_bool(_hud._boss_bar_label.visible).is_true()
+	assert_str(_hud._boss_bar_label.text).is_equal("BOSS Goblin Warlord: 500/500")
+
+
+func test_boss_hp_changed_updates_the_bar() -> void:
+	_hud._on_mission_phase_changed("IDLE", "SCOUT", 0.0)
+	_hud._on_monster_spawned(_boss_spawn(1, 500.0))
+
+	GEventBus.boss_hp_changed.emit(1, 300.0, 500.0)
+
+	assert_str(_hud._boss_bar_label.text).is_equal("BOSS Goblin Warlord: 300/500")
+
+
+func test_boss_died_dismounts_the_bar() -> void:
+	_hud._on_mission_phase_changed("IDLE", "SCOUT", 0.0)
+	_hud._on_monster_spawned(_boss_spawn(1, 500.0))
+
+	_hud._on_boss_died(1, &"goblin_warlord_boss", 1, "hero_attack")
+
+	assert_bool(_hud._boss_bar_label.visible).is_false()
+
+
+func test_stray_boss_hp_changed_with_empty_state_is_discarded() -> void:
+	_hud._on_mission_phase_changed("IDLE", "SCOUT", 0.0)
+
+	GEventBus.boss_hp_changed.emit(99, 10.0, 500.0)  # no boss ever spawned
+
+	assert_bool(_hud._boss_bar_label.visible).is_false()
+
+
+# ---------------------------------------------------------------------------
+# AC-61: tower HP bars, immediate per-tower removal
+# ---------------------------------------------------------------------------
+
+func test_tower_damaged_creates_and_updates_a_bar() -> void:
+	_hud._on_tower_damaged(5, 10.0, 90.0, 100.0)
+
+	assert_int(_hud._tower_hp_bars_host.get_child_count()).is_equal(1)
+	assert_str(_hud._tower_hp_bar_labels[5].text).is_equal("Tower 5: 90/100")
+
+
+func test_tower_destroyed_removes_its_bar_immediately() -> void:
+	_hud._on_tower_damaged(5, 10.0, 90.0, 100.0)
+
+	_hud._on_tower_destroyed(5, Vector2i(1, 1), "cannon", [], "")
+
+	assert_int(_hud._tower_hp_bars_host.get_child_count()).is_equal(0)
+	assert_bool(_hud._active_tower_hp_bars.has(5)).is_false()
+
+
+func test_other_towers_bars_survive_a_different_towers_destruction() -> void:
+	_hud._on_tower_damaged(5, 10.0, 90.0, 100.0)
+	_hud._on_tower_damaged(6, 10.0, 80.0, 100.0)
+
+	_hud._on_tower_destroyed(5, Vector2i(1, 1), "cannon", [], "")
+
+	assert_int(_hud._tower_hp_bars_host.get_child_count()).is_equal(1)
+	assert_bool(_hud._tower_hp_bar_labels.has(6)).is_true()
+
+
+# ---------------------------------------------------------------------------
+# AC-62: floating damage numbers
+# ---------------------------------------------------------------------------
+
+func test_monster_damage_taken_spawns_a_floating_number() -> void:
+	var payload := MonsterDamageTaken.new()
+	payload.entity_id = 1
+	payload.amount = 42
+	payload.is_crit = false
+
+	GEventBus.monster_damage_taken.emit(payload)
+
+	assert_int(_hud._damage_number_host.get_child_count()).is_equal(1)
+	assert_str((_hud._damage_number_host.get_child(0) as Label).text).is_equal("42")
+
+
+func test_crit_damage_number_gets_the_crit_marker() -> void:
+	var payload := MonsterDamageTaken.new()
+	payload.entity_id = 1
+	payload.amount = 99
+	payload.is_crit = true
+
+	GEventBus.monster_damage_taken.emit(payload)
+
+	assert_str((_hud._damage_number_host.get_child(0) as Label).text).is_equal("99!")
+
+
+# ---------------------------------------------------------------------------
+# AC-63: PC-4 chrome
+# ---------------------------------------------------------------------------
+
+func test_mission_phase_changed_updates_phase_label() -> void:
+	_hud._on_mission_phase_changed("IDLE", "SCOUT", 0.0)
+
+	assert_str(_hud._phase_label.text).is_equal("Phase: SCOUT")
+
+
+func test_wave_started_updates_wave_label() -> void:
+	GEventBus.wave_started.emit(3, 10, 1.5)
+
+	assert_str(_hud._wave_label.text).is_equal("Wave: 3/10")
+
+
+func test_phase_timer_tick_updates_timer_label() -> void:
+	GEventBus.phase_timer_tick.emit("PRE_WAVE", 4.2)
+
+	assert_str(_hud._phase_timer_label.text).is_equal("PRE_WAVE: 4.2s")
+
+
+# ---------------------------------------------------------------------------
+# AC-64: gold + materials
+# ---------------------------------------------------------------------------
+
+func test_resources_changed_shows_absolute_gold_balance() -> void:
+	GEventBus.resources_changed.emit(150, &"monster_drop")
+
+	assert_str(_hud._gold_label.text).is_equal("Gold: 150")
+
+
+func test_materials_earned_accumulates_a_running_tally() -> void:
+	GEventBus.materials_earned.emit("wood", 5, "monster_drop")
+	GEventBus.materials_earned.emit("wood", 3, "monster_drop")
+
+	assert_str(_hud._materials_label.text).is_equal("wood: 8")
+
+
+# ---------------------------------------------------------------------------
+# AC-65: Inventory toasts
+# ---------------------------------------------------------------------------
+
+func test_item_added_shows_a_toast() -> void:
+	GEventBus.item_added.emit("wood", "material", 5)
+
+	assert_int(_hud._toast_host.get_child_count()).is_equal(1)
+	assert_str((_hud._toast_host.get_child(0) as Label).text).is_equal("+5 wood")
+
+
+func test_item_pickup_rejected_shows_a_toast_with_reason() -> void:
+	GEventBus.item_pickup_rejected.emit("wood", "material", 5, "inventory_full")
+
+	assert_str((_hud._toast_host.get_child(0) as Label).text).is_equal("Could not pick up 5x wood (inventory_full)")
+
+
+func test_item_removed_shows_a_toast() -> void:
+	GEventBus.item_removed.emit("wood", "material", 3)
+
+	assert_str((_hud._toast_host.get_child(0) as Label).text).is_equal("-3 wood")
+
+
+# ---------------------------------------------------------------------------
+# Epic 06 Story 013 (tower-mastery.md): skill_unlocked HUD corner callout —
+# the half of that story blocked until Mission HUD existed in code.
+# ---------------------------------------------------------------------------
+
+func test_skill_unlocked_shows_a_toast() -> void:
+	GEventBus.skill_unlocked.emit("phys_cleave", 7)
+
+	assert_str((_hud._toast_host.get_child(0) as Label).text).is_equal("Skill Learned: phys_cleave")
+
+
+func test_skill_unlocked_suppressed_after_terminal() -> void:
+	_hud._on_mission_phase_changed("IDLE", "SCOUT", 0.0)
+	_hud._on_mission_phase_changed("SCOUT", "PRE_WAVE", 0.0)
+	_hud._on_mission_phase_changed("PRE_WAVE", "WAVE_ACTIVE", 0.0)
+	_hud._on_mission_phase_changed("WAVE_ACTIVE", "DEFEAT", 0.0)
+
+	GEventBus.skill_unlocked.emit("phys_cleave", 7)
+
+	assert_int(_hud._toast_host.get_child_count()).is_equal(0)
+
+
+# ---------------------------------------------------------------------------
+# AC-63 (PC-4, countdown-warning half)
+# ---------------------------------------------------------------------------
+
+func test_wave_countdown_warning_updates_timer_label() -> void:
+	GEventBus.wave_countdown_warning.emit(5)
+
+	assert_str(_hud._phase_timer_label.text).is_equal("Wave incoming: 5s")
+
+
+# ---------------------------------------------------------------------------
+# Code review fix: _on_hero_health_changed/_on_boss_hp_changed/
+# _on_materials_earned/_on_resources_changed were originally missing the
+# _terminal guard every other Rule-4 mutation handler has.
+# ---------------------------------------------------------------------------
+
+func test_terminal_latch_suppresses_hero_boss_materials_gold_handlers() -> void:
+	_hud._on_mission_phase_changed("IDLE", "SCOUT", 0.0)
+	_hud._on_monster_spawned(_boss_spawn(1, 500.0))
+	var hero_hp_before: String = _hud._hero_hp_label.text
+	var boss_bar_before: String = _hud._boss_bar_label.text
+	var gold_before: String = _hud._gold_label.text
+	var materials_before: String = _hud._materials_label.text
+
+	_hud._on_mission_phase_changed("SCOUT", "PRE_WAVE", 0.0)
+	_hud._on_mission_phase_changed("PRE_WAVE", "WAVE_ACTIVE", 0.0)
+	_hud._on_mission_phase_changed("WAVE_ACTIVE", "DEFEAT", 0.0)
+
+	GEventBus.hero_health_changed.emit(1.0, 100.0)
+	GEventBus.boss_hp_changed.emit(1, 1.0, 500.0)
+	GEventBus.resources_changed.emit(9999, &"monster_drop")
+	GEventBus.materials_earned.emit("wood", 50, "monster_drop")
+
+	assert_str(_hud._hero_hp_label.text).is_equal(hero_hp_before)
+	assert_str(_hud._boss_bar_label.text).is_equal(boss_bar_before)
+	assert_str(_hud._gold_label.text).is_equal(gold_before)
+	assert_str(_hud._materials_label.text).is_equal(materials_before)

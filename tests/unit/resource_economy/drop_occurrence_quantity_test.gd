@@ -1,0 +1,195 @@
+## Unit/integration tests for ResourceEconomy's Formula 1 (drop occurrence roll) and
+## Formula 2 (drop quantity) resolution, Epic 03 Story 008, ADR-0017.
+##
+## Covers AC-01 (worked-example quantity: base_quantity=1, wave_reward_scalar=4.768,
+## menagerie_quality_bonus=1.3 -> round(6.198) = 6, plus the wave-1 minimum-scale
+## edge case), AC-02 (guaranteed_min_quantity floor on a successful roll, distinct
+## from a failed roll staying at 0 total drops), and AC-12 (base_drop_rate=0.45's
+## occurrence rate over a 10,000-sample statistical test, isolated to Formula 1 only).
+##
+## Design: _compute_drop_quantity()/_roll_drop_occurs() are pure static functions on
+## ResourceEconomy (no RNG in the quantity formula, no node/tree needed) — AC-01/AC-02's
+## exact-math assertions call them directly, with no need to force a real random roll.
+## The end-to-end (real GEventBus.monster_died signal -> materials_earned emission)
+## half of AC-01/AC-02 uses DropTableResource.base_drop_rate = 1.0/0.0 to make the
+## OCCURRENCE roll deterministic via data (real, unseeded randf() always satisfies
+## `< 1.0` and never satisfies `< 0.0`) — not an injected/seeded RNG, matching
+## test-standards.md and this project's existing hero.gd randf() precedent. AC-12 is
+## the one place real randomness is exercised over its full, load-bearing 10,000-loop
+## sample size (do not reduce it — the tolerance math depends on that n).
+##
+## Follows tests/unit/resource_economy/drop_table_schema_registry_test.gd's
+## conventions: ResourceEconomy tests use add_child()-then-real-signal dispatch
+## (GEventBus.monster_died.emit(...)), with drop-table test data seeded directly into
+## GGameDataRegistry._drop_tables and removed again in after_test() (no injection seam
+## on ResourceEconomy itself, per ADR-0017's "no public call API beyond EventBus").
+## materials_earned emissions are observed via tests/helpers/event_bus_spy.gd's
+## EventBusSpy, matching this project's other real-EventBus-signal test precedent.
+extends GdUnitTestSuite
+
+var _re: ResourceEconomy
+var _spy: EventBusSpy
+var _seeded_table_ids: Array[StringName] = []
+
+
+func _make_drop_table(id: StringName, base_drop_rate: float, base_quantity: int, guaranteed_min_quantity: int = 1) -> DropTableResource:
+	var table := DropTableResource.new()
+	table.drop_table_id = id
+	table.base_drop_rate = base_drop_rate
+	table.guaranteed_min_quantity = guaranteed_min_quantity
+	var entry := DropEntry.new()
+	entry.material_id = &"goblin_hide"
+	entry.base_quantity = base_quantity
+	table.entries = [entry]
+	return table
+
+
+func _seed_drop_table(table: DropTableResource) -> void:
+	GGameDataRegistry._drop_tables[table.drop_table_id] = table
+	_seeded_table_ids.append(table.drop_table_id)
+
+
+func _make_died_event(drop_table_id: StringName, wave_reward_scalar: float, kill_source: String = "tower") -> MonsterDiedEvent:
+	var payload := MonsterDiedEvent.new()
+	payload.entity_id = 1
+	payload.monster_id = &"goblin_runner"
+	payload.tier = 0
+	payload.drop_table_id = drop_table_id
+	payload.kill_source = kill_source
+	payload.wave_reward_scalar = wave_reward_scalar
+	return payload
+
+
+func before_test() -> void:
+	_re = ResourceEconomy.new()
+	add_child(_re)  # triggers _ready() — GEventBus.monster_died/monsters_died_batch subscriptions are live
+	_seeded_table_ids = []
+	_spy = EventBusSpy.new()
+	_spy.watch(GEventBus.materials_earned)
+
+
+func after_test() -> void:
+	_spy.disconnect_all()
+	_spy = null
+
+	for id: StringName in _seeded_table_ids:
+		GGameDataRegistry._drop_tables.erase(id)
+	_seeded_table_ids = []
+
+	if _re != null and is_instance_valid(_re):
+		remove_child(_re)
+		_re.free()
+	_re = null
+
+
+# ---------------------------------------------------------------------------
+# AC-01: quantity formula worked example (pure function, no RNG involved)
+# ---------------------------------------------------------------------------
+
+func test_compute_drop_quantity_worked_example_rounds_to_six() -> void:
+	# base_quantity=1, wave_reward_scalar=4.768, menagerie_quality_bonus=1.3
+	# -> round(1 * 4.768 * 1.3) = round(6.198) = 6
+	var quantity: int = ResourceEconomy._compute_drop_quantity(1, 4.768, 1.3, 1)
+	assert_int(quantity).is_equal(6)
+
+
+func test_compute_drop_quantity_wave_one_minimum_scale_edge_case() -> void:
+	# wave_reward_scalar=1.00 (wave 1), neutral quality bonus, base_quantity=1
+	# -> round(1 * 1.0 * 1.0) = 1
+	var quantity: int = ResourceEconomy._compute_drop_quantity(1, 1.0, 1.0, 1)
+	assert_int(quantity).is_equal(1)
+
+
+# ---------------------------------------------------------------------------
+# AC-02: quantity floor enforcement (pure function, no RNG involved)
+# ---------------------------------------------------------------------------
+
+func test_compute_drop_quantity_floors_to_guaranteed_minimum_not_zero() -> void:
+	# base_quantity=1, wave_reward_scalar=0.1 -> round(0.1) = 0, floored to 1.
+	var quantity: int = ResourceEconomy._compute_drop_quantity(1, 0.1, 1.0, 1)
+	assert_int(quantity).is_equal(1)
+
+
+func test_compute_drop_quantity_floor_respects_configured_guaranteed_minimum() -> void:
+	# Same rounds-to-zero input, but guaranteed_min_quantity=3 -> floor is 3, not 1.
+	var quantity: int = ResourceEconomy._compute_drop_quantity(1, 0.1, 1.0, 3)
+	assert_int(quantity).is_equal(3)
+
+
+# ---------------------------------------------------------------------------
+# AC-01 / AC-02: end-to-end via the real monster_died signal, with occurrence
+# made deterministic via base_drop_rate = 1.0 (guaranteed success) / 0.0
+# (guaranteed failure) — data-driven determinism, not a seeded RNG.
+# ---------------------------------------------------------------------------
+
+func test_resource_economy_guaranteed_success_roll_emits_materials_earned_with_worked_example_quantity() -> void:
+	var table: DropTableResource = _make_drop_table(&"ac01_worked_example", 1.0, 1)
+	_seed_drop_table(table)
+	_re._menagerie_quality_bonus = 1.3
+
+	GEventBus.monster_died.emit(_make_died_event(&"ac01_worked_example", 4.768))
+
+	assert_int(_spy.count("materials_earned")).is_equal(1)
+	var args: Array = (_spy.emissions["materials_earned"] as Array)[0]
+	assert_str(args[0]).is_equal("goblin_hide")
+	assert_int(args[1]).is_equal(6)
+	assert_str(args[2]).is_equal("tower")
+
+
+func test_resource_economy_guaranteed_success_roll_below_floor_still_reports_guaranteed_minimum() -> void:
+	var table: DropTableResource = _make_drop_table(&"ac02_floor", 1.0, 1, 1)
+	_seed_drop_table(table)
+
+	GEventBus.monster_died.emit(_make_died_event(&"ac02_floor", 0.1))
+
+	assert_int(_spy.count("materials_earned")).is_equal(1)
+	var args: Array = (_spy.emissions["materials_earned"] as Array)[0]
+	assert_int(args[1]).is_equal(1)
+
+
+func test_resource_economy_guaranteed_failure_roll_emits_no_materials_earned() -> void:
+	# base_drop_rate=0.0 -> Formula 1 always fails: total drops = 0, distinct from
+	# the AC-02 floor (which only applies once a drop has already occurred).
+	var table: DropTableResource = _make_drop_table(&"ac02_failed_roll", 0.0, 1)
+	_seed_drop_table(table)
+
+	GEventBus.monster_died.emit(_make_died_event(&"ac02_failed_roll", 4.768))
+
+	assert_int(_spy.count("materials_earned")).is_equal(0)
+
+
+func test_resource_economy_resolves_batch_entries_independently_no_shared_rounding_state() -> void:
+	var table: DropTableResource = _make_drop_table(&"ac01_batch", 1.0, 1)
+	_seed_drop_table(table)
+	_re._menagerie_quality_bonus = 1.3
+
+	var batch: Array[MonsterDiedEvent] = [
+		_make_died_event(&"ac01_batch", 4.768, "tower"),
+		_make_died_event(&"ac01_batch", 4.768, "tower"),
+	]
+	GEventBus.monsters_died_batch.emit(batch)
+
+	assert_int(_spy.count("materials_earned")).is_equal(2)
+	var emissions: Array = _spy.emissions["materials_earned"]
+	for entry_args: Array in emissions:
+		assert_int(entry_args[1]).is_equal(6)
+
+
+# ---------------------------------------------------------------------------
+# AC-12 [Statistical]: Formula 1's occurrence rate, isolated from full drop
+# resolution. Real, unseeded randf() over the AC's own load-bearing 10,000-sample
+# size — for p=0.45, n=10000, stddev ~= 0.005, so the +/-2% band is ~4 standard
+# deviations; a real failure from pure chance is expected roughly 1 in 15,000+
+# runs, an acceptable non-flaky bound for a CI-run statistical test.
+# ---------------------------------------------------------------------------
+
+func test_roll_drop_occurs_statistical_rate_within_two_percent_of_base_drop_rate() -> void:
+	const SAMPLE_SIZE: int = 10000
+	const BASE_DROP_RATE: float = 0.45
+	var success_count: int = 0
+	for i: int in range(SAMPLE_SIZE):
+		if ResourceEconomy._roll_drop_occurs(BASE_DROP_RATE):
+			success_count += 1
+
+	var observed_rate: float = float(success_count) / float(SAMPLE_SIZE)
+	assert_float(observed_rate).is_between(0.43, 0.47)

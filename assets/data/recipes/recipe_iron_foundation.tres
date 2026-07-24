@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="RecipeResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/core/crafting/recipe_resource.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+recipe_id = &"recipe_iron_foundation"
+recipe_category = "tower_component"
+component_slot = "foundation"
+inputs = {
+&"Material": 5
+}
+tech_prerequisite = &""
+output_item_id = &"iron_foundation_component"
+output_quantity = 1
+quality_tier = 1

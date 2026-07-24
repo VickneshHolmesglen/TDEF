@@ -14,8 +14,8 @@ Accepted
 | **Domain** | Core / Data Structures |
 | **Knowledge Risk** | LOW — `Dictionary`, `Array`, `Vector2i`, `Error` enum, and `floor()` are all stable pre-4.x APIs unchanged through 4.6 |
 | **References Consulted** | `docs/engine-reference/godot/VERSION.md`, `docs/engine-reference/godot/breaking-changes.md`, `docs/engine-reference/godot/deprecated-apis.md` |
-| **Post-Cutoff APIs Used** | None |
-| **Verification Required** | Verify `Dictionary[Vector2i, CellType]` static typing compiles correctly in Godot 4.6.2 GDScript — typed Dictionary keys use `Vector2i` which is a built-in type. Verify `ERR_UNAVAILABLE` from the `Error` enum is the correct constant for "operation not available in current state" (as opposed to `ERR_LOCKED` or `FAILED`). |
+| **Post-Cutoff APIs Used** | `Dictionary[Vector2i, CellType]`, `Dictionary[Vector2i, int]`, `Dictionary[Vector2i, bool]` — typed Dictionaries (Godot 4.4+; corrected 2026-07-13 via `/architecture-review` Pass 4 — this row previously read "None," which contradicted the Decision section below. Functionally low-risk: `grid-system.md`'s own Engine Risk Notes table already lists typed Dictionaries as "Verified working — exercised by the passing test suite," and `VERSION.md`'s Project-Specific API Tracking table independently confirms the same. This was a documentation-accuracy fix only, not a behavior change.) |
+| **Verification Required** | Verify `ERR_UNAVAILABLE` from the `Error` enum is the correct constant for "operation not available in current state" (as opposed to `ERR_LOCKED` or `FAILED`). (The typed-Dictionary compile-and-runtime verification previously listed here is now confirmed — see Post-Cutoff APIs Used row.) |
 
 ## ADR Dependencies
 
@@ -255,7 +255,7 @@ EventBus.mission_phase_changed → Grid (updates _state)
 
 ### Risks
 - **Risk**: A caller caches `get_walkable_cell_map()` across a tower placement event and Pathfinding uses a stale walkability map. **Mitigation**: Control Manifest rule: "Never cache `get_walkable_cell_map()` across EventBus `tower_placed` or `tower_removed` events." ADR-0004 already requires Pathfinding to refresh after tower events.
-- **Risk**: `Dictionary[Vector2i, CellType]` static typing with a user-defined enum value type may not compile in Godot 4.6.2 GDScript. **Mitigation**: Verify during Grid scaffold — if enum values require explicit `int` cast, use `Dictionary[Vector2i, int]` with helper functions `_to_cell_type(v: int) -> CellType` at read boundaries.
+- ~~**Risk**: `Dictionary[Vector2i, CellType]` static typing with a user-defined enum value type may not compile in Godot 4.6.2 GDScript.~~ **RESOLVED** — confirmed working via the passing test suite (see `grid-system.md`'s Engine Risk Notes table and `VERSION.md`'s Project-Specific API Tracking table). No cast/helper workaround was needed.
 - **Risk**: Tower System accesses write API during WAVE_ACTIVE due to a UI input not blocked at the UI layer. **Mitigation**: Grid returns `GRID_WRITE_REJECTED` regardless of caller; Tower System must surface the rejection to the player. The write gate is in the Grid — not a caller precondition.
 
 ## GDD Requirements Addressed

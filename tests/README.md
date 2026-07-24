@@ -19,10 +19,31 @@ tests/
 
 **In-editor**: Godot Editor → GdUnit4 panel → Run All
 
-**Headless (CI)**:
+**Headless (local/manual)**:
 ```
-godot --headless --script tests/gdunit4_runner.gd
+godot --headless --script tests/gdunit4_runner.gd -- -a res://tests --ignoreHeadlessMode
 ```
+Note: CI does **not** use this script — `.github/workflows/tests.yml` runs tests via the
+`MikeSchulze/gdUnit4-action` GitHub Action directly. This invocation is for local developer
+use and for agent sessions (e.g. `/smoke-check`) that need a headless run without a full CI job.
+
+## Known Gotcha: New `class_name` Files Need a Cache Update (TD-workflow-001)
+
+A bare `godot --headless` **game-mode** boot (used by headless test runs and by AI-agent
+sessions driving the game live) does **not** rescan the project for new `class_name`
+declarations — only the editor does that automatically. If you just added a new
+`class_name` file and immediately see `"Could not find type 'X' in the current scope"` or
+(if the new class is referenced by an Autoload) `"Failed to instantiate an autoload... does
+not inherit from 'Node'"`, this is why.
+
+**Fix**: run `godot --headless --editor --quit` once from the project root. This performs a
+full editor-mode rescan (including `update_scripts_classes`) and rewrites
+`.godot/global_script_class_cache.cfg` correctly and durably — **no GUI window is opened**,
+so this works in a fully headless agent session with no user-mediated editor launch required.
+Verified 2026-07-08 (`TD-workflow-001`): confirmed it both adds a newly-created `class_name`
+and prunes a deleted one. If for some reason this isn't available in your context, the cache
+entry can also be added by hand — see `TD-workflow-001` in `docs/tech-debt-register.md` for
+the exact format and a worked example.
 
 ## Installing GdUnit4
 

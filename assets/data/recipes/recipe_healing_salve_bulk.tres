@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="RecipeResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/core/crafting/recipe_resource.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+recipe_id = &"recipe_healing_salve_bulk"
+recipe_category = "crafted_good"
+component_slot = ""
+inputs = {
+&"Common": 6
+}
+tech_prerequisite = &""
+output_item_id = &"healing_salve"
+output_quantity = 3
+quality_tier = 0
