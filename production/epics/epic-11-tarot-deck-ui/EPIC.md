@@ -3,7 +3,7 @@
 > **Layer**: Presentation
 > **GDD**: design/gdd/tarot-deck-ui.md
 > **Architecture Module**: Presentation Layer — sibling shell to Sanctuary UI (2-screen tab strip hosting Tarot and Hero Skill Build's existing screens)
-> **Status**: Ready
+> **Status**: Complete (2026-07-25)
 > **Stories**: 5 stories created (2026-07-24) — see table below
 
 ## Stories
@@ -22,7 +22,7 @@
 
 **Update (2026-07-25)**: both cited blockers from the original closure note were stale — `design/ux/tarot-deck-ui.md` (OQ-4) was actually authored 2026-07-24, the same day as this note, just never cross-referenced back here; and both hosted screens (`src/gameplay/ui/tarot_screen/`, `src/gameplay/ui/hero_skill_build_screen/`) were built later that same session. Every remaining functional gap this epic ever flagged is now closed: Story 004's Conflict Indicator badge is wired end-to-end (14/14 on `tarot_screen_test.gd`); Story 002's AC-3 is satisfied by construction (a real, separate bug found while investigating it — `tarot.gd`'s `_locked` flag getting stuck after a mid-mission "Quit to Sanctuary" — is now fixed); Story 003's AC-2 is tested against the real screens and AC-3 is confirmed N/A (the real Hero Skill Build screen has no gamepad pick-up state to abandon).
 
-**All 5 AC Groups in `design/gdd/tarot-deck-ui.md` are now genuinely verified, all screens exist, the UX spec exists.** The one item this epic's own Definition of Done still requires before formal `Complete` status: a `/code-review` pass over today's (2026-07-25) changes — deliberately deferred per this session's explicit "skip reviews till the end of everything outstanding" instruction, not overlooked. Epic status remains `Ready` pending that single review pass; no further implementation work is expected to be needed first.
+**All 5 AC Groups in `design/gdd/tarot-deck-ui.md` are now genuinely verified, all screens exist, the UX spec exists, and the deferred `/code-review` pass is complete** (2026-07-25 — no findings against this epic's own files; the pass's one real finding, in `diorama.gd`, belongs to Sanctuary UI Epic 10's Story 013). **Epic 11 is now formally Complete.**
 
 ## Overview
 

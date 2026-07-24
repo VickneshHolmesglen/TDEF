@@ -297,10 +297,14 @@ func is_departing() -> bool:
 
 ## GDD Visual/Audio Requirements: chrome fades out first and fastest within
 ## the DEPARTING beat's ~0.5s budget (roughly 60% fade / 40% hold-on-settled-
-## frame -- the diorama's own slow pull-back/settle half needs a real
-## Camera2D on real diorama content, neither of which exists yet, Story 012's
-## own already-confirmed gap -- not attempted here). Purely cosmetic, runs
-## after the terminal latch and state transition above are already committed.
+## frame). Purely cosmetic, runs after the terminal latch and state
+## transition above are already committed.
+##
+## Update 2026-07-25: the diorama's own pull-back/settle half is now real
+## too (see the play_departing_pull_back() call in confirm_launch_depart()
+## above) -- diorama.gd implements it as a scale+position tween on its own
+## World container rather than a literal Camera2D, since the Diorama's root
+## is a Control, not a Node2D/Viewport (see that file's own doc comment).
 func _play_departing_chrome_fade() -> void:
 	var tween: Tween = create_tween()
 	tween.tween_property(_chrome, "modulate:a", 0.0, 0.3) \

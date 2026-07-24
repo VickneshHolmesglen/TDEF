@@ -90,6 +90,8 @@ Audio: no `design/audio/` bible exists yet — directional only per the GDD's ow
 
 **Status**: [x] Created — `production/qa/evidence/story-013-visual-audio-pass-evidence.md` (2026-07-24, partial — see evidence doc for exactly what's live-verified vs. blocked on missing diorama content). Diorama mechanism now real (2026-07-25): `tests/integration/sanctuary-ui/diorama_test.gd` (8/8 passing) covers fixed-position rendering, habitat occupancy, and pull-back triggering. Evidence doc itself not yet re-verified via a fresh screenshot pass — real art still doesn't exist (ComfyUI/ZLUDA driver failure), so a new screenshot would only show colored rects, not a meaningfully different visual verdict.
 
+**Code Review (2026-07-25)**: `diorama.gd` reviewed. Found and fixed a real bug: assumed Menagerie was scene-instanced (discovered via a `"menagerie"` group, mirroring Tarot/EquipmentForge) but it's actually a real Autoload (`GMenagerie`) — the habitat occupancy count would have silently stayed stuck at 0 forever in real gameplay, since nothing is ever added to that group. Also fixed: placeholder structure rects defaulted to `MOUSE_FILTER_STOP` with no click handler, silently swallowing clicks meant for anything else; and a stale doc comment in `sanctuary_ui.gd` still claiming the pull-back needed a `Camera2D` that doesn't exist, even though it had just been implemented in the same commit. Re-verified: 163/163 across all affected suites after fixes.
+
 ---
 
 ## Dependencies

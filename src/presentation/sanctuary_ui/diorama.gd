@@ -59,8 +59,9 @@ const STRUCTURE_SIZE: Vector2 = Vector2(64, 64)
 
 @onready var _world: Node2D = $World
 
-## Injectable for tests; defaults to the shell-owned instance discovered via
-## the "menagerie" group (Menagerie is scene-instanced, not an Autoload).
+## Injectable for tests; defaults to the real GMenagerie Autoload (unlike
+## Tarot/EquipmentForge, Menagerie is a real Autoload, not scene-instanced --
+## matches menagerie_screen.gd's own identical default).
 @export var menagerie: Menagerie
 
 var _rendered_structure_types: Dictionary[String, ColorRect] = {}
@@ -69,7 +70,7 @@ var _habitat_label: Label = null
 
 func _ready() -> void:
 	if menagerie == null:
-		menagerie = get_tree().get_first_node_in_group(&"menagerie") as Menagerie
+		menagerie = GMenagerie
 	GEventBus.sanctuary_structure_built.connect(_on_sanctuary_structure_built)
 	GEventBus.creature_acquired.connect(_on_habitat_composition_changed)
 	GEventBus.creature_happiness_changed.connect(_on_creature_happiness_changed)
@@ -101,6 +102,13 @@ func _render_structure(structure_type: String) -> void:
 	rect.color = STRUCTURE_COLORS.get(structure_type, Color.GRAY)
 	rect.size = STRUCTURE_SIZE
 	rect.position = STRUCTURE_POSITIONS[structure_type] - STRUCTURE_SIZE / 2.0
+	# No click/room-entry handler exists yet for these placeholders (GDD's
+	# "click a structure to enter its room" secondary entry path is a future
+	# story's scope) -- Control's default MOUSE_FILTER_STOP would otherwise
+	# silently swallow clicks aimed at anything else with no handler of its
+	# own to show for it. Explicit MOUSE_FILTER_IGNORE until that story wires
+	# real click handling here.
+	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_world.add_child(rect)
 	_rendered_structure_types[structure_type] = rect
 
