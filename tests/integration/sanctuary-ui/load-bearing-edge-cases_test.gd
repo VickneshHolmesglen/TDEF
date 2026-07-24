@@ -108,8 +108,19 @@ func test_staged_room_state_is_gone_after_switching_away_via_hotkey() -> void:
 # ---------------------------------------------------------------------------
 
 func test_diorama_has_no_structure_click_mechanism_yet_confirmed_not_assumed() -> void:
-	# Diorama is still Story 001's placeholder Control -- no children, no
-	# click-target metadata, no structure registry. This test exists so the
-	# gap is verified against the real current state of the scene tree
-	# rather than left as an unchecked claim in prose.
-	assert_int(_shell.get_diorama().get_child_count()).is_equal(0)
+	# Updated 2026-07-25 (Story 013): the Diorama gained a real `World`
+	# container + placeholder structure rendering (diorama.gd) -- it is no
+	# longer Story 001's empty placeholder, so a bare `get_child_count() == 0`
+	# check would now be testing a stale assumption instead of the real gap.
+	# The real gap this test verifies is unchanged and still real: no
+	# structure/habitat is a *clickable secondary entry path* into a room
+	# (GDD Core Rule 1's "click a structure -> enter its room" mechanism) --
+	# diorama.gd's own structure rendering has no click/input handling of any
+	# kind, confirmed directly against the real node it now instantiates.
+	GEventBus.sanctuary_structure_built.emit("watchtower_tier_1", "watchtower")
+	var world: Node2D = _shell.get_diorama().call("get_world")
+	var structure: Node = world.get_child(0)
+	assert_bool(structure is ColorRect).is_true()  # a plain placeholder rect
+	# No click/room-entry handler is wired to it at all -- confirmed by its
+	# gui_input signal having zero connections, not merely "it's a rect."
+	assert_array((structure as ColorRect).gui_input.get_connections()).is_empty()

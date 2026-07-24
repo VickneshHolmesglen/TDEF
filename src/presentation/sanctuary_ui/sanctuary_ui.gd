@@ -274,6 +274,8 @@ func confirm_launch_depart() -> void:
 	GEventBus.sanctuary_structure_built.disconnect(_on_sanctuary_structure_built)
 	set_active_state(DEPARTING_STATE)
 	_play_departing_chrome_fade()
+	if _diorama.has_method(&"play_departing_pull_back"):
+		_diorama.call(&"play_departing_pull_back")
 	# Gap closed 2026-07-25: MissionScene.tscn now exists (a real, tested,
 	# generic MISSION-context scene hosting both Mission Select's own
 	# browsing/configuring screen and the live gameplay assembly, switching

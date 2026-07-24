@@ -1,10 +1,11 @@
-[gd_scene load_steps=6 format=3 uid="uid://sanctuaryui0scene"]
+[gd_scene load_steps=7 format=3 uid="uid://sanctuaryui0scene"]
 
 [ext_resource type="Script" path="res://src/presentation/sanctuary_ui/sanctuary_ui.gd" id="1_su"]
 [ext_resource type="Script" path="res://src/presentation/sanctuary_ui/tab_strip.gd" id="2_ts"]
 [ext_resource type="Script" path="res://src/presentation/sanctuary_ui/resource_header.gd" id="3_rh"]
 [ext_resource type="Script" path="res://src/presentation/sanctuary_ui/room_host.gd" id="4_rmh"]
 [ext_resource type="Script" path="res://src/core/equipment_forge/equipment_forge.gd" id="5_ef"]
+[ext_resource type="Script" path="res://src/presentation/sanctuary_ui/diorama.gd" id="6_dio"]
 
 [node name="SanctuaryUI" type="Control"]
 layout_mode = 3
@@ -12,6 +13,9 @@ script = ExtResource("1_su")
 
 [node name="Diorama" type="Control" parent="."]
 layout_mode = 1
+script = ExtResource("6_dio")
+
+[node name="World" type="Node2D" parent="Diorama"]
 
 [node name="RoomHost" type="Control" parent="."]
 layout_mode = 1

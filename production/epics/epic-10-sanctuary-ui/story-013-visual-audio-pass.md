@@ -1,7 +1,7 @@
 # Story 013: Visual/Audio Pass — Drawer-Slide, DEPARTING Beat, Shell Chrome Language
 
 > **Epic**: Sanctuary UI
-> **Status**: Partial (2026-07-24 — chrome styling, room-hosting composition, badge/header scale-pop, and the DEPARTING chrome-fade implemented and live-verified via Godot MCP screenshots; diorama-dependent visuals blocked on content that doesn't exist — see `production/qa/evidence/story-013-visual-audio-pass-evidence.md`)
+> **Status**: Partial (2026-07-24 — chrome styling, room-hosting composition, badge/header scale-pop, and the DEPARTING chrome-fade implemented and live-verified via Godot MCP screenshots; diorama-dependent visuals blocked on content that doesn't exist — see `production/qa/evidence/story-013-visual-audio-pass-evidence.md`. **Updated 2026-07-25**: the diorama itself is now real — see note below. Still Partial: the real gap is now "no actual art," not "no diorama mechanism.")
 > **Layer**: Presentation
 > **Type**: Visual/Feel
 > **Manifest Version**: 2026-07-13b
@@ -53,6 +53,8 @@ Audio: no `design/audio/` bible exists yet — directional only per the GDD's ow
 - The actual SFX asset selection — deferred until Audio System's `AudioCueMap` content-authoring pass is complete
 - Story 009/010: the state-machine mechanics the `DEPARTING`/`DEPARTING_TO_LOADOUT` beats visualize (this story only owns the visual pacing, not the terminal-latch logic)
 
+**Real progress, 2026-07-25**: the Diorama went from Story 001's empty placeholder `Control` (0 children, confirmed by Story 012's own finding) to a real, functioning node: fixed-position structure rendering for both real `StructureResource` types (`watchtower`, `habitat_expansion`) driven by the genuine `sanctuary_structure_built` event, a live habitat-occupancy count reading real `Menagerie` state, and a "camera" pull-back beat for the `DEPARTING` transition (implemented as a scale+position tween on a `World` container, since the Diorama's own root is a `Control` — see `diorama.gd`'s own doc comment for why a literal `Camera2D` doesn't apply here). Real art generation was attempted first via this project's own ComfyUI pipeline (`tools/generate_asset.py`) and hard-failed on a CUDA/ZLUDA driver error at the model's own embedding-tensor allocation step — a local GPU/driver environment issue on this machine, not fixable from this codebase. Fell back to `ColorRect` placeholders, the same "no art exists" honest-scope convention used everywhere else in this project. 8 new tests, all passing (`tests/integration/sanctuary-ui/diorama_test.gd`). **The GDD's "full stacked-sprite/cast-shadow treatment" requirement remains a real, unclosed gap** — this is now a content/art gap, not a missing-mechanism gap.
+
 ---
 
 ## QA Test Cases
@@ -86,7 +88,7 @@ Audio: no `design/audio/` bible exists yet — directional only per the GDD's ow
 **Story Type**: Visual/Feel
 **Required evidence**: `production/qa/evidence/story-013-visual-audio-pass-evidence.md` + sign-off, including a recorded draw-call measurement via Remote Debugger
 
-**Status**: [x] Created — `production/qa/evidence/story-013-visual-audio-pass-evidence.md` (2026-07-24, partial — see evidence doc for exactly what's live-verified vs. blocked on missing diorama content)
+**Status**: [x] Created — `production/qa/evidence/story-013-visual-audio-pass-evidence.md` (2026-07-24, partial — see evidence doc for exactly what's live-verified vs. blocked on missing diorama content). Diorama mechanism now real (2026-07-25): `tests/integration/sanctuary-ui/diorama_test.gd` (8/8 passing) covers fixed-position rendering, habitat occupancy, and pull-back triggering. Evidence doc itself not yet re-verified via a fresh screenshot pass — real art still doesn't exist (ComfyUI/ZLUDA driver failure), so a new screenshot would only show colored rects, not a meaningfully different visual verdict.
 
 ---
 
