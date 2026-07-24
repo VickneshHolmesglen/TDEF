@@ -10,9 +10,11 @@
 ## time, never a hardcoded expected string, since this class's entire job is
 ## being a passthrough live read, not owning any state of its own.
 ##
-## The Tarot-risk half has no live instance anywhere in this project to read
-## from (OQ-5, no Autoload) -- tested as an explicit "not available" result,
-## matching snapshot_chip.gd's own documented, flagged gap.
+## The Tarot-risk half, RESOLVED 2026-07-25: Tarot now exists as a real,
+## shell-owned child of TarotDeckUI.tscn (the "tarot" group) -- these tests
+## exercise the real live read (get_active_card_count()) against it, plus
+## the one remaining genuine "not available" case (a chip instantiated
+## standalone, outside its normal host).
 extends GdUnitTestSuite
 
 var _runner: GdUnitSceneRunner
@@ -54,10 +56,30 @@ func test_empty_ultimate_constant_matches_hero_skill_builds_own_empty_sentinel()
 
 
 # ---------------------------------------------------------------------------
-# Tarot-risk half: explicit "not available," not a fabricated value
+# Tarot-risk half: real live read against the shell-owned Tarot instance
 # ---------------------------------------------------------------------------
 
-func test_tarot_risk_summary_is_explicitly_unavailable() -> void:
+func test_tarot_risk_summary_is_available_when_hosted_inside_the_real_shell() -> void:
 	var summary: Dictionary = _chip.get_tarot_risk_summary()
 
+	assert_bool(summary.get("available", false)).is_true()
+	assert_int(summary.get("equipped_card_count", -1)).is_equal(0)  # fresh Tarot instance, empty deck
+
+
+func test_tarot_risk_summary_reflects_live_deck_changes() -> void:
+	var tarot: Tarot = _shell.get_tree().get_first_node_in_group(&"tarot") as Tarot
+	tarot._card_unlocked[&"iron_resolve"] = true
+	tarot.equip_card(&"iron_resolve")
+
+	var summary: Dictionary = _chip.get_tarot_risk_summary()
+
+	assert_int(summary["equipped_card_count"] as int).is_equal(1)
+
+
+func test_tarot_risk_summary_is_not_available_when_no_shell_hosts_the_chip() -> void:
+	var standalone_chip := SnapshotChip.new()
+
+	var summary: Dictionary = standalone_chip.get_tarot_risk_summary()
+
 	assert_bool(summary.get("available", true)).is_false()
+	standalone_chip.free()

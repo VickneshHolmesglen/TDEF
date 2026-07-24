@@ -103,7 +103,18 @@ var _rune_discovered: Dictionary[StringName, bool] = {}
 var _run_modifier_selected_types: Dictionary[String, bool] = {}
 
 
+## Group membership added 2026-07-25: Tarot is deliberately scene-instanced,
+## not an Autoload — its one real instance lives as a shell-owned child of
+## TarotDeckUI.tscn (mirrors equipment_forge.gd's identical "equipment_forge"
+## group precedent, added the same day for the same reason). The Tarot
+## deck-building SCREEN (a ScreenHost-hosted, destroy-and-recreate screen,
+## unlike this node) discovers the shell-owned instance via
+## `get_tree().get_first_node_in_group(&"tarot")`.
+const GROUP_NAME: StringName = &"tarot"
+
+
 func _ready() -> void:
+	add_to_group(GROUP_NAME)
 	GEventBus.mission_launched.connect(_on_mission_launched)
 	GEventBus.mission_phase_changed.connect(_on_mission_phase_changed)
 	GEventBus.run_modifier_selected.connect(_on_run_modifier_selected)

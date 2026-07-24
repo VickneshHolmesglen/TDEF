@@ -1,7 +1,7 @@
 # Story 005: Current Build Snapshot Chip — The Shell's Cross-Screen Bridge
 
 > **Epic**: Tarot Deck UI
-> **Status**: Complete (2026-07-24 — implemented, tested live via GdUnit4, 4/4 passing; `/story-done` verification complete. Ultimate half is fully real; Tarot-risk half has no live instance to read, see note below)
+> **Status**: Complete (2026-07-24 — implemented, tested live via GdUnit4, 4/4 passing; `/story-done` verification complete. **Updated 2026-07-25**: the Tarot-risk half's gap is now closed — Tarot exists as a real, shell-owned instance, see note below)
 > **Layer**: Presentation
 > **Type**: Integration
 > **Manifest Version**: 2026-07-13b
@@ -28,7 +28,7 @@
 *From GDD `design/gdd/tarot-deck-ui.md`, AC Group 5:*
 
 - [x] GIVEN `TAROT_DECK` is active, THEN the snapshot chip displays Hero Skill Build's current `ultimate_id`, or an explicit "No Ultimate yet" state when `ultimate_id == EMPTY`. — fully real: `GHeroSkillBuild` is a genuine live Autoload, tested against both populated and `EMPTY` values.
-- [?] GIVEN `HERO_SKILL_BUILD` is active, THEN the snapshot chip displays Tarot's current aggregate risk readout, reflecting the currently-equipped deck. — DEFERRED: no live Tarot instance exists anywhere in the project to read from (scene-instanced, no Autoload, no built screen — OQ-5); `get_tarot_risk_summary()` returns an explicit `{"available": false}` rather than a fabricated value, and that explicit-unavailability is itself tested.
+- [x] GIVEN `HERO_SKILL_BUILD` is active, THEN the snapshot chip displays Tarot's current aggregate risk readout, reflecting the currently-equipped deck. — **Resolved 2026-07-25**: Tarot now exists as a real, shell-owned `TarotDeckUI.tscn` child instance; `get_tarot_risk_summary()` returns a live `equipped_card_count` read (the closest existing real signal to "aggregate risk"). Verified live-updating as the deck changes, tested via 3 new cases (hosted, live-update, standalone-not-available).
 - [x] GIVEN either screen's underlying derived value changes while the other screen is active, THEN the snapshot chip reflects the change without requiring a screen switch to refresh. — verified for the Ultimate direction (never-cached live read, tested); the Tarot direction is untestable per the same gap above.
 - [x] GIVEN the snapshot chip is focused via keyboard/gamepad navigation attempt, THEN it never receives focus and shows no focus ring — confirming it is not a navigable region. — satisfied by construction: `SnapshotChip extends Node`, not `Control`, so it structurally cannot receive focus; the visual chip rendering itself doesn't exist yet (no real screen to host it, OQ-5).
 
@@ -100,8 +100,8 @@ Visual: single-line, non-interactive text+icon readout, reusing the persistent-r
 ---
 
 ## Completion Notes
-**Completed**: 2026-07-24
-**Criteria**: 3/4 passing, 1/4 deferred (AC-2's Tarot-risk half — no live Tarot instance exists yet, OQ-5)
+**Completed**: 2026-07-24, Tarot-risk gap closed 2026-07-25
+**Criteria**: 4/4 passing (all criteria now fully real, no deferrals remaining)
 **Deviations**: None
-**Test Evidence**: Integration: `tests/integration/tarot-deck-ui/current-build-snapshot_test.gd` (4/4 passing)
+**Test Evidence**: Integration: `tests/integration/tarot-deck-ui/current-build-snapshot_test.gd` (6/6 passing, up from 4/4 — 2 new cases for the live-update and standalone-unavailable paths)
 **Code Review**: Complete (full Tarot Deck UI code-review pass, 2026-07-24)

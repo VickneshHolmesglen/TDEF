@@ -14,7 +14,7 @@
 | 002 | Entry — Sanctuary UI's Loadout Affordance | Integration | Complete (2026-07-24, 3/3 tests passing) — AC-3's phase-gate check is a real, flagged gap, no external enforcement exists yet | ADR-0020 |
 | 003 | Exit & Lifecycle — Destroy-and-Recreate, Gamepad Pick-Up Transient State | Logic | Complete (2026-07-24, 3/3 tests passing) — Cancel's SceneManager hand-off is genuinely real (not a placeholder); AC-2/AC-3 have no real screen content to test against yet | ADR-0032 / ADR-0011 / ADR-0001 / ADR-0020 |
 | 004 | Conflict Indicator — Tarot / Mission Select Modifier-Mapping Table | Integration | Complete (2026-07-24, 8/8 tests passing) — mapping/query engine only, real badge UI awaits a future Tarot screen story, see note | ADR-0027 / ADR-0028 |
-| 005 | Current Build Snapshot Chip — The Shell's Cross-Screen Bridge | Integration | Complete (2026-07-24, 4/4 tests passing) — Ultimate half fully real (live GHeroSkillBuild read); Tarot-risk half has no live instance anywhere to read, explicit "not available," see note | ADR-0001 |
+| 005 | Current Build Snapshot Chip — The Shell's Cross-Screen Bridge | Integration | Complete (2026-07-24, 4/4 tests; Tarot-risk gap closed 2026-07-25, 6/6 tests) — **both halves now fully real**: Ultimate (live GHeroSkillBuild read) and Tarot-risk (live shell-owned Tarot instance read) | ADR-0001 |
 
 **Note**: no story here is `Blocked` — all governing ADRs (0001, 0011, 0020, 0027, 0028) are `Accepted`. ADR-0020's classification of Story 002's entry hand-off remains formally unresolved (mirrors Sanctuary UI Epic 10's OQ-9), flagged in that story's own Context, not treated as a blocker. Story 002 also depends on Sanctuary UI Epic 10's Story 010 (the sending side of the same hand-off) — implement in that order.
 

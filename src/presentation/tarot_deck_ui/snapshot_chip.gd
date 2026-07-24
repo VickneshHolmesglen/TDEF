@@ -17,12 +17,19 @@ extends Node
 ## EMPTY_ULTIMATE constant exactly, per hero_skill_build.gd's own doc
 ## comment -- never a stored field, always freshly derived on call).
 ##
-## Tarot-risk half is a REAL, FLAGGED GAP, not fabricated: Tarot is
-## scene-instanced (ADR-0027), has no Autoload registration anywhere in
-## project.godot, and no Tarot screen/instance exists yet in this project
-## (OQ-5) -- there is genuinely no live Tarot instance anywhere to query.
-## get_tarot_risk_summary() returns an explicit "not available" result rather
-## than a fabricated 0/default value that could be mistaken for a real read.
+## Tarot-risk half, RESOLVED 2026-07-25: Tarot is still scene-instanced
+## (ADR-0027), not an Autoload, but its one real instance now lives as a
+## shell-owned child of TarotDeckUI.tscn (added alongside the real Tarot/
+## Hero Skill Build screens, matching equipment_forge.gd's own identical
+## "equipment_forge" group precedent). get_tarot_risk_summary() discovers it
+## via the "tarot" group and returns a real, live-derived reading --
+## get_active_card_count() (the equipped-deck size), the closest existing
+## real signal to "aggregate risk" per this class's own doc comment; a
+## dedicated risk-aggregate formula, if the GDD ever specifies one, replaces
+## this read without changing the {"available": bool, ...} shape callers
+## already depend on. Still returns {"available": false} in the one
+## remaining genuine case: no TarotDeckUI shell mounted at all (this chip
+## instantiated standalone, outside its normal host).
 
 const EMPTY_ULTIMATE: String = "EMPTY"
 
@@ -35,10 +42,13 @@ func get_ultimate_id() -> String:
 	return GHeroSkillBuild.get_all_slot_bindings().get("U", EMPTY_ULTIMATE)
 
 
-## Tarot's current aggregate risk readout. Returns { "available": false }
-## today -- see class doc for why. A future story wiring a real Tarot
-## instance into this shell should update this method to read that
-## instance's own get_active_card_count() (or an eventual dedicated
-## aggregate-risk getter) directly, not add a new mechanism here.
+## Tarot's current aggregate risk readout -- see class doc comment for what
+## "aggregate risk" currently means (equipped-deck size) and why.
 func get_tarot_risk_summary() -> Dictionary:
-	return {"available": false}
+	var tree: SceneTree = get_tree()
+	if tree == null:
+		return {"available": false}  # this chip isn't inside a scene tree at all (e.g. a standalone .new())
+	var tarot: Tarot = tree.get_first_node_in_group(&"tarot") as Tarot
+	if tarot == null:
+		return {"available": false}
+	return {"available": true, "equipped_card_count": tarot.get_active_card_count()}

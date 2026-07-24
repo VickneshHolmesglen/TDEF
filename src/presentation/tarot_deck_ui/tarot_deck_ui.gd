@@ -15,16 +15,21 @@ extends Control
 ## UI Story 001's own identical precedent); this file is buildable and
 ## testable standalone.
 ##
-## Story 003 (Exit & Lifecycle): screen hosting now uses the real ScreenHost
+## Story 003 (Exit & Lifecycle): screen hosting uses the real ScreenHost
 ## generic mount/unmount mechanism (ADR-0032 Section 1, mirroring Sanctuary
-## UI's RoomHost exactly). SCREEN_SCENES stays empty -- neither tarot.md's
-## nor hero-skill-build.md's own screen exists as a built .tscn anywhere in
-## this project yet (confirmed by direct search, matches the GDD's own OQ-5).
-## Switching states still works exactly as Story 001 built it, it just has
-## nothing to mount -- ScreenHost stays empty rather than crashing or
-## fabricating placeholder content, identical to Sanctuary UI's own
-## ROOM_SCENES precedent for its 3 unbuilt rooms.
-const SCREEN_SCENES: Dictionary[StringName, PackedScene] = {}
+## UI's RoomHost exactly).
+##
+## Both screens added 2026-07-25: `TarotScreen.tscn` and
+## `HeroSkillBuildScreen.tscn`, built directly against their own GDDs' UI
+## Requirements sections — see each scene's own doc comment for the
+## honestly-scoped deviations from each GDD's literal pick-up-then-place
+## gamepad wording (both underlying APIs have no slot-targeting/swap
+## primitive to bind a 2-step flow to, mirroring Equipment Forge's own
+## identical finding the same day).
+const SCREEN_SCENES: Dictionary[StringName, PackedScene] = {
+	&"TAROT_DECK": preload("res://src/gameplay/ui/tarot_screen/TarotScreen.tscn"),
+	&"HERO_SKILL_BUILD": preload("res://src/gameplay/ui/hero_skill_build_screen/HeroSkillBuildScreen.tscn"),
+}
 
 const HERO_SKILL_BUILD_STATE: StringName = &"HERO_SKILL_BUILD"
 const TAROT_DECK_STATE: StringName = &"TAROT_DECK"
