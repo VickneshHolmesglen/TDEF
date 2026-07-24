@@ -3,22 +3,52 @@
 ## AC Group 8 + the DEPARTING-specific States/Transitions and terminal-latch
 ## Edge Cases items).
 ##
-## See sanctuary_ui.gd's own confirm_launch_depart() doc comment for a real,
-## flagged gap: no resolved "hand off to Mission Select's browsing screen"
-## API exists in this project (ADR-0002 only defines 2 top-level scenes,
-## matching the GDD's own OQ-2). These tests cover the terminal-latch state
-## machine, which IS fully real and testable, not the unresolved hand-off.
+## Gap closed 2026-07-25: confirm_launch_depart() now calls the real
+## GSceneManager.transition_to_mission(""), landing on the real, heavy
+## MissionScene.tscn (previously this path resolved to nothing at all, so
+## the call was inert). Exercised safely using this project's own
+## established test seam (GSceneManager._inject(), matching
+## loadout-handoff_test.gd's identical pattern for the Tarot Deck UI hand-
+## off) rather than letting each test actually swap the running SceneTree's
+## current_scene to the real, node-heavy gameplay assembly -- TD-test-004's
+## own orphan-count regression was root-caused to this exact gap: this test
+## file previously had no stub-scene seam at all (there was nothing real to
+## redirect away from until today), so every confirm_launch_depart() call
+## below was silently instantiating and never freeing the genuine
+## MissionScene.tscn tree once it started existing.
 extends GdUnitTestSuite
+
+const STUB_SCENE_PATH: String = "res://tests/fixtures/scene_manager/StubScene.tscn"
 
 var _runner: GdUnitSceneRunner
 var _shell: SanctuaryUI
 
+var _original_mission_path: String
+var _original_sanctuary_path: String
+var _original_tarot_deck_path: String
+var _original_current_scene: Node
+
 
 func before_test() -> void:
+	_original_mission_path = GSceneManager._mission_scene_path
+	_original_sanctuary_path = GSceneManager._sanctuary_scene_path
+	_original_tarot_deck_path = GSceneManager._tarot_deck_scene_path
+	GSceneManager._inject(STUB_SCENE_PATH, STUB_SCENE_PATH, STUB_SCENE_PATH)
+	_original_current_scene = get_tree().current_scene
+
 	TabStrip.reset_onboarding_flag_for_tests()
 	_runner = scene_runner("res://src/presentation/sanctuary_ui/SanctuaryUI.tscn")
 	@warning_ignore("unsafe_cast")
 	_shell = _runner.scene() as SanctuaryUI
+
+
+func after_test() -> void:
+	if GSceneManager._transition_in_progress:
+		await GEventBus.scene_transition_completed
+	GSceneManager._inject(_original_mission_path, _original_sanctuary_path, _original_tarot_deck_path)
+	GSceneManager._transition_in_progress = false
+	if is_instance_valid(_original_current_scene):
+		get_tree().current_scene = _original_current_scene
 
 
 # ---------------------------------------------------------------------------

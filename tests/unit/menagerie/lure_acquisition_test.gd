@@ -56,8 +56,10 @@ func test_all_five_species_are_lure_able_with_sufficient_materials() -> void:
 
 
 # ---------------------------------------------------------------------------
-# AC-2: sufficient materials -> materials_spent fires exact cost, one
-# creature created at happiness=70, deterministic.
+# AC-2/AC-4: sufficient materials -> materials_spent fires exact cost, one
+# creature created at happiness=70, deterministic, and placed directly into
+# HABITAT since an open slot exists (habitat_base_capacity=4, fresh
+# Menagerie, this is the only creature luring in this test).
 # ---------------------------------------------------------------------------
 
 func test_lure_creature_success_full_flow() -> void:
@@ -74,7 +76,12 @@ func test_lure_creature_success_full_flow() -> void:
 	var creature: CreatureInstance = _menagerie.get_creature(creature_id)
 	assert_object(creature).is_not_null()
 	assert_float(creature.happiness).is_equal(70.0)
-	assert_that(creature.state).is_equal(CreatureInstance.CreatureState.RESERVE)
+	# AC-4: HABITAT has an open slot (default capacity 4, nothing else
+	# occupying it in this test) -- the new creature is placed directly into
+	# HABITAT, not RESERVE. Real bug in this test, not in lure_creature():
+	# TD-menag-006 (logged 2026-07-18) found this assertion contradicted the
+	# GDD's own AC-4; the production code was already correct.
+	assert_that(creature.state).is_equal(CreatureInstance.CreatureState.HABITAT)
 	assert_that(creature.species).is_equal(GLIMMER_HARE)
 
 

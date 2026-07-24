@@ -19,13 +19,31 @@
 extends GdUnitTestSuite
 
 const SanctuaryUiScene: PackedScene = preload("res://src/presentation/sanctuary_ui/SanctuaryUI.tscn")
+const STUB_SCENE_PATH: String = "res://tests/fixtures/scene_manager/StubScene.tscn"
 
 var _runner: GdUnitSceneRunner
 var _shell: SanctuaryUI
 var _tab_strip: TabStrip
 
+var _original_mission_path: String
+var _original_sanctuary_path: String
+var _original_tarot_deck_path: String
+var _original_current_scene: Node
+
 
 func before_test() -> void:
+	# TD-test-004 fix (2026-07-25): reaching tab index 6 (Loadout) below
+	# triggers a real GSceneManager.transition_to_tarot_deck_ui() call,
+	# loading the genuine, node-heavy TarotDeckUIScene.tscn with nothing to
+	# tear it down afterward -- redirect to a lightweight stub scene via this
+	# project's own established test seam, matching loadout-handoff_test.gd's
+	# identical pattern.
+	_original_mission_path = GSceneManager._mission_scene_path
+	_original_sanctuary_path = GSceneManager._sanctuary_scene_path
+	_original_tarot_deck_path = GSceneManager._tarot_deck_scene_path
+	GSceneManager._inject(STUB_SCENE_PATH, STUB_SCENE_PATH, STUB_SCENE_PATH)
+	_original_current_scene = get_tree().current_scene
+
 	TabStrip.reset_onboarding_flag_for_tests()
 	_runner = scene_runner("res://src/presentation/sanctuary_ui/SanctuaryUI.tscn")
 	@warning_ignore("unsafe_cast")
@@ -42,6 +60,12 @@ func before_test() -> void:
 
 func after_test() -> void:
 	TabStrip.reset_onboarding_flag_for_tests()
+	if GSceneManager._transition_in_progress:
+		await GEventBus.scene_transition_completed
+	GSceneManager._inject(_original_mission_path, _original_sanctuary_path, _original_tarot_deck_path)
+	GSceneManager._transition_in_progress = false
+	if is_instance_valid(_original_current_scene):
+		get_tree().current_scene = _original_current_scene
 
 
 ## Constructs and directly dispatches a "pressed" InputEventAction for the

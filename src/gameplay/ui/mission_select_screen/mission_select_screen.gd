@@ -65,6 +65,16 @@ func _ready() -> void:
 	_refresh_config_panel()
 
 
+func _exit_tree() -> void:
+	# Idempotent against mission_scene.gd's own _on_mission_launched() already
+	# having called disconnect_own_subscriptions() this instance's lifetime
+	# (Godot errors on disconnecting an already-disconnected signal) --
+	# mirrors sanctuary_ui.gd's own _departing-guarded _exit_tree() pattern.
+	if not GEventBus.mission_selected.is_connected(_on_mission_selected):
+		return
+	disconnect_own_subscriptions()
+
+
 func disconnect_own_subscriptions() -> void:
 	GEventBus.mission_selected.disconnect(_on_mission_selected)
 	GEventBus.run_modifier_selected.disconnect(_on_run_modifier_selected)
