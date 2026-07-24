@@ -1,0 +1,84 @@
+# Story 006: Pause Behavior — Duck, Don't Stop
+
+> **Epic**: Audio System
+> **Status**: Ready
+> **Layer**: Presentation
+> **Type**: Integration
+> **Estimate**: 3h
+> **Manifest Version**: 2026-07-13b
+> **Last Updated**: 2026-07-25
+
+## Context
+
+**GDD**: `design/gdd/audio-system.md`
+**Requirement**: `TR-audio-???` (no TR-ID registered — scoped from GDD Core Rule 7 and AC Group 6)
+
+**ADR Governing Implementation**: ADR-0014 (Pause System) — governs `SceneTree.paused` as the single source of truth for "the game is paused." This story's own subscription to `game_paused`/`game_unpaused` is informational-only per that ADR ("no system may gate its own `_process`/`_physics_process`/Timer logic on them; `SceneTree.paused` already does that natively") — Audio's ducking response is exactly the kind of informational reaction that ADR anticipates, not a violation of it.
+
+**Engine**: Godot 4.6.2 | **Risk**: LOW
+**Engine Notes**: Per ADR-0014, this system's ducking response must NOT gate its own processing on `SceneTree.paused` directly — it reacts to the `game_paused`/`game_unpaused` EventBus signals instead, consistent with every other pause-reactive system in this project.
+
+**Control Manifest Rules (this layer)**:
+- Required: `game_paused`/`game_unpaused` are informational-only signals (ADR-0014) — this story's subscriber must not attempt to also gate its own `_process` on `SceneTree.paused` redundantly
+
+---
+
+## Acceptance Criteria
+
+*From GDD `design/gdd/audio-system.md`, AC Group 6:*
+
+- [ ] **AC-15a** *(split from the original compound AC-15 per the GDD's own `/design-review`)*: GIVEN `game_paused` fires mid-crossfade, THEN the crossfade's progress freezes exactly where it is — no restart, no cancellation; WHEN `game_unpaused` fires, THEN the crossfade resumes from exactly the frozen point, not from the beginning or a default.
+- [ ] **AC-15b** *(split from AC-15)*: GIVEN `game_paused` fires, THEN Music/Ambient buses duck to the configured pause level (~40%, Tuning Knobs) and the SFX bus's world-combat content mutes entirely; WHEN `game_unpaused` fires, THEN all affected bus levels restore to their exact pre-pause values.
+
+---
+
+## Implementation Notes
+
+This document defines the subscriber behavior that should close an existing `event-bus.md` placeholder (`game_paused`/`game_unpaused`'s Key Subscribers currently list "None yet — future Audio ducking"). **The actual edit to `event-bus.md` itself is a separate, inherited gap** (OQ-7) — not this story's own defect to silently fix by editing a sibling document unprompted; flag it, optionally propose the edit for approval, but do not treat this story as blocked by it.
+
+On `game_paused`: Music and Ambient buses attenuate to ~40% (Tuning Knobs, range 30–50%) — **never full silence**, the game should still feel "there." SFX and UI buses mute the world-combat family entirely (no world sound should continue accruing while gameplay is frozen). Both restore to pre-pause levels on `game_unpaused`.
+
+**Crossfade freeze is the harder half of this story** (AC-15a): per `design/accessibility-requirements.md`'s stronger-than-Standard commitment ("the whole game must be pausable at any frame, with no penalty"), pausing mid-crossfade must never restart or cancel Story 002's in-flight crossfade — freeze it exactly where it is, resume exactly where it left off. This likely means Story 002's crossfade tween itself needs a `pause()`-equivalent hook (or this story reads/writes its progress directly) — coordinate with Story 002's actual implementation rather than assuming a specific Tween API shape here.
+
+---
+
+## Out of Scope
+
+- Story 002: the crossfade mechanism itself (this story only adds pause-time freeze/resume on top of it)
+- `event-bus.md`'s own edit to formally close its Key Subscribers placeholder (OQ-7) — a separate, optional follow-up, not blocking
+
+---
+
+## QA Test Cases
+
+- **AC-15a**
+  - Given: an in-flight Music crossfade at a known partial progress (e.g. 40% through)
+  - When: `game_paused` fires
+  - Then: crossfade progress is frozen at exactly that point (not 0%, not 100%, not cancelled)
+  - When: `game_unpaused` fires
+  - Then: the crossfade resumes and continues from the frozen 40% point, reaching completion at the same total elapsed active-time it would have taken without the pause
+  - Edge cases: pause fires again before the crossfade fully resumes/completes (double-pause-cycle mid-transition)
+
+- **AC-15b**
+  - Given: normal (unpaused) bus levels
+  - When: `game_paused` fires
+  - Then: Music/Ambient read ~40% of their pre-pause level; SFX bus's world-combat content is muted (silent), UI-family content is unaffected
+  - When: `game_unpaused` fires
+  - Then: all affected levels restore to their exact pre-pause values (not merely "back to some non-zero value")
+  - Edge cases: pause while a bus is already at a non-default player-set volume (e.g. Music at 40% before pause) — the ~40% pause-duck must apply relative to that value, not silently reset it to the accessibility default first
+
+---
+
+## Test Evidence
+
+**Story Type**: Integration
+**Required evidence**: `tests/integration/audio/pause-behavior_test.gd`
+
+**Status**: [ ] Not yet created
+
+---
+
+## Dependencies
+
+- Depends on: Story 001 (real buses to duck), Story 002 (a real crossfade mechanism to freeze/resume)
+- Unlocks: None (final story in this epic)
