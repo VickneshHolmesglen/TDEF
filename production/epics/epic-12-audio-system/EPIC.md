@@ -13,7 +13,7 @@
 | 001 | Mix Bus Architecture | Logic | Complete (2026-07-25) | N/A |
 | 002 | State-Driven Music and Ambient | Integration | Complete (2026-07-25) | N/A |
 | 003 | Data-Driven Cue Dispatch | Integration | Complete (2026-07-25) | N/A |
-| 004 | Ducking and Voice Limiting | Logic | Ready | N/A |
+| 004 | Ducking and Voice Limiting | Logic | Complete (2026-07-25) | N/A |
 | 005 | Volume Preference Persistence | Integration | Ready | N/A |
 | 006 | Pause Behavior | Integration | Ready | ADR-0014 (informational-only pause signal precedent) |
 

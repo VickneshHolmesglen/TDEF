@@ -1,7 +1,7 @@
 # Story 004: Ducking and Voice Limiting — Per-Family Caps, Oldest-Voice Stealing, Sidechain Ducking
 
 > **Epic**: Audio System
-> **Status**: Ready
+> **Status**: Complete (2026-07-25)
 > **Layer**: Presentation
 > **Type**: Logic
 > **Estimate**: 3h
@@ -27,8 +27,10 @@
 
 *From GDD `design/gdd/audio-system.md`, AC Group 4:*
 
-- [ ] **AC-11**: GIVEN a family's voice cap (e.g. Combat Impact, 12) is already at capacity, WHEN one more trigger fires, THEN the oldest-started voice on that family stops and the new trigger plays — the newest trigger is never silently dropped.
-- [ ] **AC-12**: GIVEN 6 simultaneous SFX-bus voices are active, WHEN Formula F1 is evaluated with the Tuning Knobs' default `k=0.05`/`D_floor=0.3`, THEN each voice's ducked volume matches the formula's worked example (`0.60` for `V_base=0.8`).
+- [x] **AC-11**: GIVEN a family's voice cap (e.g. Combat Impact, 12) is already at capacity, WHEN one more trigger fires, THEN the oldest-started voice on that family stops and the new trigger plays — the newest trigger is never silently dropped. Verified via `test_combat_impact_family_steals_oldest_voice_beyond_cap`, `test_discovery_fanfare_cap_of_1_replaces_rather_than_ignores_new_trigger`, `test_trigger_below_cap_does_not_steal_anything`.
+- [x] **AC-12**: GIVEN 6 simultaneous SFX-bus voices are active, WHEN Formula F1 is evaluated with the Tuning Knobs' default `k=0.05`/`D_floor=0.3`, THEN each voice's ducked volume matches the formula's worked example (`0.60` for `V_base=0.8`). Verified via `test_formula_f1_matches_the_gdds_worked_example`, `test_formula_f1_with_a_single_voice_applies_no_ducking`, `test_formula_f1_never_goes_below_the_duck_floor`.
+
+**Note**: `VoiceLimiter` is a standalone Logic class (`src/core/audio/voice_limiter.gd`) — not wired into `AudioCueDispatcher`'s live dispatch path in this pass, matching this story's own Out of Scope boundary (Story 003 owns triggering a new voice; this story only owns what happens once a family is at/beyond capacity). Wiring `trigger_voice()`/`compute_ducked_volume()` into the real dispatch call is a natural follow-up for whichever future story needs the composed behavior live, not required by this story's own Definition of Done.
 
 ---
 
@@ -74,7 +76,7 @@
 **Story Type**: Logic
 **Required evidence**: `tests/unit/audio/ducking-and-voice-limiting_test.gd`
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing — 11/11 test cases, 0 errors, 0 failures, 0 orphans (`tests/unit/audio/ducking-and-voice-limiting_test.gd`, run 2026-07-25).
 
 ---
 
