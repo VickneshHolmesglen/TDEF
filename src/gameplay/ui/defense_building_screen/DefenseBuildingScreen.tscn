@@ -1,0 +1,45 @@
+[gd_scene load_steps=3 format=3 uid="uid://defensebuildingscreen0"]
+
+[ext_resource type="Script" path="res://src/gameplay/ui/defense_building_screen/defense_building_screen.gd" id="1_ctrl"]
+[ext_resource type="Script" path="res://src/ui/input_mode_tracker.gd" id="2_tracker"]
+
+[node name="DefenseBuildingScreen" type="Control"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_ctrl")
+
+[node name="InputModeTracker" type="Node" parent="."]
+script = ExtResource("2_tracker")
+
+[node name="MainLayout" type="VBoxContainer" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 8
+
+[node name="HeaderRow" type="HBoxContainer" parent="MainLayout"]
+layout_mode = 2
+
+[node name="ViewSwitchButton" type="Button" parent="MainLayout/HeaderRow"]
+layout_mode = 2
+text = "Switch View"
+
+[node name="TechTreeView" type="PanelContainer" parent="MainLayout"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="TechList" type="VBoxContainer" parent="MainLayout/TechTreeView"]
+layout_mode = 2
+
+[node name="StructureBuildView" type="PanelContainer" parent="MainLayout"]
+visible = false
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="StructureList" type="VBoxContainer" parent="MainLayout/StructureBuildView"]
+layout_mode = 2

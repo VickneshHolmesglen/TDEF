@@ -14,7 +14,7 @@
 | 002 | Tab Strip Navigation — 6-Entry Strip, Hotkeys, Trigger/Bumper Split, Onboarding | UI | Complete (2026-07-24, 17/17 tests passing) | ADR-0011 |
 | 003 | Connection Badges — Cross-System Legibility on the Tab Strip | Integration | Complete (2026-07-24, 8/8 tests passing) | ADR-0001 |
 | 004 | Persistent Resource Header | Integration | Complete (2026-07-24, 3/3 tests passing) — 1 AC flagged as not-yet-implementable (no system owns a Sanctuary-context gold/materials balance, see story's own note) | ADR-0001 |
-| 005 | Room Hosting — Inventory+Crafting, Menagerie, Defense Building, Equipment Forge | Integration | Complete (2026-07-24, 5/5 tests passing) — only Inventory & Crafting has a real scene to host; the other 3 fail safe, see story's own note | ADR-0002 |
+| 005 | Room Hosting — Inventory+Crafting, Menagerie, Defense Building, Equipment Forge | Integration | Complete (2026-07-24, 5/5 tests passing; Menagerie's real screen added 2026-07-25, 10/10 tests; Defense Building's real screen added 2026-07-25, 12/12 tests) — Inventory & Crafting, Menagerie, and Defense Building now host real screens; only Equipment Forge still fails safe, see story's own note | ADR-0002 |
 | 006 | Entry Always Defaults to OVERVIEW; Player-Initiated Return | Logic | Complete (2026-07-24, 7/7 tests passing) | ADR-0002 |
 | 007 | Room Lifecycle — Destroy-and-Recreate, EventBus Disconnect + Input Gate, InputModeTracker Roster | Logic | Complete (2026-07-24, 6/6 tests passing) — implemented ahead of Story 005 dependency, see story's own note | ADR-0032 / ADR-0011 / ADR-0001 |
 | 008 | Back Navigation — Cancel Idiom | Logic | Complete (2026-07-24, 4/4 tests passing) | ADR-0011 |

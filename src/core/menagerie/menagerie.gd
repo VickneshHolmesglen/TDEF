@@ -156,6 +156,15 @@ func get_creature(creature_id: int) -> CreatureInstance:
 	return null
 
 
+## Read-only roster query for the Menagerie screen (menagerie.md's UI
+## Requirements — the roster strip lists every owned creature regardless of
+## state). Returns a shallow copy of the internal array so callers can't
+## mutate Menagerie's own list; individual CreatureInstance objects are still
+## live references (read-only display use, per the screen's own scope).
+func get_all_creatures() -> Array[CreatureInstance]:
+	return _creatures.duplicate()
+
+
 # ---------------------------------------------------------------------------
 # Story 010 (TR-menag-002, aggregate formula half): Formula 3 —
 # menagerie_quality_bonus. HABITAT-only, never divides by zero.

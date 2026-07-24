@@ -1,0 +1,77 @@
+[gd_scene load_steps=3 format=3 uid="uid://menagerieplayscreen0"]
+
+[ext_resource type="Script" path="res://src/gameplay/ui/menagerie_screen/menagerie_screen.gd" id="1_ctrl"]
+[ext_resource type="Script" path="res://src/ui/input_mode_tracker.gd" id="2_tracker"]
+
+[node name="MenagerieScreen" type="Control"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_ctrl")
+
+[node name="InputModeTracker" type="Node" parent="."]
+script = ExtResource("2_tracker")
+
+[node name="MainLayout" type="HBoxContainer" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 16
+
+[node name="RosterPanel" type="PanelContainer" parent="MainLayout"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 2.0
+
+[node name="RosterList" type="VBoxContainer" parent="MainLayout/RosterPanel"]
+layout_mode = 2
+
+[node name="DetailPanel" type="VBoxContainer" parent="MainLayout"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 1.0
+
+[node name="SpeciesLabel" type="Label" parent="MainLayout/DetailPanel"]
+layout_mode = 2
+
+[node name="StateLabel" type="Label" parent="MainLayout/DetailPanel"]
+layout_mode = 2
+
+[node name="HappinessLabel" type="Label" parent="MainLayout/DetailPanel"]
+layout_mode = 2
+
+[node name="ActionRow" type="HBoxContainer" parent="MainLayout/DetailPanel"]
+layout_mode = 2
+
+[node name="TendButton" type="Button" parent="MainLayout/DetailPanel/ActionRow"]
+layout_mode = 2
+text = "Tend"
+
+[node name="BreedSelectButton" type="Button" parent="MainLayout/DetailPanel/ActionRow"]
+layout_mode = 2
+text = "Select for Breeding"
+
+[node name="SacrificeButton" type="Button" parent="MainLayout/DetailPanel/ActionRow"]
+layout_mode = 2
+text = "Sacrifice"
+
+[node name="BreedRow" type="HBoxContainer" parent="MainLayout/DetailPanel"]
+layout_mode = 2
+
+[node name="ConfirmBreedingButton" type="Button" parent="MainLayout/DetailPanel/BreedRow"]
+layout_mode = 2
+visible = false
+disabled = true
+text = "Confirm Breeding"
+
+[node name="CancelSelectionButton" type="Button" parent="MainLayout/DetailPanel/BreedRow"]
+layout_mode = 2
+visible = false
+text = "Cancel Selection"
+
+[node name="SacrificeConfirmDialog" type="ConfirmationDialog" parent="."]
+title = "Confirm Sacrifice"

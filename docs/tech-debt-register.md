@@ -26,6 +26,27 @@ Read `menagerie.gd`'s `lure_creature()`/placement-decision logic and Story 008/0
 
 ---
 
+## TD-test-004 — Full-suite orphan-node count grew sharply after Sanctuary UI screen work (158 → 1248)
+
+**Logged**: 2026-07-25 (autonomous overnight session — Menagerie/Defense Building screens + `SanctuaryScene.tscn` real-shell wiring)
+**Severity**: Medium — no test failures/errors caused (1610/1610 test cases still pass, 0 errors, only the pre-existing unrelated `TD-menag-006` failure), but a real, measured regression in test-run cleanliness
+**Area**: `src/scenes/SanctuaryScene.tscn` (now instances the full `SanctuaryUI.tscn` shell instead of a placeholder `Label`), `src/gameplay/ui/menagerie_screen/menagerie_screen.gd`, `src/gameplay/ui/defense_building_screen/defense_building_screen.gd` (both dynamically rebuild their Button/Panel lists via `queue_free()` + re-instantiate, potentially multiple times per test with no intervening frame)
+
+### Gap
+
+A full project regression's `Overall Summary` orphan count climbed in direct correlation with this session's changes: ~158 (baseline, pre-session) → 1043 (after Menagerie screen + wiring it into `ROOM_SCENES`) → 1248 (after Defense Building screen + `SanctuaryScene.tscn`'s real-shell wiring). Isolated re-runs of every suite touched this session (`scene_manager_transition_test.gd`, `pause_menu`, `sanctuary-ui`, `menagerie-screen`, `defense-building-screen`) all report **0 orphans** individually — this only manifests at full-168-suite-run scale, suggesting either (a) a cross-suite accumulation effect where `queue_free()`'d nodes from these dynamic-rebuild screens never get an intervening idle frame before the whole process later exits, with the leak only surfacing in the final process-wide `ObjectDB` check rather than attributed to the specific suite that caused it, or (b) something in the now-much-heavier `SanctuaryScene.tscn` (full shell vs. a single `Label`) that any OTHER pre-existing test exercising a real `SceneManager.transition_to_sanctuary()` call now multiplies. Not root-caused this session — flagged honestly rather than either ignored or a rushed guess-fix applied.
+
+### Recommended fix
+
+Bisect by running the full suite with `SanctuaryScene.tscn` reverted to its placeholder `Label` (isolate whether the scene-weight theory is correct) versus reverted only in the 2 new screens' `_rebuild_*()` methods changed to free-and-immediately-`add_child()` without a `queue_free()` deferral gap (isolate whether the dynamic-rebuild theory is correct). Whichever isolates the count back toward baseline identifies the real mechanism; fix by adding an explicit `await get_tree().process_frame` at each dynamic-rebuild call site if it's mechanism (a), or by investigating what in the full `SanctuaryUI` tree isn't cleanly torn down if it's mechanism (b).
+
+### Resolution
+- [ ] Root cause identified
+- [ ] Fixed
+- [ ] This entry closed
+
+---
+
 ## TD-craft-001 — RecipeResource.inputs vocabulary split: item_type (craftable) vs. rarity (content-accurate to Formula 1-3, not yet craftable) (fixed)
 
 **Logged**: 2026-07-18

@@ -3,14 +3,14 @@
 ## mount/unmount mechanism (GDD Core Rule 4, AC Group 4 + States/Transitions
 ## room-entry regression items).
 ##
-## Only ROOM_INVENTORY_CRAFTING has a real scene as of this story --
-## Menagerie/Defense Building/Equipment Forge don't exist anywhere in this
-## project yet (confirmed by direct search, matches the GDD's own OQ-5).
-## These tests cover what IS real: InventoryScreen docks cleanly with no
-## CanvasLayer (the Core Rule 1 z-order guarantee this whole shell depends
-## on), mounts/unmounts correctly through the tab strip, and the 3 unmapped
-## rooms fail safe (no crash, no fabricated content) rather than being
-## silently skipped from test coverage.
+## ROOM_INVENTORY_CRAFTING, ROOM_MENAGERIE, and (as of 2026-07-25)
+## ROOM_DEFENSE_BUILDING now have real scenes -- Equipment Forge still
+## doesn't exist anywhere in this project (confirmed by direct search,
+## matches the GDD's own OQ-5). These tests cover what IS real: InventoryScreen
+## docks cleanly with no CanvasLayer (the Core Rule 1 z-order guarantee this
+## whole shell depends on), mounts/unmounts correctly through the tab strip,
+## and the 1 remaining unmapped room fails safe (no crash, no fabricated
+## content) rather than being silently skipped from test coverage.
 extends GdUnitTestSuite
 
 var _runner: GdUnitSceneRunner
@@ -71,9 +71,9 @@ func test_leaving_inventory_crafting_unmounts_it() -> void:
 # ---------------------------------------------------------------------------
 
 func test_unmapped_room_selection_does_not_crash_and_hosts_nothing() -> void:
-	_shell.get_tab_strip_for_test().get_tab_button(2).pressed.emit()  # Menagerie -- no scene yet
+	_shell.get_tab_strip_for_test().get_tab_button(4).pressed.emit()  # Equipment Forge -- no scene yet
 
-	assert_that(_shell.get_active_state()).is_equal(&"ROOM_MENAGERIE")
+	assert_that(_shell.get_active_state()).is_equal(&"ROOM_EQUIPMENT_FORGE")
 	assert_object(_shell.get_room_host().get_current_room()).is_null()
 	# RoomHost is still the visible content zone (Story 001's own AC-2/AC-3
 	# contract) even with nothing mounted into it -- this is "empty," not
@@ -86,6 +86,6 @@ func test_switching_from_inventory_crafting_to_an_unmapped_room_unmounts_cleanly
 	_shell.get_tab_strip_for_test().get_tab_button(1).pressed.emit()  # Inventory & Crafting
 	assert_object(_shell.get_room_host().get_current_room()).is_not_null()
 
-	_shell.get_tab_strip_for_test().get_tab_button(3).pressed.emit()  # Defense Building -- no scene yet
+	_shell.get_tab_strip_for_test().get_tab_button(4).pressed.emit()  # Equipment Forge -- no scene yet
 
 	assert_object(_shell.get_room_host().get_current_room()).is_null()

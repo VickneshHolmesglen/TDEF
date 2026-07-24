@@ -45,17 +45,32 @@ const DEPARTING_STATE: StringName = &"DEPARTING"
 const DEPARTING_TO_LOADOUT_STATE: StringName = &"DEPARTING_TO_LOADOUT"
 
 ## Story 005 (Room Hosting) — which real room scene backs each ROOM_* state.
-## Only ROOM_INVENTORY_CRAFTING has an entry: it's the only room screen that
-## exists anywhere in this project as of this story (confirmed by direct
-## search — no Menagerie/Defense Building/Equipment Forge .tscn exists yet,
-## matching the GDD's own OQ-5). Selecting one of those 3 still works exactly
-## as Story 001/002 already built (tab switches, RoomHost becomes the visible
-## content), it just has nothing to mount — RoomHost stays empty rather than
-## crashing or fabricating placeholder content this story wasn't asked to
-## design. Add an entry here the moment each room's own screen exists; no
-## other code in this file needs to change to support that.
+## Equipment Forge still has no entry (no .tscn exists yet, matching the
+## GDD's own OQ-5). Selecting it still works exactly as Story 001/002 already
+## built (tab switches, RoomHost becomes the visible content), it just has
+## nothing to mount — RoomHost stays empty rather than crashing or
+## fabricating placeholder content. Add an entry here the moment that room's
+## own screen exists; no other code in this file needs to change to support
+## that.
+##
+## Menagerie added 2026-07-25: `MenagerieScreen.tscn`, built directly against
+## menagerie.md's UI Requirements section (roster review, tend, breeding
+## multi-select-then-confirm, sacrifice two-step confirmation) — see that
+## scene's own doc comment for the honestly-scoped deviations (roster-list
+## primary view instead of habitat-diorama primary view, since no diorama/
+## creature art exists; explicit per-action buttons instead of one context-
+## sensitive confirm button).
+##
+## Defense Building added 2026-07-25: `DefenseBuildingScreen.tscn`, built
+## directly against defense-building.md's UI Requirements section (two
+## linked views — tech tree, structure build — single-confirm convention for
+## both). See that scene's own doc comment for the honestly-scoped deviation
+## (flat ordered list instead of a literal branching-graph tech tree, since
+## no graph-layout art exists).
 const ROOM_SCENES: Dictionary[StringName, PackedScene] = {
 	&"ROOM_INVENTORY_CRAFTING": preload("res://src/gameplay/ui/inventory_screen/InventoryScreen.tscn"),
+	&"ROOM_MENAGERIE": preload("res://src/gameplay/ui/menagerie_screen/MenagerieScreen.tscn"),
+	&"ROOM_DEFENSE_BUILDING": preload("res://src/gameplay/ui/defense_building_screen/DefenseBuildingScreen.tscn"),
 }
 
 ## GDD Tuning Knobs default (56-96px safe range) — Story 002 owns tuning this.

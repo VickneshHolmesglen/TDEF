@@ -111,6 +111,15 @@ func can_unlock_tech(tech_id: StringName) -> bool:
 	return is_tech_unlocked(tech_node.prerequisite_tech_id)
 
 
+## Returns true if structure_id is BUILT. O(1) ledger lookup, mirrors
+## is_tech_unlocked() exactly. Added 2026-07-25 for the Defense Building
+## screen's own built/unbuilt status display — no query for this existed
+## before (only the combined ineligibility check in can_build_structure(),
+## which doesn't distinguish "already built" from "not yet eligible").
+func is_structure_built(structure_id: StringName) -> bool:
+	return _structure_ledger.get(structure_id, false)
+
+
 ## Read-only eligibility check for whether structure_id may be built:
 ## its tier-sequence prerequisite (StructureResource.prerequisite_structure_id)
 ## AND its tech-gate (StructureResource.tech_gate) must both be satisfied, and
