@@ -1,7 +1,7 @@
 # Story 006: Pause Behavior — Duck, Don't Stop
 
 > **Epic**: Audio System
-> **Status**: Ready
+> **Status**: Complete (2026-07-25)
 > **Layer**: Presentation
 > **Type**: Integration
 > **Estimate**: 3h
@@ -27,8 +27,12 @@
 
 *From GDD `design/gdd/audio-system.md`, AC Group 6:*
 
-- [ ] **AC-15a** *(split from the original compound AC-15 per the GDD's own `/design-review`)*: GIVEN `game_paused` fires mid-crossfade, THEN the crossfade's progress freezes exactly where it is — no restart, no cancellation; WHEN `game_unpaused` fires, THEN the crossfade resumes from exactly the frozen point, not from the beginning or a default.
-- [ ] **AC-15b** *(split from AC-15)*: GIVEN `game_paused` fires, THEN Music/Ambient buses duck to the configured pause level (~40%, Tuning Knobs) and the SFX bus's world-combat content mutes entirely; WHEN `game_unpaused` fires, THEN all affected bus levels restore to their exact pre-pause values.
+- [x] **AC-15a** *(split from the original compound AC-15 per the GDD's own `/design-review`)*: GIVEN `game_paused` fires mid-crossfade, THEN the crossfade's progress freezes exactly where it is — no restart, no cancellation; WHEN `game_unpaused` fires, THEN the crossfade resumes from exactly the frozen point, not from the beginning or a default. Verified via `test_pause_mid_crossfade_freezes_progress_exactly_in_place`, `test_unpause_resumes_the_crossfade_from_the_frozen_point`, `test_double_pause_cycle_mid_transition_still_resumes_correctly`.
+- [x] **AC-15b** *(split from AC-15)*: GIVEN `game_paused` fires, THEN Music/Ambient buses duck to the configured pause level (~40%, Tuning Knobs) and the SFX bus's world-combat content mutes entirely; WHEN `game_unpaused` fires, THEN all affected bus levels restore to their exact pre-pause values. Verified via `test_pause_ducks_music_and_ambient_to_40_percent_of_pre_pause_level`, `test_pause_mutes_sfx_bus_entirely_and_leaves_ui_bus_untouched`, `test_unpause_restores_exact_pre_pause_values_not_just_any_nonzero_value`, `test_pause_while_music_already_at_a_non_default_player_set_volume_ducks_relative_to_it`, `test_repeated_pause_without_intervening_unpause_does_not_re_duck_an_already_ducked_value`.
+
+**Implementation note — Story 002 refactor required**: `MusicAmbientController`'s original `Tween`-based crossfade timing could not support a genuine freeze, since `Tween.custom_step()` (used by Story 002's own `force_finish_transition()` test seam) explicitly ignores a tween's paused state per Godot's own documentation. Refactored to a manually-tracked delta countdown (`advance_time()`, driven by real `_process(delta)` in production, called directly with explicit deltas in tests) that a `_paused` flag can genuinely halt. Backward-compatible — all of Story 002's own original 10 tests still pass unchanged after the refactor.
+
+**Implementation note — test isolation gap found and fixed**: the real `GAudioSystem` Autoload (always alive in any headless test run) has its own `PauseDuckController` also subscribed to `game_paused`/`game_unpaused`, independently ducking the same shared `AudioServer` Ambient bus this story's own tests assert against directly (Ambient has no per-instance percent abstraction the way Music/SFX/UI do, so it's the one bus where this cross-instance interference actually corrupts a raw readback). Fixed by temporarily disconnecting the real Autoload's subscriptions for this test file's duration only (restored in `after_test()`) — matches this project's own "reset shared Autoload/singleton state between tests" discipline, not a new pattern.
 
 ---
 
@@ -74,7 +78,7 @@ On `game_paused`: Music and Ambient buses attenuate to ~40% (Tuning Knobs, range
 **Story Type**: Integration
 **Required evidence**: `tests/integration/audio/pause-behavior_test.gd`
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing — 8/8 test cases, 0 errors, 0 failures, 0 orphans (`tests/integration/audio/pause-behavior_test.gd`, run 2026-07-25). Real scene instantiation exercising the real `GEventBus`/`AudioServer` — not mocked.
 
 ---
 

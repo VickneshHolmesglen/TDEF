@@ -63,6 +63,9 @@ var music_ambient: MusicAmbientController
 ## Story 003: the data-driven one-shot cue dispatcher.
 var cue_dispatcher: AudioCueDispatcher
 
+## Story 006: pause-time bus ducking and crossfade freeze.
+var pause_duck: PauseDuckController
+
 
 func _ready() -> void:
 	_configure_buses()
@@ -77,6 +80,13 @@ func _ready() -> void:
 		cue_dispatcher.name = &"AudioCueDispatcher"
 	if cue_dispatcher.get_parent() == null:
 		add_child(cue_dispatcher)
+	if pause_duck == null:
+		pause_duck = PauseDuckController.new()
+		pause_duck.name = &"PauseDuckController"
+	pause_duck.audio_system = self
+	pause_duck.music_ambient = music_ambient
+	if pause_duck.get_parent() == null:
+		add_child(pause_duck)
 
 
 ## Builds the bus graph if it doesn't already exist, and applies the

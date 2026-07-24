@@ -9,12 +9,23 @@ extends Node
 ##
 ## Owns 4 Music Energy levels (`Contemplative`/`Measured`/`Urgent`/
 ## `Measured-urgent`) driven by `GEventBus.mission_phase_changed` and
-## `GEventBus.wave_countdown_warning`. Crossfades are modeled as a real
-## `Tween` interpolating a tracked `_crossfade_progress` value over a real
-## duration — no audio asset exists yet to actually play (matches this
-## project's "no art/content yet" convention: Diorama's ColorRects, Tarot's
-## plain-text tags), but the timing/state mechanism itself is fully real and
-## live-verifiable, not a stub.
+## `GEventBus.wave_countdown_warning`. No audio asset exists yet to actually
+## play (matches this project's "no art/content yet" convention: Diorama's
+## ColorRects, Tarot's plain-text tags), but the timing/state mechanism
+## itself is fully real and live-verifiable, not a stub.
+##
+## Crossfade/duck timing is a manually-tracked countdown driven by
+## `advance_time()` (real per-frame `_process(delta)` calls in production;
+## tests call it directly with explicit deltas, per this project's own
+## "no time-dependent assertions" standard) rather than a `Tween` — this is
+## a deliberate choice over the Story 002-original `Tween`-based design:
+## Story 006 (Pause Behavior) needs a *freeze* that genuinely stops time
+## from advancing, and `Tween.custom_step()` explicitly ignores a tween's
+## own paused state (per Godot's own docs, it's a manual override for
+## testing/scrubbing) — making a real, testable freeze impossible on top of
+## it. A plain countdown that `advance_time()` only decrements while
+## `_paused == false` is freeze-able for real and remains just as
+## deterministically testable.
 ##
 ## No new Autoload is introduced — this is instantiated and added as a child
 ## by `AudioSystem._ready()`, matching the GDD's own single "Audio System"
@@ -33,6 +44,8 @@ extends Node
 ## implements the general mechanism the QA spec actually describes.
 const WAVE_ACTIVE_TO_INTERMISSION_DUCK_SECONDS: float = 0.4
 
+const AMBIENT_COMBAT_LAYER_FADE_OUT_SECONDS: float = 2.0
+
 enum MusicState { CONTEMPLATIVE, MEASURED, URGENT, MEASURED_URGENT }
 
 var _music_state: MusicState = MusicState.CONTEMPLATIVE
@@ -42,8 +55,8 @@ var _music_state: MusicState = MusicState.CONTEMPLATIVE
 ## on a same-phase retrigger.
 var _stem_epoch: int = 0
 
-var _crossfade_tween: Tween = null
-var _crossfade_target_state: MusicState = MusicState.CONTEMPLATIVE
+var _transitioning: bool = false
+var _crossfade_remaining_seconds: float = 0.0
 var _last_transition_duration: float = 0.0
 var _last_transition_was_hard_cut: bool = false
 
@@ -51,7 +64,14 @@ var _last_transition_was_hard_cut: bool = false
 ## again — this counter proves that (should never exceed 1).
 var _ambient_base_bed_start_count: int = 0
 var _ambient_combat_layer_active: bool = false
-var _ambient_combat_layer_tween: Tween = null
+var _ambient_combat_layer_fading_out: bool = false
+var _ambient_combat_layer_fade_out_remaining_seconds: float = 0.0
+
+## Story 006 (Pause Behavior): while true, `advance_time()` is a no-op — any
+## in-flight transition/fade freezes exactly where it is, per
+## `design/accessibility-requirements.md`'s "pausable at any frame, no
+## penalty" commitment.
+var _paused: bool = false
 
 
 func _ready() -> void:
@@ -67,6 +87,32 @@ func _exit_tree() -> void:
 		GEventBus.wave_countdown_warning.disconnect(_on_wave_countdown_warning)
 
 
+func _process(delta: float) -> void:
+	advance_time(delta)
+
+
+## The single place time actually elapses for this controller's in-flight
+## transition/fade. Production code reaches this via `_process()`; tests
+## call it directly with explicit deltas (deterministic, no real waits).
+## A no-op while `_paused` (Story 006's freeze).
+func advance_time(delta: float) -> void:
+	if _paused:
+		return
+
+	if _transitioning:
+		_crossfade_remaining_seconds -= delta
+		if _crossfade_remaining_seconds <= 0.0:
+			_transitioning = false
+			_crossfade_remaining_seconds = 0.0
+
+	if _ambient_combat_layer_fading_out:
+		_ambient_combat_layer_fade_out_remaining_seconds -= delta
+		if _ambient_combat_layer_fade_out_remaining_seconds <= 0.0:
+			_ambient_combat_layer_fading_out = false
+			_ambient_combat_layer_fade_out_remaining_seconds = 0.0
+			_ambient_combat_layer_active = false
+
+
 ## AC-5: identical previous/new phase never retriggers anything.
 func _on_mission_phase_changed(previous_phase: String, new_phase: String, _timestamp: float) -> void:
 	if previous_phase == new_phase:
@@ -75,23 +121,26 @@ func _on_mission_phase_changed(previous_phase: String, new_phase: String, _times
 	match new_phase:
 		"SANCTUARY", "MISSION_COMPLETE", "DEFEAT":
 			_ambient_combat_layer_active = false
+			_ambient_combat_layer_fading_out = false
 			_begin_crossfade(MusicState.CONTEMPLATIVE, 1.0)
 		"SCOUT":
 			_begin_crossfade(MusicState.MEASURED, 1.0)
 		"WAVE_ACTIVE":
 			if _music_state != MusicState.URGENT:
 				_begin_crossfade(MusicState.URGENT, 1.0)
-			elif _crossfade_tween != null and _crossfade_tween.is_valid():
+			elif _transitioning:
 				# Resync fallback (Edge Cases/OQ-9): the anticipatory
 				# crossfade from the countdown warning already resolved
 				# the logical state to URGENT -- snap the in-flight fade
 				# to completion immediately rather than letting it play out.
-				_crossfade_tween.custom_step(999999.0)
+				_transitioning = false
+				_crossfade_remaining_seconds = 0.0
 			_ambient_combat_layer_active = true
-			_cancel_ambient_combat_layer_tween()
+			_ambient_combat_layer_fading_out = false
 		"INTERMISSION":
 			_begin_hard_duck(MusicState.MEASURED_URGENT, WAVE_ACTIVE_TO_INTERMISSION_DUCK_SECONDS)
-			_begin_ambient_combat_layer_fade_out()
+			_ambient_combat_layer_fading_out = true
+			_ambient_combat_layer_fade_out_remaining_seconds = AMBIENT_COMBAT_LAYER_FADE_OUT_SECONDS
 
 
 ## AC-3: begins the SCOUT->WAVE_ACTIVE anticipatory crossfade, scheduled to
@@ -103,53 +152,23 @@ func _on_wave_countdown_warning(seconds_remaining: int) -> void:
 
 
 func _begin_crossfade(target_state: MusicState, duration: float) -> void:
-	_cancel_crossfade()
-	_crossfade_target_state = target_state
 	_last_transition_was_hard_cut = false
 	_last_transition_duration = duration
 	_stem_epoch += 1
 	_music_state = target_state
-	_crossfade_tween = create_tween()
-	_crossfade_tween.tween_callback(_on_crossfade_finished).set_delay(duration)
+	_transitioning = true
+	_crossfade_remaining_seconds = duration
 
 
 ## AC-4: the WAVE_ACTIVE -> INTERMISSION relief transition — a fast duck/cut
 ## under the Tuning Knobs' 0.2-0.5s window, never a multi-second crossfade.
 func _begin_hard_duck(target_state: MusicState, duration: float) -> void:
-	_cancel_crossfade()
-	_crossfade_target_state = target_state
 	_last_transition_was_hard_cut = true
 	_last_transition_duration = duration
 	_stem_epoch += 1
 	_music_state = target_state
-	_crossfade_tween = create_tween()
-	_crossfade_tween.tween_callback(_on_crossfade_finished).set_delay(duration)
-
-
-## The Tween's own delay resolving means the audible fade has settled — the
-## logical `_music_state` already changed the instant the transition began
-## (see `_begin_crossfade`/`_begin_hard_duck`); this only clears the
-## in-flight marker so `is_transitioning()` reports false again.
-func _on_crossfade_finished() -> void:
-	_crossfade_tween = null
-
-
-func _cancel_crossfade() -> void:
-	if _crossfade_tween != null and _crossfade_tween.is_valid():
-		_crossfade_tween.kill()
-	_crossfade_tween = null
-
-
-func _begin_ambient_combat_layer_fade_out() -> void:
-	_cancel_ambient_combat_layer_tween()
-	_ambient_combat_layer_tween = create_tween()
-	_ambient_combat_layer_tween.tween_callback(func() -> void: _ambient_combat_layer_active = false).set_delay(2.0)
-
-
-func _cancel_ambient_combat_layer_tween() -> void:
-	if _ambient_combat_layer_tween != null and _ambient_combat_layer_tween.is_valid():
-		_ambient_combat_layer_tween.kill()
-	_ambient_combat_layer_tween = null
+	_transitioning = true
+	_crossfade_remaining_seconds = duration
 
 
 ## Test/inspection accessor.
@@ -159,7 +178,7 @@ func get_music_state() -> MusicState:
 
 ## Test/inspection accessor — true while a crossfade or duck/cut is in flight.
 func is_transitioning() -> bool:
-	return _crossfade_tween != null and _crossfade_tween.is_valid()
+	return _transitioning
 
 
 ## Test/inspection accessor — the duration of the most recently *scheduled*
@@ -195,13 +214,37 @@ func is_ambient_combat_layer_active() -> bool:
 
 ## Test/inspection accessor.
 func is_ambient_combat_layer_fading_out() -> bool:
-	return _ambient_combat_layer_tween != null and _ambient_combat_layer_tween.is_valid()
+	return _ambient_combat_layer_fading_out
 
 
-## Test seam — forces the crossfade tween to complete immediately without
-## waiting real time, so tests can assert post-transition state
+## Test/inspection accessor (Story 006, AC-15a) — seconds remaining on the
+## in-flight transition, frozen exactly in place while paused.
+func get_crossfade_remaining_seconds() -> float:
+	return _crossfade_remaining_seconds
+
+
+## Story 006 (Pause Behavior), AC-15a: freezes any in-flight transition/fade
+## exactly where it is — `advance_time()` becomes a no-op until resumed.
+func freeze_transition() -> void:
+	_paused = true
+
+
+## Story 006 (Pause Behavior), AC-15a: resumes exactly where freeze left off.
+func resume_transition() -> void:
+	_paused = false
+
+
+## Test/inspection accessor.
+func is_frozen() -> bool:
+	return _paused
+
+
+## Test seam — forces the in-flight transition to complete immediately
+## without waiting real time, so tests can assert post-transition state
 ## deterministically (this project's tests avoid time-dependent assertions
-## per `.claude/rules/test-standards.md`).
+## per `.claude/rules/test-standards.md`). Unlike `advance_time()`, this
+## deliberately ignores `_paused` — it is a hard test-only override, not a
+## simulation of real elapsed time.
 func force_finish_transition() -> void:
-	if _crossfade_tween != null and _crossfade_tween.is_valid():
-		_crossfade_tween.custom_step(999999.0)
+	_transitioning = false
+	_crossfade_remaining_seconds = 0.0
