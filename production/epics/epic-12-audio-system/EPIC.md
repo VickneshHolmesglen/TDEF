@@ -10,7 +10,7 @@
 
 | # | Story | Type | Status | ADR |
 |---|-------|------|--------|-----|
-| 001 | Mix Bus Architecture | Logic | Ready | N/A |
+| 001 | Mix Bus Architecture | Logic | Complete (2026-07-25) | N/A |
 | 002 | State-Driven Music and Ambient | Integration | Ready | N/A |
 | 003 | Data-Driven Cue Dispatch | Integration | Ready | N/A |
 | 004 | Ducking and Voice Limiting | Logic | Ready | N/A |

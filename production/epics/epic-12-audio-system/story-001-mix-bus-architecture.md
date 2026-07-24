@@ -1,7 +1,7 @@
 # Story 001: Mix Bus Architecture — 4 Player-Facing Buses, Internal Sub-Routing
 
 > **Epic**: Audio System
-> **Status**: Ready
+> **Status**: Complete (2026-07-25)
 > **Layer**: Presentation
 > **Type**: Logic
 > **Estimate**: 3h
@@ -16,7 +16,7 @@
 **ADR Governing Implementation**: N/A — no dedicated architecture ADR exists for this system yet. Matches Sanctuary UI/Tarot Deck UI's own precedent (both shipped stories without one, scoping directly from the GDD's own Core Rules).
 
 **Engine**: Godot 4.6.2 | **Risk**: LOW
-**Engine Notes**: Godot's `AudioServer` bus API (`add_bus`, `set_bus_send`, `set_bus_volume_db`) has had no breaking changes 4.4–4.6 (per `docs/architecture/architecture.md`'s own Audio row). Buses are typically authored in the project's `default_bus_layout.tres` resource, not constructed procedurally at runtime — this story should confirm which approach this project uses before assuming either.
+**Engine Notes**: Godot's `AudioServer` bus API (`add_bus`, `set_bus_send`, `set_bus_volume_db`) has had no breaking changes 4.4–4.6 (per `docs/architecture/architecture.md`'s own Audio row). Buses are typically authored in the project's `default_bus_layout.tres` resource, not constructed procedurally at runtime — this story should confirm which approach this project uses before assuming either. **Resolved**: no `default_bus_layout.tres` exists anywhere in this project (confirmed by search) — `AudioSystem._configure_buses()` constructs the bus graph procedurally at runtime instead, idempotently (safe to call more than once).
 
 **Control Manifest Rules (this layer)**:
 - Required: none specific to Audio yet exist in the manifest — this story's own conventions (documented below) become the reference for later Audio stories
@@ -28,8 +28,8 @@
 
 *From GDD `design/gdd/audio-system.md`, AC Group 1:*
 
-- [ ] **AC-1**: GIVEN the audio system initializes, THEN exactly 4 player-adjustable buses exist (Music, SFX, Voice, UI), each independently settable 0–100%, defaulting to 80% — matching `design/accessibility-requirements.md` exactly.
-- [ ] **AC-2**: GIVEN the player adjusts the Music bus volume, WHEN a Combat Impact (SFX-bus) cue plays immediately after, THEN its volume is unaffected by the Music bus change, and vice versa for any other bus pair.
+- [x] **AC-1**: GIVEN the audio system initializes, THEN exactly 4 player-adjustable buses exist (Music, SFX, Voice, UI), each independently settable 0–100%, defaulting to 80% — matching `design/accessibility-requirements.md` exactly. Verified via `test_all_4_player_facing_buses_exist_after_configuration`, `test_all_4_player_facing_buses_default_to_80_percent`, `test_setting_one_bus_to_0_and_another_to_100_leaves_both_correct`, `test_volume_percent_is_clamped_to_0_100_range`, `test_setting_a_non_player_facing_bus_name_is_rejected`.
+- [x] **AC-2**: GIVEN the player adjusts the Music bus volume, WHEN a Combat Impact (SFX-bus) cue plays immediately after, THEN its volume is unaffected by the Music bus change, and vice versa for any other bus pair. Verified against the real `AudioServer.get_bus_volume_db()` (not a mock) via `test_adjusting_music_volume_does_not_affect_sfx_bus_volume_db`, `test_adjusting_sfx_volume_does_not_affect_ui_bus_volume_db`, `test_adjusting_voice_volume_does_not_affect_music_bus_volume_db`.
 
 ---
 
@@ -73,7 +73,7 @@ Default all 4 buses to 80% (Tuning Knobs) on first-ever initialization (no `user
 **Story Type**: Logic
 **Required evidence**: `tests/unit/audio/mix-bus-architecture_test.gd` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing — 11/11 test cases, 0 errors, 0 failures, 0 orphans (`tests/unit/audio/mix-bus-architecture_test.gd`, run 2026-07-25)
 
 ---
 

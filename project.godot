@@ -32,6 +32,7 @@ GDefenseBuilding="*res://src/core/defense_building/defense_building.gd"
 GMenagerie="*res://src/core/menagerie/menagerie.gd"
 GMissionSelect="*res://src/core/mission_select/mission_select.gd"
 GHeroSkillBuild="*res://src/core/hero_skill_build/hero_skill_build.gd"
+GAudioSystem="*res://src/core/audio/audio_system.gd"
 _mcp_game_helper="*res://addons/godot_ai/runtime/game_helper.gd"
 
 [display]
