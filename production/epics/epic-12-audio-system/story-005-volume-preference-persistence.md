@@ -1,7 +1,7 @@
 # Story 005: Volume Preference Persistence — Outside Save & Persistence Entirely
 
 > **Epic**: Audio System
-> **Status**: Ready
+> **Status**: Complete (2026-07-25)
 > **Layer**: Presentation
 > **Type**: Integration
 > **Estimate**: 3h
@@ -27,8 +27,8 @@
 
 *From GDD `design/gdd/audio-system.md`, AC Group 5:*
 
-- [ ] **AC-13** *(process-relaunch harness required, not a standard in-process test — flagged explicitly by the GDD itself)*: GIVEN the player sets a non-default bus volume, WHEN the game process is fully killed and relaunched, THEN the volume is restored from `user://audio_settings.cfg` on the fresh process, not reset to default.
-- [ ] **AC-14**: GIVEN volume settings exist in `user://audio_settings.cfg`, WHEN a save slot is loaded or a fresh game is started from the main menu, THEN volume settings are unaffected by either action — confirming they are genuinely slot-independent, not silently coupled to Save & Persistence's restore cycle.
+- [x] **AC-13** *(process-relaunch harness required, not a standard in-process test — flagged explicitly by the GDD itself)*: GIVEN the player sets a non-default bus volume, WHEN the game process is fully killed and relaunched, THEN the volume is restored from `user://audio_settings.cfg` on the fresh process, not reset to default. **Verified via a real scripted 2-process relaunch harness** (`tools/audio-relaunch-harness/`), not an in-process simulation and not a manual playtest — see `production/qa/evidence/story-005-ac13-relaunch-evidence.md` for the full run transcript (2026-07-25): Music set to 40% and saved by process A, which then exits entirely; a genuinely separate process B reads back `HARNESS_READ_MUSIC_VOLUME=40.000000`.
+- [x] **AC-14**: GIVEN volume settings exist in `user://audio_settings.cfg`, WHEN a save slot is loaded or a fresh game is started from the main menu, THEN volume settings are unaffected by either action — confirming they are genuinely slot-independent, not silently coupled to Save & Persistence's restore cycle. Verified via `test_loading_a_save_slot_does_not_alter_bus_volume` (real `GSavePersistence.load_slot()` call), `test_sanctuary_state_restored_signal_does_not_alter_bus_volume` (the real signal Save & Persistence's own restore cycle broadcasts), `test_audio_system_is_never_registered_as_a_save_restorer` (structural proof — no `SaveRestorer` interface exists on this class at all). **Note**: this codebase has no distinct "fresh game started from the main menu" event/mechanism to test against separately from picking a mission — the same architectural guarantee (AudioSystem never registers with `GSavePersistence`, never subscribes to any slot-scoped signal) covers that trigger path identically; flagged honestly rather than fabricating a second test against a mechanism that doesn't exist yet.
 
 ---
 
@@ -72,7 +72,7 @@ Audio owns a small, independent `ConfigFile` at `user://audio_settings.cfg` (4 f
 **Story Type**: Integration
 **Required evidence**: `tests/integration/audio/volume-preference-persistence_test.gd` (AC-14, standard in-process test) + a separate documented resolution for AC-13 (either a relaunch-harness script or `production/qa/evidence/story-005-ac13-relaunch-evidence.md`)
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing — 5/5 test cases, 0 errors, 0 failures, 0 orphans (`tests/integration/audio/volume-preference-persistence_test.gd`, AC-14, run 2026-07-25). AC-13 separately verified via the real relaunch harness — see `production/qa/evidence/story-005-ac13-relaunch-evidence.md`.
 
 ---
 

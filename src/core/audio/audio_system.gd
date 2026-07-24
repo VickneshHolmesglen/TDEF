@@ -43,6 +43,13 @@ const AMBIENT_BUS: StringName = &"Ambient"
 
 const DEFAULT_VOLUME_PERCENT: float = 80.0
 
+## Story 005: volume is a device/session preference, not per-save-slot
+## progress — it lives in its own small `ConfigFile`, entirely outside
+## `GSavePersistence`/`SaveRestorer` (Core Rule 6's own explicit boundary,
+## enforced by this class simply never registering with that system).
+const AUDIO_SETTINGS_PATH: String = "user://audio_settings.cfg"
+const AUDIO_SETTINGS_SECTION: String = "buses"
+
 ## Authoritative percent-volume state per player-facing bus, `[0, 100]`.
 ## AudioServer's own bus volume_db is a derived effect of this, never the
 ## other way around.
@@ -59,6 +66,7 @@ var cue_dispatcher: AudioCueDispatcher
 
 func _ready() -> void:
 	_configure_buses()
+	_load_settings_from_disk()
 	if music_ambient == null:
 		music_ambient = MusicAmbientController.new()
 		music_ambient.name = &"MusicAmbientController"
@@ -137,3 +145,29 @@ func get_bus_send(bus_name: StringName) -> StringName:
 	if index == -1:
 		return &""
 	return AudioServer.get_bus_send(index)
+
+
+## Story 005, AC-13/Fresh-install default: loads saved volumes from
+## `user://audio_settings.cfg` if it exists, overriding Story 001's in-memory
+## 80% defaults. A missing file (fresh install) is not an error — the
+## existing in-memory defaults are simply left as-is.
+func _load_settings_from_disk() -> void:
+	var config := ConfigFile.new()
+	var err: Error = config.load(AUDIO_SETTINGS_PATH)
+	if err != OK:
+		return
+	for bus_name: StringName in PLAYER_BUSES:
+		if config.has_section_key(AUDIO_SETTINGS_SECTION, bus_name):
+			var percent: float = config.get_value(AUDIO_SETTINGS_SECTION, bus_name, DEFAULT_VOLUME_PERCENT)
+			set_bus_volume_percent(bus_name, percent)
+
+
+## Story 005: persists the current 4 player-facing bus volumes to
+## `user://audio_settings.cfg`. Never registered with `GSavePersistence` —
+## this is the entire point of Core Rule 6 (a device/session preference,
+## not per-save-slot progress).
+func save_settings_to_disk() -> Error:
+	var config := ConfigFile.new()
+	for bus_name: StringName in PLAYER_BUSES:
+		config.set_value(AUDIO_SETTINGS_SECTION, bus_name, get_bus_volume_percent(bus_name))
+	return config.save(AUDIO_SETTINGS_PATH)

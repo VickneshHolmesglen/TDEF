@@ -14,7 +14,7 @@
 | 002 | State-Driven Music and Ambient | Integration | Complete (2026-07-25) | N/A |
 | 003 | Data-Driven Cue Dispatch | Integration | Complete (2026-07-25) | N/A |
 | 004 | Ducking and Voice Limiting | Logic | Complete (2026-07-25) | N/A |
-| 005 | Volume Preference Persistence | Integration | Ready | N/A |
+| 005 | Volume Preference Persistence | Integration | Complete (2026-07-25) | N/A |
 | 006 | Pause Behavior | Integration | Ready | ADR-0014 (informational-only pause signal precedent) |
 
 **Note**: no story here is `Blocked`. None have a dedicated governing ADR (matches Sanctuary UI/Tarot Deck UI's own precedent — stories scoped directly from the GDD's 7 Core Rules). Story 003's `AudioCueMap` data-structure choice may warrant its own `/architecture-decision` pass during implementation if the shape proves non-trivial. Story 005's AC-13 (volume persists across a full process relaunch) needs either a scripted relaunch harness or a documented manual playtest — this project's standard in-process test runner cannot exercise it directly.
