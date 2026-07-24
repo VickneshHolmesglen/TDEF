@@ -1,7 +1,7 @@
 # Story 002: Entry — Sanctuary UI's Loadout Affordance
 
 > **Epic**: Tarot Deck UI
-> **Status**: Complete (2026-07-24 — implemented, tested live via GdUnit4, 3/3 passing; `/story-done` verification complete. AC-3's phase-gate check is a real, flagged gap — see note below)
+> **Status**: Complete (2026-07-24 — implemented, tested live via GdUnit4, 3/3 passing; `/story-done` verification complete. **Updated 2026-07-25**: AC-3's phase-gate concern led to finding and fixing a real, separate bug — see note below.)
 > **Layer**: Presentation
 > **Type**: Integration
 > **Manifest Version**: 2026-07-13b
@@ -29,7 +29,7 @@
 
 - [x] GIVEN the player is at any Sanctuary UI state — `OVERVIEW` or a `ROOM_*` state — WHEN the Loadout tab is selected, THEN this shell opens, defaulting to `HERO_SKILL_BUILD` (Player Fantasy's "build, then deck" ordering, flagged provisional per OQ-3). — tested against the shell's own fresh-mount default; the actual Sanctuary UI → Tarot Deck UI call is still unwired (Epic 10 Story 010's own flagged gap).
 - [x] GIVEN the shell was previously exited (via Cancel or the explicit return affordance) while `TAROT_DECK` was the active state, WHEN the shell is re-entered via a fresh Loadout selection, THEN it defaults to `HERO_SKILL_BUILD` again, not the last-used screen — confirming the default is a genuine fixed default, not accidentally sticky session state.
-- [?] GIVEN a mission is currently active (Tarot `LOCKED`, Hero Skill Build `LOCKED`), WHEN the player attempts to reach this shell, THEN entry is unavailable — inherited from the underlying phase gate, not a shell-specific check. — DEFERRED: no actual enforcement exists anywhere in the project yet (Sanctuary UI's Loadout tab doesn't check LOCKED state before allowing selection); flagged as a real gap, not silently assumed closed.
+- [x] GIVEN a mission is currently active (Tarot `LOCKED`, Hero Skill Build `LOCKED`), WHEN the player attempts to reach this shell, THEN entry is unavailable — inherited from the underlying phase gate, not a shell-specific check. — **Resolved 2026-07-25, differently than expected**: this scenario is actually structurally unreachable, not merely ungated. Sanctuary UI (and therefore its Loadout tab) can only ever be mounted via `SceneManager.transition_to_sanctuary()`, and every real caller of that method (the normal mission-complete/hero-died flow, and `pause_menu.gd`'s "Quit to Sanctuary" option) represents the player already having left mission-active state — so there is no code path where Sanctuary UI is displayed while a mission is genuinely "active." No new gate was needed. **However, investigating this surfaced a real, separate, previously-undiscovered bug**: `pause_menu.gd`'s "Quit to Sanctuary" calls `transition_to_sanctuary()` directly with no `mission_phase_changed` emission — the *only* event that cleared `tarot.gd`'s `_locked` flag — meaning a mid-mission quit left Tarot's deck permanently LOCKED in Sanctuary with no future unlock trigger, even though `hero_skill_build.gd`'s own equivalent `_is_sanctuary` flag correctly unlocks via `scene_transition_completed`. Fixed: `tarot.gd` now also subscribes to `scene_transition_completed` and unlocks on `target_context == "SANCTUARY"`, mirroring Hero Skill Build's already-correct mechanism. 2 new regression tests added to `tests/integration/tarot/state-tables-persistence_test.gd` (14/14 passing).
 
 ---
 
@@ -91,8 +91,8 @@ Entry gating: inherited from the underlying phase model (Tarot `LOCKED`/Hero Ski
 ---
 
 ## Completion Notes
-**Completed**: 2026-07-24
-**Criteria**: 2/3 passing, 1/3 deferred (AC-3 — no phase-gate enforcement exists anywhere in the project yet)
-**Deviations**: ADVISORY — matches Epic 10 Story 010's own flagged gap: no scene-transition entry point wires Sanctuary UI's Loadout tab to this shell yet. The shell's own receiving-side behavior (default state, non-sticky) is fully real and tested.
-**Test Evidence**: Integration: `tests/integration/tarot-deck-ui/entry-from-sanctuary-ui_test.gd` (3/3 passing)
-**Code Review**: Complete (full Tarot Deck UI code-review pass, 2026-07-24)
+**Completed**: 2026-07-24 (AC-3 resolved 2026-07-25)
+**Criteria**: 3/3 passing — AC-3 is satisfied by construction (Sanctuary UI cannot be mounted while a mission is genuinely active, per `SceneManager`'s own real callers), not by a new gate. Sanctuary UI's Loadout tab → this shell hand-off itself was wired for real in an earlier 2026-07-25 session pass (`SceneManager.transition_to_tarot_deck_ui()` + `TarotDeckUIScene.tscn`) — the "no scene-transition entry point exists" gap this note previously described is closed.
+**Deviations**: None remaining. A real, separate bug was found and fixed while investigating AC-3: `tarot.gd`'s `_locked` flag could get stuck permanently `true` after a mid-mission quit via `pause_menu.gd`'s "Quit to Sanctuary" (which bypasses `mission_phase_changed`) — fixed by also unlocking on `scene_transition_completed(SANCTUARY)`, mirroring `hero_skill_build.gd`'s already-correct mechanism.
+**Test Evidence**: Integration: `tests/integration/tarot-deck-ui/entry-from-sanctuary-ui_test.gd` (3/3 passing); `tests/integration/tarot/state-tables-persistence_test.gd` (14/14 passing, 2 new regression tests for the lock-state fix)
+**Code Review**: Complete (full Tarot Deck UI code-review pass, 2026-07-24). The 2026-07-25 lock-state fix has NOT yet been through `/code-review` — deliberately deferred per this session's "skip reviews till the end" instruction.

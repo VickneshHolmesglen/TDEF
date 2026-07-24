@@ -69,6 +69,30 @@ func test_locked_to_editable_on_defeat() -> void:
 	assert_bool(_tarot.unequip_card(&"iron_resolve")).is_true()  # editable again
 
 
+## Real bug fixed 2026-07-25: pause_menu.gd's "Quit to Sanctuary" option calls
+## SceneManager.transition_to_sanctuary() directly with no mission_phase_changed
+## emission -- without this handler, _locked would stay permanently true after
+## a mid-mission quit. scene_transition_completed("SANCTUARY", ...) must
+## unlock even when no MISSION_COMPLETE/DEFEAT ever fired.
+func test_locked_to_editable_on_scene_transition_to_sanctuary_with_no_terminal_phase() -> void:
+	_unlock_and_equip(&"iron_resolve")
+	_tarot._on_mission_launched("the_gap", PackedStringArray(), 1)
+	assert_bool(_tarot.unequip_card(&"iron_resolve")).is_false()  # locked, mid-mission quit incoming
+
+	_tarot._on_scene_transition_completed("SANCTUARY", "")
+
+	assert_bool(_tarot.unequip_card(&"iron_resolve")).is_true()  # editable again
+
+
+func test_scene_transition_to_mission_does_not_unlock() -> void:
+	_unlock_and_equip(&"iron_resolve")
+	_tarot._on_mission_launched("the_gap", PackedStringArray(), 1)
+
+	_tarot._on_scene_transition_completed("MISSION", "the_gap")
+
+	assert_bool(_tarot.unequip_card(&"iron_resolve")).is_false()  # still locked
+
+
 # ---------------------------------------------------------------------------
 # AC-42: Tier 3 -> Tier 4 transition at mastery_missions_played crossing 25,
 # terminal regardless of further missions.

@@ -10,13 +10,19 @@
 ## it load the real (still placeholder, per every Sanctuary UI story's own
 ## deferred-integration note) SanctuaryScene.tscn during this suite.
 ##
-## AC-2/AC-3 (committed edits survive a switch; gamepad pick-up silently
-## abandoned) cannot be tested against real content -- neither tarot.md's nor
-## hero-skill-build.md's own screen exists as a built .tscn anywhere in this
-## project yet (OQ-5). The generic ScreenHost mechanism itself (which is what
-## WOULD deliver both guarantees once real screens exist, exactly as Story
-## 007/010 already proved for Sanctuary UI's own equivalent rooms) is fully
-## tested below instead.
+## AC-2 (committed edits survive a switch) is now tested against real content
+## (2026-07-25) -- both tarot_screen.gd and hero_skill_build_screen.gd exist
+## as real, mounted screens as of this session's earlier work.
+##
+## AC-3 (gamepad pick-up silently abandoned) is confirmed N/A, not merely
+## untested (2026-07-25): hero_skill_build_screen.gd's own class doc comment
+## documents an honestly-scoped deviation from the GDD's literal pick-up-
+## then-place gamepad model -- the real screen assigns a library skill to the
+## first empty active slot in one direct action (mirrors tarot_screen.gd's
+## identical simplification), so there is no "picked up, not yet placed"
+## transient state anywhere in the real implementation for a screen switch
+## to abandon. AC-3 describes a mechanic this project's real screen
+## deliberately does not implement, not a gap in this shell's own coverage.
 extends GdUnitTestSuite
 
 const STUB_SCENE_PATH: String = "res://tests/fixtures/scene_manager/StubScene.tscn"
@@ -54,6 +60,8 @@ func after_test() -> void:
 	GSceneManager._transition_in_progress = false
 	if is_instance_valid(_original_current_scene):
 		get_tree().current_scene = _original_current_scene
+	GHeroSkillBuild.reset_to_defaults()
+	GHeroSkillBuild._is_sanctuary = false
 
 
 # ---------------------------------------------------------------------------
@@ -97,6 +105,30 @@ func test_unmounting_calls_disconnect_own_subscriptions_before_queue_free() -> v
 # Cancel / return-to-Sanctuary: the real SceneManager call, tested safely
 # against a stub scene path (this project's own established seam)
 # ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# AC-2: committed edits survive a screen switch (real content, 2026-07-25)
+# ---------------------------------------------------------------------------
+
+func test_hero_skill_build_slot_assignment_survives_a_switch_to_tarot_and_back() -> void:
+	GHeroSkillBuild._is_sanctuary = true
+	var skill_id: String = "phys_cleave"
+	GHeroSkillBuild._equippable_skills[skill_id] = true
+
+	_shell.set_active_state(&"HERO_SKILL_BUILD")
+	var hsb_screen: Control = _shell.get_screen_host().get_current_screen() as Control
+	@warning_ignore("unsafe_method_access")
+	hsb_screen.call("_on_library_skill_pressed", skill_id)
+	assert_array(GHeroSkillBuild.get_active_slots()).contains(skill_id)
+
+	_shell.set_active_state(&"TAROT_DECK")
+	_shell.set_active_state(&"HERO_SKILL_BUILD")
+
+	# Re-query via Hero Skill Build's own already-existing state, not a new
+	# shell-level assertion about internal data (matches the GDD's own
+	# framing of this AC).
+	assert_array(GHeroSkillBuild.get_active_slots()).contains(skill_id)
+
 
 func test_cancel_triggers_a_real_transition_to_sanctuary_call() -> void:
 	var cancel_event := InputEventAction.new()

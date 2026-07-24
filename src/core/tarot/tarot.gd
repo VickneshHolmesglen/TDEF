@@ -118,6 +118,7 @@ func _ready() -> void:
 	GEventBus.mission_launched.connect(_on_mission_launched)
 	GEventBus.mission_phase_changed.connect(_on_mission_phase_changed)
 	GEventBus.run_modifier_selected.connect(_on_run_modifier_selected)
+	GEventBus.scene_transition_completed.connect(_on_scene_transition_completed)
 	GSavePersistence.register(self, RESTORE_ORDER)
 
 
@@ -125,6 +126,7 @@ func _exit_tree() -> void:
 	GEventBus.mission_launched.disconnect(_on_mission_launched)
 	GEventBus.mission_phase_changed.disconnect(_on_mission_phase_changed)
 	GEventBus.run_modifier_selected.disconnect(_on_run_modifier_selected)
+	GEventBus.scene_transition_completed.disconnect(_on_scene_transition_completed)
 	GSavePersistence.unregister(self)
 
 
@@ -221,6 +223,24 @@ func _on_mission_phase_changed(_previous_phase: String, new_phase: String, _time
 		_on_mission_terminal(new_phase)
 	elif new_phase == "SCOUT":
 		_resolve_scout_modifiers()
+
+
+## Real bug found and fixed 2026-07-25: `_locked` was previously cleared
+## ONLY by `_on_mission_phase_changed()` reaching MISSION_COMPLETE/DEFEAT —
+## but `pause_menu.gd`'s "Quit to Sanctuary" option calls
+## `GSceneManager.transition_to_sanctuary()` directly, with no
+## `mission_phase_changed` emission at all, leaving `_locked` permanently
+## stuck `true` after a mid-mission quit (Tarot Deck UI's own Loadout entry
+## would then open into a genuinely LOCKED deck screen with no unlock path
+## ever firing again). Mirrors `hero_skill_build.gd`'s own already-correct
+## `_is_sanctuary` mechanism, which already unlocks via this exact signal —
+## Tarot was the one system missing it. Redundant-but-harmless on the normal
+## mission-complete path (unlock already happened earlier, via
+## `_on_mission_phase_changed()` above, well before the eventual scene
+## transition) — this is the sole unlock path for the pause-menu-bypass case.
+func _on_scene_transition_completed(target_context: String, _mission_id: String) -> void:
+	if target_context == "SANCTUARY":
+		_locked = false
 
 
 ## Rule 10/EC-5/AC-21/22/23: increments mastery_missions_played by exactly 1
