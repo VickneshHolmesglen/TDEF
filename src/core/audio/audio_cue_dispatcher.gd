@@ -38,12 +38,29 @@ var _last_played_bus: StringName = &""
 var _last_effective_volume_linear: float = 0.0
 var _dispatch_count: int = 0
 
+## Stored so `_exit_tree()` can actually disconnect the anonymous lambdas
+## `_connect_all_events()` wires below — a bare `.connect(func...)` call has
+## no reference to disconnect later, which would silently violate this
+## project's own EventBus Rule 6 ("every subscriber MUST disconnect in
+## `_exit_tree()`") the moment this node is ever created/freed outside the
+## permanent Autoload tree (e.g. in a future test or refactor).
+var _connected_signals: Array[Signal] = []
+var _connected_callables: Array[Callable] = []
+
 
 func _ready() -> void:
 	if cue_map == null:
 		cue_map = AudioCueMap.new()
 	_rebuild_lookup()
 	_connect_all_events()
+
+
+func _exit_tree() -> void:
+	for i in range(_connected_signals.size()):
+		if _connected_signals[i].is_connected(_connected_callables[i]):
+			_connected_signals[i].disconnect(_connected_callables[i])
+	_connected_signals.clear()
+	_connected_callables.clear()
 
 
 ## Replaces the active cue map and rebuilds the runtime lookup — used by
@@ -60,22 +77,30 @@ func _rebuild_lookup() -> void:
 
 
 func _connect_all_events() -> void:
-	GEventBus.mission_phase_changed.connect(func(_a: String, _b: String, _c: float) -> void: dispatch_cue(&"mission_phase_changed"))
-	GEventBus.wave_countdown_warning.connect(func(_a: int) -> void: dispatch_cue(&"wave_countdown_warning"))
-	GEventBus.hero_skill_activated.connect(func(_a: String, _b: Vector2) -> void: dispatch_cue(&"hero_skill_activated"))
-	GEventBus.hero_class_unlocked.connect(func(_a: StringName, _b: bool) -> void: dispatch_cue(&"hero_class_unlocked"))
-	GEventBus.tower_placed.connect(func(_a: Variant) -> void: dispatch_cue(&"tower_placed"))
-	GEventBus.tower_attacked.connect(func(_a: int, _b: int, _c: float, _d: bool, _e: bool) -> void: dispatch_cue(&"tower_attacked"))
-	GEventBus.pre_placement_perk_activated.connect(func(_a: int, _b: String) -> void: dispatch_cue(&"pre_placement_perk_activated"))
-	GEventBus.boss_died.connect(func(_a: int, _b: StringName, _c: int, _d: String) -> void: dispatch_cue(&"boss_died"))
-	GEventBus.hero_damage_taken.connect(func(_a: int, _b: int) -> void: dispatch_cue(&"hero_damage_taken"))
-	GEventBus.constellation_activated.connect(func(_a: String, _b: Vector2i, _c: String, _d: float) -> void: dispatch_cue(&"constellation_activated"))
-	GEventBus.component_crafted.connect(func(_a: String, _b: String, _c: int) -> void: dispatch_cue(&"component_crafted"))
-	GEventBus.component_repaired.connect(func(_a: String, _b: String) -> void: dispatch_cue(&"component_repaired"))
-	GEventBus.sanctuary_structure_built.connect(func(_a: String, _b: String) -> void: dispatch_cue(&"sanctuary_structure_built"))
-	GEventBus.hero_equipment_crafted.connect(func(_a: String, _b: String, _c: int) -> void: dispatch_cue(&"hero_equipment_crafted"))
-	GEventBus.game_paused.connect(func() -> void: dispatch_cue(&"game_paused"))
-	GEventBus.game_unpaused.connect(func() -> void: dispatch_cue(&"game_unpaused"))
+	if not _connected_signals.is_empty():
+		return
+	_wire(GEventBus.mission_phase_changed, func(_a: String, _b: String, _c: float) -> void: dispatch_cue(&"mission_phase_changed"))
+	_wire(GEventBus.wave_countdown_warning, func(_a: int) -> void: dispatch_cue(&"wave_countdown_warning"))
+	_wire(GEventBus.hero_skill_activated, func(_a: String, _b: Vector2) -> void: dispatch_cue(&"hero_skill_activated"))
+	_wire(GEventBus.hero_class_unlocked, func(_a: StringName, _b: bool) -> void: dispatch_cue(&"hero_class_unlocked"))
+	_wire(GEventBus.tower_placed, func(_a: Variant) -> void: dispatch_cue(&"tower_placed"))
+	_wire(GEventBus.tower_attacked, func(_a: int, _b: int, _c: float, _d: bool, _e: bool) -> void: dispatch_cue(&"tower_attacked"))
+	_wire(GEventBus.pre_placement_perk_activated, func(_a: int, _b: String) -> void: dispatch_cue(&"pre_placement_perk_activated"))
+	_wire(GEventBus.boss_died, func(_a: int, _b: StringName, _c: int, _d: String) -> void: dispatch_cue(&"boss_died"))
+	_wire(GEventBus.hero_damage_taken, func(_a: int, _b: int) -> void: dispatch_cue(&"hero_damage_taken"))
+	_wire(GEventBus.constellation_activated, func(_a: String, _b: Vector2i, _c: String, _d: float) -> void: dispatch_cue(&"constellation_activated"))
+	_wire(GEventBus.component_crafted, func(_a: String, _b: String, _c: int) -> void: dispatch_cue(&"component_crafted"))
+	_wire(GEventBus.component_repaired, func(_a: String, _b: String) -> void: dispatch_cue(&"component_repaired"))
+	_wire(GEventBus.sanctuary_structure_built, func(_a: String, _b: String) -> void: dispatch_cue(&"sanctuary_structure_built"))
+	_wire(GEventBus.hero_equipment_crafted, func(_a: String, _b: String, _c: int) -> void: dispatch_cue(&"hero_equipment_crafted"))
+	_wire(GEventBus.game_paused, func() -> void: dispatch_cue(&"game_paused"))
+	_wire(GEventBus.game_unpaused, func() -> void: dispatch_cue(&"game_unpaused"))
+
+
+func _wire(event_signal: Signal, callable: Callable) -> void:
+	event_signal.connect(callable)
+	_connected_signals.append(event_signal)
+	_connected_callables.append(callable)
 
 
 ## The single generic dispatch entry point (Core Rule 4). `distance` only

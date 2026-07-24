@@ -105,13 +105,23 @@ func test_formula_f1_never_goes_below_the_duck_floor() -> void:
 
 
 # ---------------------------------------------------------------------------
-# Sidechain ducking constants (Core Rule 5) -- a separate, cross-bus
-# mechanism from Formula F1.
+# Sidechain ducking TUNING VALUES ONLY (Core Rule 5) -- these two tests are a
+# regression check on the constants matching the GDD's own numbers. They do
+# NOT exercise a live mechanism: sidechain ducking (SFX triggers ducking
+# Ambient, UI triggers ducking Music+SFX) is not wired into any bus or into
+# AudioCueDispatcher anywhere in this codebase -- confirmed via code review
+# (2026-07-25). Distinct from the already-tracked "VoiceLimiter not yet
+# wired into live dispatch" gap: this is the sidechain mechanism itself
+# never being built, not just not being connected. Not implemented this
+# pass because the GDD specifies no attack/release timing for it (only the
+# dB magnitudes) -- building it now would mean inventing unspecified
+# behavior rather than implementing a real requirement. See story-004's own
+# file for the full note.
 # ---------------------------------------------------------------------------
 
-func test_sfx_to_ambient_sidechain_duck_matches_gdd_value() -> void:
+func test_sfx_to_ambient_sidechain_duck_constant_matches_gdd_value() -> void:
 	assert_float(VoiceLimiter.SFX_TO_AMBIENT_DUCK_DB).is_equal_approx(-6.0, 0.001)
 
 
-func test_ui_to_music_and_sfx_sidechain_duck_matches_gdd_value() -> void:
+func test_ui_to_music_and_sfx_sidechain_duck_constant_matches_gdd_value() -> void:
 	assert_float(VoiceLimiter.UI_TO_MUSIC_AND_SFX_DUCK_DB).is_equal_approx(-4.0, 0.001)

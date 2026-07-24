@@ -32,6 +32,8 @@
 
 **Note**: `VoiceLimiter` is a standalone Logic class (`src/core/audio/voice_limiter.gd`) — not wired into `AudioCueDispatcher`'s live dispatch path in this pass, matching this story's own Out of Scope boundary (Story 003 owns triggering a new voice; this story only owns what happens once a family is at/beyond capacity). Wiring `trigger_voice()`/`compute_ducked_volume()` into the real dispatch call is a natural follow-up for whichever future story needs the composed behavior live, not required by this story's own Definition of Done.
 
+**Real gap found in code review (2026-07-25), not fixed this pass**: the sidechain ducking constants (`SFX_TO_AMBIENT_DUCK_DB = -6.0`, `UI_TO_MUSIC_AND_SFX_DUCK_DB = -4.0`, per Core Rule 5's Implementation Notes) exist but are never applied to any real `AudioServer` bus anywhere in this codebase — this is distinct from the VoiceLimiter-dispatch-wiring gap noted above (that gap is about *connection*; this one is about the sidechain *mechanism itself* not being built at all). Not implemented because the GDD specifies only the dB magnitude for each duck, not the attack/release timing a real implementation would need (how long does the duck last after an SFX/UI trigger? does it retrigger/extend on overlapping triggers?) — building it now would mean inventing unspecified behavior rather than implementing a defined requirement. The 2 existing "sidechain" tests in `tests/unit/audio/ducking-and-voice-limiting_test.gd` were relabeled to make clear they only regression-check the tuning constants, not a live mechanism.
+
 ---
 
 ## Implementation Notes

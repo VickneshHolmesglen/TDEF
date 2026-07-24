@@ -38,6 +38,11 @@ const UI_TO_MUSIC_AND_SFX_DUCK_DB: float = -4.0
 var _family_caps: Dictionary[StringName, int] = DEFAULT_FAMILY_CAPS.duplicate()
 
 ## Per family: an Array[int] of active voice IDs, oldest first (index 0).
+## Dictionary values stay plain `Array` (not `Array[int]`) -- nested typed
+## generics (`Dictionary[K, Array[V]]`) do not parse on this project's
+## pinned Godot 4.6.2 (confirmed: `Dictionary[StringName, Array[int]]`
+## throws a parser error at load). Individual local variables below are
+## still typed `Array[int]` where the engine does support it.
 var _active_voices: Dictionary[StringName, Array] = {}
 
 var _next_voice_id: int = 0
@@ -83,7 +88,9 @@ func release_voice(family: StringName, voice_id: int) -> void:
 
 
 func get_active_voice_count(family: StringName) -> int:
-	return (_active_voices.get(family, []) as Array).size()
+	if not _active_voices.has(family):
+		return 0
+	return (_active_voices[family] as Array).size()
 
 
 ## Test/inspection accessor — the voice ID stolen by the most recent

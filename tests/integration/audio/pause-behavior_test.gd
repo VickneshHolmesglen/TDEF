@@ -116,7 +116,18 @@ func test_double_pause_cycle_mid_transition_still_resumes_correctly() -> void:
 # ---------------------------------------------------------------------------
 # AC-15b: pause ducks Music/Ambient to ~40% of pre-pause level, mutes SFX
 # entirely; unpause restores exact pre-pause values.
+#
+# `get_bus_volume_percent()` reads the *persisted preference* (`_bus_volumes`)
+# -- it must stay completely unchanged throughout a pause cycle (a real bug
+# found in code review: routing the duck through `set_bus_volume_percent()`
+# would let a `save_settings_to_disk()` call made while paused permanently
+# write the ducked value to disk). The *real, audible* level is checked
+# separately via `get_bus_volume_db_direct()` against the raw `AudioServer`.
 # ---------------------------------------------------------------------------
+
+func _linear_from_db_direct(bus_name: StringName) -> float:
+	return db_to_linear(_audio.get_bus_volume_db_direct(bus_name))
+
 
 func test_pause_ducks_music_and_ambient_to_40_percent_of_pre_pause_level() -> void:
 	_audio.set_bus_volume_percent(&"Music", 50.0)
@@ -125,7 +136,7 @@ func test_pause_ducks_music_and_ambient_to_40_percent_of_pre_pause_level() -> vo
 
 	GEventBus.game_paused.emit()
 
-	assert_float(_audio.get_bus_volume_percent(&"Music")).is_equal_approx(20.0, 0.001)
+	assert_float(_linear_from_db_direct(&"Music")).is_equal_approx(0.5 * 0.4, 0.001)
 	var ducked_ambient_linear: float = db_to_linear(AudioServer.get_bus_volume_db(ambient_index))
 	var pre_pause_ambient_linear: float = db_to_linear(pre_pause_ambient_db)
 	assert_float(ducked_ambient_linear).is_equal_approx(pre_pause_ambient_linear * 0.4, 0.001)
@@ -137,8 +148,8 @@ func test_pause_mutes_sfx_bus_entirely_and_leaves_ui_bus_untouched() -> void:
 
 	GEventBus.game_paused.emit()
 
-	assert_float(_audio.get_bus_volume_percent(&"SFX")).is_equal(0.0)
-	assert_float(_audio.get_bus_volume_percent(&"UI")).is_equal(65.0)
+	assert_float(_linear_from_db_direct(&"SFX")).is_equal_approx(0.0, 0.001)
+	assert_float(_linear_from_db_direct(&"UI")).is_equal_approx(0.65, 0.001)
 
 
 func test_unpause_restores_exact_pre_pause_values_not_just_any_nonzero_value() -> void:
@@ -148,8 +159,8 @@ func test_unpause_restores_exact_pre_pause_values_not_just_any_nonzero_value() -
 	GEventBus.game_paused.emit()
 	GEventBus.game_unpaused.emit()
 
-	assert_float(_audio.get_bus_volume_percent(&"Music")).is_equal_approx(40.0, 0.001)
-	assert_float(_audio.get_bus_volume_percent(&"SFX")).is_equal_approx(73.0, 0.001)
+	assert_float(_linear_from_db_direct(&"Music")).is_equal_approx(0.40, 0.001)
+	assert_float(_linear_from_db_direct(&"SFX")).is_equal_approx(0.73, 0.001)
 
 
 func test_pause_while_music_already_at_a_non_default_player_set_volume_ducks_relative_to_it() -> void:
@@ -160,7 +171,7 @@ func test_pause_while_music_already_at_a_non_default_player_set_volume_ducks_rel
 
 	GEventBus.game_paused.emit()
 
-	assert_float(_audio.get_bus_volume_percent(&"Music")).is_equal_approx(16.0, 0.001)
+	assert_float(_linear_from_db_direct(&"Music")).is_equal_approx(0.4 * 0.4, 0.001)
 
 
 func test_repeated_pause_without_intervening_unpause_does_not_re_duck_an_already_ducked_value() -> void:
@@ -169,6 +180,40 @@ func test_repeated_pause_without_intervening_unpause_does_not_re_duck_an_already
 	GEventBus.game_paused.emit()
 	GEventBus.game_paused.emit()  # a second pause signal, no unpause between
 
-	# Still 20.0 (50 * 0.4) -- not 8.0 (50 * 0.4 * 0.4), proving the second
-	# pause was a no-op, not a re-duck of the already-ducked value.
-	assert_float(_audio.get_bus_volume_percent(&"Music")).is_equal_approx(20.0, 0.001)
+	# Still 0.5*0.4 -- not 0.5*0.4*0.4, proving the second pause was a
+	# no-op, not a re-duck of the already-ducked value.
+	assert_float(_linear_from_db_direct(&"Music")).is_equal_approx(0.5 * 0.4, 0.001)
+
+
+# ---------------------------------------------------------------------------
+# Regression test for the code-review-found bug: ducking must never corrupt
+# the persisted preference.
+# ---------------------------------------------------------------------------
+
+func test_persisted_preference_is_never_touched_while_paused_even_across_a_save() -> void:
+	const SETTINGS_PATH: String = "user://audio_settings.cfg"
+	var had_pre_existing: bool = FileAccess.file_exists(SETTINGS_PATH)
+	var backup: PackedByteArray = FileAccess.get_file_as_bytes(SETTINGS_PATH) if had_pre_existing else PackedByteArray()
+
+	_audio.set_bus_volume_percent(&"Music", 55.0)
+
+	GEventBus.game_paused.emit()
+	# The real-world scenario this guards against: the player quits to
+	# desktop from the pause menu, triggering a save while still paused.
+	var save_err: Error = _audio.save_settings_to_disk()
+	assert_int(save_err).is_equal(OK)
+
+	var fresh_audio := AudioSystem.new()
+	add_child(fresh_audio)
+
+	# Must read back the real 55% preference, never the ducked 22%.
+	assert_float(fresh_audio.get_bus_volume_percent(&"Music")).is_equal_approx(55.0, 0.001)
+
+	fresh_audio.free()
+
+	if FileAccess.file_exists(SETTINGS_PATH):
+		DirAccess.remove_absolute(SETTINGS_PATH)
+	if had_pre_existing:
+		var f := FileAccess.open(SETTINGS_PATH, FileAccess.WRITE)
+		f.store_buffer(backup)
+		f.close()

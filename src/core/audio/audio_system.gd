@@ -157,6 +157,32 @@ func get_bus_send(bus_name: StringName) -> StringName:
 	return AudioServer.get_bus_send(index)
 
 
+## Story 006: sets `bus_name`'s real, currently-audible `AudioServer` volume
+## directly, **without** touching `_bus_volumes` (the authoritative
+## persisted-preference state). Exists specifically so `PauseDuckController`
+## can duck Music/SFX during pause without corrupting the player's real
+## volume preference — if `save_settings_to_disk()` ran while paused and
+## ducking had gone through `set_bus_volume_percent()` instead, the ducked
+## (not the real) value would be permanently written to
+## `user://audio_settings.cfg`. No-op if `bus_name` doesn't exist.
+func set_bus_volume_db_direct(bus_name: StringName, volume_db: float) -> void:
+	var index: int = AudioServer.get_bus_index(bus_name)
+	if index != -1:
+		AudioServer.set_bus_volume_db(index, volume_db)
+
+
+## Test/inspection accessor — the real, currently-audible `AudioServer`
+## volume for `bus_name`, as a `[0, 100]` percent. Unlike
+## `get_bus_volume_percent()` (which reads the authoritative persisted
+## preference, unaffected by pause-ducking), this reflects whatever is
+## actually audible right now — the two intentionally diverge while paused.
+func get_bus_volume_db_direct(bus_name: StringName) -> float:
+	var index: int = AudioServer.get_bus_index(bus_name)
+	if index == -1:
+		return 0.0
+	return AudioServer.get_bus_volume_db(index)
+
+
 ## Story 005, AC-13/Fresh-install default: loads saved volumes from
 ## `user://audio_settings.cfg` if it exists, overriding Story 001's in-memory
 ## 80% defaults. A missing file (fresh install) is not an error — the

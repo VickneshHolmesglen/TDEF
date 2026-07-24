@@ -34,6 +34,8 @@
 
 **Implementation note — test isolation gap found and fixed**: the real `GAudioSystem` Autoload (always alive in any headless test run) has its own `PauseDuckController` also subscribed to `game_paused`/`game_unpaused`, independently ducking the same shared `AudioServer` Ambient bus this story's own tests assert against directly (Ambient has no per-instance percent abstraction the way Music/SFX/UI do, so it's the one bus where this cross-instance interference actually corrupts a raw readback). Fixed by temporarily disconnecting the real Autoload's subscriptions for this test file's duration only (restored in `after_test()`) — matches this project's own "reset shared Autoload/singleton state between tests" discipline, not a new pattern.
 
+**Real bug found in `/code-review` (2026-07-25) and fixed**: `_on_game_paused()` originally ducked Music/SFX by calling `AudioSystem.set_bus_volume_percent()`, which overwrites `_bus_volumes` — the field `audio_system.gd` itself documents as the sole authoritative source of truth for the player's *persisted* preference. If `save_settings_to_disk()` ran while paused (e.g. quitting to desktop from the pause menu), the ducked value would be permanently written to `user://audio_settings.cfg`, silently replacing the player's real setting. Fixed by adding `AudioSystem.set_bus_volume_db_direct()`/`get_bus_volume_db_direct()` (touch the real `AudioServer` only, never `_bus_volumes`) and routing Music/SFX ducking through those instead — matching the approach Ambient already correctly used from this story's first draft. Added a dedicated regression test, `test_persisted_preference_is_never_touched_while_paused_even_across_a_save`, which pauses, saves, and reloads via a fresh `AudioSystem` instance to prove the real (not ducked) value survives. All of AC-15b's existing tests updated to assert against the real `AudioServer` state (`get_bus_volume_db_direct()`) for the audible check, while separately confirming `get_bus_volume_percent()` (the persisted preference) never changes during a pause cycle.
+
 ---
 
 ## Implementation Notes
@@ -78,7 +80,7 @@ On `game_paused`: Music and Ambient buses attenuate to ~40% (Tuning Knobs, range
 **Story Type**: Integration
 **Required evidence**: `tests/integration/audio/pause-behavior_test.gd`
 
-**Status**: [x] Created and passing — 8/8 test cases, 0 errors, 0 failures, 0 orphans (`tests/integration/audio/pause-behavior_test.gd`, run 2026-07-25). Real scene instantiation exercising the real `GEventBus`/`AudioServer` — not mocked.
+**Status**: [x] Created and passing — 9/9 test cases (8 original + 1 code-review regression test), 0 errors, 0 failures, 0 orphans (`tests/integration/audio/pause-behavior_test.gd`, run 2026-07-25). Real scene instantiation exercising the real `GEventBus`/`AudioServer` — not mocked.
 
 ---
 
