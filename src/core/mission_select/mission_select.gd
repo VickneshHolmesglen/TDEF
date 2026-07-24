@@ -186,6 +186,18 @@ func back_out_to_browsing() -> void:
 	state = State.BROWSING
 
 
+## Read-only accessor for the Mission Select screen (added 2026-07-25 — no
+## public getter existed before for either field, only the private fields
+## themselves).
+func get_current_mission_id() -> String:
+	return _current_mission_id
+
+
+## Current stepper value for modifier_id, or 0.0 ("off") if never toggled.
+func get_run_modifier_value(modifier_id: StringName) -> float:
+	return _run_modifiers.get(modifier_id, 0.0)
+
+
 ## Sets the difficulty tier for the current CONFIGURING selection. Accepts
 ## any of {1,2,3} with no validation blocking (AC-4). Emits zero EventBus
 ## events — there is no difficulty_tier_selected event in the frozen contract
@@ -232,6 +244,18 @@ func can_launch() -> bool:
 ## run-modifier currently at a non-0.0 value (Rule 7 — a still-0.0 modifier
 ## is omitted, not included with a zero value; AC-18/AC-19), emits
 ## mission_launched, and transitions to LAUNCHED.
+##
+## Real bug found and fixed 2026-07-25 (while wiring the Mission Select
+## screen for real, end-to-end for the first time): this method never
+## actually called `Grid.initialize()`, despite Rule 10/this GDD's own
+## Interactions table stating Grid initialization happens "at mission_launched
+## (initial launch)". `retry_current_mission()` below already does this
+## correctly for the retry path; the initial-launch path was silently
+## missing it — WaveManager's own `_on_mission_launched()` handler reads
+## `Grid.get_spawn_cells()` synchronously, so without this fix it would read
+## stale/uninitialized Grid state on every first launch. Now initializes
+## Grid BEFORE emitting mission_launched, matching Grid Rule 9's own direct-
+## call-exception precedent (ADR-0005 Criterion A).
 func confirm_launch() -> void:
 	if not can_launch():
 		return
@@ -249,6 +273,8 @@ func confirm_launch() -> void:
 	_runtime_difficulty_tier = difficulty_tier
 	_runtime_modifiers = modifiers
 	_runtime_launch_timestamp = Time.get_unix_time_from_system()
+	if _runtime_grid_config != null:
+		GGrid.initialize(_runtime_grid_config)
 	GEventBus.mission_launched.emit(_current_mission_id, modifiers, difficulty_tier)
 
 
@@ -384,8 +410,28 @@ func restore_save_data(data: Dictionary) -> bool:
 	return true
 
 
-## Clears the completion ledger to its starting (brand-new-save) state. Never
-## called by mission end — only by SavePersistence when no save data exists
-## yet, or when restore_save_data() rejects malformed data.
+## Clears ALL state to its starting (brand-new-save) state. Never called by
+## mission end — only by SavePersistence when no save data exists yet, or
+## when restore_save_data() rejects malformed data.
+##
+## Real bug found and fixed 2026-07-25 (while wiring the Mission Select
+## screen for real — its own test suite's first run surfaced this via
+## cross-test leakage within a single file): this method previously only
+## cleared `_completion_ledger`, leaving `state`/`_current_mission_id`/
+## `difficulty_tier`/`_run_modifiers`/every `_runtime_*` field untouched —
+## silently violating the same "reset clears ALL state" contract every other
+## SaveRestorer in this project already correctly implements (e.g.
+## menagerie.gd's own reset_to_defaults()). `_runtime_*` fields are cleared
+## too even though they're never persisted (Rule 10) — a brand-new save has
+## no armed retry state, matching a fresh boot's own natural default.
 func reset_to_defaults() -> void:
 	_completion_ledger.clear()
+	state = State.BROWSING
+	_current_mission_id = ""
+	difficulty_tier = 1
+	_run_modifiers.clear()
+	_runtime_mission_id = ""
+	_runtime_grid_config = null
+	_runtime_difficulty_tier = 0
+	_runtime_modifiers = PackedStringArray()
+	_runtime_launch_timestamp = 0.0

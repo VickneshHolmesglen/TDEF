@@ -274,21 +274,17 @@ func confirm_launch_depart() -> void:
 	GEventBus.sanctuary_structure_built.disconnect(_on_sanctuary_structure_built)
 	set_active_state(DEPARTING_STATE)
 	_play_departing_chrome_fade()
-	# REAL GAP, FLAGGED NOT SILENTLY WORKED AROUND (mirrors Story 004's
-	# balance-ownership gap): "Sanctuary UI hands off to Mission Select" has
-	# no resolved API today. ADR-0002's scene hierarchy only defines
-	# SanctuaryScene and MissionScene -- there is no third "Mission Select
-	# browsing" scene/screen anywhere in this project to hand off TO, and the
-	# GDD's own OQ-2 confirms this call is "not yet classified under
-	## ADR-0020's Criterion A/B framework." back_out_to_browsing() is the
-	# closest real, safe, idempotent MissionSelect method available today
-	# (it only sets state = BROWSING, which is likely already true post-
-	# MISSION_COMPLETE reset) -- called here as an explicitly-flagged
-	# placeholder, not a resolved design decision. The AC's stronger claim
-	# ("control genuinely passes to Mission Select... receives input") is
-	# NOT implementable until a real browsing screen/scene exists; tracked as
-	# a new gap alongside OQ-2, not silently treated as closed by this call.
-	GMissionSelect.back_out_to_browsing()
+	# Gap closed 2026-07-25: MissionScene.tscn now exists (a real, tested,
+	# generic MISSION-context scene hosting both Mission Select's own
+	# browsing/configuring screen and the live gameplay assembly, switching
+	# on GMissionSelect.state) -- SceneManager.transition_to_mission("")
+	# genuinely hands off to it, replacing the previously-flagged
+	# back_out_to_browsing() placeholder. Empty mission_id is correct here:
+	# no mission is chosen yet at this point, matching MissionSelect's own
+	# BROWSING entry state. ADR-0020's Criterion A/B classification of this
+	# call (OQ-2) remains formally open -- shipped ahead of it per this
+	# epic's own established precedent.
+	GSceneManager.transition_to_mission("")
 
 
 ## Test/inspection accessor -- true from the instant confirm_launch_depart()'s

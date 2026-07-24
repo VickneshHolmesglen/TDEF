@@ -1,0 +1,64 @@
+[gd_scene load_steps=3 format=3 uid="uid://missionselectscreen0"]
+
+[ext_resource type="Script" path="res://src/gameplay/ui/mission_select_screen/mission_select_screen.gd" id="1_ctrl"]
+[ext_resource type="Script" path="res://src/ui/input_mode_tracker.gd" id="2_tracker"]
+
+[node name="MissionSelectScreen" type="Control"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_ctrl")
+
+[node name="InputModeTracker" type="Node" parent="."]
+script = ExtResource("2_tracker")
+
+[node name="MainLayout" type="VBoxContainer" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 8
+
+[node name="TopRow" type="HBoxContainer" parent="MainLayout"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 16
+
+[node name="MissionListPanel" type="PanelContainer" parent="MainLayout/TopRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 2.0
+
+[node name="MissionList" type="VBoxContainer" parent="MainLayout/TopRow/MissionListPanel"]
+layout_mode = 2
+
+[node name="ConfigPanel" type="VBoxContainer" parent="MainLayout/TopRow"]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 1.0
+
+[node name="TierRow" type="HBoxContainer" parent="MainLayout/TopRow/ConfigPanel"]
+layout_mode = 2
+
+[node name="ModifierRow" type="VBoxContainer" parent="MainLayout/TopRow/ConfigPanel"]
+layout_mode = 2
+
+[node name="BackButton" type="Button" parent="MainLayout/TopRow/ConfigPanel"]
+layout_mode = 2
+text = "Back"
+
+[node name="LaunchBar" type="HBoxContainer" parent="MainLayout"]
+layout_mode = 2
+
+[node name="RecapLabel" type="Label" parent="MainLayout/LaunchBar"]
+layout_mode = 2
+size_flags_horizontal = 3
+autowrap_mode = 3
+
+[node name="LaunchButton" type="Button" parent="MainLayout/LaunchBar"]
+layout_mode = 2
+text = "Launch"

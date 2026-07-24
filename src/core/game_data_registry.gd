@@ -248,6 +248,13 @@ func get_mission_entry(mission_id: String) -> MissionEntry:
 	return _mission_entries.get(mission_id, null)
 
 
+## Returns the full mission catalogue for the Mission Select screen (added
+## 2026-07-25 — no enumeration API existed before, only single-ID lookup).
+## Shallow copy so callers can't mutate the registry's own cache directly.
+func get_all_mission_entries() -> Dictionary[String, MissionEntry]:
+	return _mission_entries.duplicate()
+
+
 ## Returns the SkillResource for skill_id, or null if not found/loaded.
 ## O(1) Dictionary lookup. A non-null result is not a validity guarantee —
 ## validate() may have logged errors for it at boot without removing it from
