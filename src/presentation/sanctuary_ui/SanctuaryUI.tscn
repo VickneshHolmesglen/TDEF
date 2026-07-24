@@ -1,0 +1,29 @@
+[gd_scene load_steps=5 format=3 uid="uid://sanctuaryui0scene"]
+
+[ext_resource type="Script" path="res://src/presentation/sanctuary_ui/sanctuary_ui.gd" id="1_su"]
+[ext_resource type="Script" path="res://src/presentation/sanctuary_ui/tab_strip.gd" id="2_ts"]
+[ext_resource type="Script" path="res://src/presentation/sanctuary_ui/resource_header.gd" id="3_rh"]
+[ext_resource type="Script" path="res://src/presentation/sanctuary_ui/room_host.gd" id="4_rmh"]
+
+[node name="SanctuaryUI" type="Control"]
+layout_mode = 3
+script = ExtResource("1_su")
+
+[node name="Diorama" type="Control" parent="."]
+layout_mode = 1
+
+[node name="RoomHost" type="Control" parent="."]
+layout_mode = 1
+script = ExtResource("4_rmh")
+
+[node name="Chrome" type="Control" parent="."]
+layout_mode = 1
+mouse_filter = 2
+
+[node name="TabStrip" type="VBoxContainer" parent="Chrome"]
+layout_mode = 1
+script = ExtResource("2_ts")
+
+[node name="ResourceHeader" type="Control" parent="Chrome"]
+layout_mode = 1
+script = ExtResource("3_rh")

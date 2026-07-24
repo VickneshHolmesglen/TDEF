@@ -1,0 +1,11 @@
+[gd_scene load_steps=3 format=3 uid="uid://roomlifecyclestubroom0"]
+
+[ext_resource type="Script" path="res://tests/integration/sanctuary-ui/room_lifecycle_stub_room.gd" id="1_stub"]
+[ext_resource type="Script" path="res://src/ui/input_mode_tracker.gd" id="2_tracker"]
+
+[node name="RoomLifecycleStubRoom" type="Control"]
+layout_mode = 3
+script = ExtResource("1_stub")
+
+[node name="InputModeTracker" type="Node" parent="."]
+script = ExtResource("2_tracker")
