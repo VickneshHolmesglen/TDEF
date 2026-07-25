@@ -81,3 +81,12 @@ Default all 4 buses to 80% (Tuning Knobs) on first-ever initialization (no `user
 
 - Depends on: None (foundational story for this epic)
 - Unlocks: Story 002 (Music/Ambient needs real buses to route through), Story 003 (cue dispatch needs real buses as a routing target), Story 004 (ducking operates on these same buses), Story 006 (pause-duck attenuates these bus levels)
+
+---
+
+## Completion Notes
+**Completed**: 2026-07-25
+**Criteria**: 2/2 passing (AC-1, AC-2)
+**Deviations**: None
+**Test Evidence**: Logic — `tests/unit/audio/mix-bus-architecture_test.gd`, 11/11 passing, 0 orphans
+**Code Review**: Complete (`/code-review` run 2026-07-25 across all Epic 12 files; no findings against this story's own code)

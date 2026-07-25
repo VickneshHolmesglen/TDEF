@@ -86,3 +86,12 @@
 
 - Depends on: Story 003 (voice-limiting operates on cues Story 003's dispatch mechanism fires)
 - Unlocks: None
+
+---
+
+## Completion Notes
+**Completed**: 2026-07-25
+**Criteria**: 2/2 passing (AC-11, AC-12)
+**Deviations**: `VoiceLimiter` not wired into `AudioCueDispatcher`'s live dispatch path (documented, in-scope deferral); sidechain ducking constants exist but are never applied to a real bus anywhere (a real, distinct gap — not implemented since the GDD gives no attack/release timing, only dB magnitudes)
+**Test Evidence**: Logic — `tests/unit/audio/ducking-and-voice-limiting_test.gd`, 11/11 passing, 0 orphans
+**Code Review**: Complete (`/code-review` run 2026-07-25) — qa-tester flagged the sidechain-ducking gap as BLOCKING for testability confidence; addressed by relabeling the 2 sidechain tests to make clear they check tuning constants only, and documenting the gap explicitly above rather than fixing it with unspecified behavior

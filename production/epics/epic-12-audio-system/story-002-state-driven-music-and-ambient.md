@@ -93,11 +93,22 @@
 
 **Status**: [x] Created and passing — 10/10 test cases, 0 errors, 0 failures, 0 orphans (`tests/integration/audio/state-driven-music-and-ambient_test.gd`, run 2026-07-25). Real scene instantiation (`add_child()`) exercising the real `GEventBus` signals — not mocked.
 
-**Content note**: no real music/ambient stem assets exist yet (matches every other system's own "no content authored yet" gap) — `MusicAmbientController` implements the full state machine, timing, and Tween-based crossfade/duck mechanism for real; it does not yet drive an `AudioStreamPlayer` with actual audio, since there is nothing to play. This mirrors the Diorama's placeholder-`ColorRect`-but-real-mechanism precedent from Epic 10.
+**Content note**: no real music/ambient stem assets exist yet (matches every other system's own "no content authored yet" gap) — `MusicAmbientController` implements the full state machine, timing, and crossfade/duck mechanism for real; it does not yet drive an `AudioStreamPlayer` with actual audio, since there is nothing to play. This mirrors the Diorama's placeholder-`ColorRect`-but-real-mechanism precedent from Epic 10.
+
+**Refactored during Story 006**: the crossfade timing mechanism was originally `Tween`-based; refactored to a manually delta-driven countdown once Story 006 (Pause Behavior) found `Tween.custom_step()` ignores a tween's paused state, making a genuine freeze impossible on top of it. Backward-compatible — all 10 tests above still pass unchanged after the refactor.
 
 ---
 
 ## Dependencies
 
 - Depends on: Story 001 (real Music/Ambient buses must exist to route through)
+
+---
+
+## Completion Notes
+**Completed**: 2026-07-25
+**Criteria**: 4/4 passing (AC-3, AC-4, AC-5, AC-6)
+**Deviations**: AC-3's crossfade duration implemented literally as `= seconds_remaining` rather than the GDD's separate "3.5s Tuning Knob default" — documented interpretation call, see Implementation Notes addendum above
+**Test Evidence**: Integration — `tests/integration/audio/state-driven-music-and-ambient_test.gd`, 10/10 passing, 0 orphans
+**Code Review**: Complete (`/code-review` run 2026-07-25 across all Epic 12 files; no findings against this story's own code, though its class was later refactored during Story 006 to support a genuine pause-freeze)
 - Unlocks: Story 006 (pause-time freeze/resume operates on this story's own crossfade mechanism)

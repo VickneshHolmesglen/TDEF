@@ -106,3 +106,12 @@
 
 - Depends on: Story 001 (buses must exist as real dispatch targets)
 - Unlocks: Story 004 (voice-limiting operates on cues this story's dispatch mechanism fires)
+
+---
+
+## Completion Notes
+**Completed**: 2026-07-25
+**Criteria**: 5/5 passing (AC-7, AC-8, AC-9, AC-10, AC-10a)
+**Deviations**: `tower_attacked`'s real signal wiring passes `distance = 0.0` pending a camera-focus concept this project hasn't built yet (Formula F2's own math is fully real/tested via direct `dispatch_cue()` calls) — documented in Implementation note above
+**Test Evidence**: Integration — `tests/integration/audio/data-driven-cue-dispatch_test.gd`, 10/10 passing, 0 orphans
+**Code Review**: Complete (`/code-review` run 2026-07-25) — found and fixed a WARNING: the 16 lambda signal connections had no `_exit_tree()` disconnect capability; fixed with stored Signal/Callable pairs + a double-connect guard. Specialist independently verified all 16 lambda arities against the real `GEventBus` signal declarations — no mismatches.

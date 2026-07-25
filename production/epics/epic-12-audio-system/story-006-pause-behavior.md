@@ -88,3 +88,12 @@ On `game_paused`: Music and Ambient buses attenuate to ~40% (Tuning Knobs, range
 
 - Depends on: Story 001 (real buses to duck), Story 002 (a real crossfade mechanism to freeze/resume)
 - Unlocks: None (final story in this epic)
+
+---
+
+## Completion Notes
+**Completed**: 2026-07-25
+**Criteria**: 2/2 passing (AC-15a, AC-15b)
+**Deviations**: Required refactoring Story 002's `MusicAmbientController` off `Tween` (documented above); required a test-isolation fix for the always-alive `GAudioSystem` Autoload double-ducking shared `AudioServer` state
+**Test Evidence**: Integration — `tests/integration/audio/pause-behavior_test.gd`, 9/9 passing, 0 orphans
+**Code Review**: Complete (`/code-review` run 2026-07-25) — found and fixed a real BLOCKING bug (ducking corrupted the persisted volume preference, see Implementation note above); found and fixed a WARNING in `VoiceLimiter`'s typing (unrelated file, fixed in the same pass). Epic 12 (Audio System) is now formally Complete — all 6 stories implemented, tested, and reviewed.

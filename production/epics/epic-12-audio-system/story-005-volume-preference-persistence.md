@@ -80,3 +80,12 @@ Audio owns a small, independent `ConfigFile` at `user://audio_settings.cfg` (4 f
 
 - Depends on: Story 001 (real buses must exist for their volume to be meaningfully persisted)
 - Unlocks: None
+
+---
+
+## Completion Notes
+**Completed**: 2026-07-25
+**Criteria**: 2/2 passing (AC-13, AC-14)
+**Deviations**: None
+**Test Evidence**: Integration — `tests/integration/audio/volume-preference-persistence_test.gd` (AC-14, 5/5 passing, 0 orphans) + `production/qa/evidence/story-005-ac13-relaunch-evidence.md` (AC-13, real 2-process relaunch harness)
+**Code Review**: Complete (`/code-review` run 2026-07-25) — found and fixed a real BLOCKING bug during Story 006's own review pass: pause-ducking (added later) was found to route through this story's `set_bus_volume_percent()`, which would have let a save-while-paused permanently corrupt the persisted preference. Fixed on the Story 006 side (`AudioSystem.set_bus_volume_db_direct()` added as the correct path for out-of-band ducking); this story's own persistence logic itself required no changes.
