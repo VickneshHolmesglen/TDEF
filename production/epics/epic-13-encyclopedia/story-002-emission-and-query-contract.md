@@ -1,7 +1,7 @@
 # Story 002: `encyclopedia_entry_added` Emission Contract + Read-Only Query Contract
 
 > **Epic**: Encyclopedia System
-> **Status**: Ready
+> **Status**: Complete (2026-07-25)
 > **Layer**: Advanced Feature
 > **Type**: Logic
 > **Estimate**: 2h
@@ -27,10 +27,10 @@
 
 *From GDD `design/gdd/encyclopedia.md`, AC Group 3 + part of Group 5:*
 
-- [ ] **AC-10**: GIVEN a genuinely new entry is created (any category), WHEN the entry is committed, THEN `encyclopedia_entry_added(category, entry_id)` fires exactly once with the correct category and ID.
-- [ ] **AC-11**: GIVEN a duplicate discovery event per Story 001's AC-8/AC-9, WHEN it is processed, THEN `encyclopedia_entry_added` does **not** fire.
-- [ ] **AC-14**: GIVEN entries exist from at least 3 distinct source systems (e.g. Constellation, Menagerie, Defense Building), WHEN `get_entries()` (Core Rule 2's query contract) is called with no `category` argument, THEN it returns all of them in one collection — confirming a consumer can read the full cross-system record through one method call, with no category-specific special-casing required.
-- [ ] **AC-16**: GIVEN any entry in any category, WHEN its persisted/serialized form is inspected, THEN it contains exactly the 3 keys `category`, `entry_id`, `discovered_at` and no others.
+- [x] **AC-10**: GIVEN a genuinely new entry is created (any category), WHEN the entry is committed, THEN `encyclopedia_entry_added(category, entry_id)` fires exactly once with the correct category and ID. Verified via `test_genuinely_new_entry_emits_encyclopedia_entry_added_exactly_once`.
+- [x] **AC-11**: GIVEN a duplicate discovery event per Story 001's AC-8/AC-9, WHEN it is processed, THEN `encyclopedia_entry_added` does **not** fire. Verified via `test_duplicate_entry_does_not_emit_encyclopedia_entry_added_again`.
+- [x] **AC-14**: GIVEN entries exist from at least 3 distinct source systems (e.g. Constellation, Menagerie, Defense Building), WHEN `get_entries()` (Core Rule 2's query contract) is called with no `category` argument, THEN it returns all of them in one collection — confirming a consumer can read the full cross-system record through one method call, with no category-specific special-casing required. Verified via `test_get_entries_with_no_argument_returns_entries_from_all_categories`, `test_get_entries_filtered_by_category_returns_only_that_category`, `test_is_discovered_returns_true_for_known_and_false_for_unknown`.
+- [x] **AC-16**: GIVEN any entry in any category, WHEN its persisted/serialized form is inspected, THEN it contains exactly the 3 keys `category`, `entry_id`, `discovered_at` and no others. Verified via `test_every_entry_has_exactly_3_keys_regardless_of_category`.
 
 ---
 
@@ -88,7 +88,7 @@ Both are pure reads against the in-memory ledger Story 001 populates. **No write
 **Story Type**: Logic
 **Required evidence**: `tests/unit/encyclopedia/emission-and-query-contract_test.gd`
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing — 7/7 test cases, 0 errors, 0 failures, 0 orphans (`tests/unit/encyclopedia/emission-and-query-contract_test.gd`, run 2026-07-25).
 
 ---
 
@@ -96,3 +96,12 @@ Both are pure reads against the in-memory ledger Story 001 populates. **No write
 
 - Depends on: Story 001 (the ledger and its insert/duplicate-suppression logic must exist for this story's emission/query surface to have anything to react to or read)
 - Unlocks: None directly, but Story 003's persistence tests will exercise this story's `get_entries()` to verify round-trips
+
+---
+
+## Completion Notes
+**Completed**: 2026-07-25
+**Criteria**: 4/4 passing (AC-10, AC-11, AC-14, AC-16)
+**Deviations**: None
+**Test Evidence**: Logic — `tests/unit/encyclopedia/emission-and-query-contract_test.gd`, 7/7 passing, 0 orphans (using the real `EventBusSpy` helper for emission-count assertions, matching this project's own established pattern)
+**Code Review**: Pending

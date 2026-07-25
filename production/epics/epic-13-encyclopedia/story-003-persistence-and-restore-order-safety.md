@@ -1,7 +1,7 @@
 # Story 003: Persistence — `restore_order = 35`, Restored Last, No Restore-Time Re-Emission
 
 > **Epic**: Encyclopedia System
-> **Status**: Ready
+> **Status**: Complete (2026-07-25)
 > **Layer**: Advanced Feature
 > **Type**: Integration
 > **Estimate**: 3h
@@ -27,10 +27,10 @@
 
 *From GDD `design/gdd/encyclopedia.md`, AC Group 4 + remainder of Group 5:*
 
-- [ ] **AC-12**: GIVEN entries exist across multiple categories, WHEN the game saves and reloads, THEN every entry is present post-load with identical `category`/`entry_id`/`DISCOVERED` state and identical `discovered_at` timestamp.
-- [ ] **AC-13**: GIVEN a fresh save with no prior discoveries, WHEN Encyclopedia initializes, THEN every category (`skill`, `constellation_rune`, `tarot_rune`, `recipe`, `creature`, `tech`) reports 0 entries.
-- [ ] **AC-15a**: GIVEN `restore_save_data()` is called, WHEN it processes the saved ledger, THEN Encyclopedia itself emits none of its 7 inbound discovery-event types as a side effect, and emits `encyclopedia_entry_added` only for entries that are genuinely new relative to the ledger being restored (i.e. never for entries the save data itself already contains).
-- [ ] **AC-15b**: GIVEN a full save/restore cycle across Encyclopedia and at least 2 of its upstream systems (e.g. Constellation, Tarot), WHEN restoration completes, THEN none of those upstream systems fire a live discovery event as a side effect of their own restore — jointly-owned evidence with those systems' own test suites, not solely Encyclopedia's.
+- [x] **AC-12**: GIVEN entries exist across multiple categories, WHEN the game saves and reloads, THEN every entry is present post-load with identical `category`/`entry_id`/`DISCOVERED` state and identical `discovered_at` timestamp. Verified via `test_save_then_restore_round_trips_entries_across_multiple_categories`.
+- [x] **AC-13**: GIVEN a fresh save with no prior discoveries, WHEN Encyclopedia initializes, THEN every category (`skill`, `constellation_rune`, `tarot_rune`, `recipe`, `creature`, `tech`) reports 0 entries. Verified via `test_reset_to_defaults_produces_zero_entries_in_every_category`, `test_restore_with_empty_entries_matches_reset_to_defaults`.
+- [x] **AC-15a**: GIVEN `restore_save_data()` is called, WHEN it processes the saved ledger, THEN Encyclopedia itself emits none of its 7 inbound discovery-event types as a side effect, and emits `encyclopedia_entry_added` only for entries that are genuinely new relative to the ledger being restored (i.e. never for entries the save data itself already contains). Verified via `test_restore_does_not_reemit_any_inbound_discovery_event`, `test_restore_does_not_emit_encyclopedia_entry_added_for_restored_entries`, `test_repeated_restore_of_the_same_data_never_reemits_encyclopedia_entry_added`.
+- [x] **AC-15b**: GIVEN a full save/restore cycle across Encyclopedia and at least 2 of its upstream systems (e.g. Constellation, Tarot), WHEN restoration completes, THEN none of those upstream systems fire a live discovery event as a side effect of their own restore — jointly-owned evidence with those systems' own test suites, not solely Encyclopedia's. Verified via `test_full_save_restore_cycle_does_not_cause_upstream_systems_to_refire_discovery_events`, exercising real `Constellation`/`Tarot` instances (both scene-instanced, not Autoloads — discovered this during implementation, not silently assumed).
 
 ---
 
@@ -87,7 +87,7 @@ Standard `SaveRestorer` interface (`get_save_key()`/`get_save_data()`/`restore_s
 **Story Type**: Integration
 **Required evidence**: `tests/integration/encyclopedia/persistence-and-restore-order-safety_test.gd`
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing — 10/10 test cases (7 original + 3 code-review regression tests), 0 errors, 0 failures, 0 orphans (`tests/integration/encyclopedia/persistence-and-restore-order-safety_test.gd`, run 2026-07-25). Real scene instantiation exercising the real `GEventBus`/`GSavePersistence` and real `Constellation`/`Tarot` instances — not mocked.
 
 ---
 
@@ -95,3 +95,12 @@ Standard `SaveRestorer` interface (`get_save_key()`/`get_save_data()`/`restore_s
 
 - Depends on: Story 001 (the ledger this story saves/restores), Story 002 (`get_entries()` used to verify round-trip correctness)
 - Unlocks: None (final story in this epic)
+
+---
+
+## Completion Notes
+**Completed**: 2026-07-25
+**Criteria**: 4/4 passing (AC-12, AC-13, AC-15a, AC-15b)
+**Deviations**: None
+**Test Evidence**: Integration — `tests/integration/encyclopedia/persistence-and-restore-order-safety_test.gd`, 7/7 passing, 0 orphans
+**Code Review**: Complete (`godot-gdscript-specialist` spawned 2026-07-25). Found and fixed 2 real WARNING-level gaps: `restore_save_data()` had no `is Array`/`is Dictionary`/per-field type guards before its typed loop — a malformed save (e.g. `entries` as a String, or a non-Dictionary element) would have thrown a runtime type error instead of returning `false` gracefully. Fixed to match Menagerie's own established defense-in-depth pattern exactly (whole-restore rejection on any malformed entry, no partial-restore side effects) — the same bug class this session already found and fixed in Menagerie's own `restore_save_data()`. Added 3 regression tests. Also fixed 1 INFO nit: `get_entries()` now returns typed `Array[Dictionary]`. Epic 13 (Encyclopedia System) is now fully implemented, tested (28 gdUnit4 tests across all 3 stories), and code-reviewed.

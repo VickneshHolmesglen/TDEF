@@ -1,7 +1,7 @@
 # Story 001: Discovery Event Ingestion — 7 Events, Duplicate-Safe Insert
 
 > **Epic**: Encyclopedia System
-> **Status**: Ready
+> **Status**: Complete (2026-07-25)
 > **Layer**: Advanced Feature
 > **Type**: Integration
 > **Estimate**: 3h
@@ -27,15 +27,15 @@
 
 *From GDD `design/gdd/encyclopedia.md`, AC Groups 1-2:*
 
-- [ ] **AC-1**: GIVEN Encyclopedia is subscribed to EventBus, WHEN `skill_unlocked(skill_id, source_tower_id)` fires, THEN exactly one new `DISCOVERED` entry is added to the `skill` category keyed by `skill_id`.
-- [ ] **AC-2**: WHEN `constellation_rune_discovered(rune_id, pattern_id)` fires, THEN exactly one new `DISCOVERED` entry is added to the `constellation_rune` category keyed by `rune_id`.
-- [ ] **AC-3**: WHEN `tarot_rune_discovered(rune_id, card_id)` fires, THEN exactly one new `DISCOVERED` entry is added to the `tarot_rune` category keyed by `rune_id`.
-- [ ] **AC-4**: WHEN `recipe_discovered(recipe_id, recipe_category)` fires (any `recipe_category` value, both Crafting- and Equipment-Forge-sourced), THEN exactly one new `DISCOVERED` entry is added to the `recipe` category keyed by `recipe_id`, with the entry's stored shape exactly `{category: "recipe", entry_id: recipe_id, discovered_at: <timestamp>}` — `recipe_category` is **not** persisted on the entry (resolved by lookup at render time, per Core Rule 2).
-- [ ] **AC-5**: WHEN `creature_acquired(creature_id, species)` fires for a species with no existing `creature` entry, THEN a `DISCOVERED` entry is added to the `creature` category keyed by `species` — **not** `creature_id` (Core Rule 8).
-- [ ] **AC-6**: WHEN `creature_bred(offspring_id, species)` fires for a species with no existing `creature` entry, THEN the same species-keyed entry is added, following AC-5's rule.
-- [ ] **AC-7**: WHEN `tech_unlocked(tech_id, tech_category)` fires, THEN a `DISCOVERED` entry is added to the `tech` category keyed by `tech_id`.
-- [ ] **AC-8**: GIVEN a species already has a `DISCOVERED` `creature` entry, WHEN a second `creature_bred` or `creature_acquired` fires for that same species (different `offspring_id`/`creature_id`), THEN no new entry is created and the existing entry is untouched.
-- [ ] **AC-9**: GIVEN any category, WHEN a discovery event fires for a `category`+`entry_id` combination already `DISCOVERED`, THEN the entry ledger's size for that category is unchanged.
+- [x] **AC-1**: GIVEN Encyclopedia is subscribed to EventBus, WHEN `skill_unlocked(skill_id, source_tower_id)` fires, THEN exactly one new `DISCOVERED` entry is added to the `skill` category keyed by `skill_id`. Verified via `test_skill_unlocked_adds_one_skill_entry`.
+- [x] **AC-2**: WHEN `constellation_rune_discovered(rune_id, pattern_id)` fires, THEN exactly one new `DISCOVERED` entry is added to the `constellation_rune` category keyed by `rune_id`. Verified via `test_constellation_rune_discovered_adds_one_entry`.
+- [x] **AC-3**: WHEN `tarot_rune_discovered(rune_id, card_id)` fires, THEN exactly one new `DISCOVERED` entry is added to the `tarot_rune` category keyed by `rune_id`. Verified via `test_tarot_rune_discovered_adds_one_entry`.
+- [x] **AC-4**: WHEN `recipe_discovered(recipe_id, recipe_category)` fires (any `recipe_category` value, both Crafting- and Equipment-Forge-sourced), THEN exactly one new `DISCOVERED` entry is added to the `recipe` category keyed by `recipe_id`, with the entry's stored shape exactly `{category: "recipe", entry_id: recipe_id, discovered_at: <timestamp>}` — `recipe_category` is **not** persisted on the entry (resolved by lookup at render time, per Core Rule 2). Verified via `test_recipe_discovered_adds_one_entry_with_exactly_3_keys_and_no_category_field`.
+- [x] **AC-5**: WHEN `creature_acquired(creature_id, species)` fires for a species with no existing `creature` entry, THEN a `DISCOVERED` entry is added to the `creature` category keyed by `species` — **not** `creature_id` (Core Rule 8). Verified via `test_creature_acquired_adds_a_species_keyed_entry_not_instance_keyed`.
+- [x] **AC-6**: WHEN `creature_bred(offspring_id, species)` fires for a species with no existing `creature` entry, THEN the same species-keyed entry is added, following AC-5's rule. Verified via `test_creature_bred_adds_a_species_keyed_entry`.
+- [x] **AC-7**: WHEN `tech_unlocked(tech_id, tech_category)` fires, THEN a `DISCOVERED` entry is added to the `tech` category keyed by `tech_id`. Verified via `test_tech_unlocked_adds_one_entry`.
+- [x] **AC-8**: GIVEN a species already has a `DISCOVERED` `creature` entry, WHEN a second `creature_bred` or `creature_acquired` fires for that same species (different `offspring_id`/`creature_id`), THEN no new entry is created and the existing entry is untouched. Verified via `test_second_bred_individual_of_a_discovered_species_does_not_add_a_new_entry`, `test_second_acquired_individual_of_a_discovered_species_is_also_a_no_op`.
+- [x] **AC-9**: GIVEN any category, WHEN a discovery event fires for a `category`+`entry_id` combination already `DISCOVERED`, THEN the entry ledger's size for that category is unchanged. Verified via `test_duplicate_skill_unlocked_does_not_change_ledger_size`, `test_duplicate_tech_unlocked_does_not_change_ledger_size`.
 
 ---
 
@@ -88,7 +88,7 @@
 **Story Type**: Integration
 **Required evidence**: `tests/integration/encyclopedia/discovery-event-ingestion_test.gd`
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created and passing — 11/11 test cases, 0 errors, 0 failures, 0 orphans (`tests/integration/encyclopedia/discovery-event-ingestion_test.gd`, run 2026-07-25). Real scene instantiation exercising the real `GEventBus` — not mocked.
 
 ---
 
@@ -96,3 +96,12 @@
 
 - Depends on: None (foundational story for this epic)
 - Unlocks: Story 002 (query contract reads this story's own ledger), Story 003 (persistence saves/restores this story's own ledger)
+
+---
+
+## Completion Notes
+**Completed**: 2026-07-25
+**Criteria**: 9/9 passing (AC-1 through AC-9)
+**Deviations**: None. Registered `Encyclopedia` as a real Autoload (`GEncyclopedia` in `project.godot`) rather than a scene-instanced system — this system must receive discovery events continuously in both Sanctuary and Mission contexts (`systems-index.md` lists it "Cross-Cutting"), matching Menagerie/Inventory/Defense Building's own precedent, not Tarot/Constellation's scene-instanced pattern.
+**Test Evidence**: Integration — `tests/integration/encyclopedia/discovery-event-ingestion_test.gd`, 11/11 passing, 0 orphans
+**Code Review**: Pending

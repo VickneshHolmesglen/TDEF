@@ -3,16 +3,16 @@
 > **Layer**: Advanced Feature
 > **GDD**: design/gdd/encyclopedia.md
 > **Architecture Module**: Encyclopedia (`docs/architecture/architecture.md` — "Discovery registry — subscribes to numerous events")
-> **Status**: Ready
-> **Stories**: 3 stories created (2026-07-25) — see table below
+> **Status**: Complete (2026-07-25)
+> **Stories**: 3/3 stories Complete (2026-07-25) — see table below
 
 ## Stories
 
 | # | Story | Type | Status | ADR |
 |---|-------|------|--------|-----|
-| 001 | Discovery Event Ingestion | Integration | Ready | N/A |
-| 002 | Emission and Query Contract | Logic | Ready | N/A |
-| 003 | Persistence and Restore-Order Safety | Integration | Ready | N/A |
+| 001 | Discovery Event Ingestion | Integration | Complete (2026-07-25) | N/A |
+| 002 | Emission and Query Contract | Logic | Complete (2026-07-25) | N/A |
+| 003 | Persistence and Restore-Order Safety | Integration | Complete (2026-07-25) | N/A |
 
 **Note**: no story here is `Blocked`. None have a dedicated governing ADR (matches Sanctuary UI/Tarot Deck UI/Audio System's own precedent). Story 003's AC-15b is jointly-owned evidence with at least 2 upstream systems' own test suites — flagged explicitly in that story's own file, not silently assumed solely Encyclopedia's to prove.
 
