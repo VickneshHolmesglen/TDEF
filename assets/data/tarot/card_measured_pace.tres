@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="TarotCardResource" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/core/tarot/tarot_card_resource.gd" id="1"]
+[ext_resource type="Script" path="res://src/core/tarot/tarot_modifier_entry.gd" id="2"]
+
+[sub_resource type="Resource" id="Modifier_measured_pace"]
+script = ExtResource("2")
+modifier_type = &"tarot_difficulty_growth_rate"
+base_modifier_value = 0.15
+
+[resource]
+script = ExtResource("1")
+card_id = &"measured_pace"
+rarity = "Common"
+modifiers = [SubResource("Modifier_measured_pace")]
+linked_rune_id = &"rune_measured_pace"
