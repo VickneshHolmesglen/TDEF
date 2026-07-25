@@ -15,5 +15,5 @@ mission_id = "the_narrows"
 display_name = "The Narrows"
 grid_config = SubResource("Resource_grid_narrows")
 wave_config_path = "res://assets/data/waves/the_narrows_waves.tres"
-base_wave_count = 1
+base_wave_count = 4
 recommended_difficulty_tier = 2

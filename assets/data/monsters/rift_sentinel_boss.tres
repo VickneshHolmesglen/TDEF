@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="MonsterResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/core/monster/monster_resource.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+monster_id = &"rift_sentinel_boss"
+display_name = "Rift Sentinel"
+tier = 2
+archetype_tag = &""
+base_hp = 550.0
+base_speed = 1.1
+drop_table_id = &"sentinel_drops"
+menagerie_attraction_drop_chance = 0.35
+boss_attack_range_cells = 2
+base_damage = 20.0
+base_attack_interval = 2.2

@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="DropTableResource" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://src/core/resource_economy/drop_table_resource.gd" id="1"]
+[ext_resource type="Script" path="res://src/core/resource_economy/drop_entry.gd" id="2"]
+
+[sub_resource type="Resource" id="Resource_we01"]
+script = ExtResource("2")
+material_id = &"warlord_iron"
+base_quantity = 4
+base_quality_probability = 0.2
+is_rare = false
+
+[sub_resource type="Resource" id="Resource_we02"]
+script = ExtResource("2")
+material_id = &"warlord_emblem"
+base_quantity = 1
+base_quality_probability = 0.3
+is_rare = true
+
+[resource]
+script = ExtResource("1")
+drop_table_id = &"warlord_drops"
+entries = Array[ExtResource("2")]([SubResource("Resource_we01"), SubResource("Resource_we02")])
+guaranteed_min_quantity = 2
+base_drop_rate = 0.6

@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="DropTableResource" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://src/core/resource_economy/drop_table_resource.gd" id="1"]
+[ext_resource type="Script" path="res://src/core/resource_economy/drop_entry.gd" id="2"]
+
+[sub_resource type="Resource" id="Resource_se01"]
+script = ExtResource("2")
+material_id = &"spore_dust"
+base_quantity = 2
+base_quality_probability = 0.08
+is_rare = false
+
+[resource]
+script = ExtResource("1")
+drop_table_id = &"skitterling_drops"
+entries = Array[ExtResource("2")]([SubResource("Resource_se01")])
+guaranteed_min_quantity = 1
+base_drop_rate = 0.4
