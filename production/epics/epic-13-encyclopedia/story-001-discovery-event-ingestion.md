@@ -104,4 +104,4 @@
 **Criteria**: 9/9 passing (AC-1 through AC-9)
 **Deviations**: None. Registered `Encyclopedia` as a real Autoload (`GEncyclopedia` in `project.godot`) rather than a scene-instanced system — this system must receive discovery events continuously in both Sanctuary and Mission contexts (`systems-index.md` lists it "Cross-Cutting"), matching Menagerie/Inventory/Defense Building's own precedent, not Tarot/Constellation's scene-instanced pattern.
 **Test Evidence**: Integration — `tests/integration/encyclopedia/discovery-event-ingestion_test.gd`, 11/11 passing, 0 orphans
-**Code Review**: Pending
+**Code Review**: Complete (`/code-review` run 2026-07-25 across `encyclopedia.gd`; no findings against this story's own ingestion/duplicate-suppression logic — the review's findings were in Story 003's persistence code)

@@ -104,4 +104,4 @@ Both are pure reads against the in-memory ledger Story 001 populates. **No write
 **Criteria**: 4/4 passing (AC-10, AC-11, AC-14, AC-16)
 **Deviations**: None
 **Test Evidence**: Logic — `tests/unit/encyclopedia/emission-and-query-contract_test.gd`, 7/7 passing, 0 orphans (using the real `EventBusSpy` helper for emission-count assertions, matching this project's own established pattern)
-**Code Review**: Pending
+**Code Review**: Complete (`/code-review` run 2026-07-25) — found 1 INFO nit (`get_entries()` returned untyped `Array` instead of `Array[Dictionary]`), fixed. No findings against the emission contract or query-filtering logic itself.
