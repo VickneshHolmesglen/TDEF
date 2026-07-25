@@ -70,8 +70,14 @@ func _make_data(cost: int = 10, footprint: Vector2i = Vector2i(1, 1)) -> TowerBl
 
 func before_test() -> void:
 	# Reset the real GMissionEconomy Autoload to a known 0 baseline before
-	# seeding — same convention as tests/integration/core/mission_economy_test.gd.
-	GEventBus.mission_launched.emit("test_mission", PackedStringArray(), 1)
+	# seeding. TD-test-004: calls MissionEconomy's own reset handler directly
+	# rather than broadcasting mission_launched -- the broadcast cascades into
+	# WaveManager/SavePersistence/Menagerie/HeroSkillBuild/Tarot's own
+	# handlers too, and repeating that across many gdUnit4 test-case
+	# boundaries is a confirmed orphan-leak mechanism (see
+	# docs/tech-debt-register.md). This test doesn't care about the broadcast
+	# mechanism itself, only MissionEconomy's own reset state.
+	GMissionEconomy._on_mission_launched("test_mission", PackedStringArray(), 1)
 	_ts = TowerSystem.new()
 	_grid = _StubGrid.new()
 	_path = _StubPath.new()
@@ -92,7 +98,7 @@ func after_test() -> void:
 	_spy = null
 	_ts.free()  # TD-tower-002 fix: _ts is a Node, never added to the tree — .free() (not queue_free()) frees it immediately, closing the orphan-node gap
 	_ts = null
-	GEventBus.mission_launched.emit("test_mission", PackedStringArray(), 1)  # reset GMissionEconomy for next suite
+	GMissionEconomy._on_mission_launched("test_mission", PackedStringArray(), 1)  # reset GMissionEconomy for next suite (TD-test-004: direct call, not broadcast)
 
 # ---------------------------------------------------------------------------
 # AC-1: Successful placement
@@ -126,7 +132,7 @@ func test_place_tower_wave_active_returns_false_no_grid_write() -> void:
 # ---------------------------------------------------------------------------
 
 func test_place_tower_insufficient_gold_returns_false() -> void:
-	GEventBus.mission_launched.emit("test_mission", PackedStringArray(), 1)  # undo before_test's 100 seed, back to 0
+	GMissionEconomy._on_mission_launched("test_mission", PackedStringArray(), 1)  # undo before_test's 100 seed, back to 0 (TD-test-004: direct call, not broadcast)
 	var data: TowerBlueprintData = _make_data(30)
 	_ts._tower_table[BLUEPRINT_ID] = data
 
@@ -215,7 +221,7 @@ func test_get_placement_preview_wave_active_returns_wave_active_reason() -> void
 
 
 func test_get_placement_preview_insufficient_gold_returns_resource_reason() -> void:
-	GEventBus.mission_launched.emit("test_mission", PackedStringArray(), 1)  # undo before_test's 100 seed, back to 0
+	GMissionEconomy._on_mission_launched("test_mission", PackedStringArray(), 1)  # undo before_test's 100 seed, back to 0 (TD-test-004: direct call, not broadcast)
 	_ts._tower_table[BLUEPRINT_ID] = _make_data(30)
 
 	var preview: PlacementPreview = _ts.get_placement_preview(BLUEPRINT_ID, Vector2i(5, 5))

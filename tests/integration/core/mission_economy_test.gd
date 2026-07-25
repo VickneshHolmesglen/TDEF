@@ -23,11 +23,21 @@ extends GdUnitTestSuite
 
 
 func before_test() -> void:
-	GEventBus.mission_launched.emit("test_mission", PackedStringArray(), 1)
+	# TD-test-004: broadcasting the real mission_launched signal here (as
+	# before_test/after_test setup/teardown boilerplate, not as the thing
+	# under test) cascades into WaveManager/SavePersistence/Menagerie/
+	# HeroSkillBuild/Tarot's own handlers too, and repeating that across many
+	# gdUnit4 test-case boundaries in one suite run is a confirmed orphan-leak
+	# mechanism (see docs/tech-debt-register.md). Calling MissionEconomy's own
+	# reset handler directly resets the exact same state without cascading
+	# into those other 4 systems' handlers -- the 2 tests that specifically
+	# verify the broadcast mechanism itself (AC-11) still use the real
+	# GEventBus.mission_launched.emit() inside their own test bodies.
+	GMissionEconomy._on_mission_launched("test_mission", PackedStringArray(), 1)
 
 
 func after_test() -> void:
-	GEventBus.mission_launched.emit("test_mission", PackedStringArray(), 1)
+	GMissionEconomy._on_mission_launched("test_mission", PackedStringArray(), 1)
 
 
 # ---------------------------------------------------------------------------
