@@ -33,10 +33,18 @@ const MAX_AUDIBLE_RADIUS: float = 15.0  ## Tuning Knobs default (Formula F2, R)
 var cue_map: AudioCueMap
 var _lookup: Dictionary[StringName, AudioCueEntry] = {}
 
+## Story 004 (Ducking and Voice Limiting): registers a voice against its
+## family's cap on every dispatch. Wiring this into the live dispatch path
+## was deliberately deferred by Story 004's own Definition of Done (Story
+## 003 owns triggering a cue; Story 004 only owns what happens once a
+## family is at/beyond capacity) — this closes that documented follow-up.
+var voice_limiter: VoiceLimiter = VoiceLimiter.new()
+
 var _last_played_event: StringName = &""
 var _last_played_bus: StringName = &""
 var _last_effective_volume_linear: float = 0.0
 var _dispatch_count: int = 0
+var _last_dispatch_voice_id: int = -1
 
 ## Stored so `_exit_tree()` can actually disconnect the anonymous lambdas
 ## `_connect_all_events()` wires below — a bare `.connect(func...)` call has
@@ -117,6 +125,10 @@ func dispatch_cue(event_name: StringName, distance: float = 0.0) -> void:
 	if entry.spatial:
 		effective_volume = base_volume * _world_space_attenuation(distance)
 
+	_last_dispatch_voice_id = -1
+	if entry.polyphony_group != &"":
+		_last_dispatch_voice_id = voice_limiter.trigger_voice(entry.polyphony_group)
+
 	_last_played_event = event_name
 	_last_played_bus = entry.bus
 	_last_effective_volume_linear = effective_volume
@@ -149,3 +161,10 @@ func get_last_effective_volume_linear() -> float:
 ## dispatched (map hits only; misses never increment this).
 func get_dispatch_count() -> int:
 	return _dispatch_count
+
+
+## Test/inspection accessor (Story 004 wiring) — the voice ID
+## `voice_limiter` assigned to the most recent dispatch, or -1 if that
+## dispatch's entry had no `polyphony_group` (or was a lookup miss).
+func get_last_dispatch_voice_id() -> int:
+	return _last_dispatch_voice_id

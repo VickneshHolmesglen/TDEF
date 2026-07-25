@@ -170,3 +170,47 @@ func test_dispatch_with_empty_cue_map_never_errors() -> void:
 	GEventBus.game_unpaused.emit()
 
 	assert_int(_dispatcher.get_dispatch_count()).is_equal(0)
+
+
+# ---------------------------------------------------------------------------
+# Story 004 wiring: real dispatch registers a voice against its family's cap.
+# ---------------------------------------------------------------------------
+
+func test_dispatched_cue_registers_a_voice_against_its_polyphony_group() -> void:
+	var map := AudioCueMap.new()
+	map.entries = [_fixture_entry(&"boss_died", &"SFX", &"discovery_fanfare", false)]
+	_dispatcher.set_cue_map(map)
+
+	GEventBus.boss_died.emit(1, &"test_boss", 3, "killed")
+
+	assert_int(_dispatcher.voice_limiter.get_active_voice_count(&"discovery_fanfare")).is_equal(1)
+	assert_int(_dispatcher.get_last_dispatch_voice_id()).is_greater(-1)
+
+
+func test_dispatching_beyond_a_familys_cap_steals_the_oldest_voice_through_real_dispatch() -> void:
+	# Discovery Fanfare's real cap is 1 (VoiceLimiter.DEFAULT_FAMILY_CAPS) --
+	# a second real dispatch through the same family must steal, not stack.
+	var map := AudioCueMap.new()
+	map.entries = [
+		_fixture_entry(&"boss_died", &"SFX", &"discovery_fanfare", false),
+		_fixture_entry(&"sanctuary_structure_built", &"SFX", &"discovery_fanfare", false),
+	]
+	_dispatcher.set_cue_map(map)
+
+	GEventBus.boss_died.emit(1, &"test_boss", 3, "killed")
+	var first_voice_id: int = _dispatcher.get_last_dispatch_voice_id()
+
+	GEventBus.sanctuary_structure_built.emit("watchtower_01", "watchtower")
+
+	assert_int(_dispatcher.voice_limiter.get_active_voice_count(&"discovery_fanfare")).is_equal(1)
+	assert_int(_dispatcher.voice_limiter.get_last_stolen_voice_id()).is_equal(first_voice_id)
+
+
+func test_a_cue_with_no_polyphony_group_never_registers_a_voice() -> void:
+	var map := AudioCueMap.new()
+	map.entries = [_fixture_entry(&"boss_died", &"SFX", &"", false)]
+	_dispatcher.set_cue_map(map)
+
+	GEventBus.boss_died.emit(1, &"test_boss", 3, "killed")
+
+	assert_int(_dispatcher.get_last_dispatch_voice_id()).is_equal(-1)

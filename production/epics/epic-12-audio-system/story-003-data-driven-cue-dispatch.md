@@ -98,7 +98,9 @@
 **Story Type**: Integration
 **Required evidence**: `tests/integration/audio/data-driven-cue-dispatch_test.gd`
 
-**Status**: [x] Created and passing — 10/10 test cases, 0 errors, 0 failures, 0 orphans (`tests/integration/audio/data-driven-cue-dispatch_test.gd`, run 2026-07-25). Real scene instantiation exercising the real `GEventBus` — not mocked.
+**Status**: [x] Created and passing — 13/13 test cases (10 original + 3 added 2026-07-25 for the Story 004 wiring below), 0 errors, 0 failures, 0 orphans (`tests/integration/audio/data-driven-cue-dispatch_test.gd`, run 2026-07-25). Real scene instantiation exercising the real `GEventBus` — not mocked.
+
+**Follow-up (2026-07-25): `VoiceLimiter` wired into the live dispatch path.** `dispatch_cue()` now calls `voice_limiter.trigger_voice(entry.polyphony_group)` on every real dispatch (skipped for entries with an empty `polyphony_group`) — closing the deferral Story 004's own file documented ("Story 003 owns triggering a new voice; Story 004 only owns what happens once a family is at/beyond capacity... a natural follow-up for whichever future story needs the composed behavior live"). New accessor `get_last_dispatch_voice_id()`. 3 new tests verify: a dispatched cue registers a voice against its family; dispatching beyond Discovery Fanfare's real cap (1) steals through a real `GEventBus`-driven dispatch, not just a direct `VoiceLimiter` call; a cue with no `polyphony_group` never registers a voice. `VoiceLimiter.compute_ducked_volume()` (Formula F1) remains unwired — no dispatch-time concept of concurrent-voice-count exists yet to feed it.
 
 ---
 
@@ -113,5 +115,6 @@
 **Completed**: 2026-07-25
 **Criteria**: 5/5 passing (AC-7, AC-8, AC-9, AC-10, AC-10a)
 **Deviations**: `tower_attacked`'s real signal wiring passes `distance = 0.0` pending a camera-focus concept this project hasn't built yet (Formula F2's own math is fully real/tested via direct `dispatch_cue()` calls) — documented in Implementation note above
-**Test Evidence**: Integration — `tests/integration/audio/data-driven-cue-dispatch_test.gd`, 10/10 passing, 0 orphans
+**Test Evidence**: Integration — `tests/integration/audio/data-driven-cue-dispatch_test.gd`, 13/13 passing, 0 orphans
 **Code Review**: Complete (`/code-review` run 2026-07-25) — found and fixed a WARNING: the 16 lambda signal connections had no `_exit_tree()` disconnect capability; fixed with stored Signal/Callable pairs + a double-connect guard. Specialist independently verified all 16 lambda arities against the real `GEventBus` signal declarations — no mismatches.
+**Follow-up (2026-07-25)**: `VoiceLimiter` wired into the live dispatch path, closing Story 004's own documented deferral — see updated Test Evidence above.
