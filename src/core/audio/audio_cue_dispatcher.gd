@@ -114,7 +114,14 @@ func _wire(event_signal: Signal, callable: Callable) -> void:
 ## The single generic dispatch entry point (Core Rule 4). `distance` only
 ## matters for cues marked `spatial == true` (Formula F2); ignored otherwise.
 ## AC-10a: an event with no matching map entry is a silent no-op — never an
-## error.
+## error. Cues with a `polyphony_group` also get Formula F1's concurrent-cue
+## ducking applied, evaluated against the bus-wide voice count *after* this
+## dispatch's own voice is registered (Formula F1's `N` is defined as
+## "including this one"). Cross-bus sidechain ducking (SFX->Ambient,
+## UI->Music+SFX) is a separate, still-unbuilt mechanism — the GDD specifies
+## no attack/release timing for it, so building it now would mean inventing
+## unspecified behavior; see `voice_limiter.gd`'s sidechain constants and
+## their own test file for the full note.
 func dispatch_cue(event_name: StringName, distance: float = 0.0) -> void:
 	if not _lookup.has(event_name):
 		return
@@ -128,6 +135,8 @@ func dispatch_cue(event_name: StringName, distance: float = 0.0) -> void:
 	_last_dispatch_voice_id = -1
 	if entry.polyphony_group != &"":
 		_last_dispatch_voice_id = voice_limiter.trigger_voice(entry.polyphony_group)
+		var total_active_voices: int = voice_limiter.get_total_active_voice_count()
+		effective_volume = VoiceLimiter.compute_ducked_volume(effective_volume, total_active_voices)
 
 	_last_played_event = event_name
 	_last_played_bus = entry.bus

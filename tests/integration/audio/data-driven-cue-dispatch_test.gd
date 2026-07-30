@@ -214,3 +214,82 @@ func test_a_cue_with_no_polyphony_group_never_registers_a_voice() -> void:
 	GEventBus.boss_died.emit(1, &"test_boss", 3, "killed")
 
 	assert_int(_dispatcher.get_last_dispatch_voice_id()).is_equal(-1)
+
+
+# ---------------------------------------------------------------------------
+# Formula F1 wiring: real dispatch applies bus-wide concurrent-cue ducking.
+# ---------------------------------------------------------------------------
+
+func test_sixth_concurrent_voice_ducks_to_the_gdds_worked_example() -> void:
+	# GDD worked example: V_base=0.8, N=6, k=0.05, D_floor=0.3 -> 0.60.
+	# Pre-existing voices are spread across two other families (4 +
+	# progress_blip's own cap, 1 denial_rejection) rather than piled onto
+	# one, both to stay under each family's own cap (so none get stolen and
+	# silently undercount) and to prove Formula F1's N is bus-wide, not
+	# scoped to a single family's VoiceLimiter bucket.
+	var entry := _fixture_entry(&"tower_attacked", &"SFX", &"combat_impact", false)
+	entry.volume_db_offset = linear_to_db(0.8)
+	var map := AudioCueMap.new()
+	map.entries = [entry]
+	_dispatcher.set_cue_map(map)
+
+	for i in range(4):
+		_dispatcher.voice_limiter.trigger_voice(&"progress_blip")
+	_dispatcher.voice_limiter.trigger_voice(&"denial_rejection")
+
+	_dispatcher.dispatch_cue(&"tower_attacked")
+
+	assert_float(_dispatcher.get_last_effective_volume_linear()).is_equal_approx(0.60, 0.001)
+
+
+func test_a_single_active_voice_receives_no_ducking() -> void:
+	var entry := _fixture_entry(&"tower_attacked", &"SFX", &"combat_impact", false)
+	entry.volume_db_offset = linear_to_db(0.8)
+	var map := AudioCueMap.new()
+	map.entries = [entry]
+	_dispatcher.set_cue_map(map)
+
+	_dispatcher.dispatch_cue(&"tower_attacked")
+
+	assert_float(_dispatcher.get_last_effective_volume_linear()).is_equal_approx(0.8, 0.001)
+
+
+func test_ducking_never_drops_below_the_duck_floor_through_real_dispatch() -> void:
+	# Fill every other family to its own cap (1+4+3+4+6 = 18 pre-existing
+	# voices, each within its family's own cap so none get stolen) --
+	# comfortably past the ~15 voices needed to hit the duck floor, and
+	# without relying on any single family absorbing an unrealistic count.
+	var entry := _fixture_entry(&"tower_attacked", &"SFX", &"combat_impact", false)
+	entry.volume_db_offset = linear_to_db(0.8)
+	var map := AudioCueMap.new()
+	map.entries = [entry]
+	_dispatcher.set_cue_map(map)
+
+	_dispatcher.voice_limiter.trigger_voice(&"discovery_fanfare")
+	for i in range(4):
+		_dispatcher.voice_limiter.trigger_voice(&"progress_blip")
+	for i in range(3):
+		_dispatcher.voice_limiter.trigger_voice(&"denial_rejection")
+	for i in range(4):
+		_dispatcher.voice_limiter.trigger_voice(&"activation_confirm")
+	for i in range(6):
+		_dispatcher.voice_limiter.trigger_voice(&"ui_confirm_cancel")
+
+	_dispatcher.dispatch_cue(&"tower_attacked")
+
+	assert_float(_dispatcher.get_last_effective_volume_linear()).is_equal_approx(0.8 * VoiceLimiter.DUCK_FLOOR, 0.001)
+
+
+func test_a_cue_with_no_polyphony_group_is_never_ducked_regardless_of_other_active_voices() -> void:
+	var entry := _fixture_entry(&"sanctuary_structure_built", &"SFX", &"", false)
+	entry.volume_db_offset = linear_to_db(0.8)
+	var map := AudioCueMap.new()
+	map.entries = [entry]
+	_dispatcher.set_cue_map(map)
+
+	for i in range(5):
+		_dispatcher.voice_limiter.trigger_voice(&"progress_blip")
+
+	_dispatcher.dispatch_cue(&"sanctuary_structure_built")
+
+	assert_float(_dispatcher.get_last_effective_volume_linear()).is_equal_approx(0.8, 0.001)

@@ -93,6 +93,17 @@ func get_active_voice_count(family: StringName) -> int:
 	return (_active_voices[family] as Array).size()
 
 
+## Formula F1's `N` — simultaneous SFX-bus voices across every family
+## combined, not just one. `AudioCueDispatcher` calls this after
+## `trigger_voice()` so the newly-triggered voice is already counted,
+## matching Formula F1's own variable description ("including this one").
+func get_total_active_voice_count() -> int:
+	var total: int = 0
+	for family: StringName in _active_voices:
+		total += (_active_voices[family] as Array).size()
+	return total
+
+
 ## Test/inspection accessor — the voice ID stolen by the most recent
 ## `trigger_voice()` call, or -1 if that call didn't need to steal.
 func get_last_stolen_voice_id() -> int:
