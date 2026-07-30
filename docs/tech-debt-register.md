@@ -1419,6 +1419,68 @@ worth auditing as part of this fix).
 
 ---
 
+## TD-test-005 — `tests/gdunit4_runner.gd` silently ran zero tests despite TD-test-003's fix (fixed)
+
+**Logged**: 2026-07-31
+**Fixed**: 2026-07-31
+**Story**: Live-verification pass on manual/automated test evidence, prompted by the user
+double-checking whether prior test claims were real — this was the first time the script was
+actually executed end-to-end (with a real `godot` binary reachable from the shell) since
+TD-test-003's fix, which closed itself with an explicit caveat that it hadn't been.
+**Severity**: Medium — masked, not a regression from TD-test-003's fix, which was itself
+correct against the engine version it was written against. CI was never affected (uses the
+`MikeSchulze/gdUnit4-action` GitHub Action directly, per TD-test-003's own audit).
+**Area**: `tests/gdunit4_runner.gd`
+
+### Gap
+
+Running the documented invocation exactly as written —
+`godot --headless --script tests/gdunit4_runner.gd -- -a res://tests --ignoreHeadlessMode` —
+printed `GdUnitTestCIRunner`'s help text and exited 0 without running a single test. No error,
+no warning; looked identical to a deliberate no-op invocation.
+
+Root cause, confirmed via a throwaway diagnostic script printing both accessors: as of
+Godot 4.6.2, `OS.get_cmdline_args()` no longer includes arguments passed after the `--`
+separator — only `OS.get_cmdline_user_args()` does. This is a genuine post-cutoff engine
+behavior change (see `docs/engine-reference/godot/VERSION.md`'s Knowledge Gap Warning) that
+had not been previously tracked anywhere in this project's API-tracking table.
+`GdUnitTestCIRunner.get_cmdline_args()` (in
+`addons/gdUnit4/src/core/runners/GdUnitTestCIRunner.gd`) calls `OS.get_cmdline_args()` unless
+its `_debug_cmd_args` override is set, so `tests/gdunit4_runner.gd`'s post-TD-test-003 version
+— which only did `root.add_child(runner)` and relied on the runner reading real cmdline args —
+received an effectively empty argument list every time, regardless of what was passed after
+`--`. `CmdArgumentParser.parse()` treats an argument list with no recognizable options as
+"show help and exit 0," which is exactly what was observed.
+
+A second, compounding quirk found while fixing this: `CmdArgumentParser.parse()`
+(`addons/gdUnit4/src/cmd/CmdArgumentParser.gd`) discards every argument up to and including
+the first one containing the literal substring `"GdUnitCmdTool.gd"` before it starts reading
+options — normally satisfied for free by `OS.get_cmdline_args()` including the `--script`
+path. Feeding it `OS.get_cmdline_user_args()` directly (with no such token present) also
+silently produces zero parsed commands.
+
+### Fix
+
+`tests/gdunit4_runner.gd` now reads `OS.get_cmdline_user_args()` directly, prepends a
+`"GdUnitCmdTool.gd"` sentinel token to satisfy `CmdArgumentParser`'s skip-until logic, and
+sets the combined array on the runner's `_debug_cmd_args` property (via `.set()`, since the
+property isn't otherwise exposed) before adding it to the tree.
+
+### Resolution
+- [x] Root cause confirmed live (2026-07-31) — reproduced with a throwaway script printing
+  `OS.get_cmdline_args()` vs `OS.get_cmdline_user_args()` side by side against the pinned
+  `Godot_v4.6.2-stable_win64.exe` binary; only the latter contained the post-`--` arguments.
+- [x] Fixed and live-verified (2026-07-31) — `godot --headless --script tests/gdunit4_runner.gd
+  -- -a res://tests -c --ignoreHeadlessMode` now runs the real suite: 1765 test cases, 183
+  suites, 0 errors, 0 failures, 0 flaky, 185 orphans (pre-existing, unrelated), exit code 101
+  (orphan-warning code, not a failure). Also re-verified against a small subset
+  (`res://tests/unit/grid`, exit code 0) to confirm normal-path exit codes still work correctly.
+- [x] This entry closed (2026-07-31) — unlike TD-test-003, this fix carries no live-execution
+  caveat: it was run to completion twice, against both a subset and the full suite, on the
+  actual pinned engine binary in this environment.
+
+---
+
 ## TD-project-001 — `project.godot`'s main scene setting was silently never active (fixed)
 
 **Logged**: 2026-07-10
