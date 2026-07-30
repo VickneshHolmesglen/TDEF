@@ -9,7 +9,7 @@
 
 ## Context
 
-**GDD**: `design/gdd/wave-manager.md` (plus `design/gdd/hero.md`, `design/gdd/tower.md`, `design/gdd/monster.md`, `design/gdd/damage-status.md`, `design/gdd/grid-system.md` for the systems being wired together)
+**GDD**: `design/gdd/wave-manager.md` (plus `design/gdd/hero.md`, `design/gdd/tower.md`, `design/gdd/monster.md`, `design/gdd/damage-status.md`, `design/gdd/grid-system.md` for the systems being wired together). This mission's own content/scene-assembly is separately documented (reverse-documented 2026-07-31) at `design/gdd/the-gap-mission.md`.
 **Requirement**: `TR-wave-001` through `TR-wave-007` (integration capstone — no single new TR-ID; verifies the complete set is wired correctly end-to-end)
 *(Requirement text lives in `docs/architecture/tr-registry.yaml` — read fresh at review time)*
 

@@ -4,6 +4,9 @@
 > **Purpose**: The single scripted moment the Vertical Slice must deliver. This is the
 > north star that scopes the Foundation and Core epics and the bar the
 > Pre-Production → Production gate evaluates against.
+> **Shipped implementation**: `design/gdd/the-gap-mission.md` documents the actual assembled
+> mission content/scene, including where it deliberately diverges from this target (single lane
+> vs. the two-lane twist described below).
 
 ## The Scripted Moment — "The Gap"
 
