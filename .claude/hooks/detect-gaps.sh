@@ -111,6 +111,52 @@ if [ -d "src/core" ] || [ -d "src/engine" ]; then
 fi
 
 # --- Check 4: Gameplay systems without design docs ---
+#
+# A system counts as documented if EITHER:
+#   (a) an exact-named file exists (design/gdd/<slug>.md or <slug>-system.md), or
+#   (b) any file in design/gdd/ or design/ux/ whose name contains <slug> exists
+#       (catches real docs that don't follow the exact naming convention, e.g.
+#       "the-gap-mission.md" covering a "the_gap" subdirectory, or a system's
+#       own "## UI Requirements" section living inside a differently-named GDD).
+#
+# Container directories (a system dir whose own file count is spread across
+# subdirectories, e.g. src/gameplay/ui/'s 8 per-screen folders, or
+# src/gameplay/missions/'s per-mission folders) are checked per-subdirectory
+# rather than as one blob — a directory where every subdirectory already has
+# its own doc is fully covered even though no single consolidated file exists
+# at the parent's exact expected path. Only genuinely uncovered subdirectories
+# are flagged, by name.
+#
+# Slug normalization: underscores -> hyphens, then (for subdirectory slugs
+# only) common UI-container suffixes (-screen, -menu, -ui, -hud) are stripped
+# before the fuzzy match, so "menagerie_screen" matches an existing
+# "menagerie.md" without needing a "menagerie-screen.md" to exist verbatim.
+
+_slugify() {
+  echo "$1" | tr '_' '-'
+}
+
+_strip_ui_suffix() {
+  echo "$1" | sed -E 's/-(screen|menu|ui|hud)$//'
+}
+
+# Returns 0 (found) if any doc in design/gdd/ or design/ux/ covers $1.
+_doc_covers_slug() {
+  local slug="$1"
+  [ -f "design/gdd/${slug}.md" ] && return 0
+  [ -f "design/gdd/${slug}-system.md" ] && return 0
+  [ -f "design/ux/${slug}.md" ] && return 0
+  # Fuzzy substring match — skip for very short/generic slugs (<=3 chars,
+  # e.g. "ui", "ai") where a substring hit is more likely coincidence than
+  # real coverage; those rely on the exact-match checks above instead.
+  if [ ${#slug} -gt 3 ]; then
+    local hit
+    hit=$(find design/gdd design/ux -maxdepth 1 -iname "*${slug}*.md" 2>/dev/null | head -1)
+    [ -n "$hit" ] && return 0
+  fi
+  return 1
+}
+
 if [ -d "src/gameplay" ]; then
   # Find major gameplay subdirectories (those with 5+ files)
   GAMEPLAY_SYSTEMS=$(find src/gameplay -mindepth 1 -maxdepth 1 -type d 2>/dev/null)
@@ -124,14 +170,44 @@ if [ -d "src/gameplay" ]; then
 
       # If system has 5+ files, check for corresponding design doc
       if [ "$file_count" -ge 5 ]; then
-        # Check for design doc (allow variations: combat-system.md, combat.md)
-        design_doc_1="design/gdd/${system_name}-system.md"
-        design_doc_2="design/gdd/${system_name}.md"
+        system_slug=$(_slugify "$system_name")
 
-        if [ ! -f "$design_doc_1" ] && [ ! -f "$design_doc_2" ]; then
+        if _doc_covers_slug "$system_slug"; then
+          continue
+        fi
+
+        # No single doc covers the system as a whole — check whether it's a
+        # container of independently-documented sub-features before flagging
+        # the whole directory.
+        SUB_DIRS=$(find "$system_dir" -mindepth 1 -maxdepth 1 -type d 2>/dev/null)
+
+        if [ -z "$SUB_DIRS" ]; then
+          # Flat file layout, no subdirectories to check individually — same
+          # behavior as before.
           echo "⚠️  GAP: Gameplay system 'src/gameplay/$system_name/' ($file_count files) has no design doc"
           echo "    Expected: design/gdd/${system_name}-system.md or design/gdd/${system_name}.md"
           echo "    Suggested action: /reverse-document design src/gameplay/$system_name"
+        else
+          UNCOVERED_SUBS=()
+          while IFS= read -r sub_dir; do
+            sub_dir=$(echo "$sub_dir" | sed 's|\\|/|g')
+            sub_name=$(basename "$sub_dir")
+            sub_slug=$(_slugify "$sub_name")
+            stripped_slug=$(_strip_ui_suffix "$sub_slug")
+
+            if _doc_covers_slug "$sub_slug" || _doc_covers_slug "$stripped_slug"; then
+              continue
+            fi
+            UNCOVERED_SUBS+=("$sub_name")
+          done <<< "$SUB_DIRS"
+
+          if [ ${#UNCOVERED_SUBS[@]} -gt 0 ]; then
+            echo "⚠️  GAP: ${#UNCOVERED_SUBS[@]} sub-feature(s) under 'src/gameplay/$system_name/' have no design doc:"
+            for sub in "${UNCOVERED_SUBS[@]}"; do
+              echo "    - src/gameplay/$system_name/$sub/"
+            done
+            echo "    Suggested action: /reverse-document design src/gameplay/$system_name/[sub-feature]"
+          fi
         fi
       fi
     done <<< "$GAMEPLAY_SYSTEMS"
