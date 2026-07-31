@@ -1816,10 +1816,10 @@ Implement Story 011 (already next in the planned sequence) — it owns the `kill
 ### Resolution
 - [x] Fixed 2026-07-16 via Story 011: added `KILL_SOURCE_WAVE_END` const + a hard early-return guard as the first statement in `_process_drops()`, before any table lookup. Also found and corrected a second issue while implementing: Story 011's own original ADR Decision Summary/Implementation Notes wrongly claimed no code was needed at all — corrected in the story file before implementation began. Independently re-verified by two specialist reviews (GDScript specialist traced guard ordering, per-payload independence, and const-value correctness against `monster_manager.gd`'s actual emission; QA tester confirmed the fix genuinely closes this item, not just passes tests coincidentally). Live-verified: 770/770 full project suite, 0 regressions.
 
-## TD-econ-003 — materials_earned's `source` field semantics unconfirmed against GDD
+## TD-econ-003 — materials_earned's `source` field semantics unconfirmed against GDD (resolved)
 
 **Logged**: 2026-07-16
-**Fixed**: Not yet
+**Resolved**: 2026-07-31
 **Story**: Story 008 (Drop Occurrence & Quantity Resolution, Epic 03) — flagged during `/code-review`
 **Severity**: Low — a plausible reading, not contradicted by any test or GDD text, but not explicitly confirmed either.
 **Area**: `src/core/resource_economy/resource_economy.gd`, `design/gdd/event-bus.md`
@@ -1833,7 +1833,9 @@ Implement Story 011 (already next in the planned sequence) — it owns the `kill
 Confirm with game-designer/economy-designer whether `kill_source` is the intended `source` value for `materials_earned`, or whether it should instead describe the economic event (e.g. `"monster_kill"`) for consistency with `resources_changed`'s pattern. Update `event-bus.md`'s catalogue to document the decision either way.
 
 ### Resolution
-- [ ] Not yet started.
+- [x] Decision made (2026-07-31, user): **keep `kill_source` as-is.** The two signals answer genuinely different questions — `materials_earned.source` answers "what killed it," `resources_changed.source` answers "why did the balance change" — this is an intentional divergence, not an inconsistency to fix. No code change.
+- [x] `event-bus.md`'s `materials_earned` catalogue row updated to document this explicitly, closing the "doesn't define source's intended semantics precisely enough" gap.
+- [x] This entry closed.
 
 ## TD-econ-004 — Drop occurrence/quantity: two testability gaps (multi-entry-per-table Rule 9; realistic-rate-in-pipeline) (gap 2 fixed)
 
