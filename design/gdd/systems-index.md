@@ -2,7 +2,7 @@
 
 > **Status**: Draft
 > **Created**: 2026-04-21
-> **Last Updated**: 2026-07-15
+> **Last Updated**: 2026-08-01 (Monster System row's GDD, `monster.md`, gained AC-28/AC-40 live performance-evidence pointers — no design/review status change, already Approved)
 > **Source Concept**: design/gdd/game-concept.md
 
 ---
