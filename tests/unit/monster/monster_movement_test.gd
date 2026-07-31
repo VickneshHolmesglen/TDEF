@@ -211,9 +211,12 @@ func test_monster_dead_priority_lethal_damage_prevents_breach() -> void:
 	GEventBus.monster_breached.connect(_on_breach)
 	GEventBus.monster_died.connect(_on_died2, CONNECT_ONE_SHOT)
 
-	# Act: Pass 1 sets DEAD, Pass 3 skips DEAD
+	# Act: Pass 1 sets DEAD (buffers death, ADR-0033), Pass 3 skips DEAD,
+	# Pass 4 flushes the buffered death as monster_died (1 death, under
+	# DEATH_BATCH_THRESHOLD).
 	_mm._pass1_damage()
 	_mm._pass3_movement(DELTA)
+	_mm._pass4_death_and_absorbed_flush()
 
 	# Assert
 	assert_int(entity.lifecycle_state).is_equal(MonsterEntity.State.DEAD)

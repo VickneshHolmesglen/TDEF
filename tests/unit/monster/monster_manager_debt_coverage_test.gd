@@ -103,7 +103,7 @@ func test_pass4_absorbed_flush_emits_monster_hp_absorbed_with_correct_value() ->
 	payload.source_type = 1
 	_mm._on_monster_damage_taken(payload)
 	_mm._pass1_damage()
-	_mm._pass4_absorbed_flush()
+	_mm._pass4_death_and_absorbed_flush()
 
 	assert_int(_spy.count("monster_hp_absorbed")).is_equal(1)
 	var args: Array = (_spy.emissions["monster_hp_absorbed"] as Array)[0] as Array
@@ -125,7 +125,7 @@ func test_pass4_absorbed_flush_absorbed_clamped_to_pre_hit_hp_on_overkill() -> v
 	payload.source_type = 1
 	_mm._on_monster_damage_taken(payload)
 	_mm._pass1_damage()
-	_mm._pass4_absorbed_flush()
+	_mm._pass4_death_and_absorbed_flush()
 
 	# Entity died this pass (no absorbed emission for dead entities per _pass1_damage's
 	# `_pending_absorbed.erase(entity.entity_id)` on death) — verify death path taken,

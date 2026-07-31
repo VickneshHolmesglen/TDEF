@@ -8,7 +8,8 @@ extends Node
 ##   Pass 1 — damage drain       (sets DEAD before Pass 3 checks breach)
 ##   Pass 2 — BOSS logic         (scan throttle, telegraph countdown, cooldown)
 ##   Pass 3 — movement           (advance ACTIVE entities; detect breach; filter list)
-##   Pass 4 — absorbed flush     (emit monster_hp_absorbed per entity per frame)
+##   Pass 4 — death & absorbed flush  (ADR-0033: monster_died or one monsters_died_batch
+##                                     depending on frame death count; then monster_hp_absorbed)
 ##
 ## MonsterManager is NOT an Autoload. It lives in the mission scene.
 ## Dependencies are injected by _ready() from Autoloads and overrideable in tests.
@@ -25,6 +26,7 @@ const HP_WAVE_GROWTH_RATE := 0.15
 const HP_DIFFICULTY_GROWTH_RATE := 0.35
 const SPEED_WAVE_GROWTH_RATE := 0.06
 const CELL_SIZE := 64.0                    ## world units per grid cell
+const DEATH_BATCH_THRESHOLD := 20          ## ADR-0033 / event-bus.md Formula 2's F_per_frame > 20
 
 # ---------------------------------------------------------------------------
 # Public state (readable by other systems; do not write externally)
@@ -42,6 +44,7 @@ var _active_monsters_next: Array[MonsterEntity] = []
 
 var _pending_damage: Array[MonsterDamageTaken] = []
 var _pending_absorbed: Dictionary = {}   # entity_id(int) -> float accumulator
+var _pending_deaths: Array[MonsterDiedEvent] = []   ## ADR-0033 — frame-scoped, flushed each frame in Pass 4
 var _entity_lookup: Dictionary = {}      # entity_id(int) -> MonsterEntity
 var _entity_id_counter: int = 0
 var _current_wave_index: int = -1
@@ -96,7 +99,7 @@ func _physics_process(delta: float) -> void:
 	_pass1_damage()
 	_pass2_boss_logic(delta)
 	_pass3_movement(delta)
-	_pass4_absorbed_flush()
+	_pass4_death_and_absorbed_flush()
 
 # ---------------------------------------------------------------------------
 # Pass 1 — Damage
@@ -123,6 +126,12 @@ func _pass1_damage() -> void:
 	_pending_damage.clear()
 
 
+## ADR-0033: no longer emits monster_died directly — buffers into
+## _pending_deaths instead, so Pass 4 can decide once per frame whether to
+## emit individually or as a single monsters_died_batch. boss_died and
+## queue_free() stay immediate (boss kills are rare, not part of the
+## batching problem; queue_free() defers actual deletion to end-of-frame
+## regardless, per godot-gdscript-specialist's ADR-0033 review).
 func _emit_death(entity: MonsterEntity, kill_source: StringName) -> void:
 	if entity.resource.tier == 2:
 		GEventBus.boss_died.emit(entity.entity_id, entity.resource.monster_id,
@@ -136,7 +145,7 @@ func _emit_death(entity: MonsterEntity, kill_source: StringName) -> void:
 	ev.world_position = entity.global_position
 	ev.kill_source = kill_source
 	ev.wave_reward_scalar = entity.spawn_wave_reward_scalar
-	GEventBus.monster_died.emit(ev)
+	_pending_deaths.append(ev)
 	entity.queue_free()
 
 # ---------------------------------------------------------------------------
@@ -234,10 +243,31 @@ func _advance_entity(entity: MonsterEntity, delta: float) -> void:
 			budget = 0.0
 
 # ---------------------------------------------------------------------------
-# Pass 4 — Absorbed flush
+# Pass 4 — Death & Absorbed flush
 # ---------------------------------------------------------------------------
 
-func _pass4_absorbed_flush() -> void:
+## ADR-0033: decides once per frame whether this frame's deaths emit
+## individually (monster_died, the common case) or as a single
+## monsters_died_batch (when count > DEATH_BATCH_THRESHOLD) — the two
+## signals are mutually exclusive per frame, matching event-bus.md
+## Formula 2 / AC-10 and the guarantee resource-economy.md/ADR-0017
+## already depends on.
+##
+## Reassigns _pending_deaths to a fresh Array rather than calling .clear()
+## on it — GDScript Arrays are reference types, so monsters_died_batch's
+## emit(_pending_deaths) hands subscribers a live reference to this same
+## array; clearing it in place would retroactively empty whatever any
+## subscriber (or a deferred/queued consumer) holds onto, even though the
+## signal already "fired" with real data. Reassignment leaves the emitted
+## array's contents intact and untouched by future frames.
+func _pass4_death_and_absorbed_flush() -> void:
+	if _pending_deaths.size() > DEATH_BATCH_THRESHOLD:
+		GEventBus.monsters_died_batch.emit(_pending_deaths)
+	else:
+		for death_event: MonsterDiedEvent in _pending_deaths:
+			GEventBus.monster_died.emit(death_event)
+	_pending_deaths = []
+
 	for entity_id: int in _pending_absorbed:
 		GEventBus.monster_hp_absorbed.emit(entity_id, int(floor(_pending_absorbed[entity_id] as float)))
 	_pending_absorbed.clear()
@@ -341,6 +371,7 @@ func _on_wave_started(wave_number: int, _total_waves: int, _wave_difficulty: flo
 	_entity_lookup.clear()
 	_pending_absorbed.clear()
 	_pending_damage.clear()
+	_pending_deaths.clear()
 
 
 ## Story 002 (epic-04-wave-manager): wave_completed gained a third
@@ -352,6 +383,7 @@ func _on_wave_completed(_wave_number: int, _enemies_remaining: int, _was_boss_br
 	_is_wave_active = false
 	_pending_absorbed.clear()
 	_pending_damage.clear()
+	_pending_deaths.clear()
 	for entity in active_monsters:
 		if entity.resource.tier == 2:
 			GEventBus.boss_died.emit(entity.entity_id, entity.resource.monster_id,

@@ -193,7 +193,7 @@ Not resolved here — this is a design-judgment call (belongs to game-designer/q
 - [x] `design/gdd/resource-economy.md`'s Open Questions table updated (2026-07-31) — the corresponding OQ marked resolved, cross-referencing this entry and the formula's own existing framing rather than duplicating it.
 - [x] This entry closed.
 
-## TD-econ-006 — `monster_died`/`monsters_died_batch` exclusivity invariant has no verifying test
+## TD-econ-006 — `monster_died`/`monsters_died_batch` exclusivity invariant has no verifying test (fixed)
 
 **Logged**: 2026-07-16
 **Story**: Discovered during Story 014 (Batch Resolution Independence) code review
@@ -212,14 +212,19 @@ ADR-0017 was amended 2026-07-16 (see its Last Verified log) to correct its own V
 
 A dedicated story (or a scoped addition to whichever Monster System / Wave Manager story is picked up next) should add an integration test on the emitter side asserting: for any given kill, `monster_died` and `monsters_died_batch` are never both dispatched for the same `entity_id` within the same frame. This closes the actual risk; the Resource Economy tripwire test alone only documents the consequence if it's ever broken.
 
-### Follow-up (2026-07-31): the recommended fix is currently vacuous — see TD-monster-005
+### Follow-up (2026-07-31): the recommended fix was vacuous until TD-monster-005 closed it
 
-Investigated this entry to write the recommended mutual-exclusivity test and found `monsters_died_batch` is **never emitted anywhere in the codebase** — `MonsterManager._emit_death()` is the sole death-emission path and unconditionally fires `monster_died` (singular) for every kill, regardless of how many die in one frame. `event_bus.md`'s own signal doc comments ("Wave Manager owns the accumulator") describe intended behavior that doesn't exist: `WaveManager._on_monster_died()` only decrements `_enemies_alive`, no accumulation or re-emission logic exists there or anywhere else. This means the exclusivity invariant this entry worries about trivially holds today (only one signal path is even live) — writing the requested test as originally scoped would prove nothing meaningful. **Not fixed here** — logged as a new, more accurately-scoped entry, `TD-monster-005`, since the real gap (the batching mechanism itself doesn't exist) is bigger than a test-gap and deserves its own tracking rather than conflating two different problems under one entry. This entry (`TD-econ-006`) stays open, now correctly understood as blocked on `TD-monster-005` rather than independently actionable.
+Investigated this entry to write the recommended mutual-exclusivity test and found `monsters_died_batch` is **never emitted anywhere in the codebase** — `MonsterManager._emit_death()` is the sole death-emission path and unconditionally fires `monster_died` (singular) for every kill, regardless of how many die in one frame. `event_bus.md`'s own signal doc comments ("Wave Manager owns the accumulator") describe intended behavior that doesn't exist: `WaveManager._on_monster_died()` only decrements `_enemies_alive`, no accumulation or re-emission logic exists there or anywhere else. This means the exclusivity invariant this entry worries about trivially held at the time (only one signal path was even live) — writing the requested test as originally scoped would have proven nothing meaningful. Logged as a new, more accurately-scoped entry, `TD-monster-005`, since the real gap (the batching mechanism itself doesn't exist) was bigger than a test-gap and deserved its own tracking rather than conflating two different problems under one entry.
 
-## TD-monster-005 — `monsters_died_batch`'s accumulator was never implemented; the signal has 3 real subscribers but can never fire
+### Resolution
+- [x] `TD-monster-005` implemented and Accepted as `ADR-0033` (2026-07-31) — `MonsterManager` now buffers deaths and decides once per frame whether to emit individually or as one `monsters_died_batch`, making true mutual exclusivity a real, enforced guarantee rather than an accident of no code existing.
+- [x] The originally-requested test now exists and is meaningful: `test_monster_died_and_monsters_died_batch_are_mutually_exclusive_per_frame` and `test_emit_death_never_emits_monster_died_synchronously_only_buffers` in `tests/unit/monster/monster_death_batch_accumulator_test.gd` directly verify the emitter-side guarantee this entry asked for, at multiple death counts on both sides of the threshold.
+- [x] This entry closed.
+
+## TD-monster-005 — `monsters_died_batch`'s accumulator was never implemented; the signal has 3 real subscribers but can never fire (fixed)
 
 **Logged**: 2026-07-31
-**Fixed**: Not yet
+**Fixed**: 2026-07-31 (ADR-0033)
 **Story**: Discovered while investigating TD-econ-006's recommended fix (a mutual-exclusivity test between `monster_died`/`monsters_died_batch`), which turned out to be vacuous once this was found.
 **Severity**: Medium — no known reachable defect (the code that exists behaves correctly for what it does), but this is a real, silent gap between documented intent and shipped behavior: 3 real subscribers (`WaveManager`, `MissionHUD`, `ResourceEconomy`) all have working `_on_monsters_died_batch()` handlers for a signal that structurally cannot fire, and the documented performance mitigation (batching at high kill counts) doesn't exist to mitigate anything.
 **Area**: `src/core/monster/monster_manager.gd` (`_emit_death()`, the sole death-emission path), `src/foundation/event_bus/event_bus.gd` (signal doc comments describing the undelivered intent)
@@ -243,7 +248,13 @@ Real-world consequence: at genuinely high simultaneous kill counts (AoE towers, 
 - Add a threshold constant (`>20`/`>=20` — the two doc comments disagree on `>` vs `>=`; reconcile before implementing) to Tuning Knobs if this is GDD-governed, or to `WaveManager` directly if purely a performance-implementation detail with no design-visible knob.
 
 ### Resolution
-- [ ] Not yet started.
+- [x] Ran through `/architecture-decision` as recommended, not decided inline (2026-07-31) — surfaced a real cross-GDD contradiction along the way (see `docs/architecture/adr-0033-monster-death-batch-accumulator.md`'s own Context section): `event-bus.md`'s AC-10/Formula 2 required true mutual exclusivity while `monster.md`'s own AC required unconditional per-kill emission, directly contradicting it. Resolved via 3 rounds of `AskUserQuestion`, not decided unilaterally.
+- [x] `>` vs `>=` reconciled: `> 20` (21+ triggers batch), matching `event-bus.md`'s Formula 2 (`F_per_frame > 20`) exactly — the `>=` variant in the other doc comment was the inaccurate one, corrected.
+- [x] Implemented (2026-07-31) — `MonsterManager` (not `WaveManager`) buffers deaths in `_pending_deaths` during Pass 1 and decides once at the existing Pass 4 flush point, mirroring the established `_pending_absorbed`/`_pending_damage` pattern (ADR-0006). `WaveManager` remains a subscriber only, unchanged.
+- [x] **Real bug found and fixed during implementation**: the first implementation cleared `_pending_deaths` in place immediately after `emit()`-ing it — since GDScript `Array`s are reference types, this retroactively emptied the exact array any subscriber (or this feature's own test) held a reference to. Fixed by reassigning to a fresh array instead of clearing in place. See ADR-0033's own Implementation Notes for the full writeup — flagged there as a generally-applicable GDScript gotcha, not unique to this feature.
+- [x] 8 new tests (`tests/unit/monster/monster_death_batch_accumulator_test.gd`) cover all 4 of ADR-0033's own Validation Criteria plus the aliasing-bug regression. 1 existing test updated for the renamed flush function. Full project regression: 1801/1801, 0 errors, 0 failures, 185 orphans (unchanged baseline).
+- [x] 3 GDDs + the architecture registry corrected alongside the code (`monster.md`, `event-bus.md`, `docs/registry/architecture.yaml`) — see ADR-0033 for the exact diffs.
+- [x] This entry closed.
 
 ## TD-pause-001 — No pause mechanism exists anywhere in the codebase (fixed)
 

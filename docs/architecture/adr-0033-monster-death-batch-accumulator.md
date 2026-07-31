@@ -1,7 +1,7 @@
 # ADR-0033: Monster Death Batch Accumulator — MonsterManager Buffers and Owns Emission
 
 ## Status
-Proposed
+Accepted (implemented and verified 2026-07-31 — see Implementation Notes below)
 
 ## Date
 2026-07-31
@@ -179,3 +179,13 @@ No save-data or persisted-state migration needed — this is pure runtime signal
 - ADR-0006 (Monster Movement) — establishes the 4-pass architecture and `_pending_absorbed` buffer-then-flush precedent this decision mirrors
 - ADR-0017 (Resource Economy Drop Resolution) — the Accepted decision whose stateless-calculator design already assumes the guarantee this ADR makes real
 - TD-monster-005, TD-econ-006 (`docs/tech-debt-register.md`) — the tracked gaps this ADR closes
+
+## Implementation Notes (2026-07-31)
+
+Implemented exactly as designed above: `DEATH_BATCH_THRESHOLD`, `_pending_deaths`, `_emit_death()` buffering, and `_pass4_death_and_absorbed_flush()` all landed in `monster_manager.gd` per the Key Interfaces section. All 4 GDD/registry corrections applied. All 4 Validation Criteria tests written (`tests/unit/monster/monster_death_batch_accumulator_test.gd`), plus one existing test (`monster_movement_test.gd`'s `test_monster_dead_priority_lethal_damage_prevents_breach`) updated to call the renamed flush function.
+
+**A real, previously-unknown bug was found and fixed during implementation, not just a hypothetical risk**: the first implementation used `_pending_deaths.clear()` immediately after `GEventBus.monsters_died_batch.emit(_pending_deaths)`. GDScript `Array`s are reference types — `emit()` hands every subscriber (and this ADR's own test spy) a live reference to that exact array object, not a copy. `.clear()` on that same object retroactively emptied it for anyone still holding the reference, discovered when `test_pass4_batches_deaths_above_threshold_emits_batch_not_individual` failed with a correctly-sized-but-empty-contents payload array. **Fixed by reassigning `_pending_deaths = []`** (a fresh object) instead of clearing in place — the array a subscriber received stays exactly as emitted, permanently. A dedicated regression test (`test_batch_payload_array_is_not_retroactively_emptied_by_the_next_frames_reset`) proves this stays fixed across a second frame's worth of buffering.
+
+This is a real, generally-applicable GDScript gotcha worth remembering for any future signal carrying a mutable collection payload that gets reused/cleared by its emitter after firing — not unique to this ADR's own mechanism.
+
+**Test evidence**: `tests/unit/monster/monster_death_batch_accumulator_test.gd` (8/8 passing), full project regression 1801/1801, 0 errors, 0 failures, 185 orphans (unchanged baseline).
