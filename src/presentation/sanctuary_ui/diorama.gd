@@ -42,6 +42,9 @@ extends Control
 ## upgrade the same physical footprint in place, matching Defense Building's
 ## own upgrade-in-place model. Real content today: only "watchtower" and
 ## "habitat_expansion" exist as authored StructureResource types.
+## "watchtower" now has real art (see WATCHTOWER_TEXTURE below) -- this
+## color entry is unused for it but left as the Color.GRAY fallback path's
+## documented default for any future structure_type with no art yet.
 const STRUCTURE_COLORS: Dictionary[String, Color] = {
 	"watchtower": Color(0.55, 0.55, 0.6),
 	"habitat_expansion": Color(0.35, 0.65, 0.35),
@@ -57,6 +60,20 @@ const STRUCTURE_POSITIONS: Dictionary[String, Vector2] = {
 
 const STRUCTURE_SIZE: Vector2 = Vector2(64, 64)
 
+## Real watchtower_tier_1 art (2026-07-31) -- only "watchtower" has real
+## content; "habitat_expansion" still uses the ColorRect placeholder below
+## until its own art exists. Source: user-provided reference image, color-
+## keyed from a flat opaque background to real transparency (the source PNG
+## had alpha=1.0 everywhere, including a uniform light-grey backdrop -- not
+## actually transparent despite being RGBA). Only watchtower_tier_1 exists
+## as real StructureResource data today (no tier_2/3/4 authored yet), and
+## _render_structure() below still renders once per structure_type
+## regardless of tier, matching its own existing "upgrades in place, no new
+## visual yet" scope discipline -- this is a real, single, non-tiered asset,
+## not a placeholder for a tier system that doesn't exist yet.
+const WATCHTOWER_TEXTURE: Texture2D = preload("res://assets/art/sanctuary/watchtower.png")
+const WATCHTOWER_DISPLAY_HEIGHT: float = 64.0  ## matches STRUCTURE_SIZE.y for scale consistency with the habitat placeholder rect
+
 @onready var _world: Node2D = $World
 
 ## Injectable for tests; defaults to the real GMenagerie Autoload (unlike
@@ -64,7 +81,10 @@ const STRUCTURE_SIZE: Vector2 = Vector2(64, 64)
 ## matches menagerie_screen.gd's own identical default).
 @export var menagerie: Menagerie
 
-var _rendered_structure_types: Dictionary[String, ColorRect] = {}
+## Control, not ColorRect -- "watchtower" is now a TextureRect (real art),
+## "habitat_expansion" remains a ColorRect (no art yet). Both are Control
+## subclasses so the shared lookup/removal logic doesn't need to care which.
+var _rendered_structure_types: Dictionary[String, Control] = {}
 var _habitat_label: Label = null
 
 
@@ -94,9 +114,35 @@ func _on_sanctuary_structure_built(_structure_id: String, structure_type: String
 ## unmapped structures elsewhere in this shell.
 func _render_structure(structure_type: String) -> void:
 	if _rendered_structure_types.has(structure_type):
-		return  # already rendered -- a later tier of the same type upgrades in place (same placeholder rect, no new visual yet, honest scope)
+		return  # already rendered -- a later tier of the same type upgrades in place (same visual, no new asset yet, honest scope)
 	if not STRUCTURE_POSITIONS.has(structure_type):
 		return
+
+	var visual: Control = _build_watchtower_sprite() if structure_type == "watchtower" else _build_placeholder_rect(structure_type)
+	_world.add_child(visual)
+	_rendered_structure_types[structure_type] = visual
+
+	if structure_type == "habitat_expansion":
+		_ensure_habitat_label(visual)
+
+
+## Real art path (2026-07-31) -- see WATCHTOWER_TEXTURE's own doc comment.
+func _build_watchtower_sprite() -> TextureRect:
+	var tex_rect := TextureRect.new()
+	tex_rect.name = "Structure_watchtower"
+	tex_rect.texture = WATCHTOWER_TEXTURE
+	tex_rect.stretch_mode = TextureRect.STRETCH_SCALE
+	var aspect: float = float(WATCHTOWER_TEXTURE.get_width()) / float(WATCHTOWER_TEXTURE.get_height())
+	var display_size := Vector2(WATCHTOWER_DISPLAY_HEIGHT * aspect, WATCHTOWER_DISPLAY_HEIGHT)
+	tex_rect.size = display_size
+	tex_rect.position = STRUCTURE_POSITIONS["watchtower"] - display_size / 2.0
+	# See _build_placeholder_rect()'s identical note -- same reasoning.
+	tex_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return tex_rect
+
+
+## No-art-yet path -- currently only "habitat_expansion" uses this.
+func _build_placeholder_rect(structure_type: String) -> ColorRect:
 	var rect := ColorRect.new()
 	rect.name = "Structure_%s" % structure_type
 	rect.color = STRUCTURE_COLORS.get(structure_type, Color.GRAY)
@@ -109,17 +155,13 @@ func _render_structure(structure_type: String) -> void:
 	# own to show for it. Explicit MOUSE_FILTER_IGNORE until that story wires
 	# real click handling here.
 	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_world.add_child(rect)
-	_rendered_structure_types[structure_type] = rect
-
-	if structure_type == "habitat_expansion":
-		_ensure_habitat_label(rect)
+	return rect
 
 
 ## GDD Core Rule 1: diorama shows "habitat occupancy" alongside structures --
 ## a plain-text count overlay on the habitat structure's own placeholder,
 ## matching this shell's own no-art text-tag convention.
-func _ensure_habitat_label(rect: ColorRect) -> void:
+func _ensure_habitat_label(rect: Control) -> void:
 	if _habitat_label != null:
 		return
 	_habitat_label = Label.new()

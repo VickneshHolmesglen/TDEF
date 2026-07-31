@@ -7,6 +7,10 @@
 ## attempted first (see diorama.gd's own doc comment for the CUDA/ZLUDA
 ## failure detail) and honestly fell back to plain ColorRect placeholders,
 ## matching this project's established "no art exists" convention.
+##
+## Updated 2026-07-31: "watchtower" now has real art (a user-provided,
+## color-keyed reference image) and renders as a TextureRect instead.
+## "habitat_expansion" still has no art and remains a ColorRect placeholder.
 extends GdUnitTestSuite
 
 const SanctuaryUiScene: PackedScene = preload("res://src/presentation/sanctuary_ui/SanctuaryUI.tscn")
@@ -62,6 +66,25 @@ func test_unmapped_structure_type_renders_nothing_and_does_not_error() -> void:
 
 	var diorama: Control = _shell.get_diorama()
 	assert_array(diorama.call("get_rendered_structure_types")).is_empty()
+
+
+## Real art landed 2026-07-31 (color-keyed from a user-provided reference
+## image, see diorama.gd's WATCHTOWER_TEXTURE doc comment) -- watchtower is
+## now a real TextureRect, not a ColorRect placeholder. habitat_expansion
+## still has no art and stays a ColorRect (covered by the habitat-label
+## tests below, which rely on it remaining a Control the label can be
+## added as a child of).
+func test_watchtower_renders_as_a_textured_sprite_not_a_placeholder_rect() -> void:
+	GEventBus.sanctuary_structure_built.emit("watchtower_tier_1", "watchtower")
+
+	var diorama: Control = _shell.get_diorama()
+	var rendered_nodes: Dictionary = diorama.get("_rendered_structure_types") as Dictionary
+	var watchtower_visual: Control = rendered_nodes.get("watchtower") as Control
+
+	assert_object(watchtower_visual).is_not_null()
+	assert_bool(watchtower_visual is TextureRect).is_true()
+	var tex_rect: TextureRect = watchtower_visual as TextureRect
+	assert_object(tex_rect.texture).is_not_null()
 
 
 func test_diorama_still_renders_a_structure_while_a_room_is_active() -> void:

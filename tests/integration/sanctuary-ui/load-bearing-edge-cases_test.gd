@@ -117,7 +117,12 @@ func test_diorama_has_no_structure_click_mechanism_yet_confirmed_not_assumed() -
 	# (GDD Core Rule 1's "click a structure -> enter its room" mechanism) --
 	# diorama.gd's own structure rendering has no click/input handling of any
 	# kind, confirmed directly against the real node it now instantiates.
-	GEventBus.sanctuary_structure_built.emit("watchtower_tier_1", "watchtower")
+	#
+	# Updated 2026-07-31: "watchtower" is now a real TextureRect (see
+	# diorama.gd's WATCHTOWER_TEXTURE), not a ColorRect placeholder -- use
+	# "habitat_expansion" here instead, which still has no art and remains
+	# the ColorRect placeholder this test's own reasoning was written against.
+	GEventBus.sanctuary_structure_built.emit("habitat_expansion_tier_1", "habitat_expansion")
 	var world: Node2D = _shell.get_diorama().call("get_world")
 	var structure: Node = world.get_child(0)
 	assert_bool(structure is ColorRect).is_true()  # a plain placeholder rect
