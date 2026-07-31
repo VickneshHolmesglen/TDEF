@@ -489,9 +489,10 @@ to take effect correctly against the scene tree.
 
 ---
 
-## TD-monster-004 — AC-28/AC-40 field-scale active-agent performance never measured (real profiler required)
+## TD-monster-004 — AC-28/AC-40 field-scale active-agent performance never measured (real profiler required) (AC-28 fixed, AC-40 still open)
 
 **Logged**: 2026-07-10
+**Fixed**: 2026-08-01 (AC-28 only — AC-40 is a distinct scenario, not measured this pass)
 **Story**: Discovered while confirming a `systems-design-2026-07-10-revalidation.md` gate-check
 follow-up (Technical Director flagged S4-10's stress test as candidate-but-unconfirmed
 closing evidence for this exact risk)
@@ -533,10 +534,9 @@ literal path requirements. If the measured cost exceeds the 2.0ms budget, this b
 optimization story, not just a measurement gap.
 
 ### Resolution
-- [ ] Real profiler evidence captured for AC-28 (150 active monsters, 60 frames, ≤2.0ms)
-- [ ] Real profiler evidence captured for AC-40 (AoE variant, per its own GDD text)
-- [ ] Evidence files saved to `production/qa/evidence/` per the GDD's literal path spec
-- [ ] This entry closed
+- [x] Real evidence captured for AC-28 (2026-08-01) — 150 ACTIVE monsters (real `Grid`+`PathfindingSystem`+`MonsterManager`, real production `spawn_monster()` API, no stubs), 60 consecutive real `_physics_process()` calls, timed individually via `Time.get_ticks_usec()` and live-verified against the pinned Godot 4.6.2.stable binary through the Godot MCP bridge. **Result: avg 0.328ms/frame, max 0.857ms/frame — well within the 2.0ms budget** (16.4%/42.9% of budget respectively). Real movement confirmed directly (`distance_moved == 128` world units, matching `scaled_speed=2.0` over 1 simulated second) — an earlier pass in the same session had omitted `_is_wave_active = true` (the flag `MonsterManager._physics_process()` gates all 4 passes behind) and produced an invalid, suspiciously-fast 0.0002ms/frame reading with zero actual movement; caught by directly checking a monster's position changed, not by trusting the first number. Evidence: `production/qa/evidence/monster-perf-2026-08-01.md` (a `.md` file with real numeric measurements, not a literal `.png` profiler screenshot — matches the same already-accepted deviation `TD-perf-001` and the Tower Mastery profiling evidence both used, for the same "no interactive profiler session available in this environment" reason).
+- [ ] AC-40 (AoE death-burst, 22 simultaneous lethal hits, ≤4.0ms) remains **not measured** — a distinct scenario (damage dispatch + death/absorbed-flush under load, not movement), deliberately not conflated with AC-28's closure above. Genuinely open, well-scoped, unblocked follow-up for a future pass.
+- [ ] This entry stays open until AC-40 is also measured.
 
 ---
 

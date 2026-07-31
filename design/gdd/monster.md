@@ -963,6 +963,8 @@ THEN total Monster System `_physics_process` CPU time does not exceed 2.0 ms/fra
 
 Note: This AC requires a real Godot scene with Grid Autoload and Pathfinding stubs populated. Cannot be verified headlessly without a profiler-capable build.
 
+**Measured 2026-08-01** (`TD-monster-004`, was open since 2026-07-10): avg 0.328ms/frame, max 0.857ms/frame — **PASS**, well within budget. No interactive profiler session was available in this environment, so evidence was saved as a `.md` file with real numeric `Time.get_ticks_usec()` measurements instead of a literal `.png` screenshot (same accepted deviation as `TD-perf-001`) — see `production/qa/evidence/monster-perf-2026-08-01.md` for full method and numbers.
+
 ---
 
 ### Area 9: BOSS HP Tracking
