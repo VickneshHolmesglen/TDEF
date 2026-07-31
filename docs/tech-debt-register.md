@@ -5,9 +5,10 @@ Items are resolved by creating a follow-up story and linking it here.
 
 ---
 
-## TD-menag-006 — `test_lure_creature_success_full_flow` fails in isolation (AC-2 placement state)
+## TD-menag-006 — `test_lure_creature_success_full_flow` fails in isolation (AC-2 placement state) (fixed)
 
 **Logged**: 2026-07-18 (Sprint 6, S6-08 — found running the full suite for the first time this session, unrelated to any S6-08 change)
+**Fixed**: 2026-07-25
 **Severity**: Medium — a currently-Complete Epic 05 story's own AC test is failing, pre-existing (confirmed via isolated single-file re-run, not a cross-test leakage artifact)
 **Area**: `src/core/menagerie/menagerie.gd` (`lure_creature()`'s placement rule), `tests/unit/menagerie/lure_acquisition_test.gd:77`
 
@@ -26,9 +27,10 @@ Read `menagerie.gd`'s `lure_creature()`/placement-decision logic and Story 008/0
 
 ---
 
-## TD-test-004 — Full-suite orphan-node count grew sharply after Sanctuary UI screen work (158 → 2258, fixed down to 185 via a workaround for the `mission_launched` cross-Autoload interaction)
+## TD-test-004 — Full-suite orphan-node count grew sharply after Sanctuary UI screen work (158 → 2258, fixed down to 185 via a workaround for the `mission_launched` cross-Autoload interaction) (substantially resolved — residual explained by TD-test-006)
 
 **Logged**: 2026-07-25 (autonomous overnight session — Menagerie/Defense Building screens + `SanctuaryScene.tscn` real-shell wiring)
+**Fixed**: 2026-07-25 (87% reduction); residual fully explained 2026-08-01 (see below)
 **Severity**: Medium — no test failures/errors caused (1610/1610 test cases still pass, 0 errors, only the pre-existing unrelated `TD-menag-006` failure), but a real, measured regression in test-run cleanliness
 **Area**: `src/scenes/SanctuaryScene.tscn` (now instances the full `SanctuaryUI.tscn` shell instead of a placeholder `Label`), `src/gameplay/ui/menagerie_screen/menagerie_screen.gd`, `src/gameplay/ui/defense_building_screen/defense_building_screen.gd` (both dynamically rebuild their Button/Panel lists via `queue_free()` + re-instantiate, potentially multiple times per test with no intervening frame)
 
@@ -52,6 +54,7 @@ Bisect by running the full suite with `SanctuaryScene.tscn` reverted to its plac
 - **Workaround applied, 2026-07-25 (continued autonomous session)** — rather than continuing the combinatorial root-cause search (explicitly deemed low value-per-effort above), tested and applied a practical fix to the 3 confirmed contributor files (`tests/integration/core/mission_economy_test.gd`, `tests/unit/tower/tower_combat_test.gd`, `tests/unit/tower/tower_placement_test.gd`): all 3 used `GEventBus.mission_launched.emit(...)` purely as `before_test()`/`after_test()` boilerplate to reset `GMissionEconomy`'s gold balance to a known baseline — none of them were actually testing the broadcast mechanism itself (the 2 tests in `mission_economy_test.gd` that DO test AC-11's broadcast behavior still use the real `GEventBus.mission_launched.emit()` inside their own test bodies, unchanged). Replacing the boilerplate reset calls with a direct call to `GMissionEconomy._on_mission_launched(...)` (the exact same reset logic, without cascading into WaveManager/SavePersistence/Menagerie/HeroSkillBuild/Tarot's own handlers) eliminated the orphans in isolation: `mission_economy_test.gd` 232→0 (8/8 still passing), `tower_combat_test.gd` + `tower_placement_test.gd` 996→0 combined (35/35 still passing). **Full 183-suite/1762-test regression: 1459 → 185 orphans (an 87% reduction), 0 errors/0 failures both before and after** — confirms `WaveManager._on_mission_launched()` (the only one of the 5 subscribers that creates/manages real Node-based state — phase timers, spawn scheduling — per its own handler at `wave_manager.gd:748`) as the dominant real mechanism, without needing to fully resolve the "combination/order-dependent" interaction effect noted in the second bisection pass above.
 - **185 orphans remain**, scattered across the suite (not isolated to a single dominant contributor this pass) — genuinely closing this to 0 would need either (a) a similar audit for any other test files using `mission_launched` (or a similar broadcast-heavy signal) purely as reset boilerplate rather than as the thing under test, or (b) finally root-causing why `WaveManager`'s own reset path leaks a Node when repeated across gdUnit4 test-case boundaries (deferred — 87% reduction achieved, further chasing judged lower priority than other outstanding work).
 - [x] Substantially resolved (2026-07-25) — 1459→185 orphans (87% reduction), 0 correctness impact throughout. Reopen only if the residual 185 or a future regression becomes worth a dedicated pass.
+- [x] **Residual 185 fully explained (2026-08-01) — see `TD-test-006`.** This entry's own bisection had already found the key symptom without naming its cause: "0 orphans when the same emissions happen inside a single test body... requires the gdUnit4 before_test/after_test test-boundary repetition." `TD-test-006` root-caused this directly from gdUnit4's own source: its orphan snapshot fires immediately after the test body returns, *before* `after_test()` runs in a separate, later stage — so any correctly-freed-in-`after_test()` object gets miscounted, regardless of which Autoload or EventBus signal is involved. This fully accounts for the residual 185 without needing the "WaveManager Node leak" theory floated as the reopen condition below — the extensive `mission_launched`-subscriber combinatorial bisection above was a reasonable path to follow at the time, but the actual mechanism was in the test framework's snapshot timing, not in any of the 5 Autoload subscribers' own cleanup code. No further bisection needed.
 
 ---
 
@@ -429,9 +432,10 @@ Add follow-up tests in a future story or as part of S3-05 (Combat loop integrati
 
 ---
 
-## TD-monster-003 — Spawned MonsterEntity nodes never added to the scene tree
+## TD-monster-003 — Spawned MonsterEntity nodes never added to the scene tree (fixed)
 
 **Logged**: 2026-07-03
+**Fixed**: 2026-07-06
 **Story**: Discovered during S3-06 Wave Manager Phase 1 integration testing
 **Severity**: Advisory
 **Area**: `src/core/monster/monster_manager.gd:272` (`_spawn_entity`)
@@ -536,9 +540,10 @@ optimization story, not just a measurement gap.
 
 ---
 
-## TD-wave-001 — WaveManager registered at the wrong Autoload boot position
+## TD-wave-001 — WaveManager registered at the wrong Autoload boot position (fixed)
 
 **Logged**: 2026-07-03
+**Fixed**: 2026-07-03
 **Story**: S3-06 Wave Manager Phase 1 — surfaced during `/code-review`
 **Severity**: Advisory
 **Area**: `project.godot` `[autoload]`, `src/gameplay/wave_manager.gd`
@@ -569,9 +574,10 @@ resolved.
 
 ---
 
-## TD-tower-002 — Tower test suites leak orphan Node instances
+## TD-tower-002 — Tower test suites leak orphan Node instances (fixed)
 
 **Logged**: 2026-07-03
+**Fixed**: 2026-07-06
 **Story**: Discovered while fixing S3-03's broken tower test files during `/smoke-check` follow-up
 **Severity**: Advisory
 **Area**: `tests/unit/tower/tower_placement_test.gd`, `tests/unit/tower/tower_combat_test.gd`
@@ -600,9 +606,10 @@ any deferred cleanup is pending) before nulling the reference.
 
 ---
 
-## TD-path-001 — AC-4 profiler test measures cold fallback path, not warm template lookup
+## TD-path-001 — AC-4 profiler test measures cold fallback path, not warm template lookup (fixed)
 
 **Logged**: 2026-07-03
+**Fixed**: 2026-07-06
 **Story**: Discovered while filling `tests/performance/sprint-03-profiler.md` (Sprint 3 sign-off condition closure)
 **Severity**: Advisory
 **Area**: `tests/integration/core/combat_loop_test.gd::test_pathfinding_profiler_find_path_100_samples`
@@ -650,9 +657,10 @@ see `tests/performance/sprint-04-profiler.md` for the deviation rationale.
 
 ---
 
-## TD-test-001 — `assert_error(func...).is_push_error(...)` leaves orphan nodes
+## TD-test-001 — `assert_error(func...).is_push_error(...)` leaves orphan nodes (accepted gdUnit4 library limitation)
 
 **Logged**: 2026-07-03
+**Fixed**: 2026-07-07 (documented as accepted, not a code fix)
 **Story**: S4-02 GameDataRegistry Autoload
 **Severity**: Advisory
 **Area**: `tests/unit/game_data_registry/game_data_registry_test.gd`
@@ -689,12 +697,14 @@ output truncates to "1 possible orphan node" with no further detail).
 - [x] Root cause identified as **gdUnit4 internal, not a test-file issue** (2026-07-07). Static trace of `GdUnitGodotErrorAssertImpl.gd`: the class chain (`GdUnitGodotErrorAssertImpl` → `GdUnitGodotErrorAssert` → `GdUnitAssert extends RefCounted`) is entirely `RefCounted`, not `Node` — ruled out as the orphan source directly, since Godot's orphan-node detector only tracks `Node` instances. The `_logger := GodotGdErrorMonitor.GdUnitLogger.new(...)` field traces through `GdUnitMonitor extends RefCounted` too — also ruled out. `GdUnitLogger extends Logger`, and `Logger` resolves to Godot's own **built-in `Logger` engine class, added in Godot 4.5** (confirmed via web search — this project's LLM knowledge cutoff predates 4.5, so this class was unknown territory; now confirmed real and intentional, not an addon bug). A web search for this exact symptom surfaced a matching upstream report — **`godot-gdunit-labs/gdUnit4` issue #122**, "Run test via `GdUnitCmdTool` --verbose shows a lot of orphan nodes" — strongly suggesting this is a **known gdUnit4 framework-level quirk**, not specific to this project's test file or the `assert_error(func...)` pattern's usage here. The issue's full discussion/resolution status was not read in this session (GitHub fetch was skipped per user instruction) — the match is based on the search snippet's title/description only.
 - [x] Documented as an accepted gdUnit4 library limitation (2026-07-07) — not fixed, since the cause lives in the addon's own `Logger`-based error-capture mechanism, not in this project's code. No test-file change is warranted.
 - [x] This entry closed (2026-07-07) — **caveat**: closure is based on static source tracing + a plausible but unconfirmed upstream issue match, not a live re-run of the affected tests with `collect_orphan_node_details()` (the originally recommended fallback diagnostic). If the orphan count changes with a future gdUnit4 addon update, re-open and verify against the actual upstream issue thread.
+- [x] **Related finding, 2026-08-01**: `TD-test-006` independently root-caused a *different* (but related-in-spirit) gdUnit4 timing artifact — the orphan snapshot fires before `after_test()` runs, not specifically tied to `assert_error(func...)`. This entry's `Logger`-class theory remains a distinct, separate mechanism (confirmed via a different investigation path) — not superseded, just adjacent. Worth checking `TD-test-006` first if this symptom recurs, since it's the more general and more thoroughly confirmed explanation.
 
 ---
 
-## TD-test-002 — "3 resources still in use at exit" after SceneManager tests
+## TD-test-002 — "3 resources still in use at exit" after SceneManager tests (accepted as benign)
 
 **Logged**: 2026-07-03
+**Fixed**: 2026-07-07 (documented as accepted, not a code fix)
 **Story**: S4-01 SceneManager Autoload
 **Severity**: Advisory
 **Area**: `tests/integration/foundation/scene_manager_transition_test.gd`, `tests/unit/scene_manager/scene_manager_test.gd`
@@ -1017,9 +1027,10 @@ can be checked for collisions at review time rather than discovered at runtime.
 
 ---
 
-## TD-data-001 — MonsterManager and TowerSystem have no production data loader
+## TD-data-001 — MonsterManager and TowerSystem have no production data loader (fixed)
 
 **Logged**: 2026-07-05
+**Fixed**: 2026-07-07
 **Story**: S4-09 Assemble The Gap Mission Scene (`production/epics/epic-04-wave-manager/story-008-assemble-the-gap-mission-scene.md`)
 **Severity**: High
 **Area**: `src/core/monster/monster_manager.gd` (`_resource_table`), `src/core/tower/tower_system.gd` (`_tower_table`, `_player_gold`)
@@ -1214,9 +1225,10 @@ line 83. Route to whichever agent owns Hero System maintenance.
 
 ---
 
-## TD-perf-001 — "The Gap" mission scene FPS / draw-call / memory measurement never captured (AC-8, accepted non-blocking debt)
+## TD-perf-001 — "The Gap" mission scene FPS / draw-call / memory measurement never captured (AC-8, accepted non-blocking debt) (fixed)
 
 **Logged**: 2026-07-06
+**Fixed**: 2026-07-07
 **Story**: S4-09 Assemble The Gap Mission Scene (`production/epics/epic-04-wave-manager/story-008-assemble-the-gap-mission-scene.md`)
 **Severity**: Advisory
 **Area**: `src/gameplay/missions/the_gap/the_gap.tscn` / `the_gap.gd` — no code area, a measurement gap
@@ -1365,9 +1377,10 @@ batch into a single draw call the way a uniform-material approach would.
 
 ---
 
-## TD-path-002 — GDD OQ-6's `path_invalidated` monster-refresh-burst framing is stale/inaccurate
+## TD-path-002 — GDD OQ-6's `path_invalidated` monster-refresh-burst framing is stale/inaccurate (fixed)
 
 **Logged**: 2026-07-06
+**Fixed**: 2026-07-07
 **Story**: S4-10 100-Agent Pathfinding Performance Stress Test
 **Severity**: Advisory (documentation accuracy, not a code defect)
 **Area**: `design/gdd/pathfinding.md` OQ-6; `production/qa/reference-hardware.md`'s
@@ -1415,9 +1428,10 @@ don't re-derive a test scenario against dead code.
 
 ---
 
-## TD-test-003 — `tests/gdunit4_runner.gd` calls a nonexistent `GdUnitTestCIRunner` method
+## TD-test-003 — `tests/gdunit4_runner.gd` calls a nonexistent `GdUnitTestCIRunner` method (fixed)
 
 **Logged**: 2026-07-06
+**Fixed**: 2026-07-07
 **Story**: S4-10 100-Agent Pathfinding Performance Stress Test (discovered while attempting to
 run the documented headless test invocation)
 **Severity**: Advisory (test infrastructure, devops-engineer territory — not fixed as part of
