@@ -168,9 +168,10 @@ Story 019 (the story that adds `is_tech_unlocked()`, the resolution sequence, an
 
 `TowerSystem`'s `_player_gold` field, its `resources_changed` subscription, and its `_on_resources_changed()` handler were removed entirely. Gate 2 (`place_tower()`, `get_placement_preview()`) now reads live via `GMissionEconomy.can_afford(cost)`. `place_tower()`/`sell_tower()` now emit signed deltas (`-placement_cost` / `+refund`) instead of absolute balances. `tests/unit/tower/tower_placement_test.gd` and `tests/unit/tower/tower_combat_test.gd` (which directly poked `_player_gold` as test setup/readback) were updated to seed/read gold via the real `GMissionEconomy` Autoload instead, with `mission_launched` resets in `before_test()`/`after_test()` to avoid cross-test state leakage (matching `tests/integration/core/mission_economy_test.gd`'s established convention). `src/gameplay/missions/the_gap/the_gap.gd`'s debug gold-seed stopgap (which directly poked the now-removed `_player_gold` field) was updated to seed via `resources_changed.emit(500, &"debug_seed")`, fired after `_launch_mission()` so `mission_launched`'s balance reset doesn't wipe it. Full suite verified: 811/811 passing, 0 regressions.
 
-## TD-econ-007 — Combined-ERI validator (Story 015) cannot fail for any realistic content
+## TD-econ-007 — Combined-ERI validator (Story 015) cannot fail for any realistic content (resolved)
 
 **Logged**: 2026-07-16
+**Resolved**: 2026-07-31
 **Story**: Discovered during Story 015 (Combined-ERI Content-Authoring Validator) code review, via qa-tester's testability review
 **Severity**: Low-Medium — not a code defect, but the story's stated deliverable (a content-authoring safety net) may currently have near-zero practical value
 **Area**: `src/core/resource_economy/combined_eri_validator.gd`, `design/gdd/resource-economy.md` Formula 4
@@ -186,6 +187,11 @@ This means the validator, as currently specified by the (now-corrected) GDD, can
 ### Recommended fix
 
 Not resolved here — this is a design-judgment call (belongs to game-designer/qa-lead, tracked as a new Open Question in `design/gdd/resource-economy.md`), not something to redesign unilaterally during implementation. Options for a follow-up: (1) accept the check as a defense-in-depth guard against degenerate/malformed content only, and rescope its documented purpose accordingly; (2) redesign Formula 4 a second time with different bounds now that the corrected version's practical ceiling is understood; (3) decide the check is no longer worth maintaining and fold its concerns into `DropEntry.validate()`'s existing schema checks instead.
+
+### Resolution
+- [x] Decision made (2026-07-31, user): **Option (1) — accept as defense-in-depth only.** No code or formula change — Formula 4's own text already documented this framing correctly ("it exists to catch a future authoring mistake... not to reject ordinary content"), it just hadn't closed the loop against this entry's own Open Question.
+- [x] `design/gdd/resource-economy.md`'s Open Questions table updated (2026-07-31) — the corresponding OQ marked resolved, cross-referencing this entry and the formula's own existing framing rather than duplicating it.
+- [x] This entry closed.
 
 ## TD-econ-006 — `monster_died`/`monsters_died_batch` exclusivity invariant has no verifying test
 
