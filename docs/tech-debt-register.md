@@ -206,6 +206,39 @@ ADR-0017 was amended 2026-07-16 (see its Last Verified log) to correct its own V
 
 A dedicated story (or a scoped addition to whichever Monster System / Wave Manager story is picked up next) should add an integration test on the emitter side asserting: for any given kill, `monster_died` and `monsters_died_batch` are never both dispatched for the same `entity_id` within the same frame. This closes the actual risk; the Resource Economy tripwire test alone only documents the consequence if it's ever broken.
 
+### Follow-up (2026-07-31): the recommended fix is currently vacuous — see TD-monster-005
+
+Investigated this entry to write the recommended mutual-exclusivity test and found `monsters_died_batch` is **never emitted anywhere in the codebase** — `MonsterManager._emit_death()` is the sole death-emission path and unconditionally fires `monster_died` (singular) for every kill, regardless of how many die in one frame. `event_bus.md`'s own signal doc comments ("Wave Manager owns the accumulator") describe intended behavior that doesn't exist: `WaveManager._on_monster_died()` only decrements `_enemies_alive`, no accumulation or re-emission logic exists there or anywhere else. This means the exclusivity invariant this entry worries about trivially holds today (only one signal path is even live) — writing the requested test as originally scoped would prove nothing meaningful. **Not fixed here** — logged as a new, more accurately-scoped entry, `TD-monster-005`, since the real gap (the batching mechanism itself doesn't exist) is bigger than a test-gap and deserves its own tracking rather than conflating two different problems under one entry. This entry (`TD-econ-006`) stays open, now correctly understood as blocked on `TD-monster-005` rather than independently actionable.
+
+## TD-monster-005 — `monsters_died_batch`'s accumulator was never implemented; the signal has 3 real subscribers but can never fire
+
+**Logged**: 2026-07-31
+**Fixed**: Not yet
+**Story**: Discovered while investigating TD-econ-006's recommended fix (a mutual-exclusivity test between `monster_died`/`monsters_died_batch`), which turned out to be vacuous once this was found.
+**Severity**: Medium — no known reachable defect (the code that exists behaves correctly for what it does), but this is a real, silent gap between documented intent and shipped behavior: 3 real subscribers (`WaveManager`, `MissionHUD`, `ResourceEconomy`) all have working `_on_monsters_died_batch()` handlers for a signal that structurally cannot fire, and the documented performance mitigation (batching at high kill counts) doesn't exist to mitigate anything.
+**Area**: `src/core/monster/monster_manager.gd` (`_emit_death()`, the sole death-emission path), `src/foundation/event_bus/event_bus.gd` (signal doc comments describing the undelivered intent)
+
+### Gap
+
+`event_bus.md`/`event_bus.gd`'s own signal declarations state the intended contract explicitly:
+- `monster_died`: "At > 20 firings/frame: Wave Manager batch accumulator emits `monsters_died_batch` instead."
+- `monsters_died_batch`: "Batch variant of `monster_died` — fires when >= 20 monsters die in one frame. Wave Manager owns the accumulator. EventBus remains a pure dispatcher."
+
+Neither half of this exists in code. `MonsterManager._emit_death()` (`monster_manager.gd:126-140`) is the only place `monster_died` is emitted, and it does so unconditionally per-kill — no per-frame count tracking, no threshold check, no buffering. `WaveManager._on_monster_died()` (`wave_manager.gd:967`) — the system the comments say "owns the accumulator" — only decrements `_enemies_alive`; it contains no accumulation logic and never calls `GEventBus.monsters_died_batch.emit(...)` anywhere. A grep for `monsters_died_batch.emit` across `src/` returns zero results.
+
+Despite this, 3 systems have real, tested `_on_monsters_died_batch()` subscriber logic waiting for a payload that can never arrive: `WaveManager` (`wave_manager.gd:1084`), `MissionHUD` (`mission_hud.gd:365`), `ResourceEconomy` (`resource_economy.gd:111`) — all correctly implemented against the documented contract, just permanently unreachable.
+
+Real-world consequence: at genuinely high simultaneous kill counts (AoE towers, a dense wave clearing many monsters in one frame — exactly the >20/frame scenario this mechanism exists to handle), the game currently dispatches 20+ individual `monster_died` signals in the same frame instead of one batched `monsters_died_batch`. Every subscriber's per-event handler still runs correctly (this is not a correctness bug), but the specific performance/reasoning-load mitigation the batch path was designed for never engages.
+
+### Recommended fix
+
+- Implement the accumulator in `WaveManager` per the doc comments' own stated ownership: track kills within the current frame (e.g. a `_deaths_this_frame: Array[MonsterDiedEvent]` reset each physics/process frame), and at frame-end either emit one `monsters_died_batch` (if count ≥ 20) or let the already-fired individual `monster_died` signals stand (if below threshold) — the exact fire-both-vs-fire-one-or-the-other mechanics need a design decision, since `MonsterManager` currently emits `monster_died` unconditionally and unaware of any batching threshold; either `MonsterManager` needs to stop emitting individually above the threshold (requiring it to know about batching), or `WaveManager` needs to consume individual `monster_died` events and re-derive a batch without double-processing them downstream — this is a real architecture question, not just an implementation detail, and should probably go through `/architecture-decision` rather than being decided implicitly during implementation.
+- Once implemented, TD-econ-006's original recommended fix (a mutual-exclusivity test) becomes meaningful and should be added at that point.
+- Add a threshold constant (`>20`/`>=20` — the two doc comments disagree on `>` vs `>=`; reconcile before implementing) to Tuning Knobs if this is GDD-governed, or to `WaveManager` directly if purely a performance-implementation detail with no design-visible knob.
+
+### Resolution
+- [ ] Not yet started.
+
 ## TD-pause-001 — No pause mechanism exists anywhere in the codebase (fixed)
 
 **Logged**: 2026-07-07
