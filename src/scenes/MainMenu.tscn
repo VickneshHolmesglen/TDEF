@@ -1,10 +1,11 @@
-[gd_scene load_steps=6 format=3 uid="uid://mainmenuscene"]
+[gd_scene load_steps=7 format=3 uid="uid://mainmenuscene"]
 
 [ext_resource type="Script" path="res://src/scenes/main_menu.gd" id="1_script"]
 [ext_resource type="Texture2D" path="res://assets/art/main_menu/background.png" id="2_bg"]
 [ext_resource type="Texture2D" path="res://assets/art/main_menu/btn_play.png" id="3_play"]
 [ext_resource type="Texture2D" path="res://assets/art/main_menu/btn_settings.png" id="4_settings"]
 [ext_resource type="Texture2D" path="res://assets/art/main_menu/btn_quit.png" id="5_quit"]
+[ext_resource type="Script" path="res://src/ui/input_mode_tracker.gd" id="6_tracker"]
 
 [node name="MainMenu" type="Control"]
 anchors_preset = 15
@@ -13,6 +14,9 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_script")
+
+[node name="InputModeTracker" type="Node" parent="."]
+script = ExtResource("6_tracker")
 
 [node name="Background" type="TextureRect" parent="."]
 anchors_preset = 15

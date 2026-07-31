@@ -73,3 +73,44 @@ func test_play_button_transitions_to_sanctuary() -> void:
 
 	assert_array(received).contains([["SANCTUARY", ""]])
 	GEventBus.scene_transition_completed.disconnect(handler)
+
+
+# ---------------------------------------------------------------------------
+# Gamepad focus rings (ADR-0011 — UI Dual-Focus Handling), added 2026-08-01
+# ---------------------------------------------------------------------------
+
+func test_play_button_has_initial_focus_on_mount() -> void:
+	var play_button: TextureButton = _menu.get_node("Buttons/PlayButton")
+	assert_bool(play_button.has_focus()).is_true()
+
+
+func test_focused_button_shows_a_ring_in_keyboard_gamepad_mode() -> void:
+	var play_ring: Panel = _menu.get("_play_focus_ring")
+	assert_bool(play_ring.visible).is_true()  # default mode is KEYBOARD_GAMEPAD
+
+
+func test_mouse_motion_hides_the_focus_ring() -> void:
+	var input_mode_tracker: InputModeTracker = _menu.get_node("InputModeTracker")
+	input_mode_tracker._input(InputEventMouseMotion.new())
+
+	var play_ring: Panel = _menu.get("_play_focus_ring")
+	assert_bool(play_ring.visible).is_false()
+
+
+func test_settings_button_pressed_moves_focus_and_ring_to_the_back_button() -> void:
+	_menu.get_node("Buttons/SettingsButton").pressed.emit()
+
+	var back_button: Button = _menu.get_node("SettingsPanel/BackButton")
+	var back_ring: Panel = _menu.get("_back_focus_ring")
+	assert_bool(back_button.has_focus()).is_true()
+	assert_bool(back_ring.visible).is_true()
+
+
+func test_back_button_pressed_returns_focus_and_ring_to_the_settings_button() -> void:
+	_menu.get_node("Buttons/SettingsButton").pressed.emit()
+	_menu.get_node("SettingsPanel/BackButton").pressed.emit()
+
+	var settings_button: TextureButton = _menu.get_node("Buttons/SettingsButton")
+	var settings_ring: Panel = _menu.get("_settings_focus_ring")
+	assert_bool(settings_button.has_focus()).is_true()
+	assert_bool(settings_ring.visible).is_true()

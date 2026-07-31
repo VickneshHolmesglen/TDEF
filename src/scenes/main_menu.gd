@@ -25,16 +25,69 @@ extends Control
 ## needed. SETTINGS opens a minimal placeholder Control (no real Settings
 ## system exists anywhere in this project yet) rather than fabricating
 ## options that don't exist.
+##
+## Gamepad focus rings (2026-08-01, ADR-0011 — UI Dual-Focus Handling):
+## own InputModeTracker child (matching InventoryScreen's identical
+## pattern, not Mission HUD's injected-tracker variant, since this screen
+## has no outer owner to inject one). All 4 real interactive buttons
+## (PLAY/SETTINGS/QUIT plus the Settings placeholder's own Back button) get
+## a FocusRingFactory ring, gated on has_focus() AND
+## InputModeTracker.is_focus_ring_visible() — same rule InventoryScreen and
+## Mission HUD already use, never merged into hover state. PLAY grabs
+## initial keyboard/gamepad focus on open — no prior screen in this project
+## does this, but a menu that opens with nothing focused is unnavigable by
+## gamepad/keyboard alone until the player first moves the mouse, which
+## would violate ui-code.md's "support both keyboard/mouse AND gamepad
+## input for all interactive elements" for the very first frame.
 
 @onready var _settings_panel: Control = $SettingsPanel
+@onready var _input_mode_tracker: InputModeTracker = $InputModeTracker
+
+var _play_button: TextureButton
+var _settings_button: TextureButton
+var _quit_button: TextureButton
+var _back_button: Button
+
+var _play_focus_ring: Panel
+var _settings_focus_ring: Panel
+var _quit_focus_ring: Panel
+var _back_focus_ring: Panel
 
 
 func _ready() -> void:
-	$Buttons/PlayButton.pressed.connect(_on_play_pressed)
-	$Buttons/SettingsButton.pressed.connect(_on_settings_pressed)
-	$Buttons/QuitButton.pressed.connect(_on_quit_pressed)
-	$SettingsPanel/BackButton.pressed.connect(_on_settings_back_pressed)
+	_play_button = $Buttons/PlayButton
+	_settings_button = $Buttons/SettingsButton
+	_quit_button = $Buttons/QuitButton
+	_back_button = $SettingsPanel/BackButton
+
+	_play_button.pressed.connect(_on_play_pressed)
+	_settings_button.pressed.connect(_on_settings_pressed)
+	_quit_button.pressed.connect(_on_quit_pressed)
+	_back_button.pressed.connect(_on_settings_back_pressed)
 	_settings_panel.visible = false
+
+	_play_focus_ring = FocusRingFactory.build(_play_button)
+	_settings_focus_ring = FocusRingFactory.build(_settings_button)
+	_quit_focus_ring = FocusRingFactory.build(_quit_button)
+	_back_focus_ring = FocusRingFactory.build(_back_button)
+
+	_play_button.focus_entered.connect(_update_focus_ring.bind(_play_button, _play_focus_ring))
+	_play_button.focus_exited.connect(_update_focus_ring.bind(_play_button, _play_focus_ring))
+	_settings_button.focus_entered.connect(_update_focus_ring.bind(_settings_button, _settings_focus_ring))
+	_settings_button.focus_exited.connect(_update_focus_ring.bind(_settings_button, _settings_focus_ring))
+	_quit_button.focus_entered.connect(_update_focus_ring.bind(_quit_button, _quit_focus_ring))
+	_quit_button.focus_exited.connect(_update_focus_ring.bind(_quit_button, _quit_focus_ring))
+	_back_button.focus_entered.connect(_update_focus_ring.bind(_back_button, _back_focus_ring))
+	_back_button.focus_exited.connect(_update_focus_ring.bind(_back_button, _back_focus_ring))
+
+	# One connection for the whole screen, fanning out inside the handler —
+	# matching inventory_screen.gd's own established rationale (Signal.
+	# connect() dedups by (target, method) only, not .bind() arguments, so
+	# per-button connections to the same method would silently drop after
+	# the first).
+	_input_mode_tracker.input_mode_changed.connect(_on_input_mode_changed)
+
+	_play_button.grab_focus()
 
 
 func _on_play_pressed() -> void:
@@ -43,11 +96,24 @@ func _on_play_pressed() -> void:
 
 func _on_settings_pressed() -> void:
 	_settings_panel.visible = true
+	_back_button.grab_focus()
 
 
 func _on_settings_back_pressed() -> void:
 	_settings_panel.visible = false
+	_settings_button.grab_focus()
 
 
 func _on_quit_pressed() -> void:
 	get_tree().quit()
+
+
+func _update_focus_ring(button: BaseButton, ring: Panel) -> void:
+	ring.visible = button.has_focus() and _input_mode_tracker.is_focus_ring_visible()
+
+
+func _on_input_mode_changed(_mode: InputModeTracker.InputMode) -> void:
+	_update_focus_ring(_play_button, _play_focus_ring)
+	_update_focus_ring(_settings_button, _settings_focus_ring)
+	_update_focus_ring(_quit_button, _quit_focus_ring)
+	_update_focus_ring(_back_button, _back_focus_ring)
