@@ -1,0 +1,88 @@
+[gd_scene load_steps=6 format=3 uid="uid://mainmenuscene"]
+
+[ext_resource type="Script" path="res://src/scenes/main_menu.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://assets/art/main_menu/background.png" id="2_bg"]
+[ext_resource type="Texture2D" path="res://assets/art/main_menu/btn_play.png" id="3_play"]
+[ext_resource type="Texture2D" path="res://assets/art/main_menu/btn_settings.png" id="4_settings"]
+[ext_resource type="Texture2D" path="res://assets/art/main_menu/btn_quit.png" id="5_quit"]
+
+[node name="MainMenu" type="Control"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_script")
+
+[node name="Background" type="TextureRect" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("2_bg")
+expand_mode = 1
+stretch_mode = 6
+
+[node name="TitleLabel" type="Label" parent="."]
+layout_mode = 0
+offset_left = 96.0
+offset_top = 48.0
+offset_right = 900.0
+offset_bottom = 160.0
+theme_override_font_sizes/font_size = 64
+text = "Sanctuary Defenders"
+
+[node name="Buttons" type="VBoxContainer" parent="."]
+layout_mode = 0
+offset_left = 96.0
+offset_top = 420.0
+offset_right = 376.0
+offset_bottom = 660.0
+theme_override_constants/separation = 24
+
+[node name="PlayButton" type="TextureButton" parent="Buttons"]
+custom_minimum_size = Vector2(280, 81.7)
+layout_mode = 2
+texture_normal = ExtResource("3_play")
+ignore_texture_size = true
+stretch_mode = 4
+
+[node name="SettingsButton" type="TextureButton" parent="Buttons"]
+custom_minimum_size = Vector2(280, 76.8)
+layout_mode = 2
+texture_normal = ExtResource("4_settings")
+ignore_texture_size = true
+stretch_mode = 4
+
+[node name="QuitButton" type="TextureButton" parent="Buttons"]
+custom_minimum_size = Vector2(280, 83.1)
+layout_mode = 2
+texture_normal = ExtResource("5_quit")
+ignore_texture_size = true
+stretch_mode = 4
+
+[node name="SettingsPanel" type="ColorRect" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.85)
+
+[node name="SettingsLabel" type="Label" parent="SettingsPanel"]
+layout_mode = 0
+offset_left = 96.0
+offset_top = 400.0
+offset_right = 900.0
+offset_bottom = 480.0
+theme_override_font_sizes/font_size = 40
+text = "Settings — Coming Soon"
+
+[node name="BackButton" type="Button" parent="SettingsPanel"]
+layout_mode = 0
+offset_left = 96.0
+offset_top = 500.0
+offset_right = 296.0
+offset_bottom = 550.0
+text = "Back"
