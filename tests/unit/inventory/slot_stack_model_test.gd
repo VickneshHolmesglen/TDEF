@@ -291,3 +291,100 @@ func test_restore_save_data_rejects_malformed_data_and_returns_false() -> void:
 
 	var ok_missing_key: bool = _inventory.restore_save_data({"slots": []})
 	assert_bool(ok_missing_key).is_false()
+
+
+# ---------------------------------------------------------------------------
+# TD-inv-001: restore_save_data() defense-in-depth range/collision validation
+# against a hand-edited or corrupted save file (not a reachable path via the
+# real writer, get_save_data() — these tests tamper with well-formed output
+# to construct each malformed case).
+# ---------------------------------------------------------------------------
+
+func test_restore_save_data_rejects_negative_quantity() -> void:
+	_inventory.add_stackable(_make_stackable_definition(&"frost_silk"), 5)
+	var data: Dictionary = _inventory.get_save_data()
+	var slots: Array = data["slots"] as Array
+	for entry: Variant in slots:
+		var entry_dict: Dictionary = entry as Dictionary
+		if not entry_dict.is_empty() and entry_dict.get("item_id", "") == "frost_silk":
+			entry_dict["quantity"] = -1
+
+	var restored := Inventory.new()
+	assert_bool(restored.restore_save_data(data)).is_false()
+	restored.free()
+
+
+func test_restore_save_data_rejects_instance_id_below_negative_one() -> void:
+	_inventory.add_unique_item(_make_unique_definition(&"iron_sword"))
+	var data: Dictionary = _inventory.get_save_data()
+	var slots: Array = data["slots"] as Array
+	for entry: Variant in slots:
+		var entry_dict: Dictionary = entry as Dictionary
+		if not entry_dict.is_empty() and entry_dict.get("item_id", "") == "iron_sword":
+			entry_dict["instance_id"] = -2
+
+	var restored := Inventory.new()
+	assert_bool(restored.restore_save_data(data)).is_false()
+	restored.free()
+
+
+func test_restore_save_data_rejects_duplicate_instance_ids_across_slots() -> void:
+	_inventory.add_unique_item(_make_unique_definition(&"iron_sword"))
+	_inventory.add_unique_item(_make_unique_definition(&"steel_axe"))
+	var data: Dictionary = _inventory.get_save_data()
+	var slots: Array = data["slots"] as Array
+	var first_instance_id: Variant = null
+	for entry: Variant in slots:
+		var entry_dict: Dictionary = entry as Dictionary
+		if entry_dict.is_empty():
+			continue
+		if first_instance_id == null:
+			first_instance_id = entry_dict["instance_id"]
+		else:
+			entry_dict["instance_id"] = first_instance_id  # force a collision
+
+	var restored := Inventory.new()
+	assert_bool(restored.restore_save_data(data)).is_false()
+	restored.free()
+
+
+func test_restore_save_data_rejects_instance_id_at_or_above_next_instance_id() -> void:
+	_inventory.add_unique_item(_make_unique_definition(&"iron_sword"))
+	var data: Dictionary = _inventory.get_save_data()
+	var slots: Array = data["slots"] as Array
+	for entry: Variant in slots:
+		var entry_dict: Dictionary = entry as Dictionary
+		if not entry_dict.is_empty() and entry_dict.get("item_id", "") == "iron_sword":
+			entry_dict["instance_id"] = data["next_instance_id"]  # would collide with the next real draw
+
+	var restored := Inventory.new()
+	assert_bool(restored.restore_save_data(data)).is_false()
+	restored.free()
+
+
+func test_restore_save_data_rejects_unique_slot_quantity_exceeding_cap() -> void:
+	_inventory.add_unique_item(_make_unique_definition(&"iron_sword"))
+	var data: Dictionary = _inventory.get_save_data()
+	var slots: Array = data["slots"] as Array
+	for entry: Variant in slots:
+		var entry_dict: Dictionary = entry as Dictionary
+		if not entry_dict.is_empty() and entry_dict.get("item_id", "") == "iron_sword":
+			entry_dict["quantity"] = Inventory.STACK_CAP_UNIQUE + 1
+
+	var restored := Inventory.new()
+	assert_bool(restored.restore_save_data(data)).is_false()
+	restored.free()
+
+
+func test_restore_save_data_rejects_stackable_quantity_exceeding_cap() -> void:
+	_inventory.add_stackable(_make_stackable_definition(&"frost_silk"), 5)
+	var data: Dictionary = _inventory.get_save_data()
+	var slots: Array = data["slots"] as Array
+	for entry: Variant in slots:
+		var entry_dict: Dictionary = entry as Dictionary
+		if not entry_dict.is_empty() and entry_dict.get("item_id", "") == "frost_silk":
+			entry_dict["quantity"] = Inventory.STACK_CAP_STACKABLE + 1
+
+	var restored := Inventory.new()
+	assert_bool(restored.restore_save_data(data)).is_false()
+	restored.free()

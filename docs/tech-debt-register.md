@@ -1587,10 +1587,10 @@ Remove the erroneous `config/` prefix from both keys.
   this config fix introduces no regressions.
 - [x] This entry closed.
 
-## TD-inv-001 — Inventory's `restore_save_data()` lacks defense-in-depth range/collision validation on restored data
+## TD-inv-001 — Inventory's `restore_save_data()` lacks defense-in-depth range/collision validation on restored data (fixed)
 
 **Logged**: 2026-07-15
-**Fixed**: Not yet
+**Fixed**: 2026-07-31
 **Story**: Story 001 (Slot & Stack Model, Epic 03) — flagged during `/code-review`
 **Severity**: Low — no known reachable path produces the malformed condition today (the only writer of save data is `get_save_data()` itself, which always emits well-formed output); this is defense against a hand-edited or future-corrupted save file, matching a risk ADR-0016 itself calls out in its Consequences > Negative section as needing unit-test coverage.
 **Area**: `src/core/inventory/inventory.gd`
@@ -1610,12 +1610,16 @@ Separately, `add_stackable()` has no `quantity <= 0` guard — a zero or negativ
 - Add unit tests locking down both behaviors (currently untested per the QA testability review accompanying this story's `/code-review`).
 
 ### Resolution
-- [ ] Not yet started.
+- [x] `add_stackable()` guard already closed via `TD-inv-006` (2026-07-31) — same fix, tracked under that entry.
+- [x] `restore_save_data()` bounds/collision checks added (2026-07-31): `quantity >= 0`; per-slot cap check against `STACK_CAP_UNIQUE`/`STACK_CAP_STACKABLE` depending on whether `instance_id == -1`; `instance_id >= -1`; duplicate-`instance_id`-across-restored-slots rejection; `instance_id >= next_instance_id` collision rejection.
+- [x] 6 new tests added to `tests/unit/inventory/slot_stack_model_test.gd` (negative quantity, instance_id below -1, duplicate instance_ids, instance_id at/above next_instance_id, unique-slot quantity over cap, stackable quantity over cap) — each tampers with real `get_save_data()` output rather than hand-building malformed data, matching this file's own existing convention.
+- [x] Live-verified: full project regression 1812/1812, 0 errors, 0 failures.
+- [x] This entry closed.
 
-## TD-inv-002 — Tab categorization test gaps + story-type header mismatch
+## TD-inv-002 — Tab categorization test gaps + story-type header mismatch (fixed)
 
 **Logged**: 2026-07-15
-**Fixed**: Not yet
+**Fixed**: 2026-07-31
 **Story**: Story 002 (Tab Categorization, Epic 03) — flagged during `/code-review`
 **Severity**: Low — cosmetic/test-completeness only, no known reachable defect.
 **Area**: `src/core/inventory/inventory.gd` (`get_tab_for_item_type()`), `tests/unit/inventory/tab_categorization_test.gd`, `production/epics/epic-03-core-economy/story-002-tab-categorization.md`
@@ -1633,7 +1637,10 @@ Separately, `add_stackable()` has no `quantity <= 0` guard — a zero or negativ
 - No code fix needed for item 3 — already corrected in the story file; only a process note for `/create-stories` going forward.
 
 ### Resolution
-- [ ] Not yet started.
+- [x] Fixed (2026-07-31) — 2 new tests added to `tests/unit/inventory/tab_categorization_test.gd`: `test_get_tab_for_item_type_rejects_unknown_item_type_push_error_message` (exact `push_error` text asserted, via the established `assert_error(func...).is_push_error(...)` combinator) and `test_get_tab_for_item_type_rejects_empty_string_name` (`&""` as its own distinct case).
+- [x] Item 3: no code fix needed, as originally noted — process-note-only, already applied.
+- [x] Live-verified: full project regression 1812/1812, 0 errors, 0 failures.
+- [x] This entry closed.
 
 ## TD-inv-003 — Slot expansion's rarity resolution is caller-supplied, not resolved from real Inventory contents; no expansion-completion event; one test gap
 
@@ -1769,10 +1776,10 @@ Separately, the godot-specialist review flagged that raw `InputEventJoypadMotion
 ### Resolution
 - [ ] Not yet started.
 
-## TD-econ-001 — ResourceEconomy: heterogeneous-batch resolution (two different drop_table_ids in one monsters_died_batch call) untested
+## TD-econ-001 — ResourceEconomy: heterogeneous-batch resolution (two different drop_table_ids in one monsters_died_batch call) untested (fixed)
 
 **Logged**: 2026-07-16
-**Fixed**: Not yet
+**Fixed**: 2026-07-31
 **Story**: Story 010 (Drop Table Schema & Registry Lookup, Epic 03) — flagged during `/code-review`
 **Severity**: Low — no known reachable defect; `_on_monsters_died_batch()`'s loop structure (`for payload in payloads: _resolve_drop_table(payload)`) has no shared/accumulated state between iterations by construction, so a heterogeneous-batch bug is unlikely, but it is genuinely unproven by any test.
 **Area**: `src/core/resource_economy/resource_economy.gd`, `tests/unit/resource_economy/drop_table_schema_registry_test.gd`
@@ -1786,7 +1793,9 @@ Separately, the godot-specialist review flagged that raw `InputEventJoypadMotion
 Add a test seeding two different `DropTableResource`s, constructing a `monsters_died_batch` payload array with one entry per table, and asserting each resolves independently to its own correct table (not the other's).
 
 ### Resolution
-- [ ] Not yet started.
+- [x] Fixed (2026-07-31) — added `test_resource_economy_heterogeneous_batch_resolves_each_entry_to_its_own_table` to `tests/unit/resource_economy/drop_table_schema_registry_test.gd`, directly beside the existing same-table batch test.
+- [x] Live-verified: full project regression 1812/1812, 0 errors, 0 failures.
+- [x] This entry closed.
 
 ## TD-econ-002 — [RESOLVED] wave_end despawns currently award spurious materials until Story 011 lands
 
@@ -1826,10 +1835,10 @@ Confirm with game-designer/economy-designer whether `kill_source` is the intende
 ### Resolution
 - [ ] Not yet started.
 
-## TD-econ-004 — Drop occurrence/quantity: two testability gaps (multi-entry-per-table Rule 9; realistic-rate-in-pipeline)
+## TD-econ-004 — Drop occurrence/quantity: two testability gaps (multi-entry-per-table Rule 9; realistic-rate-in-pipeline) (gap 2 fixed)
 
 **Logged**: 2026-07-16
-**Fixed**: Not yet
+**Fixed**: Gap 2 fixed 2026-07-31; gap 1 remains documented residual risk (unchanged, low priority)
 **Story**: Story 008 (Drop Occurrence & Quantity Resolution, Epic 03) — flagged during `/code-review`
 **Severity**: Low — both are coverage gaps, not known defects; the underlying code paths are low-complexity.
 **Area**: `src/core/resource_economy/resource_economy.gd`, `tests/unit/resource_economy/drop_occurrence_quantity_test.gd`
@@ -1845,12 +1854,14 @@ Confirm with game-designer/economy-designer whether `kill_source` is the intende
 - Gap 1 is lower priority given the trivial branch complexity (`if not ...: continue`) — acceptable as documented residual risk.
 
 ### Resolution
-- [ ] Not yet started.
+- [x] Gap 2 fixed (2026-07-31) — added `test_resource_economy_resolves_multiple_entries_in_one_table_independently_on_a_single_kill` to `tests/unit/resource_economy/drop_occurrence_quantity_test.gd`: a 2-entry table (different `material_id`/`base_quantity` per entry), one `monster_died` event, asserts both entries resolve to their own independently-computed quantity.
+- [ ] Gap 1 remains open, as originally assessed — lower priority, acceptable documented residual risk, not fixed this pass.
+- [x] Live-verified: full project regression 1812/1812, 0 errors, 0 failures.
 
-## TD-econ-005 — Despawn suppression: no all-wave_end-batch test (defense-in-depth)
+## TD-econ-005 — Despawn suppression: no all-wave_end-batch test (defense-in-depth) (fixed)
 
 **Logged**: 2026-07-16
-**Fixed**: Not yet
+**Fixed**: 2026-07-31
 **Story**: Story 011 (Despawn Drop Suppression, Epic 03) — flagged during `/code-review`
 **Severity**: Low — not a known gap in current coverage (the mixed-batch test already proves per-payload suppression), purely defense-in-depth against a future batch-iteration regression.
 **Area**: `tests/integration/resource_economy/despawn_drop_suppression_test.gd`
@@ -1864,5 +1875,7 @@ The existing `test_batch_with_normal_kill_and_wave_end_payload_resolves_only_nor
 Add a test: `monsters_died_batch` with 2+ wave_end payloads against a guaranteed-drop table, assert 0 `materials_earned` emissions.
 
 ### Resolution
-- [ ] Not yet started.
+- [x] Fixed (2026-07-31) — added `test_batch_with_multiple_wave_end_payloads_suppresses_all_of_them` to `tests/integration/resource_economy/despawn_drop_suppression_test.gd`: a batch of 3 all-wave_end payloads against a guaranteed-drop table, asserts 0 `materials_earned` emissions.
+- [x] Live-verified: full project regression 1812/1812, 0 errors, 0 failures.
+- [x] This entry closed.
 

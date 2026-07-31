@@ -243,6 +243,31 @@ func test_resource_economy_resolves_registered_table_identically_via_monsters_di
 	assert_object(batch_result_b).is_same(table)
 
 
+## TD-econ-001: the existing batch test above only proves same-table batch
+## entries don't share rounding state — it never proved a HETEROGENEOUS batch
+## (two different drop_table_ids in one call) resolves each entry to its OWN
+## correct table rather than, e.g., an indexing/closure mistake resolving
+## every entry against the first payload's id.
+func test_resource_economy_heterogeneous_batch_resolves_each_entry_to_its_own_table() -> void:
+	var table_a: DropTableResource = _make_drop_table(&"goblin_basic_hetero_a", 1)
+	var table_b: DropTableResource = _make_drop_table(&"goblin_basic_hetero_b", 2)
+	_seed_drop_table(table_a)
+	_seed_drop_table(table_b)
+
+	var batch: Array[MonsterDiedEvent] = [
+		_make_died_event(&"goblin_basic_hetero_a", 1),
+		_make_died_event(&"goblin_basic_hetero_b", 2),
+	]
+	GEventBus.monsters_died_batch.emit(batch)
+
+	var result_a: DropTableResource = _re._resolve_drop_table(batch[0])
+	var result_b: DropTableResource = _re._resolve_drop_table(batch[1])
+
+	assert_object(result_a).is_same(table_a)
+	assert_object(result_b).is_same(table_b)
+	assert_object(result_a).is_not_same(table_b)
+
+
 # ---------------------------------------------------------------------------
 # AC-13: unregistered drop_table_id handling
 # ---------------------------------------------------------------------------

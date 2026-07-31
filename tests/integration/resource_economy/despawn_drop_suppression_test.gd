@@ -141,3 +141,22 @@ func test_batch_with_normal_kill_and_wave_end_payload_resolves_only_normal_kill(
 	assert_str(args[0]).is_equal("boss_core")
 	assert_int(args[1]).is_equal(1)
 	assert_str(args[2]).is_equal("tower")
+
+
+## TD-econ-005 (defense-in-depth): the mixed-batch test above only proves
+## suppression is per-payload for a batch with ONE wave_end entry. No test
+## exercised a batch of 2+ ALL-wave_end payloads — this guards against an
+## off-by-one/early-exit bug that only suppresses the FIRST wave_end entry
+## in a batch rather than every one of them.
+func test_batch_with_multiple_wave_end_payloads_suppresses_all_of_them() -> void:
+	var table: DropTableResource = _make_guaranteed_drop_table(&"ac07_batch_all_wave_end")
+	_seed_drop_table(table)
+
+	var batch: Array[MonsterDiedEvent] = [
+		_make_died_event(&"ac07_batch_all_wave_end", ResourceEconomy.KILL_SOURCE_WAVE_END),
+		_make_died_event(&"ac07_batch_all_wave_end", ResourceEconomy.KILL_SOURCE_WAVE_END),
+		_make_died_event(&"ac07_batch_all_wave_end", ResourceEconomy.KILL_SOURCE_WAVE_END),
+	]
+	GEventBus.monsters_died_batch.emit(batch)
+
+	assert_int(_spy.count("materials_earned")).is_equal(0)

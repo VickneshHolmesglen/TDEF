@@ -1066,6 +1066,12 @@ func restore_save_data(data: Dictionary) -> bool:
 
 	var restored_slots: Array[InventorySlot] = []
 	restored_slots.resize(expected_slot_count)
+	## TD-inv-001: defense-in-depth against a hand-edited or corrupted save —
+	## the only real writer (get_save_data()) always emits well-formed output
+	## today, but a malformed instance_id (duplicate, or >= the restored
+	## counter) would otherwise silently set up a future collision the
+	## moment a new unique item is added.
+	var seen_instance_ids: Dictionary = {}  # instance_id(int) -> true
 
 	for i: int in range(expected_slot_count):
 		var entry_raw: Variant = slots_array[i]
@@ -1111,6 +1117,25 @@ func restore_save_data(data: Dictionary) -> bool:
 			return false
 		if not (imbued_runes_raw is Array):
 			return false
+
+		var quantity_val: int = quantity_raw as int
+		var instance_id_val: int = instance_id_raw as int
+		if quantity_val < 0:
+			return false
+		if instance_id_val < -1:
+			return false
+		if instance_id_val != -1:
+			# Unique-instance slot (Equipment / stat-rolled Tower Component).
+			if quantity_val > STACK_CAP_UNIQUE:
+				return false
+			if instance_id_val >= (next_id_raw as int):
+				return false  # would collide with a future add_unique_item() draw
+			if seen_instance_ids.has(instance_id_val):
+				return false  # duplicate instance_id across restored slots
+			seen_instance_ids[instance_id_val] = true
+		else:
+			if quantity_val > STACK_CAP_STACKABLE:
+				return false
 
 		var restored_overrides: Dictionary[StringName, float] = {}
 		for key: Variant in (overrides_raw as Dictionary):

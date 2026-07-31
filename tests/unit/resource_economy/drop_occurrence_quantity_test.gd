@@ -175,6 +175,38 @@ func test_resource_economy_resolves_batch_entries_independently_no_shared_roundi
 		assert_int(entry_args[1]).is_equal(6)
 
 
+## TD-econ-004 gap 2: existing coverage only proves independence ACROSS
+## separate monster_died/batch events against single-entry tables. No test
+## proved Rule 9's "no shared/accumulated rounding state" for MULTIPLE
+## DropEntry items within ONE table on a single kill.
+func test_resource_economy_resolves_multiple_entries_in_one_table_independently_on_a_single_kill() -> void:
+	var table := DropTableResource.new()
+	table.drop_table_id = &"multi_entry_single_kill"
+	table.base_drop_rate = 1.0  # guaranteed occurrence for both entries
+	table.guaranteed_min_quantity = 1
+
+	var entry_a := DropEntry.new()
+	entry_a.material_id = &"goblin_hide"
+	entry_a.base_quantity = 1
+	var entry_b := DropEntry.new()
+	entry_b.material_id = &"goblin_fang"
+	entry_b.base_quantity = 3
+	table.entries = [entry_a, entry_b]
+	_seed_drop_table(table)
+
+	# base_quantity=1, wave_reward_scalar=4.768, no Menagerie bonus -> round(4.768) = 5
+	# base_quantity=3, same scalar -> round(14.304) = 14
+	GEventBus.monster_died.emit(_make_died_event(&"multi_entry_single_kill", 4.768, "tower"))
+
+	assert_int(_spy.count("materials_earned")).is_equal(2)
+	var emissions: Array = _spy.emissions["materials_earned"]
+	var by_material: Dictionary = {}
+	for entry_args: Array in emissions:
+		by_material[entry_args[0]] = entry_args[1]
+	assert_int(by_material.get("goblin_hide", -1)).is_equal(5)
+	assert_int(by_material.get("goblin_fang", -1)).is_equal(14)
+
+
 # ---------------------------------------------------------------------------
 # AC-12 [Statistical]: Formula 1's occurrence rate, isolated from full drop
 # resolution. Real, unseeded randf() over the AC's own load-bearing 10,000-sample

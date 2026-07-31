@@ -48,3 +48,19 @@ func test_get_tab_for_item_type_resolves_crafted_good() -> void:
 ## re-test validate() itself.
 func test_get_tab_for_item_type_rejects_unknown_item_type() -> void:
 	assert_that(Inventory.get_tab_for_item_type(&"NotARealCategory")).is_equal(&"")
+
+
+## TD-inv-002: the "fail loudly" half of AC-7's edge case (push_error firing on
+## rejection) was previously unasserted — only the &"" return value was
+## checked. Uses gdUnit4's established assert_error(func...).is_push_error(...)
+## combinator (precedent: game_data_registry_test.gd).
+func test_get_tab_for_item_type_rejects_unknown_item_type_push_error_message() -> void:
+	await assert_error(func() -> void: Inventory.get_tab_for_item_type(&"NotARealCategory")) \
+		.is_push_error("[Inventory] get_tab_for_item_type: unknown item_type 'NotARealCategory' — not one of the 4 fixed tabs.")
+
+
+## TD-inv-002: an empty StringName (&"", an uninitialized/default item_type)
+## is a distinct case from "a wrong but non-empty string" and was not
+## previously tested on its own.
+func test_get_tab_for_item_type_rejects_empty_string_name() -> void:
+	assert_that(Inventory.get_tab_for_item_type(&"")).is_equal(&"")
