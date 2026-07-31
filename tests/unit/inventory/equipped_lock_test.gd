@@ -82,6 +82,24 @@ func test_remove_item_on_empty_slot_rejected() -> void:
 	assert_bool(removed).is_false()
 
 
+## TD-inv-004: remove_item()'s documented/implemented behavior is a full null
+## regardless of quantity (Story 006's consume_stackable() owns partial
+## depletion, a separate method) -- no existing test exercised this against a
+## stackable slot holding a PARTIAL quantity specifically (prior stackable
+## coverage was full-stack or single-unit only). A future change that
+## "helpfully" turned remove_item() into a decrement would not have been
+## caught without this regression guard.
+func test_remove_item_on_unlocked_partial_quantity_stackable_slot_nulls_the_whole_slot_not_decrements() -> void:
+	var def := _make_stackable_definition(&"frost_silk")
+	_inventory.add_stackable(def, 50)  # partial quantity, well under the 99 cap
+
+	var removed: bool = _inventory.remove_item(0)
+
+	assert_bool(removed).is_true()
+	assert_bool(_inventory.is_slot_empty(0)).is_true()
+	assert_bool(_inventory.get_slot_contents(0).is_empty()).is_true()
+
+
 func test_remove_item_on_out_of_range_index_rejected() -> void:
 	assert_bool(_inventory.remove_item(-1)).is_false()
 	assert_bool(_inventory.remove_item(_inventory.get_slot_count())).is_false()

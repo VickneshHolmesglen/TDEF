@@ -194,6 +194,20 @@ func test_expansion_missing_rarity_key_entirely_treated_as_zero_available() -> v
 	assert_int(_inventory.get_current_slot_tier()).is_equal(0)
 
 
+## TD-inv-003 item 3: an explicit {key: 0} must reject identically to the
+## missing-key case above — previously only guaranteed by code inspection of
+## _can_afford_expansion()'s `.get(key, 0)` default, not by a test.
+func test_expansion_explicit_zero_rarity_key_treated_identically_to_missing_key() -> void:
+	var available: Dictionary[StringName, int] = {
+		SlotExpansionCostTable.KEY_COMMON: 0,  # explicitly present, but zero
+	}
+
+	var expanded: bool = _inventory.attempt_expand_slots(available)
+
+	assert_bool(expanded).is_false()
+	assert_int(_inventory.get_current_slot_tier()).is_equal(0)
+
+
 # ---------------------------------------------------------------------------
 # AC-16: max-tier expansion block — eligibility checkable before attempting,
 # no deduction, no side effects

@@ -304,6 +304,48 @@ func test_consume_stackable_zero_or_negative_quantity_rejected() -> void:
 # Index stability across the whole array — not just the target slot
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# TD-inv-005: push_error message content — only the return value/state was
+# previously asserted for these rejection paths, never the diagnostic text
+# itself. Uses gdUnit4's established assert_error(func...).is_push_error(...)
+# combinator (precedent: tests/unit/game_data_registry/game_data_registry_test.gd),
+# not a new idiom for this codebase.
+# ---------------------------------------------------------------------------
+
+func test_consume_stackable_null_definition_push_error_message() -> void:
+	await assert_error(func() -> void: _inventory.consume_stackable(null, 1)) \
+		.is_push_error("[Inventory] consume_stackable: definition must not be null.")
+
+
+func test_consume_stackable_unique_instance_definition_push_error_message() -> void:
+	var def := _make_unique_definition(&"iron_sword")
+
+	await assert_error(func() -> void: _inventory.consume_stackable(def, 1)) \
+		.is_push_error("[Inventory] consume_stackable: 'iron_sword' is a unique-instance item — use remove_item().")
+
+
+func test_consume_stackable_zero_or_negative_quantity_push_error_message() -> void:
+	var def := _make_stackable_definition(&"iron_ore")
+
+	await assert_error(func() -> void: _inventory.consume_stackable(def, -5)) \
+		.is_push_error("[Inventory] consume_stackable: quantity_to_consume must be > 0 (got -5).")
+
+
+func test_consume_stackable_item_not_found_push_error_message() -> void:
+	var def := _make_stackable_definition(&"iron_ore")
+
+	await assert_error(func() -> void: _inventory.consume_stackable(def, 1)) \
+		.is_push_error("[Inventory] consume_stackable: no stackable slot found holding 'iron_ore'.")
+
+
+func test_consume_stackable_insufficient_quantity_push_error_message() -> void:
+	var def := _make_stackable_definition(&"iron_ore")
+	_inventory.add_stackable(def, 30)
+
+	await assert_error(func() -> void: _inventory.consume_stackable(def, 40)) \
+		.is_push_error("[Inventory] consume_stackable: no unlocked slot holding 'iron_ore' has sufficient quantity for 40 — rejected outright, no partial or cross-slot consumption.")
+
+
 func test_consume_stackable_does_not_change_any_other_slot_index() -> void:
 	var target_def := _make_stackable_definition(&"iron_ore")
 	var other_def_a := _make_unique_definition(&"iron_sword")

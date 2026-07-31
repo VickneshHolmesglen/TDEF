@@ -1605,9 +1605,10 @@ Separately, `add_stackable()` has no `quantity <= 0` guard — a zero or negativ
 - Item 3: add a paired test with `{&"common": 0}` (or the relevant rarity key set explicitly to 0) at a tier that requires that rarity, asserting identical rejection/no-side-effects to the missing-key case.
 
 ### Resolution
-- [ ] Not yet started.
+- [x] Item 3 fixed (2026-07-31) — added `test_expansion_explicit_zero_rarity_key_treated_identically_to_missing_key` to `tests/unit/inventory/slot_expansion_test.gd`, directly beside the existing missing-key test, proving `{KEY_COMMON: 0}` rejects identically (`expanded == false`, tier unchanged).
+- [ ] Items 1 and 2 remain genuinely blocked on other systems (Crafting GDD, Inventory's broader EventBus emission story) — not re-opened here, unchanged from the original assessment.
 
-## TD-inv-004 — `remove_item()` on a partial-quantity stackable slot is unasserted; AC-12 wording mismatch with Story 001's data model
+## TD-inv-004 — `remove_item()` on a partial-quantity stackable slot is unasserted; AC-12 wording mismatch with Story 001's data model (item 1 fixed)
 
 **Logged**: 2026-07-15
 **Fixed**: Not yet
@@ -1626,26 +1627,29 @@ Separately, `add_stackable()` has no `quantity <= 0` guard — a zero or negativ
 - No further action needed on item 2 — already corrected in the story file.
 
 ### Resolution
-- [ ] Not yet started. **Note (2026-07-15)**: Story 006 added `consume_stackable()` (a separate method from `remove_item()`) with its own full-depletion-nulls-slot test coverage, but did not add the specific `remove_item()`-on-partial-quantity test this entry asks for — that gap is still open, distinct from Story 006's new method.
+- [x] Item 1 fixed (2026-07-31) — added `test_remove_item_on_unlocked_partial_quantity_stackable_slot_nulls_the_whole_slot_not_decrements` to `tests/unit/inventory/equipped_lock_test.gd`: adds 50/99 of a stackable item, calls `remove_item()`, asserts the slot is fully null (not decremented to 49 or similar).
+- [x] Item 2: no further action needed — already corrected in the story file, as originally noted.
+- [x] This entry closed (2026-07-31) — live-verified: `equipped_lock_test.gd` passing alongside the rest of `tests/unit/inventory/` (94/94, 0 errors, 0 orphans); full project regression 1793/1793, 0 errors, 0 failures.
 
-## TD-inv-005 — `consume_stackable()` push_error message content unasserted
+## TD-inv-005 — `consume_stackable()` push_error message content unasserted (fixed)
 
 **Logged**: 2026-07-15
-**Fixed**: Not yet
+**Fixed**: 2026-07-31
 **Story**: Story 006 (Partial Stack Consumption Stability, Epic 03) — flagged during `/code-review`
 **Severity**: Low — return-value/state behavior (what callers actually depend on) is fully tested; only the diagnostic message text itself is unverified.
 **Area**: `src/core/inventory/inventory.gd` (`consume_stackable()`), `tests/unit/inventory/stack_consumption_test.gd`
 
 ### Gap
 
-None of `consume_stackable()`'s 6 `push_error()` call sites (null definition, unique-instance rejection, quantity<=0, item-not-found, no-unlocked-slot-with-sufficient-quantity) have their message content asserted — only the return value (`0`) and non-emission are checked. A future refactor could silently corrupt the error text (wrong interpolated value, wrong wording) without any test failing.
+None of `consume_stackable()`'s `push_error()` call sites (null definition, unique-instance rejection, quantity<=0, item-not-found, no-unlocked-slot-with-sufficient-quantity — 5 sites; this entry's original "6" count was itself slightly off) had their message content asserted — only the return value (`0`) and non-emission were checked. A future refactor could silently corrupt the error text (wrong interpolated value, wrong wording) without any test failing.
 
 ### Recommended fix
 
 Add at least one `push_error` content assertion using this codebase's established GdUnit4 error-capture facility, if used elsewhere, for consistency with how thoroughly the rest of this method is tested.
 
 ### Resolution
-- [ ] Not yet started.
+- [x] Fixed (2026-07-31) — added 5 new tests to `tests/unit/inventory/stack_consumption_test.gd` using gdUnit4's established `assert_error(func...).is_push_error(...)` combinator (precedent: `tests/unit/game_data_registry/game_data_registry_test.gd`), one per call site: null definition, unique-instance rejection, zero/negative quantity, item-not-found, insufficient-quantity. All 5 exact message strings verified against the real source.
+- [x] This entry closed (2026-07-31) — live-verified: 94/94 across `tests/unit/inventory/`, 0 errors, 0 orphans; full project regression 1793/1793, 0 errors, 0 failures.
 
 ## TD-inv-006 — `add_stackable()` has no `quantity <= 0` guard; now surfaces via a negative-quantity EventBus payload (fixed)
 
