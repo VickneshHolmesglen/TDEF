@@ -1647,10 +1647,10 @@ Add at least one `push_error` content assertion using this codebase's establishe
 ### Resolution
 - [ ] Not yet started.
 
-## TD-inv-006 — `add_stackable()` has no `quantity <= 0` guard; now surfaces via a negative-quantity EventBus payload
+## TD-inv-006 — `add_stackable()` has no `quantity <= 0` guard; now surfaces via a negative-quantity EventBus payload (fixed)
 
 **Logged**: 2026-07-15
-**Fixed**: Not yet
+**Fixed**: 2026-07-31
 **Story**: Story 005 (Mid-Mission Pickup Rejection, Epic 03) — flagged independently by both the GDScript specialist and QA tester during `/code-review`
 **Severity**: Low — no crash or corruption; current control flow happens to be inert for `quantity <= 0` (both fill/overflow loops are skipped, `placed == 0`), but this is unverified by any test, and Story 005's new emission logic means a negative `quantity` would now produce a `GEventBus.item_pickup_rejected` payload with a negative `quantity` field — a malformed-looking signal a downstream subscriber (e.g. a future Mission HUD toast) shouldn't have to defend against.
 **Area**: `src/core/inventory/inventory.gd` (`add_stackable()`), `tests/integration/inventory/pickup_rejection_test.gd`
@@ -1665,7 +1665,10 @@ Add at least one `push_error` content assertion using this codebase's establishe
 - Add a regression test (`test_add_stackable_zero_or_negative_quantity_rejected` or similar, matching `slot_stack_model_test.gd`'s naming for the analogous `add_unique_item()` case) proving no signal fires and no mutation occurs.
 
 ### Resolution
-- [ ] Not yet started.
+- [x] Fixed (2026-07-31) — added the guard to `add_stackable()` (`src/core/inventory/inventory.gd`) exactly mirroring `consume_stackable()`'s existing idiom: `if quantity <= 0: push_error(...); return quantity`.
+- [x] Regression tests added (2026-07-31) — `test_add_stackable_rejects_zero_or_negative_quantity` in `tests/unit/inventory/slot_stack_model_test.gd` (proves no mutation: all discretionary slots remain empty for both `quantity=0` and `quantity=-5`); `test_add_stackable_zero_or_negative_quantity_does_not_emit_either_signal` in `tests/integration/inventory/pickup_rejection_test.gd` (proves neither `item_added` nor `item_pickup_rejected` fires, via real `EventBusSpy` against the real `GEventBus`) — closing both halves the recommended fix asked for.
+- [x] Live-verified (2026-07-31) — both affected test files: 28/28 passing, 0 errors, 0 orphans. Full project regression: 1786/1786, 0 errors, 0 failures.
+- [x] This entry closed.
 
 ## TD-ui-001 — InventoryScreen's gamepad dual-focus behavior verified via keyboard only; physical hardware confirmation still open
 

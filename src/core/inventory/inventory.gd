@@ -577,6 +577,9 @@ func add_stackable(definition: ItemDefinitionResource, quantity: int) -> int:
 	if definition.is_unique_instance:
 		push_error("[Inventory] add_stackable: '%s' is a unique-instance item — use add_unique_item()." % definition.item_id)
 		return quantity
+	if quantity <= 0:
+		push_error("[Inventory] add_stackable: quantity must be > 0 (got %d)." % quantity)
+		return quantity
 
 	var remaining: int = quantity
 

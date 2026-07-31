@@ -180,6 +180,23 @@ func test_add_stackable_rejects_unique_instance_definition() -> void:
 		assert_bool(_inventory.is_slot_empty(i)).is_true()
 
 
+## TD-inv-006: add_stackable() previously had no quantity<=0 guard, unlike its
+## sibling consume_stackable() -- a negative quantity would flow through to a
+## real item_pickup_rejected EventBus payload with a negative field once
+## Story 005 wired that emission in. Guard mirrors consume_stackable()'s
+## existing push_error idiom exactly.
+func test_add_stackable_rejects_zero_or_negative_quantity() -> void:
+	var def := _make_stackable_definition(&"frost_silk")
+
+	var leftover_zero: int = _inventory.add_stackable(def, 0)
+	var leftover_negative: int = _inventory.add_stackable(def, -5)
+
+	assert_int(leftover_zero).is_equal(0)
+	assert_int(leftover_negative).is_equal(-5)
+	for i: int in range(5):
+		assert_bool(_inventory.is_slot_empty(i)).is_true()
+
+
 # ---------------------------------------------------------------------------
 # AC-18: stat-rolled duplicates never merge
 # ---------------------------------------------------------------------------

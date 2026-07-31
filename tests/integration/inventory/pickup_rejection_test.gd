@@ -215,6 +215,18 @@ func test_add_stackable_wrong_type_definition_does_not_emit_rejected() -> void:
 	assert_bool(_spy.was_emitted("item_added")).is_false()
 
 
+## TD-inv-006: a zero/negative quantity is a caller error, not a fullness
+## condition — same category as the null/wrong-type cases above. Neither
+## signal may fire; a malformed negative-quantity item_pickup_rejected
+## payload was exactly the real risk this guard closes.
+func test_add_stackable_zero_or_negative_quantity_does_not_emit_either_signal() -> void:
+	var leftover: int = _inventory.add_stackable(_make_stackable_definition(&"iron_ore"), -5)
+
+	assert_int(leftover).is_equal(-5)
+	assert_bool(_spy.was_emitted("item_pickup_rejected")).is_false()
+	assert_bool(_spy.was_emitted("item_added")).is_false()
+
+
 # ---------------------------------------------------------------------------
 # QA edge case: a rejected pickup is NOT queued — a subsequently freed slot
 # does not automatically retry/deliver it.
