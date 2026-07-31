@@ -489,10 +489,10 @@ to take effect correctly against the scene tree.
 
 ---
 
-## TD-monster-004 — AC-28/AC-40 field-scale active-agent performance never measured (real profiler required) (AC-28 fixed, AC-40 still open)
+## TD-monster-004 — AC-28/AC-40 field-scale active-agent performance never measured (real profiler required) (fixed)
 
 **Logged**: 2026-07-10
-**Fixed**: 2026-08-01 (AC-28 only — AC-40 is a distinct scenario, not measured this pass)
+**Fixed**: 2026-08-01
 **Story**: Discovered while confirming a `systems-design-2026-07-10-revalidation.md` gate-check
 follow-up (Technical Director flagged S4-10's stress test as candidate-but-unconfirmed
 closing evidence for this exact risk)
@@ -535,8 +535,8 @@ optimization story, not just a measurement gap.
 
 ### Resolution
 - [x] Real evidence captured for AC-28 (2026-08-01) — 150 ACTIVE monsters (real `Grid`+`PathfindingSystem`+`MonsterManager`, real production `spawn_monster()` API, no stubs), 60 consecutive real `_physics_process()` calls, timed individually via `Time.get_ticks_usec()` and live-verified against the pinned Godot 4.6.2.stable binary through the Godot MCP bridge. **Result: avg 0.328ms/frame, max 0.857ms/frame — well within the 2.0ms budget** (16.4%/42.9% of budget respectively). Real movement confirmed directly (`distance_moved == 128` world units, matching `scaled_speed=2.0` over 1 simulated second) — an earlier pass in the same session had omitted `_is_wave_active = true` (the flag `MonsterManager._physics_process()` gates all 4 passes behind) and produced an invalid, suspiciously-fast 0.0002ms/frame reading with zero actual movement; caught by directly checking a monster's position changed, not by trusting the first number. Evidence: `production/qa/evidence/monster-perf-2026-08-01.md` (a `.md` file with real numeric measurements, not a literal `.png` profiler screenshot — matches the same already-accepted deviation `TD-perf-001` and the Tower Mastery profiling evidence both used, for the same "no interactive profiler session available in this environment" reason).
-- [ ] AC-40 (AoE death-burst, 22 simultaneous lethal hits, ≤4.0ms) remains **not measured** — a distinct scenario (damage dispatch + death/absorbed-flush under load, not movement), deliberately not conflated with AC-28's closure above. Genuinely open, well-scoped, unblocked follow-up for a future pass.
-- [ ] This entry stays open until AC-40 is also measured.
+- [x] Real evidence captured for AC-40 (2026-08-01) — 22 simultaneous lethal hits (21 STANDARD + 1 BOSS), real `MonsterManager.spawn_monster()`/`_physics_process()`, damage payloads injected directly into `_pending_damage` (bypassing the shared `GEventBus.monster_damage_taken` signal deliberately, to avoid cross-talk with whatever real scene happened to be running concurrently — the EventBus hop isn't what this AC measures). **Result: 0.128ms — 3.2% of the 4.0ms budget.** Every behavioral clause of the AC independently verified via real spy listeners, not just the timing: exactly one `monsters_died_batch` emission with all 22 payloads, zero individual `monster_died` calls (mutual exclusivity confirmed), `boss_died` fired synchronously exactly once for the BOSS entity, `active_monsters` correctly dropped 22→0. Evidence: `production/qa/evidence/monster-aoe-perf-2026-08-01.md`.
+- [x] This entry closed (2026-08-01) — both AC-28 and AC-40 now have real, live-measured evidence.
 
 ---
 

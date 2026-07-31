@@ -1057,6 +1057,8 @@ GIVEN 22 ACTIVE monsters (21 STANDARD, 1 BOSS) all receive lethal `monster_damag
 WHEN the damage pass, death sequences, and absorbed flush all complete within a single `_physics_process` call,
 THEN total Monster System CPU time for that frame does not exceed 4.0 ms; because 22 exceeds `eventbus_batch_threshold` (20), Monster System emits exactly one `monsters_died_batch` (all 22 payloads) instead of 22 individual `monster_died` events; `boss_died` still emits synchronously (unbatched) for the BOSS entity; no frame drops below 60 FPS; profiler output saved as evidence.
 
+**Measured 2026-08-01** (`TD-monster-004`): 0.128ms — **PASS**, 3.2% of budget. Every clause independently verified via real spy listeners (batch shape, mutual exclusivity, `boss_died` timing, active-count drop), not just the timing number. No interactive profiler session was available in this environment, so evidence was saved as a `.md` file with real numeric measurements instead of a literal `.png` screenshot (same accepted deviation as AC-28) — see `production/qa/evidence/monster-aoe-perf-2026-08-01.md`.
+
 **AC-43** `[Performance · BLOCKING]` — Evidence: profiler output at `production/qa/evidence/monster-waveend-perf-[date].png`
 GIVEN 150 ACTIVE monsters (the `MAX_ACTIVE_MONSTERS` cap) remain in `active_monsters` when `wave_completed` fires,
 WHEN force-removal executes (all 150 entities force-removed, each emitting `monster_died` synchronously),
