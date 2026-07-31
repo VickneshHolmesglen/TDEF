@@ -63,6 +63,15 @@ func _ready() -> void:
 	_connect_all_events()
 
 
+## Ticks Formula F3's sidechain duck envelopes once per frame. Uses this
+## project's default `PROCESS_MODE_INHERIT` — while `get_tree().paused` is
+## true (`PauseMenu`'s own mechanism), this simply stops being called, which
+## is exactly Core Rule 7's "freeze exactly where it is" requirement with no
+## bespoke pause-handling needed here.
+func _process(delta: float) -> void:
+	voice_limiter.tick_sidechain(delta)
+
+
 func _exit_tree() -> void:
 	for i in range(_connected_signals.size()):
 		if _connected_signals[i].is_connected(_connected_callables[i]):
@@ -117,11 +126,11 @@ func _wire(event_signal: Signal, callable: Callable) -> void:
 ## error. Cues with a `polyphony_group` also get Formula F1's concurrent-cue
 ## ducking applied, evaluated against the bus-wide voice count *after* this
 ## dispatch's own voice is registered (Formula F1's `N` is defined as
-## "including this one"). Cross-bus sidechain ducking (SFX->Ambient,
-## UI->Music+SFX) is a separate, still-unbuilt mechanism — the GDD specifies
-## no attack/release timing for it, so building it now would mean inventing
-## unspecified behavior; see `voice_limiter.gd`'s sidechain constants and
-## their own test file for the full note.
+## "including this one"). Every dispatch also registers a Formula F3
+## sidechain trigger against whichever cross-bus relationship its `bus`
+## qualifies for (`&"SFX"` -> SFX_TO_AMBIENT, `&"UI"` -> UI_TO_MUSIC_AND_SFX)
+## — the actual duck envelope is ticked separately, once per frame, by
+## `_process()`.
 func dispatch_cue(event_name: StringName, distance: float = 0.0) -> void:
 	if not _lookup.has(event_name):
 		return
@@ -137,6 +146,11 @@ func dispatch_cue(event_name: StringName, distance: float = 0.0) -> void:
 		_last_dispatch_voice_id = voice_limiter.trigger_voice(entry.polyphony_group)
 		var total_active_voices: int = voice_limiter.get_total_active_voice_count()
 		effective_volume = VoiceLimiter.compute_ducked_volume(effective_volume, total_active_voices)
+
+	if entry.bus == &"SFX":
+		voice_limiter.trigger_sidechain(VoiceLimiter.SFX_TO_AMBIENT)
+	elif entry.bus == &"UI":
+		voice_limiter.trigger_sidechain(VoiceLimiter.UI_TO_MUSIC_AND_SFX)
 
 	_last_played_event = event_name
 	_last_played_bus = entry.bus

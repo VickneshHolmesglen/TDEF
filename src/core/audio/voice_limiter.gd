@@ -35,7 +35,64 @@ const DUCK_FLOOR: float = 0.3  ## Formula F1's `D_floor`
 const SFX_TO_AMBIENT_DUCK_DB: float = -6.0
 const UI_TO_MUSIC_AND_SFX_DUCK_DB: float = -4.0
 
+## Formula F3 (design/quick-specs/sidechain-ducking-timing-2026-07-31.md) —
+## attack/hold/release envelope timing for the 2 sidechain duck relationships
+## above. Each relationship runs an independent ATTACKING -> HELD -> RELEASING
+## state machine; a retrigger while already ducked resets the hold countdown
+## rather than re-running the attack ramp (the anti-"pumping" rule).
+const SFX_TO_AMBIENT: StringName = &"sfx_to_ambient"
+const UI_TO_MUSIC_AND_SFX: StringName = &"ui_to_music_and_sfx"
+
+const SFX_TO_AMBIENT_ATTACK_TIME: float = 0.015
+const SFX_TO_AMBIENT_RELEASE_DELAY: float = 0.15
+const SFX_TO_AMBIENT_RELEASE_TIME: float = 0.25
+
+const UI_TO_MUSIC_AND_SFX_ATTACK_TIME: float = 0.01
+const UI_TO_MUSIC_AND_SFX_RELEASE_DELAY: float = 0.08
+const UI_TO_MUSIC_AND_SFX_RELEASE_TIME: float = 0.18
+
+enum SidechainState { RESTING, ATTACKING, HELD, RELEASING }
+
+## Per-relationship duck amount / attack / release-delay / release-time,
+## looked up by the two StringName keys above — keeps the state machine
+## below generic against either relationship rather than duplicating it.
+const _SIDECHAIN_CONFIG: Dictionary[StringName, Dictionary] = {
+	&"sfx_to_ambient": {
+		"duck_db": SFX_TO_AMBIENT_DUCK_DB,
+		"attack_time": SFX_TO_AMBIENT_ATTACK_TIME,
+		"release_delay": SFX_TO_AMBIENT_RELEASE_DELAY,
+		"release_time": SFX_TO_AMBIENT_RELEASE_TIME,
+	},
+	&"ui_to_music_and_sfx": {
+		"duck_db": UI_TO_MUSIC_AND_SFX_DUCK_DB,
+		"attack_time": UI_TO_MUSIC_AND_SFX_ATTACK_TIME,
+		"release_delay": UI_TO_MUSIC_AND_SFX_RELEASE_DELAY,
+		"release_time": UI_TO_MUSIC_AND_SFX_RELEASE_TIME,
+	},
+}
+
 var _family_caps: Dictionary[StringName, int] = DEFAULT_FAMILY_CAPS.duplicate()
+
+var _sidechain_state: Dictionary[StringName, SidechainState] = {
+	&"sfx_to_ambient": SidechainState.RESTING,
+	&"ui_to_music_and_sfx": SidechainState.RESTING,
+}
+var _sidechain_db_offset: Dictionary[StringName, float] = {
+	&"sfx_to_ambient": 0.0,
+	&"ui_to_music_and_sfx": 0.0,
+}
+var _sidechain_phase_elapsed: Dictionary[StringName, float] = {
+	&"sfx_to_ambient": 0.0,
+	&"ui_to_music_and_sfx": 0.0,
+}
+var _sidechain_phase_start_db: Dictionary[StringName, float] = {
+	&"sfx_to_ambient": 0.0,
+	&"ui_to_music_and_sfx": 0.0,
+}
+var _sidechain_release_timer: Dictionary[StringName, float] = {
+	&"sfx_to_ambient": 0.0,
+	&"ui_to_music_and_sfx": 0.0,
+}
 
 ## Per family: an Array[int] of active voice IDs, oldest first (index 0).
 ## Dictionary values stay plain `Array` (not `Array[int]`) -- nested typed
@@ -117,3 +174,77 @@ func get_last_stolen_voice_id() -> int:
 static func compute_ducked_volume(base_volume: float, active_voice_count: int, duck_coefficient: float = DUCK_COEFFICIENT, duck_floor: float = DUCK_FLOOR) -> float:
 	var factor: float = maxf(duck_floor, 1.0 - duck_coefficient * float(active_voice_count - 1))
 	return base_volume * factor
+
+
+## Formula F3 — registers a qualifying trigger for `relationship`
+## (`SFX_TO_AMBIENT` or `UI_TO_MUSIC_AND_SFX`). RESTING -> ATTACKING on the
+## first trigger; every trigger (regardless of current state) resets the
+## hold countdown. A trigger arriving mid-RELEASING cancels the release and
+## re-enters HELD from the current partially-released dB — it never snaps
+## back to the full duck amount first.
+func trigger_sidechain(relationship: StringName) -> void:
+	var config: Dictionary = _SIDECHAIN_CONFIG[relationship]
+	var state: SidechainState = _sidechain_state[relationship]
+
+	if state == SidechainState.RESTING:
+		_sidechain_state[relationship] = SidechainState.ATTACKING
+		_sidechain_phase_elapsed[relationship] = 0.0
+		_sidechain_phase_start_db[relationship] = _sidechain_db_offset[relationship]
+	elif state == SidechainState.RELEASING:
+		_sidechain_state[relationship] = SidechainState.HELD
+
+	_sidechain_release_timer[relationship] = config["release_delay"]
+
+
+## Formula F3 — advances both sidechain relationships by `delta` seconds.
+## Called once per frame by `AudioCueDispatcher`; naturally stops advancing
+## while the game is paused (Core Rule 7's freeze requirement) simply by not
+## being called, matching this project's own `get_tree().paused` +
+## `PROCESS_MODE_INHERIT` pause convention rather than needing bespoke
+## pause-handling logic here.
+func tick_sidechain(delta: float) -> void:
+	_advance_one_sidechain(SFX_TO_AMBIENT, delta)
+	_advance_one_sidechain(UI_TO_MUSIC_AND_SFX, delta)
+
+
+func _advance_one_sidechain(relationship: StringName, delta: float) -> void:
+	var config: Dictionary = _SIDECHAIN_CONFIG[relationship]
+	var state: SidechainState = _sidechain_state[relationship]
+
+	match state:
+		SidechainState.ATTACKING:
+			_sidechain_phase_elapsed[relationship] += delta
+			var t: float = clampf(_sidechain_phase_elapsed[relationship] / float(config["attack_time"]), 0.0, 1.0)
+			_sidechain_db_offset[relationship] = lerpf(_sidechain_phase_start_db[relationship], config["duck_db"], t)
+			if t >= 1.0:
+				_sidechain_state[relationship] = SidechainState.HELD
+
+		SidechainState.HELD:
+			_sidechain_release_timer[relationship] -= delta
+			if _sidechain_release_timer[relationship] <= 0.0:
+				_sidechain_state[relationship] = SidechainState.RELEASING
+				_sidechain_phase_elapsed[relationship] = 0.0
+				_sidechain_phase_start_db[relationship] = _sidechain_db_offset[relationship]
+
+		SidechainState.RELEASING:
+			_sidechain_phase_elapsed[relationship] += delta
+			var t: float = clampf(_sidechain_phase_elapsed[relationship] / float(config["release_time"]), 0.0, 1.0)
+			_sidechain_db_offset[relationship] = lerpf(_sidechain_phase_start_db[relationship], 0.0, t)
+			if t >= 1.0:
+				_sidechain_state[relationship] = SidechainState.RESTING
+				_sidechain_db_offset[relationship] = 0.0
+
+		SidechainState.RESTING:
+			pass
+
+
+## Test/inspection + real-consumer accessor — the current dB offset for
+## `relationship` (0.0 at rest, the relationship's full duck amount when
+## HELD, an in-between ramp value while ATTACKING/RELEASING).
+func get_sidechain_db_offset(relationship: StringName) -> float:
+	return _sidechain_db_offset[relationship]
+
+
+## Test/inspection accessor.
+func get_sidechain_state(relationship: StringName) -> SidechainState:
+	return _sidechain_state[relationship]

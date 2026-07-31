@@ -293,3 +293,64 @@ func test_a_cue_with_no_polyphony_group_is_never_ducked_regardless_of_other_acti
 	_dispatcher.dispatch_cue(&"sanctuary_structure_built")
 
 	assert_float(_dispatcher.get_last_effective_volume_linear()).is_equal_approx(0.8, 0.001)
+
+
+# ---------------------------------------------------------------------------
+# Formula F3 wiring: real dispatch triggers the correct sidechain relationship
+# based on the dispatched entry's bus. Envelope math itself is covered
+# exhaustively by tests/unit/audio/sidechain-ducking-envelope_test.gd -- these
+# only prove dispatch_cue() routes to the right relationship.
+# ---------------------------------------------------------------------------
+
+func test_sfx_bus_dispatch_triggers_the_sfx_to_ambient_sidechain_relationship() -> void:
+	var entry := _fixture_entry(&"tower_attacked", &"SFX", &"combat_impact", false)
+	var map := AudioCueMap.new()
+	map.entries = [entry]
+	_dispatcher.set_cue_map(map)
+
+	_dispatcher.dispatch_cue(&"tower_attacked")
+
+	assert_int(_dispatcher.voice_limiter.get_sidechain_state(VoiceLimiter.SFX_TO_AMBIENT)).is_equal(VoiceLimiter.SidechainState.ATTACKING)
+	assert_int(_dispatcher.voice_limiter.get_sidechain_state(VoiceLimiter.UI_TO_MUSIC_AND_SFX)).is_equal(VoiceLimiter.SidechainState.RESTING)
+
+
+func test_ui_bus_dispatch_triggers_the_ui_to_music_and_sfx_sidechain_relationship() -> void:
+	var entry := _fixture_entry(&"component_crafted", &"UI", &"activation_confirm", false)
+	var map := AudioCueMap.new()
+	map.entries = [entry]
+	_dispatcher.set_cue_map(map)
+
+	_dispatcher.dispatch_cue(&"component_crafted")
+
+	assert_int(_dispatcher.voice_limiter.get_sidechain_state(VoiceLimiter.UI_TO_MUSIC_AND_SFX)).is_equal(VoiceLimiter.SidechainState.ATTACKING)
+	assert_int(_dispatcher.voice_limiter.get_sidechain_state(VoiceLimiter.SFX_TO_AMBIENT)).is_equal(VoiceLimiter.SidechainState.RESTING)
+
+
+func test_dispatch_on_a_bus_other_than_sfx_or_ui_triggers_no_sidechain_relationship() -> void:
+	var entry := _fixture_entry(&"mission_phase_changed", &"Music", &"", false)
+	var map := AudioCueMap.new()
+	map.entries = [entry]
+	_dispatcher.set_cue_map(map)
+
+	_dispatcher.dispatch_cue(&"mission_phase_changed")
+
+	assert_int(_dispatcher.voice_limiter.get_sidechain_state(VoiceLimiter.SFX_TO_AMBIENT)).is_equal(VoiceLimiter.SidechainState.RESTING)
+	assert_int(_dispatcher.voice_limiter.get_sidechain_state(VoiceLimiter.UI_TO_MUSIC_AND_SFX)).is_equal(VoiceLimiter.SidechainState.RESTING)
+
+
+func test_dispatchers_own_process_actually_ticks_the_sidechain_envelope_over_a_real_frame() -> void:
+	# Proves end-to-end wiring: _process() genuinely calls tick_sidechain()
+	# every frame, not just that trigger_sidechain() was called synchronously
+	# (already proven by the tests above). A real frame's delta is
+	# non-deterministic, so this only asserts the offset moved off 0.0 --
+	# exact envelope math is exhaustively covered by
+	# sidechain-ducking-envelope_test.gd's deterministic delta-driven tests.
+	var entry := _fixture_entry(&"tower_attacked", &"SFX", &"combat_impact", false)
+	var map := AudioCueMap.new()
+	map.entries = [entry]
+	_dispatcher.set_cue_map(map)
+
+	_dispatcher.dispatch_cue(&"tower_attacked")
+	await get_tree().process_frame
+
+	assert_float(_dispatcher.voice_limiter.get_sidechain_db_offset(VoiceLimiter.SFX_TO_AMBIENT)).is_less(0.0)
