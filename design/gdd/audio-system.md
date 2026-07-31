@@ -52,7 +52,7 @@ Roughly 8–10 other GDDs already wrote their own ad-hoc "audio direction, no bi
 Audio maintains one `AudioCueMap` Resource (`.tres`) — **an `Array[AudioCueEntry]`, not a `Dictionary`** (corrected per the design review's Godot-implementability finding: a `Dictionary[StringName, AudioCueEntry]` inside a `.tres` has no usable inspector editor for dictionary-of-Resource values in Godot 4.6, a known editor-usability gap; an `Array[AudioCueEntry]` gets a proper resizable-array inspector for free, the idiomatic pattern for this shape). Each `AudioCueEntry` holds `event_name: StringName` (the EventBus event it maps to), `stream: AudioStream`, `bus: StringName`, `polyphony_group: StringName` (which Core Rule 3 family it belongs to, for voice-limiting), `volume_db_offset: float`, and `spatial: bool` (world-positioned vs. always-full-volume UI/HUD cues). Audio's own `_ready()` subscribes generically to its full 16-event inbound list (below), builds a runtime `Dictionary[StringName, AudioCueEntry]` from the array once at load for fast lookup, and dispatches each incoming event through that runtime map — it never hardcodes a per-event `match` statement.
 
 **Core Rule 5 — Ducking and Priority: Per-Family Voice Caps, Not a Global Limiter**
-Each Core Rule 3 family (except #7, Ambient, which is continuous and outside this system entirely) gets its own concurrent-voice cap (Tuning Knobs — **all 6 non-Ambient families now have an explicit cap, closing a gap the design review found where only 2 of 6 were specified**) rather than one global limit — Combat Impact needs the most headroom for many simultaneous towers firing; Discovery Fanfare is capped at 1 (a second discovery queues rather than overlaps, directly reusing Tarot's own existing "never stack two reveal cards simultaneously" rule, generalized to audio). Beyond a family's cap, the **oldest-started voice on that family is stolen**, never the newest trigger silently dropped — losing the newest event would mean the player's most recent action produces no feedback, the worse failure mode. **Scope clarification**: these caps are per-family, not per-bus — Formula F1's ducking model operates on total concurrent voices across the whole SFX bus (a coarser, bus-wide signal), while these caps independently limit each family's own voice count regardless of what else is playing on the bus; the two mechanisms compose (a family can be at its own cap while the bus-wide ducking formula is also actively attenuating), they don't replace each other. Sidechain ducking: the SFX bus ducks Ambient by roughly -6dB on any SFX trigger; the UI bus ducks both Music and SFX by roughly -4dB on any UI trigger, so UI feedback always cuts through combat chaos, never the reverse.
+Each Core Rule 3 family (except #7, Ambient, which is continuous and outside this system entirely) gets its own concurrent-voice cap (Tuning Knobs — **all 6 non-Ambient families now have an explicit cap, closing a gap the design review found where only 2 of 6 were specified**) rather than one global limit — Combat Impact needs the most headroom for many simultaneous towers firing; Discovery Fanfare is capped at 1 (a second discovery queues rather than overlaps, directly reusing Tarot's own existing "never stack two reveal cards simultaneously" rule, generalized to audio). Beyond a family's cap, the **oldest-started voice on that family is stolen**, never the newest trigger silently dropped — losing the newest event would mean the player's most recent action produces no feedback, the worse failure mode. **Scope clarification**: these caps are per-family, not per-bus — Formula F1's ducking model operates on total concurrent voices across the whole SFX bus (a coarser, bus-wide signal), while these caps independently limit each family's own voice count regardless of what else is playing on the bus; the two mechanisms compose (a family can be at its own cap while the bus-wide ducking formula is also actively attenuating), they don't replace each other. Sidechain ducking: the SFX bus ducks Ambient by roughly -6dB on any SFX trigger; the UI bus ducks both Music and SFX by roughly -4dB on any UI trigger, so UI feedback always cuts through combat chaos, never the reverse. Envelope timing (attack/hold/release) is specified in Formula F3, added per `design/quick-specs/sidechain-ducking-timing-2026-07-31.md` — the two duck relationships (SFX→Ambient, UI→Music+SFX) run independent envelope state machines and are expected to stack additively when both are active simultaneously (Ambient is a child bus under Music per Core Rule 1, so a Music-bus duck cascades to it automatically on top of any direct Ambient duck).
 
 **Core Rule 6 — Global Preferences Persist Outside Save & Persistence's `restore_order` System (A New Cross-System Precedent)**
 Volume settings (the 4 accessibility-committed sliders) are a **device/session preference**, not per-save-slot progress — they must persist identically across every save slot, and must be available before any save slot even exists (main menu, first boot), which `save-persistence.md`'s own `restore_order`/`sanctuary_state_restored` model (scoped entirely to slot-restore) cannot provide. Audio therefore owns a small, independent `ConfigFile` at `user://audio_settings.cfg` (4 floats, one per bus), loaded in `_ready()` before any cue plays, with no `restore_order` slot and no `SaveRestorer` registration of any kind. **This establishes a real precedent worth carrying forward**: global player preferences (volume today; input remapping is the next obvious candidate, also committed at Basic/Standard accessibility tier) live outside Save & Persistence's system entirely — future GDDs touching preference-style state should follow this pattern rather than awkwardly fitting it into a slot-scoped restore model.
@@ -119,6 +119,44 @@ world_volume = base_volume × clamp(1 − distance / max_audible_radius, 0, 1)
 
 **Worked example:** `V_base=0.7`, `d=8`, `R=15` → `0.7 × clamp(1 − 8/15, 0, 1) = 0.7 × 0.467 = 0.327`.
 
+#### F3 — Sidechain Duck State (per relationship, evaluated per-frame while active)
+
+*Added per `design/quick-specs/sidechain-ducking-timing-2026-07-31.md` — closes Core Rule 5's previously-unspecified attack/release timing gap.*
+
+Applies independently to each of the 2 duck relationships (SFX→Ambient, UI→Music+SFX), each with its own state.
+
+**Trigger definition**: a qualifying trigger is any `AudioCueDispatcher.dispatch_cue()` call whose resolved `AudioCueEntry.bus` matches the relationship's source bus (`&"SFX"` or `&"UI"`). Ambient-family cues (Core Rule 3 family #7) are never a trigger source, only ever a duck target.
+
+| Variable | Symbol | Type | Range | Description |
+|---|---|---|---|---|
+| `duck_amount_db` | `D` | float | -8 to -2 | Target attenuation once fully ducked (the -6dB/-4dB values above) |
+| `attack_time` | `T_a` | float (sec) | 0.005–0.05 | Time to ramp from unducked to fully ducked |
+| `release_delay` | `T_h` | float (sec) | 0.05–0.3 | Time after the last trigger before release begins (the "hold") |
+| `release_time` | `T_r` | float (sec) | 0.1–0.4 | Time to ramp from fully ducked back to unducked, once release begins |
+| `current_db_offset` | `V_t` | float | `[D, 0]` | The actual dB offset applied at time `t` — 0 at rest, `D` when fully ducked |
+
+**Expression** (state machine, not a closed-form formula — matches Core Rule 2's own crossfade/duck-cut state model precedent):
+```
+on qualifying_trigger:
+  if state == RESTING:
+    state = ATTACKING; attack_start_db = current_db_offset; attack_start_time = now
+  reset release_timer to T_h  # always, regardless of state
+
+per-frame:
+  if state == ATTACKING:
+    V_t = lerp(attack_start_db, D, clamp((now - attack_start_time) / T_a, 0, 1))
+    if V_t reaches D: state = HELD
+  if state == HELD and release_timer expired:
+    state = RELEASING; release_start_db = current_db_offset; release_start_time = now
+  if state == RELEASING:
+    V_t = lerp(release_start_db, 0, clamp((now - release_start_time) / T_r, 0, 1))
+    if V_t reaches 0: state = RESTING
+```
+
+**Retrigger behavior**: every qualifying trigger arriving while already ducked (ATTACKING, HELD, or RELEASING) resets `release_timer` to `T_h` rather than restarting the attack ramp — this is what prevents audible "pumping" during a dense stream of triggers (e.g. many Combat Impact cues during WAVE_ACTIVE holding Ambient continuously ducked). A trigger arriving mid-RELEASING re-enters HELD from the current partially-released `V_t`, never snapping back to full `D` first.
+
+**Worked example** (SFX→Ambient, default values): a `tower_attacked` cue dispatches (bus=SFX) while Ambient is at rest. Ambient's `volume_db` ramps from `0` to `-6dB` over `15ms` (`T_a`). Three more Combat Impact cues dispatch over the next `400ms` — each resets the `150ms` hold timer (`T_h`) rather than re-attacking. `150ms` after the last of those four triggers, Ambient begins ramping back from `-6dB` to `0dB` over `250ms` (`T_r`) — total time from last trigger to fully restored: `400ms`.
+
 ## Edge Cases
 
 - **If more one-shot triggers fire in a single frame than a family's voice cap allows** (e.g. 10+ `tower_attacked` events during a dense WAVE_ACTIVE moment, against Combat Impact's cap): the oldest-started voice on that family is stolen and replaced by the new trigger (Core Rule 5) — never silently drop the newest trigger, since that would mean the player's most recent action produces no audible feedback, the worse failure mode.
@@ -128,6 +166,9 @@ world_volume = base_volume × clamp(1 − distance / max_audible_radius, 0, 1)
 - **If an `AudioCueMap` entry references an event name Audio isn't actually subscribed to, or omits an entry for an event it is subscribed to**: no cue plays (a silent no-op), never an error — this is a content-authoring gap (Full Vision-tier audio bible work not yet done for most events), not a runtime failure; every one of this document's 16 inbound events is expected to have an eventual `AudioCueMap` entry, but none need to exist for this system's own mechanics to function correctly today. Tested explicitly by AC-10a.
 - **If the player has never adjusted volume before** (fresh `user://audio_settings.cfg` doesn't exist yet): all 4 buses default to 80% per `accessibility-requirements.md`'s own stated default — not 100%, not muted.
 - **If Formula F2's `distance` value is negative** (physically impossible under correct grid-cell math — added per the design review, which found the formula's own clamp silently masks this as "very close" rather than flagging it): treated as an upstream caller-error signal, not valid input — Audio clamps `distance` to `max(distance, 0)` before evaluating F2, so a negative value produces the same result as `distance = 0` (full volume) rather than an out-of-range artifact, but the emitting system's own grid-position logic is the actual place such a value would indicate a real bug, not this system.
+- **If a qualifying sidechain trigger (Formula F3) arrives while a duck relationship is mid-RELEASING** (added per `design/quick-specs/sidechain-ducking-timing-2026-07-31.md`): cancel the release and re-enter HELD at the current (partially-released) `current_db_offset` — do not snap back to full `D` first and do not let the release continue underneath the new hold.
+- **If `game_paused` fires while a sidechain duck relationship is ATTACKING, HELD, or RELEASING** (added per `design/quick-specs/sidechain-ducking-timing-2026-07-31.md`): freeze `current_db_offset` exactly where it is (matching Core Rule 7's crossfade-freeze precedent) until `game_unpaused`, then resume the same state — the SFX bus's world-combat content is muted entirely during pause (Core Rule 7), so no new qualifying triggers can arrive to naturally hold or release the duck during that window.
+- **If both SFX→Ambient and UI→Music+SFX duck relationships are simultaneously active** (added per `design/quick-specs/sidechain-ducking-timing-2026-07-31.md`): no special handling needed — Ambient is a child bus under Music (Core Rule 1), so the combined attenuation the player hears is the sum of both relationships' dB offsets. This is a correct outcome of the bus graph, not an interaction to suppress.
 
 ## Dependencies
 
@@ -158,6 +199,14 @@ world_volume = base_volume × clamp(1 − distance / max_audible_radius, 0, 1)
 | WAVE_ACTIVE→INTERMISSION duck/cut duration | 0.4 sec | 0.2–0.5 sec | Starts to feel like a crossfade again, undermines "held breath released" | Reads as a literal audio glitch/pop |
 | Pause music/ambient duck level | 40% | 30–50% | Barely different from unpaused, pause doesn't register sonically | Too close to silent, contradicts "duck, don't stop" |
 | Default bus volume (all 4) | 80% | Fixed — must match `accessibility-requirements.md`'s own stated default exactly | N/A | N/A |
+| Sidechain duck amount, SFX→Ambient (`D`, Formula F3) | -6dB | -8 to -2dB | Ambient nearly disappears under any combat, reads as broken rather than mixed | Ducking is imperceptible, combat and ambience blur together |
+| Sidechain duck amount, UI→Music+SFX (`D`, Formula F3) | -4dB | -8 to -2dB | Music/SFX drop noticeably every UI click, feels twitchy | UI feedback doesn't cut through combat, defeats the mechanism's purpose |
+| Sidechain attack time, SFX→Ambient (`T_a`, Formula F3) | 15ms | 5–50ms | Audible click/snap on engage | Duck feels laggy, first transient of the triggering sound isn't covered |
+| Sidechain attack time, UI→Music+SFX (`T_a`, Formula F3) | 10ms | 5–50ms | Audible click/snap on engage | UI feedback's own attack is delayed by a sluggish duck |
+| Sidechain release delay, SFX→Ambient (`T_h`, Formula F3) | 150ms | 50–300ms | Ambient flickers back up between individual hits during normal combat pacing | Ambient stays ducked noticeably after combat activity has clearly stopped |
+| Sidechain release delay, UI→Music+SFX (`T_h`, Formula F3) | 80ms | 50–300ms | Music/SFX flicker during rapid legitimate UI navigation | Music/SFX stay ducked after a single UI click, feels sluggish |
+| Sidechain release time, SFX→Ambient (`T_r`, Formula F3) | 250ms | 100–400ms | Restoration feels abrupt, reads as a hard cut | Ambient takes noticeably long to feel "back," especially right after a wave ends |
+| Sidechain release time, UI→Music+SFX (`T_r`, Formula F3) | 180ms | 100–400ms | Restoration feels abrupt after UI interaction | Music/SFX stay perceptibly quiet after the UI moment has clearly passed |
 
 ## Visual/Audio Requirements
 
