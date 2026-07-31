@@ -31,7 +31,6 @@ extends Control
 
 const GRID_COLUMNS: int = 5
 const SLOT_SIZE: Vector2 = Vector2(64, 64)
-const FOCUS_RING_COLOR: Color = Color(1.0, 0.85, 0.2, 1.0)  ## placeholder — art-director TBD
 
 ## Tab display-label localization keys, keyed by Inventory.TAB_ORDER's identifiers
 ## (Story 002 data, read-only — this story only reads TAB_ORDER to build a static
@@ -108,14 +107,23 @@ func _build_tab_strip_placeholder() -> void:
 ## Deliberately reads slot count at build time rather than hardcoding 10 in the
 ## scene file — Story 003's tier-driven growth isn't this story's concern, but
 ## there's no reason to hardcode a count this screen can just ask Inventory for.
+## SIZE_SHRINK_BEGIN (TD-ui-002 item 2): GridContainer's default
+## size_flags_horizontal (SIZE_FILL) stretches its own bounding rect to fill
+## LeftPanel's full width, but does NOT stretch its columns to match — live-
+## verified via Godot MCP this left up to ~675px of dead space between the
+## slot grid and RightPanel at the default viewport, with all 10 fixed-size
+## 64x64 slot buttons still clustered in the top-left corner of that
+## oversized rect. Shrinking SlotGrid to its own natural content size
+## collapses that dead space; the slots themselves are unaffected (fixed
+## SLOT_SIZE by design, not meant to grow to fill available width).
 func _build_slot_grid() -> void:
+	_slot_grid.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	_slot_grid.columns = GRID_COLUMNS
 	var slot_count: int = inventory.get_slot_count()
 	for i: int in range(slot_count):
 		var slot_button: Button = _create_slot_button(i)
 		_slot_grid.add_child(slot_button)
 		_slot_buttons.append(slot_button)
-		_slot_focus_rings.append(slot_button.get_node("FocusRing") as Panel)
 
 
 ## One slot widget: a Button plus two independent overlay children —
@@ -138,20 +146,14 @@ func _create_slot_button(index: int) -> Button:
 	hover_highlight.set_anchors_preset(Control.PRESET_FULL_RECT)
 	button.add_child(hover_highlight)
 
-	var focus_ring := Panel.new()
-	focus_ring.name = "FocusRing"
-	var ring_style := StyleBoxFlat.new()
-	ring_style.bg_color = Color(0.0, 0.0, 0.0, 0.0)
-	ring_style.border_width_left = 3
-	ring_style.border_width_right = 3
-	ring_style.border_width_top = 3
-	ring_style.border_width_bottom = 3
-	ring_style.border_color = FOCUS_RING_COLOR
-	focus_ring.add_theme_stylebox_override("panel", ring_style)
-	focus_ring.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	focus_ring.visible = false
-	focus_ring.set_anchors_preset(Control.PRESET_FULL_RECT)
-	button.add_child(focus_ring)
+	# Shared builder (extracted 2026-07-20 from Mission HUD's identical ~15-line
+	# StyleBoxFlat construction, originally duplicated here too — see
+	# FocusRingFactory's own doc comment). Returns the built Panel directly,
+	# so no fragile get_node("FocusRing") string lookup is needed afterward
+	# (TD-ui-002 item 3 — a future rename of this child's name would
+	# previously have failed silently instead of at compile time).
+	var focus_ring: Panel = FocusRingFactory.build(button)
+	_slot_focus_rings.append(focus_ring)
 
 	# Hover: fully independent of focus, driven only by mouse_entered/exited.
 	button.mouse_entered.connect(_on_slot_mouse_entered.bind(hover_highlight))

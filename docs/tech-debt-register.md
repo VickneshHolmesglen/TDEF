@@ -1755,10 +1755,10 @@ Separately, the godot-specialist review flagged that raw `InputEventJoypadMotion
 - [x] Live-verified: `tests/unit/ui/input_mode_tracker_test.gd` 7/7, 0 errors, 0 orphans. Full project regression: 1823/1823, 0 errors, 0 failures.
 - [ ] Item 1 (physical gamepad hardware confirmation) remains genuinely blocked — unchanged from the original assessment.
 
-## TD-ui-002 — InventoryScreen: untested Tab-traversal and multi-resolution layout; FocusRing lookup fragility
+## TD-ui-002 — InventoryScreen: untested Tab-traversal and multi-resolution layout; FocusRing lookup fragility (fixed)
 
 **Logged**: 2026-07-15
-**Fixed**: Not yet
+**Fixed**: 2026-08-01
 **Story**: Story 007 (Two-Panel Screen Presentation, Epic 03) — flagged during `/code-review`
 **Severity**: Low — none of these are confirmed defects, only unverified paths/style fragility.
 **Area**: `src/gameplay/ui/inventory_screen/inventory_screen.gd`
@@ -1776,7 +1776,11 @@ Separately, the godot-specialist review flagged that raw `InputEventJoypadMotion
 - Refactor `_create_slot_button()` to return both the `Button` and its `FocusRing`/`HoverHighlight` children directly (e.g. via a small local struct or by populating `_slot_buttons`/`_slot_focus_rings` from within the function itself) rather than re-discovering the ring by name afterward.
 
 ### Resolution
-- [ ] Not yet started.
+- [x] Item 1 fixed (2026-08-01) — added `tests/integration/inventory-screen/tab-traversal_test.gd` (3 tests): proves Tab advances focus in slot-index order, Shift+Tab moves backward, and Tab from the last slot doesn't crash. The doc comment's own prediction ("likely traverse in correct index order by incidental tree-child order") was correct — now actually verified, not just assumed.
+- [x] Item 2 fixed (2026-08-01) — **live-verified via Godot MCP that this was a real bug**, not just an untested-but-fine path: `SlotGrid`'s default `size_flags_horizontal` (`SIZE_FILL`) stretched its own bounding rect to fill `LeftPanel`'s full width (1011px at the default viewport) but did NOT stretch its columns to match, leaving ~675px of dead space between the grid and `RightPanel` while all 10 fixed-size 64x64 slot buttons stayed clustered top-left. Fixed by setting `SlotGrid.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN` in `_build_slot_grid()`, collapsing the dead space. Verified live at 3 viewport sizes (default, 1920x1080, 1024x600) via Godot MCP `run_script` — grid stayed at its natural ~336px content width regardless. Added `tests/integration/inventory-screen/slot-grid-layout_test.gd` (2 tests) as an automated regression guard for both the base case and viewport-resize robustness. No documented minimum/maximum "supported resolution" values actually exist anywhere in the project (`technical-preferences.md` lists target platforms only, no numeric range) — tested at 2 representative sizes instead of literal min/max, since those aren't defined.
+- [x] Item 3 fixed (2026-08-01) — `_create_slot_button()` now uses the already-existing, previously-unused-here `FocusRingFactory.build(button)` (extracted 2026-07-20 from Mission HUD, whose own doc comment already referenced "matching inventory_screen.gd's established FocusRing pattern" — this screen had just never actually been updated to use it). Returns the built `Panel` directly and appends it to `_slot_focus_rings` at creation time; the `get_node("FocusRing")` string-based lookup in `_build_slot_grid()` is gone entirely. Also removes the now-redundant local `FOCUS_RING_COLOR` constant (the factory owns that value).
+- [x] Live-verified: `tests/integration/inventory-screen/` 5/5, 0 errors, 0 orphans. Full project regression: 1828/1828, 0 errors, 0 failures, orphan count unchanged at 185 (expected — see `TD-test-006`).
+- [x] This entry closed.
 
 ## TD-econ-001 — ResourceEconomy: heterogeneous-batch resolution (two different drop_table_ids in one monsters_died_batch call) untested (fixed)
 
