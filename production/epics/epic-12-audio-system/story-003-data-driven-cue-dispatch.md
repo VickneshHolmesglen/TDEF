@@ -6,7 +6,7 @@
 > **Type**: Integration
 > **Estimate**: 4h
 > **Manifest Version**: 2026-07-13b
-> **Last Updated**: 2026-07-25
+> **Last Updated**: 2026-07-31
 
 ## Context
 
@@ -98,9 +98,13 @@
 **Story Type**: Integration
 **Required evidence**: `tests/integration/audio/data-driven-cue-dispatch_test.gd`
 
-**Status**: [x] Created and passing — 13/13 test cases (10 original + 3 added 2026-07-25 for the Story 004 wiring below), 0 errors, 0 failures, 0 orphans (`tests/integration/audio/data-driven-cue-dispatch_test.gd`, run 2026-07-25). Real scene instantiation exercising the real `GEventBus` — not mocked.
+**Status**: [x] Created and passing — 21/21 test cases (10 original + 3 added 2026-07-25 for Story 004's voice-limiting wiring + 4 added 2026-07-31 for Formula F1 ducking wiring + 4 added 2026-07-31 for Formula F3 sidechain wiring), 0 errors, 0 failures, 0 orphans (`tests/integration/audio/data-driven-cue-dispatch_test.gd`, run 2026-07-31). Real scene instantiation exercising the real `GEventBus` — not mocked.
 
-**Follow-up (2026-07-25): `VoiceLimiter` wired into the live dispatch path.** `dispatch_cue()` now calls `voice_limiter.trigger_voice(entry.polyphony_group)` on every real dispatch (skipped for entries with an empty `polyphony_group`) — closing the deferral Story 004's own file documented ("Story 003 owns triggering a new voice; Story 004 only owns what happens once a family is at/beyond capacity... a natural follow-up for whichever future story needs the composed behavior live"). New accessor `get_last_dispatch_voice_id()`. 3 new tests verify: a dispatched cue registers a voice against its family; dispatching beyond Discovery Fanfare's real cap (1) steals through a real `GEventBus`-driven dispatch, not just a direct `VoiceLimiter` call; a cue with no `polyphony_group` never registers a voice. `VoiceLimiter.compute_ducked_volume()` (Formula F1) remains unwired — no dispatch-time concept of concurrent-voice-count exists yet to feed it.
+**Follow-up (2026-07-25): `VoiceLimiter` wired into the live dispatch path.** `dispatch_cue()` now calls `voice_limiter.trigger_voice(entry.polyphony_group)` on every real dispatch (skipped for entries with an empty `polyphony_group`) — closing the deferral Story 004's own file documented ("Story 003 owns triggering a new voice; Story 004 only owns what happens once a family is at/beyond capacity... a natural follow-up for whichever future story needs the composed behavior live"). New accessor `get_last_dispatch_voice_id()`. 3 new tests verify: a dispatched cue registers a voice against its family; dispatching beyond Discovery Fanfare's real cap (1) steals through a real `GEventBus`-driven dispatch, not just a direct `VoiceLimiter` call; a cue with no `polyphony_group` never registers a voice.
+
+**Follow-up (2026-07-31): `VoiceLimiter.compute_ducked_volume()` (Formula F1) wired.** Added `VoiceLimiter.get_total_active_voice_count()` (bus-wide, summed across every family) and `dispatch_cue()` now applies it to any cue with a `polyphony_group`, evaluated after that dispatch's own voice is registered. 4 new tests prove the GDD's worked example, the duck floor clamp, N=1 no-op, and that non-polyphony cues are never ducked.
+
+**Follow-up (2026-07-31, same session): sidechain ducking (Formula F3) wired.** `dispatch_cue()` now calls `voice_limiter.trigger_sidechain(...)` based on `entry.bus` (`SFX` → `SFX_TO_AMBIENT`, `UI` → `UI_TO_MUSIC_AND_SFX`), and a new `_process(delta)` ticks both duck-envelope state machines once per frame. Unblocked by `design/quick-specs/sidechain-ducking-timing-2026-07-31.md` specifying the previously-missing attack/release timing. See Story 004's own file for the full envelope-mechanism detail (that story owns Core Rule 5/Formula F1/F3; this story owns the dispatch call site they hook into). 5 new tests here prove real-dispatch routing to the correct relationship and that `_process()` genuinely ticks over an awaited frame.
 
 ---
 
