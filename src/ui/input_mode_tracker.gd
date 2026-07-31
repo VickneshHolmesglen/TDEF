@@ -23,6 +23,15 @@ enum InputMode { MOUSE, KEYBOARD_GAMEPAD }
 
 signal input_mode_changed(mode: InputMode)
 
+## Raw InputEventJoypadMotion reaching _input() is NOT deadzone-filtered by
+## Godot (deadzone handling lives in Input.get_action_strength(), not the
+## raw event stream) -- a real controller resting in the player's hands can
+## emit continuous low-magnitude axis noise, which would otherwise cause
+## spurious KEYBOARD_GAMEPAD/MOUSE mode-flipping on real hardware (TD-ui-001
+## item 2). 0.5 matches every configured InputMap action's own deadzone
+## (project.godot) for consistency with the rest of the input system.
+const JOYPAD_MOTION_DEADZONE: float = 0.5
+
 ## Defaults to KEYBOARD_GAMEPAD: matches inventory.md's own default — "input
 ## focus defaulting to the first occupied slot in the active tab" on screen
 ## open, before any mouse motion has occurred.
@@ -33,7 +42,11 @@ func _input(event: InputEvent) -> void:
 	var detected: InputMode
 	if event is InputEventMouseMotion or event is InputEventMouseButton:
 		detected = InputMode.MOUSE
-	elif event is InputEventKey or event is InputEventJoypadButton or event is InputEventJoypadMotion:
+	elif event is InputEventJoypadMotion:
+		if absf((event as InputEventJoypadMotion).axis_value) < JOYPAD_MOTION_DEADZONE:
+			return  # below deadzone -- idle-controller noise, not a real gamepad input
+		detected = InputMode.KEYBOARD_GAMEPAD
+	elif event is InputEventKey or event is InputEventJoypadButton:
 		detected = InputMode.KEYBOARD_GAMEPAD
 	else:
 		return  # ignore other event types (e.g. InputEventScreenTouch — out of scope, Touch Support: None)

@@ -1668,7 +1668,7 @@ Separately, `add_stackable()` has no `quantity <= 0` guard — a zero or negativ
 ## TD-inv-004 — `remove_item()` on a partial-quantity stackable slot is unasserted; AC-12 wording mismatch with Story 001's data model (item 1 fixed)
 
 **Logged**: 2026-07-15
-**Fixed**: Not yet
+**Fixed**: 2026-07-31
 **Story**: Story 004 (Equipped-Item Lock, Epic 03) — flagged during `/code-review`
 **Severity**: Low-Medium — no known reachable defect today, but this is the one gap from this story with real regression risk once Story 006 (Partial Stack Consumption Stability) begins touching the same area.
 **Area**: `src/core/inventory/inventory.gd` (`remove_item()`), `tests/unit/inventory/equipped_lock_test.gd`, `production/epics/epic-03-core-economy/story-004-equipped-item-lock.md`
@@ -1731,10 +1731,10 @@ Add at least one `push_error` content assertion using this codebase's establishe
 - [x] Live-verified (2026-07-31) — both affected test files: 28/28 passing, 0 errors, 0 orphans. Full project regression: 1786/1786, 0 errors, 0 failures.
 - [x] This entry closed.
 
-## TD-ui-001 — InventoryScreen's gamepad dual-focus behavior verified via keyboard only; physical hardware confirmation still open
+## TD-ui-001 — InventoryScreen's gamepad dual-focus behavior verified via keyboard only; physical hardware confirmation still open (item 2 fixed)
 
 **Logged**: 2026-07-15
-**Fixed**: Not yet
+**Fixed**: Not yet (item 1 — item 2 fixed 2026-08-01)
 **Story**: Story 007 (Two-Panel Screen Presentation, Epic 03) — flagged during live Godot MCP verification and `/code-review`
 **Severity**: Medium — this is ADR-0011's own explicitly stated "Verification Required" item (gamepad `focus_entered` firing order under Godot 4.6's dual-focus split is not documented at the signal-order level), still not closed despite Story 007's own live verification pass.
 **Area**: `src/ui/input_mode_tracker.gd`, `src/gameplay/ui/inventory_screen/inventory_screen.gd`, ADR-0011
@@ -1751,7 +1751,9 @@ Separately, the godot-specialist review flagged that raw `InputEventJoypadMotion
 - Add a manual deadzone threshold inside `InputModeTracker`'s `InputEventJoypadMotion` branch before this pattern is exercised on real hardware, to guard against idle-controller mode-flipping.
 
 ### Resolution
-- [ ] Not yet started.
+- [x] Item 2 fixed (2026-08-01) — added `JOYPAD_MOTION_DEADZONE: float = 0.5` (matches every configured InputMap action's own deadzone in `project.godot`) to `src/ui/input_mode_tracker.gd`; `_input()` now discards `InputEventJoypadMotion` events with `absf(axis_value) < 0.5` before they can flip the tracked mode. This item was miscategorized as hardware-blocked in every session-state extract this session — re-scanning the entry directly (not trusting the carried-forward summary) found it was a pure code fix, fully testable without physical hardware. Added `tests/unit/ui/input_mode_tracker_test.gd` (7 tests, previously no dedicated unit coverage existed for this class at all) — covers default mode, mouse/joypad-button transitions, sub-deadzone motion on both positive and negative axes not flipping mode, at-threshold motion flipping it, and the `input_mode_changed` signal firing exactly once per real transition (not on filtered noise).
+- [x] Live-verified: `tests/unit/ui/input_mode_tracker_test.gd` 7/7, 0 errors, 0 orphans. Full project regression: 1823/1823, 0 errors, 0 failures.
+- [ ] Item 1 (physical gamepad hardware confirmation) remains genuinely blocked — unchanged from the original assessment.
 
 ## TD-ui-002 — InventoryScreen: untested Tab-traversal and multi-resolution layout; FocusRing lookup fragility
 
