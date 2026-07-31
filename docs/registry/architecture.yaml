@@ -491,11 +491,12 @@ interfaces:
     consumers:
       - resource-economy
     adr: docs/architecture/adr-0017-resource-economy-drop-resolution.md
-    signal_signature: "ResourceEconomy is a scene-instanced node (NOT an Autoload) per ADR-0002's own Autoload/Scene-Instanced boundary table (Resource Economy is classified scene-instanced there directly). Subscribes at _ready() to monster_died, monsters_died_batch, mission_phase_changed, creature_happiness_changed, creature_moved_to_breeding_pen, creature_returned_from_breeding_pen; disconnects all at _exit_tree(). Relies on the pre-existing project-wide exclusivity guarantee that a given kill fires exactly one of monster_died/monsters_died_batch, never both (confirmed against shipped Wave Manager handler code) — a violation would silently double-award materials/gold. Corrected 2026-07-13: originally miscited as 'mirroring Wave Manager's non-Autoload, mission-scoped lifecycle' — Wave Manager is actually Autoload #7 (ADR-0002/ADR-0012); the scene-instanced classification here never depended on that comparison."
+    signal_signature: "ResourceEconomy is a scene-instanced node (NOT an Autoload) per ADR-0002's own Autoload/Scene-Instanced boundary table (Resource Economy is classified scene-instanced there directly). Subscribes at _ready() to monster_died, monsters_died_batch, mission_phase_changed, creature_happiness_changed, creature_moved_to_breeding_pen, creature_returned_from_breeding_pen; disconnects all at _exit_tree(). Relies on the project-wide exclusivity guarantee that a given kill fires exactly one of monster_died/monsters_died_batch, never both — a violation would silently double-award materials/gold. Corrected 2026-07-31 (ADR-0033): this guarantee was NOT actually confirmed against shipped code as previously claimed here — monsters_died_batch was never emitted by anything until ADR-0033 implemented it. MonsterManager (not WaveManager) is the sole emitter of both signals and the system that structurally enforces this exclusivity. Corrected 2026-07-13: originally miscited as 'mirroring Wave Manager's non-Autoload, mission-scoped lifecycle' — Wave Manager is actually Autoload #7 (ADR-0002/ADR-0012); the scene-instanced classification here never depended on that comparison."
     referenced_by:
       - docs/architecture/adr-0017-resource-economy-drop-resolution.md
+      - docs/architecture/adr-0033-monster-death-batch-accumulator.md
     added: 2026-07-11
-    revised: "2026-07-13 — corrected inaccurate Wave Manager precedent citation"
+    revised: "2026-07-31 — corrected inaccurate 'confirmed against shipped Wave Manager code' claim; ownership corrected to MonsterManager (ADR-0033). Previously revised 2026-07-13 — corrected inaccurate Wave Manager precedent citation."
 
   - contract: hero_class_unlock_notification
     status: active

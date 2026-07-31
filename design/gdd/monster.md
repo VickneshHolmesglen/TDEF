@@ -159,9 +159,9 @@ Monsters carry the stakes and the spoils. Their approach is what makes a tower p
     - d. All tiers: emit `monster_died` (payload: `entity_id: int`, `monster_id: StringName`, `tier: int`, `drop_table_id: StringName`, `menagerie_attraction_drop_chance: float`, `world_position: Vector2`, `kill_source: String`, `wave_reward_scalar: float`). This is an 8-field event and requires a typed Resource subclass per EventBus Core Rule 4. `wave_reward_scalar` is forwarded from `spawn_wave_reward_scalar` — Resource Economy uses it to scale drop resolution; Monster System does not interpret it.
     - e. Queue free the entity node after death animation completes.
 
-**Note — `monster_died` batching:** Monster System does NOT batch `monster_died`. The Wave Manager owns batch accumulation: it collects individual `monster_died` events in `_physics_process` and emits one `monsters_died_batch` at frame end when the batch threshold is reached. Monster System emits `monster_died` synchronously per entity — always. See EventBus GDD AC-10 and Wave Manager GDD.
+**Note — `monster_died` batching (corrected 2026-07-31, ADR-0033):** Monster System owns batch accumulation and is the sole emitter of both signals — this note previously assigned that ownership to Wave Manager, which was found to be structurally impossible (Wave Manager cannot retroactively suppress individual `monster_died` events it has already received without breaking the mutual-exclusivity guarantee `resource-economy.md`/ADR-0017 depends on). Monster System buffers each frame's death payloads internally and, at frame end, emits `monster_died` synchronously per entity **unless** the frame's death count exceeds `eventbus_batch_threshold` (20, per `event-bus.md` Formula 2), in which case it emits exactly one `monsters_died_batch` instead — the two signals are mutually exclusive per frame, never both fire for the same kill. Wave Manager remains a subscriber to both signals only. See EventBus GDD AC-10, Formula 2, EC-9, and ADR-0033.
 
-*(Rule 23 was deleted during the 2026-04-26 review — `monster_died` batch accumulation responsibility was moved to Wave Manager. Rule 24 follows.)*
+*(Rule 23 was deleted during the 2026-04-26 review — `monster_died` batch accumulation responsibility was moved to Wave Manager, then corrected back to Monster System 2026-07-31 per ADR-0033. Rule 24 follows.)*
 
 ---
 
@@ -885,10 +885,10 @@ GIVEN an ACTIVE STANDARD monster with `current_hp = 5.0`,
 WHEN two `monster_damage_taken` events both arrive in `_pending_damage` in the same frame with `amount = 10` each,
 THEN during the damage pass: `lifecycle_state == DEAD` is set after the first event is processed; the second event is discarded (entity already DEAD); `monster_died` is emitted exactly once. The entity remains in the `active_monsters` array until the movement pass filter (`active_monsters = active_monsters.filter(...)` at the end of pass 3) — it is NOT removed from the array mid-damage-pass.
 
-**AC-19** `[Logic · BLOCKING]`
+**AC-19** `[Logic · BLOCKING]` — **Corrected 2026-07-31 (ADR-0033)**: this fixture's 22-death count exceeds `eventbus_batch_threshold` (20), which now correctly triggers batching rather than 22 individual emissions — the assertion below was updated to match; see ADR-0033 for why Monster System (not Wave Manager) owns this decision.
 GIVEN 22 ACTIVE monsters (21 STANDARD, 1 BOSS) all receive lethal `monster_damage_taken` events in the same physics frame,
 WHEN the frame completes,
-THEN `boss_died` has been emitted synchronously during the frame (not deferred) with `cause == "killed"`; all 22 `monster_died` events emit synchronously during the frame; Monster System does NOT defer or batch `monster_died` — Wave Manager's batch accumulator handles aggregation.
+THEN `boss_died` has been emitted synchronously during the frame (not deferred) with `cause == "killed"`; because 22 exceeds `eventbus_batch_threshold` (20), Monster System emits exactly one `monsters_died_batch` (containing all 22 payloads) instead of 22 individual `monster_died` events — `monster_died` fires zero times for this frame; Monster System, not Wave Manager, owns and performs this batching decision.
 
 ---
 
@@ -1050,10 +1050,10 @@ THEN entity 1 and entity 2 retain `scaled_speed = 2.0` (modifier not applied ret
 
 ### Area 16: AoE Death Burst Performance
 
-**AC-40** `[Performance · BLOCKING]` — Evidence: profiler output at `production/qa/evidence/monster-aoe-perf-[date].png`
+**AC-40** `[Performance · BLOCKING]` — Evidence: profiler output at `production/qa/evidence/monster-aoe-perf-[date].png` — **Corrected 2026-07-31 (ADR-0033)**: this fixture's 22-death count exceeds `eventbus_batch_threshold` (20), which now correctly triggers batching (one `monsters_died_batch` emission, not 22 individual `monster_died` dispatches) — the assertion below was updated to match, and batching should if anything *improve* the measured CPU time versus the prior unconditional per-kill dispatch this AC's budget was originally calibrated against.
 GIVEN 22 ACTIVE monsters (21 STANDARD, 1 BOSS) all receive lethal `monster_damage_taken` events in the same physics frame (AoE kill scenario), with all `death_vfx_scene` instantiations deferred,
 WHEN the damage pass, death sequences, and absorbed flush all complete within a single `_physics_process` call,
-THEN total Monster System CPU time for that frame does not exceed 4.0 ms; all 22 `monster_died` events emit synchronously within the frame; `boss_died` emits synchronously before `monster_died` for the BOSS entity; no frame drops below 60 FPS; profiler output saved as evidence.
+THEN total Monster System CPU time for that frame does not exceed 4.0 ms; because 22 exceeds `eventbus_batch_threshold` (20), Monster System emits exactly one `monsters_died_batch` (all 22 payloads) instead of 22 individual `monster_died` events; `boss_died` still emits synchronously (unbatched) for the BOSS entity; no frame drops below 60 FPS; profiler output saved as evidence.
 
 **AC-43** `[Performance · BLOCKING]` — Evidence: profiler output at `production/qa/evidence/monster-waveend-perf-[date].png`
 GIVEN 150 ACTIVE monsters (the `MAX_ACTIVE_MONSTERS` cap) remain in `active_monsters` when `wave_completed` fires,
