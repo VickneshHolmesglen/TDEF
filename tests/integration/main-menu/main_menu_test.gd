@@ -114,3 +114,45 @@ func test_back_button_pressed_returns_focus_and_ring_to_the_settings_button() ->
 	var settings_ring: Panel = _menu.get("_settings_focus_ring")
 	assert_bool(settings_button.has_focus()).is_true()
 	assert_bool(settings_ring.visible).is_true()
+
+
+## Real bug found and fixed 2026-08-01: the Settings placeholder previously
+## didn't trap Tab-focus -- Godot's automatic Tab traversal has no concept
+## of "modal," so pressing Tab while the panel was open could cycle focus
+## back onto the underlying PLAY/SETTINGS/QUIT buttons (visually covered,
+## but not focus-excluded). Fixed by setting those 3 to FOCUS_NONE for the
+## duration the panel is open.
+func test_underlying_buttons_are_not_focusable_while_settings_is_open() -> void:
+	_menu.get_node("Buttons/SettingsButton").pressed.emit()
+
+	var play_button: TextureButton = _menu.get_node("Buttons/PlayButton")
+	var settings_button: TextureButton = _menu.get_node("Buttons/SettingsButton")
+	var quit_button: TextureButton = _menu.get_node("Buttons/QuitButton")
+	assert_int(play_button.focus_mode).is_equal(Control.FOCUS_NONE)
+	assert_int(settings_button.focus_mode).is_equal(Control.FOCUS_NONE)
+	assert_int(quit_button.focus_mode).is_equal(Control.FOCUS_NONE)
+
+
+func test_underlying_buttons_are_focusable_again_after_closing_settings() -> void:
+	_menu.get_node("Buttons/SettingsButton").pressed.emit()
+	_menu.get_node("SettingsPanel/BackButton").pressed.emit()
+
+	var play_button: TextureButton = _menu.get_node("Buttons/PlayButton")
+	var settings_button: TextureButton = _menu.get_node("Buttons/SettingsButton")
+	var quit_button: TextureButton = _menu.get_node("Buttons/QuitButton")
+	assert_int(play_button.focus_mode).is_equal(Control.FOCUS_ALL)
+	assert_int(settings_button.focus_mode).is_equal(Control.FOCUS_ALL)
+	assert_int(quit_button.focus_mode).is_equal(Control.FOCUS_ALL)
+
+
+## The direct behavioral proof, not just the focus_mode implementation
+## detail above -- simulates the exact real bug scenario (Tab press while
+## the panel is open) and confirms focus stays on Back, not escaping to a
+## covered button.
+func test_tab_press_while_settings_open_does_not_escape_focus() -> void:
+	_menu.get_node("Buttons/SettingsButton").pressed.emit()
+
+	await _runner.simulate_key_pressed(KEY_TAB)
+
+	var back_button: Button = _menu.get_node("SettingsPanel/BackButton")
+	assert_object(_menu.get_viewport().gui_get_focus_owner()).is_equal(back_button)

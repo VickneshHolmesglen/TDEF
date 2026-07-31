@@ -1,3 +1,14 @@
+## Session Extract — Main Menu Tab-focus containment fixed, 2026-08-01 (continued)
+
+- User asked to fix the Tab-focus-containment gap flagged (documented, not fixed) in the immediately prior extract.
+- Real bug: the Settings placeholder had no modal focus trap — Godot's automatic Tab/Shift+Tab traversal has no concept of "modal," so with the underlying PLAY/SETTINGS/QUIT buttons still `focus_mode=FOCUS_ALL`, Tab could cycle focus back onto them (visually covered by the panel, not focus-excluded) even though Back was the only intentionally-reachable control.
+- Fixed with `_set_underlying_buttons_focusable(focusable: bool)`: sets the 3 buttons to `Control.FOCUS_NONE` when the Settings panel opens (before `_back_button.grab_focus()`), restores `Control.FOCUS_ALL` when it closes (before `_settings_button.grab_focus()`) — leaving Back as the only focusable Control in the tree while the modal is up.
+- Live-verified via Godot MCP by reproducing the **exact original bug scenario**: click SETTINGS, press Tab — confirmed focus now correctly stays on `BackButton` (previously escaped to `PlayButton`), and confirmed the 3 buttons' `focus_mode` values directly (0/FOCUS_NONE while open, 2/FOCUS_ALL after closing). Zero debug-output errors.
+- Added 3 new tests (`test_underlying_buttons_are_not_focusable_while_settings_is_open`, `..._are_focusable_again_after_closing_settings`, and a direct behavioral proof `test_tab_press_while_settings_open_does_not_escape_focus` that simulates a real Tab key press, not just checking the `focus_mode` implementation detail) — 12/12 total in `main_menu_test.gd`, 0 orphans.
+- Updated `design/quick-specs/main-menu-2026-08-01.md`'s "Known adjacent gap" note to record the fix instead of the open gap.
+- Live-verified: full project regression 1840/1840 (up from 1837), 0 errors, 0 failures, orphan count unchanged at 185 (expected, per `TD-test-006`).
+- **Recommended next pickup**: Main Menu's own scope is now fully closed (background, buttons, PLAY/SETTINGS/QUIT wiring, focus rings, modal focus containment) — no further follow-ups flagged from this thread. Settings' own real content remains a placeholder pending an actual Settings system design, if ever wanted. Otherwise the same 3 genuinely external blockers remain (`TD-inv-003` items 1/2, `TD-ui-001` item 1, Pre-Production gate).
+
 ## Session Extract — Main Menu gamepad focus rings wired, 2026-08-01 (continued)
 
 - User asked to wire up gamepad focus rings on the Main Menu buttons, immediately after the base Main Menu extract above (which had explicitly flagged this as a deliberate, disclosed follow-up rather than silently skipped).

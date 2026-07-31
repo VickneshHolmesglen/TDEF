@@ -39,6 +39,18 @@ extends Control
 ## gamepad/keyboard alone until the player first moves the mouse, which
 ## would violate ui-code.md's "support both keyboard/mouse AND gamepad
 ## input for all interactive elements" for the very first frame.
+##
+## Tab-focus containment (2026-08-01, follow-up fix): the Settings
+## placeholder previously didn't trap Tab-focus — Godot's automatic
+## Tab/Shift+Tab traversal has no concept of "modal," so with the 3
+## underlying buttons still focus_mode=FOCUS_ALL, pressing Tab while the
+## panel was open (Back being the only focusable Control inside it) simply
+## kept cycling out to whichever of PLAY/SETTINGS/QUIT was next in tree
+## order — visually covered by the panel but not focus-excluded. Fixed by
+## setting the 3 underlying buttons to FOCUS_NONE for the duration the
+## panel is open and restoring FOCUS_ALL on close, so Back is the only
+## focusable Control in the tree while the modal is up (Tab/Shift+Tab both
+## just keep it focused, matching real single-focusable-element behavior).
 
 @onready var _settings_panel: Control = $SettingsPanel
 @onready var _input_mode_tracker: InputModeTracker = $InputModeTracker
@@ -96,12 +108,21 @@ func _on_play_pressed() -> void:
 
 func _on_settings_pressed() -> void:
 	_settings_panel.visible = true
+	_set_underlying_buttons_focusable(false)
 	_back_button.grab_focus()
 
 
 func _on_settings_back_pressed() -> void:
 	_settings_panel.visible = false
+	_set_underlying_buttons_focusable(true)
 	_settings_button.grab_focus()
+
+
+func _set_underlying_buttons_focusable(focusable: bool) -> void:
+	var mode: Control.FocusMode = Control.FOCUS_ALL if focusable else Control.FOCUS_NONE
+	_play_button.focus_mode = mode
+	_settings_button.focus_mode = mode
+	_quit_button.focus_mode = mode
 
 
 func _on_quit_pressed() -> void:
