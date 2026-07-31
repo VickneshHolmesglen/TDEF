@@ -10,7 +10,11 @@
 ##
 ## Updated 2026-07-31: "watchtower" now has real art (a user-provided,
 ## color-keyed reference image) and renders as a TextureRect instead.
-## "habitat_expansion" still has no art and remains a ColorRect placeholder.
+##
+## Updated 2026-08-01: "habitat_expansion" also has real art now -- 3
+## tier-specific sprites (see diorama.gd's HABITAT_TEXTURES doc comment),
+## with the diorama swapping the TextureRect's texture in place as the
+## player upgrades. No structure_type uses a ColorRect placeholder anymore.
 extends GdUnitTestSuite
 
 const SanctuaryUiScene: PackedScene = preload("res://src/presentation/sanctuary_ui/SanctuaryUI.tscn")
@@ -70,10 +74,8 @@ func test_unmapped_structure_type_renders_nothing_and_does_not_error() -> void:
 
 ## Real art landed 2026-07-31 (color-keyed from a user-provided reference
 ## image, see diorama.gd's WATCHTOWER_TEXTURE doc comment) -- watchtower is
-## now a real TextureRect, not a ColorRect placeholder. habitat_expansion
-## still has no art and stays a ColorRect (covered by the habitat-label
-## tests below, which rely on it remaining a Control the label can be
-## added as a child of).
+## now a real TextureRect, not a ColorRect placeholder. habitat_expansion's
+## own tier-swap art is covered separately below.
 func test_watchtower_renders_as_a_textured_sprite_not_a_placeholder_rect() -> void:
 	GEventBus.sanctuary_structure_built.emit("watchtower_tier_1", "watchtower")
 
@@ -85,6 +87,40 @@ func test_watchtower_renders_as_a_textured_sprite_not_a_placeholder_rect() -> vo
 	assert_bool(watchtower_visual is TextureRect).is_true()
 	var tex_rect: TextureRect = watchtower_visual as TextureRect
 	assert_object(tex_rect.texture).is_not_null()
+
+
+## habitat_expansion has 3 real tiers (unlike watchtower's 1) -- see
+## design/quick-specs/habitat-expansion-tiered-art-2026-08-01.md. Building
+## tier_1 creates one real TextureRect with tier_1's texture.
+func test_habitat_expansion_tier_1_renders_as_a_textured_sprite() -> void:
+	GEventBus.sanctuary_structure_built.emit("habitat_expansion_tier_1", "habitat_expansion")
+
+	var diorama: Control = _shell.get_diorama()
+	var rendered_nodes: Dictionary = diorama.get("_rendered_structure_types") as Dictionary
+	var habitat_visual: Control = rendered_nodes.get("habitat_expansion") as Control
+
+	assert_object(habitat_visual).is_not_null()
+	assert_bool(habitat_visual is TextureRect).is_true()
+	var tex_rect: TextureRect = habitat_visual as TextureRect
+	assert_object(tex_rect.texture).is_not_null()
+	assert_str(String(tex_rect.texture.resource_path)).contains("habitat_tier_1")
+
+
+## Building a later tier swaps the SAME node's texture rather than creating
+## a second one -- the real load-bearing behavior this quick spec added.
+func test_habitat_expansion_tier_upgrade_swaps_texture_on_the_same_node() -> void:
+	GEventBus.sanctuary_structure_built.emit("habitat_expansion_tier_1", "habitat_expansion")
+	var diorama: Control = _shell.get_diorama()
+	var rendered_nodes: Dictionary = diorama.get("_rendered_structure_types") as Dictionary
+	var tier_1_visual: Control = rendered_nodes.get("habitat_expansion") as Control
+
+	GEventBus.sanctuary_structure_built.emit("habitat_expansion_tier_2", "habitat_expansion")
+	var tier_2_visual: Control = rendered_nodes.get("habitat_expansion") as Control
+
+	assert_object(tier_2_visual).is_same(tier_1_visual)  # same node, not a new one
+	var tex_rect: TextureRect = tier_2_visual as TextureRect
+	assert_str(String(tex_rect.texture.resource_path)).contains("habitat_tier_2")
+	assert_int(diorama.call("get_rendered_structure_types").size()).is_equal(1)
 
 
 func test_diorama_still_renders_a_structure_while_a_room_is_active() -> void:

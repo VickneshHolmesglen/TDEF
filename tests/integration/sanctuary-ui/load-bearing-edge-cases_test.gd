@@ -118,14 +118,15 @@ func test_diorama_has_no_structure_click_mechanism_yet_confirmed_not_assumed() -
 	# diorama.gd's own structure rendering has no click/input handling of any
 	# kind, confirmed directly against the real node it now instantiates.
 	#
-	# Updated 2026-07-31: "watchtower" is now a real TextureRect (see
-	# diorama.gd's WATCHTOWER_TEXTURE), not a ColorRect placeholder -- use
-	# "habitat_expansion" here instead, which still has no art and remains
-	# the ColorRect placeholder this test's own reasoning was written against.
+	# Updated 2026-07-31/2026-08-01: both "watchtower" and "habitat_expansion"
+	# are now real TextureRects (real art, no ColorRect placeholder exists
+	# for any structure_type anymore) -- this test no longer depends on
+	# which concrete Control subclass renders. What matters, unchanged, is
+	# that the real node has zero gui_input connections.
 	GEventBus.sanctuary_structure_built.emit("habitat_expansion_tier_1", "habitat_expansion")
 	var world: Node2D = _shell.get_diorama().call("get_world")
 	var structure: Node = world.get_child(0)
-	assert_bool(structure is ColorRect).is_true()  # a plain placeholder rect
+	assert_bool(structure is Control).is_true()  # a real rendered structure, not a click-through no-op
 	# No click/room-entry handler is wired to it at all -- confirmed by its
-	# gui_input signal having zero connections, not merely "it's a rect."
-	assert_array((structure as ColorRect).gui_input.get_connections()).is_empty()
+	# gui_input signal having zero connections, not merely "it's a Control."
+	assert_array((structure as Control).gui_input.get_connections()).is_empty()

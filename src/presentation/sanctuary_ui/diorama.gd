@@ -16,12 +16,14 @@ extends Control
 ## embedding-tensor allocation (`torch.nn.modules.sparse.Embedding.__init__`,
 ## "CUDA error: operation not supported") -- a local GPU/driver environment
 ## issue on this machine's AMD setup, not something fixable from this
-## codebase. Falls back to the same "plain shape/text, no art exists"
+## codebase. Fell back to the same "plain shape/text, no art exists"
 ## honest-scope convention already used project-wide this session (Tarot,
 ## Hero Skill Build, Equipment Forge screens) -- `ColorRect` placeholders per
-## structure type instead of generated sprites. The GDD's own "full
-## stacked-sprite/cast-shadow treatment" requirement remains a real, flagged
-## gap pending actual art -- not fabricated here.
+## structure type instead of generated sprites. Both real structure types
+## (`watchtower`, `habitat_expansion`) since gained real, user-provided art
+## (2026-07-31/2026-08-01, see WATCHTOWER_TEXTURE/HABITAT_TEXTURES below) --
+## the GDD's own "full stacked-sprite/cast-shadow treatment" requirement is
+## narrower now but still not fully closed (no cast-shadow layer exists).
 ##
 ## "Camera" pull-back (DEPARTING beat): this node's own root is a `Control`,
 ## not a `Node2D`/`Viewport`, so a literal `Camera2D` has no meaningful
@@ -37,19 +39,6 @@ extends Control
 ## even while occluded by a room") -- subscriptions stay live throughout,
 ## never torn down on a room switch.
 
-## One shared placeholder color per structure_type -- not per structure_id,
-## since later tiers of the same type (e.g. habitat_expansion_tier_2/3)
-## upgrade the same physical footprint in place, matching Defense Building's
-## own upgrade-in-place model. Real content today: only "watchtower" and
-## "habitat_expansion" exist as authored StructureResource types.
-## "watchtower" now has real art (see WATCHTOWER_TEXTURE below) -- this
-## color entry is unused for it but left as the Color.GRAY fallback path's
-## documented default for any future structure_type with no art yet.
-const STRUCTURE_COLORS: Dictionary[String, Color] = {
-	"watchtower": Color(0.55, 0.55, 0.6),
-	"habitat_expansion": Color(0.35, 0.65, 0.35),
-}
-
 ## Fixed, hand-authored positions (GDD Core Rule 1's own requirement) --
 ## chosen to roughly match design/ux/sanctuary-ui.md's own ASCII wireframe
 ## layout (Watchtower left, Habitat right, both mid-frame).
@@ -60,19 +49,39 @@ const STRUCTURE_POSITIONS: Dictionary[String, Vector2] = {
 
 const STRUCTURE_SIZE: Vector2 = Vector2(64, 64)
 
-## Real watchtower_tier_1 art (2026-07-31) -- only "watchtower" has real
-## content; "habitat_expansion" still uses the ColorRect placeholder below
-## until its own art exists. Source: user-provided reference image, color-
-## keyed from a flat opaque background to real transparency (the source PNG
-## had alpha=1.0 everywhere, including a uniform light-grey backdrop -- not
-## actually transparent despite being RGBA). Only watchtower_tier_1 exists
-## as real StructureResource data today (no tier_2/3/4 authored yet), and
-## _render_structure() below still renders once per structure_type
-## regardless of tier, matching its own existing "upgrades in place, no new
-## visual yet" scope discipline -- this is a real, single, non-tiered asset,
-## not a placeholder for a tier system that doesn't exist yet.
+## Real watchtower_tier_1 art (2026-07-31). Source: user-provided reference
+## image, color-keyed from a flat opaque background to real transparency
+## (the source PNG had alpha=1.0 everywhere, including a uniform light-grey
+## backdrop -- not actually transparent despite being RGBA). Only
+## watchtower_tier_1 exists as real StructureResource data today (no
+## tier_2/3/4 authored yet), and _render_structure() below still renders
+## once regardless of tier, matching its own existing "upgrades in place, no
+## new visual yet" scope discipline -- this is a real, single, non-tiered
+## asset, not a placeholder for a tier system that doesn't exist yet. (Contrast
+## habitat_expansion below, which does have 3 real tiers and its own
+## tier-swap path, _render_habitat().)
 const WATCHTOWER_TEXTURE: Texture2D = preload("res://assets/art/sanctuary/watchtower.png")
 const WATCHTOWER_DISPLAY_HEIGHT: float = 64.0  ## matches STRUCTURE_SIZE.y for scale consistency with the habitat placeholder rect
+
+## Real habitat_expansion tier art (2026-08-01, see
+## design/quick-specs/habitat-expansion-tiered-art-2026-08-01.md) -- unlike
+## watchtower (single-tier), habitat_expansion has 3 real authored tiers
+## (habitat_expansion_tier_1/2/3), so this structure_type's diorama visual
+## swaps texture in place as the player upgrades, instead of rendering once
+## and staying static forever. Source: the same user-provided reference
+## image set as watchtower's, cropped into 3 per-tier sprites and flood-fill
+## background-keyed to transparency from the canvas edges (a fixed-color-
+## distance key, as used for watchtower.png, left visible noise/gradient
+## artifacts in the background here -- flood fill from the border follows
+## the actual local background instead of assuming one uniform color). The
+## set's 4th (grandest) building is unused -- no tier_4 StructureResource
+## exists yet.
+const HABITAT_TEXTURES: Dictionary[int, Texture2D] = {
+	1: preload("res://assets/art/sanctuary/habitat_tier_1.png"),
+	2: preload("res://assets/art/sanctuary/habitat_tier_2.png"),
+	3: preload("res://assets/art/sanctuary/habitat_tier_3.png"),
+}
+const HABITAT_DISPLAY_HEIGHT: float = 64.0  ## matches STRUCTURE_SIZE.y, same reasoning as WATCHTOWER_DISPLAY_HEIGHT
 
 @onready var _world: Node2D = $World
 
@@ -81,11 +90,18 @@ const WATCHTOWER_DISPLAY_HEIGHT: float = 64.0  ## matches STRUCTURE_SIZE.y for s
 ## matches menagerie_screen.gd's own identical default).
 @export var menagerie: Menagerie
 
-## Control, not ColorRect -- "watchtower" is now a TextureRect (real art),
-## "habitat_expansion" remains a ColorRect (no art yet). Both are Control
-## subclasses so the shared lookup/removal logic doesn't need to care which.
+## Both "watchtower" and "habitat_expansion" now render as TextureRect (real
+## art for both, see WATCHTOWER_TEXTURE/HABITAT_TEXTURES) -- typed as the
+## shared Control base so the lookup/removal logic doesn't need to care
+## about the concrete subclass, in case a future structure_type ever needs
+## a different Control-derived visual again.
 var _rendered_structure_types: Dictionary[String, Control] = {}
 var _habitat_label: Label = null
+
+## Tracks the highest habitat_expansion tier rendered so far (0 = not built
+## yet) -- see design/quick-specs/habitat-expansion-tiered-art-2026-08-01.md.
+## watchtower needs no equivalent since only one tier of it exists.
+var _habitat_tier: int = 0
 
 
 func _ready() -> void:
@@ -104,8 +120,11 @@ func _exit_tree() -> void:
 	GEventBus.creature_sacrificed.disconnect(_on_habitat_composition_changed)
 
 
-func _on_sanctuary_structure_built(_structure_id: String, structure_type: String) -> void:
-	_render_structure(structure_type)
+func _on_sanctuary_structure_built(structure_id: String, structure_type: String) -> void:
+	if structure_type == "habitat_expansion":
+		_render_habitat(structure_id)
+	else:
+		_render_structure(structure_type)
 
 
 ## Edge case (GDD): a structure_type with no diorama position mapping (none
@@ -118,12 +137,36 @@ func _render_structure(structure_type: String) -> void:
 	if not STRUCTURE_POSITIONS.has(structure_type):
 		return
 
-	var visual: Control = _build_watchtower_sprite() if structure_type == "watchtower" else _build_placeholder_rect(structure_type)
+	var visual: Control = _build_watchtower_sprite()
 	_world.add_child(visual)
 	_rendered_structure_types[structure_type] = visual
 
-	if structure_type == "habitat_expansion":
+
+## habitat_expansion has its own path (not the generic _render_structure()
+## above) because it's the one structure_type with real multi-tier art --
+## see design/quick-specs/habitat-expansion-tiered-art-2026-08-01.md. First
+## build creates the node; a later, higher tier swaps its texture in place
+## instead of the generic path's "already rendered, no-op" rule.
+func _render_habitat(structure_id: String) -> void:
+	var structure: StructureResource = GGameDataRegistry.get_structure(StringName(structure_id))
+	var tier: int = structure.tier if structure != null else 1
+	if not HABITAT_TEXTURES.has(tier):
+		tier = 1  # no art for this tier yet -- fall back rather than erroring
+
+	if not _rendered_structure_types.has("habitat_expansion"):
+		var visual: TextureRect = _build_habitat_sprite(tier)
+		_world.add_child(visual)
+		_rendered_structure_types["habitat_expansion"] = visual
+		_habitat_tier = tier
 		_ensure_habitat_label(visual)
+		return
+
+	if tier <= _habitat_tier:
+		return  # tiers only build forward in real play -- never downgrade the visual
+
+	var tex_rect := _rendered_structure_types["habitat_expansion"] as TextureRect
+	tex_rect.texture = HABITAT_TEXTURES[tier]
+	_habitat_tier = tier
 
 
 ## Real art path (2026-07-31) -- see WATCHTOWER_TEXTURE's own doc comment.
@@ -136,31 +179,38 @@ func _build_watchtower_sprite() -> TextureRect:
 	var display_size := Vector2(WATCHTOWER_DISPLAY_HEIGHT * aspect, WATCHTOWER_DISPLAY_HEIGHT)
 	tex_rect.size = display_size
 	tex_rect.position = STRUCTURE_POSITIONS["watchtower"] - display_size / 2.0
-	# See _build_placeholder_rect()'s identical note -- same reasoning.
-	tex_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	return tex_rect
-
-
-## No-art-yet path -- currently only "habitat_expansion" uses this.
-func _build_placeholder_rect(structure_type: String) -> ColorRect:
-	var rect := ColorRect.new()
-	rect.name = "Structure_%s" % structure_type
-	rect.color = STRUCTURE_COLORS.get(structure_type, Color.GRAY)
-	rect.size = STRUCTURE_SIZE
-	rect.position = STRUCTURE_POSITIONS[structure_type] - STRUCTURE_SIZE / 2.0
-	# No click/room-entry handler exists yet for these placeholders (GDD's
+	# No click/room-entry handler exists yet for diorama structures (GDD's
 	# "click a structure to enter its room" secondary entry path is a future
 	# story's scope) -- Control's default MOUSE_FILTER_STOP would otherwise
 	# silently swallow clicks aimed at anything else with no handler of its
 	# own to show for it. Explicit MOUSE_FILTER_IGNORE until that story wires
 	# real click handling here.
-	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	return rect
+	tex_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return tex_rect
+
+
+## Real art path (2026-08-01) -- see HABITAT_TEXTURES' own doc comment. tier
+## selects which of the 3 authored sprites to use; sizing/positioning use
+## HABITAT_DISPLAY_HEIGHT/STRUCTURE_POSITIONS the same way watchtower does.
+func _build_habitat_sprite(tier: int) -> TextureRect:
+	var tex_rect := TextureRect.new()
+	tex_rect.name = "Structure_habitat_expansion"
+	var texture: Texture2D = HABITAT_TEXTURES[tier]
+	tex_rect.texture = texture
+	tex_rect.stretch_mode = TextureRect.STRETCH_SCALE
+	var aspect: float = float(texture.get_width()) / float(texture.get_height())
+	var display_size := Vector2(HABITAT_DISPLAY_HEIGHT * aspect, HABITAT_DISPLAY_HEIGHT)
+	tex_rect.size = display_size
+	tex_rect.position = STRUCTURE_POSITIONS["habitat_expansion"] - display_size / 2.0
+	# See _build_watchtower_sprite()'s identical note -- same reasoning.
+	tex_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return tex_rect
 
 
 ## GDD Core Rule 1: diorama shows "habitat occupancy" alongside structures --
-## a plain-text count overlay on the habitat structure's own placeholder,
-## matching this shell's own no-art text-tag convention.
+## a plain-text count overlay parented to the habitat structure's own
+## visual (real art since 2026-08-01; the label itself has no art of its
+## own, matching this shell's no-art text-tag convention for readouts).
 func _ensure_habitat_label(rect: Control) -> void:
 	if _habitat_label != null:
 		return
