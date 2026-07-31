@@ -1881,3 +1881,53 @@ Add a test: `monsters_died_batch` with 2+ wave_end payloads against a guaranteed
 - [x] Live-verified: full project regression 1812/1812, 0 errors, 0 failures.
 - [x] This entry closed.
 
+## TD-test-006 — The full regression's "185 orphans" figure is a gdUnit4 reporting-timing artifact, not a real leak (investigated, not a bug)
+
+**Logged**: 2026-08-01
+**Investigated**: 2026-08-01
+**Story**: Carried in every session-state extract's "recommended next pickup" list since at least Sprint 5 as an unexplained number — investigated on request to root-cause it once and for all.
+**Severity**: None (informational) — does not fail tests (0 errors/0 failures alongside it every run), does not affect shipped game behavior. Logged purely so no future session re-investigates this from scratch.
+**Area**: gdUnit4 framework internals (`addons/gdUnit4/src/core/execution/stages/single/GdUnitTestCaseSingleTestStage.gd`), plus the 9 test suites the count currently comes from.
+
+### Root cause
+
+gdUnit4's own execution-stage ordering snapshots orphan nodes **before** `after_test()` runs:
+
+```gdscript
+# GdUnitTestCaseSingleTestStage._execute()
+await context.test_case.execute()               # runs the test body
+await context.gc(GC_ORPHANS_CHECK.TEST_CASE)     # <- orphan snapshot taken HERE
+
+# GdUnitTestCaseSingleExecutionStage._execute() -- after_test() runs in a LATER, separate stage:
+await _stage_test.execute(...)   # test body + orphan snapshot (above)
+await _stage_after.execute(...)  # after_test() -- runs AFTER the snapshot already happened
+```
+
+Any test that follows this project's own established, idiomatic convention — create a `Node` via `.new()` mid-test, free it correctly in `after_test()` (e.g. `GameDataRegistry.new()` + `_inject()` + `_ready()`, explicitly documented as convention in `drop_table_schema_registry_test.gd`'s own header comment) — gets miscounted, because the snapshot fires before that correct cleanup has had a chance to run.
+
+Verified directly: attributed one orphan to the exact `_registry` member field mid-test via gdUnit4's own `collect_orphan_node_details()` diagnostic, confirming it was simply "not freed yet," not abandoned — `after_test()` frees it moments later, just after the count was already taken.
+
+A related, second cause covers just over half the total (102 of 185, `exit-mission-select_test.gd` 82 + `loadout-handoff_test.gd` 20): `SceneManager._do_transition()`'s `get_tree().change_scene_to_packed()` defers its actual old-scene cleanup to Godot's next idle frame — also not yet run by the time the same snapshot fires. Confirmed by a temporary debug probe (`await get_tree().process_frame` before test end) dropping one suite's count from 82→11; reverted after confirming, not kept as a permanent change.
+
+### Suites currently contributing (185 total, 2026-08-01 full regression)
+
+| Suite | Orphans | Pattern |
+|-------|---------|---------|
+| `tests/integration/sanctuary-ui/exit-mission-select_test.gd` | 82 | Deferred `change_scene_to_packed()` cleanup |
+| `tests/integration/sanctuary-ui/loadout-handoff_test.gd` | 20 | Deferred `change_scene_to_packed()` cleanup |
+| `tests/unit/game_data_registry/game_data_registry_test.gd` | 37 | `.new()`-in-test / `free()`-in-`after_test()` |
+| `tests/unit/defense_building/tech_structure_data_schema_test.gd` | 9 | `.new()`-in-test / `free()`-in-`after_test()` |
+| `tests/unit/resource_economy/drop_table_schema_registry_test.gd` | 10 | `.new()`-in-test / `free()`-in-`after_test()` |
+| `tests/unit/tower-mastery/tower_mastery_feedback_test.gd` | 9 | `.new()`-in-test / `free()`-in-`after_test()` |
+| `tests/unit/event_bus/event_bus_signals_test.gd` | 1 | `.new()`-in-test / `free()`-in-`after_test()` |
+| `tests/integration/sanctuary-ui/tab-strip-navigation_test.gd` | 10 | Same family (not individually isolated) |
+| `tests/integration/sanctuary-ui/load-bearing-edge-cases_test.gd` | 7 | Same family (not individually isolated) |
+
+### Why not fixed
+
+The `.new()`/`after_test()` pattern is this project's own correct, idiomatic convention — not a bug to change. The `change_scene_to_packed()` timing is real but only cosmetic (the nodes are freed a frame later regardless). Silencing the count would mean adding a `await get_tree().process_frame` to the end of 9 test files to outrun gdUnit4's own snapshot timing — a real code change whose only purpose is to make an already-harmless number read 0, not something worth the maintenance surface. Left open/informational rather than actioned.
+
+### Resolution
+- [x] Root-caused and documented (2026-08-01) — no code change made, by design (see "Why not fixed" above).
+- [x] This entry closed as informational — nothing further to do unless the count changes unexpectedly in a future run (which would then warrant fresh investigation, not assumption that it's still this same cause).
+
