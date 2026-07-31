@@ -92,6 +92,12 @@ const GOAL_CELL: Vector2i = Vector2i(15, 6)
 
 var _monsters_container: Node2D
 
+## design/quick-specs/combat-tower-placeholder-visual-layer-2026-07-31.md —
+## tower_id(int) -> ColorRect placeholder. TowerSystem itself stays pure
+## data/logic (no scene involvement); this scene owns the visual exactly
+## like it already owns monster visuals via _on_monster_spawned().
+var _tower_visuals: Dictionary = {}
+
 
 func _ready() -> void:
 	_monsters_container = Node2D.new()
@@ -130,6 +136,9 @@ func _ready() -> void:
 	GEventBus.mission_phase_changed.connect(_on_mission_phase_changed)
 	GEventBus.wave_started.connect(_on_wave_started)
 	GEventBus.wave_completed.connect(_on_wave_completed)
+	GEventBus.tower_placed.connect(_on_tower_placed)
+	GEventBus.tower_removed.connect(_on_tower_removed)
+	GEventBus.tower_destroyed.connect(_on_tower_destroyed)
 
 	_hud_phase_label.text = "Phase: (not launched)"
 	_hud_wave_label.text = "Wave: -"
@@ -153,6 +162,9 @@ func _exit_tree() -> void:
 	GEventBus.mission_phase_changed.disconnect(_on_mission_phase_changed)
 	GEventBus.wave_started.disconnect(_on_wave_started)
 	GEventBus.wave_completed.disconnect(_on_wave_completed)
+	GEventBus.tower_placed.disconnect(_on_tower_placed)
+	GEventBus.tower_removed.disconnect(_on_tower_removed)
+	GEventBus.tower_destroyed.disconnect(_on_tower_destroyed)
 
 
 # ---------------------------------------------------------------------------
@@ -297,6 +309,65 @@ func _color_for_monster(monster_id: StringName) -> Color:
 			return Color(0.9, 0.1, 0.1)
 		_:
 			return Color(0.9, 0.6, 0.1)
+
+
+# ---------------------------------------------------------------------------
+# design/quick-specs/combat-tower-placeholder-visual-layer-2026-07-31.md —
+# TowerSystem stays pure data/logic (no scene involvement, per its own
+# established boundary); this scene owns the placeholder visual entirely,
+# mirroring the monster-visual pattern above. Static IDLE-only rect — no
+# TARGETING/ATTACKING/DESTROYED state art, no projectile VFX (all real
+# content-authoring work tower.md's own Visual/Audio Requirements section
+# defers to later).
+# ---------------------------------------------------------------------------
+
+func _on_tower_placed(payload: TowerPlacedEvent) -> void:
+	var vis := ColorRect.new()
+	vis.size = Vector2(payload.footprint) * CELL_SIZE
+	vis.position = GGrid.cell_to_world(payload.grid_position)
+	vis.color = _color_for_tower_archetype(payload.archetype)
+	vis.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(vis)
+	_tower_visuals[payload.tower_id] = vis
+
+
+func _on_tower_removed(tower_id: int, _grid_position: Vector2i, _archetype: String, _constellation_eligibility_tag: String) -> void:
+	_free_tower_visual(tower_id)
+
+
+func _on_tower_destroyed(tower_id: int, _grid_position: Vector2i, _archetype: String, _footprint: Array, _constellation_eligibility_tag: String) -> void:
+	_free_tower_visual(tower_id)
+
+
+func _free_tower_visual(tower_id: int) -> void:
+	var vis: ColorRect = _tower_visuals.get(tower_id) as ColorRect
+	if vis == null:
+		return
+	if is_instance_valid(vis):
+		vis.queue_free()
+	_tower_visuals.erase(tower_id)
+
+
+## tower.md's own Archetype Color Language table (Visual/Audio Requirements
+## section) — Physical: grey/silver/stone; Ranged: brown/wood/metal;
+## Elemental: per-sub-type (MVP scope: Fire + Frost only; Poison/Lightning/
+## Arcane are Vertical-Slice/Alpha-tier per that table, and
+## TowerBlueprintData has no elemental-sub-type field to distinguish them by
+## yet, so any non-Frost elemental value falls back to Frost's color);
+## Support: warm gold/pale light. Unrecognized archetype: magenta, matching
+## grid_visual.gd's own "loud, obviously-wrong" fallback convention.
+func _color_for_tower_archetype(archetype: String) -> Color:
+	match archetype:
+		"physical":
+			return Color(0.6, 0.6, 0.65)
+		"ranged":
+			return Color(0.55, 0.4, 0.25)
+		"elemental":
+			return Color(0.6, 0.85, 0.95)  # Frost — the only elemental blueprint that ships today
+		"support":
+			return Color(0.9, 0.75, 0.3)
+		_:
+			return Color.MAGENTA
 
 
 # ---------------------------------------------------------------------------

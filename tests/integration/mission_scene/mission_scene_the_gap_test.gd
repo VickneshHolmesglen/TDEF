@@ -211,6 +211,37 @@ func test_the_gap_debug_tower_placement_uses_real_tower_system() -> void:
 	assert_bool(placed).is_true()
 	assert_int(GGrid.get_occupant(placeable_cell)).is_greater(-1)
 
+
+## design/quick-specs/combat-tower-placeholder-visual-layer-2026-07-31.md —
+## real placement through the real GEventBus.tower_placed signal produces a
+## real, correctly-colored, correctly-positioned placeholder visual, and
+## removing it frees exactly that one.
+func test_the_gap_tower_placement_creates_and_removes_placeholder_visual() -> void:
+	await get_tree().create_timer(1.2).timeout
+
+	var tower_system: TowerSystem = _scene.get_node("TowerSystem") as TowerSystem
+	var placeable_cell: Vector2i = Vector2i(2, 3)
+
+	var placed: bool = tower_system.place_tower(&"archer", placeable_cell)
+	assert_bool(placed).is_true()
+
+	var tower_visuals: Dictionary = _scene.get("_tower_visuals") as Dictionary
+	assert_int(tower_visuals.size()).is_equal(1)
+	var tower_id: int = (tower_visuals.keys() as Array)[0] as int
+	var vis: ColorRect = tower_visuals[tower_id] as ColorRect
+	assert_object(vis).is_not_null()
+	assert_bool(is_instance_valid(vis)).is_true()
+	# archer's real archetype is "physical" -> grey/silver per tower.md's
+	# Archetype Color Language table.
+	assert_that(vis.color).is_equal(Color(0.6, 0.6, 0.65))
+	assert_that(vis.position).is_equal(GGrid.cell_to_world(placeable_cell))
+
+	var removed: bool = tower_system.sell_tower(tower_id)
+	assert_bool(removed).is_true()
+
+	var tower_visuals_after: Dictionary = _scene.get("_tower_visuals") as Dictionary
+	assert_int(tower_visuals_after.size()).is_equal(0)
+
 # ---------------------------------------------------------------------------
 # AC-6 (code review gap): real Hero combat vs. a real spawned monster within
 # this assembled scene. Previously untested and undisclosed. Mechanism read
