@@ -4,6 +4,13 @@ Reference log of prompts used with external image generators for game art,
 kept so a prompt can be reused, tweaked, or regenerated later without
 reconstructing the art-bible constraints from scratch each time.
 
+> **Batch request, not yet generated**: `assets/art-generation-requests-2026-08-02.md`
+> is a standalone, upload-ready prompt batch (7 monsters + 5 Menagerie
+> companion creatures — the two content sets with zero art today). Kept
+> separate from this log since it's meant to be handed to ChatGPT directly;
+> once assets come back and get sliced, fold the outcome notes back into
+> this file the same way Rally Banner's entry below does.
+
 ---
 
 ## Rally Banner (Support archetype tower)
@@ -65,3 +72,37 @@ beyond the pedestal base.
 - "plain dark background for easy cutout" → matches this project's existing
   alpha-cut pipeline (see `tower_ranged_base.png`, `tower_physical_base.png`,
   `tower_elem_*.png` — all sliced from generated sheets the same way).
+
+---
+
+## Elemental Tower Collection (regeneration — replaces the 9 tower_elem_*.png)
+
+**Date:** 2026-08-02
+**Target:** all 9 unused/wired elemental tower variants
+(`tower_elem_{fire,ice,lightning,poison,earth,water,wind,shadow,holy}.png`),
+including the one wired to the `"elemental"` archetype slot (`tower_elem_ice.png`).
+**Source:** user-supplied `assets/source/towers/elemental_tower_collection.png`
+(no prompt authored by Claude for this one — user generated and dropped it in
+directly). Same 5×2 grid layout/order as the original `updated_tower_set.png`
+this replaces, but with blank (unlabeled) pedestal plaques — no text-erasure
+step needed this time.
+**Status:** Sliced and wired (2026-08-02), replacing the originals in place
+(same filenames). Live-verified via Godot MCP — `"elemental"` still resolves
+to `tower_elem_ice.png` with zero errors, screenshot confirms clean render.
+
+**Slicing note — this sheet needed a different alpha-cut threshold than the
+original tower sheet.** The first attempt reused the connected-component
+flood-fill method at the same distance threshold that worked for
+`tower_physical_base.png`/the button sheet (`dist < 30-32`), and it badly
+overcut: large holes appeared in the pedestal base and lower tower body
+because this sheet's ambient-occlusion shadow gradient sits much closer to
+the background color (`~18,19,21`) than the equivalent areas in the original
+sheet did — some shadowed stone pixels were within ~10 RGB units of pure
+background. Tightening to `dist < 16` fixed it (solid interiors, thin
+acceptable edge fringe); an intermediate attempt at `dist < 22` was tried to
+clean up that edge fringe further and made it *worse* — it started eating
+into the brick mortar lines throughout the tower body, not just the outer
+silhouette. **Lesson: always spot-check a low-contrast case (Shadow tower,
+or any dark VFX variant) against a bright contrasting backdrop before
+committing a batch slice — the right threshold isn't transferable between
+generations even when the visual style looks similar.**
