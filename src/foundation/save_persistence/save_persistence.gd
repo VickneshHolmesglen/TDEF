@@ -11,13 +11,59 @@ extends Node
 ##   get_save_data() -> Dictionary  (primitives only — see ADR-0003)
 ##   restore_save_data(data: Dictionary) -> bool
 ##   reset_to_defaults() -> void
+##
+## EC-3/EC-5 backend (2026-08-01, `save-persistence.md`'s own Edge Cases —
+## documented since this GDD was authored, never implemented until now):
+## `load_slot()` now distinguishes NOT_FOUND / VERSION_TOO_NEW /
+## CORRUPT_RECOVERED / SUCCESS instead of a plain bool, so a caller can tell
+## "no save" apart from "a save exists but couldn't be used." EC-5 (total
+## save corruption — the file exists but its data can't be parsed as a
+## Dictionary) renames the file to `save_slot_N.corrupt` (preserved for
+## debugging, matching the GDD's own wording), resets every registered
+## system to defaults, and still emits `sanctuary_state_restored` — the
+## game proceeds with a fresh Sanctuary rather than getting stuck. A
+## version-too-new file (AC-11, already-implemented "downgrade blocked"
+## behavior) is deliberately NOT treated as EC-5 corruption — the file
+## itself is fine, just newer than this build supports, so it is left
+## completely untouched, matching AC-11's own "save file is not modified."
+## EC-3 (checkpoint exists on startup, implying a mid-mission crash) adds
+## `has_pending_checkpoint()`/`restore_from_checkpoint()` — the two real
+## choices `save-persistence.md`'s own Interface Requirements note names as
+## Main Menu/Mission Select's UI responsibility to present, not this
+## system's. Both `load_slot()` and `restore_from_checkpoint()` delete any
+## pending checkpoint afterward ("the checkpoint is deleted after either
+## choice"); `save_slot()` also now deletes it on an ordinary successful
+## save, per Rule 5's own already-documented-but-previously-unimplemented
+## "normal flow" cleanup ("when any post-mission save fires... the
+## checkpoint file for that slot is deleted immediately after").
+##
+## This pass is backend only — no new Main Menu/UI dialog was built for
+## EC-3's recovery choice or EC-5's player-facing warning. Both existing
+## `load_slot()` call sites (Main Menu's Continue/Load Game) already ignore
+## their return value, so this change is non-breaking there; wiring the
+## actual recovery-choice/warning UI on top of this real API is a natural,
+## separately-scoped follow-up.
 
 const CURRENT_FORMAT_VERSION: int = 1
 const SAVE_DIR: String = "user://saves/"
 const SAVE_PATH: String = "user://saves/save_slot_%d.dat"
 const TMP_PATH: String = "user://saves/save_slot_%d.tmp"
 const CHECKPOINT_PATH: String = "user://saves/save_slot_%d_checkpoint.dat"
+const CORRUPT_PATH: String = "user://saves/save_slot_%d.corrupt"
 const AUTOSAVE_INTERVAL: float = 300.0
+
+## Outcome of load_slot()/restore_from_checkpoint() — richer than a bool so
+## a caller can distinguish "no save" from "a save exists but couldn't be
+## used," and react differently to each (see class doc comment).
+enum LoadResult {
+	SUCCESS,
+	NOT_FOUND,
+	VERSION_TOO_NEW,       ## AC-11: file untouched, load aborted
+	CORRUPT_RECOVERED,     ## EC-5: file renamed to .corrupt, all systems reset to defaults
+	CHECKPOINT_CORRUPT,    ## EC-3 checkpoint-specific: checkpoint discarded, .dat is untouched and still loadable
+}
+
+enum _ReadFailureReason { VERSION_TOO_NEW, CORRUPT }
 
 var _registered_systems: Array = []
 var _active_slot: int = 0
@@ -101,11 +147,14 @@ func set_active_slot(slot: int) -> void:
 
 
 ## Serialise all registered systems and write slot to disk atomically.
-## Emits GEventBus.game_saved on success.
+## Emits GEventBus.game_saved on success. Rule 5: a successful save is the
+## "normal flow" completing, so any pending checkpoint for this slot (a
+## crash-recovery artifact only) is no longer needed and is deleted.
 func save_slot(slot: int) -> bool:
 	var data := _collect_save_data()
 	var ok := _write_slot(slot, data)
 	if ok:
+		_delete_checkpoint_if_exists(slot)
 		GEventBus.game_saved.emit(slot, Time.get_unix_time_from_system())
 	return ok
 
@@ -117,15 +166,88 @@ func save_checkpoint(slot: int) -> bool:
 
 
 ## Read slot from disk and restore all registered systems in restore_order.
-## Emits GEventBus.sanctuary_state_restored deferred 1 frame after restore loop.
-## Returns false if the file is absent or corrupt.
-func load_slot(slot: int) -> bool:
+## Emits GEventBus.sanctuary_state_restored deferred 1 frame after restore
+## loop (SUCCESS and CORRUPT_RECOVERED both emit it — CORRUPT_RECOVERED
+## still ends with a real, restored [default] Sanctuary state, per EC-5).
+## See class doc comment for the full LoadResult contract.
+func load_slot(slot: int) -> LoadResult:
+	var dat_path := SAVE_PATH % slot
+	if not FileAccess.file_exists(dat_path):
+		return LoadResult.NOT_FOUND
 	var data := _read_slot(slot)
 	if data.is_empty():
-		return false
+		if _classify_read_failure(dat_path) == _ReadFailureReason.VERSION_TOO_NEW:
+			return LoadResult.VERSION_TOO_NEW  # AC-11: aborted, file left untouched
+		_recover_from_corrupt_save(slot, dat_path)  # EC-5
+		return LoadResult.CORRUPT_RECOVERED
 	_active_slot = slot
 	_restore_all_systems(data, slot)
-	return true
+	_delete_checkpoint_if_exists(slot)
+	return LoadResult.SUCCESS
+
+
+## EC-3: true when a mid-mission checkpoint exists for `slot` — under
+## normal play a checkpoint is deleted the moment its slot is next saved
+## (Rule 5) or its own recovery choice is resolved, so a checkpoint still
+## present on startup means the game crashed mid-mission and never got the
+## chance to clean it up. UI's own responsibility (per this GDD's Interface
+## Requirements) to check this and present the EC-3 recovery choice.
+func has_pending_checkpoint(slot: int) -> bool:
+	return FileAccess.file_exists(CHECKPOINT_PATH % slot)
+
+
+## EC-3's "Restore from checkpoint" choice. A corrupt checkpoint does NOT
+## reset registered systems to defaults the way a corrupt main save does
+## (EC-5) — the checkpoint is explicitly "advisory" (Rule 5) and a good
+## save_slot_N.dat likely still exists, so the caller should fall back to
+## load_slot() instead of losing the player's real progress over a bad
+## crash-recovery artifact. The checkpoint is deleted regardless of outcome
+## ("the checkpoint is deleted after either choice").
+func restore_from_checkpoint(slot: int) -> LoadResult:
+	var checkpoint_path: String = CHECKPOINT_PATH % slot
+	if not FileAccess.file_exists(checkpoint_path):
+		return LoadResult.NOT_FOUND
+	var data := _read_checkpoint_file(slot)
+	if data.is_empty():
+		_delete_checkpoint_if_exists(slot)
+		return LoadResult.CHECKPOINT_CORRUPT
+	_active_slot = slot
+	_restore_all_systems(data, slot)
+	_delete_checkpoint_if_exists(slot)
+	return LoadResult.SUCCESS
+
+
+## EC-5: the main save file exists but its data could not be parsed. Rename
+## it to `save_slot_N.corrupt` (preserved for debugging, matching the GDD's
+## own wording — never silently deleted), reset every registered system to
+## its own defaults, and still emit sanctuary_state_restored so the caller
+## proceeds into a real (fresh) Sanctuary rather than a stuck/undefined
+## state. This slot becomes the active slot going forward, matching "the
+## game has started fresh" — the next real save will (correctly) overwrite
+## the space the corrupt file used to occupy.
+func _recover_from_corrupt_save(slot: int, dat_path: String) -> void:
+	var corrupt_path: String = CORRUPT_PATH % slot
+	var dir := DirAccess.open(SAVE_DIR)
+	if dir != null:
+		if FileAccess.file_exists(corrupt_path):
+			dir.remove(corrupt_path)  # an older .corrupt from a prior crash — don't block the rename over it
+		var err: Error = dir.rename(dat_path, corrupt_path)
+		if err != OK:
+			push_error("SavePersistence: failed to rename corrupt save '%s' -> '%s': %s" % [
+					dat_path, corrupt_path, error_string(err)])
+	for entry in _registered_systems:
+		entry.ref.reset_to_defaults()
+	_active_slot = slot
+	_emit_state_restored(slot)
+
+
+func _delete_checkpoint_if_exists(slot: int) -> void:
+	var checkpoint_path: String = CHECKPOINT_PATH % slot
+	if not FileAccess.file_exists(checkpoint_path):
+		return
+	var dir := DirAccess.open(SAVE_DIR)
+	if dir != null:
+		dir.remove(checkpoint_path)
 
 
 # ---------------------------------------------------------------------------
@@ -251,25 +373,53 @@ func _write_checkpoint(slot: int, data: Dictionary) -> bool:
 
 
 func _read_slot(slot: int) -> Dictionary:
-	var dat_path := SAVE_PATH % slot
-	if not FileAccess.file_exists(dat_path):
+	return _read_save_file(SAVE_PATH % slot)
+
+
+func _read_checkpoint_file(slot: int) -> Dictionary:
+	return _read_save_file(CHECKPOINT_PATH % slot)
+
+
+## Shared by _read_slot()/_read_checkpoint_file() — identical format, only
+## the path differs. _read_slot()'s own signature/behavior (empty
+## Dictionary on any failure) is preserved exactly for its existing direct
+## unit-test coverage in save_persistence_write_test.gd.
+func _read_save_file(path: String) -> Dictionary:
+	if not FileAccess.file_exists(path):
 		return {}
-	var file := FileAccess.open(dat_path, FileAccess.READ)
+	var file := FileAccess.open(path, FileAccess.READ)
 	if file == null:
 		return {}
 	var format_version: int = file.get_32()
 	if format_version > CURRENT_FORMAT_VERSION:
-		push_error("SavePersistence: version %d > current %d — cannot load '%s'" % [format_version, CURRENT_FORMAT_VERSION, dat_path])
+		push_error("SavePersistence: version %d > current %d — cannot load '%s'" % [format_version, CURRENT_FORMAT_VERSION, path])
 		file.close()
 		return {}
 	var data: Variant = file.get_var(false)
 	file.close()
 	if not data is Dictionary:
-		push_error("SavePersistence: save data is not a Dictionary — corrupt file '%s'" % dat_path)
+		push_error("SavePersistence: save data is not a Dictionary — corrupt file '%s'" % path)
 		return {}
 	if format_version < CURRENT_FORMAT_VERSION:
 		data = _migrate(data, format_version)
 	return data
+
+
+## Re-checks a file _read_save_file() already reported empty for, to tell
+## load_slot() whether that empty result meant "version too new" (AC-11 —
+## leave the file alone) or genuine corruption (EC-5 — recover from it).
+## A second file open is a deliberate, cheap tradeoff to keep
+## _read_save_file()'s own contract (and its existing test coverage)
+## completely untouched rather than threading a reason code through it.
+func _classify_read_failure(path: String) -> _ReadFailureReason:
+	var file := FileAccess.open(path, FileAccess.READ)
+	if file == null:
+		return _ReadFailureReason.CORRUPT
+	var format_version: int = file.get_32()
+	file.close()
+	if format_version > CURRENT_FORMAT_VERSION:
+		return _ReadFailureReason.VERSION_TOO_NEW
+	return _ReadFailureReason.CORRUPT
 
 
 # ---------------------------------------------------------------------------

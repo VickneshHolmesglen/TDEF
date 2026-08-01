@@ -1951,3 +1951,25 @@ The `.new()`/`after_test()` pattern is this project's own correct, idiomatic con
 - [x] Root-caused and documented (2026-08-01) — no code change made, by design (see "Why not fixed" above).
 - [x] This entry closed as informational — nothing further to do unless the count changes unexpectedly in a future run (which would then warrant fresh investigation, not assumption that it's still this same cause).
 
+## TD-save-002 — EC-3/EC-5 UI (crash-recovery dialog, corrupt-save warning) not yet built
+
+**Logged**: 2026-08-01
+**Story**: Follow-up from `design/ux/main-menu.md`'s Continue/New Game/Load Game implementation — discovered EC-3 (crash recovery)/EC-5 (corrupt-save) were documented in `save-persistence.md` but never actually implemented in code, at all, at any layer.
+**Severity**: Low — no known reachable defect (both scenarios are real but rare: a mid-mission crash, or a corrupted save file), and the backend now degrades safely even with no UI on top (`load_slot()` on a corrupt file still recovers to a real, playable fresh Sanctuary rather than getting stuck; a stray checkpoint is silently cleaned up over time as normal saves occur).
+**Area**: `src/scenes/main_menu.gd` (or wherever Mission Select's own boot-time checks eventually live)
+
+### Gap
+
+The backend half of EC-3/EC-5 was implemented 2026-08-01 (`SavePersistence.load_slot()` now returns a `LoadResult` enum distinguishing `SUCCESS`/`NOT_FOUND`/`VERSION_TOO_NEW`/`CORRUPT_RECOVERED`; `has_pending_checkpoint()`/`restore_from_checkpoint()` exist for EC-3) — see `save-persistence.md`'s own EC-3/EC-5 text for the full contract, and `tests/unit/save_persistence/save_persistence_ec3_ec5_test.gd` for behavioral proof. No UI consumes any of this yet:
+
+- Main Menu's own `_on_continue_pressed()`/`_on_slot_button_pressed()` call `GSavePersistence.load_slot(slot)` and ignore the returned `LoadResult` entirely — a corrupt save silently recovers with no player-facing message at all (contradicts EC-5's own "warn the player that their save could not be loaded" requirement).
+- Nothing checks `has_pending_checkpoint()` on boot, so EC-3's own recovery-choice dialog ("Load last Sanctuary save" vs. "Restore from checkpoint") is never presented — a post-crash player's checkpoint just sits there until the next normal save silently cleans it up (Rule 5), with no chance to explicitly choose to restore from it first.
+
+### Recommended fix
+
+- On Main Menu `_ready()` (or wherever save-state is first checked), call `GSavePersistence.has_pending_checkpoint(slot)` for the most-recently-modified occupied slot; if true, show a recovery-choice modal (matching `design/ux/main-menu.md`'s own already-specified EC-3 dialog: two buttons, no cancel — see that spec's Interaction Map) before anything else.
+- After any `load_slot()` call, check the returned `LoadResult`; on `CORRUPT_RECOVERED`, show a non-blocking warning ("Your save could not be loaded and the game has started fresh — the original file has been preserved as `save_slot_N.corrupt` for debugging.").
+
+### Resolution
+- [ ] Not yet started.
+

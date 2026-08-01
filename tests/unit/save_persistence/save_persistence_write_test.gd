@@ -291,7 +291,7 @@ func test_register_save_load_round_trip_routes_data_through_real_restore_path() 
 	_sp.register(system, 10)
 
 	assert_bool(_sp.save_slot(TEST_SLOT)).is_true()
-	assert_bool(_sp.load_slot(TEST_SLOT)).is_true()
+	assert_that(_sp.load_slot(TEST_SLOT)).is_equal(SavePersistence.LoadResult.SUCCESS)
 	await get_tree().process_frame  # sanctuary_state_restored is deferred (AC-8)
 
 	assert_int(system.restored_data.get("level", -1)).is_equal(7)
