@@ -5,6 +5,8 @@
 > **Last Updated**: 2026-07-06
 > **Journey Phase(s)**: Pre-game / Session Start (no formal `design/player-journey.md` exists yet — placeholder pending a journey mapping session)
 > **Template**: UX Spec
+>
+> **Implementation status (2026-08-01)**: `src/scenes/MainMenu.tscn`/`main_menu.gd` implements this spec in reduced scope — Continue/New Game/Load Game (state-driven on real save-slot data, per Layout Specification/States & Variants) and Settings (real 4-slider volume mixer, an addition beyond what this spec itself calls for) are built and tested. **Not built**: the EC-3 Recovery Choice dialog and EC-5/corrupt-slot warning badge — `SavePersistence`'s own backend for both now exists (`load_slot() -> LoadResult`, `has_pending_checkpoint()`/`restore_from_checkpoint()`, see `save-persistence.md`'s EC-3/EC-5 notes), but no UI consumes it yet; tracked as `TD-save-002`. Also not built: the Overwrite Confirmation dialog's slot-choice UX differs from this spec's own framing (this pass's New Game always targets the first empty slot silently, only falling back to slot 0 + confirmation when all 3 are full — this spec doesn't fully specify New Game's own slot-targeting logic, so this was a reasonable implementation-time judgment call, not a literal reading of unwritten text).
 
 ---
 

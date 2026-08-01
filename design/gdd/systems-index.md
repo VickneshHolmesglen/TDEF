@@ -2,7 +2,7 @@
 
 > **Status**: Draft
 > **Created**: 2026-04-21
-> **Last Updated**: 2026-08-01 (Monster System row's GDD, `monster.md`, gained AC-28/AC-40 live performance-evidence pointers — no design/review status change, already Approved)
+> **Last Updated**: 2026-08-01 (Monster System's `monster.md` gained AC-28/AC-40 live performance-evidence pointers; Save & Persistence's `save-persistence.md` gained "Backend implemented" notes on EC-3/EC-5 — neither is a design/review status change; Monster System stays Approved, Save & Persistence stays Needs Revision)
 > **Source Concept**: design/gdd/game-concept.md
 
 ---
