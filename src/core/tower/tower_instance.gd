@@ -11,11 +11,12 @@ extends Node2D
 ## instantiation, tier-based art swaps, and damaged-state visuals are not
 ## yet designed; call configure() manually until that wiring exists.
 
-## Archetype -> art lookup. "support" has no art authored yet.
+## Archetype -> art lookup. All 4 archetypes now have placeholder art.
 const ARCHETYPE_TEXTURES: Dictionary[String, Texture2D] = {
 	"ranged": preload("res://assets/art/towers/tower_ranged_base.png"),
 	"physical": preload("res://assets/art/towers/tower_physical_base.png"),
 	"elemental": preload("res://assets/art/towers/tower_elem_ice.png"),
+	"support": preload("res://assets/art/towers/tower_support_base.png"),
 }
 
 @onready var _sprite: Sprite2D = $Sprite2D
