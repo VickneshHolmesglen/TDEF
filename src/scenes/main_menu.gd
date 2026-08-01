@@ -9,20 +9,14 @@ extends Control
 ## background-keying (same technique as the Sanctuary watchtower/habitat
 ## art) into `assets/art/main_menu/`.
 ##
-## Only 3 of the source art's 6 buttons are wired — PLAY, SETTINGS, QUIT.
-## UPGRADES and ACHIEVEMENTS are dropped entirely: neither corresponds to
-## any system in this project's systems-index (25 systems, no Upgrades or
-## Achievements). ENCYCLOPEDIA is also dropped, deliberately — the real
-## Encyclopedia System exists and is Approved, but its own GDD explicitly
-## leaves the entry-point/screen question open (OQ-5, `encyclopedia.md`),
-## specifically because a past unplanned UI-shell addition in this project
-## caused cascading review problems. Deciding OQ-5 is not this task's call.
-##
-## PLAY calls GSceneManager.transition_to_sanctuary() directly — the same
-## real, already-working entry point Tarot Deck UI's own return path and
-## every hero_died/mission_complete/pause-menu-quit trigger already use
-## (see sanctuary_scene.gd's own doc comment). No new SceneManager API
-## needed.
+## UPGRADES and ACHIEVEMENTS from the source art are dropped entirely:
+## neither corresponds to any system in this project's systems-index (25
+## systems, no Upgrades or Achievements). ENCYCLOPEDIA is also dropped,
+## deliberately — the real Encyclopedia System exists and is Approved, but
+## its own GDD explicitly leaves the entry-point/screen question open
+## (OQ-5, `encyclopedia.md`), specifically because a past unplanned
+## UI-shell addition in this project caused cascading review problems.
+## Deciding OQ-5 is not this task's call.
 ##
 ## SETTINGS opens a real volume-mixer panel (2026-08-01) — 4 sliders
 ## (Music/SFX/Voice/UI), reading/writing the already-fully-implemented
@@ -33,69 +27,129 @@ extends Control
 ## logic). Every other Settings-relevant accessibility commitment (UI
 ## scaling, colorblind modes, input remapping, motion reduction, difficulty
 ## sliders — all "Not Started" project-wide per that doc's own matrix) is
-## deliberately NOT built here — each is its own real implementation effort
-## across other systems, not something to fold silently into this pass.
+## deliberately NOT built here.
+##
+## Continue / New Game / Load Game (2026-08-01, `design/ux/main-menu.md`):
+## a reduced-scope implementation of that pre-existing UX spec — built
+## because `SavePersistence` itself doesn't yet implement the spec's fuller
+## EC-3 (crash recovery)/EC-5 (corrupt-save) mechanics (no checkpoint
+## deletion, no corrupt-file rename, no slot metadata storage exist in
+## `save_persistence.gd` today — confirmed by reading it before building
+## anything). What IS real and used here: `SavePersistence.load_slot()`/
+## `set_active_slot()`/`SAVE_PATH` (a public const), plus plain
+## `FileAccess.file_exists()`/`get_modified_time()` for read-only slot-state
+## checks — no new SavePersistence API was added. **Continue** loads
+## whichever of the 3 slots (0-2, per `save-persistence.md`) has the most
+## recent file modification time. **New Game** targets the first empty slot
+## silently, or slot 0 with an Overwrite Confirmation modal if all 3 are
+## full. **Load Game** shows a 3-row slot list (Occupied/Empty only — no
+## timestamp/summary, since no such metadata is stored anywhere yet);
+## occupied rows are clickable, empty rows are disabled. EC-3/EC-5 UI
+## (crash-recovery dialog, corrupt-save warning badge) are NOT built —
+## their own backend doesn't exist, so building the UI for them would
+## present functionality that doesn't actually work.
 ##
 ## Gamepad focus rings (2026-08-01, ADR-0011 — UI Dual-Focus Handling):
 ## own InputModeTracker child (matching InventoryScreen's identical
 ## pattern, not Mission HUD's injected-tracker variant, since this screen
-## has no outer owner to inject one). Every real interactive Control
-## (PLAY/SETTINGS/QUIT, the 4 volume sliders, and Back) gets a
+## has no outer owner to inject one). Every real interactive Control gets a
 ## FocusRingFactory ring, gated on has_focus() AND InputModeTracker.
 ## is_focus_ring_visible() — same rule InventoryScreen and Mission HUD
-## already use, never merged into hover state. PLAY grabs initial
-## keyboard/gamepad focus on open — no prior screen in this project does
-## this, but a menu that opens with nothing focused is unnavigable by
-## gamepad/keyboard alone until the player first moves the mouse, which
-## would violate ui-code.md's "support both keyboard/mouse AND gamepad
-## input for all interactive elements" for the very first frame.
+## already use, never merged into hover state.
 ##
-## Tab-focus containment (2026-08-01): the Settings panel previously didn't
-## trap Tab-focus — Godot's automatic Tab/Shift+Tab traversal has no
-## concept of "modal," so with the underlying buttons still
-## focus_mode=FOCUS_ALL, pressing Tab while the panel was open could cycle
-## focus back onto them (visually covered but not focus-excluded). Fixed
-## by setting PLAY/SETTINGS/QUIT to FOCUS_NONE for the duration the panel
-## is open and restoring FOCUS_ALL on close, so only the panel's own
-## Controls (4 sliders + Back) are reachable while it's up.
+## Tab-focus containment (2026-08-01): every modal panel (Settings, Load
+## Game, Overwrite Confirm) disables the 5 top-level nav buttons
+## (Continue/New Game/Load Game/Settings/Quit) for the duration it's open
+## and restores them on close — Godot's automatic Tab/Shift+Tab traversal
+## has no concept of "modal," so without this, Tab could cycle focus back
+## onto buttons that are visually covered but not focus-excluded. Exactly
+## one modal can be open at a time (each modal's own open path only
+## reachable through a nav button, which is itself disabled while any
+## other modal is open), so a single shared disable/restore pair is safe.
 
 const VOLUME_BUSES: Array[StringName] = [&"Music", &"SFX", &"Voice", &"UI"]
+const SAVE_SLOT_COUNT: int = 3
 
 @onready var _settings_panel: Control = $SettingsPanel
+@onready var _load_game_panel: Control = $LoadGamePanel
+@onready var _overwrite_confirm_panel: Control = $OverwriteConfirmPanel
 @onready var _input_mode_tracker: InputModeTracker = $InputModeTracker
 
-var _play_button: TextureButton
+var _continue_button: Button
+var _new_game_button: Button
+var _load_game_button: Button
 var _settings_button: TextureButton
 var _quit_button: TextureButton
-var _back_button: Button
+var _settings_back_button: Button
+var _load_game_back_button: Button
+var _overwrite_message_label: Label
+var _overwrite_yes_button: Button
+var _overwrite_cancel_button: Button
+
+## Index matches slot number (0-2).
+var _slot_buttons: Array[Button] = []
+
+## Set when Overwrite Confirmation opens from New Game targeting a full
+## slot set — always 0 in this reduced-scope pass (see class doc comment),
+## but stored rather than hardcoded at the Yes-button call site so a future
+## multi-slot-target New Game flow doesn't have to hunt for this.
+var _pending_overwrite_slot: int = 0
 
 ## Keyed by bus name (matches VOLUME_BUSES) -> the row's HSlider/ValueLabel.
 var _volume_sliders: Dictionary[StringName, HSlider] = {}
 var _volume_value_labels: Dictionary[StringName, Label] = {}
 
 ## Every focus-ringed Control -> its ring, one dictionary instead of one
-## var pair per Control — 8 real interactive Controls on this screen now
-## (3 nav buttons + 4 sliders + Back) makes the old one-pair-per-button
-## approach from the smaller 2026-08-01 pass unwieldy to extend further.
+## var pair per Control — too many real interactive Controls on this
+## screen now (5 nav buttons + 4 sliders + 3 slot rows + 5 modal buttons)
+## for the old one-pair-per-button approach from an earlier, smaller pass.
 var _focus_rings: Dictionary[Control, Panel] = {}
 
 
 func _ready() -> void:
-	_play_button = $Buttons/PlayButton
+	_continue_button = $Buttons/ContinueButton
+	_new_game_button = $Buttons/NewGameButton
+	_load_game_button = $Buttons/LoadGameButton
 	_settings_button = $Buttons/SettingsButton
 	_quit_button = $Buttons/QuitButton
-	_back_button = $SettingsPanel/BackButton
+	_settings_back_button = $SettingsPanel/BackButton
+	_load_game_back_button = $LoadGamePanel/BackButton
+	_overwrite_message_label = $OverwriteConfirmPanel/MessageLabel
+	_overwrite_yes_button = $OverwriteConfirmPanel/ConfirmButtons/YesButton
+	_overwrite_cancel_button = $OverwriteConfirmPanel/ConfirmButtons/CancelButton
+	_slot_buttons = [
+		$LoadGamePanel/Slots/Slot0Button,
+		$LoadGamePanel/Slots/Slot1Button,
+		$LoadGamePanel/Slots/Slot2Button,
+	]
 
-	_play_button.pressed.connect(_on_play_pressed)
+	_continue_button.pressed.connect(_on_continue_pressed)
+	_new_game_button.pressed.connect(_on_new_game_pressed)
+	_load_game_button.pressed.connect(_on_load_game_pressed)
 	_settings_button.pressed.connect(_on_settings_pressed)
 	_quit_button.pressed.connect(_on_quit_pressed)
-	_back_button.pressed.connect(_on_settings_back_pressed)
-	_settings_panel.visible = false
+	_settings_back_button.pressed.connect(_on_settings_back_pressed)
+	_load_game_back_button.pressed.connect(_on_load_game_back_pressed)
+	_overwrite_yes_button.pressed.connect(_on_overwrite_yes_pressed)
+	_overwrite_cancel_button.pressed.connect(_on_overwrite_cancel_pressed)
+	for slot: int in range(SAVE_SLOT_COUNT):
+		_slot_buttons[slot].pressed.connect(_on_slot_button_pressed.bind(slot))
 
-	_build_focus_ring(_play_button)
+	_settings_panel.visible = false
+	_load_game_panel.visible = false
+	_overwrite_confirm_panel.visible = false
+
+	_build_focus_ring(_continue_button)
+	_build_focus_ring(_new_game_button)
+	_build_focus_ring(_load_game_button)
 	_build_focus_ring(_settings_button)
 	_build_focus_ring(_quit_button)
-	_build_focus_ring(_back_button)
+	_build_focus_ring(_settings_back_button)
+	_build_focus_ring(_load_game_back_button)
+	_build_focus_ring(_overwrite_yes_button)
+	_build_focus_ring(_overwrite_cancel_button)
+	for slot_button: Button in _slot_buttons:
+		_build_focus_ring(slot_button)
 
 	for bus_name: StringName in VOLUME_BUSES:
 		var row: HBoxContainer = $SettingsPanel/VolumeSliders.get_node(_row_name(bus_name))
@@ -115,7 +169,51 @@ func _ready() -> void:
 	# the first).
 	_input_mode_tracker.input_mode_changed.connect(_on_input_mode_changed)
 
-	_play_button.grab_focus()
+	_configure_continue_new_game_load_state()
+
+
+## GIVEN at least one of the 3 slots has a save file, THEN Continue and
+## Load Game are shown (Continue primary/first) and grab initial focus.
+## GIVEN no slot has a save file, THEN Continue/Load Game are hidden and
+## New Game becomes the first visible (and focused) button in the
+## VBoxContainer automatically, since VBoxContainer skips hidden children —
+## no explicit reordering needed to match the UX spec's "New Game promoted
+## to primary when no save exists" rule.
+func _configure_continue_new_game_load_state() -> void:
+	var has_save: bool = _most_recent_occupied_slot() != -1
+	_continue_button.visible = has_save
+	_load_game_button.visible = has_save
+	if has_save:
+		_continue_button.grab_focus()
+	else:
+		_new_game_button.grab_focus()
+
+
+func _slot_exists(slot: int) -> bool:
+	return FileAccess.file_exists(SavePersistence.SAVE_PATH % slot)
+
+
+## Returns the occupied slot with the most recent file modification time,
+## or -1 if no slot has a save file. Matches the UX spec's "Continue...
+## Loads the most recent save_slot_N.dat directly."
+func _most_recent_occupied_slot() -> int:
+	var best_slot: int = -1
+	var best_time: int = -1
+	for slot: int in range(SAVE_SLOT_COUNT):
+		if not _slot_exists(slot):
+			continue
+		var modified_time: int = FileAccess.get_modified_time(SavePersistence.SAVE_PATH % slot)
+		if modified_time > best_time:
+			best_time = modified_time
+			best_slot = slot
+	return best_slot
+
+
+func _first_empty_slot() -> int:
+	for slot: int in range(SAVE_SLOT_COUNT):
+		if not _slot_exists(slot):
+			return slot
+	return -1
 
 
 ## `bus_name` (e.g. &"SFX") -> its row node's name in SettingsPanel/
@@ -132,25 +230,89 @@ func _build_focus_ring(control: Control) -> void:
 	control.focus_exited.connect(_update_focus_ring.bind(control))
 
 
-func _on_play_pressed() -> void:
+func _on_continue_pressed() -> void:
+	var slot: int = _most_recent_occupied_slot()
+	if slot == -1:
+		return  # unreachable in practice -- button is only visible/focusable when a save exists
+	GSavePersistence.load_slot(slot)
 	GSceneManager.transition_to_sanctuary()
+
+
+func _on_new_game_pressed() -> void:
+	var slot: int = _first_empty_slot()
+	if slot != -1:
+		GSavePersistence.set_active_slot(slot)
+		GSceneManager.transition_to_sanctuary()
+		return
+	_pending_overwrite_slot = 0
+	_overwrite_message_label.text = "This will overwrite Slot %d. Continue?" % (_pending_overwrite_slot + 1)
+	_overwrite_confirm_panel.visible = true
+	_set_nav_buttons_focusable(false)
+	_overwrite_yes_button.grab_focus()
+
+
+func _on_overwrite_yes_pressed() -> void:
+	GSavePersistence.set_active_slot(_pending_overwrite_slot)
+	GSceneManager.transition_to_sanctuary()
+
+
+func _on_overwrite_cancel_pressed() -> void:
+	_overwrite_confirm_panel.visible = false
+	_set_nav_buttons_focusable(true)
+	_new_game_button.grab_focus()
+
+
+func _on_load_game_pressed() -> void:
+	_refresh_load_game_slots()
+	_load_game_panel.visible = true
+	_set_nav_buttons_focusable(false)
+	var first_occupied: int = _most_recent_occupied_slot()
+	if first_occupied != -1:
+		_slot_buttons[first_occupied].grab_focus()
+	else:
+		_load_game_back_button.grab_focus()
+
+
+## Empty rows are disabled (not just visually — FOCUS_NONE too), matching
+## the UX spec's "Load Game... nothing to load" framing: an empty slot is
+## not a valid Load Game target, not a smaller/greyed version of one.
+func _refresh_load_game_slots() -> void:
+	for slot: int in range(SAVE_SLOT_COUNT):
+		var button: Button = _slot_buttons[slot]
+		var exists: bool = _slot_exists(slot)
+		button.text = "Slot %d — %s" % [slot + 1, "Occupied" if exists else "Empty"]
+		button.disabled = not exists
+		button.focus_mode = Control.FOCUS_ALL if exists else Control.FOCUS_NONE
+
+
+func _on_slot_button_pressed(slot: int) -> void:
+	GSavePersistence.load_slot(slot)
+	GSceneManager.transition_to_sanctuary()
+
+
+func _on_load_game_back_pressed() -> void:
+	_load_game_panel.visible = false
+	_set_nav_buttons_focusable(true)
+	_load_game_button.grab_focus()
 
 
 func _on_settings_pressed() -> void:
 	_settings_panel.visible = true
-	_set_underlying_buttons_focusable(false)
+	_set_nav_buttons_focusable(false)
 	_volume_sliders[VOLUME_BUSES[0]].grab_focus()
 
 
 func _on_settings_back_pressed() -> void:
 	_settings_panel.visible = false
-	_set_underlying_buttons_focusable(true)
+	_set_nav_buttons_focusable(true)
 	_settings_button.grab_focus()
 
 
-func _set_underlying_buttons_focusable(focusable: bool) -> void:
+func _set_nav_buttons_focusable(focusable: bool) -> void:
 	var mode: Control.FocusMode = Control.FOCUS_ALL if focusable else Control.FOCUS_NONE
-	_play_button.focus_mode = mode
+	_continue_button.focus_mode = mode
+	_new_game_button.focus_mode = mode
+	_load_game_button.focus_mode = mode
 	_settings_button.focus_mode = mode
 	_quit_button.focus_mode = mode
 

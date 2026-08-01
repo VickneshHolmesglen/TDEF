@@ -40,17 +40,28 @@ text = "Sanctuary Defenders"
 [node name="Buttons" type="VBoxContainer" parent="."]
 layout_mode = 0
 offset_left = 96.0
-offset_top = 420.0
+offset_top = 190.0
 offset_right = 376.0
-offset_bottom = 660.0
-theme_override_constants/separation = 24
+offset_bottom = 700.0
+theme_override_constants/separation = 16
 
-[node name="PlayButton" type="TextureButton" parent="Buttons"]
-custom_minimum_size = Vector2(280, 81.7)
+[node name="ContinueButton" type="Button" parent="Buttons"]
+custom_minimum_size = Vector2(280, 54)
 layout_mode = 2
-texture_normal = ExtResource("3_play")
-ignore_texture_size = true
-stretch_mode = 4
+theme_override_font_sizes/font_size = 26
+text = "Continue"
+
+[node name="NewGameButton" type="Button" parent="Buttons"]
+custom_minimum_size = Vector2(280, 54)
+layout_mode = 2
+theme_override_font_sizes/font_size = 26
+text = "New Game"
+
+[node name="LoadGameButton" type="Button" parent="Buttons"]
+custom_minimum_size = Vector2(280, 54)
+layout_mode = 2
+theme_override_font_sizes/font_size = 26
+text = "Load Game"
 
 [node name="SettingsButton" type="TextureButton" parent="Buttons"]
 custom_minimum_size = Vector2(280, 76.8)
@@ -198,3 +209,91 @@ offset_top = 400.0
 offset_right = 296.0
 offset_bottom = 448.0
 text = "Back"
+
+[node name="LoadGamePanel" type="ColorRect" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.96)
+
+[node name="LoadGameLabel" type="Label" parent="LoadGamePanel"]
+layout_mode = 0
+offset_left = 96.0
+offset_top = 60.0
+offset_right = 900.0
+offset_bottom = 120.0
+theme_override_font_sizes/font_size = 40
+text = "Load Game"
+
+[node name="Slots" type="VBoxContainer" parent="LoadGamePanel"]
+layout_mode = 0
+offset_left = 96.0
+offset_top = 160.0
+offset_right = 700.0
+offset_bottom = 360.0
+theme_override_constants/separation = 16
+
+[node name="Slot0Button" type="Button" parent="LoadGamePanel/Slots"]
+custom_minimum_size = Vector2(500, 54)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "Slot 1"
+
+[node name="Slot1Button" type="Button" parent="LoadGamePanel/Slots"]
+custom_minimum_size = Vector2(500, 54)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "Slot 2"
+
+[node name="Slot2Button" type="Button" parent="LoadGamePanel/Slots"]
+custom_minimum_size = Vector2(500, 54)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "Slot 3"
+
+[node name="BackButton" type="Button" parent="LoadGamePanel"]
+layout_mode = 0
+offset_left = 96.0
+offset_top = 400.0
+offset_right = 296.0
+offset_bottom = 448.0
+text = "Back"
+
+[node name="OverwriteConfirmPanel" type="ColorRect" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.96)
+
+[node name="MessageLabel" type="Label" parent="OverwriteConfirmPanel"]
+layout_mode = 0
+offset_left = 96.0
+offset_top = 260.0
+offset_right = 1100.0
+offset_bottom = 340.0
+theme_override_font_sizes/font_size = 32
+text = "This will overwrite Slot 1. Continue?"
+
+[node name="ConfirmButtons" type="HBoxContainer" parent="OverwriteConfirmPanel"]
+layout_mode = 0
+offset_left = 96.0
+offset_top = 360.0
+offset_right = 500.0
+offset_bottom = 420.0
+theme_override_constants/separation = 20
+
+[node name="YesButton" type="Button" parent="OverwriteConfirmPanel/ConfirmButtons"]
+custom_minimum_size = Vector2(160, 54)
+layout_mode = 2
+theme_override_font_sizes/font_size = 26
+text = "Yes"
+
+[node name="CancelButton" type="Button" parent="OverwriteConfirmPanel/ConfirmButtons"]
+custom_minimum_size = Vector2(160, 54)
+layout_mode = 2
+theme_override_font_sizes/font_size = 26
+text = "Cancel"
