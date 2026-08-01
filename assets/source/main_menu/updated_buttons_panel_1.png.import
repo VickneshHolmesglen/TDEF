@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dlpse0lerdpwn"
-path="res://.godot/imported/Rally Banner.png-499628bf27a3b3e59114f501806a02a7.ctex"
+uid="uid://dgtr12n74t6bt"
+path="res://.godot/imported/updated_buttons_panel_1.png-4906115a196934ac20efa07d8f8aeacb.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/Rally Banner.png"
-dest_files=["res://.godot/imported/Rally Banner.png-499628bf27a3b3e59114f501806a02a7.ctex"]
+source_file="res://assets/source/main_menu/updated_buttons_panel_1.png"
+dest_files=["res://.godot/imported/updated_buttons_panel_1.png-4906115a196934ac20efa07d8f8aeacb.ctex"]
 
 [params]
 

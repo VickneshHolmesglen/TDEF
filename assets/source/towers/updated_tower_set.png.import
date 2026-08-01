@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://3o6jsuoyr6j"
-path="res://.godot/imported/Main Menu Screen.png-00e2dc553a76d76308bdf1baabe43f6a.ctex"
+uid="uid://j4jes6i2h3lo"
+path="res://.godot/imported/updated_tower_set.png-0f95366d95c35de9c4ba5c6c77f58768.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/Art Assets/Main Menu Screen.png"
-dest_files=["res://.godot/imported/Main Menu Screen.png-00e2dc553a76d76308bdf1baabe43f6a.ctex"]
+source_file="res://assets/source/towers/updated_tower_set.png"
+dest_files=["res://.godot/imported/updated_tower_set.png-0f95366d95c35de9c4ba5c6c77f58768.ctex"]
 
 [params]
 

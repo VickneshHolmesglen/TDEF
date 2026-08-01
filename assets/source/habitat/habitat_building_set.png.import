@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://c222c5j33mqle"
-path="res://.godot/imported/Sanctuary Watchtower.png-51284a52e0bfb35112511791ecb80d7a.ctex"
+uid="uid://8b8dnauoaq77"
+path="res://.godot/imported/habitat_building_set.png-24c95902851fbdd137e8503ed8f93a38.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/Art Assets/Towers/Sanctuary Watchtower.png"
-dest_files=["res://.godot/imported/Sanctuary Watchtower.png-51284a52e0bfb35112511791ecb80d7a.ctex"]
+source_file="res://assets/source/habitat/habitat_building_set.png"
+dest_files=["res://.godot/imported/habitat_building_set.png-24c95902851fbdd137e8503ed8f93a38.ctex"]
 
 [params]
 

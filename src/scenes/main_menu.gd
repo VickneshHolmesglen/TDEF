@@ -4,10 +4,21 @@ extends Control
 ##
 ## Real gap closed: no Main Menu existed anywhere in this project before now
 ## (project.godot's `run/main_scene` booted directly into `the_gap.tscn`).
-## Background art and button art are user-provided (`assets/Art Assets/Main
-## Menu Clean.png` / `Main Menu Buttons.png`), processed via flood-fill
-## background-keying (same technique as the Sanctuary watchtower/habitat
-## art) into `assets/art/main_menu/`.
+## Background art and button art are user-provided (originally
+## `assets/source/main_menu/main_menu_clean.png` / `main_menu_buttons.png`;
+## `assets/Art Assets/` was reorganized into `assets/source/` on 2026-08-02),
+## processed via flood-fill background-keying (same technique as the
+## Sanctuary watchtower/habitat art) into `assets/art/main_menu/`.
+##
+## Continue/New Game/Load Game/Settings/Quit button art (2026-08-02):
+## originally plain-text Buttons (Continue/New Game/Load Game) or textures
+## cut from the first source sheet (Settings/Quit). Replaced with a second
+## user-provided sheet (`assets/source/main_menu/updated_buttons_panel_1.png`)
+## that actually has all 5 — all 5 nav buttons are now TextureButton with
+## baked-in text/icon art, same style as before (chamfered stone plaque).
+## Upgrades/Achievements/Collection from that same sheet were left unsliced —
+## same reasoning as the original Upgrades/Achievements drop above, still no
+## corresponding system.
 ##
 ## UPGRADES and ACHIEVEMENTS from the source art are dropped entirely:
 ## neither corresponds to any system in this project's systems-index (25
@@ -75,9 +86,9 @@ const SAVE_SLOT_COUNT: int = 3
 @onready var _overwrite_confirm_panel: Control = $OverwriteConfirmPanel
 @onready var _input_mode_tracker: InputModeTracker = $InputModeTracker
 
-var _continue_button: Button
-var _new_game_button: Button
-var _load_game_button: Button
+var _continue_button: TextureButton
+var _new_game_button: TextureButton
+var _load_game_button: TextureButton
 var _settings_button: TextureButton
 var _quit_button: TextureButton
 var _settings_back_button: Button

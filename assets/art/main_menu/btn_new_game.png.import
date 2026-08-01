@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://j4jes6i2h3lo"
-path="res://.godot/imported/Updated Tower Set.png-7a46d291aa34e0251d7a4710b66fd35d.ctex"
+uid="uid://ba1x0xrk7soma"
+path="res://.godot/imported/btn_new_game.png-27b3a79ff75cc4a7b43fe32eb81109dc.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/Art Assets/Towers/Updated Tower Set.png"
-dest_files=["res://.godot/imported/Updated Tower Set.png-7a46d291aa34e0251d7a4710b66fd35d.ctex"]
+source_file="res://assets/art/main_menu/btn_new_game.png"
+dest_files=["res://.godot/imported/btn_new_game.png-27b3a79ff75cc4a7b43fe32eb81109dc.ctex"]
 
 [params]
 

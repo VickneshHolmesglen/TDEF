@@ -1,11 +1,13 @@
-[gd_scene load_steps=7 format=3 uid="uid://mainmenuscene"]
+[gd_scene load_steps=9 format=3 uid="uid://mainmenuscene"]
 
 [ext_resource type="Script" path="res://src/scenes/main_menu.gd" id="1_script"]
 [ext_resource type="Texture2D" path="res://assets/art/main_menu/background.png" id="2_bg"]
-[ext_resource type="Texture2D" path="res://assets/art/main_menu/btn_play.png" id="3_play"]
+[ext_resource type="Texture2D" path="res://assets/art/main_menu/btn_continue.png" id="3_continue"]
 [ext_resource type="Texture2D" path="res://assets/art/main_menu/btn_settings.png" id="4_settings"]
-[ext_resource type="Texture2D" path="res://assets/art/main_menu/btn_quit.png" id="5_quit"]
+[ext_resource type="Texture2D" path="res://assets/art/main_menu/btn_exit_game.png" id="5_exit"]
 [ext_resource type="Script" path="res://src/ui/input_mode_tracker.gd" id="6_tracker"]
+[ext_resource type="Texture2D" path="res://assets/art/main_menu/btn_new_game.png" id="7_new_game"]
+[ext_resource type="Texture2D" path="res://assets/art/main_menu/btn_load_game.png" id="8_load_game"]
 
 [node name="MainMenu" type="Control"]
 anchors_preset = 15
@@ -45,35 +47,38 @@ offset_right = 376.0
 offset_bottom = 700.0
 theme_override_constants/separation = 16
 
-[node name="ContinueButton" type="Button" parent="Buttons"]
-custom_minimum_size = Vector2(280, 54)
+[node name="ContinueButton" type="TextureButton" parent="Buttons"]
+custom_minimum_size = Vector2(280, 71.3)
 layout_mode = 2
-theme_override_font_sizes/font_size = 26
-text = "Continue"
+texture_normal = ExtResource("3_continue")
+ignore_texture_size = true
+stretch_mode = 4
 
-[node name="NewGameButton" type="Button" parent="Buttons"]
-custom_minimum_size = Vector2(280, 54)
+[node name="NewGameButton" type="TextureButton" parent="Buttons"]
+custom_minimum_size = Vector2(280, 73.6)
 layout_mode = 2
-theme_override_font_sizes/font_size = 26
-text = "New Game"
+texture_normal = ExtResource("7_new_game")
+ignore_texture_size = true
+stretch_mode = 4
 
-[node name="LoadGameButton" type="Button" parent="Buttons"]
-custom_minimum_size = Vector2(280, 54)
+[node name="LoadGameButton" type="TextureButton" parent="Buttons"]
+custom_minimum_size = Vector2(280, 71.1)
 layout_mode = 2
-theme_override_font_sizes/font_size = 26
-text = "Load Game"
+texture_normal = ExtResource("8_load_game")
+ignore_texture_size = true
+stretch_mode = 4
 
 [node name="SettingsButton" type="TextureButton" parent="Buttons"]
-custom_minimum_size = Vector2(280, 76.8)
+custom_minimum_size = Vector2(280, 77.8)
 layout_mode = 2
 texture_normal = ExtResource("4_settings")
 ignore_texture_size = true
 stretch_mode = 4
 
 [node name="QuitButton" type="TextureButton" parent="Buttons"]
-custom_minimum_size = Vector2(280, 83.1)
+custom_minimum_size = Vector2(280, 67.5)
 layout_mode = 2
-texture_normal = ExtResource("5_quit")
+texture_normal = ExtResource("5_exit")
 ignore_texture_size = true
 stretch_mode = 4
 

@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://8b8dnauoaq77"
-path="res://.godot/imported/Habitat Building Set.png-54ad484c5128bce30411e6c7217922ff.ctex"
+uid="uid://grq8kr4wkrf8"
+path="res://.godot/imported/sanctuary_tower_4.webp-b8a4e2794d96c646d024fead224d9087.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/Art Assets/Habitat Building Set.png"
-dest_files=["res://.godot/imported/Habitat Building Set.png-54ad484c5128bce30411e6c7217922ff.ctex"]
+source_file="res://assets/source/reference/sanctuary_tower_4.webp"
+dest_files=["res://.godot/imported/sanctuary_tower_4.webp-b8a4e2794d96c646d024fead224d9087.ctex"]
 
 [params]
 

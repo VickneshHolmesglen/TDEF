@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://gv6n3p5vmbib"
-path="res://.godot/imported/Tower Set.png-59b266ad466d821b02095a475636d362.ctex"
+uid="uid://bq5xwluk0o46q"
+path="res://.godot/imported/sanctuary_tower_1.png-8330db16324f0202fcd48020d236bca8.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/Art Assets/Towers/Tower Set.png"
-dest_files=["res://.godot/imported/Tower Set.png-59b266ad466d821b02095a475636d362.ctex"]
+source_file="res://assets/source/reference/sanctuary_tower_1.png"
+dest_files=["res://.godot/imported/sanctuary_tower_1.png-8330db16324f0202fcd48020d236bca8.ctex"]
 
 [params]
 

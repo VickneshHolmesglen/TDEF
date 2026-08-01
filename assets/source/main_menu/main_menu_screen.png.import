@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bq5xwluk0o46q"
-path="res://.godot/imported/Sanctuary Tower 1.PNG-b163324a3aa300e70c5325f9466ed8db.ctex"
+uid="uid://3o6jsuoyr6j"
+path="res://.godot/imported/main_menu_screen.png-87fc977e91e6a8a79ba04e8537b27633.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/Reference Images/Sanctuary Tower 1.PNG"
-dest_files=["res://.godot/imported/Sanctuary Tower 1.PNG-b163324a3aa300e70c5325f9466ed8db.ctex"]
+source_file="res://assets/source/main_menu/main_menu_screen.png"
+dest_files=["res://.godot/imported/main_menu_screen.png-87fc977e91e6a8a79ba04e8537b27633.ctex"]
 
 [params]
 
