@@ -106,3 +106,54 @@ silhouette. **Lesson: always spot-check a low-contrast case (Shadow tower,
 or any dark VFX variant) against a bright contrasting backdrop before
 committing a batch slice — the right threshold isn't transferable between
 generations even when the visual style looks similar.**
+
+---
+
+## Elemental Tower Collection — regeneration request (shadow-gradient fix)
+
+**Date:** 2026-08-02
+**Target:** a follow-up regeneration of `elemental_tower_collection.png`
+itself, addressing the root cause of the above slicing problem instead of
+just compensating for it in post — the source sheet's ambient-occlusion
+shadow on the pedestal/lower tower body blends too close to the background
+color to cleanly threshold, forcing every future slice of this sheet to
+rediscover the right threshold by trial and error.
+**Status:** Prompt drafted, not yet generated.
+
+```
+Isometric fantasy game asset sheet, 10 stone castle towers arranged in a 5×2
+grid, each on its own hexagonal wood-and-stone pedestal base with a blank
+(unlabeled) recessed plaque on the front face. Elemental variants
+left-to-right, top row: Normal (blue banner), Fire (orange/red flames), Ice
+(pale blue icicles), Lightning (violet/indigo with electric arcs), Poison
+(purple spotted mushroom cap). Bottom row: Earth (brown/mossy stone), Water
+(teal, flowing water), Wind (green, swirling air trails), Shadow (dark
+purple/black wisping smoke), Holy (white/gold, sparkles). Same painterly
+pixel-art style throughout: individually-painted brick/stone-block texture,
+conical tiled roofs, small arched windows, thin flagpoles with pennants,
+muted grey stone with warm amber-gold trim.
+
+Critical technical requirement — background and shadow contrast: render the
+background as a single flat, uniform, solid dark color with no soft
+vignette or gradient falloff. Any shadow, ambient occlusion, or dark-side
+shading painted onto the towers or pedestals (especially on the underside
+of the pedestal base and the lower tower body) must stay clearly and
+consistently lighter or otherwise distinguishably different in tone from
+the background color — do not let a tower's own cast shadow or AO
+darkening gradually fade to match the background's exact color or
+brightness. There must be a hard, unambiguous boundary between "background"
+and "object" at every point around each tower's silhouette, including
+underneath and behind it, so each tower can be cleanly cut out from the
+background with a simple color-key/background-removal tool. This applies
+especially to the Shadow-element tower's smoke/wisp effects, which should
+stay visibly distinct in hue or brightness from the background rather than
+fading to near-identical darkness.
+```
+
+**Why phrased this way**: comparative framing ("X must differ from Y") over
+absolute color instructions — image generators follow relative constraints
+across a whole composition more reliably than isolated hex/brightness
+targets, and naming the specific failure mode (AO fading to match
+background) matters because a generic "clean background" request doesn't
+reliably prevent soft ambient shadow blending, which is a separate
+rendering choice from background flatness.
