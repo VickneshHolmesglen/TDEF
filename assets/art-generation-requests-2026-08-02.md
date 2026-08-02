@@ -260,16 +260,15 @@ restraint.
 
 ## 3. Tower Regeneration — style standardization (2 needed)
 
-The 4 tower archetypes currently in the game came from 3 different generation
-sources and don't visually match each other: `tower_ranged_base.png` and
-`tower_elem_ice.png` share a blocky, tile-textured pixel-art brick style (both
-cut from the same source sheet); `tower_physical_base.png` came from a
-different single-image "sticker" generation with different proportions;
-`tower_support_base.png` is painterly/soft-rendered rather than pixel-art at
-all. These two prompts regenerate `physical` and `support` to match the
-`ranged`/`elemental` baseline instead (2 of 4 already agree with each other,
-and that style is the closer match to the art bible's chamfered-stone,
-tile-visible "hand-carved" shape language).
+**Status (2026-08-02): 2 of 4 done.** `tower_ranged_base.png` and all 9
+`tower_elem_*.png` were regenerated together as a matched set (see
+`design/art/asset-generation-prompts.md` — "Towers Remade") and now share one
+consistent pixel-art brick style with a redesigned hexagonal pedestal (a
+thicker gold-trimmed rectangular plaque frame on the front face, up from the
+old plain stone panel). `tower_physical_base.png` (a different single-image
+"sticker" generation with different proportions) and `tower_support_base.png`
+(painterly/soft-rendered, not pixel-art) still don't match that baseline —
+these two prompts bring them in line with it.
 
 **If your generator supports image-input/edit mode** (ChatGPT's does via
 GPT-image), attach `assets/art/towers/tower_ranged_base.png` alongside the
@@ -283,36 +282,57 @@ texture (not smooth-shaded — each block has its own light/shadow value), a
 conical tiled roof, a small arched window opening, a thin flagpole with a
 small pennant at the peak, muted grey (#7E8590-ish) stone with warm
 amber-gold (#C8801A-ish) trim accents, standing on a hexagonal wood-and-stone
-pedestal base with a recessed label plaque on the front face, rendered on a
-plain near-black background.
+pedestal base with a **thick gold-trimmed rectangular plaque frame (left
+blank, no text) recessed into the front face**, rendered on a plain flat
+near-black background.
+
+**Critical technical requirement — background and shadow contrast** (learned
+the hard way slicing the last two tower batches — see
+`design/art/asset-generation-prompts.md` for the full story): render the
+background as a single flat, uniform, solid dark color with no soft vignette
+or gradient falloff. Any shadow/ambient-occlusion shading on the tower or
+pedestal — especially on the pedestal's underside and the lower tower body —
+must stay clearly and consistently distinguishable in tone from the
+background color. Don't let a cast shadow fade to match the background
+exactly; there must be a hard boundary all the way around the silhouette,
+including underneath it, so it can be cleanly cut out with a simple
+color-key tool.
 
 **Physical archetype** (`blueprint_archer` — kinetic/ballistic weapon type)
 ```
 Isometric fantasy game tower asset, "Physical" archetype tower, single object
-centered on a plain near-black background for easy cutout. Match this exact
+centered on a plain flat near-black background for easy cutout (no soft
+vignette/gradient background - solid flat color only). Match this exact
 rendering style: a rounded stone tower with visible individually-painted
 brick/stone-block texture (each block has its own light/shadow value, not
 smooth-shaded), a conical tiled roof, a small arched window opening, a thin
 flagpole with a small pennant at the peak, muted grey stone with warm
 amber-gold trim accents, standing on a hexagonal wood-and-stone pedestal base
-with a recessed label plaque on the front face. This tower is a
+with a thick gold-trimmed rectangular plaque frame recessed into the front
+face (leave the plaque interior blank, no text). This tower is a
 kinetic/ballistic weapon platform (no elemental theming, no magic effects) —
 give it a visible mounted crossbow or light ballista on its upper platform as
 the one distinguishing feature, aimed outward, reinforcing "physical/kinetic
 damage" rather than magic. No glow, no particle effects, no elemental color
 theming of any kind — this archetype reads as plain, sturdy, mechanical.
-Painterly pixel-art, hand-painted miniature diorama style, fixed oblique
-isometric angle. Avoid green, red, purple, or cyan anywhere.
+Any shadow or ambient-occlusion shading on the tower/pedestal must stay
+clearly distinguishable in tone from the background color, with a hard
+boundary around the entire silhouette (including underneath the pedestal) -
+do not let shadows fade to match the background. Painterly pixel-art,
+hand-painted miniature diorama style, fixed oblique isometric angle. Avoid
+green, red, purple, or cyan anywhere.
 ```
 
 **Support archetype** (`blueprint_rally_banner` — damage-buff aura, radius 3 cells)
 ```
 Isometric fantasy game tower asset, "Rally Banner" support structure, single
-object centered on a plain near-black background for easy cutout. Match this
-exact rendering style: individually-painted brick/stone-block texture (each
-block has its own light/shadow value, not smooth-shaded), muted grey stone
-with warm amber-gold trim accents, standing on a hexagonal wood-and-stone
-pedestal base with a recessed label plaque on the front face — same
+object centered on a plain flat near-black background for easy cutout (no
+soft vignette/gradient background - solid flat color only). Match this exact
+rendering style: individually-painted brick/stone-block texture (each block
+has its own light/shadow value, not smooth-shaded), muted grey stone with
+warm amber-gold trim accents, standing on a hexagonal wood-and-stone
+pedestal base with a thick gold-trimmed rectangular plaque frame recessed
+into the front face (leave the plaque interior blank, no text) — same
 construction material and texture language as a matched stone tower series,
 NOT smooth/painterly rendering. Structurally this must NOT be a solid
 enclosed tower — it's an open timber-framed banner platform: stone pedestal
@@ -322,10 +342,14 @@ the frame to the pedestal floor behind), a central raised banner pole flying
 an amber-and-gold heraldic banner, two smaller flanking pennant poles with
 open trailing streamers extending outward left and right. Soft warm amber
 glow rising from the pedestal floor suggesting a buff/blessing aura, kept
-subtle (below 30% opacity feel, atmospheric not blinding). Painterly
-pixel-art, hand-painted miniature diorama style with the same blocky stone
-texture as the reference, fixed oblique isometric angle. Avoid green, red,
-purple, or cyan anywhere.
+subtle (below 30% opacity feel, atmospheric not blinding) and clearly
+distinguishable from the background rather than blending into it. Any
+shadow/ambient-occlusion shading must stay clearly distinguishable in tone
+from the background color, with a hard boundary around the entire
+silhouette (including underneath the pedestal) - do not let shadows fade to
+match the background. Painterly pixel-art, hand-painted miniature diorama
+style with the same blocky stone texture as the reference, fixed oblique
+isometric angle. Avoid green, red, purple, or cyan anywhere.
 ```
 
 ---
