@@ -21,21 +21,31 @@ listed here so you know why they're phrased this way):
 
 ---
 
-## 1. Monsters (7 needed — zero exist today)
+## 1. Monsters (7 needed — **7/7 generated ✅**, 2026-08-02)
 
 Every monster in the game's data is fully designed (stats, waves, drop tables)
-but has **no art at all** — the game currently runs these entirely headless.
-Silhouette rules below come straight from the art bible and are what makes a
-Standard/Elite/Boss readable as a threat tier at a glance, before the player
-reads a health bar.
+but has **no art at all** yet in-game — the game currently runs these
+entirely headless. Silhouette rules below come straight from the art bible
+and are what makes a Standard/Elite/Boss readable as a threat tier at a
+glance, before the player reads a health bar. All 7 are now sliced into
+`assets/art/monsters/` (still unwired — no `MonsterInstance` presentation
+scene exists yet, same gap `TowerInstance` filled for towers).
 
-> **Batch 1 review note (2026-08-02)**: the 4 monsters generated so far all
-> passed their individual tier/color rules, but came back in a soft
-> painterly/concept-art render rather than the blocky pixel-art brick style
-> the towers use — arguably closer to the art bible's own Bastion reference
-> (§9) than the towers are, but it means there are now two different
-> "acceptable" rendering registers in the project. Worth a deliberate call
-> before generating more, not something to silently pick a side on.
+> **Review notes (2026-08-02)**: the first 4 (Standard/Elite tier) came back
+> in a soft painterly/concept-art render rather than the towers' blocky
+> pixel-art brick style — arguably closer to the art bible's own Bastion
+> reference (§9) than the towers are, but it means two different
+> "acceptable" rendering registers now coexist in the project (same
+> observation as before, still an open call, not resolved by finishing the
+> batch). The 2 boss-tier monsters (Goblin Warlord, Rift Sentinel) came back
+> in a sharper, more rendered/painted style than the first 4 — a *third*
+> register, arguably fitting for bosses being visually more elevated, but
+> worth knowing about. Rift Sentinel's own near-black obsidian body reading
+> almost identical to its background color required the same low-threshold
+> alpha-cut fix as the Shadow tower and (now) Bog Lurker's dripping-slime
+> tips — worth remembering as a recurring pattern: any asset with
+> deliberately dark/faded material will need this treatment, not just the
+> "obviously dark" ones.
 
 ### Standard tier (3) — compact, low, non-threatening individually; menacing in a swarm
 Shape rule: shorter than tall, no protrusion above the horizontal midline of
@@ -110,7 +120,7 @@ surface. Painterly pixel-art, hand-painted miniature diorama style, fixed
 oblique isometric angle. Avoid pure blood-red, purple, or cyan anywhere.
 ```
 
-**Bog Lurker** (elite, fast for its tier at base_speed 1.7)
+**Bog Lurker** (elite, fast for its tier at base_speed 1.7) — **Status: Generated ✅** (`Swampclaw Ambusher.png`, 2026-08-02 — sliced to `assets/art/monsters/bog_lurker_elite.png`, minor VFX-fade loss on the thin dripping-slime strand tips, same category as the Shadow tower's smoke)
 ```
 Isometric fantasy game monster asset, "Bog Lurker", single creature centered
 on a plain dark background for easy cutout. A lean, amphibious ambush
@@ -131,7 +141,7 @@ Shape rule: tall or wide beyond a single grid cell's scale, above a 1.5:1
 proportion, one dominant mass plus one secondary accent — complex but still
 readable at a glance, never "busy."
 
-**Goblin Warlord** (boss, has a ranged attack — boss_attack_range_cells 3)
+**Goblin Warlord** (boss, has a ranged attack — boss_attack_range_cells 3) — **Status: Generated ✅** (`Monstrous Goblin Warlord.png`, 2026-08-02 — sliced to `assets/art/monsters/goblin_warlord_boss.png`, clean)
 ```
 Isometric fantasy game monster asset, "Goblin Warlord" boss, single creature
 centered on a plain dark background for easy cutout. A massive goblin
@@ -151,7 +161,7 @@ NOT the purple-tinted boss-ambient-VFX moment, just the creature's own base
 design, which must stay outside the reserved purple.
 ```
 
-**Rift Sentinel** (boss, ranged, slowest-moving of the two bosses)
+**Rift Sentinel** (boss, ranged, slowest-moving of the two bosses) — **Status: Generated ✅** (`Glowing Rune Stone Guardian.png`, 2026-08-02 — sliced to `assets/art/monsters/rift_sentinel_boss.png`; the guardian's own obsidian body reads nearly identical to the background color by design, needed a much tighter alpha-cut threshold than usual — same underlying issue as the Shadow tower, solved the same way)
 ```
 Isometric fantasy game monster asset, "Rift Sentinel" boss, single creature
 centered on a plain dark background for easy cutout. A tall, imposing
