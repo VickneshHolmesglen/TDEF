@@ -183,17 +183,20 @@ isometric angle.
 
 ---
 
-## 2. Menagerie Companion Creatures (5 needed — zero exist today)
+## 2. Menagerie Companion Creatures (5 needed — **5/5 generated + sliced ✅**, 2026-08-02)
 
 These live in the Sanctuary, not the battlefield — a different emotional
 register from the monsters above. Warm, "precious and knowable" (the game's
 own diorama design principle), not threatening. Same plain-background/cutout
 requirement, same painterly diorama style, but soft and companionable posture
-instead of aggressive.
+instead of aggressive. All 5 sliced into `assets/art/species/`, sources
+archived to `assets/source/species/` — still unwired (no presentation layer
+for Menagerie creatures exists yet, same gap as monsters/towers before
+`TowerInstance`).
 
 ### Tier 1 — Common
 
-**Glimmer Hare**
+**Glimmer Hare** — **Status: Generated + sliced ✅** (`Magical Sparkle Bunny.png` → `assets/art/species/glimmer_hare.png`; had a soft dark ambient-shadow halo baked in that couldn't be fully removed without eating real fur detail — thin residual edge fringe accepted, same category as other minor imperfections this session)
 ```
 Isometric fantasy game creature asset, "Glimmer Hare", single creature
 centered on a plain dark background for easy cutout. A small, gentle hare
@@ -206,7 +209,7 @@ hand-painted miniature diorama style, fixed oblique isometric angle, warm
 and inviting rather than dramatic lighting.
 ```
 
-**Mossback Toad**
+**Mossback Toad** — **Status: Generated + sliced ✅** (`Garden-backed Toad Sprite.png` → `assets/art/species/mossback_toad.png`, fully clean cut)
 ```
 Isometric fantasy game creature asset, "Mossback Toad", single creature
 centered on a plain dark background for easy cutout. A plump, friendly toad
@@ -220,7 +223,7 @@ and inviting rather than dramatic lighting.
 
 ### Tier 2 — Uncommon
 
-**Emberwing Moth**
+**Emberwing Moth** — **Status: Generated + sliced ✅** (`Golden Ember Moth.png` → `assets/art/species/emberwing_moth.png`, fully clean cut)
 ```
 Isometric fantasy game creature asset, "Emberwing Moth", single creature
 centered on a plain dark background for easy cutout. A large ornate moth
@@ -233,7 +236,7 @@ style, fixed oblique isometric angle, warm and inviting rather than
 dramatic lighting.
 ```
 
-**Duskfang Fox**
+**Duskfang Fox** — **Status: Generated + sliced ✅** (`Twilight Pixel Fox.png` → `assets/art/species/duskfang_fox.png`; verified the purple ear/leg tint against Boss Purple — ~24% saturation vs. the reserved color's 60%, reads as dusty fur shading not a boss signal. Same soft dark-halo fringe as Glimmer Hare, accepted)
 ```
 Isometric fantasy game creature asset, "Duskfang Fox", single creature
 centered on a plain dark background for easy cutout. A sleek fox with a
@@ -249,7 +252,7 @@ dramatic lighting.
 
 ### Tier 3 — Rare
 
-**Aurora Stag**
+**Aurora Stag** — **Status: Generated + sliced ✅** (`Celestial Crystal-Antlered Stag.png` → `assets/art/species/aurora_stag.png`; verified the antler's blue/lavender glow against reserved UI Cyan and Boss Purple — 18-29% saturation vs. their 60-75%, reads as pastel magical aurora not a system signal. Same soft dark-halo fringe as the other two mammals, accepted)
 ```
 Isometric fantasy game creature asset, "Aurora Stag", single creature
 centered on a plain dark background for easy cutout. A majestic, elegant
