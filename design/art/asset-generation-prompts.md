@@ -118,7 +118,20 @@ just compensating for it in post — the source sheet's ambient-occlusion
 shadow on the pedestal/lower tower body blends too close to the background
 color to cleanly threshold, forcing every future slice of this sheet to
 rediscover the right threshold by trial and error.
-**Status:** Prompt drafted, not yet generated.
+**Status:** Generated, sliced, and wired (2026-08-02) as
+`assets/source/towers/towers_remade.png`. The fix worked — no more interior
+holes even at a much less aggressive alpha-cut threshold (`dist < 18` vs. the
+previous sheet's fragile `dist < 16`/breaks-at-22), gap detection between
+grid cells was clean/consistent on the first try (vs. the noisy inconsistent
+gaps on both prior sheets), and the pedestal redesign (thicker gold-trimmed
+rectangular plaque frame) is a genuine style improvement. Replaced all 9
+`tower_elem_*.png` plus `tower_ranged_base.png` (the sheet's "Normal" cell) —
+deliberately included Normal even though this request was scoped to
+"elemental towers," since `ranged` and `elemental` share one source sheet by
+design and leaving `tower_ranged_base.png` on the old pedestal style would
+have reintroduced a style mismatch between them. Live-verified via Godot MCP:
+all 4 archetypes resolve correctly, zero errors, screenshot confirms the new
+pedestal design renders cleanly.
 
 ```
 Isometric fantasy game asset sheet, 10 stone castle towers arranged in a 5×2
