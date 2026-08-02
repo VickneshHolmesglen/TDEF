@@ -4,12 +4,38 @@ Reference log of prompts used with external image generators for game art,
 kept so a prompt can be reused, tweaked, or regenerated later without
 reconstructing the art-bible constraints from scratch each time.
 
-> **Batch request, not yet generated**: `assets/art-generation-requests-2026-08-02.md`
-> is a standalone, upload-ready prompt batch (7 monsters + 5 Menagerie
-> companion creatures — the two content sets with zero art today). Kept
-> separate from this log since it's meant to be handed to ChatGPT directly;
-> once assets come back and get sliced, fold the outcome notes back into
-> this file the same way Rally Banner's entry below does.
+> **Batch request, partially generated**: `assets/art-generation-requests-2026-08-02.md`
+> is a standalone, upload-ready prompt batch. Its Section 3 (tower
+> regeneration) is now fully complete — see the Steelwood Siege Spire /
+> Golden Banner Shrine entry below. Section 1 (7 monsters) is 4/7 generated;
+> Section 2 (5 Menagerie companions) is not started. Kept separate from this
+> log since it's meant to be handed to ChatGPT directly; outcome notes get
+> folded back into this file as each piece lands, same as below.
+
+---
+
+## Steelwood Siege Spire (physical) + Golden Banner Shrine (support)
+
+**Date:** 2026-08-02
+**Target:** the two remaining mismatched tower archetypes
+(`tower_physical_base.png`, `tower_support_base.png`), closing out Section 3
+of `art-generation-requests-2026-08-02.md`.
+**Source:** user-supplied, generated from the updated prompts (background/
+shadow-contrast fix + new pedestal description baked in).
+**Status:** Sliced and wired (2026-08-02). Both came back excellent —
+Steelwood Siege Spire has the requested mounted crossbow/ballista (no
+elemental theming, reads as plain/mechanical as asked); Golden Banner Shrine
+is genuinely open (visible straight through the timber frame to the
+pedestal floor, easily clears the 30% negative-space rule) with the two
+flanking pennants as specified. Both had truly flat backgrounds with no
+vignette and shadow values well-separated from the background color — the
+fix from the two previous regeneration rounds held, and both sliced clean
+on the first attempt with no interior holes. **All 4 tower archetypes now
+share one consistent pixel-art style and pedestal design** — the
+style-standardization goal from the original "would the towers need to be
+updated to standardize the art style?" question is now fully closed.
+Live-verified via Godot MCP: all 4 archetypes resolve correctly, zero
+errors, screenshot confirms clean render.
 
 ---
 

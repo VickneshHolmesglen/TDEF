@@ -260,7 +260,14 @@ restraint.
 
 ## 3. Tower Regeneration — style standardization (2 needed)
 
-**Status (2026-08-02): 2 of 4 done.** `tower_ranged_base.png` and all 9
+**Status (2026-08-02): 4 of 4 done. ✅** `tower_physical_base.png` (from
+"Steelwood Siege Spire.png" — has the mounted crossbow/ballista as
+requested) and `tower_support_base.png` (from "Golden Banner Shrine.png" —
+genuinely open structure, negative space clearly visible through the frame)
+both regenerated successfully. The background/shadow-contrast fix worked
+here too — flat backgrounds, no interior holes, clean slice on the first
+attempt. All 4 tower archetypes now share one consistent pixel-art style and
+pedestal design. `tower_ranged_base.png` and all 9
 `tower_elem_*.png` were regenerated together as a matched set (see
 `design/art/asset-generation-prompts.md` — "Towers Remade") and now share one
 consistent pixel-art brick style with a redesigned hexagonal pedestal (a
