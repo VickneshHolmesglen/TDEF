@@ -53,7 +53,7 @@ the body, clean simple outline. Budget: silhouette + one color zone + one
 specular highlight only — these get seen ×20-30 on screen at once, so they
 must stay simple.
 
-**Goblin Runner** (fast, hp-light skirmisher) — **Status: Generated ✅** (`Goblin Runner with Curved Dagger.png`, 2026-08-02)
+**Goblin Runner** (fast, hp-light skirmisher) — **Status: Generated + sliced ✅** (already had real alpha from the generator — sliced to `assets/art/monsters/goblin_runner.png`, source archived to `assets/source/monsters/`)
 ```
 Isometric fantasy game monster asset, "Goblin Runner", single creature
 centered on a plain dark background for easy cutout. Small, wiry green-skinned
@@ -70,7 +70,7 @@ heal/restoration signal — keep it a muted olive-green, not a saturated
 "heal" green).
 ```
 
-**Spore Skitterling** (fastest standard, base_speed 2.4) — **Status: Generated ✅** (`Spore Skitterling in Pixel Art.png`, 2026-08-02)
+**Spore Skitterling** (fastest standard, base_speed 2.4) — **Status: Generated + sliced ✅** (already had real alpha from the generator — sliced to `assets/art/monsters/spore_skitterling.png`, source archived to `assets/source/monsters/`)
 ```
 Isometric fantasy game monster asset, "Spore Skitterling", single creature
 centered on a plain dark background for easy cutout. A small many-legged
@@ -85,7 +85,7 @@ diorama style, fixed oblique isometric angle. Avoid pure blood-red, purple,
 or cyan anywhere.
 ```
 
-**Armored Brute** (slowest standard, base_speed 0.9 — tanky) — **Status: Generated ✅** (`Armored Orc with Spiked Mace.png`, 2026-08-02)
+**Armored Brute** (slowest standard, base_speed 0.9 — tanky) — **Status: Generated + sliced ✅** (flat opaque background, standard color-key + connected-component cut — sliced to `assets/art/monsters/armored_brute.png`, source archived to `assets/source/monsters/`)
 ```
 Isometric fantasy game monster asset, "Armored Brute", single creature
 centered on a plain dark background for easy cutout. A squat, heavily-built
@@ -104,7 +104,7 @@ asymmetric feature (a horn, blade, or shoulder mass) that visibly breaks the
 silhouette's own bounding box. Symmetry reads as Standard — asymmetry is
 what signals Elite.
 
-**Forest Troll** (elite, regenerating brute) — **Status: Generated ✅** (`Mossbound Troll with Gnarled Claw.png`, 2026-08-02)
+**Forest Troll** (elite, regenerating brute) — **Status: Generated + sliced ✅** (already had real alpha from the generator — sliced to `assets/art/monsters/forest_troll_elite.png`, source archived to `assets/source/monsters/`)
 ```
 Isometric fantasy game monster asset, "Forest Troll", single creature
 centered on a plain dark background for easy cutout. A tall, moss-and-bark
