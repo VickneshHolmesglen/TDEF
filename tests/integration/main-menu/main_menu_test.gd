@@ -111,19 +111,19 @@ func test_all_modal_panels_are_hidden_at_fresh_mount() -> void:
 
 func test_continue_and_load_game_visibility_matches_real_save_state() -> void:
 	var has_save: bool = _any_save_exists()
-	var continue_button: Button = _menu.get_node("Buttons/ContinueButton")
-	var load_game_button: Button = _menu.get_node("Buttons/LoadGameButton")
+	var continue_button: TextureButton = _menu.get_node("Buttons/ContinueButton")
+	var load_game_button: TextureButton = _menu.get_node("Buttons/LoadGameButton")
 	assert_bool(continue_button.visible).is_equal(has_save)
 	assert_bool(load_game_button.visible).is_equal(has_save)
 
 
 func test_new_game_button_is_always_visible() -> void:
-	var new_game_button: Button = _menu.get_node("Buttons/NewGameButton")
+	var new_game_button: TextureButton = _menu.get_node("Buttons/NewGameButton")
 	assert_bool(new_game_button.visible).is_true()
 
 
 func test_initial_focus_is_continue_if_a_save_exists_else_new_game() -> void:
-	var expected: Button = _menu.get_node("Buttons/ContinueButton") if _any_save_exists() \
+	var expected: TextureButton = _menu.get_node("Buttons/ContinueButton") if _any_save_exists() \
 			else _menu.get_node("Buttons/NewGameButton")
 	assert_bool(expected.has_focus()).is_true()
 
@@ -192,7 +192,7 @@ func test_load_game_back_button_hides_the_panel_and_returns_focus() -> void:
 	_menu.get_node("LoadGamePanel/BackButton").pressed.emit()
 
 	assert_bool((_menu.get_node("LoadGamePanel") as Control).visible).is_false()
-	assert_bool((_menu.get_node("Buttons/LoadGameButton") as Button).has_focus()).is_true()
+	assert_bool((_menu.get_node("Buttons/LoadGameButton") as TextureButton).has_focus()).is_true()
 
 
 func test_clicking_an_occupied_slot_loads_it_and_transitions() -> void:
@@ -244,7 +244,7 @@ func test_overwrite_confirm_cancel_hides_the_panel_and_returns_focus() -> void:
 	_menu.get_node("OverwriteConfirmPanel/ConfirmButtons/CancelButton").pressed.emit()
 
 	assert_bool((_menu.get_node("OverwriteConfirmPanel") as Control).visible).is_false()
-	assert_bool((_menu.get_node("Buttons/NewGameButton") as Button).has_focus()).is_true()
+	assert_bool((_menu.get_node("Buttons/NewGameButton") as TextureButton).has_focus()).is_true()
 
 
 # ---------------------------------------------------------------------------
@@ -313,7 +313,7 @@ func test_dragging_a_slider_persists_to_disk() -> void:
 # ---------------------------------------------------------------------------
 
 func test_focused_button_shows_a_ring_in_keyboard_gamepad_mode() -> void:
-	var primary: Button = _menu.get_node("Buttons/ContinueButton") if _any_save_exists() \
+	var primary: TextureButton = _menu.get_node("Buttons/ContinueButton") if _any_save_exists() \
 			else _menu.get_node("Buttons/NewGameButton")
 	var rings: Dictionary = _menu.get("_focus_rings")
 	assert_bool((rings[primary] as Panel).visible).is_true()  # default mode is KEYBOARD_GAMEPAD
@@ -323,7 +323,7 @@ func test_mouse_motion_hides_the_focus_ring() -> void:
 	var input_mode_tracker: InputModeTracker = _menu.get_node("InputModeTracker")
 	input_mode_tracker._input(InputEventMouseMotion.new())
 
-	var primary: Button = _menu.get_node("Buttons/ContinueButton") if _any_save_exists() \
+	var primary: TextureButton = _menu.get_node("Buttons/ContinueButton") if _any_save_exists() \
 			else _menu.get_node("Buttons/NewGameButton")
 	var rings: Dictionary = _menu.get("_focus_rings")
 	assert_bool((rings[primary] as Panel).visible).is_false()
