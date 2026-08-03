@@ -69,27 +69,19 @@ See `.claude/docs/coding-standards.md` — read when writing code, authoring GDD
 See `.claude/docs/context-management.md` — read when managing long sessions, compacting, or recovering from a crash.
 
 ## Asset Generation
-ComfyUI runs locally at http://127.0.0.1:8188
-- Start: run tools\start_comfyui.bat
-- Stop: run tools\stop_comfyui.bat
-- API endpoint: http://127.0.0.1:8188/api
-- Models location: G:\ComfyUI\models\checkpoints
-- Output location: G:\ComfyUI\output
+Local ComfyUI generation is not used for this project (removed — hard CUDA/ZLUDA
+driver failure, never resolved). All asset generation is manual via ChatGPT:
 
-### Generating Assets
-Claude can generate assets by sending prompts to the ComfyUI API.
-Always start ComfyUI before attempting asset generation.
-Generated assets should be moved to assets\ folder in the project.
+1. Claude drafts the generation prompt(s) — log them in
+   `design/art/asset-generation-prompts.md` with the reasoning/constraint mapping,
+   matching the art bible.
+2. User runs the prompt through ChatGPT and downloads the resulting image(s).
+3. User drops the raw sheet into `assets/source/<category>/` (snake_case filename).
+4. Claude slices/alpha-cuts/processes it into `assets/art/<category>/` and wires
+   it into the project. See `design/art/asset-generation-prompts.md` for the
+   established alpha-cut technique (color-distance threshold for high-contrast
+   sheets, connected-component flood-fill from the canvas border for low-contrast/
+   dark-material sheets).
 
-## Generating Assets with ComfyUI
-Use tools\generate_asset.py to generate game assets.
-
-Command: python tools\generate_asset.py "prompt" "asset_name" [width] [height] [steps]
-
-Examples:
-- python tools\generate_asset.py "top down tower, stone, medieval, game asset" "stone_tower" 512 512 20
-- python tools\generate_asset.py "enemy goblin sprite, top down, fantasy" "enemy_goblin" 256 256 20
-
-Generated assets are saved to assets\ folder automatically.
-ComfyUI starts automatically if not already running.
-Model used: DreamShaperXL_Turbo_v2_1
+`assets/source/` holds raw generated sheets only — nothing loads these directly.
+`assets/art/` is the only engine-referenced asset tree.
