@@ -41,6 +41,22 @@ extends Control
 
 const FOCUS_RING_COLOR: Color = Color(1.0, 0.85, 0.2, 1.0)  ## placeholder — art-director TBD
 
+## species_id -> art lookup. All 5 species generated this session have art.
+## Closes this screen's own flagged "no real creature art" simplification —
+## surfaced as each roster button's built-in Button.icon (Godot's own
+## text+icon layout) rather than a bespoke child Control, since Menagerie's
+## CreatureInstance (unlike MonsterEntity) is a plain RefCounted with no
+## scene-tree presence of its own to hang a dedicated presentation node off.
+const ROSTER_ICON_MAX_WIDTH: int = 32
+
+const SPECIES_TEXTURES: Dictionary[StringName, Texture2D] = {
+	&"glimmer_hare": preload("res://assets/art/species/glimmer_hare.png"),
+	&"mossback_toad": preload("res://assets/art/species/mossback_toad.png"),
+	&"emberwing_moth": preload("res://assets/art/species/emberwing_moth.png"),
+	&"duskfang_fox": preload("res://assets/art/species/duskfang_fox.png"),
+	&"aurora_stag": preload("res://assets/art/species/aurora_stag.png"),
+}
+
 ## Injectable for tests; defaults to the real GMenagerie Autoload in normal use.
 @export var menagerie: Menagerie
 
@@ -135,6 +151,15 @@ func _create_roster_button(creature: CreatureInstance) -> Button:
 	button.clip_text = true
 	button.text = _roster_entry_text(creature)
 	button.toggle_mode = false
+	button.icon = _species_texture(creature.species)
+	# Source art is native ChatGPT-generation resolution (~900-1200px) --
+	# found live via Godot MCP that an unconstrained Button.icon balloons the
+	# whole button to the icon's native size (button.size measured at
+	# (858, 1174) for a single roster row before this fix). expand_icon=true
+	# + the icon_max_width theme constant caps the icon at a fixed portrait
+	# size while preserving aspect ratio (Godot scales height proportionally).
+	button.expand_icon = true
+	button.add_theme_constant_override("icon_max_width", ROSTER_ICON_MAX_WIDTH)
 
 	var focus_ring := Panel.new()
 	focus_ring.name = "FocusRing"
@@ -164,6 +189,16 @@ func _create_roster_button(creature: CreatureInstance) -> Button:
 ## "[ready]"/"[HABITAT]" text tag pending real iconography). Selection state
 ## (breeding queue) also surfaces here since this is the only visible surface
 ## a roster entry has today.
+## Logs a warning and returns null (Button.icon accepts null -- no icon
+## shown) for a species with no authored art yet, mirroring MonsterInstance's
+## identical fallback.
+func _species_texture(species_id: StringName) -> Texture2D:
+	var texture: Texture2D = SPECIES_TEXTURES.get(species_id, null)
+	if texture == null:
+		push_warning("[MenagerieScreen] no art authored for species_id '%s'" % species_id)
+	return texture
+
+
 func _roster_entry_text(creature: CreatureInstance) -> String:
 	var state_tag: String = CreatureInstance.CreatureState.keys()[creature.state]
 	var selected_tag: String = " [selected]" if _breeding_selection.has(creature.creature_id) else ""
