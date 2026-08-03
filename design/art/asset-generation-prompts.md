@@ -4,6 +4,16 @@ Reference log of prompts used with external image generators for game art,
 kept so a prompt can be reused, tweaked, or regenerated later without
 reconstructing the art-bible constraints from scratch each time.
 
+> **Batch request, in progress (7/22)**: `assets/art-generation-requests-2026-08-03-tarot.md`
+> is a standalone, upload-ready prompt batch for the full classic 22 Major
+> Arcana (`tarot_screen.gd` currently has zero card art — text-only; only
+> 12 `TarotCardResource` entries are authored today, so this batch is
+> deliberately art-ahead-of-content — see the file's own scope note). 7
+> cards sliced clean (`assets/art/tarot/`); 3 (Lovers, Hermit, Strength)
+> came back as full card mockups with baked-in frame/text and need
+> regeneration (see the file's own Progress section for exact guidance);
+> 12 not yet generated. Not wired into `tarot_screen.gd` yet.
+
 > **Batch request, partially generated**: `assets/art-generation-requests-2026-08-02.md`
 > is a standalone, upload-ready prompt batch. Its Section 3 (tower
 > regeneration) is now fully complete — see the Steelwood Siege Spire /
