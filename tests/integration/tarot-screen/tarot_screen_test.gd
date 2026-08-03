@@ -199,6 +199,45 @@ func test_unmapped_modifier_type_never_shows_a_conflict_tag() -> void:
 
 
 # ---------------------------------------------------------------------------
+# Card art (2026-08-04) -- closes this screen's own flagged "no card art"
+# simplification for the 7 cards a best-fit mapping now exists for.
+# ---------------------------------------------------------------------------
+
+func test_pool_button_shows_an_icon_for_a_mapped_card() -> void:
+	_unlock(CARD_IRON_RESOLVE)
+	_rebuild_all()
+	var button: Button = _screen.call("get_pool_button", CARD_IRON_RESOLVE)
+	assert_object(button.icon).is_not_null()
+
+
+func test_deck_tray_button_shows_an_icon_for_a_mapped_card() -> void:
+	_unlock(CARD_LUCKY_CHARM)
+	_rebuild_all()
+	@warning_ignore("unsafe_method_access")
+	_screen.call("_on_pool_card_pressed", CARD_LUCKY_CHARM)
+	var button: Button = _screen.call("get_deck_button", CARD_LUCKY_CHARM)
+	assert_object(button.icon).is_not_null()
+
+
+func test_pool_button_icon_is_capped_to_the_card_icon_max_width() -> void:
+	_unlock(CARD_IRON_RESOLVE)
+	_rebuild_all()
+	var button: Button = _screen.call("get_pool_button", CARD_IRON_RESOLVE)
+	assert_bool(button.expand_icon).is_true()
+	assert_int(button.get_theme_constant(&"icon_max_width")).is_equal(32)
+
+
+## grim_resolve has no art-mapping entry yet (5 of 12 cards remain
+## text-only, see CARD_TEXTURES's own doc comment) -- confirms the
+## fallback is a plain unmapped button, not an error or a placeholder icon.
+func test_unmapped_card_has_no_icon() -> void:
+	_unlock(&"grim_resolve")
+	_rebuild_all()
+	var button: Button = _screen.call("get_pool_button", &"grim_resolve")
+	assert_object(button.icon).is_null()
+
+
+# ---------------------------------------------------------------------------
 # Room-hosting contract (ADR-0032)
 # ---------------------------------------------------------------------------
 

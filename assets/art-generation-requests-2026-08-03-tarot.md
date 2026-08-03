@@ -2,11 +2,16 @@
 
 ## Progress — 7/22 processed, 3 need regeneration, 12 not yet generated
 
-**Done, sliced, and wired-ready** (`assets/art/tarot/`): The Fool, The
+**Done, sliced, and wired** (`assets/art/tarot/`): The Fool, The
 Magician, The High Priestess, The Empress, The Emperor, The Hierophant,
 The Chariot. All alpha-cut clean (flood-fill technique, thresholds 8-15
 depending on the image), verified against a magenta backdrop before
-finalizing, sources archived to `assets/source/tarot/`.
+finalizing, sources archived to `assets/source/tarot/`. Wired into
+`tarot_screen.gd` 2026-08-04 via a best-fit thematic mapping to 7 of the
+12 real `TarotCardResource` cards (see `CARD_TEXTURES`'s own doc comment
+for the full mapping and reasoning) — the remaining 5 cards
+(`grim_resolve`, `apex_predator`, `reckless_onslaught`, `steady_hand`,
+`swift_current`) stay text-only until more art lands.
 
 **Generated but rejected — need regeneration** (still sitting at
 `assets/` root, not yet moved/processed):
@@ -36,10 +41,10 @@ than "darkness" that the model may interpret as a lit, near-black scene.
 Justice, The Hanged Man, Death, Temperance, The Devil, The Tower, The
 Star, The Moon, The Sun, Judgement, The World, Wheel of Fortune.
 
-**Wiring status**: none of the 7 completed cards are wired into
-`tarot_screen.gd` yet — waiting to see how many more land before doing
-the wiring + best-fit-mapping-to-existing-12-cards pass in one go, per
-the file's own "wiring decision needed" note below.
+**Wiring status**: all 7 completed cards wired 2026-08-04 (see
+`CARD_TEXTURES` in `tarot_screen.gd`). Any further cards from this batch
+(regenerated or newly generated) will need their own mapping decision —
+5 game cards still have no art candidate at all.
 
 ---
 

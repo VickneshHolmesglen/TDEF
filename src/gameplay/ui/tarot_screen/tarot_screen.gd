@@ -39,13 +39,38 @@ extends Control
 ##   equipped card (in either the pool or the tray) unequips it. This is not
 ##   a shortcut around a real mechanic — the underlying system genuinely has
 ##   no slot-index or swap concept to select.
-## - No card art/mastery-pip/modifier-glyph rendering — no card art exists
-##   anywhere in this project. Card identity/state is shown as plain text.
+## - No mastery-pip/modifier-glyph rendering (still no data-layer concept of
+##   mastery tiers to render). Card art exists for 7 of 12 cards as of
+##   2026-08-04 (see CARD_TEXTURES) — a plain icon on the existing text
+##   button, not the GDD's full "tactile card object with drop shadow/
+##   cardstock texture/carved wooden tray" treatment, which is separately-
+##   scoped, much larger UI work.
 ##
 ## Root is a plain Control. No class_name — matches the other room/screen
 ## scripts' TD-workflow-001 precedent.
 
 const FOCUS_RING_COLOR: Color = Color(1.0, 0.85, 0.2, 1.0)  ## placeholder — art-director TBD
+
+## card_id -> art lookup. Sourced from a 22-Major-Arcana generation batch
+## (design/art/asset-generation-prompts.md, 2026-08-04) — only 7 of the 22
+## have landed clean so far, and this project's real card roster is 12
+## cards, not 22, so this is a best-fit thematic mapping, not a literal
+## Major-Arcana-to-card_id identity: each is chosen to resonate with the
+## target card's actual mechanical effect (e.g. The Empress's abundance/
+## harvest imagery -> bountiful_harvest's reward boost), not just borrowed
+## because it was available. The remaining 5 cards (grim_resolve,
+## apex_predator, reckless_onslaught, steady_hand, swift_current) stay
+## text-only until more art lands and a further mapping pass happens.
+const CARD_TEXTURES: Dictionary[StringName, Texture2D] = {
+	&"lucky_charm": preload("res://assets/art/tarot/the_fool.png"),
+	&"golden_ticket": preload("res://assets/art/tarot/the_magician.png"),
+	&"measured_pace": preload("res://assets/art/tarot/the_high_priestess.png"),
+	&"bountiful_harvest": preload("res://assets/art/tarot/the_empress.png"),
+	&"iron_resolve": preload("res://assets/art/tarot/the_emperor.png"),
+	&"cautious_advance": preload("res://assets/art/tarot/the_hierophant.png"),
+	&"hunters_pace": preload("res://assets/art/tarot/the_chariot.png"),
+}
+const CARD_ICON_MAX_WIDTH: int = 32
 
 ## Injectable for tests; defaults to the shell-owned instance discovered via
 ## the "tarot" group (Tarot is scene-instanced per ADR-0027, not an Autoload).
@@ -127,9 +152,26 @@ func _create_deck_button(card_id: StringName) -> Button:
 	button.focus_mode = Control.FOCUS_ALL
 	button.clip_text = true
 	button.text = _deck_entry_text(card_id)
+	_apply_card_icon(button, card_id)
 	button.pressed.connect(_on_deck_card_pressed.bind(card_id))
 	_wire_focus_ring(button)
 	return button
+
+
+## Sets the button's icon for card_id if art exists (CARD_TEXTURES), no-op
+## otherwise (button.icon stays null, matching Button's own default — this
+## screen's cards were always text-only before, so an unmapped card looking
+## exactly as it always did is correct, not a fallback warning case).
+## expand_icon + icon_max_width mirrors MenagerieScreen's identical fix for
+## the identical problem: source art is native ChatGPT-generation resolution
+## and would otherwise balloon the button to the icon's native size.
+func _apply_card_icon(button: Button, card_id: StringName) -> void:
+	var texture: Texture2D = CARD_TEXTURES.get(card_id, null)
+	if texture == null:
+		return
+	button.icon = texture
+	button.expand_icon = true
+	button.add_theme_constant_override("icon_max_width", CARD_ICON_MAX_WIDTH)
 
 
 ## GDD Core Rule 6: plain-text conflict tag, tray slots only (see class doc
@@ -197,6 +239,7 @@ func _create_pool_button(card_id: StringName) -> Button:
 	button.focus_mode = Control.FOCUS_ALL
 	button.clip_text = true
 	button.text = _pool_entry_text(card_id)
+	_apply_card_icon(button, card_id)
 	button.pressed.connect(_on_pool_card_pressed.bind(card_id))
 	_wire_focus_ring(button)
 	return button
