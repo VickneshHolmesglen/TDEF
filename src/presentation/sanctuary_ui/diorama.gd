@@ -58,28 +58,31 @@ const STRUCTURE_SIZE: Vector2 = Vector2(64, 64)
 ## once regardless of tier, matching its own existing "upgrades in place, no
 ## new visual yet" scope discipline -- this is a real, single, non-tiered
 ## asset, not a placeholder for a tier system that doesn't exist yet. (Contrast
-## habitat_expansion below, which does have 3 real tiers and its own
+## habitat_expansion below, which does have 4 real tiers and its own
 ## tier-swap path, _render_habitat().)
 const WATCHTOWER_TEXTURE: Texture2D = preload("res://assets/art/sanctuary/watchtower.png")
 const WATCHTOWER_DISPLAY_HEIGHT: float = 64.0  ## matches STRUCTURE_SIZE.y for scale consistency with the habitat placeholder rect
 
 ## Real habitat_expansion tier art (2026-08-01, see
 ## design/quick-specs/habitat-expansion-tiered-art-2026-08-01.md) -- unlike
-## watchtower (single-tier), habitat_expansion has 3 real authored tiers
-## (habitat_expansion_tier_1/2/3), so this structure_type's diorama visual
+## watchtower (single-tier), habitat_expansion has 4 real authored tiers
+## (habitat_expansion_tier_1/2/3/4), so this structure_type's diorama visual
 ## swaps texture in place as the player upgrades, instead of rendering once
 ## and staying static forever. Source: the same user-provided reference
-## image set as watchtower's, cropped into 3 per-tier sprites and flood-fill
+## image set as watchtower's, cropped into per-tier sprites and flood-fill
 ## background-keyed to transparency from the canvas edges (a fixed-color-
 ## distance key, as used for watchtower.png, left visible noise/gradient
 ## artifacts in the background here -- flood fill from the border follows
-## the actual local background instead of assuming one uniform color). The
-## set's 4th (grandest) building is unused -- no tier_4 StructureResource
-## exists yet.
+## the actual local background instead of assuming one uniform color).
+## Tier 4 (the set's 4th, grandest building) added 2026-08-03 alongside a
+## real habitat_expansion_tier_4 StructureResource + tech_structural_3 gate
+## (see design/quick-specs/habitat-expansion-tier-4-2026-08-03.md) -- closes
+## the "4th building unused, no design slot" gap flagged since 2026-08-01.
 const HABITAT_TEXTURES: Dictionary[int, Texture2D] = {
 	1: preload("res://assets/art/sanctuary/habitat_tier_1.png"),
 	2: preload("res://assets/art/sanctuary/habitat_tier_2.png"),
 	3: preload("res://assets/art/sanctuary/habitat_tier_3.png"),
+	4: preload("res://assets/art/sanctuary/habitat_tier_4.png"),
 }
 const HABITAT_DISPLAY_HEIGHT: float = 64.0  ## matches STRUCTURE_SIZE.y, same reasoning as WATCHTOWER_DISPLAY_HEIGHT
 
@@ -175,6 +178,9 @@ func _build_watchtower_sprite() -> TextureRect:
 	tex_rect.name = "Structure_watchtower"
 	tex_rect.texture = WATCHTOWER_TEXTURE
 	tex_rect.stretch_mode = TextureRect.STRETCH_SCALE
+	# See _build_habitat_sprite()'s identical note -- same bug, same fix,
+	# found live via Godot MCP while verifying the Tier 4 habitat addition.
+	tex_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	var aspect: float = float(WATCHTOWER_TEXTURE.get_width()) / float(WATCHTOWER_TEXTURE.get_height())
 	var display_size := Vector2(WATCHTOWER_DISPLAY_HEIGHT * aspect, WATCHTOWER_DISPLAY_HEIGHT)
 	tex_rect.size = display_size
@@ -190,7 +196,7 @@ func _build_watchtower_sprite() -> TextureRect:
 
 
 ## Real art path (2026-08-01) -- see HABITAT_TEXTURES' own doc comment. tier
-## selects which of the 3 authored sprites to use; sizing/positioning use
+## selects which of the 4 authored sprites to use; sizing/positioning use
 ## HABITAT_DISPLAY_HEIGHT/STRUCTURE_POSITIONS the same way watchtower does.
 func _build_habitat_sprite(tier: int) -> TextureRect:
 	var tex_rect := TextureRect.new()
@@ -198,6 +204,15 @@ func _build_habitat_sprite(tier: int) -> TextureRect:
 	var texture: Texture2D = HABITAT_TEXTURES[tier]
 	tex_rect.texture = texture
 	tex_rect.stretch_mode = TextureRect.STRETCH_SCALE
+	# Found live via Godot MCP while verifying Tier 4 (2026-08-03): TextureRect's
+	# default expand_mode (EXPAND_KEEP_SIZE) reports the texture's own native
+	# pixel size as its minimum size, which silently clamps the `.size =
+	# display_size` assignment below right back to native dimensions on the
+	# same frame -- every tier (and watchtower, same bug, same fix applied
+	# there) had been rendering at full native art-generation resolution
+	# instead of the intended HABITAT_DISPLAY_HEIGHT-scaled size the whole
+	# time. EXPAND_IGNORE_SIZE makes the manually-set size authoritative.
+	tex_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	var aspect: float = float(texture.get_width()) / float(texture.get_height())
 	var display_size := Vector2(HABITAT_DISPLAY_HEIGHT * aspect, HABITAT_DISPLAY_HEIGHT)
 	tex_rect.size = display_size

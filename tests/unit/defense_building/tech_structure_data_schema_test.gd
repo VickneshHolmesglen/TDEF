@@ -26,6 +26,7 @@ const TECH_PRODUCTION_3: StringName = &"tech_production_3"
 const TECH_PRODUCTION_4: StringName = &"tech_production_4"
 const TECH_STRUCTURAL_1: StringName = &"tech_structural_1"
 const TECH_STRUCTURAL_2: StringName = &"tech_structural_2"
+const TECH_STRUCTURAL_3: StringName = &"tech_structural_3"
 
 var _registry: GameDataRegistry
 
@@ -139,11 +140,14 @@ func test_structure_validate_negative_tier_returns_error() -> void:
 # GameDataRegistry: TechNodeResource loading (AC-3 — real authored content)
 # ---------------------------------------------------------------------------
 
-func test_ready_loads_exactly_five_tech_nodes() -> void:
+func test_ready_loads_exactly_six_tech_nodes() -> void:
+	# 2026-08-03: tech_structural_3 added alongside habitat_expansion_tier_4
+	# (see design/quick-specs/habitat-expansion-tier-4-2026-08-03.md) --
+	# supersedes the original "exactly five" count.
 	_registry = GameDataRegistry.new()
 	_registry._ready()
 	var all_nodes: Dictionary[StringName, TechNodeResource] = _registry.get_all_tech_nodes()
-	assert_int(all_nodes.size()).is_equal(5)
+	assert_int(all_nodes.size()).is_equal(6)
 
 
 func test_ready_tech_node_category_mapping_matches_gdd_table() -> void:
@@ -154,6 +158,7 @@ func test_ready_tech_node_category_mapping_matches_gdd_table() -> void:
 	assert_str(_registry.get_tech_node(TECH_PRODUCTION_4).tech_category).is_equal("production_tech")
 	assert_str(_registry.get_tech_node(TECH_STRUCTURAL_1).tech_category).is_equal("structural_tech")
 	assert_str(_registry.get_tech_node(TECH_STRUCTURAL_2).tech_category).is_equal("structural_tech")
+	assert_str(_registry.get_tech_node(TECH_STRUCTURAL_3).tech_category).is_equal("structural_tech")
 
 
 func test_ready_tech_node_prerequisite_chain_matches_gdd_table() -> void:
@@ -164,6 +169,7 @@ func test_ready_tech_node_prerequisite_chain_matches_gdd_table() -> void:
 	assert_that(_registry.get_tech_node(TECH_PRODUCTION_4).prerequisite_tech_id).is_equal(TECH_PRODUCTION_3)
 	assert_that(_registry.get_tech_node(TECH_STRUCTURAL_1).prerequisite_tech_id).is_equal(&"")
 	assert_that(_registry.get_tech_node(TECH_STRUCTURAL_2).prerequisite_tech_id).is_equal(TECH_STRUCTURAL_1)
+	assert_that(_registry.get_tech_node(TECH_STRUCTURAL_3).prerequisite_tech_id).is_equal(TECH_STRUCTURAL_2)
 
 
 func test_get_tech_node_unknown_id_returns_null() -> void:
@@ -185,21 +191,22 @@ func test_get_all_tech_nodes_returns_isolated_copy() -> void:
 	_registry._ready()
 	var all_nodes: Dictionary[StringName, TechNodeResource] = _registry.get_all_tech_nodes()
 	all_nodes[&"injected_after_the_fact"] = TechNodeResource.new()
-	assert_int(_registry.get_all_tech_nodes().size()).is_equal(5)
+	assert_int(_registry.get_all_tech_nodes().size()).is_equal(6)
 
 
 # ---------------------------------------------------------------------------
 # GameDataRegistry: StructureResource loading
 # ---------------------------------------------------------------------------
 
-func test_ready_loads_exactly_four_structures() -> void:
-	# res://assets/data/defense_building/structures/ now holds the 3 Habitat
-	# Expansion tiers (Story 020) plus watchtower_tier_1 (Story 021) — this
-	# supersedes both the original "deliberately empty directory" assertion
-	# from Story 018 and Story 020's "exactly three" count.
+func test_ready_loads_exactly_five_structures() -> void:
+	# res://assets/data/defense_building/structures/ now holds the 4 Habitat
+	# Expansion tiers (Story 020 + 2026-08-03's tier_4 addition) plus
+	# watchtower_tier_1 (Story 021) — supersedes the original "deliberately
+	# empty directory" assertion from Story 018, Story 020's "exactly three,"
+	# and the subsequent "exactly four" count.
 	_registry = GameDataRegistry.new()
 	_registry._ready()
-	assert_int(_registry.get_all_structures().size()).is_equal(4)
+	assert_int(_registry.get_all_structures().size()).is_equal(5)
 
 
 func test_get_structure_unknown_id_returns_null() -> void:

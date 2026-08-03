@@ -119,7 +119,7 @@ func disconnect_own_subscriptions() -> void:
 
 ## Rebuilds the whole roster strip from Menagerie's current live state.
 ## Simple full-rebuild rather than incremental diffing — the roster is small
-## (HABITAT_MAX_CAPACITY=10 plus RESERVE/BREEDING_PEN/SACRIFICED history),
+## (HABITAT_MAX_CAPACITY=12 plus RESERVE/BREEDING_PEN/SACRIFICED history),
 ## matching this project's own precedent (structural_model rebuilds are cheap
 ## at this scale, and this only runs on real EventBus-driven state changes,
 ## never per-frame).

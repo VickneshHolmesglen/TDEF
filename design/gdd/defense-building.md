@@ -2,9 +2,9 @@
 
 > **Status**: Needs Revision (`/design-review --depth lean` 2026-07-17 found AC-40 asserted a `crafting.md` tech-ID mapping that doesn't actually exist there — reworded same-day to match Core Rule 3's own honest "Assumption flagged" framing rather than asserting an unverifiable fact. Menagerie's Habitat Expansion contract independently verified to match exactly, no changes needed there.)
 > **Author**: Vicknesh + Claude Sonnet
-> **Last Updated**: 2026-07-17
+> **Last Updated**: 2026-08-03
 > **Implements Pillar**: The Sanctuary Is Your Statement · Everything Connects
-> **Delivers**: Menagerie's exact 3-tier Habitat Expansion structure contract; Crafting's 5-node tech-gating chain. **Known gaps**: gold-balance validation ownership (shared, pre-existing gap with Tower System, not introduced here); Watchtower structure's gameplay effect is deliberately undefined scaffolding. See Open Questions.
+> **Delivers**: Menagerie's exact 4-tier Habitat Expansion structure contract (2026-08-03: extended from 3 tiers — `tech_structural_3`/`habitat_expansion_tier_4` added, see AC-42 through AC-44); Crafting's 6-node tech-gating chain. **Known gaps**: gold-balance validation ownership (shared, pre-existing gap with Tower System, not introduced here); Watchtower structure's gameplay effect is deliberately undefined scaffolding. See Open Questions.
 
 ## Overview
 
@@ -62,6 +62,16 @@ The Defense Building System is the sanctuary's foundation layer: it is where the
    | `tech_production_4` | `production_tech` | `tech_production_3` | 3 | Crafting `quality_tier=4` |
    | `tech_structural_1` | `structural_tech` | `""` (root) | 1 | Habitat Expansion Tier 2; Watchtower Tier 1 (Rule 7) |
    | `tech_structural_2` | `structural_tech` | `tech_structural_1` | 2 | Habitat Expansion Tier 3 |
+   | `tech_structural_3` | `structural_tech` | `tech_structural_2` | 3 | Habitat Expansion Tier 4 |
+
+   **2026-08-03 addition**: `tech_structural_3` extends the structural chain
+   to match production's full 3-node depth, gating a real Habitat Expansion
+   Tier 4 (Rule 5 below) — the 4th building in the source art reference set
+   that had no design slot until now. `branch_tier=3` already sits inside
+   Formula 1's existing declared domain (1–3), so this needed no formula
+   change, only a new table row at the cost the formula already prices for
+   that tier (identical to `tech_production_4`'s cost, per Formula 1's own
+   "both categories share one cost curve" rule).
 
    **Assumption flagged**: Crafting's own `quality_tier=1` recipes are
    authored with `tech_prerequisite=""` (ungated, per `crafting.md` Rule 3)
@@ -71,13 +81,16 @@ The Defense Building System is the sanctuary's foundation layer: it is where the
    Crafting side as well, for one consistent rule across both downstream
    consumers of this tree.
 
-   **Node-count assumption flagged**: five nodes sits at the low end of a
-   6–10 node guideline. This is a deliberate minimalism call, not an
-   oversight — padding the tree with a node that gates nothing yet would
-   contradict this GDD's own Alpha-scope mandate, and Menagerie already
-   established the precedent of stopping a sub-system at a deliberately
-   small, non-symmetric count (2 breeding pens, not padded to match Habitat's
-   3 tiers) rather than inventing content for symmetry's sake alone.
+   **Node-count assumption flagged**: originally five nodes, at the low end
+   of a 6–10 node guideline — a deliberate minimalism call, not an oversight,
+   since padding the tree with a node that gates nothing yet would contradict
+   this GDD's own Alpha-scope mandate. `tech_structural_3` (2026-08-03) is
+   the sixth node, but it is not padding-for-symmetry's-sake: it gates a
+   real, player-requested Tier 4 Habitat Expansion (Rule 5), the same
+   standard every other node here already meets. Menagerie's own precedent
+   (2 breeding pens, not padded to match Habitat's tier count) is about
+   *not* inventing ungated content — it does not argue against a node added
+   because the content it gates is real.
 
 **Sanctuary Structure Model**
 
@@ -96,8 +109,9 @@ The Defense Building System is the sanctuary's foundation layer: it is where the
 **Sanctuary Structures Content (Alpha scope)**
 
 5. **Habitat Expansion** (mandatory — satisfies `menagerie.md` Core Rule 4
-   exactly) is a 3-tier `structure_type`. Each tier's `structure_id` follows
-   the `habitat_expansion_tier_N` convention and its `structure_type` is the
+   exactly) is a 4-tier `structure_type` (originally 3 tiers; Tier 4 added
+   2026-08-03 — see below). Each tier's `structure_id` follows the
+   `habitat_expansion_tier_N` convention and its `structure_type` is the
    literal string `"habitat_expansion"` on every tier's `sanctuary_structure_built`
    emission — this is the exact event-payload shape Menagerie's own GDD is
    already written to expect:
@@ -107,15 +121,28 @@ The Defense Building System is the sanctuary's foundation layer: it is where the
    | `habitat_expansion_tier_1` | 1 | 4 → 6 slots | `""` (ungated — early access) |
    | `habitat_expansion_tier_2` | 2 | 6 → 8 slots | `tech_structural_1` |
    | `habitat_expansion_tier_3` | 3 | 8 → 10 slots | `tech_structural_2` |
+   | `habitat_expansion_tier_4` | 4 | 10 → 12 slots | `tech_structural_3` |
 
    Exact costs are Formula 2. Confirmed: the `sanctuary_structure_built`
    payload Menagerie subscribes to is emitted with **exactly**
    `structure_id="habitat_expansion_tier_N"`, `structure_type="habitat_expansion"`
-   for all three tiers — Menagerie's subscriber logic can key off the fixed
+   for all four tiers — Menagerie's subscriber logic can key off the fixed
    `structure_type` string to know "a Habitat Expansion happened" and read
    the tier number out of the `structure_id` suffix, or Defense Building's
    own tech-tree/structure UI can present tier as a separate lookup; either
    parsing approach works against this exact string convention.
+
+   **2026-08-03 addition — Tier 4**: the source reference art for this
+   structure_type (`assets/source/habitat/habitat_building_set.png`) always
+   depicted 4 buildings, but only 3 tiers had ever been authored as real
+   content, leaving the 4th (grandest) building unused with no design slot
+   — flagged in multiple prior session logs. Rather than leave real art
+   permanently orphaned, this GDD's own tier cap is extended by one:
+   `habitat_expansion_tier_4` continues the `+2 slots/tier` curve exactly
+   (Rule 4's own `menagerie.md` formula is unchanged, just no longer
+   artificially truncated at 3), gated by the new `tech_structural_3` node
+   (Core Rule 3). `menagerie.md` Core Rule 4 and its `HABITAT_MAX_TIERS`
+   constant are updated in lockstep — see that GDD's own 2026-08-03 note.
 
 6. A second, non-mandatory representative structure establishes the pattern
    for future systems without inventing effects nothing asks for yet:
@@ -287,17 +314,26 @@ documents the earlier failed attempt) and `crafting.md`'s Formula 2:
 | `habitat_expansion_tier_1` | 1 | 20 | — | — | 60 |
 | `habitat_expansion_tier_2` | 2 | 35 | 12 | — | 120 |
 | `habitat_expansion_tier_3` | 3 | 55 | 25 | 8 | 200 |
+| `habitat_expansion_tier_4` | 4 | 80 | 45 | 15 | 300 |
 
-**Output range**: 20–55 Common, 0/12/25 Uncommon, 0/0/8 Rare, 60–200 gold.
-Per-tier ratios (Common 1.75× then 1.57×; Gold 2.00× then 1.67×) are
-deliberately diminishing — front-loaded, matching the "diminishing-severity"
-convention `inventory.md`'s own worked table established, so the *third*
-Menagerie habitat expansion never feels proportionately more punishing than
-the *second*.
+**Output range**: 20–80 Common, 0/12/25/45 Uncommon, 0/0/8/15 Rare, 60–300
+gold. Per-tier ratios (Common 1.75× then 1.57× then 1.45×; Gold 2.00× then
+1.67× then 1.50×) are deliberately diminishing — front-loaded, matching the
+"diminishing-severity" convention `inventory.md`'s own worked table
+established, so each successive Menagerie habitat expansion never feels
+proportionately more punishing than the one before it. Tier 4 (2026-08-03)
+continues this same hand-tuned progression rather than introducing a new
+scaling rule — Rare's tier3→4 ratio (1.875×) and Uncommon's (1.8×) are held
+close to Common/Gold's own tier3→4 ratios (1.45×/1.50×) rather than let any
+single material spike, matching how Rare's tier2→3 introduction (0→8) was
+kept proportionate to that same tier's Common/Gold step.
 
 **Worked example**: `habitat_expansion_tier_2` (6→8 HABITAT slots, per
 `menagerie.md` Rule 4) costs 35 Common + 12 Uncommon material and 120 gold,
 and requires `tech_structural_1` already `UNLOCKED` (Core Rule 5).
+`habitat_expansion_tier_4` (10→12 HABITAT slots) costs 80 Common + 45
+Uncommon + 15 Rare material and 300 gold, and requires `tech_structural_3`
+already `UNLOCKED`.
 
 ---
 
@@ -386,7 +422,7 @@ Common material and 70 gold, and requires `tech_structural_1` already
 | **Inventory** | Depends on (hard) | `has_items(material_costs) -> bool`, batch-consume on confirmed unlock/build (Rule 9 step (d)) — existing query/consume convention, no new interface required |
 | **Resource Economy** | Depends on (hard) | Reads current gold balance for affordability (Rule 9 step (b)); emits its own debit via the existing `resources_changed` signal — no new interface required, though gold-balance *ownership* remains an unresolved project-wide question (Core Rule 7) shared with Tower System |
 | **Crafting** | Depended on by (hard, downstream) | `crafting.md` Rule 3/4 reads `tech_unlocked` to gate `quality_tier` 2–4 recipes — Defense Building must not change `tech_id` naming for `production_tech` nodes without a coordinated update to Crafting's recipe catalogue |
-| **Menagerie** | Depended on by (hard, downstream) | `menagerie.md` Rule 4 reads `sanctuary_structure_built` for `structure_type="habitat_expansion"` to raise HABITAT capacity by +2 slots per tier, max 3 tiers — this GDD's Core Rule 5 table is the exact contract Menagerie already expects |
+| **Menagerie** | Depended on by (hard, downstream) | `menagerie.md` Rule 4 reads `sanctuary_structure_built` for `structure_type="habitat_expansion"` to raise HABITAT capacity by +2 slots per tier, max 4 tiers (2026-08-03: was 3) — this GDD's Core Rule 5 table is the exact contract Menagerie already expects |
 | **Encyclopedia / Mission HUD / Audio** | Depended on by (soft) | Subscribe to `tech_unlocked`/`sanctuary_structure_built` per `event-bus.md`'s existing catalogue; no functional dependency back onto Defense Building |
 | **Save & Persistence** | Depends on (hard) | Implements `SaveRestorer`; `restore_order = 21` (per `save-persistence.md`), independent within the Feature layer; save payload is the set of `UNLOCKED` `tech_id`s and `BUILT` `structure_id`s (a pair of string sets — no numeric/derived state needs saving, since capacity/effects are recomputed by the *consuming* system, e.g. Menagerie, from the event history it already persists) |
 
@@ -526,18 +562,20 @@ Both a tech unlock and a structure build use **Crafting's single-confirm convent
 
 ### Core Rule 2/3 — Tech Node Model and Tech Tree Content
 
-- **AC-3**: GIVEN the authored five-node tech tree, WHEN each node's
-  `tech_category` is read, THEN `tech_production_2`/`_3`/`_4` are
-  `"production_tech"` and `tech_structural_1`/`_2` are `"structural_tech"` —
-  exactly two categories, five nodes total, matching Core Rule 3's table
-  exactly.
+- **AC-3** *(2026-08-03: updated from "five nodes" to "six nodes" —
+  `tech_structural_3` added, see AC-42)*: GIVEN the authored six-node tech
+  tree, WHEN each node's `tech_category` is read, THEN
+  `tech_production_2`/`_3`/`_4` are `"production_tech"` and
+  `tech_structural_1`/`_2`/`_3` are `"structural_tech"` — exactly two
+  categories, six nodes total, matching Core Rule 3's table exactly.
 - **AC-4 (linear-chain prerequisite enforcement)**: GIVEN
   `tech_production_2` is not yet `UNLOCKED`, WHEN an unlock is attempted on
   `tech_production_3`, THEN the action is rejected at the eligibility check
   (Rule 9 step (a)) before any cost check — no gold debited, no materials
   consumed, no `tech_unlocked` event fires. The same rejection applies to
-  `tech_production_4` before `tech_production_3`, and to `tech_structural_2`
-  before `tech_structural_1` — every node in both chains enforces its
+  `tech_production_4` before `tech_production_3`, `tech_structural_2`
+  before `tech_structural_1`, and `tech_structural_3` before
+  `tech_structural_2` — every node in both chains enforces its
   `prerequisite_tech_id` individually; a chain position can never be
   skipped.
 - **AC-5**: GIVEN `tech_production_2` IS `UNLOCKED`, WHEN an unlock is
@@ -554,16 +592,17 @@ Both a tech unlock and a structure build use **Crafting's single-confirm convent
 
 ### Core Rule 4/5 — Sanctuary Structure Model and Habitat Expansion Contract (highest-priority — cross-GDD contract with `menagerie.md`)
 
-- **AC-7 (exact `structure_id` strings)**: GIVEN the three Habitat Expansion
-  tiers, WHEN each tier's `structure_id` is read, THEN they are exactly
-  `habitat_expansion_tier_1`, `habitat_expansion_tier_2`, and
-  `habitat_expansion_tier_3` — no other naming convention, no
-  zero-indexing, no alternate suffix — matching the exact string
-  `menagerie.md` Core Rule 4 subscribes against.
-- **AC-8 (exact `structure_type` string, all three tiers)**: GIVEN any of
-  the three Habitat Expansion tiers is built, WHEN its
+- **AC-7** *(2026-08-03: updated from three to four tiers — `habitat_expansion_tier_4`
+  added, see AC-44)* **(exact `structure_id` strings)**: GIVEN the four
+  Habitat Expansion tiers, WHEN each tier's `structure_id` is read, THEN
+  they are exactly `habitat_expansion_tier_1`, `habitat_expansion_tier_2`,
+  `habitat_expansion_tier_3`, and `habitat_expansion_tier_4` — no other
+  naming convention, no zero-indexing, no alternate suffix — matching the
+  exact string `menagerie.md` Core Rule 4 subscribes against.
+- **AC-8 (exact `structure_type` string, all four tiers)**: GIVEN any of
+  the four Habitat Expansion tiers is built, WHEN its
   `sanctuary_structure_built` event is emitted, THEN `structure_type` is the
-  literal string `"habitat_expansion"` on **all three tiers without
+  literal string `"habitat_expansion"` on **all four tiers without
   exception** — Menagerie's subscriber keys off this fixed string alone to
   detect "a Habitat Expansion happened" regardless of which tier fired.
 - **AC-9 (event payload shape)**: GIVEN `habitat_expansion_tier_2` is
@@ -599,15 +638,18 @@ Both a tech unlock and a structure build use **Crafting's single-confirm convent
   action is rejected identically to AC-13's shape — both tier-sequence and
   tech-gate checks are evaluated together (Rule 9 step (a)), and either
   failing alone produces full rejection.
-- **AC-15 (full happy-path sequence)**: GIVEN a fresh save, WHEN
+- **AC-15** *(2026-08-03: updated from a 3-tier to a 4-tier sequence — see
+  AC-44)* **(full happy-path sequence)**: GIVEN a fresh save, WHEN
   `habitat_expansion_tier_1` is built, then `tech_structural_1` is
   unlocked, then `habitat_expansion_tier_2` is built, then
   `tech_structural_2` is unlocked, then `habitat_expansion_tier_3` is
-  built, in that exact order, THEN all three builds succeed in sequence
-  and three `sanctuary_structure_built` events fire with `structure_id`
-  values `habitat_expansion_tier_1`, `_tier_2`, `_tier_3` respectively, each
-  carrying `structure_type="habitat_expansion"` — confirming the full
-  3-tier contract end-to-end, not just individual gate checks in isolation.
+  built, then `tech_structural_3` is unlocked, then
+  `habitat_expansion_tier_4` is built, in that exact order, THEN all four
+  builds succeed in sequence and four `sanctuary_structure_built` events
+  fire with `structure_id` values `habitat_expansion_tier_1`, `_tier_2`,
+  `_tier_3`, `_tier_4` respectively, each carrying
+  `structure_type="habitat_expansion"` — confirming the full 4-tier
+  contract end-to-end, not just individual gate checks in isolation.
 
 ### Core Rule 6 — Watchtower (scaffolding structure — build/unlock mechanics only)
 
@@ -661,9 +703,9 @@ Both a tech unlock and a structure build use **Crafting's single-confirm convent
 - **AC-23**: GIVEN no tech node is `UNLOCKED` anywhere in the tree, WHEN
   the buildable-without-tech-gate structures are enumerated, THEN
   `habitat_expansion_tier_1` is buildable (Tier 1, `tech_gate=""`) while
-  `habitat_expansion_tier_2`/`_tier_3` and `watchtower_tier_1` are not —
-  confirming exactly one ungated entry point per structure family, matching
-  Crafting's ungated-Tier-1 precedent this Rule cites.
+  `habitat_expansion_tier_2`/`_tier_3`/`_tier_4` and `watchtower_tier_1` are
+  not — confirming exactly one ungated entry point per structure family,
+  matching Crafting's ungated-Tier-1 precedent this Rule cites.
 
 ### Core Rule 9 — Unlock/Build Resolution (instant-on-confirm, ordered steps)
 
@@ -777,6 +819,30 @@ Both a tech unlock and a structure build use **Crafting's single-confirm convent
   keys use the same `Dictionary[StringName, int]` rarity-keyed shape
   Inventory's `has_items()`/batch-consume already expects — no new
   material-query interface is introduced.
+
+### Tier 4 Extension (2026-08-03) — `tech_structural_3` / `habitat_expansion_tier_4`
+
+- **AC-42 (six-node tree, `tech_structural_3` category/prerequisite)**:
+  GIVEN the now-six-node tech tree, WHEN `tech_structural_3`'s fields are
+  read, THEN `tech_category="structural_tech"`,
+  `prerequisite_tech_id="tech_structural_2"`, `branch_tier=3` — extending
+  Core Rule 3's table by one node without altering the 5 pre-existing
+  nodes' own fields (AC-3's "two categories" claim still holds; only the
+  "five nodes total" clause is superseded, now six).
+- **AC-43 (Tier 4 tech-gate, mirrors AC-11/AC-12)**: GIVEN
+  `habitat_expansion_tier_3` IS `BUILT` but `tech_structural_3` is NOT
+  `UNLOCKED`, WHEN `habitat_expansion_tier_4` is attempted, THEN the action
+  is rejected identically to AC-11/AC-12's shape — even though the
+  tier-sequence prerequisite (Tier 3 built) is independently satisfied.
+- **AC-44 (Tier 4 sequential-tier enforcement, mirrors AC-13/AC-14)**:
+  GIVEN `habitat_expansion_tier_3` is NOT yet `BUILT` (regardless of
+  tech-gate state), WHEN `habitat_expansion_tier_4` is attempted, THEN the
+  action is rejected at the prerequisite-structure check — Tier 4 can
+  never be purchased before Tier 3, even if `tech_structural_3` happens to
+  already be `UNLOCKED`. Together, AC-7/AC-8/AC-15 are extended by this
+  addition to cover all four tiers rather than three — their original text
+  (elsewhere in this document) is read as superseded by this note, not
+  duplicated with a fourth near-identical AC block.
 
 ## Open Questions
 

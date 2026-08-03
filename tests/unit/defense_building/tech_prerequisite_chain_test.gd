@@ -20,6 +20,7 @@ const TECH_PRODUCTION_3: StringName = &"tech_production_3"
 const TECH_PRODUCTION_4: StringName = &"tech_production_4"
 const TECH_STRUCTURAL_1: StringName = &"tech_structural_1"
 const TECH_STRUCTURAL_2: StringName = &"tech_structural_2"
+const TECH_STRUCTURAL_3: StringName = &"tech_structural_3"
 
 var _defense_building: DefenseBuilding
 
@@ -66,6 +67,14 @@ func test_can_unlock_tech_production_4_before_production_3_returns_false() -> vo
 
 func test_can_unlock_tech_structural_2_before_structural_1_returns_false() -> void:
 	assert_bool(_defense_building.can_unlock_tech(TECH_STRUCTURAL_2)).is_false()
+
+
+## 2026-08-03: tech_structural_3 added, mirroring
+## test_can_unlock_tech_production_4_before_production_3_returns_false's
+## identical "immediate prerequisite, not the whole chain" shape.
+func test_can_unlock_tech_structural_3_before_structural_2_returns_false() -> void:
+	_defense_building._tech_ledger[TECH_STRUCTURAL_1] = true
+	assert_bool(_defense_building.can_unlock_tech(TECH_STRUCTURAL_3)).is_false()
 
 
 func test_can_unlock_tech_rejection_has_no_side_effects_on_ledger() -> void:

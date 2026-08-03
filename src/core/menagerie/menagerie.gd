@@ -25,8 +25,8 @@ extends Node
 const BASE_LURE_COST: int = 3
 const HABITAT_BASE_CAPACITY: int = 4
 const HABITAT_CAPACITY_PER_TIER: int = 2
-const HABITAT_MAX_TIERS: int = 3
-const HABITAT_MAX_CAPACITY: int = HABITAT_BASE_CAPACITY + HABITAT_CAPACITY_PER_TIER * HABITAT_MAX_TIERS  # 10
+const HABITAT_MAX_TIERS: int = 4  ## 2026-08-03: real Habitat Expansion Tier 4 added (defense-building.md Core Rule 5)
+const HABITAT_MAX_CAPACITY: int = HABITAT_BASE_CAPACITY + HABITAT_CAPACITY_PER_TIER * HABITAT_MAX_TIERS  # 12
 const RESTORE_ORDER: int = 20  ## save-persistence.md's authoritative table — after Inventory (10)
 
 var _creatures: Array[CreatureInstance] = []

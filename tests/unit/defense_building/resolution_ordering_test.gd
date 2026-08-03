@@ -38,6 +38,7 @@ const TECH_PRODUCTION_2: StringName = &"tech_production_2"
 const HABITAT_TIER_1: StringName = &"habitat_expansion_tier_1"
 const HABITAT_TIER_2: StringName = &"habitat_expansion_tier_2"
 const HABITAT_TIER_3: StringName = &"habitat_expansion_tier_3"
+const HABITAT_TIER_4: StringName = &"habitat_expansion_tier_4"
 const WATCHTOWER_TIER_1: StringName = &"watchtower_tier_1"
 
 var _defense_building: DefenseBuilding
@@ -88,6 +89,7 @@ func test_only_habitat_tier_1_is_buildable_with_no_tech_unlocked() -> void:
 	assert_bool(_defense_building.can_build_structure(HABITAT_TIER_1)).is_true()
 	assert_bool(_defense_building.can_build_structure(HABITAT_TIER_2)).is_false()
 	assert_bool(_defense_building.can_build_structure(HABITAT_TIER_3)).is_false()
+	assert_bool(_defense_building.can_build_structure(HABITAT_TIER_4)).is_false()
 	assert_bool(_defense_building.can_build_structure(WATCHTOWER_TIER_1)).is_false()
 
 

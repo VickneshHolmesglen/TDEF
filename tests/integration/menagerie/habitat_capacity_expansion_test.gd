@@ -32,8 +32,10 @@ func test_fresh_habitat_capacity_is_exactly_four() -> void:
 
 
 # ---------------------------------------------------------------------------
-# AC-7: +2 per Habitat Expansion tier event, capped at 10 (3 tiers); a 4th
-# event is a no-op past the cap; ordering is not assumed, only counted.
+# AC-7: +2 per Habitat Expansion tier event, capped at 12 (4 tiers, since
+# 2026-08-03's real habitat_expansion_tier_4 + tech_structural_3 addition —
+# was capped at 10/3 tiers before); a 5th event is a no-op past the cap;
+# ordering is not assumed, only counted.
 # ---------------------------------------------------------------------------
 
 func test_habitat_capacity_increments_by_two_per_tier_event() -> void:
@@ -46,14 +48,17 @@ func test_habitat_capacity_increments_by_two_per_tier_event() -> void:
 	_menagerie._on_sanctuary_structure_built("habitat_expansion_tier_3", "habitat_expansion")
 	assert_int(_menagerie._habitat_capacity).is_equal(10)
 
+	_menagerie._on_sanctuary_structure_built("habitat_expansion_tier_4", "habitat_expansion")
+	assert_int(_menagerie._habitat_capacity).is_equal(12)
 
-func test_fourth_habitat_expansion_event_is_a_no_op_past_the_cap() -> void:
-	for i: int in range(3):
+
+func test_fifth_habitat_expansion_event_is_a_no_op_past_the_cap() -> void:
+	for i: int in range(4):
 		_menagerie._on_sanctuary_structure_built("habitat_expansion_tier_%d" % (i + 1), "habitat_expansion")
-	assert_int(_menagerie._habitat_capacity).is_equal(10)
+	assert_int(_menagerie._habitat_capacity).is_equal(12)
 
-	_menagerie._on_sanctuary_structure_built("habitat_expansion_tier_4_hypothetical", "habitat_expansion")
-	assert_int(_menagerie._habitat_capacity).is_equal(10)
+	_menagerie._on_sanctuary_structure_built("habitat_expansion_tier_5_hypothetical", "habitat_expansion")
+	assert_int(_menagerie._habitat_capacity).is_equal(12)
 
 
 func test_non_habitat_expansion_structure_does_not_affect_capacity() -> void:

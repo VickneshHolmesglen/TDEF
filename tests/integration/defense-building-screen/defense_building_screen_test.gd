@@ -37,12 +37,15 @@ func after_test() -> void:
 # Tech tree view
 # ---------------------------------------------------------------------------
 
-func test_tech_list_contains_all_5_authored_nodes() -> void:
+func test_tech_list_contains_all_6_authored_nodes() -> void:
+	# 2026-08-03: tech_structural_3 added alongside habitat_expansion_tier_4 --
+	# supersedes the original "all 5" count.
 	@warning_ignore("unsafe_property_access")
 	var tech_buttons: Dictionary = _screen.get("_tech_buttons")
-	assert_int(tech_buttons.size()).is_equal(5)
+	assert_int(tech_buttons.size()).is_equal(6)
 	assert_bool(tech_buttons.has(&"tech_production_2")).is_true()
 	assert_bool(tech_buttons.has(&"tech_structural_1")).is_true()
+	assert_bool(tech_buttons.has(&"tech_structural_3")).is_true()
 
 
 func test_locked_prereq_node_shows_locked_state_in_its_button_text() -> void:
@@ -78,11 +81,14 @@ func test_ledger_change_event_triggers_a_live_rebuild() -> void:
 # Structure build view
 # ---------------------------------------------------------------------------
 
-func test_structure_list_contains_all_4_authored_structures() -> void:
+func test_structure_list_contains_all_5_authored_structures() -> void:
+	# 2026-08-03: habitat_expansion_tier_4 added -- supersedes the original
+	# "all 4" count.
 	@warning_ignore("unsafe_property_access")
 	var structure_buttons: Dictionary = _screen.get("_structure_buttons")
-	assert_int(structure_buttons.size()).is_equal(4)
+	assert_int(structure_buttons.size()).is_equal(5)
 	assert_bool(structure_buttons.has(&"watchtower_tier_1")).is_true()
+	assert_bool(structure_buttons.has(&"habitat_expansion_tier_4")).is_true()
 
 
 func test_unbuilt_structure_shows_unbuilt_status() -> void:

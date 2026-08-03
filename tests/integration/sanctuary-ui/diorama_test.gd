@@ -89,6 +89,29 @@ func test_watchtower_renders_as_a_textured_sprite_not_a_placeholder_rect() -> vo
 	assert_object(tex_rect.texture).is_not_null()
 
 
+## Regression test for a real bug found live via Godot MCP while verifying
+## Tier 4 (2026-08-03): TextureRect's default expand_mode (EXPAND_KEEP_SIZE)
+## silently clamped the manually-computed `.size = display_size` assignment
+## back to the texture's own native pixel dimensions on the same frame --
+## every structure had been rendering at full native art-generation
+## resolution (900-1200px+ source art) instead of the intended
+## HABITAT_DISPLAY_HEIGHT/WATCHTOWER_DISPLAY_HEIGHT=64 scaled size the whole
+## time. Fixed with expand_mode=EXPAND_IGNORE_SIZE on both sprite builders.
+func test_watchtower_and_habitat_sprites_scale_to_64_height_not_native_texture_size() -> void:
+	GEventBus.sanctuary_structure_built.emit("watchtower_tier_1", "watchtower")
+	GEventBus.sanctuary_structure_built.emit("habitat_expansion_tier_1", "habitat_expansion")
+
+	var diorama: Control = _shell.get_diorama()
+	var rendered_nodes: Dictionary = diorama.get("_rendered_structure_types") as Dictionary
+	var watchtower_visual: TextureRect = rendered_nodes.get("watchtower") as TextureRect
+	var habitat_visual: TextureRect = rendered_nodes.get("habitat_expansion") as TextureRect
+
+	assert_float(watchtower_visual.size.y).is_equal(64.0)
+	assert_bool(watchtower_visual.size.x < watchtower_visual.texture.get_width()).is_true()
+	assert_float(habitat_visual.size.y).is_equal(64.0)
+	assert_bool(habitat_visual.size.x < habitat_visual.texture.get_width()).is_true()
+
+
 ## habitat_expansion has 3 real tiers (unlike watchtower's 1) -- see
 ## design/quick-specs/habitat-expansion-tiered-art-2026-08-01.md. Building
 ## tier_1 creates one real TextureRect with tier_1's texture.
@@ -120,6 +143,26 @@ func test_habitat_expansion_tier_upgrade_swaps_texture_on_the_same_node() -> voi
 	assert_object(tier_2_visual).is_same(tier_1_visual)  # same node, not a new one
 	var tex_rect: TextureRect = tier_2_visual as TextureRect
 	assert_str(String(tex_rect.texture.resource_path)).contains("habitat_tier_2")
+	assert_int(diorama.call("get_rendered_structure_types").size()).is_equal(1)
+
+
+## 2026-08-03: habitat_expansion_tier_4 added (real content, closing the
+## "4th building unused" gap) -- continues the same tier-swap-in-place path
+## through to the new highest tier, same node throughout.
+func test_habitat_expansion_tier_4_swaps_texture_on_the_same_node() -> void:
+	GEventBus.sanctuary_structure_built.emit("habitat_expansion_tier_1", "habitat_expansion")
+	var diorama: Control = _shell.get_diorama()
+	var rendered_nodes: Dictionary = diorama.get("_rendered_structure_types") as Dictionary
+	var tier_1_visual: Control = rendered_nodes.get("habitat_expansion") as Control
+
+	GEventBus.sanctuary_structure_built.emit("habitat_expansion_tier_2", "habitat_expansion")
+	GEventBus.sanctuary_structure_built.emit("habitat_expansion_tier_3", "habitat_expansion")
+	GEventBus.sanctuary_structure_built.emit("habitat_expansion_tier_4", "habitat_expansion")
+	var tier_4_visual: Control = rendered_nodes.get("habitat_expansion") as Control
+
+	assert_object(tier_4_visual).is_same(tier_1_visual)  # still the same node
+	var tex_rect: TextureRect = tier_4_visual as TextureRect
+	assert_str(String(tex_rect.texture.resource_path)).contains("habitat_tier_4")
 	assert_int(diorama.call("get_rendered_structure_types").size()).is_equal(1)
 
 

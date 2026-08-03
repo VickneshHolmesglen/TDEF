@@ -2,9 +2,9 @@
 
 > **Status**: Needs Revision (`/design-review --depth lean` 2026-07-17 found `target_item_id`'s sourcing undocumented and Equipment Forge's `request_sacrifice()` signature unadopted; both fixed same-day — Rule 13/AC-29 and the Interactions/Dependencies tables now adopt `equipment-forge.md` Rule 19d's exact signature and document that `target_item_id` is Forge-supplied, not Menagerie-looked-up. Defense Building's Habitat Expansion contract independently verified to match this doc's expectations exactly, no changes needed there.)
 > **Author**: Vicknesh + Claude Sonnet
-> **Last Updated**: 2026-07-17
+> **Last Updated**: 2026-08-03
 > **Implements Pillar**: Everything Connects · The Sanctuary Is Your Statement
-> **Known gaps**: `creature_acquired` now merged into `event-bus.md`'s catalogue (2026-07-17). Equipment Forge's sacrifice-request API is now adopted (2026-07-17, see Rule 13). Defense Building's Habitat Expansion structure is authored and verified consistent — no remaining soft dependencies on undesigned systems.
+> **Known gaps**: `creature_acquired` now merged into `event-bus.md`'s catalogue (2026-07-17). Equipment Forge's sacrifice-request API is now adopted (2026-07-17, see Rule 13). Defense Building's Habitat Expansion structure is authored and verified consistent, now at 4 tiers (2026-08-03, was 3) — no remaining soft dependencies on undesigned systems.
 
 ## Overview
 
@@ -55,11 +55,14 @@ The Menagerie System is the sanctuary's living-care layer: it lets the player co
    into RESERVE instead (see States and Transitions) — acquisition never
    fails or is blocked by a full habitat, only redirected.
 4. **Habitat is capacity-gated, base 4 slots, expandable only by a Defense
-   Building structure (soft/anticipated dependency — Defense Building has no
-   GDD yet).** Each "Habitat Expansion" structure tier adds +2 slots, to a
-   maximum of 3 tiers (4 → 6 → 8 → 10 slots). The exact material/gold cost of
-   each tier is owned by Defense Building's own future GDD, not invented
-   here — Menagerie only fixes the slot-count curve and the tier count.
+   Building structure.** Each "Habitat Expansion" structure tier adds +2
+   slots, to a maximum of 4 tiers (4 → 6 → 8 → 10 → 12 slots; **2026-08-03:
+   extended from 3 tiers** — `defense-building.md` Core Rule 5 added a real
+   Tier 4, `habitat_expansion_tier_4`, gated by a new `tech_structural_3`
+   node, closing a gap where the source habitat art's 4th building had no
+   design slot). The exact material/gold cost of each tier is owned by
+   `defense-building.md` (now authored, not a future GDD) — Menagerie only
+   fixes the slot-count curve and the tier count.
    Unlike Inventory's slot expansion (a craftable action Inventory itself
    owns), Menagerie's expansion is deliberately routed through Defense
    Building's `sanctuary_structure_built` event so both systems agree on a
@@ -311,7 +314,7 @@ breeding_missions_remaining(tier) = base_breeding_duration + tier_breeding_penal
 | `tend_boost` | 20 | 15–30 | A single Tend nearly fully offsets multiple missions of neglect, making the decay rate feel meaningless | Tending doesn't meaningfully recover happiness lost to decay, making the loop feel like a grind with no payoff |
 | `happiness_floor` | 20 (fixed) | Fixed — not a balance lever | N/A — this is a floor, not a scaling knob | A lower floor (e.g. 0) would let a neglected creature contribute nothing at all, which is a harsher outcome than the Alpha "floor, not death" decision intends — do not lower |
 | `habitat_base_capacity` | 4 | 3–6 | Early-game quality bonus is too easy to max out, removing the incentive to invest in Defense Building expansions | Too few slots make even modest Menagerie investment feel capped almost immediately |
-| `habitat_expansion_step` | +2 slots/tier, 3 tiers (max 10) | 1–3 slots/tier, 2–4 tiers | Habitat capacity trivializes the Defense Building structure cost curve (once that GDD exists) | Expansion barely matters, making Defense Building's habitat structure feel like a low-value build target |
+| `habitat_expansion_step` | +2 slots/tier, 4 tiers (max 12; 2026-08-03: was 3 tiers/max 10) | 1–3 slots/tier, 2–4 tiers | Habitat capacity trivializes the Defense Building structure cost curve | Expansion barely matters, making Defense Building's habitat structure feel like a low-value build target |
 | `quality_bonus_coefficient` | 0.5 (fixed in Formula 3) | Fixed — changing this would move the output range outside the registered `menagerie_quality_bonus` [1.0, 1.5] bounds | N/A — any increase pushes the max bonus above the registry ceiling, requiring a registry-wide revision across Resource Economy | N/A — any decrease means even a perfectly-tended Menagerie can't reach the registered 1.5 ceiling, wasting the top of Resource Economy's own tuned range |
 | `base_lure_cost` | 3 | 2–5 | Acquiring even Tier 1 species drains `menagerie_lure` faster than the rare-find drop chance replenishes it, stalling the whole system | Lure becomes nearly free, trivializing the "rare find" fantasy `resource-economy.md` built `menagerie_lure` around |
 | `base_breeding_duration` / `tier_breeding_penalty` | 2 / 1 | 1–4 / 0–2 | Breeding feels too slow to matter across a normal play session, discouraging the mechanic entirely | Breeding completes almost instantly, making the pen feel like a formality rather than a deliberate investment |
@@ -484,16 +487,16 @@ Follows the same input model established by Inventory/Crafting, adapted to the h
 
 - **AC-6**: GIVEN a fresh save with no Habitat Expansion structures built,
   WHEN HABITAT capacity is queried, THEN it equals the base 4 slots exactly.
-- **AC-7**: GIVEN a `sanctuary_structure_built` event for a "Habitat
-  Expansion" structure tier, WHEN Menagerie receives it, THEN HABITAT
-  capacity increases by exactly +2 slots per tier, up to a maximum of 3
-  tiers (10 slots total) — a 4th expansion event, if it ever arrived, would
-  not raise capacity further. **Cross-system dependency flagged (qa-lead)**:
-  this AC exercises an event emitted by Defense Building, which has no GDD
-  yet — not automatable as an isolated Menagerie unit test until Defense
-  Building's `sanctuary_structure_built` contract is authored; see Open
-  Questions. A documented playtest or a Menagerie-side mock emitting the
-  event is the interim test path.
+- **AC-7** *(2026-08-03: updated from a 3-tier/10-slot to a 4-tier/12-slot
+  cap — `defense-building.md` Core Rule 5 added a real Tier 4)*: GIVEN a
+  `sanctuary_structure_built` event for a "Habitat Expansion" structure
+  tier, WHEN Menagerie receives it, THEN HABITAT capacity increases by
+  exactly +2 slots per tier, up to a maximum of 4 tiers (12 slots total) —
+  a 5th expansion event, if it ever arrived, would not raise capacity
+  further. **Cross-system dependency resolved**: `defense-building.md` is
+  now authored and its `sanctuary_structure_built` contract independently
+  verified to match this AC exactly (Formula 2's real tier costs). Tested
+  via `tests/integration/menagerie/habitat_capacity_expansion_test.gd`.
 
 ### Core Rule 5 — HABITAT-Only Contribution to Quality Bonus
 
@@ -752,7 +755,7 @@ Follows the same input model established by Inventory/Crafting, adapted to the h
 | Question | Owner | Notes |
 |---|---|---|
 | `creature_acquired(creature_id: String, species: String)` does not exist in `event-bus.md`'s frozen catalogue yet | EventBus owner | **New event this GDD originates** (Rule 14) — same precedent as Inventory's `item_pickup_rejected` and Tower's `tower_component_returned`. AC-4 and AC-32 are both flagged (qa-lead) as blocked or partial pending its adoption; full Encyclopedia/Mission HUD subscriber testing cannot proceed until then. |
-| Defense Building's "Habitat Expansion" structure has no GDD yet | Defense Building System owner | Soft/anticipated dependency (Rule 4) — Menagerie only fixes the slot-count curve (+2/tier, max 3 tiers) and expects `sanctuary_structure_built`; the structure's own material/gold cost, build prerequisites, and exact event payload shape are Defense Building's to define. AC-7 is flagged (qa-lead) as not fully automatable in isolation until that contract exists. |
+| ~~Defense Building's "Habitat Expansion" structure has no GDD yet~~ **RESOLVED (`defense-building.md` authored; 2026-08-03: extended to 4 tiers)** | Defense Building System owner | Menagerie fixes the slot-count curve (+2/tier, max 4 tiers) and expects `sanctuary_structure_built`; the structure's own material/gold cost, build prerequisites, and exact event payload shape are defined in `defense-building.md` Core Rule 5/Formula 2, independently verified to match this GDD's Rule 4 exactly (including the 2026-08-03 Tier 4 addition). AC-7's isolation-testability flag is resolved now that the real contract exists. |
 | Real species names (`glimmer_hare`, `mossback_toad`, `emberwing_moth`, `duskfang_fox`, `aurora_stag` are placeholders per Rule 1) | game-designer | Same caveat pattern `inventory.md` already applies to its own rarity-tier material names — these are not final creative-approved names. The mechanism above (tier assignment, lure cost, breeding pairing) is name-agnostic and works unchanged once real names are assigned; AC-1/AC-25/AC-26/AC-37/AC-38 reference the placeholder identifiers as authored and will need no logic change, only a naming pass. |
 | ~~Equipment Forge's sacrifice-consumer contract has no GDD yet~~ **RESOLVED (2026-07-17)** | Equipment Forge System owner | `equipment-forge.md` is now authored and Rule 19d's `Menagerie.request_sacrifice(creature_id, target_item_id) -> bool` signature has been adopted into Rule 13 and the Interactions/Dependencies tables above. AC-29/AC-30/AC-31 are now fully automatable as integration tests against Equipment Forge's authored GDD, not just a Menagerie-side mock. |
 | Whether a full initialization/save-restore sweep needs to re-fire `creature_happiness_changed` with the restored aggregate immediately on load, or waits for the next natural trigger | systems-designer | Not explicitly specified by Rule 6 or the Save & Persistence interaction row — Resource Economy's cache could read a stale pre-save aggregate for one extra frame/session-start window if no restore-time push exists. Flagged during AC authoring (qa-lead); no AC currently exercises this because the GDD doesn't specify a behavior to test against. |
