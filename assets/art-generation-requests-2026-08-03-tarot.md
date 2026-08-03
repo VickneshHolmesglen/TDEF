@@ -102,7 +102,16 @@ project's own palette, not a faithful-to-tradition color pass.
   every other asset generated this project).
 - No text, no roman numeral, no card border/frame baked in — illustration
   only, the screen renders frame and text separately (per `tarot.md`'s
-  Visual Requirements, frame/text is the UI's job, not the art's).
+  Visual Requirements, frame/text is the UI's job, not the art's). **This
+  instruction alone wasn't enough** — 3 of the first 10 generated (Lovers,
+  Strength, Hermit) came back as full tarot-card mockups with the frame/
+  numeral/title baked in anyway. Every prompt from Wheel of Fortune onward
+  (X-XXI) and the 3 retries (VI/VIII/IX) now use a stronger template:
+  avoid the word "tarot-card" entirely, state the anti-frame rule as its
+  own repeated sentence, and name the background color literally
+  (`#000000`). Not a guaranteed fix (generation is non-deterministic, and
+  all 7 successes used the old wording too) — just the best available
+  lever, so retry once or twice if a card still comes back framed.
 - Reinterpret each classic Major Arcana concept through this game's own
   fantasy-tower-defense/wizard's-cabinet lens, not literal Rider-Waite
   costuming — keep it consistent with the Sanctuary's warm, carved-wood-
@@ -289,161 +298,233 @@ border, no frame, and the whole figure outline must stay visibly distinct
 from the black background, not blending into it anywhere.
 ```
 
+**All 12 below use the revised anti-frame template** (2026-08-04, applied
+pre-emptively — see the Lovers/Strength/Hermit retry entries above for why):
+dropped "tarot-card" phrasing, explicit repeated no-frame/no-text
+instruction, literal `#000000` background call-out.
+
 ## X. Wheel of Fortune
 
 ```
-Portrait tarot-card illustration, single subject centered on a plain dark
-background for easy cutout. A large ornate carved wooden wheel, mounted
-and turning, with brass fittings and worn carved symbols around its rim —
-fate and change in motion, no figure needed, the wheel itself is the
-subject. Warm amber (#C8801A) wood tones, Herald Gold (#F5C01A) brass
-fittings and accent, parchment cream (#F5EDCB) highlights on the rim. No
-purple, no green, no cyan.
+Fantasy object illustration, NOT a tarot card, NOT a playing card, no card
+of any kind — just an object illustration on a plain black background,
+the way a game concept-art prop render would look. Absolutely no roman
+numerals, no title text, no name banner, no decorative border or frame of
+any kind anywhere in the image. Single object centered on a flat pure
+black (#000000) background for easy cutout. A large ornate carved wooden
+wheel, mounted and turning, with brass fittings and worn carved symbols
+around its rim — fate and change in motion, no figure needed, the wheel
+itself is the subject. Warm amber (#C8801A) wood tones, Herald Gold
+(#F5C01A) brass fittings and accent, parchment cream (#F5EDCB) highlights
+on the rim. No purple, no green, no cyan. Remember: no text, no numerals,
+no border, no frame — illustration only.
 ```
 
 ## XI. Justice
 
 ```
-Portrait tarot-card illustration, single subject centered on a plain dark
-background for easy cutout. A robed figure holding a raised sword in one
-hand and a balanced set of scales in the other, standing perfectly
-upright and still — fairness and clear-eyed judgment. Warm amber
-(#C8801A) sword and scale metal, parchment cream (#F5EDCB) robe
-highlights, muted fieldstone grey (#7E8590) background. No purple, no
-green, no cyan.
+Fantasy character illustration, NOT a tarot card, NOT a playing card, no
+card of any kind — just a character illustration on a plain black
+background, the way a game concept-art portrait would look. Absolutely no
+roman numerals, no title text, no name banner, no decorative border or
+frame of any kind anywhere in the image. Single scene centered on a flat
+pure black (#000000) background for easy cutout. A robed figure holding a
+raised sword in one hand and a balanced set of scales in the other,
+standing perfectly upright and still — fairness and clear-eyed judgment.
+Warm amber (#C8801A) sword and scale metal, parchment cream (#F5EDCB)
+robe highlights, muted fieldstone grey (#7E8590) used only on the figure
+itself. No purple, no green, no cyan. Remember: no text, no numerals, no
+border, no frame — illustration only.
 ```
 
 ## XII. The Hanged Man
 
 ```
-Portrait tarot-card illustration, single subject centered on a plain dark
-background for easy cutout. A figure hanging calmly upside-down by one
-ankle from a sturdy wooden beam, arms loosely crossed, expression serene
-rather than distressed — voluntary pause and a new perspective, rendered
-peacefully, not as punishment or peril. Warm amber (#C8801A) beam wood,
-parchment cream (#F5EDCB) clothing highlights, muted fieldstone grey
-(#7E8590) background. No purple, no green, no cyan.
+Fantasy character illustration, NOT a tarot card, NOT a playing card, no
+card of any kind — just a character illustration on a plain black
+background, the way a game concept-art portrait would look. Absolutely no
+roman numerals, no title text, no name banner, no decorative border or
+frame of any kind anywhere in the image. Single scene centered on a flat
+pure black (#000000) background for easy cutout. A figure hanging calmly
+upside-down by one ankle from a sturdy wooden beam, arms loosely crossed,
+expression serene rather than distressed — voluntary pause and a new
+perspective, rendered peacefully, not as punishment or peril. Warm amber
+(#C8801A) beam wood, parchment cream (#F5EDCB) clothing highlights, muted
+fieldstone grey (#7E8590) used only on the figure/beam themselves. No
+purple, no green, no cyan. Remember: no text, no numerals, no border, no
+frame — illustration only.
 ```
 
 ## XIII. Death
 
 ```
-Portrait tarot-card illustration, single subject centered on a plain dark
-background for easy cutout. A hooded skeletal figure in a simple worn
-traveling cloak, carrying a single dried wilted flower rather than a
-scythe — transformation and a natural ending, rendered symbolic and calm,
-not gory or frightening (family-friendly tone). Warm amber (#C8801A) rim
-light on the bone and cloak edge, threat crimson (#BE2020) used only as a
-faint ember accent in the background, not on the figure itself, parchment
-cream (#F5EDCB) highlights, fieldstone grey (#7E8590) cloak shadow. No
-purple, no green, no cyan.
+Fantasy character illustration, NOT a tarot card, NOT a playing card, no
+card of any kind — just a character illustration on a plain black
+background, the way a game concept-art portrait would look. Absolutely no
+roman numerals, no title text, no name banner, no decorative border or
+frame of any kind anywhere in the image. Single scene centered on a flat
+pure black (#000000) background for easy cutout. A hooded skeletal figure
+in a simple worn traveling cloak, carrying a single dried wilted flower
+rather than a scythe — transformation and a natural ending, rendered
+symbolic and calm, not gory or frightening (family-friendly tone). Add a
+subtle warm rim light tracing the full outline of the cloak so the figure
+stays clearly separated from the black background at every edge, not just
+one lit side. Warm amber (#C8801A) rim light on the bone and cloak edge,
+threat crimson (#BE2020) used only as a faint ember accent in the
+background, not on the figure itself, parchment cream (#F5EDCB)
+highlights, fieldstone grey (#7E8590) cloak shadow (never pure black on
+the figure itself). No purple, no green, no cyan. Remember: no text, no
+numerals, no border, no frame — illustration only.
 ```
 
 ## XIV. Temperance
 
 ```
-Portrait tarot-card illustration, single subject centered on a plain dark
-background for easy cutout. A calm robed figure carefully pouring liquid
-between two ornate cups held at chest height, perfectly balanced posture —
-patience and careful moderation. Warm amber (#C8801A) liquid glow,
-parchment cream (#F5EDCB) robe and cup highlights, muted fieldstone grey
-(#7E8590) background. No purple, no green, no cyan.
+Fantasy character illustration, NOT a tarot card, NOT a playing card, no
+card of any kind — just a character illustration on a plain black
+background, the way a game concept-art portrait would look. Absolutely no
+roman numerals, no title text, no name banner, no decorative border or
+frame of any kind anywhere in the image. Single scene centered on a flat
+pure black (#000000) background for easy cutout. A calm robed figure
+carefully pouring liquid between two ornate cups held at chest height,
+perfectly balanced posture — patience and careful moderation. Warm amber
+(#C8801A) liquid glow, parchment cream (#F5EDCB) robe and cup highlights,
+muted fieldstone grey (#7E8590) used only on the figure itself. No
+purple, no green, no cyan. Remember: no text, no numerals, no border, no
+frame — illustration only.
 ```
 
 ## XV. The Devil
 
 ```
-Portrait tarot-card illustration, single subject centered on a plain dark
-background for easy cutout. A carved stone gargoyle-like statue on a low
-pedestal, chains draped loosely (not binding anyone) around its base —
-temptation and self-imposed limits, rendered as an inert carved object
-rather than a living threatening figure (family-friendly tone, no overt
-horror). Warm amber (#C8801A) rim light, threat crimson (#BE2020) used
-sparingly as a faint ember glow in the stone's carved eyes only, muted
-fieldstone grey (#7E8590) dominant stone tone. No purple, no green, no
-cyan.
+Fantasy object illustration, NOT a tarot card, NOT a playing card, no
+card of any kind — just an object illustration on a plain black
+background, the way a game concept-art prop render would look. Absolutely
+no roman numerals, no title text, no name banner, no decorative border or
+frame of any kind anywhere in the image. Single object centered on a flat
+pure black (#000000) background for easy cutout. A carved stone
+gargoyle-like statue on a low pedestal, chains draped loosely (not
+binding anyone) around its base — temptation and self-imposed limits,
+rendered as an inert carved object rather than a living threatening
+figure (family-friendly tone, no overt horror). Warm amber (#C8801A) rim
+light, threat crimson (#BE2020) used sparingly as a faint ember glow in
+the stone's carved eyes only, muted fieldstone grey (#7E8590) dominant
+stone tone. No purple, no green, no cyan. Remember: no text, no numerals,
+no border, no frame — illustration only.
 ```
 
 ## XVI. The Tower
 
 ```
-Portrait tarot-card illustration, single subject centered on a plain dark
-background for easy cutout. A tall stone watchtower struck by a bolt of
-energy at its peak, cracking and shedding loose stone/rubble mid-collapse
-but rendered as a dramatic dynamic moment rather than a horror scene —
-this game is itself a tower-defense game, so lean into a strong visual
-echo of the in-game towers being struck, sudden upheaval and change. Warm
-amber (#C8801A) light/energy at the strike point, threat crimson (#BE2020)
-used as a controlled danger accent on falling embers/debris only, muted
-fieldstone grey (#7E8590) dominant stone tone, parchment cream (#F5EDCB)
-highlights on the energy bolt. No purple, no green, no cyan.
+Fantasy object illustration, NOT a tarot card, NOT a playing card, no
+card of any kind — just an object illustration on a plain black
+background, the way a game concept-art environment render would look.
+Absolutely no roman numerals, no title text, no name banner, no
+decorative border or frame of any kind anywhere in the image. Single
+scene centered on a flat pure black (#000000) background for easy cutout.
+A tall stone watchtower struck by a bolt of energy at its peak, cracking
+and shedding loose stone/rubble mid-collapse but rendered as a dramatic
+dynamic moment rather than a horror scene — this game is itself a
+tower-defense game, so lean into a strong visual echo of the in-game
+towers being struck, sudden upheaval and change. Warm amber (#C8801A)
+light/energy at the strike point, threat crimson (#BE2020) used as a
+controlled danger accent on falling embers/debris only, muted fieldstone
+grey (#7E8590) dominant stone tone, parchment cream (#F5EDCB) highlights
+on the energy bolt. No purple, no green, no cyan. Remember: no text, no
+numerals, no border, no frame — illustration only.
 ```
 
 ## XVII. The Star
 
 ```
-Portrait tarot-card illustration, single subject centered on a plain dark
-background for easy cutout. A kneeling figure at the edge of a still
-pool, pouring water from two vessels, one into the pool and one onto the
-ground, beneath a sky with one large bright star overhead — hope and
-quiet renewal. Warm amber (#C8801A) star glow, Herald Gold (#F5C01A) as
-the star's dominant color (this is a climactic/hopeful card), parchment
-cream (#F5EDCB) highlights on the figure and water. No purple, no green,
-no cyan.
+Fantasy character illustration, NOT a tarot card, NOT a playing card, no
+card of any kind — just a character illustration on a plain black
+background, the way a game concept-art portrait would look. Absolutely no
+roman numerals, no title text, no name banner, no decorative border or
+frame of any kind anywhere in the image. Single scene centered on a flat
+pure black (#000000) background for easy cutout. A kneeling figure at the
+edge of a still pool, pouring water from two vessels, one into the pool
+and one onto the ground, beneath a sky with one large bright star
+overhead — hope and quiet renewal. Warm amber (#C8801A) star glow, Herald
+Gold (#F5C01A) as the star's dominant color (this is a climactic/hopeful
+card), parchment cream (#F5EDCB) highlights on the figure and water. No
+purple, no green, no cyan. Remember: no text, no numerals, no border, no
+frame — illustration only.
 ```
 
 ## XVIII. The Moon
 
 ```
-Portrait tarot-card illustration, single subject centered on a plain dark
-background for easy cutout. A winding stone path leading between two
-watchtower-like spires toward a large glowing moon on the horizon, mist
-pooling low along the path — uncertainty and imagination, an eerie but
-not frightening night scene. Warm amber (#C8801A) used for the path's
-warm-lit torches lining the way (avoid rendering the whole scene in cold
-blue-grey moonlight — keep the palette anchored warm per the Sanctuary's
-never-cool-toned rule), parchment cream (#F5EDCB) moon highlight, muted
-fieldstone grey (#7E8590) spires and mist. No purple, no green, no cyan.
+Fantasy scene illustration, NOT a tarot card, NOT a playing card, no card
+of any kind — just an environment illustration on a plain black
+background, the way a game concept-art environment render would look.
+Absolutely no roman numerals, no title text, no name banner, no
+decorative border or frame of any kind anywhere in the image. Single
+scene centered on a flat pure black (#000000) background for easy cutout.
+A winding stone path leading between two watchtower-like spires toward a
+large glowing moon on the horizon, mist pooling low along the path —
+uncertainty and imagination, an eerie but not frightening night scene.
+Warm amber (#C8801A) used for the path's warm-lit torches lining the way
+(avoid rendering the whole scene in cold blue-grey moonlight — keep the
+palette anchored warm per the Sanctuary's never-cool-toned rule),
+parchment cream (#F5EDCB) moon highlight, muted fieldstone grey (#7E8590)
+spires and mist. No purple, no green, no cyan. Remember: no text, no
+numerals, no border, no frame — illustration only.
 ```
 
 ## XIX. The Sun
 
 ```
-Portrait tarot-card illustration, single subject centered on a plain dark
-background for easy cutout. A joyful child-like figure standing in an
-open field with arms raised toward a large radiant sun, simple and warm —
-this game's single most triumphant, golden-hour-toned card in the batch.
-Warm amber (#C8801A) dominant, Herald Gold (#F5C01A) used generously as
-the sun's core color and rays, parchment cream (#F5EDCB) highlights
-throughout. No purple, no green (any grass/field renders warm amber-gold,
-not naturalistic green), no cyan.
+Fantasy character illustration, NOT a tarot card, NOT a playing card, no
+card of any kind — just a character illustration on a plain black
+background, the way a game concept-art portrait would look. Absolutely no
+roman numerals, no title text, no name banner, no decorative border or
+frame of any kind anywhere in the image. Single scene centered on a flat
+pure black (#000000) background for easy cutout. A joyful child-like
+figure standing in an open field with arms raised toward a large radiant
+sun, simple and warm — this game's single most triumphant, golden-hour-
+toned card in the batch. Warm amber (#C8801A) dominant, Herald Gold
+(#F5C01A) used generously as the sun's core color and rays, parchment
+cream (#F5EDCB) highlights throughout. No purple, no green (any
+grass/field renders warm amber-gold, not naturalistic green), no cyan.
+Remember: no text, no numerals, no border, no frame — illustration only.
 ```
 
 ## XX. Judgement
 
 ```
-Portrait tarot-card illustration, single subject centered on a plain dark
-background for easy cutout. A robed figure standing with arms raised
-toward the sky as a great horn/trumpet sounds above (rendered as the
-instrument itself, radiant, rather than a literal angelic figure blowing
-it) — a moment of reckoning and renewal, triumphant rather than somber.
-Warm amber (#C8801A) rim light, Herald Gold (#F5C01A) generously on the
-horn and radiant light, parchment cream (#F5EDCB) robe highlights. No
-purple, no green, no cyan.
+Fantasy character illustration, NOT a tarot card, NOT a playing card, no
+card of any kind — just a character illustration on a plain black
+background, the way a game concept-art portrait would look. Absolutely no
+roman numerals, no title text, no name banner, no decorative border or
+frame of any kind anywhere in the image. Single scene centered on a flat
+pure black (#000000) background for easy cutout. A robed figure standing
+with arms raised toward the sky as a great horn/trumpet sounds above
+(rendered as the instrument itself, radiant, rather than a literal
+angelic figure blowing it) — a moment of reckoning and renewal,
+triumphant rather than somber. Warm amber (#C8801A) rim light, Herald
+Gold (#F5C01A) generously on the horn and radiant light, parchment cream
+(#F5EDCB) robe highlights. No purple, no green, no cyan. Remember: no
+text, no numerals, no border, no frame — illustration only.
 ```
 
 ## XXI. The World
 
 ```
-Portrait tarot-card illustration, single subject centered on a plain dark
-background for easy cutout. A dancing figure suspended mid-motion inside
-a large wreath/laurel ring woven from wheat and vine, arms and one leg
-extended gracefully — completion and wholeness, the deck's final, most
-harmonious card. Warm amber (#C8801A) wreath tones, Herald Gold (#F5C01A)
-generous accent throughout (this is the deck's capstone card), parchment
-cream (#F5EDCB) highlights on the dancer's clothing. Any foliage in the
-wreath renders warm amber-gold-brown, not naturalistic green. No purple,
-no cyan.
+Fantasy character illustration, NOT a tarot card, NOT a playing card, no
+card of any kind — just a character illustration on a plain black
+background, the way a game concept-art portrait would look. Absolutely no
+roman numerals, no title text, no name banner, no decorative border or
+frame of any kind anywhere in the image. Single scene centered on a flat
+pure black (#000000) background for easy cutout. A dancing figure
+suspended mid-motion inside a large wreath/laurel ring woven from wheat
+and vine, arms and one leg extended gracefully — completion and
+wholeness, the deck's final, most harmonious card. Warm amber (#C8801A)
+wreath tones, Herald Gold (#F5C01A) generous accent throughout (this is
+the deck's capstone card), parchment cream (#F5EDCB) highlights on the
+dancer's clothing. Any foliage in the wreath renders warm amber-gold-
+brown, not naturalistic green. No purple, no cyan. Remember: no text, no
+numerals, no border, no frame — illustration only.
 ```
 
 ---
