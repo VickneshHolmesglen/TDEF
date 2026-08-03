@@ -13,8 +13,8 @@ for the full mapping and reasoning) — the remaining 5 cards
 (`grim_resolve`, `apex_predator`, `reckless_onslaught`, `steady_hand`,
 `swift_current`) stay text-only until more art lands.
 
-**Generated but rejected — need regeneration** (still sitting at
-`assets/` root, not yet moved/processed):
+**Generated but rejected — revised prompts ready for retry below** (still
+sitting at `assets/` root, not yet moved/processed):
 - **The Lovers** — came back as a full card mockup (baked-in "VI" numeral,
   "THE LOVERS" title banner, dense edge-to-edge stone-relief framing) —
   attempted a crop-to-interior salvage; not possible, the numeral/title
@@ -29,13 +29,22 @@ for the full mapping and reasoning) — the remaining 5 cards
   solid grey background instead of black, breaking the whole batch's
   cutout convention.
 
-**Regeneration guidance for a retry**: all 3 prompts already say "plain
-dark background... no text, no card border/frame baked in" — restate this
-even more forcefully (e.g. "absolutely no roman numeral, no title text, no
-decorative card border of any kind — just the illustrated scene floating
-on a flat pure black background"), and for Hermit specifically, ask for
-the background to render as flat pure black (`#000000`) explicitly rather
-than "darkness" that the model may interpret as a lit, near-black scene.
+**Revised retry prompts below (2026-08-04)**, updated in each card's own
+section (VI/VIII/IX): dropped the phrase "tarot-card" from all 3 (likely
+biasing the generator toward its own training-data idea of an actual
+bordered card — notably, every one of the 7 successful generations used
+the identical phrase too, so this isn't a proven fix, just the most
+plausible lever available), made the anti-frame instruction its own
+explicit, repeated sentence instead of one clause among many, and named
+the required background color literally (`#000000`) instead of trusting
+"dark" to be interpreted as flat black. The Hermit's retry also fixes a
+second, separate problem: its own deliberate near-black chiaroscuro
+lighting made the robe's shadow folds colorimetrically inseparable from
+the black background even after a crop-salvage attempt — added an
+explicit secondary rim light around the whole figure silhouette so it
+stays cuttable. Generation is non-deterministic, so a retry may still land
+framed even with revised wording — that's expected, not evidence the fix
+failed; just retry again if so.
 
 **Not yet generated** (still just prompts, no image dropped in):
 Justice, The Hanged Man, Death, Temperance, The Devil, The Tower, The
@@ -179,13 +188,26 @@ green, no cyan.
 
 ## VI. The Lovers
 
+**Retry 2026-08-04** — original came back as a full tarot-card mockup
+(baked-in "VI" numeral, "THE LOVERS" title banner, decorative parchment
+frame around the whole image) despite the "no text, no border" instruction.
+Revised below: dropped the phrase "tarot-card" entirely (likely biasing
+the generator toward its training-data idea of an actual bordered card)
+and made the anti-frame instruction its own explicit, repeated sentence.
+
 ```
-Portrait tarot-card illustration, single subject centered on a plain dark
-background for easy cutout. Two figures standing close together beneath a
-low stone archway, hands joined, facing each other — a quiet, intimate
-moment of choice and connection, not overtly romantic imagery. Warm amber
-(#C8801A) archway carving, parchment cream (#F5EDCB) clothing highlights,
-muted fieldstone grey (#7E8590) stone. No purple, no green, no cyan.
+Fantasy character illustration, NOT a tarot card, NOT a playing card, no
+card of any kind — just a character illustration on a plain black
+background, the way a game concept-art portrait would look. Absolutely no
+roman numerals, no title text, no name banner, no decorative border or
+frame of any kind anywhere in the image. Single scene centered on a flat
+pure black (#000000) background for easy cutout. Two figures standing
+close together beneath a low stone archway, hands joined, facing each
+other — a quiet, intimate moment of choice and connection, not overtly
+romantic imagery. Warm amber (#C8801A) archway carving, parchment cream
+(#F5EDCB) clothing highlights, muted fieldstone grey (#7E8590) stone. No
+purple, no green, no cyan. Remember: no text, no numerals, no border, no
+frame — illustration only.
 ```
 
 ## VII. The Chariot
@@ -203,27 +225,68 @@ no cyan.
 
 ## VIII. Strength
 
+**Retry 2026-08-04** — original was the worst of the 3 rejects: full
+tarot-card mockup (numeral, title banner, decorative border) AND a solid
+grey card background instead of black, breaking the cutout technique
+entirely. Same fix as The Lovers: dropped "tarot-card," made the
+anti-frame instruction explicit and repeated, and named the required
+background color literally instead of trusting "dark" to be interpreted
+as black.
+
 ```
-Portrait tarot-card illustration, single subject centered on a plain dark
-background for easy cutout. A calm robed figure gently but firmly closing
-a great lion's jaw with both hands, the lion relaxed rather than
-fighting — quiet inner strength and control over raw power, not physical
-combat. Warm amber (#C8801A) lion's mane rim light, parchment cream
-(#F5EDCB) robe highlights, muted fieldstone grey (#7E8590) background. No
-purple, no green, no cyan.
+Fantasy character illustration, NOT a tarot card, NOT a playing card, no
+card of any kind — just a character illustration on a plain black
+background, the way a game concept-art portrait would look. Absolutely no
+roman numerals, no title text, no name banner, no decorative border or
+frame of any kind anywhere in the image. Single scene centered on a flat
+pure black (#000000) background for easy cutout — not grey, not brown,
+literally black. A calm robed figure gently but firmly closing a great
+lion's jaw with both hands, the lion relaxed rather than fighting — quiet
+inner strength and control over raw power, not physical combat. Warm
+amber (#C8801A) lion's mane rim light, parchment cream (#F5EDCB) robe
+highlights, muted fieldstone grey (#7E8590) used only on the figure/lion
+themselves, never as the background fill. No purple, no green, no cyan.
+Remember: no text, no numerals, no border, no frame, background must be
+flat pure black — illustration only.
 ```
 
 ## IX. The Hermit
 
+**Retry 2026-08-04** — had 2 problems, not just 1: same full-tarot-card-
+mockup issue as the other 2 rejects, AND a second, separate issue even
+after a crop-salvage attempt — the original's deliberate near-black
+chiaroscuro (lantern as the *only* light source) meant the robe's own
+shadow folds sat at almost the same color as the black background,
+making them impossible to alpha-cut cleanly (the cutout tool erased large
+chunks of the robe along with the real background, since it can't tell
+the difference by color alone). Fixed below by keeping the lantern as the
+*dominant* light but adding an explicit secondary rim light so the
+figure's outline stays separable from the backdrop at every point around
+its silhouette — same fix in spirit as the "always leave a bright rim
+edge" note in `design/art/asset-generation-prompts.md`'s own established
+lessons for dark-material assets (Shadow tower, Rift Sentinel, Bog
+Lurker).
+
 ```
-Portrait tarot-card illustration, single subject centered on a plain dark
-background for easy cutout. A single hooded, cloaked figure standing on a
-rocky outcrop, holding up a lit lantern into the darkness ahead, alone but
-purposeful — introspection and guiding light. Warm amber (#C8801A)
-lantern glow (the dominant light source in the whole piece), parchment
-cream (#F5EDCB) cloak highlight where the lantern catches it, muted
-fieldstone grey (#7E8590) rock and darkness. No purple, no green, no
-cyan.
+Fantasy character illustration, NOT a tarot card, NOT a playing card, no
+card of any kind — just a character illustration on a plain black
+background, the way a game concept-art portrait would look. Absolutely no
+roman numerals, no title text, no name banner, no decorative border or
+frame of any kind anywhere in the image. Single scene centered on a flat
+pure black (#000000) background for easy cutout. A single hooded, cloaked
+figure standing on a rocky outcrop, holding up a lit lantern into the
+darkness ahead, alone but purposeful — introspection and guiding light.
+The lantern is the dominant, warmest light source, but add a second,
+subtle cool rim light tracing the full outer edge of the figure's cloak
+and hood silhouette (dim, but never fully black) so the entire figure
+reads as clearly separated from the black background at every point
+around its outline, not just on the lantern-lit side. Warm amber
+(#C8801A) lantern glow, parchment cream (#F5EDCB) cloak highlight where
+the lantern catches it, muted fieldstone grey (#7E8590) rock and the
+figure's own rim-lit shadow areas (never pure black on the figure
+itself). No purple, no green, no cyan. Remember: no text, no numerals, no
+border, no frame, and the whole figure outline must stay visibly distinct
+from the black background, not blending into it anywhere.
 ```
 
 ## X. Wheel of Fortune
