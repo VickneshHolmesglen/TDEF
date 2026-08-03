@@ -1,59 +1,36 @@
 # Tarot Card Art — Generation Batch, 2026-08-03 (22 Major Arcana)
 
-## Progress — 7/22 processed, 3 need regeneration, 12 not yet generated
+## Progress — 15/22 processed, 0 need regeneration, 7 not yet generated
 
 **Done, sliced, and wired** (`assets/art/tarot/`): The Fool, The
 Magician, The High Priestess, The Empress, The Emperor, The Hierophant,
-The Chariot. All alpha-cut clean (flood-fill technique, thresholds 8-15
-depending on the image), verified against a magenta backdrop before
-finalizing, sources archived to `assets/source/tarot/`. Wired into
-`tarot_screen.gd` 2026-08-04 via a best-fit thematic mapping to 7 of the
-12 real `TarotCardResource` cards (see `CARD_TEXTURES`'s own doc comment
-for the full mapping and reasoning) — the remaining 5 cards
-(`grim_resolve`, `apex_predator`, `reckless_onslaught`, `steady_hand`,
-`swift_current`) stay text-only until more art lands.
+The Chariot (round 1, old template), and Death, Justice, Temperance, The
+Hanged Man, The Hermit, The Moon, The Star, Strength (round 2, revised
+anti-frame template — all 8 came back clean on the first try, confirming
+the template fix). All alpha-cut clean (flood-fill technique, thresholds
+8-15 depending on the image), verified against a magenta backdrop before
+finalizing, sources archived to `assets/source/tarot/`.
 
-**Generated but rejected — revised prompts ready for retry below** (still
-sitting at `assets/` root, not yet moved/processed):
-- **The Lovers** — came back as a full card mockup (baked-in "VI" numeral,
-  "THE LOVERS" title banner, dense edge-to-edge stone-relief framing) —
-  attempted a crop-to-interior salvage; not possible, the numeral/title
-  text sits inside the actual content area, not a trimmable border.
-- **The Hermit** — same full-card-mockup problem, AND a second issue even
-  after crop-salvage: the composition's own deliberate near-black
-  chiaroscuro lighting (only the lantern is lit) is colorimetrically
-  indistinguishable from the plain black background, so no alpha-cut
-  threshold can separate the robe's shadow folds from the backdrop
-  without shredding them.
-- **Strength** — worst case: full card mockup (frame/numeral/title) AND a
-  solid grey background instead of black, breaking the whole batch's
-  cutout convention.
+**Wiring status**: 10 of 12 real `TarotCardResource` cards now have art
+(see `CARD_TEXTURES`'s own doc comment in `tarot_screen.gd` for the full
+mapping and reasoning). Round 2 added 3 strong fits: Death ->
+`grim_resolve` (transformation/ending <-> the deck's highest-difficulty
+card), Strength -> `apex_predator` (the lion <-> the deck's own "majestic
+apex predator" Legendary), Temperance -> `steady_hand` (patience/
+moderation <-> the mildest/calmest card). Justice, The Hanged Man, The
+Hermit, and The Moon landed clean but have **no good mechanical fit**
+among the 2 still-unmapped cards (`reckless_onslaught`, `swift_current` —
+both need aggressive-motion/speed imagery none of these 4 depict) — left
+as extra art ahead of content rather than forced into a bad fit.
 
-**Revised retry prompts below (2026-08-04)**, updated in each card's own
-section (VI/VIII/IX): dropped the phrase "tarot-card" from all 3 (likely
-biasing the generator toward its own training-data idea of an actual
-bordered card — notably, every one of the 7 successful generations used
-the identical phrase too, so this isn't a proven fix, just the most
-plausible lever available), made the anti-frame instruction its own
-explicit, repeated sentence instead of one clause among many, and named
-the required background color literally (`#000000`) instead of trusting
-"dark" to be interpreted as flat black. The Hermit's retry also fixes a
-second, separate problem: its own deliberate near-black chiaroscuro
-lighting made the robe's shadow folds colorimetrically inseparable from
-the black background even after a crop-salvage attempt — added an
-explicit secondary rim light around the whole figure silhouette so it
-stays cuttable. Generation is non-deterministic, so a retry may still land
-framed even with revised wording — that's expected, not evidence the fix
-failed; just retry again if so.
+**The Lovers** is the only card from the original 3-reject list not yet
+regenerated (Strength and The Hermit both came back clean on retry using
+the revised prompt in section VIII/IX below — the same revised prompt is
+still there for The Lovers in section VI, just not run yet).
 
-**Not yet generated** (still just prompts, no image dropped in):
-Justice, The Hanged Man, Death, Temperance, The Devil, The Tower, The
-Star, The Moon, The Sun, Judgement, The World, Wheel of Fortune.
-
-**Wiring status**: all 7 completed cards wired 2026-08-04 (see
-`CARD_TEXTURES` in `tarot_screen.gd`). Any further cards from this batch
-(regenerated or newly generated) will need their own mapping decision —
-5 game cards still have no art candidate at all.
+**Not yet generated** (still just prompts, no image dropped in): Wheel of
+Fortune, The Devil, The Tower, The Sun, Judgement, The World, plus The
+Lovers' retry above.
 
 ---
 

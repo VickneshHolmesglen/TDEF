@@ -227,14 +227,21 @@ func test_pool_button_icon_is_capped_to_the_card_icon_max_width() -> void:
 	assert_int(button.get_theme_constant(&"icon_max_width")).is_equal(32)
 
 
-## grim_resolve has no art-mapping entry yet (5 of 12 cards remain
+## reckless_onslaught has no art-mapping entry yet (2 of 12 cards remain
 ## text-only, see CARD_TEXTURES's own doc comment) -- confirms the
 ## fallback is a plain unmapped button, not an error or a placeholder icon.
 func test_unmapped_card_has_no_icon() -> void:
+	_unlock(&"reckless_onslaught")
+	_rebuild_all()
+	var button: Button = _screen.call("get_pool_button", &"reckless_onslaught")
+	assert_object(button.icon).is_null()
+
+
+func test_grim_resolve_shows_an_icon_now_that_it_is_mapped() -> void:
 	_unlock(&"grim_resolve")
 	_rebuild_all()
 	var button: Button = _screen.call("get_pool_button", &"grim_resolve")
-	assert_object(button.icon).is_null()
+	assert_object(button.icon).is_not_null()
 
 
 # ---------------------------------------------------------------------------

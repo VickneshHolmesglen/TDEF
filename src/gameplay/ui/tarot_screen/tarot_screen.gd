@@ -40,7 +40,7 @@ extends Control
 ##   a shortcut around a real mechanic — the underlying system genuinely has
 ##   no slot-index or swap concept to select.
 ## - No mastery-pip/modifier-glyph rendering (still no data-layer concept of
-##   mastery tiers to render). Card art exists for 7 of 12 cards as of
+##   mastery tiers to render). Card art exists for 10 of 12 cards as of
 ##   2026-08-04 (see CARD_TEXTURES) — a plain icon on the existing text
 ##   button, not the GDD's full "tactile card object with drop shadow/
 ##   cardstock texture/carved wooden tray" treatment, which is separately-
@@ -52,15 +52,25 @@ extends Control
 const FOCUS_RING_COLOR: Color = Color(1.0, 0.85, 0.2, 1.0)  ## placeholder — art-director TBD
 
 ## card_id -> art lookup. Sourced from a 22-Major-Arcana generation batch
-## (design/art/asset-generation-prompts.md, 2026-08-04) — only 7 of the 22
-## have landed clean so far, and this project's real card roster is 12
-## cards, not 22, so this is a best-fit thematic mapping, not a literal
+## (design/art/asset-generation-prompts.md, 2026-08-04) — 15 of the 22 have
+## landed clean so far, and this project's real card roster is 12 cards,
+## not 22, so this is a best-fit thematic mapping, not a literal
 ## Major-Arcana-to-card_id identity: each is chosen to resonate with the
 ## target card's actual mechanical effect (e.g. The Empress's abundance/
 ## harvest imagery -> bountiful_harvest's reward boost), not just borrowed
-## because it was available. The remaining 5 cards (grim_resolve,
-## apex_predator, reckless_onslaught, steady_hand, swift_current) stay
-## text-only until more art lands and a further mapping pass happens.
+## because it was available.
+##
+## 2026-08-04 round 2 (Death/Justice/Temperance/Hanged Man/Hermit/Moon/
+## Star/Strength landed): added 3 more strong fits (Death's transformation/
+## ending imagery -> grim_resolve, the deck's highest-difficulty card;
+## Strength's lion -> apex_predator, the deck's own "majestic apex
+## predator" Legendary; Temperance's patience/moderation -> steady_hand,
+## the mildest/calmest card). Justice, The Hanged Man, The Hermit, The
+## Moon, and The Star landed clean but have NO good mechanical fit among
+## the 2 still-unmapped cards (reckless_onslaught, swift_current both need
+## aggressive-motion/speed imagery none of these 5 depict) — left as
+## extra art ahead of content rather than forced into a bad fit; may find
+## a home if new cards are ever authored.
 const CARD_TEXTURES: Dictionary[StringName, Texture2D] = {
 	&"lucky_charm": preload("res://assets/art/tarot/the_fool.png"),
 	&"golden_ticket": preload("res://assets/art/tarot/the_magician.png"),
@@ -69,6 +79,9 @@ const CARD_TEXTURES: Dictionary[StringName, Texture2D] = {
 	&"iron_resolve": preload("res://assets/art/tarot/the_emperor.png"),
 	&"cautious_advance": preload("res://assets/art/tarot/the_hierophant.png"),
 	&"hunters_pace": preload("res://assets/art/tarot/the_chariot.png"),
+	&"grim_resolve": preload("res://assets/art/tarot/death.png"),
+	&"apex_predator": preload("res://assets/art/tarot/strength.png"),
+	&"steady_hand": preload("res://assets/art/tarot/temperance.png"),
 }
 const CARD_ICON_MAX_WIDTH: int = 32
 
