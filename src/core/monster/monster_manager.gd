@@ -28,6 +28,8 @@ const SPEED_WAVE_GROWTH_RATE := 0.06
 const CELL_SIZE := 64.0                    ## world units per grid cell
 const DEATH_BATCH_THRESHOLD := 20          ## ADR-0033 / event-bus.md Formula 2's F_per_frame > 20
 
+const MONSTER_INSTANCE_SCENE: PackedScene = preload("res://src/core/monster/MonsterInstance.tscn")
+
 # ---------------------------------------------------------------------------
 # Public state (readable by other systems; do not write externally)
 # ---------------------------------------------------------------------------
@@ -328,6 +330,14 @@ func _spawn_entity(res: MonsterResource, spawn_cell: Vector2i, wave_index: int,
 	# dedicated container — safe because MonsterManager has no transform to compose
 	# against, so entity.global_position (set above) is unaffected by parent order.
 	add_child(entity)
+
+	# Presentation layer (MonsterInstance, mirrors TowerInstance's pattern):
+	# a plain Node2D child at local (0,0) that rides entity's global_position
+	# for free. Failure here is non-fatal to spawning — an entity with no
+	# visible sprite is still a fully correct simulation entity.
+	var instance := MONSTER_INSTANCE_SCENE.instantiate() as MonsterInstance
+	entity.add_child(instance)
+	instance.configure(res.monster_id, res.tier)
 
 	var path: Array[Vector2i] = _pathfinding.find_path(spawn_cell, res.tier)
 	if path.is_empty():

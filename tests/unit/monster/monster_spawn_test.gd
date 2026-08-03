@@ -249,3 +249,26 @@ func test_monster_spawn_five_sequential_ids_no_duplicates() -> void:
 	for id in ids:
 		assert_bool(unique.has(id)).is_false()
 		unique[id] = true
+
+# ---------------------------------------------------------------------------
+# MonsterInstance wiring — every spawned entity gets a configured presentation child
+# ---------------------------------------------------------------------------
+
+func test_monster_spawn_attaches_a_monster_instance_child() -> void:
+	var res := _make_resource(&"goblin_runner")
+	_mm._resource_table[res.monster_id] = res
+	var entity := _mm.spawn_monster(res.monster_id, SPAWN_CELL, 1, 1)
+	var found: MonsterInstance = null
+	for child in entity.get_children():
+		if child is MonsterInstance:
+			found = child
+	assert_object(found).is_not_null()
+
+
+func test_monster_spawn_monster_instance_child_is_configured_with_real_art() -> void:
+	var res := _make_resource(&"goblin_runner")
+	_mm._resource_table[res.monster_id] = res
+	var entity := _mm.spawn_monster(res.monster_id, SPAWN_CELL, 1, 1)
+	var instance: MonsterInstance = entity.get_children().filter(
+			func(c): return c is MonsterInstance)[0]
+	assert_object(instance._sprite.texture).is_not_null()
