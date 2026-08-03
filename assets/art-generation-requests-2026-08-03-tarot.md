@@ -100,7 +100,7 @@ project's own palette, not a faithful-to-tradition color pass.
 
 ---
 
-## 0. The Fool
+## 0. The Fool ✅ DONE
 
 ```
 Portrait tarot-card illustration, single subject centered on a plain dark
@@ -112,7 +112,7 @@ shoulder. Warm amber (#C8801A) sunrise-toned rim light, parchment cream
 (#7E8590) cliff stone. No purple, no green, no cyan.
 ```
 
-## I. The Magician
+## I. The Magician ✅ DONE
 
 ```
 Portrait tarot-card illustration, single subject centered on a plain dark
@@ -125,7 +125,7 @@ fieldstone grey (#7E8590) table and shadow, Herald Gold (#F5C01A) as a
 subtle accent on the candle flame only. No purple, no green, no cyan.
 ```
 
-## II. The High Priestess
+## II. The High Priestess ✅ DONE
 
 ```
 Portrait tarot-card illustration, single subject centered on a plain dark
@@ -137,7 +137,7 @@ highlights, muted fieldstone grey (#7E8590) stone floor and shadow. No
 purple, no green, no cyan.
 ```
 
-## III. The Empress
+## III. The Empress ✅ DONE
 
 ```
 Portrait tarot-card illustration, single subject centered on a plain dark
@@ -149,7 +149,7 @@ highlights. Any foliage/fruit renders warm olive/amber-brown, not
 naturalistic green. No purple, no cyan.
 ```
 
-## IV. The Emperor
+## IV. The Emperor ✅ DONE
 
 ```
 Portrait tarot-card illustration, single subject centered on a plain dark
@@ -160,7 +160,7 @@ scepter planted upright — authority and unshakable order. Warm amber
 fieldstone grey (#7E8590) stone throne. No purple, no green, no cyan.
 ```
 
-## V. The Hierophant
+## V. The Hierophant ✅ DONE
 
 ```
 Portrait tarot-card illustration, single subject centered on a plain dark
@@ -172,7 +172,7 @@ highlights, muted fieldstone grey (#7E8590) pillar stone. No purple, no
 green, no cyan.
 ```
 
-## VI. The Lovers
+## VI. The Lovers 🔁 RETRY NEEDED (revised prompt below not yet run)
 
 **Retry 2026-08-04** — original came back as a full tarot-card mockup
 (baked-in "VI" numeral, "THE LOVERS" title banner, decorative parchment
@@ -196,7 +196,7 @@ purple, no green, no cyan. Remember: no text, no numerals, no border, no
 frame — illustration only.
 ```
 
-## VII. The Chariot
+## VII. The Chariot ✅ DONE
 
 ```
 Portrait tarot-card illustration, single subject centered on a plain dark
@@ -209,7 +209,7 @@ highlights, muted fieldstone grey (#7E8590) shadow. No purple, no green,
 no cyan.
 ```
 
-## VIII. Strength
+## VIII. Strength ✅ DONE (landed clean on retry)
 
 **Retry 2026-08-04** — original was the worst of the 3 rejects: full
 tarot-card mockup (numeral, title banner, decorative border) AND a solid
@@ -236,7 +236,7 @@ Remember: no text, no numerals, no border, no frame, background must be
 flat pure black — illustration only.
 ```
 
-## IX. The Hermit
+## IX. The Hermit ✅ DONE (landed clean on retry)
 
 **Retry 2026-08-04** — had 2 problems, not just 1: same full-tarot-card-
 mockup issue as the other 2 rejects, AND a second, separate issue even
@@ -280,7 +280,7 @@ pre-emptively — see the Lovers/Strength/Hermit retry entries above for why):
 dropped "tarot-card" phrasing, explicit repeated no-frame/no-text
 instruction, literal `#000000` background call-out.
 
-## X. Wheel of Fortune
+## X. Wheel of Fortune ⏳ not yet generated
 
 ```
 Fantasy object illustration, NOT a tarot card, NOT a playing card, no card
@@ -297,7 +297,7 @@ on the rim. No purple, no green, no cyan. Remember: no text, no numerals,
 no border, no frame — illustration only.
 ```
 
-## XI. Justice
+## XI. Justice ✅ DONE
 
 ```
 Fantasy character illustration, NOT a tarot card, NOT a playing card, no
@@ -314,7 +314,7 @@ itself. No purple, no green, no cyan. Remember: no text, no numerals, no
 border, no frame — illustration only.
 ```
 
-## XII. The Hanged Man
+## XII. The Hanged Man ✅ DONE
 
 ```
 Fantasy character illustration, NOT a tarot card, NOT a playing card, no
@@ -332,7 +332,7 @@ purple, no green, no cyan. Remember: no text, no numerals, no border, no
 frame — illustration only.
 ```
 
-## XIII. Death
+## XIII. Death ✅ DONE
 
 ```
 Fantasy character illustration, NOT a tarot card, NOT a playing card, no
@@ -354,7 +354,7 @@ the figure itself). No purple, no green, no cyan. Remember: no text, no
 numerals, no border, no frame — illustration only.
 ```
 
-## XIV. Temperance
+## XIV. Temperance ✅ DONE
 
 ```
 Fantasy character illustration, NOT a tarot card, NOT a playing card, no
@@ -371,7 +371,7 @@ purple, no green, no cyan. Remember: no text, no numerals, no border, no
 frame — illustration only.
 ```
 
-## XV. The Devil
+## XV. The Devil ⏳ not yet generated
 
 ```
 Fantasy object illustration, NOT a tarot card, NOT a playing card, no
@@ -390,7 +390,7 @@ stone tone. No purple, no green, no cyan. Remember: no text, no numerals,
 no border, no frame — illustration only.
 ```
 
-## XVI. The Tower
+## XVI. The Tower ⏳ not yet generated
 
 ```
 Fantasy object illustration, NOT a tarot card, NOT a playing card, no
@@ -411,7 +411,7 @@ on the energy bolt. No purple, no green, no cyan. Remember: no text, no
 numerals, no border, no frame — illustration only.
 ```
 
-## XVII. The Star
+## XVII. The Star ✅ DONE
 
 ```
 Fantasy character illustration, NOT a tarot card, NOT a playing card, no
@@ -429,7 +429,7 @@ purple, no green, no cyan. Remember: no text, no numerals, no border, no
 frame — illustration only.
 ```
 
-## XVIII. The Moon
+## XVIII. The Moon ✅ DONE
 
 ```
 Fantasy scene illustration, NOT a tarot card, NOT a playing card, no card
@@ -449,7 +449,7 @@ spires and mist. No purple, no green, no cyan. Remember: no text, no
 numerals, no border, no frame — illustration only.
 ```
 
-## XIX. The Sun
+## XIX. The Sun ⏳ not yet generated
 
 ```
 Fantasy character illustration, NOT a tarot card, NOT a playing card, no
@@ -467,7 +467,7 @@ grass/field renders warm amber-gold, not naturalistic green), no cyan.
 Remember: no text, no numerals, no border, no frame — illustration only.
 ```
 
-## XX. Judgement
+## XX. Judgement ⏳ not yet generated
 
 ```
 Fantasy character illustration, NOT a tarot card, NOT a playing card, no
@@ -485,7 +485,7 @@ Gold (#F5C01A) generously on the horn and radiant light, parchment cream
 text, no numerals, no border, no frame — illustration only.
 ```
 
-## XXI. The World
+## XXI. The World ⏳ not yet generated
 
 ```
 Fantasy character illustration, NOT a tarot card, NOT a playing card, no
