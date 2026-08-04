@@ -58,7 +58,23 @@ func test_tarot_rune_discovered_adds_one_entry() -> void:
 
 
 func test_recipe_discovered_adds_one_entry_with_exactly_3_keys_and_no_category_field() -> void:
+	# TEMPORARY DIAGNOSTIC (2026-08-05) -- CI-only failure investigation.
+	# Remove once root cause is found. Dumps: how many listeners are on the
+	# real recipe_discovered signal right before this test's own single
+	# emit(), who they are (instance id / class / validity), and what
+	# actually landed in this supposedly-fresh _encyclopedia's ledger.
+	var conns: Array = GEventBus.recipe_discovered.get_connections()
+	print("DIAG conns.size()=", conns.size())
+	for c: Dictionary in conns:
+		var target: Object = c.get("callable", Callable()).get_object()
+		print("DIAG conn target=", target, " valid=", is_instance_valid(target),
+			" class=", (target.get_class() if is_instance_valid(target) else "?"),
+			" id=", (target.get_instance_id() if is_instance_valid(target) else -1))
+	print("DIAG this _encyclopedia id=", _encyclopedia.get_instance_id())
+
 	GEventBus.recipe_discovered.emit("iron_plate", "hero_equipment")
+
+	print("DIAG post-emit entries=", _encyclopedia.get_entries())
 
 	assert_int(_encyclopedia.get_category_count("recipe")).is_equal(1)
 	var entries: Array = _encyclopedia.get_entries("recipe")
