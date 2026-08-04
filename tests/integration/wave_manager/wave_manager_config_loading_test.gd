@@ -73,6 +73,20 @@ var _stub_grid: _StubGrid
 
 
 func before_test() -> void:
+	# Flush any deferred GEventBus emit still in flight from an earlier test
+	# (ADR-0001 Rule 2 deferred-dispatch convention, event_bus.gd) BEFORE
+	# connecting a fresh WaveManager below -- otherwise a stale queued
+	# .emit.call_deferred(...) for e.g. `templates_ready` from a prior
+	# suite/instance can resolve against THIS _wm instead of whichever
+	# instance was live when it was queued, flipping _templates_ready (or
+	# other EventBus-driven fields) back on right before an assertion.
+	# CI-only flake (2026-08-05): passes 100% locally on Windows but fails
+	# reliably on the Linux GitHub Actions runner, where slower/different
+	# frame-timing gives stale deferred calls more opportunity to land in
+	# the wrong test's window -- same root cause fixed identically in
+	# tests/integration/encyclopedia/discovery-event-ingestion_test.gd and
+	# persistence-and-restore-order-safety_test.gd.
+	await get_tree().process_frame
 	_wm = WaveManager.new()
 	add_child(_wm)  # triggers _ready() — creates timers, subscribes to EventBus, sets _grid = GGrid
 
