@@ -87,6 +87,16 @@ const TAB_STRIP_WIDTH: float = 72.0
 ## prompt.md) has room to read as a frame rather than a squished pinstripe.
 const HEADER_HEIGHT: float = 64.0
 
+## Fixed width for the gold header art itself (2026-08-04): the header no
+## longer stretches full-width edge-to-edge across the top bar -- that
+## squashed the 9-sliced art's proportions into a thin plain stripe with tiny
+## end-caps. Left-aligned next to the tab strip instead, close to the source
+## art's own unstretched proportions (sanctuary_header_gold.png is 350x80,
+## ~4.4:1) at HEADER_HEIGHT, so it reads as a compact title plaque. The
+## remaining top-bar space to its right is bare Chrome background (untextured
+## -- no GDD requirement fills it with anything else).
+const RESOURCE_HEADER_WIDTH: float = 320.0
+
 @onready var _diorama: Control = $Diorama
 @onready var _room_host: RoomHost = $RoomHost
 @onready var _chrome: Control = $Chrome
@@ -398,11 +408,11 @@ func _configure_chrome_layout() -> void:
 
 	_resource_header.anchor_left = 0.0
 	_resource_header.anchor_top = 0.0
-	_resource_header.anchor_right = 1.0
+	_resource_header.anchor_right = 0.0
 	_resource_header.anchor_bottom = 0.0
 	_resource_header.offset_left = TAB_STRIP_WIDTH
 	_resource_header.offset_top = 0.0
-	_resource_header.offset_right = 0.0
+	_resource_header.offset_right = TAB_STRIP_WIDTH + RESOURCE_HEADER_WIDTH
 	_resource_header.offset_bottom = HEADER_HEIGHT
 
 	for content: Control in [_diorama, _room_host]:
