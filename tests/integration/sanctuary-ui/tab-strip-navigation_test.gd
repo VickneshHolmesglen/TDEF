@@ -251,11 +251,38 @@ func test_focus_ring_hidden_by_default_before_any_keyboard_input() -> void:
 
 
 func test_focus_ring_visible_when_keyboard_focused_entry_has_focus() -> void:
+	# Arrange: force InputModeTracker into KEYBOARD_GAMEPAD deterministically
+	# rather than relying on it still being untouched at its default. Root-
+	# caused via direct has_focus()/tracker inspection (2026-08-05): grab_focus()
+	# itself always succeeds (has_focus() true, viewport focus owner correct) --
+	# the flake was GdUnitSceneRunner's own scene-mount warm-up occasionally
+	# injecting a real mouse-motion event before this test body runs, flipping
+	# the tracker to MOUSE ahead of the assertion below. Not a tab_strip.gd or
+	# input_mode_tracker.gd defect -- same category of headless SceneRunner
+	# timing quirk this file's own header comment already documents for
+	# InputEventAction dispatch, just surfacing here for mouse-motion instead.
+	# Direct _input() dispatch (not a GdUnit simulate_* call) matches this
+	# file's own established workaround, and doubles as this test's real
+	# "keyboard" arrange step given its own name.
+	var key_event := InputEventKey.new()
+	key_event.keycode = KEY_TAB
+	key_event.pressed = true
+	_tab_strip.get_input_mode_tracker()._input(key_event)
+
 	_tab_strip.get_tab_button(0).grab_focus()
 	assert_bool(_tab_strip.is_focus_ring_visible(0)).is_true()
 
 
 func test_focus_ring_hidden_after_mouse_input_even_if_focused() -> void:
+	# Arrange: same explicit KEYBOARD_GAMEPAD-forcing seen in
+	# test_focus_ring_visible_when_keyboard_focused_entry_has_focus above --
+	# this test's own first assertion below assumes that starting mode too,
+	# before it deliberately flips to MOUSE.
+	var key_event := InputEventKey.new()
+	key_event.keycode = KEY_TAB
+	key_event.pressed = true
+	_tab_strip.get_input_mode_tracker()._input(key_event)
+
 	_tab_strip.get_tab_button(0).grab_focus()
 	assert_bool(_tab_strip.is_focus_ring_visible(0)).is_true()
 
