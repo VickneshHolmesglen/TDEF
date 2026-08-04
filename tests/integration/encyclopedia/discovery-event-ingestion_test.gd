@@ -3,6 +3,28 @@
 ##
 ## Uses real scene instantiation (`add_child()`) exercising the real
 ## GEventBus -- not mocked.
+##
+## KNOWN CI-ONLY FLAKE (investigated 2026-08-05, unresolved): all 11 tests
+## in this file (plus 1 in persistence-and-restore-order-safety_test.gd, 1
+## in wave_manager_config_loading_test.gd) fail reliably on GitHub Actions'
+## Linux runner but pass 100% locally on Windows every time, including a
+## full 1895-test local run. A `.get_connections()` diagnostic on CI (see
+## commit d7517f1, reverted) confirmed: no leaked/extra listeners on
+## `recipe_discovered` (exactly the expected 2: GEncyclopedia autoload + this
+## test's own fresh instance), and the instance ID matched this test's own
+## `_encyclopedia` correctly. Yet that same, correctly-connected instance's
+## ledger already contained ~49-second-old entries (real recipe/creature/rune
+## IDs from entirely different, unrelated test suites -- e.g. Defense
+## Building's `tech_production_2`) before this test's own emit() even ran.
+## Ruled out: leaked signal connections, stale `.emit.call_deferred()` calls
+## (an `await get_tree().process_frame` flush in before_test(), commit
+## 08c95a6, had zero effect). Best remaining theory: gdUnit4-action's CI
+## execution allows real time-overlap between unrelated test suites on this
+## platform (not reproducible locally), so this suite's fresh Encyclopedia
+## instance is alive during a window where a genuinely different, still-
+## running suite emits its own real EventBus signals. Needs someone to dig
+## into the gdUnit4-action's actual execution model to fully resolve --
+## flagged here rather than left as an unexplained red CI run.
 extends GdUnitTestSuite
 
 var _encyclopedia: Encyclopedia
@@ -58,23 +80,7 @@ func test_tarot_rune_discovered_adds_one_entry() -> void:
 
 
 func test_recipe_discovered_adds_one_entry_with_exactly_3_keys_and_no_category_field() -> void:
-	# TEMPORARY DIAGNOSTIC (2026-08-05) -- CI-only failure investigation.
-	# Remove once root cause is found. Dumps: how many listeners are on the
-	# real recipe_discovered signal right before this test's own single
-	# emit(), who they are (instance id / class / validity), and what
-	# actually landed in this supposedly-fresh _encyclopedia's ledger.
-	var conns: Array = GEventBus.recipe_discovered.get_connections()
-	print("DIAG conns.size()=", conns.size())
-	for c: Dictionary in conns:
-		var target: Object = c.get("callable", Callable()).get_object()
-		print("DIAG conn target=", target, " valid=", is_instance_valid(target),
-			" class=", (target.get_class() if is_instance_valid(target) else "?"),
-			" id=", (target.get_instance_id() if is_instance_valid(target) else -1))
-	print("DIAG this _encyclopedia id=", _encyclopedia.get_instance_id())
-
 	GEventBus.recipe_discovered.emit("iron_plate", "hero_equipment")
-
-	print("DIAG post-emit entries=", _encyclopedia.get_entries())
 
 	assert_int(_encyclopedia.get_category_count("recipe")).is_equal(1)
 	var entries: Array = _encyclopedia.get_entries("recipe")
