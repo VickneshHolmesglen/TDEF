@@ -46,11 +46,24 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_background.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_background.add_theme_stylebox_override("panel", ShellChromeStyle.chrome_panel_stylebox())
+	_background.add_theme_stylebox_override("panel", ShellChromeStyle.resource_header_stylebox())
 	add_child(_background)
 	add_child(_label)
 	_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_label.add_theme_color_override("font_color", ShellChromeStyle.UI_PARCHMENT)
+	# Pre-existing overflow, only exposed visually now that the Chrome
+	# full-rect fix (sanctuary_ui.gd, 2026-08-04) lets this header actually
+	# render at nonzero size: the untranslated placeholder key + material
+	# list is long enough to autowrap to 2 lines and spill outside
+	# HEADER_HEIGHT vertically. Single-line + ellipsis-trim + vertical
+	# centering is a display-only fix (Story 004's own "read-only, no
+	# authoritative data" scope) -- it doesn't touch the underlying text
+	# content, which is a separate localization-catalogue gap every other
+	# SANCTUARY_TAB_* key in this shell already has.
+	_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_label.clip_contents = true
 	_refresh_label()
 	GEventBus.resources_changed.connect(_on_resources_changed)
 	GEventBus.materials_earned.connect(_on_materials_earned)

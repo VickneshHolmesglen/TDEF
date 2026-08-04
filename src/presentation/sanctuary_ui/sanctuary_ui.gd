@@ -81,8 +81,11 @@ const ROOM_SCENES: Dictionary[StringName, PackedScene] = {
 
 ## GDD Tuning Knobs default (56-96px safe range) — Story 002 owns tuning this.
 const TAB_STRIP_WIDTH: float = 72.0
-## GDD Tuning Knobs default (40-64px safe range) — Story 004 owns tuning this.
-const HEADER_HEIGHT: float = 48.0
+## GDD Tuning Knobs safe range is 40-64px (Story 004 owns tuning this) --
+## raised from the 48px placeholder to the range's own ceiling (2026-08-04) so
+## `sanctuary_header_gold.png`'s corner-flourish trim (design/art/asset-UI-
+## prompt.md) has room to read as a frame rather than a squished pinstripe.
+const HEADER_HEIGHT: float = 64.0
 
 @onready var _diorama: Control = $Diorama
 @onready var _room_host: RoomHost = $RoomHost
@@ -370,6 +373,19 @@ func is_departing_to_loadout() -> bool:
 ## share the remaining rect (frame minus both), matching AC-2/AC-3 exactly.
 func _configure_chrome_layout() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+
+	# Real pre-existing bug found while live-verifying the header art wiring
+	# (2026-08-04): Chrome itself was never given full-rect anchors, so it
+	# stayed at Control's zero-size default. _resource_header's anchor_right
+	# = 1.0 below resolves against Chrome's OWN rect, not the window -- with
+	# Chrome at 0 width, that anchor collapsed to 0 regardless of offsets,
+	# and only the header Label's own text-driven minimum size kept it
+	# visible at all (rendering squashed on top of the first tab button
+	# instead of spanning the top bar). TabStrip/ResourceHeader are anchored
+	# relative to Chrome (not this Control, unlike Diorama/RoomHost below),
+	# so Chrome must be full-rect for those percentage anchors to resolve
+	# against the actual window size.
+	_chrome.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 	_tab_strip.anchor_left = 0.0
 	_tab_strip.anchor_top = 0.0

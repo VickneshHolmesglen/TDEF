@@ -32,6 +32,24 @@ static func chrome_panel_stylebox() -> StyleBoxFlat:
 	return box
 
 
+## Resource header background (Story 004, updated 2026-08-04): the gold-
+## trimmed header art (design/art/asset-UI-prompt.md), 9-sliced so the
+## corner flourish stays fixed-size while the flat middle stretches to fill
+## whatever width the header spans. Texture margins are in the *processed*
+## asset's own pixel space (assets/art/ui/sanctuary_header_gold.png was
+## downscaled to 350x80 specifically for this use -- see that file's history
+## -- not the original 1386x317 generation output, which is far too
+## high-resolution for a 9-slice margin to stay under HEADER_HEIGHT).
+static func resource_header_stylebox() -> StyleBoxTexture:
+	var box := StyleBoxTexture.new()
+	box.texture = preload("res://assets/art/ui/sanctuary_header_gold.png")
+	box.texture_margin_left = 30
+	box.texture_margin_right = 30
+	box.texture_margin_top = 26
+	box.texture_margin_bottom = 26
+	return box
+
+
 static func chrome_button_stylebox(active: bool) -> StyleBoxFlat:
 	var box := StyleBoxFlat.new()
 	# Active-tab state reuses the filled-vs-outline actionable convention

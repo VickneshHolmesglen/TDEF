@@ -24,11 +24,17 @@ extends VBoxContainer
 ## reference them at all -- each room owns its own internal bumper-driven
 ## category cycling independently (out of this story's scope).
 ##
-## Button.text (not icon assets) for all 6 entries and the onboarding tooltip:
-## no art assets exist yet for this UI (matching Story 001's Diorama-placeholder
-## precedent). Text is still routed through tr() with SANCTUARY_TAB_* keys,
-## matching inventory_screen.gd's real localization precedent -- no hardcoded
-## user-facing strings even though no translation catalog exists yet.
+## Button.icon + Button.text for all 6 entries (icon set added 2026-08-04,
+## `design/art/asset-UI-prompt.md`'s "Sanctuary Room Tab Strip" batch --
+## previously text-only, matching Story 001's Diorama-placeholder precedent).
+## Text remains always-visible rather than the GDD's own "icon-first,
+## label-on-focus-only" ideal (design/ux/sanctuary-ui.md Component
+## Inventory) -- that reveal behavior is a separate presentation change this
+## pass doesn't make; only the icon asset is being wired into the existing
+## always-on-text button. Text is still routed through tr() with
+## SANCTUARY_TAB_* keys, matching inventory_screen.gd's real localization
+## precedent -- no hardcoded user-facing strings even though no translation
+## catalog exists yet.
 ##
 ## Connection Badges (Story 003, GDD Core Rule 2 + Tuning Knobs table): the 4
 ## room-tab entries (indices 1-4) each carry a live EventBus-driven badge
@@ -75,6 +81,17 @@ const TAB_LABEL_KEYS: Array[String] = [
 	"SANCTUARY_TAB_DEFENSE_BUILDING",
 	"SANCTUARY_TAB_EQUIPMENT_FORGE",
 	"SANCTUARY_TAB_LOADOUT",
+]
+
+## Index-ordered 1:1 with TAB_TARGETS -- `design/art/asset-UI-prompt.md`'s
+## "Sanctuary Room Tab Strip" icon set (2026-08-04).
+const TAB_ICON_TEXTURES: Array[Texture2D] = [
+	preload("res://assets/art/ui/tab_overview.png"),
+	preload("res://assets/art/ui/tab_inventory_crafting.png"),
+	preload("res://assets/art/ui/tab_menagerie.png"),
+	preload("res://assets/art/ui/tab_defense_building.png"),
+	preload("res://assets/art/ui/tab_equipment_forge.png"),
+	preload("res://assets/art/ui/tab_loadout.png"),
 ]
 
 ## Index-ordered 1:1 with TAB_TARGETS -- InputMap actions added in project.godot.
@@ -292,6 +309,8 @@ func _build_buttons() -> void:
 	for index: int in TAB_TARGETS.size():
 		var button := Button.new()
 		button.text = tr(TAB_LABEL_KEYS[index])
+		button.icon = TAB_ICON_TEXTURES[index]
+		button.expand_icon = true
 		button.clip_text = true
 		button.focus_mode = Control.FOCUS_ALL
 		button.custom_minimum_size = Vector2(56, 56)
