@@ -207,12 +207,48 @@ layout_mode = 2
 theme_override_font_sizes/font_size = 24
 text = "80%"
 
-[node name="BackButton" type="Button" parent="SettingsPanel"]
+[node name="DisplaySettings" type="VBoxContainer" parent="SettingsPanel"]
 layout_mode = 0
 offset_left = 96.0
 offset_top = 400.0
+offset_right = 700.0
+offset_bottom = 500.0
+theme_override_constants/separation = 20
+
+[node name="ResolutionRow" type="HBoxContainer" parent="SettingsPanel/DisplaySettings"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="Label" type="Label" parent="SettingsPanel/DisplaySettings/ResolutionRow"]
+custom_minimum_size = Vector2(140, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "Resolution"
+
+[node name="OptionButton" type="OptionButton" parent="SettingsPanel/DisplaySettings/ResolutionRow"]
+custom_minimum_size = Vector2(320, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+
+[node name="FullscreenRow" type="HBoxContainer" parent="SettingsPanel/DisplaySettings"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="Label" type="Label" parent="SettingsPanel/DisplaySettings/FullscreenRow"]
+custom_minimum_size = Vector2(140, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "Fullscreen"
+
+[node name="CheckButton" type="CheckButton" parent="SettingsPanel/DisplaySettings/FullscreenRow"]
+layout_mode = 2
+
+[node name="BackButton" type="Button" parent="SettingsPanel"]
+layout_mode = 0
+offset_left = 96.0
+offset_top = 540.0
 offset_right = 296.0
-offset_bottom = 448.0
+offset_bottom = 588.0
 text = "Back"
 
 [node name="LoadGamePanel" type="ColorRect" parent="."]

@@ -77,9 +77,34 @@ extends Control
 ## one modal can be open at a time (each modal's own open path only
 ## reachable through a nav button, which is itself disabled while any
 ## other modal is open), so a single shared disable/restore pair is safe.
+##
+## Display resolution + fullscreen (2026-08-05, `design/quick-specs/
+## display-resolution-setting-2026-08-05.md`): 2 new Settings panel
+## controls (Resolution OptionButton, Fullscreen CheckButton), independent
+## of the still-open "UI scaling" accessibility item. Resolution dropdown
+## is disabled while Fullscreen is checked (fullscreen always uses the
+## native desktop resolution, not the dropdown value). Persisted to
+## `user://display_settings.cfg`, loaded and applied at the top of
+## `_ready()` so the boot window already reflects the last session's
+## choice before the player sees the menu. `project.godot` also gained
+## `window/stretch/mode="canvas_items"`/`aspect="keep"` in the same pass —
+## required for resolution switching to scale the UI instead of
+## clipping/distorting it.
 
 const VOLUME_BUSES: Array[StringName] = [&"Music", &"SFX", &"Voice", &"UI"]
 const SAVE_SLOT_COUNT: int = 3
+
+## Curated, not a dynamic probe of the display's supported modes — matches
+## this project's existing "fixed curated list" pattern (e.g. the 3-slot
+## save system). Index into this array is what gets persisted.
+const RESOLUTIONS: Array[Vector2i] = [
+	Vector2i(1280, 720),
+	Vector2i(1600, 900),
+	Vector2i(1920, 1080),
+	Vector2i(2560, 1440),
+]
+const DISPLAY_SETTINGS_PATH: String = "user://display_settings.cfg"
+const DISPLAY_SETTINGS_SECTION: String = "display"
 
 @onready var _settings_panel: Control = $SettingsPanel
 @onready var _load_game_panel: Control = $LoadGamePanel
@@ -110,6 +135,10 @@ var _pending_overwrite_slot: int = 0
 var _volume_sliders: Dictionary[StringName, HSlider] = {}
 var _volume_value_labels: Dictionary[StringName, Label] = {}
 
+var _resolution_option: OptionButton
+var _fullscreen_check: CheckButton
+var _selected_resolution_index: int = 0
+
 ## Every focus-ringed Control -> its ring, one dictionary instead of one
 ## var pair per Control — too many real interactive Controls on this
 ## screen now (5 nav buttons + 4 sliders + 3 slot rows + 5 modal buttons)
@@ -128,11 +157,17 @@ func _ready() -> void:
 	_overwrite_message_label = $OverwriteConfirmPanel/MessageLabel
 	_overwrite_yes_button = $OverwriteConfirmPanel/ConfirmButtons/YesButton
 	_overwrite_cancel_button = $OverwriteConfirmPanel/ConfirmButtons/CancelButton
+	_resolution_option = $SettingsPanel/DisplaySettings/ResolutionRow/OptionButton
+	_fullscreen_check = $SettingsPanel/DisplaySettings/FullscreenRow/CheckButton
 	_slot_buttons = [
 		$LoadGamePanel/Slots/Slot0Button,
 		$LoadGamePanel/Slots/Slot1Button,
 		$LoadGamePanel/Slots/Slot2Button,
 	]
+
+	# Loaded and applied first so the real window already reflects the
+	# last session's choice before the rest of the menu is set up.
+	_setup_display_settings()
 
 	_continue_button.pressed.connect(_on_continue_pressed)
 	_new_game_button.pressed.connect(_on_new_game_pressed)
@@ -159,6 +194,8 @@ func _ready() -> void:
 	_build_focus_ring(_load_game_back_button)
 	_build_focus_ring(_overwrite_yes_button)
 	_build_focus_ring(_overwrite_cancel_button)
+	_build_focus_ring(_resolution_option)
+	_build_focus_ring(_fullscreen_check)
 	for slot_button: Button in _slot_buttons:
 		_build_focus_ring(slot_button)
 
@@ -342,6 +379,61 @@ func _on_volume_slider_changed(value: float, bus_name: StringName) -> void:
 	GAudioSystem.set_bus_volume_percent(bus_name, value)
 	_volume_value_labels[bus_name].text = "%d%%" % int(value)
 	GAudioSystem.save_settings_to_disk()
+
+
+## Populates the Resolution dropdown from RESOLUTIONS, loads any persisted
+## display preference (defaults to index 0 / windowed if none exists yet),
+## and applies it to the real window. Wires the 2 controls' signals last,
+## after `.selected`/`.button_pressed` are set from the loaded values, so
+## loading a saved preference doesn't re-trigger a redundant save.
+func _setup_display_settings() -> void:
+	for resolution: Vector2i in RESOLUTIONS:
+		_resolution_option.add_item("%dx%d" % [resolution.x, resolution.y])
+
+	var config: ConfigFile = ConfigFile.new()
+	var loaded: bool = config.load(DISPLAY_SETTINGS_PATH) == OK
+	_selected_resolution_index = config.get_value(DISPLAY_SETTINGS_SECTION, "resolution_index", 0) if loaded else 0
+	var is_fullscreen: bool = config.get_value(DISPLAY_SETTINGS_SECTION, "fullscreen", false) if loaded else false
+
+	_resolution_option.selected = _selected_resolution_index
+	_fullscreen_check.button_pressed = is_fullscreen
+	_resolution_option.disabled = is_fullscreen
+	_apply_display_settings(_selected_resolution_index, is_fullscreen)
+
+	_resolution_option.item_selected.connect(_on_resolution_selected)
+	_fullscreen_check.toggled.connect(_on_fullscreen_toggled)
+
+
+## Fullscreen always uses the native desktop resolution — `resolution_index`
+## only matters while windowed.
+func _apply_display_settings(resolution_index: int, is_fullscreen: bool) -> void:
+	if is_fullscreen:
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
+	else:
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
+		DisplayServer.window_set_size(RESOLUTIONS[resolution_index])
+
+
+func _on_resolution_selected(index: int) -> void:
+	_selected_resolution_index = index
+	_apply_display_settings(_selected_resolution_index, _fullscreen_check.button_pressed)
+	_save_display_settings()
+
+
+## Disables the Resolution dropdown while Fullscreen is checked (its value
+## is meaningless in fullscreen) and restores it, at the previously
+## selected resolution, when unchecked.
+func _on_fullscreen_toggled(pressed: bool) -> void:
+	_resolution_option.disabled = pressed
+	_apply_display_settings(_selected_resolution_index, pressed)
+	_save_display_settings()
+
+
+func _save_display_settings() -> void:
+	var config: ConfigFile = ConfigFile.new()
+	config.set_value(DISPLAY_SETTINGS_SECTION, "resolution_index", _selected_resolution_index)
+	config.set_value(DISPLAY_SETTINGS_SECTION, "fullscreen", _fullscreen_check.button_pressed)
+	config.save(DISPLAY_SETTINGS_PATH)
 
 
 func _update_focus_ring(control: Control) -> void:

@@ -30,6 +30,11 @@ extends GdUnitTestSuite
 const STUB_SCENE_PATH: String = "res://tests/fixtures/scene_manager/StubScene.tscn"
 const VOLUME_BUSES: Array[StringName] = [&"Music", &"SFX", &"Voice", &"UI"]
 const SAVE_SLOT_COUNT: int = 3
+const RESOLUTIONS: Array[Vector2i] = [
+	Vector2i(1280, 720), Vector2i(1600, 900), Vector2i(1920, 1080), Vector2i(2560, 1440),
+]
+const DISPLAY_SETTINGS_PATH: String = "user://display_settings.cfg"
+const DISPLAY_SETTINGS_SECTION: String = "display"
 
 var _original_mission_path: String
 var _original_sanctuary_path: String
@@ -37,6 +42,9 @@ var _original_tarot_deck_path: String
 var _original_current_scene: Node
 var _original_bus_volumes: Dictionary[StringName, float] = {}
 var _original_active_slot: int
+var _original_display_config_existed: bool
+var _original_resolution_index: int = 0
+var _original_fullscreen: bool = false
 
 var _runner: GdUnitSceneRunner
 var _menu: Control
@@ -52,6 +60,13 @@ func before_test() -> void:
 
 	for bus_name: StringName in VOLUME_BUSES:
 		_original_bus_volumes[bus_name] = GAudioSystem.get_bus_volume_percent(bus_name)
+
+	var pre_config := ConfigFile.new()
+	_original_display_config_existed = pre_config.load(DISPLAY_SETTINGS_PATH) == OK
+	_original_resolution_index = pre_config.get_value(DISPLAY_SETTINGS_SECTION, "resolution_index", 0) \
+			if _original_display_config_existed else 0
+	_original_fullscreen = pre_config.get_value(DISPLAY_SETTINGS_SECTION, "fullscreen", false) \
+			if _original_display_config_existed else false
 
 	_runner = scene_runner("res://src/scenes/MainMenu.tscn")
 	_menu = _runner.scene() as Control
@@ -69,6 +84,20 @@ func after_test() -> void:
 	for bus_name: StringName in VOLUME_BUSES:
 		GAudioSystem.set_bus_volume_percent(bus_name, _original_bus_volumes[bus_name])
 	GAudioSystem.save_settings_to_disk()
+
+	if _original_display_config_existed:
+		var restore_config := ConfigFile.new()
+		restore_config.set_value(DISPLAY_SETTINGS_SECTION, "resolution_index", _original_resolution_index)
+		restore_config.set_value(DISPLAY_SETTINGS_SECTION, "fullscreen", _original_fullscreen)
+		restore_config.save(DISPLAY_SETTINGS_PATH)
+	elif FileAccess.file_exists(DISPLAY_SETTINGS_PATH):
+		DirAccess.open("user://").remove("display_settings.cfg")
+
+	if _original_fullscreen:
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
+	else:
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
+		DisplayServer.window_set_size(RESOLUTIONS[_original_resolution_index])
 
 
 func _slider(bus_name: StringName) -> HSlider:
@@ -306,6 +335,106 @@ func test_dragging_a_slider_persists_to_disk() -> void:
 	var err: Error = config.load(GAudioSystem.AUDIO_SETTINGS_PATH)
 	assert_int(err).is_equal(OK)
 	assert_float(config.get_value(GAudioSystem.AUDIO_SETTINGS_SECTION, &"UI", -1.0)).is_equal(15.0)
+
+
+# ---------------------------------------------------------------------------
+# Settings — display resolution + fullscreen (2026-08-05, design/quick-specs/
+# display-resolution-setting-2026-08-05.md)
+# ---------------------------------------------------------------------------
+
+func test_resolution_dropdown_is_populated_with_the_curated_list() -> void:
+	var dropdown: OptionButton = _menu.get_node("SettingsPanel/DisplaySettings/ResolutionRow/OptionButton")
+
+	assert_int(dropdown.item_count).is_equal(RESOLUTIONS.size())
+	for i: int in range(RESOLUTIONS.size()):
+		var expected: String = "%dx%d" % [RESOLUTIONS[i].x, RESOLUTIONS[i].y]
+		assert_str(dropdown.get_item_text(i)).is_equal(expected)
+
+
+## _ready() reads any persisted user://display_settings.cfg once, at mount
+## time -- matches test_sliders_are_initialized_from_real_audio_system_state's
+## own established pattern of writing state first, then mounting a fresh
+## scene instance to observe it.
+func test_display_settings_are_loaded_from_a_persisted_config_on_mount() -> void:
+	var config := ConfigFile.new()
+	config.set_value(DISPLAY_SETTINGS_SECTION, "resolution_index", 2)
+	config.set_value(DISPLAY_SETTINGS_SECTION, "fullscreen", false)
+	config.save(DISPLAY_SETTINGS_PATH)
+
+	var fresh_runner: GdUnitSceneRunner = scene_runner("res://src/scenes/MainMenu.tscn")
+	var fresh_menu: Control = fresh_runner.scene() as Control
+	fresh_menu.get_node("Buttons/SettingsButton").pressed.emit()
+
+	var dropdown: OptionButton = fresh_menu.get_node("SettingsPanel/DisplaySettings/ResolutionRow/OptionButton")
+	var checkbox: CheckButton = fresh_menu.get_node("SettingsPanel/DisplaySettings/FullscreenRow/CheckButton")
+	assert_int(dropdown.selected).is_equal(2)
+	assert_bool(checkbox.button_pressed).is_false()
+	assert_bool(dropdown.disabled).is_false()
+
+
+func test_display_settings_default_to_first_resolution_windowed_with_no_config() -> void:
+	if FileAccess.file_exists(DISPLAY_SETTINGS_PATH):
+		DirAccess.open("user://").remove("display_settings.cfg")
+
+	var fresh_runner: GdUnitSceneRunner = scene_runner("res://src/scenes/MainMenu.tscn")
+	var fresh_menu: Control = fresh_runner.scene() as Control
+	fresh_menu.get_node("Buttons/SettingsButton").pressed.emit()
+
+	var dropdown: OptionButton = fresh_menu.get_node("SettingsPanel/DisplaySettings/ResolutionRow/OptionButton")
+	var checkbox: CheckButton = fresh_menu.get_node("SettingsPanel/DisplaySettings/FullscreenRow/CheckButton")
+	assert_int(dropdown.selected).is_equal(0)
+	assert_bool(checkbox.button_pressed).is_false()
+
+
+## Selecting a resolution isn't reachable through OptionButton.selected's
+## property setter (unlike HSlider.value/CheckButton.button_pressed,
+## OptionButton does not re-emit item_selected on direct assignment) -- calls
+## the handler directly, matching test_overwrite_confirm_yes_sets_active_
+## slot_and_transitions's own established pattern of driving internal
+## handlers directly when the real UI trigger isn't practical to simulate.
+func test_selecting_a_resolution_persists_the_index_to_disk() -> void:
+	_menu.get_node("Buttons/SettingsButton").pressed.emit()
+
+	_menu.call("_on_resolution_selected", 2)
+
+	var config := ConfigFile.new()
+	var err: Error = config.load(DISPLAY_SETTINGS_PATH)
+	assert_int(err).is_equal(OK)
+	assert_int(config.get_value(DISPLAY_SETTINGS_SECTION, "resolution_index", -1)).is_equal(2)
+	assert_bool(config.get_value(DISPLAY_SETTINGS_SECTION, "fullscreen", true)).is_false()
+
+
+func test_checking_fullscreen_disables_the_resolution_dropdown_and_persists() -> void:
+	_menu.get_node("Buttons/SettingsButton").pressed.emit()
+	var dropdown: OptionButton = _menu.get_node("SettingsPanel/DisplaySettings/ResolutionRow/OptionButton")
+	var checkbox: CheckButton = _menu.get_node("SettingsPanel/DisplaySettings/FullscreenRow/CheckButton")
+
+	checkbox.button_pressed = true
+
+	assert_bool(dropdown.disabled).is_true()
+	var config := ConfigFile.new()
+	config.load(DISPLAY_SETTINGS_PATH)
+	assert_bool(config.get_value(DISPLAY_SETTINGS_SECTION, "fullscreen", false)).is_true()
+
+
+func test_unchecking_fullscreen_re_enables_the_resolution_dropdown() -> void:
+	_menu.get_node("Buttons/SettingsButton").pressed.emit()
+	var dropdown: OptionButton = _menu.get_node("SettingsPanel/DisplaySettings/ResolutionRow/OptionButton")
+	var checkbox: CheckButton = _menu.get_node("SettingsPanel/DisplaySettings/FullscreenRow/CheckButton")
+	checkbox.button_pressed = true
+
+	checkbox.button_pressed = false
+
+	assert_bool(dropdown.disabled).is_false()
+
+
+func test_resolution_dropdown_and_fullscreen_checkbox_have_focus_rings() -> void:
+	var dropdown: OptionButton = _menu.get_node("SettingsPanel/DisplaySettings/ResolutionRow/OptionButton")
+	var checkbox: CheckButton = _menu.get_node("SettingsPanel/DisplaySettings/FullscreenRow/CheckButton")
+	var rings: Dictionary = _menu.get("_focus_rings")
+
+	assert_bool(rings.has(dropdown)).is_true()
+	assert_bool(rings.has(checkbox)).is_true()
 
 
 # ---------------------------------------------------------------------------

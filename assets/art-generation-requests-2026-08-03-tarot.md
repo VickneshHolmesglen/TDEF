@@ -506,6 +506,23 @@ numerals, no border, no frame — illustration only.
 
 ---
 
+## Banked, not currently mapped
+
+`the_earth_reserve.png` (`assets/source/tarot/`) — a generated "Earth"
+piece dropped 2026-08-04, not part of the classic 22-card Major Arcana
+batch above and not matched to any prompt in this doc. User confirmed
+(2026-08-05) this isn't a rename/stand-in for The World or any other
+existing card — banked as a reserve asset for a possible future use, not
+processed or wired. Leave unsliced in `assets/source/tarot/` until there's
+a real concept to assign it to.
+
+The Sun (XIX) generation is being redone by the user — the prior attempt
+was dropped in `assets/` root outside the `assets/source/tarot/`
+convention and has since gone missing from disk (only a stale `.import`
+sidecar remained, now removed). Still `⏳ not yet generated` above; drop
+the new version into `assets/source/tarot/` per the Next Steps convention
+when ready.
+
 ## Next steps once generated
 
 1. Drop the resulting image(s) into `assets/source/tarot/` (create the
