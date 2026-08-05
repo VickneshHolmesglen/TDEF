@@ -502,17 +502,21 @@ func test_nav_buttons_are_focusable_again_after_closing_settings() -> void:
 
 ## The direct behavioral proof, not just the focus_mode implementation
 ## detail above -- simulates real Tab presses while the panel is open and
-## confirms focus stays within the panel's own 5 Controls (4 sliders +
-## Back), never escaping to a covered button underneath.
+## confirms focus stays within the panel's own 7 Controls (4 sliders +
+## Resolution dropdown + Fullscreen checkbox + Back), never escaping to a
+## covered button underneath. Updated 2026-08-05 for the 2 new display
+## controls -- was 5 Controls / 5 Tab presses before that addition.
 func test_tab_presses_while_settings_open_stay_within_the_panel() -> void:
 	_menu.get_node("Buttons/SettingsButton").pressed.emit()
 
 	var panel_controls: Array = [
 		_slider(&"Music"), _slider(&"SFX"), _slider(&"Voice"), _slider(&"UI"),
+		_menu.get_node("SettingsPanel/DisplaySettings/ResolutionRow/OptionButton"),
+		_menu.get_node("SettingsPanel/DisplaySettings/FullscreenRow/CheckButton"),
 		_menu.get_node("SettingsPanel/BackButton"),
 	]
 
-	for i in range(5):
+	for i in range(panel_controls.size()):
 		await _runner.simulate_key_pressed(KEY_TAB)
 		var focus_owner: Control = _menu.get_viewport().gui_get_focus_owner()
 		assert_array(panel_controls).contains([focus_owner])
