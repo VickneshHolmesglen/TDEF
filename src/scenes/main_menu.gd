@@ -90,6 +90,18 @@ extends Control
 ## `window/stretch/mode="canvas_items"`/`aspect="keep"` in the same pass —
 ## required for resolution switching to scale the UI instead of
 ## clipping/distorting it.
+##
+## Menu UI scale (2026-08-05/06, `design/quick-specs/menu-ui-scale-
+## 2026-08-05.md`): closes the Main-Menu half of `design/accessibility-
+## requirements.md`'s "UI scaling" item (75%-150%, default 100%) — HUD
+## scale stays a separate, still-open value, since no real HUD UI exists
+## yet to scale. Applies `Control.scale` to each of Main Menu's own
+## content groups (TitleLabel, Buttons, and each modal panel's *inner*
+## children — never the full-rect ColorRect panels themselves, which
+## would grow away from their own (0,0) origin and push far content
+## off-screen at >100%). Persisted alongside resolution/fullscreen in the
+## same `user://display_settings.cfg` (`ui_scale` key, same `display`
+## section) — same lifecycle, same file, not a new one.
 
 const VOLUME_BUSES: Array[StringName] = [&"Music", &"SFX", &"Voice", &"UI"]
 const SAVE_SLOT_COUNT: int = 3
@@ -105,6 +117,10 @@ const RESOLUTIONS: Array[Vector2i] = [
 ]
 const DISPLAY_SETTINGS_PATH: String = "user://display_settings.cfg"
 const DISPLAY_SETTINGS_SECTION: String = "display"
+
+const UI_SCALE_MIN: float = 75.0
+const UI_SCALE_MAX: float = 150.0
+const UI_SCALE_DEFAULT: float = 100.0
 
 @onready var _settings_panel: Control = $SettingsPanel
 @onready var _load_game_panel: Control = $LoadGamePanel
@@ -139,6 +155,14 @@ var _resolution_option: OptionButton
 var _fullscreen_check: CheckButton
 var _selected_resolution_index: int = 0
 
+var _ui_scale_slider: HSlider
+var _ui_scale_value_label: Label
+
+## Main Menu's own content groups -- title, nav buttons, and each modal
+## panel's inner children (never the full-rect ColorRect panels
+## themselves; see class doc comment). Populated in _ready().
+var _scalable_controls: Array[Control] = []
+
 ## Every focus-ringed Control -> its ring, one dictionary instead of one
 ## var pair per Control — too many real interactive Controls on this
 ## screen now (5 nav buttons + 4 sliders + 3 slot rows + 5 modal buttons)
@@ -152,17 +176,34 @@ func _ready() -> void:
 	_load_game_button = $Buttons/LoadGameButton
 	_settings_button = $Buttons/SettingsButton
 	_quit_button = $Buttons/QuitButton
-	_settings_back_button = $SettingsPanel/BackButton
-	_load_game_back_button = $LoadGamePanel/BackButton
-	_overwrite_message_label = $OverwriteConfirmPanel/MessageLabel
-	_overwrite_yes_button = $OverwriteConfirmPanel/ConfirmButtons/YesButton
-	_overwrite_cancel_button = $OverwriteConfirmPanel/ConfirmButtons/CancelButton
-	_resolution_option = $SettingsPanel/DisplaySettings/ResolutionRow/OptionButton
-	_fullscreen_check = $SettingsPanel/DisplaySettings/FullscreenRow/CheckButton
+	_settings_back_button = $SettingsPanel/SettingsContent/BackButton
+	_load_game_back_button = $LoadGamePanel/LoadGameContent/BackButton
+	_overwrite_message_label = $OverwriteConfirmPanel/OverwriteContent/MessageLabel
+	_overwrite_yes_button = $OverwriteConfirmPanel/OverwriteContent/ConfirmButtons/YesButton
+	_overwrite_cancel_button = $OverwriteConfirmPanel/OverwriteContent/ConfirmButtons/CancelButton
+	_resolution_option = $SettingsPanel/SettingsContent/DisplaySettings/ResolutionRow/OptionButton
+	_fullscreen_check = $SettingsPanel/SettingsContent/DisplaySettings/FullscreenRow/CheckButton
+	_ui_scale_slider = $SettingsPanel/SettingsContent/DisplaySettings/UiScaleRow/Slider
+	_ui_scale_value_label = $SettingsPanel/SettingsContent/DisplaySettings/UiScaleRow/ValueLabel
 	_slot_buttons = [
-		$LoadGamePanel/Slots/Slot0Button,
-		$LoadGamePanel/Slots/Slot1Button,
-		$LoadGamePanel/Slots/Slot2Button,
+		$LoadGamePanel/LoadGameContent/Slots/Slot0Button,
+		$LoadGamePanel/LoadGameContent/Slots/Slot1Button,
+		$LoadGamePanel/LoadGameContent/Slots/Slot2Button,
+	]
+	# Each panel's real content lives inside one wrapper Control per panel
+	# (SettingsContent/LoadGameContent/OverwriteContent) specifically so UI
+	# Scale can scale that ONE wrapper per panel as a rigid group -- scaling
+	# each inner block separately (the first version of this feature) left
+	# fixed sibling offsets unchanged while their rendered size grew,
+	# causing real overlap at >100% (caught live via Godot MCP before
+	# shipping). TitleLabel/Buttons have no such sibling-overlap risk (nothing
+	# else occupies the space below them at their max size) so they stay
+	# scaled directly, not wrapped.
+	_scalable_controls = [
+		$TitleLabel, $Buttons,
+		$SettingsPanel/SettingsContent,
+		$LoadGamePanel/LoadGameContent,
+		$OverwriteConfirmPanel/OverwriteContent,
 	]
 
 	# Loaded and applied first so the real window already reflects the
@@ -196,11 +237,12 @@ func _ready() -> void:
 	_build_focus_ring(_overwrite_cancel_button)
 	_build_focus_ring(_resolution_option)
 	_build_focus_ring(_fullscreen_check)
+	_build_focus_ring(_ui_scale_slider)
 	for slot_button: Button in _slot_buttons:
 		_build_focus_ring(slot_button)
 
 	for bus_name: StringName in VOLUME_BUSES:
-		var row: HBoxContainer = $SettingsPanel/VolumeSliders.get_node(_row_name(bus_name))
+		var row: HBoxContainer = $SettingsPanel/SettingsContent/VolumeSliders.get_node(_row_name(bus_name))
 		var slider: HSlider = row.get_node("Slider")
 		var value_label: Label = row.get_node("ValueLabel")
 		_volume_sliders[bus_name] = slider
@@ -394,14 +436,21 @@ func _setup_display_settings() -> void:
 	var loaded: bool = config.load(DISPLAY_SETTINGS_PATH) == OK
 	_selected_resolution_index = config.get_value(DISPLAY_SETTINGS_SECTION, "resolution_index", 0) if loaded else 0
 	var is_fullscreen: bool = config.get_value(DISPLAY_SETTINGS_SECTION, "fullscreen", false) if loaded else false
+	var ui_scale: float = config.get_value(DISPLAY_SETTINGS_SECTION, "ui_scale", UI_SCALE_DEFAULT) if loaded else UI_SCALE_DEFAULT
+	ui_scale = clampf(ui_scale, UI_SCALE_MIN, UI_SCALE_MAX)
 
 	_resolution_option.selected = _selected_resolution_index
 	_fullscreen_check.button_pressed = is_fullscreen
 	_resolution_option.disabled = is_fullscreen
 	_apply_display_settings(_selected_resolution_index, is_fullscreen)
 
+	_ui_scale_slider.value = ui_scale
+	_ui_scale_value_label.text = "%d%%" % int(ui_scale)
+	_apply_ui_scale(ui_scale)
+
 	_resolution_option.item_selected.connect(_on_resolution_selected)
 	_fullscreen_check.toggled.connect(_on_fullscreen_toggled)
+	_ui_scale_slider.value_changed.connect(_on_ui_scale_changed)
 
 
 ## Fullscreen always uses the native desktop resolution — `resolution_index`
@@ -433,7 +482,23 @@ func _save_display_settings() -> void:
 	var config: ConfigFile = ConfigFile.new()
 	config.set_value(DISPLAY_SETTINGS_SECTION, "resolution_index", _selected_resolution_index)
 	config.set_value(DISPLAY_SETTINGS_SECTION, "fullscreen", _fullscreen_check.button_pressed)
+	config.set_value(DISPLAY_SETTINGS_SECTION, "ui_scale", _ui_scale_slider.value)
 	config.save(DISPLAY_SETTINGS_PATH)
+
+
+## Scales each of Main Menu's own content groups uniformly around its own
+## top-left origin -- never the full-rect ColorRect panel backgrounds
+## themselves (see class doc comment for why).
+func _apply_ui_scale(percent: float) -> void:
+	var factor: float = percent / 100.0
+	for control: Control in _scalable_controls:
+		control.scale = Vector2(factor, factor)
+
+
+func _on_ui_scale_changed(value: float) -> void:
+	_apply_ui_scale(value)
+	_ui_scale_value_label.text = "%d%%" % int(value)
+	_save_display_settings()
 
 
 func _update_focus_ring(control: Control) -> void:

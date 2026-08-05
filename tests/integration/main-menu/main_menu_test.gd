@@ -35,6 +35,7 @@ const RESOLUTIONS: Array[Vector2i] = [
 ]
 const DISPLAY_SETTINGS_PATH: String = "user://display_settings.cfg"
 const DISPLAY_SETTINGS_SECTION: String = "display"
+const UI_SCALE_DEFAULT: float = 100.0
 
 var _original_mission_path: String
 var _original_sanctuary_path: String
@@ -45,6 +46,7 @@ var _original_active_slot: int
 var _original_display_config_existed: bool
 var _original_resolution_index: int = 0
 var _original_fullscreen: bool = false
+var _original_ui_scale: float = UI_SCALE_DEFAULT
 
 var _runner: GdUnitSceneRunner
 var _menu: Control
@@ -67,6 +69,8 @@ func before_test() -> void:
 			if _original_display_config_existed else 0
 	_original_fullscreen = pre_config.get_value(DISPLAY_SETTINGS_SECTION, "fullscreen", false) \
 			if _original_display_config_existed else false
+	_original_ui_scale = pre_config.get_value(DISPLAY_SETTINGS_SECTION, "ui_scale", UI_SCALE_DEFAULT) \
+			if _original_display_config_existed else UI_SCALE_DEFAULT
 
 	_runner = scene_runner("res://src/scenes/MainMenu.tscn")
 	_menu = _runner.scene() as Control
@@ -89,6 +93,7 @@ func after_test() -> void:
 		var restore_config := ConfigFile.new()
 		restore_config.set_value(DISPLAY_SETTINGS_SECTION, "resolution_index", _original_resolution_index)
 		restore_config.set_value(DISPLAY_SETTINGS_SECTION, "fullscreen", _original_fullscreen)
+		restore_config.set_value(DISPLAY_SETTINGS_SECTION, "ui_scale", _original_ui_scale)
 		restore_config.save(DISPLAY_SETTINGS_PATH)
 	elif FileAccess.file_exists(DISPLAY_SETTINGS_PATH):
 		DirAccess.open("user://").remove("display_settings.cfg")
@@ -102,12 +107,12 @@ func after_test() -> void:
 
 func _slider(bus_name: StringName) -> HSlider:
 	var row_name: String = String(bus_name).substr(0, 1) + String(bus_name).substr(1).to_lower() + "Row"
-	return _menu.get_node("SettingsPanel/VolumeSliders/%s/Slider" % row_name)
+	return _menu.get_node("SettingsPanel/SettingsContent/VolumeSliders/%s/Slider" % row_name)
 
 
 func _value_label(bus_name: StringName) -> Label:
 	var row_name: String = String(bus_name).substr(0, 1) + String(bus_name).substr(1).to_lower() + "Row"
-	return _menu.get_node("SettingsPanel/VolumeSliders/%s/ValueLabel" % row_name)
+	return _menu.get_node("SettingsPanel/SettingsContent/VolumeSliders/%s/ValueLabel" % row_name)
 
 
 func _slot_exists(slot: int) -> bool:
@@ -210,7 +215,7 @@ func test_load_game_button_shows_the_panel_with_correct_slot_states() -> void:
 
 	assert_bool((_menu.get_node("LoadGamePanel") as Control).visible).is_true()
 	for slot: int in range(SAVE_SLOT_COUNT):
-		var slot_button: Button = _menu.get_node("LoadGamePanel/Slots/Slot%dButton" % slot)
+		var slot_button: Button = _menu.get_node("LoadGamePanel/LoadGameContent/Slots/Slot%dButton" % slot)
 		var exists: bool = _slot_exists(slot)
 		assert_bool(slot_button.disabled).is_equal(not exists)
 		assert_str(slot_button.text).contains("Occupied" if exists else "Empty")
@@ -218,7 +223,7 @@ func test_load_game_button_shows_the_panel_with_correct_slot_states() -> void:
 
 func test_load_game_back_button_hides_the_panel_and_returns_focus() -> void:
 	_menu.get_node("Buttons/LoadGameButton").pressed.emit()
-	_menu.get_node("LoadGamePanel/BackButton").pressed.emit()
+	_menu.get_node("LoadGamePanel/LoadGameContent/BackButton").pressed.emit()
 
 	assert_bool((_menu.get_node("LoadGamePanel") as Control).visible).is_false()
 	assert_bool((_menu.get_node("Buttons/LoadGameButton") as TextureButton).has_focus()).is_true()
@@ -240,7 +245,7 @@ func test_clicking_an_occupied_slot_loads_it_and_transitions() -> void:
 	GEventBus.scene_transition_completed.connect(handler)
 
 	_menu.get_node("Buttons/LoadGameButton").pressed.emit()
-	_menu.get_node("LoadGamePanel/Slots/Slot%dButton" % occupied_slot).pressed.emit()
+	_menu.get_node("LoadGamePanel/LoadGameContent/Slots/Slot%dButton" % occupied_slot).pressed.emit()
 	await GEventBus.scene_transition_completed
 
 	assert_int(GSavePersistence._active_slot).is_equal(occupied_slot)
@@ -259,7 +264,7 @@ func test_overwrite_confirm_yes_sets_active_slot_and_transitions() -> void:
 	GEventBus.scene_transition_completed.connect(handler)
 
 	_menu.set("_pending_overwrite_slot", 0)
-	_menu.get_node("OverwriteConfirmPanel/ConfirmButtons/YesButton").pressed.emit()
+	_menu.get_node("OverwriteConfirmPanel/OverwriteContent/ConfirmButtons/YesButton").pressed.emit()
 	await GEventBus.scene_transition_completed
 
 	assert_int(GSavePersistence._active_slot).is_equal(0)
@@ -270,7 +275,7 @@ func test_overwrite_confirm_cancel_hides_the_panel_and_returns_focus() -> void:
 	_menu.get_node("OverwriteConfirmPanel").set("visible", true)
 	_menu.call("_set_nav_buttons_focusable", false)
 
-	_menu.get_node("OverwriteConfirmPanel/ConfirmButtons/CancelButton").pressed.emit()
+	_menu.get_node("OverwriteConfirmPanel/OverwriteContent/ConfirmButtons/CancelButton").pressed.emit()
 
 	assert_bool((_menu.get_node("OverwriteConfirmPanel") as Control).visible).is_false()
 	assert_bool((_menu.get_node("Buttons/NewGameButton") as TextureButton).has_focus()).is_true()
@@ -294,7 +299,7 @@ func test_settings_button_shows_the_panel() -> void:
 
 func test_settings_back_button_hides_the_panel_again() -> void:
 	_menu.get_node("Buttons/SettingsButton").pressed.emit()
-	_menu.get_node("SettingsPanel/BackButton").pressed.emit()
+	_menu.get_node("SettingsPanel/SettingsContent/BackButton").pressed.emit()
 
 	var panel: Control = _menu.get_node("SettingsPanel") as Control
 	assert_bool(panel.visible).is_false()
@@ -311,8 +316,8 @@ func test_sliders_are_initialized_from_real_audio_system_state() -> void:
 	fresh_menu.get_node("Buttons/SettingsButton").pressed.emit()
 
 	var row_name: String = "SfxRow"
-	var slider: HSlider = fresh_menu.get_node("SettingsPanel/VolumeSliders/%s/Slider" % row_name)
-	var value_label: Label = fresh_menu.get_node("SettingsPanel/VolumeSliders/%s/ValueLabel" % row_name)
+	var slider: HSlider = fresh_menu.get_node("SettingsPanel/SettingsContent/VolumeSliders/%s/Slider" % row_name)
+	var value_label: Label = fresh_menu.get_node("SettingsPanel/SettingsContent/VolumeSliders/%s/ValueLabel" % row_name)
 	assert_float(slider.value).is_equal(37.0)
 	assert_str(value_label.text).is_equal("37%")
 
@@ -343,7 +348,7 @@ func test_dragging_a_slider_persists_to_disk() -> void:
 # ---------------------------------------------------------------------------
 
 func test_resolution_dropdown_is_populated_with_the_curated_list() -> void:
-	var dropdown: OptionButton = _menu.get_node("SettingsPanel/DisplaySettings/ResolutionRow/OptionButton")
+	var dropdown: OptionButton = _menu.get_node("SettingsPanel/SettingsContent/DisplaySettings/ResolutionRow/OptionButton")
 
 	assert_int(dropdown.item_count).is_equal(RESOLUTIONS.size())
 	for i: int in range(RESOLUTIONS.size()):
@@ -365,8 +370,8 @@ func test_display_settings_are_loaded_from_a_persisted_config_on_mount() -> void
 	var fresh_menu: Control = fresh_runner.scene() as Control
 	fresh_menu.get_node("Buttons/SettingsButton").pressed.emit()
 
-	var dropdown: OptionButton = fresh_menu.get_node("SettingsPanel/DisplaySettings/ResolutionRow/OptionButton")
-	var checkbox: CheckButton = fresh_menu.get_node("SettingsPanel/DisplaySettings/FullscreenRow/CheckButton")
+	var dropdown: OptionButton = fresh_menu.get_node("SettingsPanel/SettingsContent/DisplaySettings/ResolutionRow/OptionButton")
+	var checkbox: CheckButton = fresh_menu.get_node("SettingsPanel/SettingsContent/DisplaySettings/FullscreenRow/CheckButton")
 	assert_int(dropdown.selected).is_equal(2)
 	assert_bool(checkbox.button_pressed).is_false()
 	assert_bool(dropdown.disabled).is_false()
@@ -380,8 +385,8 @@ func test_display_settings_default_to_first_resolution_windowed_with_no_config()
 	var fresh_menu: Control = fresh_runner.scene() as Control
 	fresh_menu.get_node("Buttons/SettingsButton").pressed.emit()
 
-	var dropdown: OptionButton = fresh_menu.get_node("SettingsPanel/DisplaySettings/ResolutionRow/OptionButton")
-	var checkbox: CheckButton = fresh_menu.get_node("SettingsPanel/DisplaySettings/FullscreenRow/CheckButton")
+	var dropdown: OptionButton = fresh_menu.get_node("SettingsPanel/SettingsContent/DisplaySettings/ResolutionRow/OptionButton")
+	var checkbox: CheckButton = fresh_menu.get_node("SettingsPanel/SettingsContent/DisplaySettings/FullscreenRow/CheckButton")
 	assert_int(dropdown.selected).is_equal(0)
 	assert_bool(checkbox.button_pressed).is_false()
 
@@ -406,8 +411,8 @@ func test_selecting_a_resolution_persists_the_index_to_disk() -> void:
 
 func test_checking_fullscreen_disables_the_resolution_dropdown_and_persists() -> void:
 	_menu.get_node("Buttons/SettingsButton").pressed.emit()
-	var dropdown: OptionButton = _menu.get_node("SettingsPanel/DisplaySettings/ResolutionRow/OptionButton")
-	var checkbox: CheckButton = _menu.get_node("SettingsPanel/DisplaySettings/FullscreenRow/CheckButton")
+	var dropdown: OptionButton = _menu.get_node("SettingsPanel/SettingsContent/DisplaySettings/ResolutionRow/OptionButton")
+	var checkbox: CheckButton = _menu.get_node("SettingsPanel/SettingsContent/DisplaySettings/FullscreenRow/CheckButton")
 
 	checkbox.button_pressed = true
 
@@ -419,8 +424,8 @@ func test_checking_fullscreen_disables_the_resolution_dropdown_and_persists() ->
 
 func test_unchecking_fullscreen_re_enables_the_resolution_dropdown() -> void:
 	_menu.get_node("Buttons/SettingsButton").pressed.emit()
-	var dropdown: OptionButton = _menu.get_node("SettingsPanel/DisplaySettings/ResolutionRow/OptionButton")
-	var checkbox: CheckButton = _menu.get_node("SettingsPanel/DisplaySettings/FullscreenRow/CheckButton")
+	var dropdown: OptionButton = _menu.get_node("SettingsPanel/SettingsContent/DisplaySettings/ResolutionRow/OptionButton")
+	var checkbox: CheckButton = _menu.get_node("SettingsPanel/SettingsContent/DisplaySettings/FullscreenRow/CheckButton")
 	checkbox.button_pressed = true
 
 	checkbox.button_pressed = false
@@ -429,17 +434,72 @@ func test_unchecking_fullscreen_re_enables_the_resolution_dropdown() -> void:
 
 
 func test_resolution_dropdown_and_fullscreen_checkbox_have_focus_rings() -> void:
-	var dropdown: OptionButton = _menu.get_node("SettingsPanel/DisplaySettings/ResolutionRow/OptionButton")
-	var checkbox: CheckButton = _menu.get_node("SettingsPanel/DisplaySettings/FullscreenRow/CheckButton")
+	var dropdown: OptionButton = _menu.get_node("SettingsPanel/SettingsContent/DisplaySettings/ResolutionRow/OptionButton")
+	var checkbox: CheckButton = _menu.get_node("SettingsPanel/SettingsContent/DisplaySettings/FullscreenRow/CheckButton")
+	var slider: HSlider = _menu.get_node("SettingsPanel/SettingsContent/DisplaySettings/UiScaleRow/Slider")
 	var rings: Dictionary = _menu.get("_focus_rings")
 
 	assert_bool(rings.has(dropdown)).is_true()
 	assert_bool(rings.has(checkbox)).is_true()
+	assert_bool(rings.has(slider)).is_true()
 
 
 # ---------------------------------------------------------------------------
-# Gamepad focus rings (ADR-0011 — UI Dual-Focus Handling), added 2026-08-01
+# Settings — menu UI scale (2026-08-05/06, design/quick-specs/
+# menu-ui-scale-2026-08-05.md)
 # ---------------------------------------------------------------------------
+
+func _ui_scale_slider() -> HSlider:
+	return _menu.get_node("SettingsPanel/SettingsContent/DisplaySettings/UiScaleRow/Slider")
+
+
+func _ui_scale_value_label() -> Label:
+	return _menu.get_node("SettingsPanel/SettingsContent/DisplaySettings/UiScaleRow/ValueLabel")
+
+
+func test_ui_scale_slider_defaults_to_100_with_no_config() -> void:
+	if FileAccess.file_exists(DISPLAY_SETTINGS_PATH):
+		DirAccess.open("user://").remove("display_settings.cfg")
+
+	var fresh_runner: GdUnitSceneRunner = scene_runner("res://src/scenes/MainMenu.tscn")
+	var fresh_menu: Control = fresh_runner.scene() as Control
+	fresh_menu.get_node("Buttons/SettingsButton").pressed.emit()
+
+	var slider: HSlider = fresh_menu.get_node("SettingsPanel/SettingsContent/DisplaySettings/UiScaleRow/Slider")
+	assert_float(slider.value).is_equal(UI_SCALE_DEFAULT)
+
+
+func test_dragging_the_ui_scale_slider_scales_content_groups_and_persists() -> void:
+	_menu.get_node("Buttons/SettingsButton").pressed.emit()
+
+	_ui_scale_slider().value = 150.0
+
+	var scalable: Array = _menu.get("_scalable_controls")
+	for control: Control in scalable:
+		assert_bool(control.scale.is_equal_approx(Vector2(1.5, 1.5))).is_true()
+	assert_str(_ui_scale_value_label().text).is_equal("150%")
+
+	var config := ConfigFile.new()
+	var err: Error = config.load(DISPLAY_SETTINGS_PATH)
+	assert_int(err).is_equal(OK)
+	assert_float(config.get_value(DISPLAY_SETTINGS_SECTION, "ui_scale", -1.0)).is_equal(150.0)
+
+
+## The real bug this test guards against, found live via Godot MCP before
+## shipping: an earlier version scaled each of a panel's inner blocks
+## (label/sliders/buttons) SEPARATELY, each growing from its own fixed
+## offset -- since sibling offsets never shifted to make room, blocks
+## visibly overlapped at >100%. Fixed by scaling exactly one wrapper
+## Control per panel (SettingsContent/LoadGameContent/OverwriteContent) so
+## everything inside grows together as a single rigid group instead.
+func test_ui_scale_applies_to_exactly_one_wrapper_per_panel_not_each_inner_block() -> void:
+	var scalable: Array = _menu.get("_scalable_controls")
+	var scalable_names: Array = []
+	for control: Control in scalable:
+		scalable_names.append(control.name)
+
+	assert_array(scalable_names).contains(["TitleLabel", "Buttons", "SettingsContent", "LoadGameContent", "OverwriteContent"])
+	assert_int(scalable_names.size()).is_equal(5)
 
 func test_focused_button_shows_a_ring_in_keyboard_gamepad_mode() -> void:
 	var primary: TextureButton = _menu.get_node("Buttons/ContinueButton") if _any_save_exists() \
@@ -469,7 +529,7 @@ func test_settings_button_pressed_moves_focus_and_ring_to_the_first_slider() -> 
 
 func test_back_button_pressed_returns_focus_and_ring_to_the_settings_button() -> void:
 	_menu.get_node("Buttons/SettingsButton").pressed.emit()
-	_menu.get_node("SettingsPanel/BackButton").pressed.emit()
+	_menu.get_node("SettingsPanel/SettingsContent/BackButton").pressed.emit()
 
 	var settings_button: TextureButton = _menu.get_node("Buttons/SettingsButton")
 	var rings: Dictionary = _menu.get("_focus_rings")
@@ -493,7 +553,7 @@ func test_nav_buttons_are_not_focusable_while_settings_is_open() -> void:
 
 func test_nav_buttons_are_focusable_again_after_closing_settings() -> void:
 	_menu.get_node("Buttons/SettingsButton").pressed.emit()
-	_menu.get_node("SettingsPanel/BackButton").pressed.emit()
+	_menu.get_node("SettingsPanel/SettingsContent/BackButton").pressed.emit()
 
 	for path in ["ContinueButton", "NewGameButton", "LoadGameButton", "SettingsButton", "QuitButton"]:
 		var button: Control = _menu.get_node("Buttons/%s" % path)
@@ -502,18 +562,19 @@ func test_nav_buttons_are_focusable_again_after_closing_settings() -> void:
 
 ## The direct behavioral proof, not just the focus_mode implementation
 ## detail above -- simulates real Tab presses while the panel is open and
-## confirms focus stays within the panel's own 7 Controls (4 sliders +
-## Resolution dropdown + Fullscreen checkbox + Back), never escaping to a
-## covered button underneath. Updated 2026-08-05 for the 2 new display
-## controls -- was 5 Controls / 5 Tab presses before that addition.
+## confirms focus stays within the panel's own 8 Controls (4 sliders +
+## Resolution dropdown + Fullscreen checkbox + UI Scale slider + Back),
+## never escaping to a covered button underneath. Updated 2026-08-05/06 for
+## the 3 new display controls -- was 5 Controls / 5 Tab presses originally.
 func test_tab_presses_while_settings_open_stay_within_the_panel() -> void:
 	_menu.get_node("Buttons/SettingsButton").pressed.emit()
 
 	var panel_controls: Array = [
 		_slider(&"Music"), _slider(&"SFX"), _slider(&"Voice"), _slider(&"UI"),
-		_menu.get_node("SettingsPanel/DisplaySettings/ResolutionRow/OptionButton"),
-		_menu.get_node("SettingsPanel/DisplaySettings/FullscreenRow/CheckButton"),
-		_menu.get_node("SettingsPanel/BackButton"),
+		_menu.get_node("SettingsPanel/SettingsContent/DisplaySettings/ResolutionRow/OptionButton"),
+		_menu.get_node("SettingsPanel/SettingsContent/DisplaySettings/FullscreenRow/CheckButton"),
+		_menu.get_node("SettingsPanel/SettingsContent/DisplaySettings/UiScaleRow/Slider"),
+		_menu.get_node("SettingsPanel/SettingsContent/BackButton"),
 	]
 
 	for i in range(panel_controls.size()):

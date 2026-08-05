@@ -90,34 +90,36 @@ grow_horizontal = 2
 grow_vertical = 2
 color = Color(0, 0, 0, 0.96)
 
-[node name="SettingsLabel" type="Label" parent="SettingsPanel"]
+[node name="SettingsContent" type="Control" parent="SettingsPanel"]
+
+[node name="SettingsLabel" type="Label" parent="SettingsPanel/SettingsContent"]
 layout_mode = 0
 offset_left = 96.0
-offset_top = 60.0
+offset_top = 20.0
 offset_right = 900.0
-offset_bottom = 120.0
+offset_bottom = 68.0
 theme_override_font_sizes/font_size = 40
 text = "Settings"
 
-[node name="VolumeSliders" type="VBoxContainer" parent="SettingsPanel"]
+[node name="VolumeSliders" type="VBoxContainer" parent="SettingsPanel/SettingsContent"]
 layout_mode = 0
 offset_left = 96.0
-offset_top = 160.0
+offset_top = 88.0
 offset_right = 700.0
-offset_bottom = 380.0
-theme_override_constants/separation = 20
+offset_bottom = 256.0
+theme_override_constants/separation = 16
 
-[node name="MusicRow" type="HBoxContainer" parent="SettingsPanel/VolumeSliders"]
+[node name="MusicRow" type="HBoxContainer" parent="SettingsPanel/SettingsContent/VolumeSliders"]
 layout_mode = 2
 theme_override_constants/separation = 16
 
-[node name="Label" type="Label" parent="SettingsPanel/VolumeSliders/MusicRow"]
+[node name="Label" type="Label" parent="SettingsPanel/SettingsContent/VolumeSliders/MusicRow"]
 custom_minimum_size = Vector2(140, 0)
 layout_mode = 2
 theme_override_font_sizes/font_size = 24
 text = "Music"
 
-[node name="Slider" type="HSlider" parent="SettingsPanel/VolumeSliders/MusicRow"]
+[node name="Slider" type="HSlider" parent="SettingsPanel/SettingsContent/VolumeSliders/MusicRow"]
 custom_minimum_size = Vector2(320, 0)
 layout_mode = 2
 size_flags_vertical = 4
@@ -126,23 +128,23 @@ max_value = 100.0
 step = 1.0
 value = 80.0
 
-[node name="ValueLabel" type="Label" parent="SettingsPanel/VolumeSliders/MusicRow"]
+[node name="ValueLabel" type="Label" parent="SettingsPanel/SettingsContent/VolumeSliders/MusicRow"]
 custom_minimum_size = Vector2(60, 0)
 layout_mode = 2
 theme_override_font_sizes/font_size = 24
 text = "80%"
 
-[node name="SfxRow" type="HBoxContainer" parent="SettingsPanel/VolumeSliders"]
+[node name="SfxRow" type="HBoxContainer" parent="SettingsPanel/SettingsContent/VolumeSliders"]
 layout_mode = 2
 theme_override_constants/separation = 16
 
-[node name="Label" type="Label" parent="SettingsPanel/VolumeSliders/SfxRow"]
+[node name="Label" type="Label" parent="SettingsPanel/SettingsContent/VolumeSliders/SfxRow"]
 custom_minimum_size = Vector2(140, 0)
 layout_mode = 2
 theme_override_font_sizes/font_size = 24
 text = "SFX"
 
-[node name="Slider" type="HSlider" parent="SettingsPanel/VolumeSliders/SfxRow"]
+[node name="Slider" type="HSlider" parent="SettingsPanel/SettingsContent/VolumeSliders/SfxRow"]
 custom_minimum_size = Vector2(320, 0)
 layout_mode = 2
 size_flags_vertical = 4
@@ -151,23 +153,23 @@ max_value = 100.0
 step = 1.0
 value = 80.0
 
-[node name="ValueLabel" type="Label" parent="SettingsPanel/VolumeSliders/SfxRow"]
+[node name="ValueLabel" type="Label" parent="SettingsPanel/SettingsContent/VolumeSliders/SfxRow"]
 custom_minimum_size = Vector2(60, 0)
 layout_mode = 2
 theme_override_font_sizes/font_size = 24
 text = "80%"
 
-[node name="VoiceRow" type="HBoxContainer" parent="SettingsPanel/VolumeSliders"]
+[node name="VoiceRow" type="HBoxContainer" parent="SettingsPanel/SettingsContent/VolumeSliders"]
 layout_mode = 2
 theme_override_constants/separation = 16
 
-[node name="Label" type="Label" parent="SettingsPanel/VolumeSliders/VoiceRow"]
+[node name="Label" type="Label" parent="SettingsPanel/SettingsContent/VolumeSliders/VoiceRow"]
 custom_minimum_size = Vector2(140, 0)
 layout_mode = 2
 theme_override_font_sizes/font_size = 24
 text = "Voice"
 
-[node name="Slider" type="HSlider" parent="SettingsPanel/VolumeSliders/VoiceRow"]
+[node name="Slider" type="HSlider" parent="SettingsPanel/SettingsContent/VolumeSliders/VoiceRow"]
 custom_minimum_size = Vector2(320, 0)
 layout_mode = 2
 size_flags_vertical = 4
@@ -176,23 +178,23 @@ max_value = 100.0
 step = 1.0
 value = 80.0
 
-[node name="ValueLabel" type="Label" parent="SettingsPanel/VolumeSliders/VoiceRow"]
+[node name="ValueLabel" type="Label" parent="SettingsPanel/SettingsContent/VolumeSliders/VoiceRow"]
 custom_minimum_size = Vector2(60, 0)
 layout_mode = 2
 theme_override_font_sizes/font_size = 24
 text = "80%"
 
-[node name="UiRow" type="HBoxContainer" parent="SettingsPanel/VolumeSliders"]
+[node name="UiRow" type="HBoxContainer" parent="SettingsPanel/SettingsContent/VolumeSliders"]
 layout_mode = 2
 theme_override_constants/separation = 16
 
-[node name="Label" type="Label" parent="SettingsPanel/VolumeSliders/UiRow"]
+[node name="Label" type="Label" parent="SettingsPanel/SettingsContent/VolumeSliders/UiRow"]
 custom_minimum_size = Vector2(140, 0)
 layout_mode = 2
 theme_override_font_sizes/font_size = 24
 text = "UI"
 
-[node name="Slider" type="HSlider" parent="SettingsPanel/VolumeSliders/UiRow"]
+[node name="Slider" type="HSlider" parent="SettingsPanel/SettingsContent/VolumeSliders/UiRow"]
 custom_minimum_size = Vector2(320, 0)
 layout_mode = 2
 size_flags_vertical = 4
@@ -201,54 +203,79 @@ max_value = 100.0
 step = 1.0
 value = 80.0
 
-[node name="ValueLabel" type="Label" parent="SettingsPanel/VolumeSliders/UiRow"]
+[node name="ValueLabel" type="Label" parent="SettingsPanel/SettingsContent/VolumeSliders/UiRow"]
 custom_minimum_size = Vector2(60, 0)
 layout_mode = 2
 theme_override_font_sizes/font_size = 24
 text = "80%"
 
-[node name="DisplaySettings" type="VBoxContainer" parent="SettingsPanel"]
+[node name="DisplaySettings" type="VBoxContainer" parent="SettingsPanel/SettingsContent"]
 layout_mode = 0
 offset_left = 96.0
-offset_top = 400.0
+offset_top = 276.0
 offset_right = 700.0
-offset_bottom = 500.0
-theme_override_constants/separation = 20
+offset_bottom = 398.0
+theme_override_constants/separation = 16
 
-[node name="ResolutionRow" type="HBoxContainer" parent="SettingsPanel/DisplaySettings"]
+[node name="ResolutionRow" type="HBoxContainer" parent="SettingsPanel/SettingsContent/DisplaySettings"]
 layout_mode = 2
 theme_override_constants/separation = 16
 
-[node name="Label" type="Label" parent="SettingsPanel/DisplaySettings/ResolutionRow"]
+[node name="Label" type="Label" parent="SettingsPanel/SettingsContent/DisplaySettings/ResolutionRow"]
 custom_minimum_size = Vector2(140, 0)
 layout_mode = 2
 theme_override_font_sizes/font_size = 24
 text = "Resolution"
 
-[node name="OptionButton" type="OptionButton" parent="SettingsPanel/DisplaySettings/ResolutionRow"]
+[node name="OptionButton" type="OptionButton" parent="SettingsPanel/SettingsContent/DisplaySettings/ResolutionRow"]
 custom_minimum_size = Vector2(320, 0)
 layout_mode = 2
 theme_override_font_sizes/font_size = 24
 
-[node name="FullscreenRow" type="HBoxContainer" parent="SettingsPanel/DisplaySettings"]
+[node name="FullscreenRow" type="HBoxContainer" parent="SettingsPanel/SettingsContent/DisplaySettings"]
 layout_mode = 2
 theme_override_constants/separation = 16
 
-[node name="Label" type="Label" parent="SettingsPanel/DisplaySettings/FullscreenRow"]
+[node name="Label" type="Label" parent="SettingsPanel/SettingsContent/DisplaySettings/FullscreenRow"]
 custom_minimum_size = Vector2(140, 0)
 layout_mode = 2
 theme_override_font_sizes/font_size = 24
 text = "Fullscreen"
 
-[node name="CheckButton" type="CheckButton" parent="SettingsPanel/DisplaySettings/FullscreenRow"]
+[node name="CheckButton" type="CheckButton" parent="SettingsPanel/SettingsContent/DisplaySettings/FullscreenRow"]
 layout_mode = 2
 
-[node name="BackButton" type="Button" parent="SettingsPanel"]
+[node name="UiScaleRow" type="HBoxContainer" parent="SettingsPanel/SettingsContent/DisplaySettings"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="Label" type="Label" parent="SettingsPanel/SettingsContent/DisplaySettings/UiScaleRow"]
+custom_minimum_size = Vector2(140, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "UI Scale"
+
+[node name="Slider" type="HSlider" parent="SettingsPanel/SettingsContent/DisplaySettings/UiScaleRow"]
+custom_minimum_size = Vector2(320, 0)
+layout_mode = 2
+size_flags_vertical = 4
+min_value = 75.0
+max_value = 150.0
+step = 1.0
+value = 100.0
+
+[node name="ValueLabel" type="Label" parent="SettingsPanel/SettingsContent/DisplaySettings/UiScaleRow"]
+custom_minimum_size = Vector2(60, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "100%"
+
+[node name="BackButton" type="Button" parent="SettingsPanel/SettingsContent"]
 layout_mode = 0
 offset_left = 96.0
-offset_top = 540.0
+offset_top = 418.0
 offset_right = 296.0
-offset_bottom = 588.0
+offset_bottom = 466.0
 text = "Back"
 
 [node name="LoadGamePanel" type="ColorRect" parent="."]
@@ -259,7 +286,9 @@ grow_horizontal = 2
 grow_vertical = 2
 color = Color(0, 0, 0, 0.96)
 
-[node name="LoadGameLabel" type="Label" parent="LoadGamePanel"]
+[node name="LoadGameContent" type="Control" parent="LoadGamePanel"]
+
+[node name="LoadGameLabel" type="Label" parent="LoadGamePanel/LoadGameContent"]
 layout_mode = 0
 offset_left = 96.0
 offset_top = 60.0
@@ -268,7 +297,7 @@ offset_bottom = 120.0
 theme_override_font_sizes/font_size = 40
 text = "Load Game"
 
-[node name="Slots" type="VBoxContainer" parent="LoadGamePanel"]
+[node name="Slots" type="VBoxContainer" parent="LoadGamePanel/LoadGameContent"]
 layout_mode = 0
 offset_left = 96.0
 offset_top = 160.0
@@ -276,25 +305,25 @@ offset_right = 700.0
 offset_bottom = 360.0
 theme_override_constants/separation = 16
 
-[node name="Slot0Button" type="Button" parent="LoadGamePanel/Slots"]
+[node name="Slot0Button" type="Button" parent="LoadGamePanel/LoadGameContent/Slots"]
 custom_minimum_size = Vector2(500, 54)
 layout_mode = 2
 theme_override_font_sizes/font_size = 24
 text = "Slot 1"
 
-[node name="Slot1Button" type="Button" parent="LoadGamePanel/Slots"]
+[node name="Slot1Button" type="Button" parent="LoadGamePanel/LoadGameContent/Slots"]
 custom_minimum_size = Vector2(500, 54)
 layout_mode = 2
 theme_override_font_sizes/font_size = 24
 text = "Slot 2"
 
-[node name="Slot2Button" type="Button" parent="LoadGamePanel/Slots"]
+[node name="Slot2Button" type="Button" parent="LoadGamePanel/LoadGameContent/Slots"]
 custom_minimum_size = Vector2(500, 54)
 layout_mode = 2
 theme_override_font_sizes/font_size = 24
 text = "Slot 3"
 
-[node name="BackButton" type="Button" parent="LoadGamePanel"]
+[node name="BackButton" type="Button" parent="LoadGamePanel/LoadGameContent"]
 layout_mode = 0
 offset_left = 96.0
 offset_top = 400.0
@@ -310,7 +339,9 @@ grow_horizontal = 2
 grow_vertical = 2
 color = Color(0, 0, 0, 0.96)
 
-[node name="MessageLabel" type="Label" parent="OverwriteConfirmPanel"]
+[node name="OverwriteContent" type="Control" parent="OverwriteConfirmPanel"]
+
+[node name="MessageLabel" type="Label" parent="OverwriteConfirmPanel/OverwriteContent"]
 layout_mode = 0
 offset_left = 96.0
 offset_top = 260.0
@@ -319,7 +350,7 @@ offset_bottom = 340.0
 theme_override_font_sizes/font_size = 32
 text = "This will overwrite Slot 1. Continue?"
 
-[node name="ConfirmButtons" type="HBoxContainer" parent="OverwriteConfirmPanel"]
+[node name="ConfirmButtons" type="HBoxContainer" parent="OverwriteConfirmPanel/OverwriteContent"]
 layout_mode = 0
 offset_left = 96.0
 offset_top = 360.0
@@ -327,13 +358,13 @@ offset_right = 500.0
 offset_bottom = 420.0
 theme_override_constants/separation = 20
 
-[node name="YesButton" type="Button" parent="OverwriteConfirmPanel/ConfirmButtons"]
+[node name="YesButton" type="Button" parent="OverwriteConfirmPanel/OverwriteContent/ConfirmButtons"]
 custom_minimum_size = Vector2(160, 54)
 layout_mode = 2
 theme_override_font_sizes/font_size = 26
 text = "Yes"
 
-[node name="CancelButton" type="Button" parent="OverwriteConfirmPanel/ConfirmButtons"]
+[node name="CancelButton" type="Button" parent="OverwriteConfirmPanel/OverwriteContent/ConfirmButtons"]
 custom_minimum_size = Vector2(160, 54)
 layout_mode = 2
 theme_override_font_sizes/font_size = 26
