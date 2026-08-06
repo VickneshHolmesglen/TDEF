@@ -17,9 +17,16 @@ base_quantity = 1
 base_quality_probability = 0.05
 is_rare = true
 
+[sub_resource type="Resource" id="Resource_ge03"]
+script = ExtResource("2")
+material_id = &"iron_ore"
+base_quantity = 1
+base_quality_probability = 0.12
+is_rare = false
+
 [resource]
 script = ExtResource("1")
 drop_table_id = &"goblin_drops"
-entries = Array[ExtResource("2")]([SubResource("Resource_ge01"), SubResource("Resource_ge02")])
+entries = Array[ExtResource("2")]([SubResource("Resource_ge01"), SubResource("Resource_ge02"), SubResource("Resource_ge03")])
 guaranteed_min_quantity = 1
 base_drop_rate = 0.45
