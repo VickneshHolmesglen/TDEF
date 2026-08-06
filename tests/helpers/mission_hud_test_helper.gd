@@ -36,10 +36,21 @@ static func build_hud() -> MissionHud:
 	var chrome := VBoxContainer.new()
 	chrome.name = "Chrome"
 	combat_cluster.add_child(chrome)
-	for label_name: String in ["PhaseLabel", "WaveLabel", "PhaseTimerLabel", "HeroHpLabel", "BreachCounterLabel", "BossBarLabel", "GoldLabel", "MaterialsLabel"]:
+	for label_name: String in ["PhaseLabel", "WaveLabel", "PhaseTimerLabel", "HeroHpLabel", "BreachCounterLabel", "BossBarLabel", "MaterialsLabel"]:
 		var chrome_label := Label.new()
 		chrome_label.name = label_name
 		chrome.add_child(chrome_label)
+
+	# 2026-08-06: GoldLabel moved under a GoldRow wrapper (GoldIcon + GoldLabel)
+	# in the real scene (design/quick-specs/gold-currency-icon-2026-08-06.md) —
+	# matched here so $CombatCluster/Chrome/GoldRow/GoldLabel resolves the same
+	# way in both the fixture and the real MissionScene.tscn.
+	var gold_row := HBoxContainer.new()
+	gold_row.name = "GoldRow"
+	chrome.add_child(gold_row)
+	var gold_label := Label.new()
+	gold_label.name = "GoldLabel"
+	gold_row.add_child(gold_label)
 
 	var skill_cooldown_host := HBoxContainer.new()
 	skill_cooldown_host.name = "SkillCooldownHost"

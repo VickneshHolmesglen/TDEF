@@ -208,10 +208,13 @@ func test_phase_timer_tick_updates_timer_label() -> void:
 # AC-64: gold + materials
 # ---------------------------------------------------------------------------
 
+## 2026-08-06: text is now just the number (design/quick-specs/gold-
+## currency-icon-2026-08-06.md) -- the GoldIcon sibling carries the "this is
+## gold" meaning "Gold: " used to.
 func test_resources_changed_shows_absolute_gold_balance() -> void:
 	GEventBus.resources_changed.emit(150, &"monster_drop")
 
-	assert_str(_hud._gold_label.text).is_equal("Gold: 150")
+	assert_str(_hud._gold_label.text).is_equal("150")
 
 
 func test_materials_earned_accumulates_a_running_tally() -> void:

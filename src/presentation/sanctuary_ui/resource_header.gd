@@ -38,7 +38,17 @@ var _gold: int = 0
 var _materials: Dictionary = {}
 
 @onready var _background: Panel = Panel.new()
-@onready var _label: Label = Label.new()
+@onready var _row: HBoxContainer = HBoxContainer.new()
+@onready var _gold_icon: TextureRect = TextureRect.new()
+@onready var _gold_label: Label = Label.new()
+@onready var _materials_label: Label = Label.new()
+
+## 2026-08-06 (design/quick-specs/gold-currency-icon-2026-08-06.md): closes
+## the visual-placeholder half of this header's Gold display. Materials stay
+## plain text -- 13 distinct material types is a separate, larger art batch,
+## explicitly deferred by user decision.
+const GOLD_ICON_TEXTURE: Texture2D = preload("res://assets/art/ui/gold_coin.png")
+const GOLD_ICON_SIZE: Vector2 = Vector2(24, 24)  ## Sanctuary's own header is a smaller chrome strip than Mission HUD's 32px combat-scan minimum -- not a time-critical context.
 
 
 func _ready() -> void:
@@ -48,9 +58,36 @@ func _ready() -> void:
 	_background.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_background.add_theme_stylebox_override("panel", ShellChromeStyle.resource_header_stylebox())
 	add_child(_background)
-	add_child(_label)
-	_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_label.add_theme_color_override("font_color", ShellChromeStyle.UI_PARCHMENT)
+
+	_row.name = &"ResourceRow"
+	add_child(_row)
+	_row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_row.add_theme_constant_override("separation", 8)
+
+	_gold_icon.name = &"GoldIcon"
+	_gold_icon.custom_minimum_size = GOLD_ICON_SIZE
+	_gold_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_gold_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_gold_icon.texture = GOLD_ICON_TEXTURE
+	# HBoxContainer's default child vertical size flags fill the row's full
+	# height (this header is a tall chrome strip) -- without SHRINK_CENTER
+	# the icon stretches vertically into an unrecognizable smear instead of
+	# staying its real 24x24 size, centered. Caught live via Godot MCP
+	# screenshot before shipping.
+	_gold_icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_row.add_child(_gold_icon)
+
+	_gold_label.name = &"GoldLabel"
+	_row.add_child(_gold_label)
+	_gold_label.add_theme_color_override("font_color", ShellChromeStyle.UI_PARCHMENT)
+	_gold_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_gold_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+
+	_materials_label.name = &"MaterialsLabel"
+	_row.add_child(_materials_label)
+	_materials_label.add_theme_color_override("font_color", ShellChromeStyle.UI_PARCHMENT)
+	_materials_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	# Pre-existing overflow, only exposed visually now that the Chrome
 	# full-rect fix (sanctuary_ui.gd, 2026-08-04) lets this header actually
 	# render at nonzero size: the untranslated placeholder key + material
@@ -60,10 +97,12 @@ func _ready() -> void:
 	# authoritative data" scope) -- it doesn't touch the underlying text
 	# content, which is a separate localization-catalogue gap every other
 	# SANCTUARY_TAB_* key in this shell already has.
-	_label.autowrap_mode = TextServer.AUTOWRAP_OFF
-	_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_label.clip_contents = true
+	_materials_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	_materials_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	_materials_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_materials_label.clip_contents = true
+	_materials_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
 	_refresh_label()
 	GEventBus.resources_changed.connect(_on_resources_changed)
 	GEventBus.materials_earned.connect(_on_materials_earned)
@@ -108,21 +147,25 @@ func _on_materials_spent(material_type: String, quantity: int, _destination: Str
 
 
 ## GDD Visual/Audio Requirements: numeric changes reuse Inventory's existing
-## scale-pop treatment (~1.0->1.15->1.0 over ~0.2s).
+## scale-pop treatment (~1.0->1.15->1.0 over ~0.2s). 2026-08-06: pops the
+## whole icon+number+materials row together, not a single Label -- same
+## visual beat, now spanning the restructured node group.
 func _play_scale_pop() -> void:
-	_label.pivot_offset = _label.size / 2.0
-	_label.scale = Vector2.ONE
+	_row.pivot_offset = _row.size / 2.0
+	_row.scale = Vector2.ONE
 	var tween: Tween = create_tween()
-	tween.tween_property(_label, "scale", Vector2(1.15, 1.15), 0.1) \
+	tween.tween_property(_row, "scale", Vector2(1.15, 1.15), 0.1) \
 		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-	tween.tween_property(_label, "scale", Vector2.ONE, 0.1) \
+	tween.tween_property(_row, "scale", Vector2.ONE, 0.1) \
 		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 
 
+## 2026-08-06: gold is now icon + bare number (GOLD_ICON_TEXTURE carries the
+## "this is gold" meaning "Gold: " used to); materials stay the same trailing
+## plain-text list, just moved to its own trailing Label.
 func _refresh_label() -> void:
+	_gold_label.text = "%d" % _gold
 	var parts: PackedStringArray = []
 	for material_type: String in _materials:
 		parts.append("%s %d" % [material_type, _materials[material_type]])
-	_label.text = "%s: %d    %s" % [
-		tr("SANCTUARY_HEADER_GOLD_LABEL"), _gold, " · ".join(parts)
-	]
+	_materials_label.text = "    %s" % " · ".join(parts) if not parts.is_empty() else ""

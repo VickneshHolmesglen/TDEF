@@ -9,6 +9,7 @@
 [ext_resource type="PackedScene" path="res://src/gameplay/ui/pause_menu/pause_menu.tscn" id="7_pause"]
 [ext_resource type="Script" path="res://src/presentation/mission_hud/mission_hud.gd" id="8_hud"]
 [ext_resource type="Script" path="res://src/ui/input_mode_tracker.gd" id="9_imt"]
+[ext_resource type="Texture2D" path="res://assets/art/ui/gold_coin.png" id="10_gold_icon"]
 
 [node name="TheGap" type="Node2D"]
 script = ExtResource("1_ctrl")
@@ -79,9 +80,21 @@ layout_mode = 2
 visible = false
 text = ""
 
-[node name="GoldLabel" type="Label" parent="HUD/CombatCluster/Chrome"]
+[node name="GoldRow" type="HBoxContainer" parent="HUD/CombatCluster/Chrome"]
 layout_mode = 2
-text = "Gold: 0"
+theme_override_constants/separation = 6
+
+[node name="GoldIcon" type="TextureRect" parent="HUD/CombatCluster/Chrome/GoldRow"]
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 2
+texture = ExtResource("10_gold_icon")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="GoldLabel" type="Label" parent="HUD/CombatCluster/Chrome/GoldRow"]
+layout_mode = 2
+size_flags_vertical = 4
+text = "0"
 
 [node name="MaterialsLabel" type="Label" parent="HUD/CombatCluster/Chrome"]
 layout_mode = 2

@@ -69,3 +69,32 @@ func test_header_never_receives_focus() -> void:
 	_header.grab_focus()
 
 	assert_bool(_header.has_focus()).is_false()
+
+
+# ---------------------------------------------------------------------------
+# Gold coin icon (2026-08-06, design/quick-specs/gold-currency-icon-
+# 2026-08-06.md) -- closes the visual-placeholder gap for the single
+# highest-visibility currency. Materials stay plain text, unaffected.
+# ---------------------------------------------------------------------------
+
+func test_gold_icon_loads_the_real_texture() -> void:
+	assert_object(ResourceHeader.GOLD_ICON_TEXTURE).is_not_null()
+
+
+## Regression guard for the real bug caught live via Godot MCP before
+## shipping: HBoxContainer's default child vertical size flags stretched the
+## icon to fill the header's full height, squashing a 24x24 icon into an
+## unrecognizable smear. SIZE_SHRINK_CENTER keeps it at its real size.
+func test_gold_icon_does_not_stretch_to_fill_the_header_height() -> void:
+	var icon: TextureRect = _header.get_node("ResourceRow/GoldIcon")
+	assert_int(icon.size_flags_vertical).is_equal(Control.SIZE_SHRINK_CENTER)
+
+
+func test_gold_number_updates_independently_of_materials_text() -> void:
+	GEventBus.resources_changed.emit(88, &"test_source")
+	GEventBus.materials_earned.emit("wood", 4, &"test_source")
+
+	var gold_label: Label = _header.get_node("ResourceRow/GoldLabel")
+	var materials_label: Label = _header.get_node("ResourceRow/MaterialsLabel")
+	assert_str(gold_label.text).is_equal("88")
+	assert_str(materials_label.text).contains("wood 4")

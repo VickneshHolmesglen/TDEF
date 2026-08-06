@@ -40,7 +40,7 @@ var _ultimate_focus_ring: Panel = null
 @onready var _hero_hp_label: Label = $CombatCluster/Chrome/HeroHpLabel
 @onready var _breach_counter_label: Label = $CombatCluster/Chrome/BreachCounterLabel
 @onready var _boss_bar_label: Label = $CombatCluster/Chrome/BossBarLabel
-@onready var _gold_label: Label = $CombatCluster/Chrome/GoldLabel
+@onready var _gold_label: Label = $CombatCluster/Chrome/GoldRow/GoldLabel
 @onready var _materials_label: Label = $CombatCluster/Chrome/MaterialsLabel
 @onready var _skill_cooldown_host: HBoxContainer = $CombatCluster/Chrome/SkillCooldownHost
 ## Populated in _ready() from _skill_cooldown_host's children — avoids the
@@ -666,11 +666,14 @@ func _on_materials_earned(material_type: String, quantity: int, _source: String)
 ## AC-64 (gold half): resources_changed's gold is already an absolute
 ## balance per its own EventBus doc comment — displayed directly, no tally.
 ## Code review fix: originally missing the _terminal guard (see
-## _on_hero_health_changed()'s identical fix note).
+## _on_hero_health_changed()'s identical fix note). 2026-08-06: text is now
+## just the number — the GoldIcon sibling (GoldRow) carries the "this is
+## gold" meaning the word "Gold" used to (design/quick-specs/gold-currency-
+## icon-2026-08-06.md).
 func _on_resources_changed(gold: int, _source: StringName) -> void:
 	if _terminal:
 		return
-	_gold_label.text = "Gold: %d" % gold
+	_gold_label.text = "%d" % gold
 
 
 ## AC-65: toast-only (this story's own scope note calls out "live
