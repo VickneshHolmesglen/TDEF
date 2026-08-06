@@ -105,6 +105,15 @@ func after_test() -> void:
 		DisplayServer.window_set_size(RESOLUTIONS[_original_resolution_index])
 
 
+## Matches sanctuary-ui/back-navigation_test.gd's own established pattern
+## for driving `ui_cancel` directly, rather than through scene_runner.
+func _press_ui_cancel() -> void:
+	var event := InputEventAction.new()
+	event.action = &"ui_cancel"
+	event.pressed = true
+	_menu._input(event)
+
+
 func _slider(bus_name: StringName) -> HSlider:
 	var row_name: String = String(bus_name).substr(0, 1) + String(bus_name).substr(1).to_lower() + "Row"
 	return _menu.get_node("SettingsPanel/SettingsContent/VolumeSliders/%s/Slider" % row_name)
@@ -581,3 +590,46 @@ func test_tab_presses_while_settings_open_stay_within_the_panel() -> void:
 		await _runner.simulate_key_pressed(KEY_TAB)
 		var focus_owner: Control = _menu.get_viewport().gui_get_focus_owner()
 		assert_array(panel_controls).contains([focus_owner])
+
+
+# ---------------------------------------------------------------------------
+# Escape / ui_cancel (2026-08-06, user-reported gap, design/quick-specs/
+# main-menu-escape-key-2026-08-06.md)
+# ---------------------------------------------------------------------------
+
+func test_ui_cancel_with_no_modal_open_shows_settings() -> void:
+	_press_ui_cancel()
+
+	var panel: Control = _menu.get_node("SettingsPanel") as Control
+	assert_bool(panel.visible).is_true()
+
+
+func test_ui_cancel_while_settings_open_closes_it_like_back_button() -> void:
+	_menu.get_node("Buttons/SettingsButton").pressed.emit()
+
+	_press_ui_cancel()
+
+	var panel: Control = _menu.get_node("SettingsPanel") as Control
+	assert_bool(panel.visible).is_false()
+	assert_bool((_menu.get_node("Buttons/SettingsButton") as TextureButton).has_focus()).is_true()
+
+
+func test_ui_cancel_while_load_game_open_closes_it_like_back_button() -> void:
+	_menu.get_node("Buttons/LoadGameButton").pressed.emit()
+
+	_press_ui_cancel()
+
+	var panel: Control = _menu.get_node("LoadGamePanel") as Control
+	assert_bool(panel.visible).is_false()
+	assert_bool((_menu.get_node("Buttons/LoadGameButton") as TextureButton).has_focus()).is_true()
+
+
+func test_ui_cancel_while_overwrite_confirm_open_closes_it_like_cancel_button() -> void:
+	_menu.get_node("OverwriteConfirmPanel").set("visible", true)
+	_menu.call("_set_nav_buttons_focusable", false)
+
+	_press_ui_cancel()
+
+	var panel: Control = _menu.get_node("OverwriteConfirmPanel") as Control
+	assert_bool(panel.visible).is_false()
+	assert_bool((_menu.get_node("Buttons/NewGameButton") as TextureButton).has_focus()).is_true()

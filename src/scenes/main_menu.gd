@@ -102,6 +102,14 @@ extends Control
 ## off-screen at >100%). Persisted alongside resolution/fullscreen in the
 ## same `user://display_settings.cfg` (`ui_scale` key, same `display`
 ## section) — same lifecycle, same file, not a new one.
+##
+## Escape/ui_cancel (2026-08-06, `design/quick-specs/main-menu-escape-key-
+## 2026-08-06.md`, user-reported gap): matches Sanctuary UI/Tarot Deck
+## UI's own established `ui_cancel` convention (Godot's built-in action,
+## Escape/gamepad East-B, no InputMap override needed). No modal open ->
+## same path as clicking Settings. A modal open -> that modal's own
+## existing Back/Cancel function, exactly as its Back/Cancel button
+## already calls -- no new close logic introduced.
 
 const VOLUME_BUSES: Array[StringName] = [&"Music", &"SFX", &"Voice", &"UI"]
 const SAVE_SLOT_COUNT: int = 3
@@ -260,6 +268,23 @@ func _ready() -> void:
 	_input_mode_tracker.input_mode_changed.connect(_on_input_mode_changed)
 
 	_configure_continue_new_game_load_state()
+
+
+## No modal open -> same path as clicking Settings. A modal open -> that
+## modal's own existing Back/Cancel function, exactly as its Back/Cancel
+## button already calls (see class doc comment).
+func _input(event: InputEvent) -> void:
+	if not event.is_action_pressed(&"ui_cancel"):
+		return
+	if _settings_panel.visible:
+		_on_settings_back_pressed()
+	elif _load_game_panel.visible:
+		_on_load_game_back_pressed()
+	elif _overwrite_confirm_panel.visible:
+		_on_overwrite_cancel_pressed()
+	else:
+		_on_settings_pressed()
+	get_viewport().set_input_as_handled()
 
 
 ## GIVEN at least one of the 3 slots has a save file, THEN Continue and
