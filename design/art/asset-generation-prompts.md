@@ -24,6 +24,59 @@ reconstructing the art-bible constraints from scratch each time.
 
 ---
 
+## Gold Coin Icon (currency HUD icon)
+
+**Date:** 2026-08-06
+**Target:** replaces the plain "Gold: N" text in Mission HUD's `GoldLabel`
+and Sanctuary's `ResourceHeader` with a coin icon + number
+(`design/quick-specs/gold-currency-icon-2026-08-06.md`) — the currency data/
+events are already fully implemented and tested, this closes the visual
+placeholder gap for the single highest-visibility currency. Materials (13
+distinct types) are explicitly out of scope, a separate future batch.
+**Status:** Not yet generated.
+
+```
+Single fantasy game currency icon, a stack of gold coins (2-3 coins,
+slightly overlapping, top coin showing its face with a simple engraved
+sigil), centered on a flat pure black (#000000) background for easy
+cutout. No text, no numerals, no border, no frame — icon only, the UI
+renders any surrounding chrome separately. Compact, simple silhouette
+readable at small size (this is a persistent HUD icon, not a hero prop).
+
+Color palette: Sanctum Amber (#C8801A) as the dominant coin metal color,
+parchment cream (#F5EDCB) as a bright highlight/rim catching the light on
+the top coin's edge, muted fieldstone grey (#7E8590) used only in the
+shadowed underside/gap between coins. Do NOT use Herald Gold (#F5C01A) or
+any bright saturated yellow — this is a persistent UI element, not a
+crit/achievement flash. No purple, no green, no cyan.
+
+Style: hand-painted miniature cabinet-diorama aesthetic, painterly
+pixel-art texture with visible brushwork, consistent with this project's
+existing UI icon set (matches the Menagerie species portrait icons and
+tarot card art already generated for this project) — warm, carved,
+tactile, not a flat vector/emoji-style coin icon.
+```
+
+**Constraint mapping** (why each clause is there):
+- "Do NOT use Herald Gold... this is a persistent UI element, not a crit/
+  achievement flash" → art bible §4.2's explicit reservation: Herald Gold
+  "must not appear as ambient decoration," which a persistent currency icon
+  is exactly the excluded case for. Sanctum Amber substituted instead,
+  matching every other non-performance warm UI element in this project.
+- "Compact, simple silhouette readable at small size" → art bible's
+  combat-scan icon minimum note (32px effective size in a time-critical
+  WAVE_ACTIVE context) — a busy/detailed design wouldn't read at that size.
+- "hand-painted miniature cabinet-diorama... matches the Menagerie species
+  portrait icons and tarot card art" → art bible §1 Visual Identity
+  Statement; explicit cross-reference to already-generated, already-approved
+  icon art from this same project so the generator has a concrete style
+  anchor, not just an abstract description.
+- "plain pure black background for easy cutout" → matches this project's
+  established alpha-cut pipeline convention (flood-fill technique, per this
+  file's own documented lessons).
+
+---
+
 ## Steelwood Siege Spire (physical) + Golden Banner Shrine (support)
 
 **Date:** 2026-08-02
