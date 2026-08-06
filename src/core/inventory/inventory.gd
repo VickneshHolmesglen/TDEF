@@ -35,6 +35,12 @@ extends Node
 ## this file remains dependency-injectable/unit-testable without any Autoload (control
 ## manifest, Global Rules), but has_items() specifically requires GGameDataRegistry to
 ## be live (see tests/unit/inventory/has_items_test.gd, which exercises it as such).
+## _on_materials_earned()/_on_materials_spent() (2026-08-06, design/quick-specs/
+## wire-materials-into-inventory-2026-08-06.md) reuse this identical exception —
+## resolving materials_earned/materials_spent's item_id string through
+## GGameDataRegistry the same way, closing resource-economy.md Rule 1's own
+## stated "Inventory is the ledger of record for materials," which had no
+## real subscriber wiring it up before this.
 ##
 ## Query API is deliberately narrow (get_slot_count(), get_slot_contents(),
 ## is_slot_empty()) rather than exposing the internal Array[InventorySlot] directly —
@@ -117,10 +123,39 @@ var _slot_tier: int = 0
 func _ready() -> void:
 	reset_to_defaults()
 	GSavePersistence.register(self, RESTORE_ORDER)
+	GEventBus.materials_earned.connect(_on_materials_earned)
+	GEventBus.materials_spent.connect(_on_materials_spent)
 
 
 func _exit_tree() -> void:
 	GSavePersistence.unregister(self)
+	GEventBus.materials_earned.disconnect(_on_materials_earned)
+	GEventBus.materials_spent.disconnect(_on_materials_spent)
+
+
+## design/quick-specs/wire-materials-into-inventory-2026-08-06.md: closes
+## resource-economy.md Rule 1's own stated but never-implemented "Inventory
+## is the ledger of record for materials" -- materials_earned previously had
+## no subscriber that actually stored anything, only display-side tallies
+## (Mission HUD, Sanctuary header). Resolves through GGameDataRegistry,
+## matching the precedent has_items() already established for this class
+## (see class doc comment) -- an unrecognized material_type logs a warning
+## and is skipped rather than crashing, since it signals a real missing
+## content-authoring gap, not a caller error.
+func _on_materials_earned(material_type: String, quantity: int, _source: String) -> void:
+	var definition: ItemDefinitionResource = GGameDataRegistry.get_item_definition(StringName(material_type))
+	if definition == null:
+		push_warning("[Inventory] materials_earned for unrecognized material_type '%s' -- no ItemDefinitionResource found, skipped." % material_type)
+		return
+	add_stackable(definition, quantity)
+
+
+func _on_materials_spent(material_type: String, quantity: int, _destination: String) -> void:
+	var definition: ItemDefinitionResource = GGameDataRegistry.get_item_definition(StringName(material_type))
+	if definition == null:
+		push_warning("[Inventory] materials_spent for unrecognized material_type '%s' -- no ItemDefinitionResource found, skipped." % material_type)
+		return
+	consume_stackable(definition, quantity)
 
 
 # ---------------------------------------------------------------------------
