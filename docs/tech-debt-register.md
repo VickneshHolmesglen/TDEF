@@ -1973,3 +1973,23 @@ The backend half of EC-3/EC-5 was implemented 2026-08-01 (`SavePersistence.load_
 ### Resolution
 - [ ] Not yet started.
 
+---
+
+## TD-tower-003 — 3 of 4 tower blueprints are unreachable — no Tower Placement selection UI exists
+
+**Logged**: 2026-08-07
+**Story**: Found opportunistically during a content-audit pass checking `assets/data/` for orphaned entries (same pass that closed the equipment-forge accessory/sacrifice-recipe gaps and the mission-catalogue gap).
+**Severity**: Low — no correctness defect; all 4 blueprints load cleanly and pass `GameDataRegistry`'s own generic directory-scan/`validate()`, and `TowerSystem.place_tower(tower_id, cell)` accepts any valid `tower_id` already. This is a missing *reachability path* (a UI), not broken data.
+**Area**: `assets/data/towers/blueprints/` (4 files, one per archetype — `blueprint_archer.tres`, `blueprint_frostbolt_turret.tres`, `blueprint_longshot_sniper.tres`, `blueprint_rally_banner.tres`), `src/core/tower/tower_system.gd` (`place_tower()` — generic, unaffected)
+
+### Gap
+
+Grepped every `.gd` file in `src/` and `tests/` for each blueprint's `tower_id`. Only `&"archer"` is referenced anywhere — hardcoded as the sole placeable tower in every debug placement path (`src/gameplay/missions/the_gap/the_gap.gd`, `src/scenes/mission_scene.gd`). `frostbolt_turret` (elemental), `longshot_sniper` (ranged), and `rally_banner` (support) are never referenced by any production code or test file, anywhere. No Tower Placement selection UI exists in the codebase at all (confirmed: no `TowerShop`, `tower_select`, or blueprint-listing code found via grep) — so nothing ever calls `place_tower()` with any `tower_id` other than the one hardcoded value. All 3 non-archer archetypes are fully implemented, valid content, just currently impossible to place in any real playthrough.
+
+### Recommended fix
+
+Design and build a real Tower Placement selection UI (likely part of Mission HUD's own scope — `mission-hud.md` doesn't yet specify this) that lists all `GameDataRegistry`-loaded tower blueprints and lets the player choose which to place, replacing the hardcoded `&"archer"` debug call sites. A meaningfully bigger scope item than a content-authoring fix — logged here rather than actioned immediately.
+
+### Resolution
+- [ ] Not yet started.
+
