@@ -7,5 +7,5 @@ script = ExtResource("1_def")
 skill_id = &"phys_bulwark"
 category = "physical"
 passive_slot_count = 2
-source_build_signature = &"found_bulwark_t1|weap_bulwark_t1|focus_bulwark_t1|power_bulwark_t1"
+source_build_signature = &""
 mastery_threshold_seconds = 45.0

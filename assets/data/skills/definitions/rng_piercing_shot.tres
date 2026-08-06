@@ -7,5 +7,5 @@ script = ExtResource("1_def")
 skill_id = &"rng_piercing_shot"
 category = "ranged"
 passive_slot_count = 1
-source_build_signature = &"found_archer_t1|weap_piercing_t1|focus_archer_t1|power_none"
+source_build_signature = &"found_longshot_t1|weap_longshot_t1|focus_longshot_t1|power_none"
 mastery_threshold_seconds = 45.0
