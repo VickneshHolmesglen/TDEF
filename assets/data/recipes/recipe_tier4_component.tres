@@ -13,6 +13,6 @@ inputs = {
 &"Rare": 8
 }
 tech_prerequisite = &""
-output_item_id = &"iron_foundation_component"
+output_item_id = &"tier4_power_component"
 output_quantity = 1
 quality_tier = 4

@@ -11,6 +11,6 @@ inputs = {
 &"Material": 2
 }
 tech_prerequisite = &"tech_production_2"
-output_item_id = &"iron_foundation_component"
+output_item_id = &"advanced_weapon_component"
 output_quantity = 1
 quality_tier = 2
