@@ -1,0 +1,204 @@
+[gd_resource type="Resource" script_class="WaveConfig" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://src/gameplay/wave_config.gd" id="1_config"]
+[ext_resource type="Script" path="res://src/gameplay/wave_script.gd" id="2_script"]
+[ext_resource type="Script" path="res://src/gameplay/wave_spawn_entry.gd" id="3_entry"]
+
+[sub_resource type="Resource" id="Resource_hollow_w1_e1"]
+script = ExtResource("3_entry")
+monster_id = &"spore_skitterling"
+
+[sub_resource type="Resource" id="Resource_hollow_w1_e2"]
+script = ExtResource("3_entry")
+monster_id = &"goblin_runner"
+pre_delay = 1.0
+
+[sub_resource type="Resource" id="Resource_hollow_w1_e3"]
+script = ExtResource("3_entry")
+monster_id = &"spore_skitterling"
+pre_delay = 1.5
+
+[sub_resource type="Resource" id="Resource_hollow_w1_e4"]
+script = ExtResource("3_entry")
+monster_id = &"goblin_runner"
+pre_delay = 1.0
+
+[sub_resource type="Resource" id="Resource_hollow_w1_e5"]
+script = ExtResource("3_entry")
+monster_id = &"spore_skitterling"
+pre_delay = 1.5
+
+[sub_resource type="Resource" id="Resource_hollow_w1_e6"]
+script = ExtResource("3_entry")
+monster_id = &"goblin_runner"
+pre_delay = 1.0
+
+[sub_resource type="Resource" id="Resource_hollow_wave_1"]
+script = ExtResource("2_script")
+entries = Array[ExtResource("3_entry")]([SubResource("Resource_hollow_w1_e1"), SubResource("Resource_hollow_w1_e2"), SubResource("Resource_hollow_w1_e3"), SubResource("Resource_hollow_w1_e4"), SubResource("Resource_hollow_w1_e5"), SubResource("Resource_hollow_w1_e6")])
+
+[sub_resource type="Resource" id="Resource_hollow_w2_e1"]
+script = ExtResource("3_entry")
+monster_id = &"armored_brute"
+
+[sub_resource type="Resource" id="Resource_hollow_w2_e2"]
+script = ExtResource("3_entry")
+monster_id = &"armored_brute"
+pre_delay = 2.0
+
+[sub_resource type="Resource" id="Resource_hollow_w2_e3"]
+script = ExtResource("3_entry")
+monster_id = &"armored_brute"
+pre_delay = 2.0
+
+[sub_resource type="Resource" id="Resource_hollow_w2_e4"]
+script = ExtResource("3_entry")
+monster_id = &"armored_brute"
+pre_delay = 2.0
+
+[sub_resource type="Resource" id="Resource_hollow_wave_2"]
+script = ExtResource("2_script")
+entries = Array[ExtResource("3_entry")]([SubResource("Resource_hollow_w2_e1"), SubResource("Resource_hollow_w2_e2"), SubResource("Resource_hollow_w2_e3"), SubResource("Resource_hollow_w2_e4")])
+
+[sub_resource type="Resource" id="Resource_hollow_w3_e1"]
+script = ExtResource("3_entry")
+monster_id = &"bog_lurker_elite"
+
+[sub_resource type="Resource" id="Resource_hollow_w3_e2"]
+script = ExtResource("3_entry")
+monster_id = &"spore_skitterling"
+pre_delay = 1.5
+
+[sub_resource type="Resource" id="Resource_hollow_w3_e3"]
+script = ExtResource("3_entry")
+monster_id = &"spore_skitterling"
+pre_delay = 1.0
+
+[sub_resource type="Resource" id="Resource_hollow_w3_e4"]
+script = ExtResource("3_entry")
+monster_id = &"bog_lurker_elite"
+pre_delay = 3.0
+
+[sub_resource type="Resource" id="Resource_hollow_w3_e5"]
+script = ExtResource("3_entry")
+monster_id = &"spore_skitterling"
+pre_delay = 1.5
+
+[sub_resource type="Resource" id="Resource_hollow_wave_3"]
+script = ExtResource("2_script")
+entries = Array[ExtResource("3_entry")]([SubResource("Resource_hollow_w3_e1"), SubResource("Resource_hollow_w3_e2"), SubResource("Resource_hollow_w3_e3"), SubResource("Resource_hollow_w3_e4"), SubResource("Resource_hollow_w3_e5")])
+
+[sub_resource type="Resource" id="Resource_hollow_w4_e1"]
+script = ExtResource("3_entry")
+monster_id = &"forest_troll_elite"
+
+[sub_resource type="Resource" id="Resource_hollow_w4_e2"]
+script = ExtResource("3_entry")
+monster_id = &"armored_brute"
+pre_delay = 2.5
+
+[sub_resource type="Resource" id="Resource_hollow_w4_e3"]
+script = ExtResource("3_entry")
+monster_id = &"forest_troll_elite"
+pre_delay = 3.0
+
+[sub_resource type="Resource" id="Resource_hollow_w4_e4"]
+script = ExtResource("3_entry")
+monster_id = &"armored_brute"
+pre_delay = 2.5
+
+[sub_resource type="Resource" id="Resource_hollow_wave_4"]
+script = ExtResource("2_script")
+entries = Array[ExtResource("3_entry")]([SubResource("Resource_hollow_w4_e1"), SubResource("Resource_hollow_w4_e2"), SubResource("Resource_hollow_w4_e3"), SubResource("Resource_hollow_w4_e4")])
+
+[sub_resource type="Resource" id="Resource_hollow_w5_e1"]
+script = ExtResource("3_entry")
+monster_id = &"bog_lurker_elite"
+
+[sub_resource type="Resource" id="Resource_hollow_w5_e2"]
+script = ExtResource("3_entry")
+monster_id = &"goblin_runner"
+pre_delay = 1.5
+
+[sub_resource type="Resource" id="Resource_hollow_w5_e3"]
+script = ExtResource("3_entry")
+monster_id = &"bog_lurker_elite"
+pre_delay = 3.0
+
+[sub_resource type="Resource" id="Resource_hollow_w5_e4"]
+script = ExtResource("3_entry")
+monster_id = &"goblin_runner"
+pre_delay = 1.5
+
+[sub_resource type="Resource" id="Resource_hollow_w5_e5"]
+script = ExtResource("3_entry")
+monster_id = &"bog_lurker_elite"
+pre_delay = 3.0
+
+[sub_resource type="Resource" id="Resource_hollow_w5_e6"]
+script = ExtResource("3_entry")
+monster_id = &"goblin_runner"
+pre_delay = 1.5
+
+[sub_resource type="Resource" id="Resource_hollow_wave_5"]
+script = ExtResource("2_script")
+entries = Array[ExtResource("3_entry")]([SubResource("Resource_hollow_w5_e1"), SubResource("Resource_hollow_w5_e2"), SubResource("Resource_hollow_w5_e3"), SubResource("Resource_hollow_w5_e4"), SubResource("Resource_hollow_w5_e5"), SubResource("Resource_hollow_w5_e6")])
+
+[sub_resource type="Resource" id="Resource_hollow_w6_e1"]
+script = ExtResource("3_entry")
+monster_id = &"forest_troll_elite"
+
+[sub_resource type="Resource" id="Resource_hollow_w6_e2"]
+script = ExtResource("3_entry")
+monster_id = &"armored_brute"
+pre_delay = 2.5
+
+[sub_resource type="Resource" id="Resource_hollow_w6_e3"]
+script = ExtResource("3_entry")
+monster_id = &"forest_troll_elite"
+pre_delay = 3.0
+
+[sub_resource type="Resource" id="Resource_hollow_w6_e4"]
+script = ExtResource("3_entry")
+monster_id = &"armored_brute"
+pre_delay = 2.5
+
+[sub_resource type="Resource" id="Resource_hollow_w6_e5"]
+script = ExtResource("3_entry")
+monster_id = &"forest_troll_elite"
+pre_delay = 3.0
+
+[sub_resource type="Resource" id="Resource_hollow_w6_e6"]
+script = ExtResource("3_entry")
+monster_id = &"armored_brute"
+pre_delay = 2.5
+
+[sub_resource type="Resource" id="Resource_hollow_wave_6"]
+script = ExtResource("2_script")
+entries = Array[ExtResource("3_entry")]([SubResource("Resource_hollow_w6_e1"), SubResource("Resource_hollow_w6_e2"), SubResource("Resource_hollow_w6_e3"), SubResource("Resource_hollow_w6_e4"), SubResource("Resource_hollow_w6_e5"), SubResource("Resource_hollow_w6_e6")])
+
+[sub_resource type="Resource" id="Resource_hollow_w7_e1"]
+script = ExtResource("3_entry")
+monster_id = &"forest_troll_elite"
+
+[sub_resource type="Resource" id="Resource_hollow_w7_e2"]
+script = ExtResource("3_entry")
+monster_id = &"forest_troll_elite"
+pre_delay = 3.0
+
+[sub_resource type="Resource" id="Resource_hollow_w7_e3"]
+script = ExtResource("3_entry")
+monster_id = &"rift_sentinel_boss"
+pre_delay = 5.0
+spawn_cell_index = 0
+
+[sub_resource type="Resource" id="Resource_hollow_wave_7"]
+script = ExtResource("2_script")
+entries = Array[ExtResource("3_entry")]([SubResource("Resource_hollow_w7_e1"), SubResource("Resource_hollow_w7_e2"), SubResource("Resource_hollow_w7_e3")])
+
+[resource]
+script = ExtResource("1_config")
+wave_scripts = Array[ExtResource("2_script")]([SubResource("Resource_hollow_wave_1"), SubResource("Resource_hollow_wave_2"), SubResource("Resource_hollow_wave_3"), SubResource("Resource_hollow_wave_4"), SubResource("Resource_hollow_wave_5"), SubResource("Resource_hollow_wave_6"), SubResource("Resource_hollow_wave_7")])
+difficulty_growth_rate = 0.25
+wave_time_budget = 110.0
+reward_base = 1.0

@@ -1,0 +1,133 @@
+[gd_resource type="Resource" script_class="WaveConfig" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://src/gameplay/wave_config.gd" id="1_config"]
+[ext_resource type="Script" path="res://src/gameplay/wave_script.gd" id="2_script"]
+[ext_resource type="Script" path="res://src/gameplay/wave_spawn_entry.gd" id="3_entry"]
+
+[sub_resource type="Resource" id="Resource_foothills_w1_e1"]
+script = ExtResource("3_entry")
+monster_id = &"spore_skitterling"
+
+[sub_resource type="Resource" id="Resource_foothills_w1_e2"]
+script = ExtResource("3_entry")
+monster_id = &"spore_skitterling"
+pre_delay = 1.5
+
+[sub_resource type="Resource" id="Resource_foothills_w1_e3"]
+script = ExtResource("3_entry")
+monster_id = &"spore_skitterling"
+pre_delay = 1.5
+
+[sub_resource type="Resource" id="Resource_foothills_w1_e4"]
+script = ExtResource("3_entry")
+monster_id = &"spore_skitterling"
+pre_delay = 1.5
+
+[sub_resource type="Resource" id="Resource_foothills_w1_e5"]
+script = ExtResource("3_entry")
+monster_id = &"spore_skitterling"
+pre_delay = 1.5
+
+[sub_resource type="Resource" id="Resource_foothills_wave_1"]
+script = ExtResource("2_script")
+entries = Array[ExtResource("3_entry")]([SubResource("Resource_foothills_w1_e1"), SubResource("Resource_foothills_w1_e2"), SubResource("Resource_foothills_w1_e3"), SubResource("Resource_foothills_w1_e4"), SubResource("Resource_foothills_w1_e5")])
+
+[sub_resource type="Resource" id="Resource_foothills_w2_e1"]
+script = ExtResource("3_entry")
+monster_id = &"goblin_runner"
+
+[sub_resource type="Resource" id="Resource_foothills_w2_e2"]
+script = ExtResource("3_entry")
+monster_id = &"goblin_runner"
+pre_delay = 1.0
+
+[sub_resource type="Resource" id="Resource_foothills_w2_e3"]
+script = ExtResource("3_entry")
+monster_id = &"goblin_runner"
+pre_delay = 1.0
+
+[sub_resource type="Resource" id="Resource_foothills_w2_e4"]
+script = ExtResource("3_entry")
+monster_id = &"goblin_runner"
+pre_delay = 1.0
+
+[sub_resource type="Resource" id="Resource_foothills_wave_2"]
+script = ExtResource("2_script")
+entries = Array[ExtResource("3_entry")]([SubResource("Resource_foothills_w2_e1"), SubResource("Resource_foothills_w2_e2"), SubResource("Resource_foothills_w2_e3"), SubResource("Resource_foothills_w2_e4")])
+
+[sub_resource type="Resource" id="Resource_foothills_w3_e1"]
+script = ExtResource("3_entry")
+monster_id = &"armored_brute"
+
+[sub_resource type="Resource" id="Resource_foothills_w3_e2"]
+script = ExtResource("3_entry")
+monster_id = &"spore_skitterling"
+pre_delay = 1.5
+
+[sub_resource type="Resource" id="Resource_foothills_w3_e3"]
+script = ExtResource("3_entry")
+monster_id = &"armored_brute"
+pre_delay = 2.0
+
+[sub_resource type="Resource" id="Resource_foothills_w3_e4"]
+script = ExtResource("3_entry")
+monster_id = &"spore_skitterling"
+pre_delay = 1.5
+
+[sub_resource type="Resource" id="Resource_foothills_w3_e5"]
+script = ExtResource("3_entry")
+monster_id = &"armored_brute"
+pre_delay = 2.0
+
+[sub_resource type="Resource" id="Resource_foothills_wave_3"]
+script = ExtResource("2_script")
+entries = Array[ExtResource("3_entry")]([SubResource("Resource_foothills_w3_e1"), SubResource("Resource_foothills_w3_e2"), SubResource("Resource_foothills_w3_e3"), SubResource("Resource_foothills_w3_e4"), SubResource("Resource_foothills_w3_e5")])
+
+[sub_resource type="Resource" id="Resource_foothills_w4_e1"]
+script = ExtResource("3_entry")
+monster_id = &"spore_skitterling"
+
+[sub_resource type="Resource" id="Resource_foothills_w4_e2"]
+script = ExtResource("3_entry")
+monster_id = &"bog_lurker_elite"
+pre_delay = 2.0
+
+[sub_resource type="Resource" id="Resource_foothills_w4_e3"]
+script = ExtResource("3_entry")
+monster_id = &"spore_skitterling"
+pre_delay = 1.5
+
+[sub_resource type="Resource" id="Resource_foothills_w4_e4"]
+script = ExtResource("3_entry")
+monster_id = &"bog_lurker_elite"
+pre_delay = 3.0
+
+[sub_resource type="Resource" id="Resource_foothills_wave_4"]
+script = ExtResource("2_script")
+entries = Array[ExtResource("3_entry")]([SubResource("Resource_foothills_w4_e1"), SubResource("Resource_foothills_w4_e2"), SubResource("Resource_foothills_w4_e3"), SubResource("Resource_foothills_w4_e4")])
+
+[sub_resource type="Resource" id="Resource_foothills_w5_e1"]
+script = ExtResource("3_entry")
+monster_id = &"armored_brute"
+
+[sub_resource type="Resource" id="Resource_foothills_w5_e2"]
+script = ExtResource("3_entry")
+monster_id = &"armored_brute"
+pre_delay = 2.0
+
+[sub_resource type="Resource" id="Resource_foothills_w5_e3"]
+script = ExtResource("3_entry")
+monster_id = &"goblin_warlord_boss"
+pre_delay = 5.0
+spawn_cell_index = 0
+
+[sub_resource type="Resource" id="Resource_foothills_wave_5"]
+script = ExtResource("2_script")
+entries = Array[ExtResource("3_entry")]([SubResource("Resource_foothills_w5_e1"), SubResource("Resource_foothills_w5_e2"), SubResource("Resource_foothills_w5_e3")])
+
+[resource]
+script = ExtResource("1_config")
+wave_scripts = Array[ExtResource("2_script")]([SubResource("Resource_foothills_wave_1"), SubResource("Resource_foothills_wave_2"), SubResource("Resource_foothills_wave_3"), SubResource("Resource_foothills_wave_4"), SubResource("Resource_foothills_wave_5")])
+difficulty_growth_rate = 0.2
+wave_time_budget = 80.0
+reward_base = 1.0
