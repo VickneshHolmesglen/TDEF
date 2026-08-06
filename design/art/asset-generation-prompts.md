@@ -4,6 +4,18 @@ Reference log of prompts used with external image generators for game art,
 kept so a prompt can be reused, tweaked, or regenerated later without
 reconstructing the art-bible constraints from scratch each time.
 
+> **Batch request, not yet started (0/13)**: `assets/art-generation-requests-2026-08-06-materials.md`
+> is a standalone, upload-ready prompt batch for the 13 real monster-drop
+> material icons (`goblin_hide`, `goblin_fang`, `iron_plating`, `brute_core`,
+> `lurker_ichor`, `bog_pearl`, `rift_shard`, `sentinel_core`, `spore_dust`,
+> `troll_hide`, `troll_marrow`, `warlord_iron`, `warlord_emblem`) — closes
+> Phase 3 of the materials-icons work (`design/quick-specs/inventory-slot-
+> icons-2026-08-06.md` built the rendering mechanism against a real-but-
+> empty `icon` field on all 13, so this is content-only, no code changes
+> needed once each lands). **Do not use Herald Gold in the icon art itself**
+> even for the 6 Rare-tier materials — rarity is signaled separately by a
+> code-drawn frame (`RarityFrame`), not baked into the icon.
+
 > **Batch request, in progress (7/22)**: `assets/art-generation-requests-2026-08-03-tarot.md`
 > is a standalone, upload-ready prompt batch for the full classic 22 Major
 > Arcana (`tarot_screen.gd` currently has zero card art — text-only; only
