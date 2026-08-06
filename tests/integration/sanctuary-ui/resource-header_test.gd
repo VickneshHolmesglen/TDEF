@@ -1,12 +1,13 @@
 ## Integration tests for Story 004 (epic-10-sanctuary-ui, ADR-0001): Persistent
-## Resource Header -- read-only gold/materials display, updates on the real
+## Resource Header -- read-only materials display, updates on the real
 ## EventBus deltas, never focusable (GDD Core Rule 3, AC Group 3).
 ##
-## See resource_header.gd's own class doc for a real, flagged architectural
-## gap: no system in this project currently owns a queryable Sanctuary-context
-## gold/materials balance, so the GDD's "mount-time poll fallback" Edge Case
-## is not implementable as literally specified -- these tests cover the local-
-## accumulation behavior that IS implemented, not the unimplementable poll.
+## Gold deliberately NOT covered here (2026-08-06, design/quick-specs/
+## sanctuary-header-drop-gold-2026-08-06.md) -- see resource_header.gd's own
+## class doc for why a persistent Sanctuary gold display was never correct
+## (gold is mission-scoped ephemeral budget, ADR-0018, no carry-over
+## mechanic exists). Mission HUD's own gold display is unaffected and still
+## covered by tests/integration/mission-hud/combat-cluster-live-data_test.gd.
 extends GdUnitTestSuite
 
 var _runner: GdUnitSceneRunner
@@ -26,10 +27,8 @@ func before_test() -> void:
 # ---------------------------------------------------------------------------
 
 func test_header_value_identical_across_overview_and_room_states() -> void:
-	GEventBus.resources_changed.emit(120, &"test_source")
 	GEventBus.materials_earned.emit("wood", 5, "test_source")
 
-	assert_int(_header.get_gold()).is_equal(120)
 	assert_int(_header.get_material_quantity("wood")).is_equal(5)
 
 	_shell.set_active_state(&"ROOM_MENAGERIE")
@@ -37,7 +36,6 @@ func test_header_value_identical_across_overview_and_room_states() -> void:
 	# Header is chrome, held outside the OVERVIEW/RoomHost branch entirely
 	# (Story 001's own AC-4 guarantee) -- its own accumulated values are
 	# untouched by an active-state switch.
-	assert_int(_header.get_gold()).is_equal(120)
 	assert_int(_header.get_material_quantity("wood")).is_equal(5)
 
 
@@ -51,12 +49,6 @@ func test_sequential_events_apply_in_order() -> void:
 
 	GEventBus.materials_spent.emit("wood", 3, "test_destination")
 	assert_int(_header.get_material_quantity("wood")).is_equal(7)
-
-	GEventBus.resources_changed.emit(50, &"test_source")
-	assert_int(_header.get_gold()).is_equal(50)
-
-	GEventBus.resources_changed.emit(-20, &"test_source")
-	assert_int(_header.get_gold()).is_equal(30)
 
 
 # ---------------------------------------------------------------------------
@@ -72,29 +64,20 @@ func test_header_never_receives_focus() -> void:
 
 
 # ---------------------------------------------------------------------------
-# Gold coin icon (2026-08-06, design/quick-specs/gold-currency-icon-
-# 2026-08-06.md) -- closes the visual-placeholder gap for the single
-# highest-visibility currency. Materials stay plain text, unaffected.
+# Gold explicitly absent (2026-08-06) -- regression guard against gold
+# silently creeping back into this header.
 # ---------------------------------------------------------------------------
 
-func test_gold_icon_loads_the_real_texture() -> void:
-	assert_object(ResourceHeader.GOLD_ICON_TEXTURE).is_not_null()
+func test_gold_is_not_displayed_or_tracked() -> void:
+	GEventBus.resources_changed.emit(999, &"test_source")
+
+	assert_bool(_header.has_method("get_gold")).is_false()
+	assert_bool(_header.get_node_or_null("ResourceRow/GoldIcon") == null).is_true()
+	assert_bool(_header.get_node_or_null("ResourceRow/GoldLabel") == null).is_true()
 
 
-## Regression guard for the real bug caught live via Godot MCP before
-## shipping: HBoxContainer's default child vertical size flags stretched the
-## icon to fill the header's full height, squashing a 24x24 icon into an
-## unrecognizable smear. SIZE_SHRINK_CENTER keeps it at its real size.
-func test_gold_icon_does_not_stretch_to_fill_the_header_height() -> void:
-	var icon: TextureRect = _header.get_node("ResourceRow/GoldIcon")
-	assert_int(icon.size_flags_vertical).is_equal(Control.SIZE_SHRINK_CENTER)
-
-
-func test_gold_number_updates_independently_of_materials_text() -> void:
-	GEventBus.resources_changed.emit(88, &"test_source")
+func test_materials_text_updates_and_scale_pop_still_works() -> void:
 	GEventBus.materials_earned.emit("wood", 4, &"test_source")
 
-	var gold_label: Label = _header.get_node("ResourceRow/GoldLabel")
 	var materials_label: Label = _header.get_node("ResourceRow/MaterialsLabel")
-	assert_str(gold_label.text).is_equal("88")
 	assert_str(materials_label.text).contains("wood 4")

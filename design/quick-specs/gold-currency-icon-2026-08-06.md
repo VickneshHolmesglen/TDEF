@@ -1,5 +1,14 @@
 # Quick Design Spec: Gold Currency Icon
 
+> **Partially superseded, same day (2026-08-06)**: `design/quick-specs/
+> sanctuary-header-drop-gold-2026-08-06.md` removes gold from Sanctuary's
+> resource header entirely — gold turned out to be deliberately mission-
+> scoped/ephemeral (ADR-0018) with no Sanctuary-context meaning, a real
+> cross-GDD inconsistency found investigating this header's own flagged
+> balance-ownership gap. Everything below about **Mission HUD's** gold icon
+> is unaffected and still accurate; the Sanctuary-header sections are
+> historical only.
+
 **Type**: Tweak
 **System**: Mission HUD (`design/gdd/mission-hud.md`), Sanctuary UI (`design/gdd/sanctuary-ui.md`)
 **GDD Reference**: `design/art/art-bible.md` Section 4.2 (Herald Gold reservation), `mission-hud.md` AC-64, `sanctuary-ui.md` Core Rule 3
