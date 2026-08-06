@@ -1,0 +1,189 @@
+[gd_scene load_steps=9 format=3 uid="uid://missionscenegeneric"]
+
+[ext_resource type="Script" path="res://src/gameplay/missions/mission_scene.gd" id="1_ctrl"]
+[ext_resource type="Script" path="res://src/gameplay/missions/the_gap/grid_visual.gd" id="2_grid"]
+[ext_resource type="PackedScene" path="res://src/core/hero/Hero.tscn" id="3_hero"]
+[ext_resource type="Script" path="res://src/core/monster/monster_manager.gd" id="4_mm"]
+[ext_resource type="Script" path="res://src/core/tower/tower_system.gd" id="5_ts"]
+[ext_resource type="Script" path="res://src/core/damage_status/damage_status.gd" id="6_ds"]
+[ext_resource type="PackedScene" path="res://src/gameplay/ui/pause_menu/pause_menu.tscn" id="7_pause"]
+[ext_resource type="Script" path="res://src/presentation/mission_hud/mission_hud.gd" id="8_hud"]
+[ext_resource type="Script" path="res://src/ui/input_mode_tracker.gd" id="9_imt"]
+[ext_resource type="Texture2D" path="res://assets/art/ui/gold_coin.png" id="10_gold_icon"]
+
+[node name="MissionScene" type="Node2D"]
+script = ExtResource("1_ctrl")
+
+[node name="GridVisual" type="Node2D" parent="."]
+script = ExtResource("2_grid")
+
+[node name="MonsterManager" type="Node" parent="."]
+script = ExtResource("4_mm")
+
+[node name="TowerSystem" type="Node" parent="."]
+script = ExtResource("5_ts")
+
+[node name="DamageStatus" type="Node" parent="."]
+script = ExtResource("6_ds")
+
+[node name="Hero" parent="." instance=ExtResource("3_hero")]
+
+[node name="Camera2D" type="Camera2D" parent="."]
+enabled = true
+
+[node name="HUD" type="CanvasLayer" parent="."]
+script = ExtResource("8_hud")
+
+[node name="InputModeTracker" type="Node" parent="HUD"]
+script = ExtResource("9_imt")
+
+[node name="CombatCluster" type="Control" parent="HUD"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="UltimateButton" type="Button" parent="HUD/CombatCluster"]
+text = "Ultimate"
+
+[node name="Chrome" type="VBoxContainer" parent="HUD/CombatCluster"]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -260.0
+offset_right = -8.0
+offset_top = 8.0
+
+[node name="PhaseLabel" type="Label" parent="HUD/CombatCluster/Chrome"]
+layout_mode = 2
+text = "Phase: --"
+
+[node name="WaveLabel" type="Label" parent="HUD/CombatCluster/Chrome"]
+layout_mode = 2
+text = "Wave: --"
+
+[node name="PhaseTimerLabel" type="Label" parent="HUD/CombatCluster/Chrome"]
+layout_mode = 2
+text = "Timer: --"
+
+[node name="HeroHpLabel" type="Label" parent="HUD/CombatCluster/Chrome"]
+layout_mode = 2
+text = "Hero HP: --"
+
+[node name="BreachCounterLabel" type="Label" parent="HUD/CombatCluster/Chrome"]
+layout_mode = 2
+text = "Breaches: 0"
+
+[node name="BossBarLabel" type="Label" parent="HUD/CombatCluster/Chrome"]
+layout_mode = 2
+visible = false
+text = ""
+
+[node name="GoldRow" type="HBoxContainer" parent="HUD/CombatCluster/Chrome"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="GoldIcon" type="TextureRect" parent="HUD/CombatCluster/Chrome/GoldRow"]
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 2
+texture = ExtResource("10_gold_icon")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="GoldLabel" type="Label" parent="HUD/CombatCluster/Chrome/GoldRow"]
+layout_mode = 2
+size_flags_vertical = 4
+text = "0"
+
+[node name="MaterialsLabel" type="Label" parent="HUD/CombatCluster/Chrome"]
+layout_mode = 2
+text = ""
+
+[node name="SkillCooldownHost" type="HBoxContainer" parent="HUD/CombatCluster/Chrome"]
+layout_mode = 2
+
+[node name="Slot0" type="Label" parent="HUD/CombatCluster/Chrome/SkillCooldownHost"]
+layout_mode = 2
+text = "Skill 1: Ready"
+
+[node name="Slot1" type="Label" parent="HUD/CombatCluster/Chrome/SkillCooldownHost"]
+layout_mode = 2
+text = "Skill 2: Ready"
+
+[node name="Slot2" type="Label" parent="HUD/CombatCluster/Chrome/SkillCooldownHost"]
+layout_mode = 2
+text = "Skill 3: Ready"
+
+[node name="Slot3" type="Label" parent="HUD/CombatCluster/Chrome/SkillCooldownHost"]
+layout_mode = 2
+text = "Skill 4: Ready"
+
+[node name="TowerHpBarsHost" type="VBoxContainer" parent="HUD/CombatCluster/Chrome"]
+layout_mode = 2
+
+[node name="DamageNumberHost" type="Control" parent="HUD/CombatCluster"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+
+[node name="ToastHost" type="VBoxContainer" parent="HUD/CombatCluster"]
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = -120.0
+offset_bottom = -8.0
+
+[node name="PlanningClusterHost" type="Node" parent="HUD"]
+
+[node name="Banner" type="Control" parent="HUD"]
+layout_mode = 3
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -150.0
+offset_right = 150.0
+offset_top = 8.0
+offset_bottom = 40.0
+
+[node name="Label" type="Label" parent="HUD/Banner"]
+layout_mode = 2
+horizontal_alignment = 1
+text = ""
+
+[node name="BannerTimer" type="Timer" parent="HUD"]
+
+[node name="Panel" type="PanelContainer" parent="HUD"]
+offset_left = 8.0
+offset_top = 8.0
+offset_right = 320.0
+offset_bottom = 100.0
+
+[node name="VBox" type="VBoxContainer" parent="HUD/Panel"]
+
+[node name="PhaseLabel" type="Label" parent="HUD/Panel/VBox"]
+text = "Phase: (not launched)"
+
+[node name="WaveLabel" type="Label" parent="HUD/Panel/VBox"]
+text = "Wave: -"
+
+[node name="TimerLabel" type="Label" parent="HUD/Panel/VBox"]
+text = "Timer: --"
+
+[node name="HelpLabel" type="Label" parent="HUD/Panel/VBox"]
+text = "SPACE = ready-up | Left-click = place tower | K = debug-kill hero (QA only)"
+
+[node name="RetryButton" type="Button" parent="HUD"]
+visible = false
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+text = "Retry"
+
+[node name="PauseMenu" parent="." instance=ExtResource("7_pause")]
