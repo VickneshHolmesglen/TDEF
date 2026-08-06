@@ -126,17 +126,17 @@ func _build_slot_grid() -> void:
 		_slot_buttons.append(slot_button)
 
 
-## One slot widget: a Button plus two independent overlay children —
-## HoverHighlight (mouse-driven) and FocusRing (keyboard/gamepad-driven, gated
-## on InputModeTracker) — per ADR-0011's explicit "never merge into one
-## boolean" requirement.
+## One slot widget: a Button plus overlay children — HoverHighlight
+## (mouse-driven), FocusRing (keyboard/gamepad-driven, gated on
+## InputModeTracker, ADR-0011's explicit "never merge into one boolean"
+## requirement), RarityFrame, and ItemIcon/QuantityLabel (2026-08-06, design/
+## quick-specs/inventory-slot-icons-2026-08-06.md).
 func _create_slot_button(index: int) -> Button:
 	var button := Button.new()
 	button.name = "Slot%d" % index
 	button.custom_minimum_size = SLOT_SIZE
 	button.focus_mode = Control.FOCUS_ALL
 	button.clip_text = true
-	button.text = _slot_display_text(index)
 
 	var hover_highlight := ColorRect.new()
 	hover_highlight.name = "HoverHighlight"
@@ -145,6 +145,42 @@ func _create_slot_button(index: int) -> Button:
 	hover_highlight.visible = false
 	hover_highlight.set_anchors_preset(Control.PRESET_FULL_RECT)
 	button.add_child(hover_highlight)
+
+	var rarity_frame := RarityFrame.new()
+	rarity_frame.name = "RarityFrame"
+	rarity_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	rarity_frame.set_anchors_preset(Control.PRESET_FULL_RECT)
+	button.add_child(rarity_frame)
+
+	var item_icon := TextureRect.new()
+	item_icon.name = "ItemIcon"
+	item_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	item_icon.set_anchors_preset(Control.PRESET_FULL_RECT)
+	item_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	item_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	item_icon.visible = false
+	button.add_child(item_icon)
+
+	# Explicit small fixed-offset corner badge rather than relying on anchor
+	# presets alone -- PRESET_BOTTOM_RIGHT let the label's own natural
+	# (unclipped) text size overflow below the slot's real bounds, caught
+	# live via Godot MCP screenshot before shipping.
+	var quantity_label := Label.new()
+	quantity_label.name = "QuantityLabel"
+	quantity_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	quantity_label.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	quantity_label.offset_left = -28.0
+	quantity_label.offset_top = -18.0
+	quantity_label.offset_right = -2.0
+	quantity_label.offset_bottom = -2.0
+	quantity_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	quantity_label.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
+	quantity_label.clip_text = true
+	quantity_label.add_theme_font_size_override("font_size", 14)
+	quantity_label.visible = false
+	button.add_child(quantity_label)
+
+	_apply_slot_visual(button, rarity_frame, item_icon, quantity_label, index)
 
 	# Shared builder (extracted 2026-07-20 from Mission HUD's identical ~15-line
 	# StyleBoxFlat construction, originally duplicated here too — see
@@ -170,11 +206,37 @@ func _create_slot_button(index: int) -> Button:
 	return button
 
 
-func _slot_display_text(index: int) -> String:
+## Computed once at slot-build time, matching this screen's existing
+## one-time-at-mount rendering convention (the pre-existing text rendering
+## this replaces was never live-refreshed either — a known limitation this
+## spec doesn't fix or worsen). Empty slot: no text, no frame, no icon.
+## Occupied slot with a real icon: icon + corner quantity label, no text —
+## the icon carries the "what this is" meaning the text used to. Occupied
+## slot with no icon yet (every material today, until Phase 3 art lands):
+## falls back to the exact pre-existing "item_id xN" text, zero regression.
+## Rarity frame renders independently of the icon/text branch, whenever the
+## resolved definition has non-empty rarity data.
+func _apply_slot_visual(button: Button, rarity_frame: RarityFrame, item_icon: TextureRect, quantity_label: Label, index: int) -> void:
 	var contents: Dictionary = inventory.get_slot_contents(index)
 	if contents.is_empty():
-		return ""
-	return "%s x%d" % [contents["item_id"], contents["quantity"]]
+		button.text = ""
+		return
+
+	var item_id: String = contents["item_id"]
+	var quantity: int = contents["quantity"]
+	var definition: ItemDefinitionResource = GGameDataRegistry.get_item_definition(StringName(item_id))
+
+	if definition != null and definition.rarity != "":
+		rarity_frame.rarity = definition.rarity
+
+	if definition != null and definition.icon != null:
+		button.text = ""
+		item_icon.texture = definition.icon
+		item_icon.visible = true
+		quantity_label.text = "x%d" % quantity
+		quantity_label.visible = true
+	else:
+		button.text = "%s x%d" % [item_id, quantity]
 
 
 func _on_slot_mouse_entered(highlight: ColorRect) -> void:

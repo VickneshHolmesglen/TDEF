@@ -40,6 +40,12 @@ extends Resource
 ## "accessory" is the shared category for both accessory_a and accessory_b —
 ## no subtype restriction at Alpha (Story 008's own Implementation Notes).
 @export var equipment_category: String = ""  ## "" | weapon | armor | accessory | trinket
+## 2026-08-06 (design/quick-specs/inventory-slot-icons-2026-08-06.md): a
+## real, data-driven home for slot art. Null = no icon authored yet (the
+## slot falls back to its pre-existing text rendering, "mechanism real,
+## content placeholder") -- never hardcoded as a UI-side item_id->texture
+## lookup table, matching this project's own data-driven-values rule.
+@export var icon: Texture2D = null
 
 const VALID_ITEM_TYPES: Array[StringName] = [&"Equipment", &"TowerComponent", &"Material", &"CraftedGood"]
 const VALID_RARITIES: Array[String] = ["", "Common", "Uncommon", "Rare"]
