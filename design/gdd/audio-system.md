@@ -246,6 +246,7 @@ A volume settings surface (4 sliders — Music/SFX/Voice/UI, per Core Rule 1) ne
 
 - **AC-11** *(Logic)*: GIVEN a family's voice cap (e.g. Combat Impact, 12) is already at capacity, WHEN one more trigger fires, THEN the oldest-started voice on that family stops and the new trigger plays — the newest trigger is never silently dropped.
 - **AC-12** *(Logic)*: GIVEN 6 simultaneous SFX-bus voices are active, WHEN Formula F1 is evaluated with the Tuning Knobs' default `k=0.05`/`D_floor=0.3`, THEN each voice's ducked volume matches the formula's worked example (`0.60` for `V_base=0.8`).
+- **AC-12a** *(Integration, added 2026-08-06 — closes a real gap: Formula F3's envelope was implemented and unit-tested but its output was never applied to real audio)*: GIVEN a qualifying `SFX_TO_AMBIENT` or `UI_TO_MUSIC_AND_SFX` trigger fires, THEN the real `AudioServer` volume of every bus that relationship affects (Ambient; Music+SFX respectively) reflects the current envelope offset every frame — not just `VoiceLimiter`'s own computed state — and returns to the unducked baseline once the envelope fully releases. The persisted volume preference (`AudioSystem.get_bus_volume_percent()`) is never touched by this application step.
 
 ### Group 5 — Persistence (Core Rule 6)
 

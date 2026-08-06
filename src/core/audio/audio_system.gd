@@ -29,6 +29,30 @@ extends Node
 ## duplicates the graph. Matches this project's own "direct instantiation,
 ## no add_child()" unit-test convention (`AudioSystem.new()` never fires
 ## `_ready()`, so tests call `_configure_buses()` directly instead).
+##
+## Sidechain ducking application (2026-08-06, closes a real gap found while
+## investigating a user-reported issue -- Formula F3's attack/hold/release
+## envelope was fully implemented and unit-tested in `VoiceLimiter`, and
+## `AudioCueDispatcher._process()` was already ticking it every frame, but
+## nothing ever read the resulting `get_sidechain_db_offset()` and applied it
+## to real `AudioServer` output -- the math ran correctly in total isolation
+## from anything audible). `_process()` re-applies both relationships' current
+## offset to their affected bus(es) every frame via `set_bus_volume_db_direct()`
+## -- never `set_bus_volume_percent()`, same reasoning as `PauseDuckController`
+## (a duck must never be mistaken for, or overwrite, the player's persisted
+## volume preference). Deliberately does NOT own ticking the envelope itself
+## (that stays exactly where `AudioCueDispatcher`'s own doc comment and its
+## `test_dispatchers_own_process_actually_ticks_the_sidechain_envelope_over_a_
+## real_frame` test already establish it) -- a one-node-processing-order frame
+## of lag between tick and apply is imperceptible at these envelope timescales
+## (10-400ms) and not worth entangling two already-separately-owned concerns.
+## Known, undocumented minor edge case NOT solved here: `PauseDuckController`
+## snapshots pre-pause volume from `_bus_volumes` (the percent preference)
+## only, not any sidechain offset active at the instant of pause -- both
+## freeze correctly while paused (`PROCESS_MODE_INHERIT`), but a sidechain
+## duck active right as pause begins is not accounted for in the pre-pause
+## snapshot. Not in Formula F3's or Core Rule 7's Edge Cases, not invented
+## here -- flagged honestly rather than silently glossed over.
 
 ## The 4 player-facing buses (Core Rule 1) — order matches the GDD's own
 ## listing. Voice is reserved/silent today (no VO content exists or is
@@ -87,6 +111,32 @@ func _ready() -> void:
 	pause_duck.music_ambient = music_ambient
 	if pause_duck.get_parent() == null:
 		add_child(pause_duck)
+
+
+## Naturally stops running while `get_tree().paused` is true
+## (`PROCESS_MODE_INHERIT`, this project's standard pause convention) --
+## matches `AudioCueDispatcher._process()`'s own envelope-tick freeze, so the
+## two never fight over the same bus during pause.
+func _process(_delta: float) -> void:
+	_apply_sidechain_ducking()
+
+
+func _apply_sidechain_ducking() -> void:
+	if cue_dispatcher == null:
+		return
+	var vl: VoiceLimiter = cue_dispatcher.voice_limiter
+	var ui_offset_db: float = vl.get_sidechain_db_offset(VoiceLimiter.UI_TO_MUSIC_AND_SFX)
+	var sfx_offset_db: float = vl.get_sidechain_db_offset(VoiceLimiter.SFX_TO_AMBIENT)
+
+	set_bus_volume_db_direct(&"Music", linear_to_db(get_bus_volume_percent(&"Music") / 100.0) + ui_offset_db)
+	set_bus_volume_db_direct(&"SFX", linear_to_db(get_bus_volume_percent(&"SFX") / 100.0) + ui_offset_db)
+
+	# Ambient has no player-facing percent (class doc comment) -- its own
+	# resting dB is always 0.0 (unity gain), it inherits Music's volume
+	# purely through the bus send graph, not a matching dB value.
+	var ambient_index: int = AudioServer.get_bus_index(AMBIENT_BUS)
+	if ambient_index != -1:
+		AudioServer.set_bus_volume_db(ambient_index, sfx_offset_db)
 
 
 ## Builds the bus graph if it doesn't already exist, and applies the
