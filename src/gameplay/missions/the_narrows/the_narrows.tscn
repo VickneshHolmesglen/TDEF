@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://thenarrowsmissionscene"]
+
+[ext_resource type="PackedScene" path="res://src/gameplay/missions/mission_scene.tscn" id="1_scene"]
+
+[node name="TheNarrows" instance=ExtResource("1_scene")]
+mission_id = "the_narrows"
