@@ -2013,3 +2013,23 @@ Design and build a real Crafting UI screen (likely following the same pattern De
 ### Resolution
 - [ ] Not yet started.
 
+---
+
+## TD-mission-001 — MissionResource (objective text) has no display path anywhere
+
+**Logged**: 2026-08-07
+**Story**: Found during the same orphaned-content-data audit that logged `TD-tower-003`/`TD-craft-002` — same class of gap (valid content/mechanism with no consumer), this time the objective-text mechanism rather than a missing screen entirely.
+**Severity**: Low — no correctness defect; `the_gap.tres` (the one authored `MissionResource`) loads cleanly and passes `validate()`. Unlike the other two entries in this class, the screen this content would appear on (`mission_select_screen.gd`) already exists and is fully built — it just never grew a label for this specific field.
+**Area**: `src/core/mission_resource.gd`, `assets/data/missions/the_gap.tres` (the only one authored), `src/gameplay/ui/mission_select_screen/mission_select_screen.gd` (no objective/description `Label` node exists at all — only `display_name` via `MissionEntry` and `RecapLabel`'s modifier/difficulty summary)
+
+### Gap
+
+`MissionResource`/`objective_text` was built specifically to give players mission-descriptive text (`mission_resource.gd`'s own doc comment: "S5-02 — closes the missing-MissionResource gap flagged in `design/ux/pause-menu.md`"). `GameDataRegistry.get_mission_resource()` exists and is documented with a usage example in its own doc comment — but grepped every `.gd` file in `src/` and found zero real call sites, anywhere. Only `the_gap.tres` has one authored; `the_foothills`/`the_hollow`/`the_narrows` (added this session, `a6dc10c`/`1214e40`) don't, though that's moot while nothing reads any of them.
+
+### Recommended fix
+
+Add an objective/description `Label` to `mission_select_screen.gd` (or wherever the UX spec eventually places it) that reads `GameDataRegistry.get_mission_resource(mission_id).objective_text` for the currently-selected mission, then author the missing 3 `MissionResource` files to match. Smaller than `TD-tower-003`/`TD-craft-002` (a label addition to an existing screen, not a new screen), but still a design/UI decision (where it goes, how it's styled) rather than a pure content fix — logged here rather than actioned immediately.
+
+### Resolution
+- [ ] Not yet started.
+
