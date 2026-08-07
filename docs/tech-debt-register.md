@@ -2033,3 +2033,23 @@ Add an objective/description `Label` to `mission_select_screen.gd` (or wherever 
 ### Resolution
 - [ ] Not yet started.
 
+---
+
+## TD-tower-004 — Pre-Placement Perk mechanism has no gameplay effect, only an event/audio cue
+
+**Logged**: 2026-08-07
+**Story**: Found during a continued orphaned-content-data audit (same family as `TD-tower-003`/`TD-craft-002`/`TD-mission-001`) — this time `GameDataRegistry.get_perk_registry()`.
+**Severity**: Low — no correctness defect; `assets/data/towers/perk_registry.tres` loads cleanly with 4 real, valid perk definitions (`DAMAGE_BOOST`, `RANGE_BOOST`, `SPEED_BOOST`, `AURA_EXTEND`, each with a `label`/`description`/`archetype_restrictions`). This is a missing gameplay-effect application, not broken data.
+**Area**: `src/core/game_data_registry.gd` (`get_perk_registry()`), `assets/data/towers/perk_registry.tres`, `src/core/tower/foundation_component.gd` (`pre_placement_perk` field, always `""` on all 4 real blueprints), `src/core/tower/tower_system.gd` (emits `pre_placement_perk_activated`, never reads `pre_placement_perk` or the registry)
+
+### Gap
+
+`tower.md` Rule 12: "A tower placed during the `SCOUT` phase... receives a bonus perk defined in its component data." `TowerSystem.place_tower()` genuinely emits `GEventBus.pre_placement_perk_activated(tower_id, archetype)` on Scout-phase placement (`tower_system.gd:155`) — but the payload carries only `tower_id` and `archetype`, never a `perk_type`/`perk_power`. Grepped every `.gd` file in `src/` for `get_perk_registry()`: the only call site is the method's own doc-comment usage example, never a real call. All 4 authored tower blueprints have `pre_placement_perk = ""` (unassigned) today, so the field itself has never been exercised by content either. The only real consumer of the emitted event is `audio_cue_dispatcher.gd`, which plays a sound cue — the actual described mechanical effect (e.g. "Weapon DPS multiplied by (1.0 + perk_power)") is never computed or applied anywhere.
+
+### Recommended fix
+
+Wire `foundation_component.gd`'s `pre_placement_perk` field through to a real effect application at the moment `pre_placement_perk_activated` fires — read the perk_id, look it up via `GameDataRegistry.get_perk_registry()`, and apply its described stat modification to the placed tower (respecting `archetype_restrictions`). Then author real `pre_placement_perk` values onto at least one blueprint per eligible archetype so the mechanism has something to exercise. A design/implementation decision (what "perk_power" values are, where the stat mutation lives), not a pure content-authoring fix — logged here rather than actioned immediately, matching this family's own disposition.
+
+### Resolution
+- [ ] Not yet started.
+
