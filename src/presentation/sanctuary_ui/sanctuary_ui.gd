@@ -102,6 +102,7 @@ const RESOURCE_HEADER_WIDTH: float = 320.0
 @onready var _chrome: Control = $Chrome
 @onready var _tab_strip: TabStrip = $Chrome/TabStrip
 @onready var _resource_header: ResourceHeader = $Chrome/ResourceHeader
+@onready var _launch_mission_button: Button = $LaunchMissionButton
 
 ## AC-1: shell-owned, never reassigned/freed for this instance's lifetime —
 ## exposed read-only so tests can capture identity before/after a state
@@ -131,8 +132,10 @@ var _departing: bool = false
 
 func _ready() -> void:
 	_configure_chrome_layout()
+	_configure_launch_mission_button()
 	set_active_state(OVERVIEW_STATE)
 	_tab_strip.tab_target_selected.connect(_on_tab_target_selected)
+	_launch_mission_button.pressed.connect(confirm_launch_depart)
 	GEventBus.scene_transition_completed.connect(_on_scene_transition_completed)
 	GEventBus.sanctuary_structure_built.connect(_on_sanctuary_structure_built)
 
@@ -143,6 +146,8 @@ func _exit_tree() -> void:
 	# disconnected signal, and _exit_tree() legitimately still runs after
 	# confirm_launch_depart() already ran the latch this same instance's
 	# lifetime (e.g. the scene is freed sometime after departing).
+	if _launch_mission_button.pressed.is_connected(confirm_launch_depart):
+		_launch_mission_button.pressed.disconnect(confirm_launch_depart)
 	if _departing:
 		return
 	GEventBus.scene_transition_completed.disconnect(_on_scene_transition_completed)
@@ -205,6 +210,12 @@ func set_active_state(state: StringName) -> void:
 	var shows_diorama: bool = state == OVERVIEW_STATE or state == DEPARTING_STATE
 	_diorama.visible = shows_diorama
 	_room_host.visible = not shows_diorama
+	# Core Rule 8 / AC Group 8: Launch/Depart is OVERVIEW-only -- absent from
+	# every ROOM_* state (RoomHost visible) AND from DEPARTING itself ("no
+	# action is available to the player" while the transitional beat plays,
+	# per the States and Transitions table), not merely "wherever the
+	# diorama happens to be visible."
+	_launch_mission_button.visible = state == OVERVIEW_STATE
 
 	if not shows_diorama and ROOM_SCENES.has(state):
 		_room_host.mount_room(ROOM_SCENES[state], state)
@@ -424,6 +435,45 @@ func _configure_chrome_layout() -> void:
 		content.offset_top = HEADER_HEIGHT
 		content.offset_right = 0.0
 		content.offset_bottom = 0.0
+
+
+## Core Rule 8 / design/ux/sanctuary-ui.md Component Inventory: "Launch/Depart
+## button renders inside [the OVERVIEW content] zone." Bottom-right corner of
+## the content zone (past the diorama's own structures, out of the tab
+## strip's/resource header's way) — a fixed placement, not the diorama's own
+## structure-ring hand-off the UX spec flags as an open implementation-detail
+## choice (design/ux/sanctuary-ui.md line 287); this is the simpler of its
+## two explicitly-equally-valid options ("a direct hop from the tab strip").
+##
+## Real gap found and fixed 2026-08-08: confirm_launch_depart() (Story 009)
+## was fully implemented and tested, but no button/control anywhere in this
+## scene ever called it — Sanctuary UI had no way for a real player to reach
+## Mission Select at all. Story 009's own AC Group 8 already required this
+## button to exist and be OVERVIEW-only reachable; only the logic half had
+## actually been built.
+func _configure_launch_mission_button() -> void:
+	_launch_mission_button.anchor_left = 1.0
+	_launch_mission_button.anchor_top = 1.0
+	_launch_mission_button.anchor_right = 1.0
+	_launch_mission_button.anchor_bottom = 1.0
+	_launch_mission_button.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	_launch_mission_button.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_launch_mission_button.offset_left = -220.0
+	_launch_mission_button.offset_top = -64.0
+	_launch_mission_button.offset_right = -24.0
+	_launch_mission_button.offset_bottom = -24.0
+	_launch_mission_button.text = tr("SANCTUARY_LAUNCH_MISSION_BUTTON")
+	_launch_mission_button.add_theme_stylebox_override("normal", ShellChromeStyle.launch_button_stylebox())
+	_launch_mission_button.add_theme_stylebox_override("hover", ShellChromeStyle.launch_button_stylebox())
+	_launch_mission_button.add_theme_stylebox_override("pressed", ShellChromeStyle.launch_button_stylebox())
+	_launch_mission_button.add_theme_color_override("font_color", ShellChromeStyle.UI_PARCHMENT)
+	# Focus-reachable via Godot's default Tab-order traversal (the UX spec's
+	# own "implementation-detail choice, not fixed here" — design/ux/
+	# sanctuary-ui.md line 287 names two equally-valid options; this is the
+	# simpler one, deferring a custom focus-ring hand-off to a future pass).
+	# Cancel/ui_cancel from here does not exit (Core Rule 7 — OVERVIEW has no
+	# Cancel-driven exit at all).
+	_launch_mission_button.focus_mode = Control.FOCUS_ALL
 
 
 ## Story 002: routes TabStrip's direct-click/hotkey/`[`/`]`/LT-RT navigation.

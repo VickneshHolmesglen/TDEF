@@ -85,3 +85,23 @@ static func badge_stylebox() -> StyleBoxFlat:
 	box.bg_color = UI_WARNING_ORANGE
 	box.set_corner_radius_all(CHAMFER_PX)
 	return box
+
+
+## Launch/Depart button (design/ux/sanctuary-ui.md's Component Inventory:
+## "Primary action button... Fully-chamfered primary-action button per art
+## bible's UI shape family"). Sanctum Amber (#C8801A) -- the art bible's own
+## warm-action color, distinct from the tab strip's Accent Cyan (navigation)
+## and the badge's Warning Orange (notification) -- reserved here for this
+## screen's single most consequential action.
+const LAUNCH_AMBER: Color = Color(0xC8 / 255.0, 0x80 / 255.0, 0x1A / 255.0)  # #C8801A
+
+
+static func launch_button_stylebox() -> StyleBoxFlat:
+	var box := StyleBoxFlat.new()
+	box.bg_color = LAUNCH_AMBER
+	box.set_corner_radius_all(CHAMFER_PX)
+	box.content_margin_left = 24
+	box.content_margin_right = 24
+	box.content_margin_top = 12
+	box.content_margin_bottom = 12
+	return box

@@ -160,6 +160,48 @@ func test_scene_transition_completed_discarded_during_departing() -> void:
 	assert_that(_shell.get_active_state()).is_equal(&"DEPARTING")
 
 
+# ---------------------------------------------------------------------------
+# Regression guard for the real gap found and fixed 2026-08-08: confirm_
+# launch_depart() was fully implemented and covered by every test above, but
+# no button anywhere in the actual scene ever called it -- a real player had
+# no way to leave the Sanctuary at all. These tests exercise the real
+# LaunchMissionButton node, not just the method directly.
+# ---------------------------------------------------------------------------
+
+func test_launch_mission_button_exists_and_is_visible_in_overview() -> void:
+	var button: Button = _shell.get_node("LaunchMissionButton") as Button
+	assert_object(button).is_not_null()
+	assert_bool(button.visible).is_true()
+
+
+func test_launch_mission_button_is_hidden_in_a_room_state() -> void:
+	_shell.get_tab_strip_for_test().get_tab_button(1).pressed.emit()  # Inventory & Crafting
+	assert_that(_shell.get_active_state()).is_equal(&"ROOM_INVENTORY_CRAFTING")
+
+	var button: Button = _shell.get_node("LaunchMissionButton") as Button
+	assert_bool(button.visible).is_false()
+
+
+func test_launch_mission_button_is_hidden_during_departing() -> void:
+	_shell.confirm_launch_depart()
+	assert_that(_shell.get_active_state()).is_equal(&"DEPARTING")
+
+	var button: Button = _shell.get_node("LaunchMissionButton") as Button
+	assert_bool(button.visible).is_false()
+
+
+## The actual player-facing path: pressing the real button, not calling
+## confirm_launch_depart() directly like every other test in this file.
+func test_pressing_the_real_button_enters_departing() -> void:
+	var button: Button = _shell.get_node("LaunchMissionButton") as Button
+	assert_that(_shell.get_active_state()).is_equal(&"OVERVIEW")
+
+	button.pressed.emit()
+
+	assert_that(_shell.get_active_state()).is_equal(&"DEPARTING")
+	assert_bool(_shell.is_departing()).is_true()
+
+
 func test_disconnect_not_just_flag_closes_the_connect_deferred_race() -> void:
 	# Confirms the guarantee is structural (the subscription itself is gone),
 	# not merely a flag check inside the handler -- reconnecting a NEW
