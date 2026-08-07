@@ -1,5 +1,11 @@
 # Tarot Card Art — Generation Batch, 2026-08-03 (22 Major Arcana)
 
+> **The remaining 7 cards' prompts (The Lovers retry + the 6 never-generated
+> cards) have been pulled into a fresh standalone batch, ready to hand off:**
+> `assets/art-generation-requests-2026-08-07-tarot-remaining.md`. Use that
+> file for the actual handoff — this file stays as the historical record for
+> the 15 already-done cards.
+
 ## Progress — 15/22 processed, 0 need regeneration, 7 not yet generated
 
 **Done, sliced, and wired** (`assets/art/tarot/`): The Fool, The
