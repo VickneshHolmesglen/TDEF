@@ -5,7 +5,7 @@ meant to be handed over directly. Outcome notes get folded back into
 `design/art/asset-generation-prompts.md` once each piece lands, matching the
 project's established convention.
 
-## Progress — 0/15 generated
+## Progress — 15/15 generated, sliced, and wired (2026-08-07)
 
 Closes Phase 3 of the materials-icons work
 (`design/quick-specs/inventory-slot-icons-2026-08-06.md` built the rendering

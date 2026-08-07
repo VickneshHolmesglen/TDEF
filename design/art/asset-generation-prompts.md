@@ -4,7 +4,7 @@ Reference log of prompts used with external image generators for game art,
 kept so a prompt can be reused, tweaked, or regenerated later without
 reconstructing the art-bible constraints from scratch each time.
 
-> **Batch request, not yet started (0/15)**: `assets/art-generation-requests-2026-08-06-materials.md`
+> **Batch request, complete (15/15, 2026-08-07)**: `assets/art-generation-requests-2026-08-06-materials.md`
 > is a standalone, upload-ready prompt batch for the 15 real monster-drop
 > material icons (`goblin_hide`, `goblin_fang`, `iron_plating`, `brute_core`,
 > `lurker_ichor`, `bog_pearl`, `rift_shard`, `sentinel_core`, `spore_dust`,
