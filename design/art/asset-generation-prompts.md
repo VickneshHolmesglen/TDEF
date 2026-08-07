@@ -4,6 +4,17 @@ Reference log of prompts used with external image generators for game art,
 kept so a prompt can be reused, tweaked, or regenerated later without
 reconstructing the art-bible constraints from scratch each time.
 
+> **Batch request, not yet started (0/5)**: `assets/art-generation-requests-2026-08-07-terrain.md`
+> is a standalone, upload-ready prompt batch for the 5 Mission Field terrain
+> tiles (one per `Grid.CellType`: PLACEABLE/PATH/SPAWN/GOAL/BLOCKED),
+> replacing `grid_visual.gd`'s current flat-solid-color rendering — closes
+> the "never ship flat shapes" gap for the entire 16×12 mission grid, shared
+> across all 4 missions. **Different pipeline from every other batch in this
+> log**: opaque full-bleed tiles, no black-background cutout, no alpha-cut
+> step. **Do not use green or red anywhere** — both are semantically
+> reserved game-wide (heal-only / damage-only); SPAWN/GOAL are
+> differentiated by iconography (rift motif / gate motif) instead.
+
 > **Batch request, complete (15/15, 2026-08-07)**: `assets/art-generation-requests-2026-08-06-materials.md`
 > is a standalone, upload-ready prompt batch for the 15 real monster-drop
 > material icons (`goblin_hide`, `goblin_fang`, `iron_plating`, `brute_core`,
