@@ -1993,3 +1993,23 @@ Design and build a real Tower Placement selection UI (likely part of Mission HUD
 ### Resolution
 - [ ] Not yet started.
 
+---
+
+## TD-craft-002 — All 5 Crafting recipes are unreachable — no Crafting UI screen exists
+
+**Logged**: 2026-08-07
+**Story**: Found during the same orphaned-content-data audit that logged `TD-tower-003` — same class of gap (a real, valid, `GameDataRegistry`-loaded catalogue with no UI path to reach it), this time for the Crafting System rather than Tower Placement.
+**Severity**: Low — no correctness defect; all 5 recipes (including the 2 fixed in this session's own `89aa082` commit) load cleanly and pass `RecipeResource.validate()`. This is a missing *reachability path* (a UI), not broken data — already self-documented in the code, not a hidden discovery.
+**Area**: `src/core/crafting/crafting.gd` (core logic only, no companion screen exists — contrast with Defense Building/Equipment Forge/Menagerie, which each have a real `*_screen.gd`+`.tscn`), `src/presentation/sanctuary_ui/sanctuary_ui.gd` (`ROOM_SCENES`, `&"ROOM_INVENTORY_CRAFTING"` maps to `InventoryScreen.tscn`, not a Crafting screen)
+
+### Gap
+
+`sanctuary_ui.gd`'s own doc comment (line 71) already discloses this: Equipment Forge's screen built its own equipment-recipe list "instead of literally reusing a nonexistent Crafting panel." Confirmed via `find`/`grep`: no `crafting_screen.gd` exists anywhere in `src/`, and the Sanctuary tab labeled "Inventory & Crafting" (`ROOM_INVENTORY_CRAFTING`) actually loads `InventoryScreen.tscn` — a real screen, but not one that lists or lets the player craft any of the 5 `RecipeResource` entries in `assets/data/recipes/`. Every recipe (Tower Component and Crafted Good alike) is genuinely valid, loadable content with no in-game way to discover or craft it.
+
+### Recommended fix
+
+Design and build a real Crafting UI screen (likely following the same pattern Defense Building/Equipment Forge/Menagerie already established: a dedicated `*_screen.gd`/`.tscn` wired into `sanctuary_ui.gd`'s `ROOM_SCENES`) that lists `GameDataRegistry.get_all_recipes()` and lets the player craft against the Discovery Ledger/Craftability rules `crafting.gd` already implements. A UI build, not a content fix — logged here rather than actioned immediately, matching `TD-tower-003`'s own disposition.
+
+### Resolution
+- [ ] Not yet started.
+
