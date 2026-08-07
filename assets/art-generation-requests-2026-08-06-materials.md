@@ -1,11 +1,11 @@
-# Material Icon Art — Generation Batch, 2026-08-06 (13 icons)
+# Material Icon Art — Generation Batch, 2026-08-06 (15 icons)
 
 Standalone, upload-ready prompt batch for ChatGPT (or another image generator) —
 meant to be handed over directly. Outcome notes get folded back into
 `design/art/asset-generation-prompts.md` once each piece lands, matching the
 project's established convention.
 
-## Progress — 0/13 generated
+## Progress — 0/15 generated
 
 Closes Phase 3 of the materials-icons work
 (`design/quick-specs/inventory-slot-icons-2026-08-06.md` built the rendering
@@ -14,6 +14,13 @@ mechanism against a real-but-empty `icon` field on all 13
 dropped into `assets/source/items/`, each gets alpha-cut into
 `assets/art/items/` and wired with a one-line `icon = ExtResource(...)`
 addition to its own `.tres` file — no further code changes needed.
+
+**Items 14-15 added 2026-08-07** (`common_scrap`, `iron_ore`) — both were
+found orphaned (real `ItemDefinitionResource`s with no drop-table entry, no
+recipe output, unobtainable in any playthrough) during a content-integrity
+audit and wired into real drop tables (`skitterling_drops`/`goblin_drops`)
+in the same session. Same icon-less gap as the original 13, folded into this
+batch rather than starting a separate one.
 
 ## Critical constraints — read before generating anything
 
@@ -278,6 +285,43 @@ Color palette: Sanctum Amber (#C8801A) as the dominant worked-metal emblem
 tone, parchment cream (#F5EDCB) as raised-relief highlights on the carved
 detail, muted fieldstone grey (#7E8590) in the recessed engraved lines
 only. No Herald Gold, no purple, no green, no cyan.
+
+Style: hand-painted miniature cabinet-diorama aesthetic, painterly pixel-art
+texture with visible brushwork, matching this project's existing UI icon set.
+```
+
+## 14. Common Scrap (Common — `common_scrap.tres`)
+
+```
+Single object icon: a small jumbled pile of miscellaneous scrap metal
+fragments (a bent nail, a broken buckle, a torn strip of sheet metal),
+centered on a flat pure black (#000000) background for easy cutout. No
+text, no numerals, no border, no frame. Compact, simple silhouette readable
+at small size.
+
+Color palette: muted fieldstone grey (#7E8590) as the dominant scrap-metal
+tone, Sanctum Amber (#C8801A) as a warm rust/tarnish tint on one or two
+pieces, parchment cream (#F5EDCB) as a small specular highlight only. No
+Herald Gold, no purple, no green, no cyan.
+
+Style: hand-painted miniature cabinet-diorama aesthetic, painterly pixel-art
+texture with visible brushwork, matching this project's existing UI icon set.
+```
+
+## 15. Iron Ore (Uncommon — `iron_ore.tres`)
+
+```
+Single object icon: one rough, unrefined chunk of raw iron ore, still
+embedded in stone matrix, distinct from a worked/forged metal object —
+centered on a flat pure black (#000000) background for easy cutout. No
+text, no numerals, no border, no frame. Compact, simple silhouette readable
+at small size.
+
+Color palette: muted fieldstone grey (#7E8590) as the dominant raw-stone
+tone, Sanctum Amber (#C8801A) as a warm rusty-metallic vein/fleck running
+through the rock, parchment cream (#F5EDCB) as a small specular highlight on
+the ore's exposed metal facet only. No Herald Gold, no purple, no green, no
+cyan.
 
 Style: hand-painted miniature cabinet-diorama aesthetic, painterly pixel-art
 texture with visible brushwork, matching this project's existing UI icon set.
