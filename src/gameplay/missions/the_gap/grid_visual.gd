@@ -7,7 +7,8 @@ extends Node2D
 ## verification pass), which is an avoidable fragility for a single-consumer
 ## script. Not needed for correctness either way.
 
-## Purely visual grid rendering for "The Gap" mission scene (S4-09).
+## Purely visual grid rendering, shared by every mission scene that owns a
+## $GridVisual node (the_gap.tscn, MissionScene.tscn).
 ##
 ## Deliberately NOT a TileMap/TileSet node. docs/engine-reference/godot/VERSION.md
 ## flags Godot 4.4-4.6 TileMap/TileSet API changes as a knowledge-gap risk for
@@ -28,30 +29,39 @@ extends Node2D
 ## launch) and displaying it via a single draw_texture() call. This is a CPU
 ## Image write, not a GPU draw call, so cell count no longer costs anything
 ## per frame — total cost drops from 384 draw calls to 1, regardless of grid
-## size. The Image-based border blend approximates the original alpha=0.25
-## black outline by pre-blending it into solid border pixel colors (Image
-## pixels are opaque final values, not alpha-composited at render time the
-## way _draw()'s draw_rect() was).
+## size.
 ##
-## Populated once from the same GridConfig the_gap.gd builds and passes to
-## GGrid.initialize() — this script never reads GGrid itself, so there is no
-## risk of this visual layer silently drifting from, or being mistaken for,
-## the authoritative Grid data store.
+## Populated once from the same GridConfig the mission scene builds/loads and
+## passes to GGrid.initialize() — this script never reads GGrid itself, so
+## there is no risk of this visual layer silently drifting from, or being
+## mistaken for, the authoritative Grid data store.
 
 var cols: int = 0
 var rows: int = 0
 var cell_size: float = 64.0
 var cells: Dictionary = {}  # Vector2i -> Grid.CellType (int)
 
-const COLOR_BY_TYPE := {
-	0: Color(0.55, 0.55, 0.55),   # PLACEABLE
-	1: Color(0.75, 0.65, 0.35),   # PATH
-	2: Color(0.2, 0.8, 0.2),      # SPAWN
-	3: Color(0.9, 0.2, 0.2),      # GOAL
-	4: Color(0.15, 0.15, 0.15),   # BLOCKED
+## Real terrain art (2026-08-08, design/art/asset-generation-prompts.md's
+## terrain batch) — replaces the original flat-solid-color placeholder fill.
+## One shared tile per Grid.CellType, reused across every mission (per user's
+## own scope decision — not per-mission bespoke terrain). Source images are
+## native ChatGPT-generation resolution (1254x1254) — resized once per
+## configure() call to cell_px, never per-cell, per this project's own
+## "always scale new art explicitly" lesson (design/art/asset-generation-
+## prompts.md's own recurring-bug-class note).
+const TEXTURE_BY_TYPE := {
+	0: preload("res://assets/art/terrain/placeable.png"),  # PLACEABLE
+	1: preload("res://assets/art/terrain/path.png"),       # PATH
+	2: preload("res://assets/art/terrain/spawn.png"),      # SPAWN
+	3: preload("res://assets/art/terrain/goal.png"),       # GOAL
+	4: preload("res://assets/art/terrain/blocked.png"),    # BLOCKED
 }
 
-const OUTLINE_ALPHA: float = 0.25  ## matches the original draw_rect() outline alpha
+## Cell-boundary outline width, kept from the flat-color-fill era — real
+## terrain texture is visually busier than a flat fill, so a visible seam
+## still matters for tower-placement readability (art bible 3.2's
+## figure/ground discipline: "the terrain is too tall/busy" test).
+const OUTLINE_COLOR: Color = Color(0.0, 0.0, 0.0)
 const OUTLINE_WIDTH_PX: int = 1
 
 var _texture: ImageTexture = null
@@ -66,30 +76,42 @@ func configure(p_cols: int, p_rows: int, p_cell_size: float, p_cells: Dictionary
 	queue_redraw()
 
 
-## Renders the full grid into a single Image once. Border pixels use a
-## pre-blended color (base color lerped toward black by OUTLINE_ALPHA) to
-## visually approximate the original per-cell alpha-composited outline,
-## since Image.fill_rect() writes opaque final pixel values rather than
-## alpha-compositing against whatever's beneath it.
+## Renders the full grid into a single Image once (TD-render-001's own
+## established "one Image, not N draw_rect() calls" pattern — unchanged by
+## the switch from flat color to real texture). Each of the 5 terrain
+## textures is resized to cell_px exactly once up front, then blitted per
+## cell — resizing per-cell (192 times on a 16x12 grid) would repeat the
+## same expensive resize for no benefit, since every cell of a given type
+## uses the identical scaled-down source.
 func _build_grid_texture() -> ImageTexture:
 	var px_width: int = int(cols * cell_size)
 	var px_height: int = int(rows * cell_size)
-	var image := Image.create(px_width, px_height, false, Image.FORMAT_RGBA8)
+	var image := Image.create(px_width, px_height, false, Image.FORMAT_RGB8)
 	var cell_px: int = int(cell_size)
+
+	var scaled_by_type: Dictionary = {}
+	for cell_type: int in TEXTURE_BY_TYPE:
+		var source_image: Image = (TEXTURE_BY_TYPE[cell_type] as Texture2D).get_image()
+		source_image = source_image.duplicate()
+		source_image.resize(cell_px, cell_px, Image.INTERPOLATE_LANCZOS)
+		if source_image.get_format() != Image.FORMAT_RGB8:
+			source_image.convert(Image.FORMAT_RGB8)
+		scaled_by_type[cell_type] = source_image
+
 	for row: int in range(rows):
 		for col: int in range(cols):
 			var cell := Vector2i(col, row)
 			var cell_type: int = cells.get(cell, 4)  # BLOCKED default, matches Grid.get_cell_type()
-			var color: Color = COLOR_BY_TYPE.get(cell_type, Color.MAGENTA)
-			var outline_color: Color = color.lerp(Color.BLACK, OUTLINE_ALPHA)
+			var tile: Image = scaled_by_type.get(cell_type, scaled_by_type[4])
 			var origin_x: int = col * cell_px
 			var origin_y: int = row * cell_px
-			image.fill_rect(Rect2i(origin_x, origin_y, cell_px, cell_px), color)
-			# Four thin border strips approximate the original 1px outline.
-			image.fill_rect(Rect2i(origin_x, origin_y, cell_px, OUTLINE_WIDTH_PX), outline_color)
-			image.fill_rect(Rect2i(origin_x, origin_y + cell_px - OUTLINE_WIDTH_PX, cell_px, OUTLINE_WIDTH_PX), outline_color)
-			image.fill_rect(Rect2i(origin_x, origin_y, OUTLINE_WIDTH_PX, cell_px), outline_color)
-			image.fill_rect(Rect2i(origin_x + cell_px - OUTLINE_WIDTH_PX, origin_y, OUTLINE_WIDTH_PX, cell_px), outline_color)
+			image.blit_rect(tile, Rect2i(0, 0, cell_px, cell_px), Vector2i(origin_x, origin_y))
+			# Thin border strips keep cell boundaries readable against busy
+			# real terrain texture — art bible 3.2's figure/ground discipline.
+			image.fill_rect(Rect2i(origin_x, origin_y, cell_px, OUTLINE_WIDTH_PX), OUTLINE_COLOR)
+			image.fill_rect(Rect2i(origin_x, origin_y + cell_px - OUTLINE_WIDTH_PX, cell_px, OUTLINE_WIDTH_PX), OUTLINE_COLOR)
+			image.fill_rect(Rect2i(origin_x, origin_y, OUTLINE_WIDTH_PX, cell_px), OUTLINE_COLOR)
+			image.fill_rect(Rect2i(origin_x + cell_px - OUTLINE_WIDTH_PX, origin_y, OUTLINE_WIDTH_PX, cell_px), OUTLINE_COLOR)
 	return ImageTexture.create_from_image(image)
 
 
