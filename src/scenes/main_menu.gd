@@ -356,7 +356,7 @@ func _on_continue_pressed() -> void:
 func _on_new_game_pressed() -> void:
 	var slot: int = _first_empty_slot()
 	if slot != -1:
-		GSavePersistence.set_active_slot(slot)
+		GSavePersistence.start_new_game(slot)
 		GSceneManager.transition_to_sanctuary()
 		return
 	_pending_overwrite_slot = 0
@@ -367,7 +367,7 @@ func _on_new_game_pressed() -> void:
 
 
 func _on_overwrite_yes_pressed() -> void:
-	GSavePersistence.set_active_slot(_pending_overwrite_slot)
+	GSavePersistence.start_new_game(_pending_overwrite_slot)
 	GSceneManager.transition_to_sanctuary()
 
 

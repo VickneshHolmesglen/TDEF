@@ -146,6 +146,24 @@ func set_active_slot(slot: int) -> void:
 	_active_slot = slot
 
 
+## Real bug found and fixed 2026-08-08: Main Menu's New Game path called only
+## set_active_slot() then transitioned straight to Sanctuary, never calling
+## load_slot() (there's nothing to load — the slot is empty) and therefore
+## never emitting sanctuary_state_restored. Every system gated on that signal
+## (most visibly MissionSelect._restore_completed, which can_launch() checks
+## before every real mission launch) stayed permanently false for the rest of
+## the session — a New Game player could open Mission Select, pick a mission,
+## press Confirm Launch, and nothing would happen, with no error and no
+## feedback. Mirrors _recover_from_corrupt_save()'s already-tested "fresh
+## Sanctuary" pattern (reset every registered system to its own defaults,
+## then emit sanctuary_state_restored) instead of inventing a new one.
+func start_new_game(slot: int) -> void:
+	_active_slot = slot
+	for entry in _registered_systems:
+		entry.ref.reset_to_defaults()
+	_emit_state_restored(slot)
+
+
 ## Serialise all registered systems and write slot to disk atomically.
 ## Emits GEventBus.game_saved on success. Rule 5: a successful save is the
 ## "normal flow" completing, so any pending checkpoint for this slot (a

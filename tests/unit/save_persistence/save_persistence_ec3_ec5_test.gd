@@ -236,3 +236,49 @@ func test_save_slot_deletes_a_pending_checkpoint_on_success() -> void:
 func test_save_slot_with_no_checkpoint_does_not_error() -> void:
 	assert_bool(_sp.save_slot(TEST_SLOT)).is_true()
 	assert_bool(FileAccess.file_exists(TEST_CHECKPOINT)).is_false()
+
+
+# ---------------------------------------------------------------------------
+# start_new_game() — regression guard for the real bug found and fixed
+# 2026-08-08: Main Menu's New Game path called only set_active_slot(), never
+# load_slot() (nothing to load on an empty slot) and therefore never emitted
+# sanctuary_state_restored. Every system gated on that signal (most visibly
+# MissionSelect._restore_completed, which can_launch() checks before every
+# real mission launch) stayed permanently false for a New Game session — a
+# real player could reach Mission Select, pick a mission, press Confirm
+# Launch, and nothing would happen, with no error and no feedback. Mirrors
+# EC-5's already-tested "fresh Sanctuary" pattern above.
+# ---------------------------------------------------------------------------
+
+func test_start_new_game_sets_active_slot() -> void:
+	_sp.start_new_game(TEST_SLOT)
+	assert_int(_sp._active_slot).is_equal(TEST_SLOT)
+
+
+func test_start_new_game_resets_every_registered_system_to_defaults() -> void:
+	var system_a := _TrackingSystem.new()
+	var system_b := _TrackingSystem.new()
+	_sp.register(system_a, 10)
+	_sp.register(system_b, 20)
+
+	_sp.start_new_game(TEST_SLOT)
+
+	assert_bool(system_a.reset_called).is_true()
+	assert_bool(system_b.reset_called).is_true()
+
+
+func test_start_new_game_emits_sanctuary_state_restored() -> void:
+	var received: Array = []
+	var handler := func(slot: int) -> void: received.append(slot)
+	GEventBus.sanctuary_state_restored.connect(handler)
+
+	_sp.start_new_game(TEST_SLOT)
+	await get_tree().process_frame
+
+	assert_array(received).contains([TEST_SLOT])
+	GEventBus.sanctuary_state_restored.disconnect(handler)
+
+
+func test_start_new_game_does_not_write_any_file() -> void:
+	_sp.start_new_game(TEST_SLOT)
+	assert_bool(FileAccess.file_exists(TEST_DAT)).is_false()

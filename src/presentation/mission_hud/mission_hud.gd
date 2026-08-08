@@ -157,6 +157,26 @@ func _ready() -> void:
 	_retry_button.focus_exited.connect(_update_retry_focus_ring)
 	_input_mode_tracker.input_mode_changed.connect(_update_retry_focus_ring)
 
+	# Real bug found and fixed 2026-08-08: HUD is a CanvasLayer, which does
+	# NOT inherit visibility from its Node2D parent (GameplayRoot) -- setting
+	# GameplayRoot.visible = false (mission_scene.gd, before a mission is
+	# launched) does nothing to CombatCluster, a full-rect Control with the
+	# Control default mouse_filter (STOP). Left at its default `visible =
+	# true`, CombatCluster silently intercepted every click across the whole
+	# screen from the moment this scene mounted -- including clicks meant for
+	# MissionSelectScreen's mission-list and Launch buttons underneath,
+	# rendered earlier in the same tree but with no way to receive input
+	# through this always-on full-rect blocker. A real player reaching
+	# Mission Select could see the mission list but could never actually
+	# select or launch anything. Hidden here (an invisible Control receives
+	# no input at all, closing the click-block, not just the visual clutter)
+	# and shown again on mission_launched -- the same visible-toggle
+	# mechanism this class already uses for DEFEAT/retry (see _combat_
+	# cluster.visible at line ~250/314), just applied to the pre-launch state
+	# too.
+	_combat_cluster.visible = false
+	GEventBus.mission_launched.connect(_on_mission_launched_show_combat_cluster)
+
 
 func _exit_tree() -> void:
 	GEventBus.mission_phase_changed.disconnect(_on_mission_phase_changed)
@@ -185,6 +205,7 @@ func _exit_tree() -> void:
 	GEventBus.item_removed.disconnect(_on_item_removed)
 	GEventBus.item_pickup_rejected.disconnect(_on_item_pickup_rejected)
 	GEventBus.skill_unlocked.disconnect(_on_skill_unlocked)
+	GEventBus.mission_launched.disconnect(_on_mission_launched_show_combat_cluster)
 
 
 ## AC-13: once per spawn cell, before any tower is placed. Caches the result
@@ -201,6 +222,14 @@ func _on_templates_ready(_spawn_count: int, _build_duration_ms: float) -> void:
 
 func _on_planning_cluster_route_updated(routes: Array) -> void:
 	_last_known_routes = routes
+
+
+## See _ready()'s own comment for the full gap this closes -- CombatCluster
+## must become visible (and therefore able to receive input again) once a
+## mission genuinely launches, not stay permanently hidden after blocking
+## Mission Select's pre-launch clicks.
+func _on_mission_launched_show_combat_cluster(_mission_id: String, _modifiers: PackedStringArray, _difficulty_tier: int) -> void:
+	_combat_cluster.visible = true
 
 
 ## AC-2/AC-3: mount on IDLE->SCOUT (reset + become visible), unmount on entry
