@@ -54,20 +54,45 @@ func _ready() -> void:
 	_gameplay_root.set_process(false)
 	_gameplay_root.set_physics_process(false)
 
+	GEventBus.grid_initialized.connect(_on_grid_initialized)
 	GEventBus.mission_launched.connect(_on_mission_launched)
 	GEventBus.monster_spawned.connect(_on_monster_spawned)
 
 
 func _exit_tree() -> void:
+	GEventBus.grid_initialized.disconnect(_on_grid_initialized)
 	GEventBus.mission_launched.disconnect(_on_mission_launched)
 	GEventBus.monster_spawned.disconnect(_on_monster_spawned)
 
 
+## Real bug fix, 2026-08-09 — see grid_initialized's own doc comment
+## (event_bus.gd) for the full ordering race this closes: camera position/
+## zoom and GridVisual.configure() used to run inside _on_mission_launched
+## below, but mission_launched's subscriber order always ran WaveManager's
+## synchronous templates_ready -> route-render cascade BEFORE this scene's
+## own handler, so every Planning Cluster screen-space overlay (route line,
+## blocked-cell markers, boss-lane telegraph) computed its position against
+## a camera still at its Node defaults. grid_initialized fires before
+## mission_launched at every call site, closing the gap structurally.
+func _on_grid_initialized(cols: int, rows: int, cell_size: float) -> void:
+	if _grid_visual.has_method(&"configure"):
+		var cells: Dictionary = {}
+		for row: int in range(rows):
+			for col: int in range(cols):
+				var cell := Vector2i(col, row)
+				cells[cell] = GGrid.get_cell_type(cell)
+		_grid_visual.call(&"configure", cols, rows, cell_size, cells)
+	else:
+		push_error("[MissionScene] GridVisual node has no configure() method — grid will not render.")
+
+	_camera.position = Vector2(cols * cell_size / 2.0, rows * cell_size / 2.0)
+	_camera.zoom = Vector2(0.85, 0.85)
+
+
 ## Swaps from the Mission Select screen to the live gameplay assembly.
-## Grid is already initialized by MissionSelect.confirm_launch()/
-## retry_current_mission() by the time this fires — this handler only
-## positions the camera/hero against Grid's now-live state and activates
-## the gameplay subtree, mirroring the_gap.gd's own _ready() assembly.
+## Grid/camera/GridVisual are already set up by _on_grid_initialized() above
+## by the time this fires — this handler only reveals the gameplay subtree
+## and positions the Hero, mirroring the_gap.gd's own _ready() assembly.
 func _on_mission_launched(_mission_id: String, _modifiers: PackedStringArray, _difficulty_tier: int) -> void:
 	if _mission_select_screen.has_method(&"disconnect_own_subscriptions"):
 		_mission_select_screen.disconnect_own_subscriptions()
@@ -77,19 +102,6 @@ func _on_mission_launched(_mission_id: String, _modifiers: PackedStringArray, _d
 	_gameplay_root.visible = true
 	_gameplay_root.set_process(true)
 	_gameplay_root.set_physics_process(true)
-
-	if _grid_visual.has_method(&"configure"):
-		var cells: Dictionary = {}
-		for row: int in range(GGrid.get_grid_rows()):
-			for col: int in range(GGrid.get_grid_cols()):
-				var cell := Vector2i(col, row)
-				cells[cell] = GGrid.get_cell_type(cell)
-		_grid_visual.call(&"configure", GGrid.get_grid_cols(), GGrid.get_grid_rows(), CELL_SIZE, cells)
-	else:
-		push_error("[MissionScene] GridVisual node has no configure() method — grid will not render.")
-
-	_camera.position = Vector2(GGrid.get_grid_cols() * CELL_SIZE / 2.0, GGrid.get_grid_rows() * CELL_SIZE / 2.0)
-	_camera.zoom = Vector2(0.85, 0.85)
 
 	var spawn_cells: Array[Vector2i] = GGrid.get_spawn_cells()
 	_hero.global_position = GGrid.cell_to_world(spawn_cells[0]) if not spawn_cells.is_empty() else Vector2.ZERO

@@ -38,6 +38,17 @@ signal route_updated(routes: Array)
 ## Holds one marker per blocked cell from the most recent tower_placement_blocked (Story 004, Rule 12).
 @onready var _blocked_cell_host: Node2D = $BlockedCellHost
 ## Holds the single boss-lane telegraph marker, if any (Story 006, Rule 11c).
+## PC-1's own spec (mission-hud.md line 262): Scout Blue (Art Bible 2.2,
+## #2D5F8A) at ~40-55% opacity, static, no glow/pulse. render_route() never
+## applied this -- the Line2D was left at Godot's stock default_color (opaque
+## white), which read fine against the old flat-color grid fill but stood out
+## as an unstyled placeholder once real terrain art landed (2026-08-08's
+## terrain pass). Fixed here; the GDD's other PC-1 requirements (dashed/
+## painted stroke, directional chevrons at turn points) are still open --
+## logged as TD-hud-002, a separate rendering-technique task, not bundled
+## into this color/opacity fix.
+const ROUTE_PREVIEW_COLOR: Color = Color(0x2D / 255.0, 0x5F / 255.0, 0x8A / 255.0, 0.48)
+const ROUTE_PREVIEW_WIDTH: float = 3.0
 @onready var _boss_telegraph_host: Node2D = $BossTelegraphHost
 ## Holds the wave-composition preview lines (Story 007, Rules 11f-11i).
 @onready var _composition_preview_host: VBoxContainer = $CompositionPreviewHost
@@ -51,6 +62,13 @@ const TIER_NAMES: Array[String] = ["STANDARD", "ELITE", "BOSS"]
 ## resolution, registered in design/registry/entities.yaml) — not a local
 ## guess. Used only to size the blocked-cell highlight markers.
 const CELL_SIZE_PX: float = 64.0
+
+## Shared world->screen conversion for this file's 3 screen-space overlays
+## (route-preview Line2D, blocked-cell markers, boss-lane telegraph marker).
+## See render_route()'s own comment for the real timing bug found 2026-08-09
+## in how this gets called on the very first render.
+func _world_to_screen(world_pos: Vector2) -> Vector2:
+	return get_viewport().get_canvas_transform() * world_pos
 
 ## Test hook (AC-9/AC-12): true once _exit_tree() has actually run, proving
 ## the synchronous remove_child()-then-queue_free() teardown sequence
@@ -155,7 +173,7 @@ func _on_tower_placement_blocked(blocked_cells: Array, primary_blocking_cell: Ve
 		marker.color = Color(1.0, 0.85, 0.0, 0.9) if is_primary else Color(1.0, 0.2, 0.2, 0.5)
 		marker.size = Vector2(CELL_SIZE_PX, CELL_SIZE_PX)
 		var world_pos: Vector2 = GGrid.cell_to_world(cell) - Vector2(CELL_SIZE_PX, CELL_SIZE_PX) * 0.5
-		marker.position = get_viewport().get_canvas_transform() * world_pos
+		marker.position = _world_to_screen(world_pos)
 		marker.set_meta("cell", cell)
 		marker.set_meta("is_primary", is_primary)
 		_blocked_cell_host.add_child(marker)
@@ -175,7 +193,7 @@ func set_boss_telegraph_cell(cell: Vector2i) -> void:
 	marker.color = Color(0.494, 0.180, 0.722, 0.7)  # Boss Purple (#7E2EB8), art-bible reference
 	marker.size = Vector2(CELL_SIZE_PX, CELL_SIZE_PX)
 	var world_pos: Vector2 = GGrid.cell_to_world(cell)
-	marker.position = get_viewport().get_canvas_transform() * world_pos - marker.size * 0.5
+	marker.position = _world_to_screen(world_pos) - marker.size * 0.5
 	marker.set_meta("cell", cell)
 	_boss_telegraph_host.add_child(marker)
 
@@ -211,9 +229,11 @@ func render_route(routes: Array) -> void:
 		child.queue_free()
 	for route: Array in routes:
 		var line := Line2D.new()
+		line.default_color = ROUTE_PREVIEW_COLOR
+		line.width = ROUTE_PREVIEW_WIDTH
 		for cell: Vector2i in route:
 			var world_pos: Vector2 = GGrid.cell_to_world(cell)
-			line.add_point(get_viewport().get_canvas_transform() * world_pos)
+			line.add_point(_world_to_screen(world_pos))
 		_route_overlay_host.add_child(line)
 
 

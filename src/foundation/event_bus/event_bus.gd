@@ -296,6 +296,34 @@ signal boss_tower_attack_attempted(
 signal monster_cell_entered(entity_id: int, grid_cell: Vector2i, path_step_index: int)
 
 # =============================================================================
+# Grid
+# =============================================================================
+
+## Grid.initialize() finished populating cell types for a new mission. Fires
+## synchronously, before mission_launched (every mission_launched call site —
+## MissionSelect.confirm_launch()/retry_current_mission(), the_gap.gd's debug
+## auto-launch — calls GGrid.initialize() first). Added 2026-08-09: real bug
+## fix. mission_scene.gd's own camera positioning previously ran inside its
+## mission_launched handler, but mission_launched's subscriber order is fixed
+## by connection order — WaveManager (an autoload, connected during boot)
+## is always connected before any scene-instanced MissionScene, so its
+## synchronous mission_launched -> mission_phase_changed -> templates_ready
+## -> Mission HUD route-render cascade always completed BEFORE MissionScene's
+## own camera-positioning handler ran. Every route-preview Line2D and
+## blocked-cell/boss-telegraph marker (Planning Cluster's 3 screen-space
+## overlays, all converting world position via the active Camera2D's
+## get_viewport().get_canvas_transform()) was computed against a camera still
+## sitting at its Node default (position (0,0), zoom (1,1)) — landing every
+## marker hundreds of pixels off, confirmed live as a route line running
+## diagonally off-screen instead of tracing the visible grid path. Subscribing
+## camera setup to this signal instead (fired before the racy cascade even
+## starts, not merely "early" within it) closes the ordering gap structurally
+## rather than by connection-order luck.
+## Key subscribers: MissionScene (camera position/zoom, GridVisual.configure()).
+signal grid_initialized(cols: int, rows: int, cell_size: float)
+
+
+# =============================================================================
 # Pathfinding System
 # =============================================================================
 

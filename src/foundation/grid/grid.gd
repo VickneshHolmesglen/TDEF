@@ -48,6 +48,7 @@ func initialize(config: GridConfig) -> void:
 		_cell_types[cell] = config.cells[cell]
 	_occupancy.clear()
 	_state = GridState.ACTIVE_WRITABLE
+	GEventBus.grid_initialized.emit(_grid_cols, _grid_rows, _cell_size)
 
 
 # ---------------------------------------------------------------------------
