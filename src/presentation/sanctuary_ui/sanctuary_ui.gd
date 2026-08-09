@@ -402,9 +402,17 @@ func is_departing_to_loadout() -> bool:
 ## Computes every chrome/content region from TAB_STRIP_WIDTH/HEADER_HEIGHT —
 ## the one place this story's rect math lives, so Story 002/004 only need to
 ## update the two constants above, not re-derive anchor/offset math per node.
-## Tab strip is a fixed-width full-height left column; resource header is a
-## fixed-height bar spanning the remaining width at the top; Diorama/RoomHost
-## share the remaining rect (frame minus both), matching AC-2/AC-3 exactly.
+## Resource header sits at the top-left corner, full HEADER_HEIGHT tall; tab
+## strip is a fixed-width column starting below it (not beside it -- moved
+## 2026-08-09, see below); Diorama/RoomHost share the remaining rect (frame
+## minus both), matching AC-2/AC-3 exactly.
+##
+## Header moved from "beside the tab strip" to "above it" (2026-08-09): the
+## prior layout put ResourceHeader to the right of TabStrip at the same
+## y-origin, which read as a header floating beside the room list rather than
+## over it. Repositioning is pure rect math -- ResourceHeader itself has no
+## position assumptions baked in (see its own class doc: PRESET_FULL_RECT
+## children throughout), so only the two offset blocks below change.
 func _configure_chrome_layout() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
@@ -421,23 +429,23 @@ func _configure_chrome_layout() -> void:
 	# against the actual window size.
 	_chrome.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
+	_resource_header.anchor_left = 0.0
+	_resource_header.anchor_top = 0.0
+	_resource_header.anchor_right = 0.0
+	_resource_header.anchor_bottom = 0.0
+	_resource_header.offset_left = 0.0
+	_resource_header.offset_top = 0.0
+	_resource_header.offset_right = RESOURCE_HEADER_WIDTH
+	_resource_header.offset_bottom = HEADER_HEIGHT
+
 	_tab_strip.anchor_left = 0.0
 	_tab_strip.anchor_top = 0.0
 	_tab_strip.anchor_right = 0.0
 	_tab_strip.anchor_bottom = 1.0
 	_tab_strip.offset_left = 0.0
-	_tab_strip.offset_top = 0.0
+	_tab_strip.offset_top = HEADER_HEIGHT
 	_tab_strip.offset_right = TAB_STRIP_WIDTH
 	_tab_strip.offset_bottom = 0.0
-
-	_resource_header.anchor_left = 0.0
-	_resource_header.anchor_top = 0.0
-	_resource_header.anchor_right = 0.0
-	_resource_header.anchor_bottom = 0.0
-	_resource_header.offset_left = TAB_STRIP_WIDTH
-	_resource_header.offset_top = 0.0
-	_resource_header.offset_right = TAB_STRIP_WIDTH + RESOURCE_HEADER_WIDTH
-	_resource_header.offset_bottom = HEADER_HEIGHT
 
 	for content: Control in [_diorama, _room_host]:
 		content.anchor_left = 0.0
