@@ -92,11 +92,19 @@ const GOAL_CELL: Vector2i = Vector2i(15, 6)
 
 var _monsters_container: Node2D
 
-## design/quick-specs/combat-tower-placeholder-visual-layer-2026-07-31.md —
-## tower_id(int) -> ColorRect placeholder. TowerSystem itself stays pure
-## data/logic (no scene involvement); this scene owns the visual exactly
-## like it already owns monster visuals via _on_monster_spawned().
-var _tower_visuals: Dictionary = {}
+const TowerInstanceScene: PackedScene = preload("res://src/core/tower/TowerInstance.tscn")
+
+## Upgraded 2026-08-11 from design/quick-specs/combat-tower-placeholder-
+## visual-layer-2026-07-31.md's original flat ColorRect to real per-
+## archetype art (tower_instance.gd) -- that spec's own "Out of Scope"
+## section named this exact swap as future work ("this is the placeholder
+## layer the real art... will replace later"), and the real art
+## (assets/art/towers/) already existed, along with tower_instance.gd's own
+## configure(archetype) method -- both were simply never wired to a live
+## placement call site until now. TowerSystem itself stays pure data/logic
+## (no scene involvement); this scene owns the visual exactly like it
+## already owns monster visuals via _on_monster_spawned().
+var _tower_visuals: Dictionary = {}  # tower_id(int) -> TowerInstance
 
 ## Tower Build Panel's own pending selection (Mission HUD's Planning Cluster,
 ## added 2026-08-10) — see mission_scene.gd's identical field for the full
@@ -353,13 +361,17 @@ func _color_for_monster(monster_id: StringName) -> Color:
 # defers to later).
 # ---------------------------------------------------------------------------
 
+## GGrid.cell_to_world() returns a cell's CENTER (not top-left, unlike the
+## old ColorRect's .position convention) — TowerInstance is a Node2D whose
+## Sprite2D is centered on it by construction, so this is now the correct
+## placement, not an approximation. Footprint >1 (no current blueprint uses
+## one, but TowerBlueprintData supports it) centers on the whole footprint,
+## not just its top-left cell.
 func _on_tower_placed(payload: TowerPlacedEvent) -> void:
-	var vis := ColorRect.new()
-	vis.size = Vector2(payload.footprint) * CELL_SIZE
-	vis.position = GGrid.cell_to_world(payload.grid_position)
-	vis.color = _color_for_tower_archetype(payload.archetype)
-	vis.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var vis: TowerInstance = TowerInstanceScene.instantiate()
 	add_child(vis)
+	vis.position = GGrid.cell_to_world(payload.grid_position) + Vector2(payload.footprint - Vector2i.ONE) * CELL_SIZE * 0.5
+	vis.configure(payload.archetype)
 	_tower_visuals[payload.tower_id] = vis
 
 
@@ -372,34 +384,12 @@ func _on_tower_destroyed(tower_id: int, _grid_position: Vector2i, _archetype: St
 
 
 func _free_tower_visual(tower_id: int) -> void:
-	var vis: ColorRect = _tower_visuals.get(tower_id) as ColorRect
+	var vis: TowerInstance = _tower_visuals.get(tower_id) as TowerInstance
 	if vis == null:
 		return
 	if is_instance_valid(vis):
 		vis.queue_free()
 	_tower_visuals.erase(tower_id)
-
-
-## tower.md's own Archetype Color Language table (Visual/Audio Requirements
-## section) — Physical: grey/silver/stone; Ranged: brown/wood/metal;
-## Elemental: per-sub-type (MVP scope: Fire + Frost only; Poison/Lightning/
-## Arcane are Vertical-Slice/Alpha-tier per that table, and
-## TowerBlueprintData has no elemental-sub-type field to distinguish them by
-## yet, so any non-Frost elemental value falls back to Frost's color);
-## Support: warm gold/pale light. Unrecognized archetype: magenta, matching
-## grid_visual.gd's own "loud, obviously-wrong" fallback convention.
-func _color_for_tower_archetype(archetype: String) -> Color:
-	match archetype:
-		"physical":
-			return Color(0.6, 0.6, 0.65)
-		"ranged":
-			return Color(0.55, 0.4, 0.25)
-		"elemental":
-			return Color(0.6, 0.85, 0.95)  # Frost — the only elemental blueprint that ships today
-		"support":
-			return Color(0.9, 0.75, 0.3)
-		_:
-			return Color.MAGENTA
 
 
 # ---------------------------------------------------------------------------

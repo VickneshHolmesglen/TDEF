@@ -41,6 +41,8 @@ extends Node2D
 ## off Grid (which has no public getter for it).
 const CELL_SIZE: float = 64.0
 
+const TowerInstanceScene: PackedScene = preload("res://src/core/tower/TowerInstance.tscn")
+
 @onready var _mission_select_screen: Control = $MissionSelectScreen
 @onready var _gameplay_root: Node2D = $GameplayRoot
 @onready var _grid_visual: Node2D = $GameplayRoot/GridVisual
@@ -56,6 +58,16 @@ const CELL_SIZE: float = 64.0
 ## behavior every click used to trigger regardless of intent.
 var _selected_blueprint_id: StringName = &""
 
+## Real gap found and fixed 2026-08-11: unlike the_gap.gd (which has had a
+## tower-placed visual since design/quick-specs/combat-tower-placeholder-
+## visual-layer-2026-07-31.md), this scene never subscribed to tower_placed/
+## tower_removed/tower_destroyed at all — a tower placed via the real
+## Mission-Select-routed flow was completely invisible, not even a
+## placeholder rect. Wired directly to real per-archetype art
+## (tower_instance.gd) rather than reintroducing the ColorRect step the_gap.gd
+## has already moved past.
+var _tower_visuals: Dictionary = {}  # tower_id(int) -> TowerInstance
+
 
 func _ready() -> void:
 	_gameplay_root.visible = false
@@ -66,6 +78,9 @@ func _ready() -> void:
 	GEventBus.mission_launched.connect(_on_mission_launched)
 	GEventBus.monster_spawned.connect(_on_monster_spawned)
 	GEventBus.tower_blueprint_selected.connect(_on_tower_blueprint_selected)
+	GEventBus.tower_placed.connect(_on_tower_placed)
+	GEventBus.tower_removed.connect(_on_tower_removed)
+	GEventBus.tower_destroyed.connect(_on_tower_destroyed)
 
 
 func _exit_tree() -> void:
@@ -73,6 +88,9 @@ func _exit_tree() -> void:
 	GEventBus.mission_launched.disconnect(_on_mission_launched)
 	GEventBus.monster_spawned.disconnect(_on_monster_spawned)
 	GEventBus.tower_blueprint_selected.disconnect(_on_tower_blueprint_selected)
+	GEventBus.tower_placed.disconnect(_on_tower_placed)
+	GEventBus.tower_removed.disconnect(_on_tower_removed)
+	GEventBus.tower_destroyed.disconnect(_on_tower_destroyed)
 
 
 ## Real bug fix, 2026-08-09 — see grid_initialized's own doc comment
@@ -153,6 +171,36 @@ func _on_monster_spawned(payload: MonsterSpawnedEvent) -> void:
 	vis.color = Color(0.9, 0.6, 0.1)
 	vis.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	entity.add_child(vis)
+
+
+## GGrid.cell_to_world() returns a cell's CENTER — TowerInstance is a Node2D
+## whose Sprite2D is centered on it by construction, so this is the correct
+## placement. Footprint >1 (no current blueprint uses one) centers on the
+## whole footprint, not just its top-left cell — mirrors the_gap.gd's
+## identical handler.
+func _on_tower_placed(payload: TowerPlacedEvent) -> void:
+	var vis: TowerInstance = TowerInstanceScene.instantiate()
+	_gameplay_root.add_child(vis)
+	vis.position = GGrid.cell_to_world(payload.grid_position) + Vector2(payload.footprint - Vector2i.ONE) * CELL_SIZE * 0.5
+	vis.configure(payload.archetype)
+	_tower_visuals[payload.tower_id] = vis
+
+
+func _on_tower_removed(tower_id: int, _grid_position: Vector2i, _archetype: String, _constellation_eligibility_tag: String) -> void:
+	_free_tower_visual(tower_id)
+
+
+func _on_tower_destroyed(tower_id: int, _grid_position: Vector2i, _archetype: String, _footprint: Array, _constellation_eligibility_tag: String) -> void:
+	_free_tower_visual(tower_id)
+
+
+func _free_tower_visual(tower_id: int) -> void:
+	var vis: TowerInstance = _tower_visuals.get(tower_id) as TowerInstance
+	if vis == null:
+		return
+	if is_instance_valid(vis):
+		vis.queue_free()
+	_tower_visuals.erase(tower_id)
 
 
 func _on_tower_blueprint_selected(blueprint_id: StringName) -> void:
