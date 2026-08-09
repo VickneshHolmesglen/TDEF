@@ -73,6 +73,24 @@ func test_aura_weapon_shows_buff_not_a_misleading_dps_number() -> void:
 
 
 # ---------------------------------------------------------------------------
+# Icons (2026-08-11) — reuses tower_instance.gd's real per-archetype art
+# (assets/art/towers/), which already existed but was never wired into this
+# list; it originally shipped text-only on the incorrect assumption that no
+# tower art existed in the project at all.
+# ---------------------------------------------------------------------------
+
+func test_each_entry_shows_its_archetype_icon() -> void:
+	@warning_ignore("unsafe_property_access")
+	var build_buttons: Dictionary = _cluster().get("_build_buttons")
+	var archer: Button = build_buttons[&"archer"]
+	var frostbolt: Button = build_buttons[&"frostbolt_turret"]
+	assert_object(archer.icon).is_not_null()
+	assert_str(archer.icon.resource_path).contains("tower_physical_base")
+	assert_object(frostbolt.icon).is_not_null()
+	assert_str(frostbolt.icon.resource_path).contains("tower_elem_ice")
+
+
+# ---------------------------------------------------------------------------
 # Selection
 # ---------------------------------------------------------------------------
 

@@ -406,6 +406,16 @@ func _build_tower_list() -> void:
 		var button := Button.new()
 		button.name = "Tower_%s" % String(blueprint_id)
 		button.text = _blueprint_entry_text(data)
+		# GDD ("archetype icon...") — reuses the same real per-archetype art
+		# tower_instance.gd already displays on the placed tower itself
+		# (assets/art/towers/), added 2026-08-11. This list was originally
+		# shipped text-only on the (incorrect) assumption that no tower art
+		# existed at all in the project yet — it did, just not wired here.
+		var icon: Texture2D = TowerInstance.ARCHETYPE_TEXTURES.get(data.foundation.archetype)
+		if icon != null:
+			button.icon = icon
+			button.expand_icon = true
+			button.add_theme_constant_override("icon_max_width", 28)
 		button.focus_mode = Control.FOCUS_ALL
 		button.toggle_mode = true
 		button.button_group = _build_button_group
@@ -416,10 +426,8 @@ func _build_tower_list() -> void:
 
 
 ## GDD ("archetype icon, estimated DPS, placement cost, footprint size,
-## pre-placement perk indicator") minus the icon — no tower icon art exists
-## yet anywhere in this project (grep-verified against assets/art/towers/);
-## text-only entries match this project's own established precedent for
-## unillustrated content (Defense Building's tech/structure rows). AURA
+## pre-placement perk indicator") — the icon half is set in _build_tower_list()
+## above, reusing tower_instance.gd's own ARCHETYPE_TEXTURES. AURA
 ## weapons (Rally Banner) show their buff instead of a DPS number, since
 ## "8 DPS" would misdescribe a support aura that deals no damage.
 func _blueprint_entry_text(data: TowerBlueprintData) -> String:
