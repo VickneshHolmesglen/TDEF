@@ -80,7 +80,11 @@ const ROOM_SCENES: Dictionary[StringName, PackedScene] = {
 }
 
 ## GDD Tuning Knobs default (56-96px safe range) — Story 002 owns tuning this.
-const TAB_STRIP_WIDTH: float = 72.0
+## Raised from the 72px placeholder to the range's own ceiling (2026-08-09)
+## so real label text (now that a translation catalog exists) has the most
+## room the GDD's icon-only rail allows before falling back to ellipsis
+## truncation — see tab_strip.gd's Button.text_overrun_behavior.
+const TAB_STRIP_WIDTH: float = 96.0
 ## GDD Tuning Knobs safe range is 40-64px (Story 004 owns tuning this) --
 ## raised from the 48px placeholder to the range's own ceiling (2026-08-04) so
 ## `sanctuary_header_gold.png`'s corner-flourish trim (design/art/asset-UI-

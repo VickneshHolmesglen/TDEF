@@ -131,7 +131,12 @@ func _ready() -> void:
 	# whenever a label is long -- confirmed via live MCP screenshot during
 	# Story 013's visual pass, where the untranslated placeholder keys (no
 	# translation catalog exists yet, matching every prior story's flagged
-	# gap) are long enough to trigger exactly this.
+	# gap) are long enough to trigger exactly this. Now that a real
+	# translation catalog exists (2026-08-09), real label text is even
+	# longer than those placeholder keys were -- clip_contents alone isn't
+	# enough (it clips rendering, not the Container's own minimum-size-driven
+	# rect growth), so _build_buttons() below also sets each Button's
+	# text_overrun_behavior to ellipsis-truncate within TAB_STRIP_WIDTH.
 	clip_contents = true
 	_input_mode_tracker = InputModeTracker.new()
 	add_child(_input_mode_tracker)
@@ -312,6 +317,7 @@ func _build_buttons() -> void:
 		button.icon = TAB_ICON_TEXTURES[index]
 		button.expand_icon = true
 		button.clip_text = true
+		button.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		button.focus_mode = Control.FOCUS_ALL
 		button.custom_minimum_size = Vector2(56, 56)
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
