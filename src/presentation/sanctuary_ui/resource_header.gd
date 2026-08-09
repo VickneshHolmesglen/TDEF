@@ -29,6 +29,7 @@ var _materials: Dictionary = {}
 
 @onready var _background: Panel = Panel.new()
 @onready var _row: HBoxContainer = HBoxContainer.new()
+@onready var _title_label: Label = Label.new()
 @onready var _materials_label: Label = Label.new()
 
 
@@ -43,8 +44,27 @@ func _ready() -> void:
 	_row.name = &"ResourceRow"
 	add_child(_row)
 	_row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	# Inset past resource_header_stylebox()'s own texture_margin_left/right
+	# (30px) -- the row previously ignored the header art's decorative
+	# corner-flourish frame entirely, so text rendered flush against (and
+	# under) the gold bevel instead of inside it.
+	_row.offset_left = 32.0
+	_row.offset_right = -32.0
 	_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_row.add_theme_constant_override("separation", 8)
+
+	## Plaque title -- the header art was designed as a "compact title
+	## plaque" (shell_chrome_style.gd's own doc comment) but no title text
+	## was ever added, leaving it a blank gold-bordered bar. Not a GDD
+	## requirement (Core Rule 3 only specifies the materials readout); this
+	## is the plaque's own identifying label.
+	_title_label.name = &"TitleLabel"
+	_row.add_child(_title_label)
+	_title_label.text = tr("SANCTUARY_HEADER_TITLE")
+	_title_label.add_theme_color_override("font_color", ShellChromeStyle.UI_PARCHMENT)
+	_title_label.add_theme_font_size_override("font_size", 20)
+	_title_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_title_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 
 	_materials_label.name = &"MaterialsLabel"
 	_row.add_child(_materials_label)
