@@ -38,6 +38,7 @@ const TAB_STRIP_WIDTH: float = 72.0
 
 @onready var _screen_host: ScreenHost = $ScreenHost
 @onready var _tab_strip: DeckTabStrip = $Chrome/TabStrip
+@onready var _return_to_sanctuary_button: Button = $ReturnToSanctuaryButton
 
 var _active_state: StringName = HERO_SKILL_BUILD_STATE
 
@@ -68,6 +69,7 @@ var _snapshot_chip: SnapshotChip
 func _ready() -> void:
 	add_to_group(&"tarot_deck_ui")
 	_configure_chrome_layout()
+	_configure_return_to_sanctuary_button()
 	set_active_state(HERO_SKILL_BUILD_STATE)
 	_tab_strip.tab_target_selected.connect(_on_tab_target_selected)
 	_conflict_indicator = ConflictIndicator.new()
@@ -169,3 +171,37 @@ func _configure_chrome_layout() -> void:
 
 func _on_tab_target_selected(target_state: StringName) -> void:
 	set_active_state(target_state)
+
+
+## GDD Core Rule 4: "A Cancel/back action ... OR an explicit 'Return to
+## Sanctuary' affordance" -- two independent exits, not one. Only the
+## Cancel/back input action (see _input() above) was ever wired; this shell
+## had no visible, clickable way to leave for a mouse-only player who never
+## discovers the keyboard/gamepad Cancel binding. Bottom-right corner of the
+## frame, mirroring Sanctuary UI's own Launch Mission button placement
+## (sanctuary_ui.gd's _configure_launch_mission_button()) -- out of the tab
+## strip's way, always reachable regardless of which of the 2 screens is
+## active (Core Rule 4 draws no state distinction, unlike Sanctuary UI's
+## OVERVIEW-only Launch button).
+func _configure_return_to_sanctuary_button() -> void:
+	_return_to_sanctuary_button.anchor_left = 1.0
+	_return_to_sanctuary_button.anchor_top = 1.0
+	_return_to_sanctuary_button.anchor_right = 1.0
+	_return_to_sanctuary_button.anchor_bottom = 1.0
+	_return_to_sanctuary_button.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	_return_to_sanctuary_button.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_return_to_sanctuary_button.offset_left = -220.0
+	_return_to_sanctuary_button.offset_top = -64.0
+	_return_to_sanctuary_button.offset_right = -24.0
+	_return_to_sanctuary_button.offset_bottom = -24.0
+	_return_to_sanctuary_button.text = tr("TAROT_DECK_UI_RETURN_TO_SANCTUARY_BUTTON")
+	# Chrome-outline style (not Launch's Amber, which the sanctuary_ui.gd
+	# doc comment reserves for "this screen's single most consequential
+	# action") -- this is a secondary/back action, matching the tab strip's
+	# own inactive-tab treatment.
+	_return_to_sanctuary_button.add_theme_stylebox_override("normal", ShellChromeStyle.chrome_button_stylebox(false))
+	_return_to_sanctuary_button.add_theme_stylebox_override("hover", ShellChromeStyle.chrome_button_stylebox(false))
+	_return_to_sanctuary_button.add_theme_stylebox_override("pressed", ShellChromeStyle.chrome_button_stylebox(false))
+	_return_to_sanctuary_button.add_theme_color_override("font_color", ShellChromeStyle.UI_PARCHMENT)
+	_return_to_sanctuary_button.focus_mode = Control.FOCUS_ALL
+	_return_to_sanctuary_button.pressed.connect(confirm_return_to_sanctuary)

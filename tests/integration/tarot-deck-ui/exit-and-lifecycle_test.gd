@@ -142,3 +142,21 @@ func test_cancel_triggers_a_real_transition_to_sanctuary_call() -> void:
 	assert_int(_spy.count("scene_transition_completed")).is_equal(1)
 	var started_args: Array = (_spy.emissions["scene_transition_started"] as Array)[0] as Array
 	assert_str(started_args[0] as String).is_equal("SANCTUARY")
+
+
+## GDD Core Rule 4 names this as an exit path independent of Cancel/back --
+## "an explicit 'Return to Sanctuary' affordance" -- for the mouse-only
+## player who never discovers the keyboard/gamepad Cancel binding. Real gap
+## found and fixed 2026-08-10: the shell only ever wired the Cancel/back
+## half of this rule.
+func test_return_button_triggers_a_real_transition_to_sanctuary_call() -> void:
+	@warning_ignore("unsafe_property_access")
+	var button: Button = _shell.get("_return_to_sanctuary_button")
+	button.pressed.emit()
+
+	await GEventBus.scene_transition_completed
+
+	assert_int(_spy.count("scene_transition_started")).is_equal(1)
+	assert_int(_spy.count("scene_transition_completed")).is_equal(1)
+	var started_args: Array = (_spy.emissions["scene_transition_started"] as Array)[0] as Array
+	assert_str(started_args[0] as String).is_equal("SANCTUARY")

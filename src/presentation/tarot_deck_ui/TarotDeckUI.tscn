@@ -23,3 +23,6 @@ mouse_filter = 2
 [node name="TabStrip" type="VBoxContainer" parent="Chrome"]
 layout_mode = 1
 script = ExtResource("2_dts")
+
+[node name="ReturnToSanctuaryButton" type="Button" parent="."]
+layout_mode = 1
