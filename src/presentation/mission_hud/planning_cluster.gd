@@ -53,6 +53,27 @@ const ROUTE_PREVIEW_WIDTH: float = 3.0
 ## Holds the wave-composition preview lines (Story 007, Rules 11f-11i).
 @onready var _composition_preview_host: VBoxContainer = $CompositionPreviewHost
 
+## Tower Build Panel (tower.md's Visual/Audio Requirements, mission-hud.md's
+## Zone E) -- one row per GGameDataRegistry.get_all_tower_blueprints() entry.
+## Added 2026-08-10: this list was the one Planning Cluster element the GDD
+## named but no prior story had implemented -- placement was previously a
+## hardcoded single-blueprint debug click in mission_scene.gd/the_gap.gd.
+@onready var _build_list: VBoxContainer = $NonReadyControls/BuildList
+## Grid Placement Cursor (design/ux/interaction-patterns.md's own pattern) --
+## a single footprint-sized rect that follows the mouse while a blueprint is
+## selected, colored by TowerSystem.get_placement_preview()'s own validity
+## result. This node never calls TowerSystem itself (Mission HUD holds no
+## direct gameplay-system reference anywhere else in this file either) --
+## the mission scene computes the preview and forwards it via
+## tower_placement_preview_updated, the same decoupling
+## _on_tower_placement_blocked() already uses for the blocked-cell markers.
+@onready var _placement_cursor: ColorRect = $NonReadyControls/PlacementCursor
+const PLACEMENT_VALID_COLOR: Color = Color(0.2, 0.85, 0.3, 0.35)
+const PLACEMENT_INVALID_COLOR: Color = Color(0.9, 0.2, 0.2, 0.35)
+
+var _build_buttons: Dictionary[StringName, Button] = {}
+var _build_button_group := ButtonGroup.new()
+
 ## MonsterResource.tier index -> display bucket name (matches MissionHud's
 ## BOSS_TIER=2 comment: 0=STANDARD 1=ELITE 2=BOSS). Fixed engine-side vocabulary,
 ## not game-balance data — not a gameplay-code-rules violation to keep local.
@@ -105,6 +126,9 @@ func _ready() -> void:
 	_sell_button.focus_entered.connect(_update_sell_focus_ring)
 	_sell_button.focus_exited.connect(_update_sell_focus_ring)
 	_update_sell_button_existence()
+	GEventBus.resources_changed.connect(_on_resources_changed)
+	GEventBus.tower_placement_preview_updated.connect(_on_tower_placement_preview_updated)
+	_build_tower_list()
 
 
 func _exit_tree() -> void:
@@ -116,6 +140,10 @@ func _exit_tree() -> void:
 		_input_mode_tracker.input_mode_changed.disconnect(_update_ready_focus_ring)
 	if _input_mode_tracker != null and _input_mode_tracker.input_mode_changed.is_connected(_update_sell_focus_ring):
 		_input_mode_tracker.input_mode_changed.disconnect(_update_sell_focus_ring)
+	if GEventBus.resources_changed.is_connected(_on_resources_changed):
+		GEventBus.resources_changed.disconnect(_on_resources_changed)
+	if GEventBus.tower_placement_preview_updated.is_connected(_on_tower_placement_preview_updated):
+		GEventBus.tower_placement_preview_updated.disconnect(_on_tower_placement_preview_updated)
 	_exit_tree_fired = true
 
 
@@ -306,6 +334,18 @@ func set_pre_wave_interactivity(is_pre_wave: bool) -> void:
 			(child as BaseButton).disabled = is_pre_wave
 		elif child is Control:
 			(child as Control).mouse_filter = Control.MOUSE_FILTER_IGNORE if is_pre_wave else Control.MOUSE_FILTER_STOP
+	# Build list buttons are nested one level under NonReadyControls (inside
+	# BuildList), so the direct-children loop above never reaches them --
+	# without this, PRE_WAVE's "every child becomes non-interactive" (Rule 6)
+	# would leave tower entries clickable during the one phase placement must
+	# be blocked in. can_afford()'s own disabled state (_refresh_affordability())
+	# is restored automatically on the next resources_changed/mount, so this
+	# only needs to force `true` here, never force `false`.
+	if is_pre_wave:
+		for button: Button in _build_buttons.values():
+			button.disabled = true
+	else:
+		_refresh_affordability()
 
 
 # ---------------------------------------------------------------------------
@@ -346,3 +386,94 @@ func _update_sell_focus_ring(_arg: Variant = null) -> void:
 	if _input_mode_tracker == null:
 		return
 	_sell_focus_ring.visible = _sell_button.has_focus() and _input_mode_tracker.is_focus_ring_visible()
+
+
+# ---------------------------------------------------------------------------
+# Tower Build Panel (tower.md Visual/Audio Requirements, mission-hud.md Zone E)
+# ---------------------------------------------------------------------------
+
+## Sorted by placement_cost (matches Defense Building's/Inventory's own
+## established "cheapest/earliest first" list-ordering precedent) — populated
+## once per mount, same as every other Planning Cluster host in this file.
+func _build_tower_list() -> void:
+	var blueprints: Dictionary = GGameDataRegistry.get_all_tower_blueprints()
+	var blueprint_ids: Array = blueprints.keys()
+	blueprint_ids.sort_custom(func(a: StringName, b: StringName) -> bool:
+		return (blueprints[a] as TowerBlueprintData).placement_cost < (blueprints[b] as TowerBlueprintData).placement_cost
+	)
+	for blueprint_id: StringName in blueprint_ids:
+		var data: TowerBlueprintData = blueprints[blueprint_id] as TowerBlueprintData
+		var button := Button.new()
+		button.name = "Tower_%s" % String(blueprint_id)
+		button.text = _blueprint_entry_text(data)
+		button.focus_mode = Control.FOCUS_ALL
+		button.toggle_mode = true
+		button.button_group = _build_button_group
+		button.pressed.connect(_on_tower_button_pressed.bind(blueprint_id))
+		_build_list.add_child(button)
+		_build_buttons[blueprint_id] = button
+	_refresh_affordability()
+
+
+## GDD ("archetype icon, estimated DPS, placement cost, footprint size,
+## pre-placement perk indicator") minus the icon — no tower icon art exists
+## yet anywhere in this project (grep-verified against assets/art/towers/);
+## text-only entries match this project's own established precedent for
+## unillustrated content (Defense Building's tech/structure rows). AURA
+## weapons (Rally Banner) show their buff instead of a DPS number, since
+## "8 DPS" would misdescribe a support aura that deals no damage.
+func _blueprint_entry_text(data: TowerBlueprintData) -> String:
+	var footprint: Vector2i = data.foundation.footprint
+	var effect_tag: String
+	if data.weapon.projectile_type == "AURA":
+		effect_tag = "Aura: %s +%d%%" % [data.weapon.aura_effect_type, int(data.weapon.aura_effect_value * 100.0)]
+	else:
+		effect_tag = "DPS: %.1f" % (data.weapon.weapon_damage * data.weapon.attack_speed)
+	var perk_tag: String = " · Perk" if data.foundation.pre_placement_perk != "" else ""
+	return "%s — %dg — %dx%d — %s%s" % [data.display_name, data.placement_cost, footprint.x, footprint.y, effect_tag, perk_tag]
+
+
+## Selecting an entry is the only way to arm the Grid Placement Cursor
+## (design/ux/mission-hud.md line 267: "Entry highlights; placement cursor
+## activates") — the mission scene (owner of the real TowerSystem) is the
+## sole consumer of this signal; this cluster never calls TowerSystem itself.
+func _on_tower_button_pressed(blueprint_id: StringName) -> void:
+	GEventBus.tower_blueprint_selected.emit(blueprint_id)
+
+
+## Re-checks every row's affordability whenever gold changes (SCOUT/
+## INTERMISSION only — this instance doesn't exist during WAVE_ACTIVE).
+## GMissionEconomy is called directly here (not derived from resources_
+## changed's own payload) since that payload's delta-vs-absolute semantics
+## are inconsistent between emitters (TowerSystem's own class doc claims
+## "signed deltas," Mission HUD's _on_resources_changed() instead treats it
+## as absolute — a pre-existing discrepancy, not something this addition
+## should build new behavior on top of). can_afford() is GMissionEconomy's
+## own public read API, already called directly by TowerSystem's Gate 2 —
+## calling it here too matches this codebase's established precedent of UI
+## screens reading their own domain Autoload directly (e.g. Defense Building
+## screen's is_tech_unlocked()/can_unlock_tech() calls).
+func _on_resources_changed(_gold: int, _source: StringName) -> void:
+	_refresh_affordability()
+
+
+func _refresh_affordability() -> void:
+	var blueprints: Dictionary = GGameDataRegistry.get_all_tower_blueprints()
+	for blueprint_id: StringName in _build_buttons:
+		var data: TowerBlueprintData = blueprints[blueprint_id] as TowerBlueprintData
+		_build_buttons[blueprint_id].disabled = not GMissionEconomy.can_afford(data.placement_cost)
+
+
+## Grid Placement Cursor (design/ux/interaction-patterns.md) — repositions/
+## recolors the single footprint-sized rect to the hovered cell. cell ==
+## Vector2i(-1, -1) (no blueprint selected, mirrors set_boss_telegraph_cell's
+## identical sentinel convention) hides the cursor entirely.
+func _on_tower_placement_preview_updated(cell: Vector2i, footprint: Vector2i, valid: bool) -> void:
+	if cell == Vector2i(-1, -1):
+		_placement_cursor.visible = false
+		return
+	_placement_cursor.visible = true
+	_placement_cursor.color = PLACEMENT_VALID_COLOR if valid else PLACEMENT_INVALID_COLOR
+	_placement_cursor.size = Vector2(footprint.x, footprint.y) * CELL_SIZE_PX
+	var world_pos: Vector2 = GGrid.cell_to_world(cell) - Vector2(CELL_SIZE_PX, CELL_SIZE_PX) * 0.5
+	_placement_cursor.position = _world_to_screen(world_pos)

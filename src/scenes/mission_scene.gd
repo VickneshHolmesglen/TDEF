@@ -48,6 +48,14 @@ const CELL_SIZE: float = 64.0
 @onready var _camera: Camera2D = $GameplayRoot/Camera2D
 @onready var _monsters_container: Node2D = $GameplayRoot/MonstersContainer
 
+## Tower Build Panel's own pending selection (Mission HUD's Planning Cluster,
+## added 2026-08-10) — empty string means nothing selected, matching
+## set_boss_telegraph_cell's identical sentinel convention for "nothing to
+## show." A left-click on the grid with no selection is a no-op; this
+## replaces the previous hardcoded `place_tower(&"archer", cell)` debug
+## behavior every click used to trigger regardless of intent.
+var _selected_blueprint_id: StringName = &""
+
 
 func _ready() -> void:
 	_gameplay_root.visible = false
@@ -57,12 +65,14 @@ func _ready() -> void:
 	GEventBus.grid_initialized.connect(_on_grid_initialized)
 	GEventBus.mission_launched.connect(_on_mission_launched)
 	GEventBus.monster_spawned.connect(_on_monster_spawned)
+	GEventBus.tower_blueprint_selected.connect(_on_tower_blueprint_selected)
 
 
 func _exit_tree() -> void:
 	GEventBus.grid_initialized.disconnect(_on_grid_initialized)
 	GEventBus.mission_launched.disconnect(_on_mission_launched)
 	GEventBus.monster_spawned.disconnect(_on_monster_spawned)
+	GEventBus.tower_blueprint_selected.disconnect(_on_tower_blueprint_selected)
 
 
 ## Real bug fix, 2026-08-09 — see grid_initialized's own doc comment
@@ -145,11 +155,41 @@ func _on_monster_spawned(payload: MonsterSpawnedEvent) -> void:
 	entity.add_child(vis)
 
 
+func _on_tower_blueprint_selected(blueprint_id: StringName) -> void:
+	_selected_blueprint_id = blueprint_id
+	# UX spec (design/ux/mission-hud.md line 267): "placement cursor
+	# activates" the instant an entry is selected — not deferred until the
+	# next mouse-motion event.
+	_update_placement_preview()
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	if not _gameplay_root.visible:
 		return
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		if _selected_blueprint_id == &"":
+			return
 		var cell: Vector2i = GGrid.world_to_cell(get_global_mouse_position())
-		$GameplayRoot/TowerSystem.place_tower(&"archer", cell)
+		$GameplayRoot/TowerSystem.place_tower(_selected_blueprint_id, cell)
+	elif event is InputEventMouseMotion:
+		_update_placement_preview()
 	elif event is InputEventKey and event.pressed and event.keycode == KEY_SPACE:
 		GEventBus.player_ready.emit()
+
+
+## Grid Placement Cursor (design/ux/interaction-patterns.md) — this scene
+## owns the real TowerSystem reference, so it computes the hover preview and
+## forwards the result via EventBus rather than Mission HUD holding a direct
+## TowerSystem reference of its own (see tower_placement_preview_updated's
+## own doc comment in event_bus.gd for the full rationale).
+func _update_placement_preview() -> void:
+	if _selected_blueprint_id == &"":
+		GEventBus.tower_placement_preview_updated.emit(Vector2i(-1, -1), Vector2i.ZERO, false)
+		return
+	var blueprints: Dictionary = GGameDataRegistry.get_all_tower_blueprints()
+	var data: TowerBlueprintData = blueprints.get(_selected_blueprint_id) as TowerBlueprintData
+	if data == null:
+		return
+	var cell: Vector2i = GGrid.world_to_cell(get_global_mouse_position())
+	var preview: PlacementPreview = $GameplayRoot/TowerSystem.get_placement_preview(_selected_blueprint_id, cell)
+	GEventBus.tower_placement_preview_updated.emit(cell, data.foundation.footprint, preview.valid)

@@ -212,6 +212,21 @@ signal tower_damaged(tower_id: int, damage_dealt: float, current_hp: float, max_
 ## Tower System must guard against this arriving outside valid phases.
 signal tower_sell_requested(tower_id: int)
 
+## Emitted by Mission HUD's Tower Build Panel when the player selects a
+## buyable tower entry — the mission scene (owner of the real TowerSystem
+## reference) tracks this as the pending placement selection and uses it
+## instead of a hardcoded blueprint_id on the next grid click.
+## Key subscribers: mission_scene.gd / the_gap.gd.
+signal tower_blueprint_selected(blueprint_id: StringName)
+
+## Emitted by the mission scene on every grid-hover mouse motion while a
+## blueprint is selected (SCOUT/INTERMISSION only) — carries TowerSystem's
+## own get_placement_preview() result so Mission HUD's Planning Cluster can
+## render a footprint ghost without holding a direct TowerSystem reference
+## (mirrors tower_placement_blocked's identical decoupling).
+## Key subscribers: Mission HUD (Planning Cluster placement cursor).
+signal tower_placement_preview_updated(cell: Vector2i, footprint: Vector2i, valid: bool)
+
 ## Component swapped in a tower slot.
 ## Key subscribers: Constellation, Mission HUD, Tower Mastery.
 ## Promoted to a TowerComponentEquippedEvent Resource subclass 2026-07-19

@@ -72,3 +72,31 @@ func test_hero_is_positioned_at_the_real_spawn_cell() -> void:
 	var hero: Hero = _scene.get_node("GameplayRoot/Hero") as Hero
 	var expected_position: Vector2 = GGrid.cell_to_world(GGrid.get_spawn_cells()[0])
 	assert_vector(hero.global_position).is_equal_approx(expected_position, Vector2(0.5, 0.5))
+
+
+# ---------------------------------------------------------------------------
+# Tower Build Panel wiring (2026-08-10) — replaces the previous hardcoded
+# `place_tower(&"archer", cell)` debug behavior every grid click used to
+# trigger regardless of intent. Real mouse-position-dependent grid-click
+# dispatch is not exercised here (this project's own established precedent —
+# every existing tower-placement test calls TowerSystem.place_tower()
+# directly rather than fighting headless mouse-position control); this
+# covers the one thing that's actually new: does the scene's pending
+# selection state track the real tower_blueprint_selected signal correctly.
+# ---------------------------------------------------------------------------
+
+func test_no_blueprint_selected_by_default() -> void:
+	assert_str(String(_scene.get("_selected_blueprint_id"))).is_equal("")
+
+
+func test_tower_blueprint_selected_signal_updates_pending_selection() -> void:
+	GEventBus.tower_blueprint_selected.emit(&"frostbolt_turret")
+
+	assert_str(String(_scene.get("_selected_blueprint_id"))).is_equal("frostbolt_turret")
+
+
+func test_later_selection_replaces_earlier_one() -> void:
+	GEventBus.tower_blueprint_selected.emit(&"archer")
+	GEventBus.tower_blueprint_selected.emit(&"longshot_sniper")
+
+	assert_str(String(_scene.get("_selected_blueprint_id"))).is_equal("longshot_sniper")

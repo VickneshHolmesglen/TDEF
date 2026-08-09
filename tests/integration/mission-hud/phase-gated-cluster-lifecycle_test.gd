@@ -98,10 +98,11 @@ func test_pre_wave_leaves_only_ready_interactive() -> void:
 	assert_bool(cluster._ready_button.disabled).is_false()
 	# Story 010 moved Sell out of NonReadyControls entirely (AC-52 requires it
 	# to disappear, not just disable, during PRE_WAVE — see sell-button_test.gd
-	# for its own dedicated coverage) — this remaining placeholder is what's
-	# left to exercise the group-level disable this test targets.
-	var cell_overlay_placeholder: Control = cluster._non_ready_controls.get_node("CellOverlayPlaceholder")
-	assert_int(cell_overlay_placeholder.mouse_filter).is_equal(Control.MOUSE_FILTER_IGNORE)
+	# for its own dedicated coverage). CellOverlayPlaceholder (the empty
+	# scaffold Control) became the real Placement Cursor (2026-08-10, Tower
+	# Build Panel) — still a direct NonReadyControls child, still exercises
+	# the same group-level disable this test targets.
+	assert_int(cluster._placement_cursor.mouse_filter).is_equal(Control.MOUSE_FILTER_IGNORE)
 	assert_bool(cluster._sell_button.visible).is_false()  # AC-52: gone during PRE_WAVE
 
 

@@ -98,6 +98,12 @@ var _monsters_container: Node2D
 ## like it already owns monster visuals via _on_monster_spawned().
 var _tower_visuals: Dictionary = {}
 
+## Tower Build Panel's own pending selection (Mission HUD's Planning Cluster,
+## added 2026-08-10) — see mission_scene.gd's identical field for the full
+## rationale. Empty = nothing selected; a click is then a no-op instead of
+## the previous hardcoded `place_tower(&"archer", cell)` debug behavior.
+var _selected_blueprint_id: StringName = &""
+
 
 func _ready() -> void:
 	_monsters_container = Node2D.new()
@@ -139,6 +145,7 @@ func _ready() -> void:
 	GEventBus.tower_placed.connect(_on_tower_placed)
 	GEventBus.tower_removed.connect(_on_tower_removed)
 	GEventBus.tower_destroyed.connect(_on_tower_destroyed)
+	GEventBus.tower_blueprint_selected.connect(_on_tower_blueprint_selected)
 
 	_hud_phase_label.text = "Phase: (not launched)"
 	_hud_wave_label.text = "Wave: -"
@@ -165,6 +172,7 @@ func _exit_tree() -> void:
 	GEventBus.tower_placed.disconnect(_on_tower_placed)
 	GEventBus.tower_removed.disconnect(_on_tower_removed)
 	GEventBus.tower_destroyed.disconnect(_on_tower_destroyed)
+	GEventBus.tower_blueprint_selected.disconnect(_on_tower_blueprint_selected)
 
 
 # ---------------------------------------------------------------------------
@@ -260,11 +268,35 @@ func _launch_mission() -> void:
 # Debug input (deviation #5 — hero-kill is QA-only, not real combat)
 # ---------------------------------------------------------------------------
 
+func _on_tower_blueprint_selected(blueprint_id: StringName) -> void:
+	_selected_blueprint_id = blueprint_id
+	_update_placement_preview()
+
+
+## Grid Placement Cursor (design/ux/interaction-patterns.md) — see
+## mission_scene.gd's identical method for the full decoupling rationale.
+func _update_placement_preview() -> void:
+	if _selected_blueprint_id == &"":
+		GEventBus.tower_placement_preview_updated.emit(Vector2i(-1, -1), Vector2i.ZERO, false)
+		return
+	var blueprints: Dictionary = GGameDataRegistry.get_all_tower_blueprints()
+	var data: TowerBlueprintData = blueprints.get(_selected_blueprint_id) as TowerBlueprintData
+	if data == null:
+		return
+	var cell: Vector2i = GGrid.world_to_cell(get_global_mouse_position())
+	var preview: PlacementPreview = _tower_system.get_placement_preview(_selected_blueprint_id, cell)
+	GEventBus.tower_placement_preview_updated.emit(cell, data.foundation.footprint, preview.valid)
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		if _selected_blueprint_id == &"":
+			return
 		var cell: Vector2i = GGrid.world_to_cell(get_global_mouse_position())
-		var placed: bool = _tower_system.place_tower(&"archer", cell)
+		var placed: bool = _tower_system.place_tower(_selected_blueprint_id, cell)
 		print("[the_gap][debug] tower placement attempt at %s -> %s" % [cell, placed])
+	elif event is InputEventMouseMotion:
+		_update_placement_preview()
 	elif event is InputEventKey and event.pressed:
 		if event.keycode == KEY_SPACE:
 			GEventBus.player_ready.emit()

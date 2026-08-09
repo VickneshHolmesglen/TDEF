@@ -22,6 +22,8 @@ text = "Sell"
 
 [node name="NonReadyControls" type="Control" parent="."]
 
-[node name="BuildListPlaceholder" type="Control" parent="NonReadyControls"]
+[node name="BuildList" type="VBoxContainer" parent="NonReadyControls"]
 
-[node name="CellOverlayPlaceholder" type="Control" parent="NonReadyControls"]
+[node name="PlacementCursor" type="ColorRect" parent="NonReadyControls"]
+visible = false
+mouse_filter = 2
