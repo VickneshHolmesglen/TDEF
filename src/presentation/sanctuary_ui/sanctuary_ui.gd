@@ -89,11 +89,15 @@ const ROOM_SCENES: Dictionary[StringName, PackedScene] = {
 ## button/font/stylebox (Font.get_string_size + icon + h_separation +
 ## stylebox margins), not guessed -- an initial 180px guess (based on a
 ## bare Button.new() with the default theme, not this screen's actual font
-## metrics) still truncated "Inventory & Crafting" in-engine. 240px clears
+## metrics) still truncated "Inventory & Crafting" in-engine. 240px cleared
 ## every current label ("Inventory & Crafting" needs ~221px) with margin.
 ## text_overrun_behavior in tab_strip.gd stays on as a defensive fallback
 ## for future/longer localized strings, not as the primary rendering path.
-const TAB_STRIP_WIDTH: float = 240.0
+## Widened again to match RESOURCE_HEADER_WIDTH exactly (2026-08-09, same
+## day): now that the header sits above the tab strip instead of beside it
+## (see _configure_chrome_layout()'s own note), a narrower tab strip left
+## its right edge short of the header's, reading as misaligned columns.
+const TAB_STRIP_WIDTH: float = RESOURCE_HEADER_WIDTH
 ## GDD Tuning Knobs safe range is 40-64px (Story 004 owns tuning this) --
 ## raised from the 48px placeholder to the range's own ceiling (2026-08-04) so
 ## `sanctuary_header_gold.png`'s corner-flourish trim (design/art/asset-UI-
