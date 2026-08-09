@@ -28,6 +28,26 @@ extends Control
 
 const FOCUS_RING_COLOR: Color = Color(1.0, 0.85, 0.2, 1.0)  ## placeholder — art-director TBD
 
+## Human-readable labels for the two real tech_category / structure_type
+## values in assets/data/defense_building/ (verified via grep, not guessed —
+## no third value exists in authored content). The GDD never names individual
+## tech/structure nodes beyond their snake_case ids (design/gdd/
+## defense-building.md's Tech Tree Content table has no "display name"
+## column), so this derives a title from the two fields the GDD DOES define
+## (category/type + tier) rather than inventing flavor names with no design
+## backing. Falls back to .capitalize() on the raw string for any future
+## category/type this map doesn't yet cover, so new content never regresses
+## to a raw snake_case id even if this list isn't updated alongside it.
+const TECH_CATEGORY_LABELS: Dictionary[String, String] = {
+	"production_tech": "Production",
+	"structural_tech": "Structural",
+}
+const STRUCTURE_TYPE_LABELS: Dictionary[String, String] = {
+	"habitat_expansion": "Habitat Expansion",
+	"watchtower": "Watchtower",
+}
+const ROMAN_NUMERALS: Array[String] = ["", "I", "II", "III", "IV", "V"]
+
 ## Injectable for tests; defaults to the real GDefenseBuilding Autoload.
 @export var defense_building: DefenseBuilding
 
@@ -124,6 +144,14 @@ func _create_tech_button(node: TechNodeResource) -> Button:
 	return button
 
 
+## "Production II", "Structural I" — see TECH_CATEGORY_LABELS' own doc
+## comment for why this is derived from data fields, not a per-id name.
+func _tech_display_name(node: TechNodeResource) -> String:
+	var category_label: String = TECH_CATEGORY_LABELS.get(node.tech_category, node.tech_category.capitalize())
+	var tier_label: String = ROMAN_NUMERALS[node.branch_tier] if node.branch_tier < ROMAN_NUMERALS.size() else str(node.branch_tier)
+	return "%s %s" % [category_label, tier_label]
+
+
 ## GDD UI Requirements: cost + prerequisite-eligibility state, non-color
 ## affordability backup (text tag here, pending real iconography).
 func _tech_entry_text(node: TechNodeResource) -> String:
@@ -134,7 +162,7 @@ func _tech_entry_text(node: TechNodeResource) -> String:
 		state_tag = "AVAILABLE"
 	else:
 		state_tag = "LOCKED_PREREQ"
-	return "%s [%s] (%s) gold:%d" % [String(node.tech_id), node.tech_category, state_tag, node.gold_cost]
+	return "%s (%s) gold:%d" % [_tech_display_name(node), state_tag, node.gold_cost]
 
 
 ## GDD: "confirm on a locked/unaffordable target opens a context tooltip
@@ -184,12 +212,24 @@ func _create_structure_button(structure: StructureResource) -> Button:
 	return button
 
 
+## "Habitat Expansion II", "Watchtower I" — see TECH_CATEGORY_LABELS' own doc
+## comment for why this is derived from data fields, not a per-id name.
+func _structure_display_name(structure: StructureResource) -> String:
+	var type_label: String = STRUCTURE_TYPE_LABELS.get(structure.structure_type, structure.structure_type.capitalize())
+	var tier_label: String = ROMAN_NUMERALS[structure.tier] if structure.tier < ROMAN_NUMERALS.size() else str(structure.tier)
+	return "%s %s" % [type_label, tier_label]
+
+
 ## GDD: built/unbuilt status glyph + tech-gate read-only reference so the
 ## player never has to alt-tab between views to see why a structure is locked.
 func _structure_entry_text(structure: StructureResource) -> String:
 	var status_tag: String = "BUILT" if defense_building.is_structure_built(structure.structure_id) else "UNBUILT"
-	var gate_tag: String = " gated:%s" % String(structure.tech_gate) if structure.tech_gate != &"" else ""
-	return "%s [%s] gold:%d%s" % [String(structure.structure_id), status_tag, structure.gold_cost, gate_tag]
+	var gate_tag: String = ""
+	if structure.tech_gate != &"":
+		var gate_node: TechNodeResource = GGameDataRegistry.get_all_tech_nodes().get(structure.tech_gate)
+		var gate_label: String = _tech_display_name(gate_node) if gate_node != null else String(structure.tech_gate)
+		gate_tag = " gated:%s" % gate_label
+	return "%s (%s) gold:%d%s" % [_structure_display_name(structure), status_tag, structure.gold_cost, gate_tag]
 
 
 func _on_structure_pressed(structure_id: StringName) -> void:
