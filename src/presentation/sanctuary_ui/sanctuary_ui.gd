@@ -80,11 +80,20 @@ const ROOM_SCENES: Dictionary[StringName, PackedScene] = {
 }
 
 ## GDD Tuning Knobs default (56-96px safe range) — Story 002 owns tuning this.
-## Raised from the 72px placeholder to the range's own ceiling (2026-08-09)
-## so real label text (now that a translation catalog exists) has the most
-## room the GDD's icon-only rail allows before falling back to ellipsis
-## truncation — see tab_strip.gd's Button.text_overrun_behavior.
-const TAB_STRIP_WIDTH: float = 96.0
+## Widened past that range's own ceiling to 240px (2026-08-09): the 56-96px
+## number assumed the GDD's icon-first/label-on-focus-only ideal, but this
+## screen ships icon+text always-on (see tab_strip.gd's class doc), and once
+## a real translation catalog existed, live-verified label text permanently
+## ellipsis-truncated at 96px -- confirmed via MCP as a real player-visible
+## regression, not a cosmetic nit. 240px is measured live against the real
+## button/font/stylebox (Font.get_string_size + icon + h_separation +
+## stylebox margins), not guessed -- an initial 180px guess (based on a
+## bare Button.new() with the default theme, not this screen's actual font
+## metrics) still truncated "Inventory & Crafting" in-engine. 240px clears
+## every current label ("Inventory & Crafting" needs ~221px) with margin.
+## text_overrun_behavior in tab_strip.gd stays on as a defensive fallback
+## for future/longer localized strings, not as the primary rendering path.
+const TAB_STRIP_WIDTH: float = 240.0
 ## GDD Tuning Knobs safe range is 40-64px (Story 004 owns tuning this) --
 ## raised from the 48px placeholder to the range's own ceiling (2026-08-04) so
 ## `sanctuary_header_gold.png`'s corner-flourish trim (design/art/asset-UI-
