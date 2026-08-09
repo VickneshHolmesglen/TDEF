@@ -69,14 +69,14 @@ ignore_texture_size = true
 stretch_mode = 4
 
 [node name="SettingsButton" type="TextureButton" parent="Buttons"]
-custom_minimum_size = Vector2(280, 77.8)
+custom_minimum_size = Vector2(280, 79.4)
 layout_mode = 2
 texture_normal = ExtResource("4_settings")
 ignore_texture_size = true
 stretch_mode = 4
 
 [node name="QuitButton" type="TextureButton" parent="Buttons"]
-custom_minimum_size = Vector2(280, 67.5)
+custom_minimum_size = Vector2(280, 80.7)
 layout_mode = 2
 texture_normal = ExtResource("5_exit")
 ignore_texture_size = true

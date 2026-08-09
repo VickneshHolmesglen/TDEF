@@ -36,10 +36,6 @@ GAudioSystem="*res://src/core/audio/audio_system.gd"
 GEncyclopedia="*res://src/core/encyclopedia/encyclopedia.gd"
 _mcp_game_helper="*res://addons/godot_ai/runtime/game_helper.gd"
 
-[internationalization]
-
-locale/translations=PackedStringArray("res://assets/localization/strings.en.translation")
-
 [display]
 
 window/size/viewport_width=1280
@@ -154,3 +150,7 @@ tarot_tab_next={
 , Object(InputEventJoypadMotion,"resource_local_to_scene":false,"resource_name":"","device":0,"axis":5,"axis_value":1.0,"script":null)
 ]
 }
+
+[internationalization]
+
+locale/translations=PackedStringArray("res://assets/localization/strings.en.translation")
