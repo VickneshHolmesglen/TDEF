@@ -32,8 +32,32 @@ extends GdUnitTestSuite
 ## immediately after the triggering emit() call, with no
 ## `await get_tree().process_frame` in between — proving no deferral occurred.
 
+const STUB_SCENE_PATH: String = "res://tests/fixtures/scene_manager/StubScene.tscn"
+
 var _hero: Hero
 var _spy: EventBusSpy
+var _original_mission_path: String
+var _original_sanctuary_path: String
+var _original_current_scene: Node
+
+
+## Real leak found and fixed (2026-08-10): scene_manager.gd's real, always-
+## live Autoload subscribes to hero_died in its own _ready() and reacts by
+## calling the REAL transition_to_sanctuary() — this file's own AC-13 death
+## tests genuinely kill the Hero, which was silently swapping current_scene
+## to the actual, heavy SanctuaryScene.tscn and never cleaning it up,
+## leaking a fully alive, EventBus-subscribed scene into the rest of the
+## test run (confirmed live via bisection: this file alone was enough to
+## make an unrelated recipe_discovery_state_machine_test.gd assertion see
+## extra recipe_discovered emissions from the abandoned scene's own Crafting
+## instance). Matches tests/integration/foundation/scene_manager_transition_
+## test.gd's and mission_scene_the_gap_test.gd's own established stub-
+## injection + real-cleanup convention.
+func before_test() -> void:
+	_original_mission_path = GSceneManager._mission_scene_path
+	_original_sanctuary_path = GSceneManager._sanctuary_scene_path
+	GSceneManager._inject(STUB_SCENE_PATH, STUB_SCENE_PATH)
+	_original_current_scene = get_tree().current_scene
 
 
 func after_test() -> void:
@@ -45,6 +69,16 @@ func after_test() -> void:
 			_hero.get_parent().remove_child(_hero)
 		_hero.free()
 	_hero = null
+
+	if GSceneManager._transition_in_progress:
+		await GEventBus.scene_transition_completed
+	var loaded_scene: Node = get_tree().current_scene
+	GSceneManager._inject(_original_mission_path, _original_sanctuary_path)
+	GSceneManager._transition_in_progress = false
+	if is_instance_valid(_original_current_scene):
+		get_tree().current_scene = _original_current_scene
+	if loaded_scene != null and is_instance_valid(loaded_scene) and loaded_scene != _original_current_scene:
+		loaded_scene.free()
 
 
 func _make_hero() -> Hero:

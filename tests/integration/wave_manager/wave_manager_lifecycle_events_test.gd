@@ -24,6 +24,8 @@ extends GdUnitTestSuite
 ## emission order) to verify the Rule 11 / Rule 13 / AC-5 ordering guarantees,
 ## which require checking relative order across DIFFERENT signal types.
 
+const STUB_SCENE_PATH: String = "res://tests/fixtures/scene_manager/StubScene.tscn"
+
 var _wm: WaveManager
 var _spy: EventBusSpy
 var _order: Array = []
@@ -33,8 +35,29 @@ var _cb_wave_completed: Callable
 var _cb_mission_phase_changed: Callable
 var _cb_wave_preview_available: Callable
 
+var _original_mission_path: String
+var _original_sanctuary_path: String
+var _original_current_scene: Node
 
+
+## Real leak found and fixed (2026-08-10): mission_phase_changed is a real
+## GLOBAL EventBus signal — firing it from this suite's own LOCAL _wm
+## instance still reaches the REAL, always-live SceneManager Autoload
+## (subscribed in its own _ready()), which reacts to new_phase ==
+## "MISSION_COMPLETE" by calling the REAL transition_to_sanctuary(). This
+## file's own MISSION_COMPLETE tests were silently swapping current_scene to
+## the actual, heavy SanctuaryScene.tscn and never cleaning it up, leaking a
+## fully alive, EventBus-subscribed scene into the rest of the test run
+## (confirmed live via bisection — the same class of gap as tests/
+## integration/foundation/scene_manager_transition_test.gd and tests/
+## integration/hero/hero_lifecycle_test.gd, both fixed the same session).
+## Matches their same stub-injection + real-cleanup convention.
 func before_test() -> void:
+	_original_mission_path = GSceneManager._mission_scene_path
+	_original_sanctuary_path = GSceneManager._sanctuary_scene_path
+	GSceneManager._inject(STUB_SCENE_PATH, STUB_SCENE_PATH)
+	_original_current_scene = get_tree().current_scene
+
 	_wm = WaveManager.new()
 	add_child(_wm)  # triggers _ready() — creates timers, subscribes to EventBus
 
@@ -66,6 +89,16 @@ func after_test() -> void:
 	GEventBus.wave_preview_available.disconnect(_cb_wave_preview_available)
 	remove_child(_wm)
 	_wm.free()
+
+	if GSceneManager._transition_in_progress:
+		await GEventBus.scene_transition_completed
+	var loaded_scene: Node = get_tree().current_scene
+	GSceneManager._inject(_original_mission_path, _original_sanctuary_path)
+	GSceneManager._transition_in_progress = false
+	if is_instance_valid(_original_current_scene):
+		get_tree().current_scene = _original_current_scene
+	if loaded_scene != null and is_instance_valid(loaded_scene) and loaded_scene != _original_current_scene:
+		loaded_scene.free()
 
 # ---------------------------------------------------------------------------
 # Rule 10c / AC-5: wave_started fires before mission_phase_changed, same

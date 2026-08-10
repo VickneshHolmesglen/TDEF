@@ -40,8 +40,22 @@ func after_test() -> void:
 	# Restore current_scene — these tests actually swap it via
 	# change_scene_to_packed(); leaving it pointed at the stub scene would
 	# pollute assumptions in any later suite in the same headless run.
+	var loaded_scene: Node = get_tree().current_scene
 	if is_instance_valid(_original_current_scene):
 		get_tree().current_scene = _original_current_scene
+	# Real leak found and fixed (2026-08-10): reassigning current_scene above
+	# does NOT free the scene this test's own change_scene_to_packed() call
+	# loaded — it stays a fully alive, fully EventBus-subscribed child of the
+	# tree root indefinitely, corrupting any later suite's EventBusSpy counts
+	# if that scene (or anything under it) reacts to signals other tests
+	# emit. Confirmed live via bisection: test_transition_to_sanctuary_
+	# loads_the_real_shipped_scene() alone was enough to make an unrelated
+	# recipe_discovery_state_machine_test.gd assertion see extra
+	# recipe_discovered emissions — the abandoned real SanctuaryScene's own
+	# Crafting instance (SanctuaryUI.tscn, added 2026-08-10) was still
+	# subscribed to item_added and kept reacting to that later suite's calls.
+	if loaded_scene != null and is_instance_valid(loaded_scene) and loaded_scene != _original_current_scene:
+		loaded_scene.free()
 
 # ---------------------------------------------------------------------------
 # AC-2/AC-3/AC-4: Transition signal sequence
