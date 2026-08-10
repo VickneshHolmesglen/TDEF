@@ -22,7 +22,7 @@ text = "Sell"
 
 [node name="NonReadyControls" type="Control" parent="."]
 
-[node name="BuildList" type="VBoxContainer" parent="NonReadyControls"]
+[node name="BuildList" type="HBoxContainer" parent="NonReadyControls"]
 
 [node name="PlacementCursor" type="ColorRect" parent="NonReadyControls"]
 visible = false

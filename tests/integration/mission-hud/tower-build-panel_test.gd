@@ -54,12 +54,15 @@ func test_build_list_has_one_entry_per_real_blueprint() -> void:
 	assert_bool(build_buttons.has(&"frostbolt_turret")).is_true()
 
 
-func test_entry_text_contains_display_name_and_cost() -> void:
+## Tiles are icon-only (2026-08-11 redesign) — details live in tooltip_text,
+## shown on hover, not in the button's own always-visible text.
+func test_entry_tooltip_contains_display_name_and_cost() -> void:
 	@warning_ignore("unsafe_property_access")
 	var build_buttons: Dictionary = _cluster().get("_build_buttons")
 	var button: Button = build_buttons[&"archer"]
-	assert_str(button.text).contains("Archer Tower")
-	assert_str(button.text).contains("10g")
+	assert_str(button.text).is_equal("")
+	assert_str(button.tooltip_text).contains("Archer Tower")
+	assert_str(button.tooltip_text).contains("10g")
 
 
 func test_aura_weapon_shows_buff_not_a_misleading_dps_number() -> void:
@@ -68,8 +71,15 @@ func test_aura_weapon_shows_buff_not_a_misleading_dps_number() -> void:
 	@warning_ignore("unsafe_property_access")
 	var build_buttons: Dictionary = _cluster().get("_build_buttons")
 	var button: Button = build_buttons[&"rally_banner"]
-	assert_str(button.text).contains("Aura:")
-	assert_str(button.text).not_contains("DPS")
+	assert_str(button.tooltip_text).contains("Aura:")
+	assert_str(button.tooltip_text).not_contains("DPS")
+
+
+func test_tile_is_square_and_icon_only() -> void:
+	@warning_ignore("unsafe_property_access")
+	var build_buttons: Dictionary = _cluster().get("_build_buttons")
+	var button: Button = build_buttons[&"archer"]
+	assert_that(button.custom_minimum_size).is_equal(PlanningCluster.TILE_SIZE)
 
 
 # ---------------------------------------------------------------------------

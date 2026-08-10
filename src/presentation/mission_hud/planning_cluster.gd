@@ -54,11 +54,17 @@ const ROUTE_PREVIEW_WIDTH: float = 3.0
 @onready var _composition_preview_host: VBoxContainer = $CompositionPreviewHost
 
 ## Tower Build Panel (tower.md's Visual/Audio Requirements, mission-hud.md's
-## Zone E) -- one row per GGameDataRegistry.get_all_tower_blueprints() entry.
+## Zone E) -- one tile per GGameDataRegistry.get_all_tower_blueprints() entry.
 ## Added 2026-08-10: this list was the one Planning Cluster element the GDD
 ## named but no prior story had implemented -- placement was previously a
 ## hardcoded single-blueprint debug click in mission_scene.gd/the_gap.gd.
-@onready var _build_list: VBoxContainer = $NonReadyControls/BuildList
+## Redesigned 2026-08-11 from a vertical list of full-text rows to a row of
+## square icon-only tiles (HBoxContainer) -- cost/footprint/DPS/perk details
+## moved to each tile's tooltip_text, shown on hover, instead of always-on
+## row text.
+@onready var _build_list: HBoxContainer = $NonReadyControls/BuildList
+const TILE_SIZE: Vector2 = Vector2(48, 48)
+const TILE_ICON_MARGIN: float = 12.0
 ## Grid Placement Cursor (design/ux/interaction-patterns.md's own pattern) --
 ## a single footprint-sized rect that follows the mouse while a blueprint is
 ## selected, colored by TowerSystem.get_placement_preview()'s own validity
@@ -405,7 +411,12 @@ func _build_tower_list() -> void:
 		var data: TowerBlueprintData = blueprints[blueprint_id] as TowerBlueprintData
 		var button := Button.new()
 		button.name = "Tower_%s" % String(blueprint_id)
-		button.text = _blueprint_entry_text(data)
+		# Icon-only tile (2026-08-11, replacing the original full-text row) —
+		# details (cost/footprint/DPS/perk) move to tooltip_text, shown on
+		# hover via Godot's own built-in Control tooltip, rather than always
+		# rendering as a wide text row.
+		button.custom_minimum_size = TILE_SIZE
+		button.tooltip_text = _blueprint_entry_text(data)
 		# GDD ("archetype icon...") — reuses the same real per-archetype art
 		# tower_instance.gd already displays on the placed tower itself
 		# (assets/art/towers/), added 2026-08-11. This list was originally
@@ -415,7 +426,7 @@ func _build_tower_list() -> void:
 		if icon != null:
 			button.icon = icon
 			button.expand_icon = true
-			button.add_theme_constant_override("icon_max_width", 28)
+			button.add_theme_constant_override("icon_max_width", int(TILE_SIZE.x - TILE_ICON_MARGIN))
 		button.focus_mode = Control.FOCUS_ALL
 		button.toggle_mode = true
 		button.button_group = _build_button_group
@@ -426,10 +437,12 @@ func _build_tower_list() -> void:
 
 
 ## GDD ("archetype icon, estimated DPS, placement cost, footprint size,
-## pre-placement perk indicator") — the icon half is set in _build_tower_list()
-## above, reusing tower_instance.gd's own ARCHETYPE_TEXTURES. AURA
-## weapons (Rally Banner) show their buff instead of a DPS number, since
-## "8 DPS" would misdescribe a support aura that deals no damage.
+## pre-placement perk indicator") — the icon is the tile's face
+## (_build_tower_list() above); this text is the tile's tooltip_text
+## instead of always-visible row text, per the tile-icon-plus-hover-detail
+## redesign (2026-08-11). AURA weapons (Rally Banner) show their buff
+## instead of a DPS number, since "8 DPS" would misdescribe a support aura
+## that deals no damage.
 func _blueprint_entry_text(data: TowerBlueprintData) -> String:
 	var footprint: Vector2i = data.foundation.footprint
 	var effect_tag: String
