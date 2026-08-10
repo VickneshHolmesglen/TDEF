@@ -4,8 +4,10 @@
 ##
 ## Covers AC-09 (gold deltas fire exclusively as resources_changed — never
 ## materials_earned/materials_spent) and AC-10 (mission_phase_changed(new_phase=
-## "SCOUT") triggers resources_changed(150, "mission_start_grant") exactly once,
+## "SCOUT") triggers resources_changed(50, "mission_start_grant") exactly once,
 ## synchronously — see the "before the phase timer starts" note below).
+## Value lowered from 150 to 50, 2026-08-11 — see ResourceEconomy.
+## SCOUT_STARTING_GOLD's own doc comment for the recalibration rationale.
 ##
 ## AC-10 wording note ("before the phase timer starts"): ADR-0001 Rule 1 makes
 ## EventBus dispatch synchronous by default, and WaveManager's own
@@ -54,12 +56,12 @@ func after_test() -> void:
 # AC-10: SCOUT entry grants exactly once, with the correct payload.
 # ---------------------------------------------------------------------------
 
-func test_mission_phase_changed_to_scout_emits_resources_changed_150_mission_start_grant() -> void:
+func test_mission_phase_changed_to_scout_emits_resources_changed_50_mission_start_grant() -> void:
 	GEventBus.mission_phase_changed.emit("IDLE", "SCOUT", 0.0)
 
 	assert_int(_spy.count("resources_changed")).is_equal(1)
 	var args: Array = (_spy.emissions["resources_changed"] as Array)[0]
-	assert_int(args[0]).is_equal(150)
+	assert_int(args[0]).is_equal(ResourceEconomy.SCOUT_STARTING_GOLD)
 	assert_str(String(args[1])).is_equal("mission_start_grant")
 
 

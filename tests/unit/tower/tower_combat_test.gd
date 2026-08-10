@@ -85,13 +85,14 @@ func _place(ts: TowerSystem, data: TowerBlueprintData, cell: Vector2i = Vector2i
 func before_test() -> void:
 	# Reset the real GMissionEconomy Autoload to a known 0 baseline before
 	# seeding. TD-test-004: calls MissionEconomy's own reset handler directly
-	# rather than broadcasting mission_launched -- the broadcast cascades into
+	# rather than broadcasting grid_initialized (its real reset trigger since
+	# 2026-08-11 -- see mission_economy.gd) -- the broadcast cascades into
 	# WaveManager/SavePersistence/Menagerie/HeroSkillBuild/Tarot's own
 	# handlers too, and repeating that across many gdUnit4 test-case
 	# boundaries is a confirmed orphan-leak mechanism (see
 	# docs/tech-debt-register.md). This test doesn't care about the broadcast
 	# mechanism itself, only MissionEconomy's own reset state.
-	GMissionEconomy._on_mission_launched("test_mission", PackedStringArray(), 1)
+	GMissionEconomy._on_grid_initialized(0, 0, 0.0)
 	_ts = _make_ts()
 	_spy = EventBusSpy.new()
 	_spy.watch(GEventBus.tower_attacked)
@@ -104,7 +105,7 @@ func after_test() -> void:
 	_spy = null
 	_ts.free()  # TD-tower-002 fix: _ts is a Node, never added to the tree — .free() (not queue_free()) frees it immediately, closing the orphan-node gap
 	_ts = null
-	GMissionEconomy._on_mission_launched("test_mission", PackedStringArray(), 1)  # reset GMissionEconomy for next suite (TD-test-004: direct call, not broadcast)
+	GMissionEconomy._on_grid_initialized(0, 0, 0.0)  # reset GMissionEconomy for next suite (TD-test-004: direct call, not broadcast)
 
 # ---------------------------------------------------------------------------
 # AC-9/10: DPS formula

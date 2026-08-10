@@ -1,10 +1,57 @@
 # ADR-0018: Mission Economy — Runtime Gold Balance Ownership
 
 ## Status
-Accepted
+Accepted (reset-trigger corrected 2026-08-11 — see amendment below; core decision — a dedicated `MissionEconomy` Autoload owning `_gold_balance` — unchanged)
 
 ## Date
 2026-07-13
+
+## Amendment (2026-08-11) — Reset trigger changed `mission_launched` → `grid_initialized`
+
+This ADR originally specified (see "Reset — on `mission_launched`" below, kept for
+historical record) that `mission_launched`'s reset "fires before Wave Manager's
+own SCOUT transition completes and before Resource Economy's Scout-starting-gold
+grant... is emitted, so the grant always lands on a freshly-zeroed balance." **That
+claim was never actually true, and went undetected for a month** because
+`ResourceEconomy` (ADR-0017) was never instanced in any real playable scene until
+this date — its Scout-grant path only ever ran inside unit tests that construct it
+directly, never through the real EventBus cascade this ADR's ordering claim depends
+on.
+
+**The real mechanism**: Godot invokes `mission_launched` subscribers in
+connection order, which for Autoloads follows boot order. `WaveManager` (boot
+position 7) connects before `MissionEconomy` (boot position 8). `WaveManager`'s
+own `mission_launched` handler synchronously drives its entire SCOUT-entry
+cascade to completion — including emitting `mission_phase_changed`, which
+`ResourceEconomy` catches synchronously and responds to by emitting
+`resources_changed` for the Scout-starting-gold grant, which `MissionEconomy`'s
+`_on_resources_changed` catches synchronously and adds to `_gold_balance` —
+**all before `mission_launched.emit()` even reaches `MissionEconomy`'s own
+`_on_mission_launched` subscriber**, which then unconditionally zeroes the
+balance, wiping the grant that had already landed.
+
+**Fix chosen**: `MissionEconomy` now resets on `grid_initialized`
+(`event_bus.gd`) instead of `mission_launched`. `grid_initialized` is
+independently documented and verified to fire strictly before
+`mission_launched` at every real call site (`GGrid.initialize()` is always
+called before `GEventBus.mission_launched.emit()`, both in
+`the_gap.gd` and via `MissionSelect.confirm_launch()`) — this was already the
+established fix for an identical class of bug (`MissionScene`'s own camera-
+positioning race, 2026-08-09), reused here rather than invented fresh.
+
+**Alternative considered and rejected**: reordering `WaveManager`/`MissionEconomy`'s
+Autoload boot positions (so `MissionEconomy` resets first for the *same*
+`mission_launched` dispatch) would also work, but would additionally invalidate
+`WaveManager`'s own Accepted boot-position-7 claim in ADR-0012, rippling into a
+formal renumbering of an unrelated ADR for no benefit over the smaller
+signal-swap fix actually chosen.
+
+**What changed in this file vs. what's now stale**: the "Reset — on
+`mission_launched`" code block, the Architecture Diagram, and the Key
+Interfaces block below are the *original, as-Accepted* design and are kept
+verbatim for historical record — they do not reflect the current shipped
+code. See `src/core/mission_economy.gd`'s own class doc for the current,
+accurate implementation.
 
 ## Engine Compatibility
 

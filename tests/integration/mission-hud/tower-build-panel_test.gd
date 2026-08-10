@@ -15,10 +15,11 @@ var _hud: MissionHud
 
 
 func before_test() -> void:
-	# TD-test-004: direct call, not a mission_launched broadcast (see
-	# tests/unit/tower/tower_placement_test.gd's identical rationale) —
+	# TD-test-004: direct call, not a grid_initialized broadcast (its real
+	# reset trigger since 2026-08-11 — see mission_economy.gd; rationale
+	# otherwise identical to tests/unit/tower/tower_placement_test.gd) —
 	# resets GMissionEconomy's real balance to a known 0 baseline.
-	GMissionEconomy._on_mission_launched("test_mission", PackedStringArray(), 1)
+	GMissionEconomy._on_grid_initialized(0, 0, 0.0)
 	var config := GridConfig.new()
 	config.cols = 1
 	config.rows = 1
@@ -34,7 +35,7 @@ func after_test() -> void:
 	if _hud != null and is_instance_valid(_hud):
 		_hud.queue_free()
 	_hud = null
-	GMissionEconomy._on_mission_launched("test_mission", PackedStringArray(), 1)
+	GMissionEconomy._on_grid_initialized(0, 0, 0.0)
 
 
 func _cluster() -> PlanningCluster:

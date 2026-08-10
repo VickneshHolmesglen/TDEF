@@ -17,8 +17,12 @@ extends Node2D
 ##      existing MonsterResource loader), and MonsterManager/TowerSystem each
 ##      self-populate their own lookup table from GGameDataRegistry at _ready()
 ##      if empty. This scene no longer needs the _wire_monster_data()/_wire_tower_data()
-##      workaround it previously used — removed. _player_gold is still seeded directly
-##      here (500, debug value) since Resource Economy System remains Not Started.
+##      workaround it previously used — removed. [Closed further 2026-08-11]
+##      the 500-gold debug seed this point used to note is gone too — Resource
+##      Economy now has a real `ResourceEconomy` node in this scene (it was
+##      never instanced anywhere before, real or test-adjacent scenes alike,
+##      so the Scout Phase starting grant and monster-kill drops never
+##      actually fired in real gameplay regardless of the debug seed).
 ##   3. Hero._base_stats has no public setter (no HeroResource pipeline exists yet — a
 ##      known, previously-flagged gap in Story 008/epic-02's own Completion Notes). Set
 ##      directly here as a documented stopgap so the Hero isn't shipped at 0 HP.
@@ -169,7 +173,11 @@ func _ready() -> void:
 	# mission-select UI.
 	await get_tree().create_timer(1.0).timeout
 	_launch_mission()
-	GEventBus.resources_changed.emit(500, &"debug_seed")  # debug-seeded stopgap; see TD-data-001 Out of Scope — fires after mission_launched so it isn't wiped by GMissionEconomy's reset
+	# TD-data-001's debug-seeded 500-gold stopgap removed 2026-08-11: closed by
+	# adding a real ResourceEconomy node to this scene (it was never instanced
+	# anywhere before, so the real Scout Phase starting grant — and monster-kill
+	# drops — never actually fired in real gameplay; this debug line was masking
+	# that gap, not working around a real absence of the mechanism).
 
 
 func _exit_tree() -> void:

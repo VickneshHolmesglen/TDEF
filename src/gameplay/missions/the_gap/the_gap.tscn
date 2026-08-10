@@ -6,6 +6,7 @@
 [ext_resource type="Script" path="res://src/core/monster/monster_manager.gd" id="4_mm"]
 [ext_resource type="Script" path="res://src/core/tower/tower_system.gd" id="5_ts"]
 [ext_resource type="Script" path="res://src/core/damage_status/damage_status.gd" id="6_ds"]
+[ext_resource type="Script" path="res://src/core/resource_economy/resource_economy.gd" id="11_re"]
 [ext_resource type="PackedScene" path="res://src/gameplay/ui/pause_menu/pause_menu.tscn" id="7_pause"]
 [ext_resource type="Script" path="res://src/presentation/mission_hud/mission_hud.gd" id="8_hud"]
 [ext_resource type="Script" path="res://src/ui/input_mode_tracker.gd" id="9_imt"]
@@ -25,6 +26,9 @@ script = ExtResource("5_ts")
 
 [node name="DamageStatus" type="Node" parent="."]
 script = ExtResource("6_ds")
+
+[node name="ResourceEconomy" type="Node" parent="."]
+script = ExtResource("11_re")
 
 [node name="Hero" parent="." instance=ExtResource("3_hero")]
 

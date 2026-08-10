@@ -12,10 +12,33 @@ extends Node
 ## Owns exactly one piece of mutable state: _gold_balance. The single write
 ## path is the resources_changed EventBus subscription (accumulate every
 ## delta, regardless of source — Scout grant, kill drops, spending); the
-## single reset trigger is mission_launched (zero, before any of that
-## mission's resources_changed grants can arrive, since this Autoload boots
-## before any mission scene loads). No other system may mutate _gold_balance
-## directly — reads only, via get_gold_balance()/can_afford().
+## single reset trigger is grid_initialized (zero, before any of that
+## mission's resources_changed grants can arrive). No other system may
+## mutate _gold_balance directly — reads only, via
+## get_gold_balance()/can_afford().
+##
+## Reset trigger changed from mission_launched to grid_initialized,
+## 2026-08-11 (real bug found while wiring ResourceEconomy into a live scene
+## for the first time — see ADR-0018's dated amendment for the full account).
+## ADR-0018 originally claimed mission_launched's reset "fires before Wave
+## Manager's own SCOUT transition completes... so the grant always lands on
+## a freshly-zeroed balance" — that claim was never actually true: Godot
+## calls mission_launched subscribers in connection/boot order, and
+## WaveManager (boot #7, connects before this Autoload at #8) drives its
+## entire SCOUT-entry cascade — including ResourceEconomy's Scout-starting-
+## gold grant — synchronously to completion INSIDE its own mission_launched
+## handler, before this Autoload's mission_launched handler ever runs. The
+## grant landed, then this handler's unconditional `_gold_balance = 0`
+## immediately wiped it. Invisible until now because ResourceEconomy was
+## never actually instanced in any real scene before this pass.
+## grid_initialized (event_bus.gd) already exists for exactly this class of
+## problem — MissionScene's own camera-positioning bug (2026-08-09) was
+## fixed by subscribing to grid_initialized instead of mission_launched for
+## the identical reason: "fires before the racy cascade even starts, not
+## merely early within it — closes the ordering gap structurally rather
+## than by connection-order luck." Reusing that same signal here rather
+## than reordering Autoload boot positions, which would additionally
+## invalidate WaveManager's own Accepted boot-position-7 claim in ADR-0012.
 ##
 ## Reads are a documented direct-call exception (ADR-0018), matching the
 ## same class of latency-sensitive exception already established by Grid
@@ -27,7 +50,7 @@ extends Node
 ## the same category as other unsaved mission-runtime scalars already
 ## excluded by save-persistence.md's "What is NOT saved" list (current wave
 ## number, hero HP, active timers) — it resets naturally every
-## mission_launched, matching a fresh default with no persistence code.
+## grid_initialized, matching a fresh default with no persistence code.
 
 
 var _gold_balance: int = 0
@@ -35,12 +58,12 @@ var _gold_balance: int = 0
 
 func _ready() -> void:
 	GEventBus.resources_changed.connect(_on_resources_changed)
-	GEventBus.mission_launched.connect(_on_mission_launched)
+	GEventBus.grid_initialized.connect(_on_grid_initialized)
 
 
 func _exit_tree() -> void:
 	GEventBus.resources_changed.disconnect(_on_resources_changed)
-	GEventBus.mission_launched.disconnect(_on_mission_launched)
+	GEventBus.grid_initialized.disconnect(_on_grid_initialized)
 
 
 ## Current runtime gold balance. Direct-call read (ADR-0018) — no EventBus
@@ -70,8 +93,10 @@ func _on_resources_changed(gold: int, _source: StringName) -> void:
 	_gold_balance += gold
 
 
-## Sole reset trigger. Resets to 0 immediately on every mission_launched
+## Sole reset trigger. Resets to 0 immediately on every grid_initialized
 ## (AC-11), including a second mission launched in the same session — not
-## just cold boot.
-func _on_mission_launched(_mission_id: String, _modifiers: PackedStringArray, _difficulty_tier: int) -> void:
+## just cold boot. grid_initialized fires once per mission, strictly before
+## mission_launched (see event_bus.gd's own doc comment and this file's
+## class doc for why grid_initialized, not mission_launched, is used here).
+func _on_grid_initialized(_cols: int, _rows: int, _cell_size: float) -> void:
 	_gold_balance = 0

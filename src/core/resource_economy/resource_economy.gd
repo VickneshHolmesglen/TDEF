@@ -83,7 +83,13 @@ const PHASE_SCOUT: String = "SCOUT"
 ## Rule 8 (design/gdd/resource-economy.md) flat Scout Phase starting gold grant.
 ## AC-09: emitted ONLY via resources_changed — never materials_earned/materials_spent
 ## (true by construction: _on_mission_phase_changed() below calls nothing else).
-const SCOUT_STARTING_GOLD: int = 150
+## Lowered from 150 to 50, 2026-08-11 (recalibrated against real Tower content,
+## per the GDD's own Open Questions note that 150 was "provisional pending real
+## tower content" — the 4 real blueprints cost 10-12g each, so 50 still fields
+## 4-5 opening towers). See resource-economy.md's Tuning Knobs table and
+## Formula 5 for the updated mission-total arithmetic and the newly-reopened
+## tower_placement_budget_target comparison this creates.
+const SCOUT_STARTING_GOLD: int = 50
 const SCOUT_GRANT_SOURCE: StringName = &"mission_start_grant"
 
 
@@ -113,7 +119,7 @@ func _on_monsters_died_batch(payloads: Array[MonsterDiedEvent]) -> void:
 		_process_drops(payload)
 
 
-## Story 013 (AC-10): fires the flat 150-gold Scout Phase starting grant exactly
+## Story 013 (AC-10): fires the flat 50-gold Scout Phase starting grant exactly
 ## once per SCOUT entry — i.e. once per mission_phase_changed(new_phase="SCOUT")
 ## dispatch, synchronously within this same handler call (ADR-0001 Rule 1:
 ## synchronous dispatch is the default; there is no timer/frame boundary between

@@ -334,7 +334,10 @@ signal monster_cell_entered(entity_id: int, grid_cell: Vector2i, path_step_index
 ## camera setup to this signal instead (fired before the racy cascade even
 ## starts, not merely "early" within it) closes the ordering gap structurally
 ## rather than by connection-order luck.
-## Key subscribers: MissionScene (camera position/zoom, GridVisual.configure()).
+## Key subscribers: MissionScene (camera position/zoom, GridVisual.configure()),
+## MissionEconomy (gold-balance reset — added 2026-08-11, same "structural
+## fix, not connection-order luck" rationale as the camera fix above; see
+## mission_economy.gd's own class doc for the real ordering bug this closed).
 signal grid_initialized(cols: int, rows: int, cell_size: float)
 
 

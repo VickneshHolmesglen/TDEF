@@ -1,12 +1,22 @@
 ## Integration tests for MissionEconomy, Epic 03 Story 013, ADR-0018.
 ##
-## Covers AC-11 (resets to 0 on mission_launched, including a second launch in
-## the same session), AC-12 (accumulates correctly across sequential deltas),
-## and AC-13 (can_afford() boundary — cost == balance returns true, not
-## strictly less-than). Also covers the QA Test Cases' explicit edge case: a
-## delta that drives the balance negative is applied as-is (no silent
-## clamping), and can_afford() correctly returns false for any positive cost
-## afterward.
+## Covers AC-11 (resets to 0 on grid_initialized, including a second mission
+## launched in the same session), AC-12 (accumulates correctly across
+## sequential deltas), and AC-13 (can_afford() boundary — cost == balance
+## returns true, not strictly less-than). Also covers the QA Test Cases'
+## explicit edge case: a delta that drives the balance negative is applied
+## as-is (no silent clamping), and can_afford() correctly returns false for
+## any positive cost afterward.
+##
+## Reset trigger changed from mission_launched to grid_initialized,
+## 2026-08-11 — see mission_economy.gd's own class doc and ADR-0018's dated
+## amendment for the full account: mission_launched's reset could be, and in
+## real play was, wiped by a same-dispatch ordering race against
+## ResourceEconomy's Scout-starting-gold grant (also mission_launched-
+## triggered, but synchronously nested inside WaveManager's own earlier-
+## connected handler for the same signal). grid_initialized always fires
+## strictly before mission_launched, closing the race structurally rather
+## than by autoload connection-order luck.
 ##
 ## GMissionEconomy is a real, live Autoload in the test runner (boots before
 ## any test scene, per ADR-0018) — this suite does NOT instantiate a second
@@ -17,51 +27,69 @@
 ## resetting the real GGrid Autoload directly). Because _gold_balance is real,
 ## persistent singleton state — not a fresh instance per test — every test
 ## here resets it to a known 0 baseline in before_test() by emitting the real
-## GEventBus.mission_launched signal (the same reset trigger production code
+## GEventBus.grid_initialized signal (the same reset trigger production code
 ## uses), rather than reaching into _gold_balance directly.
 extends GdUnitTestSuite
 
 
 func before_test() -> void:
-	# TD-test-004: broadcasting the real mission_launched signal here (as
+	# TD-test-004: broadcasting the real grid_initialized signal here (as
 	# before_test/after_test setup/teardown boilerplate, not as the thing
-	# under test) cascades into WaveManager/SavePersistence/Menagerie/
-	# HeroSkillBuild/Tarot's own handlers too, and repeating that across many
-	# gdUnit4 test-case boundaries in one suite run is a confirmed orphan-leak
-	# mechanism (see docs/tech-debt-register.md). Calling MissionEconomy's own
-	# reset handler directly resets the exact same state without cascading
-	# into those other 4 systems' handlers -- the 2 tests that specifically
-	# verify the broadcast mechanism itself (AC-11) still use the real
-	# GEventBus.mission_launched.emit() inside their own test bodies.
-	GMissionEconomy._on_mission_launched("test_mission", PackedStringArray(), 1)
+	# under test) is safe to repeat across many gdUnit4 test-case boundaries
+	# (unlike mission_launched, grid_initialized's only other production
+	# subscriber is MissionScene's own camera positioning, not a cascade of
+	# 4 other Autoloads — see docs/tech-debt-register.md for the orphan-leak
+	# mechanism that made mission_launched risky to broadcast repeatedly).
+	# Calling MissionEconomy's own reset handler directly, not via broadcast,
+	# still avoids that risk entirely regardless -- the 2 tests that
+	# specifically verify the broadcast mechanism itself (AC-11) still use
+	# the real GEventBus.grid_initialized.emit() inside their own test bodies.
+	GMissionEconomy._on_grid_initialized(0, 0, 0.0)
 
 
 func after_test() -> void:
-	GMissionEconomy._on_mission_launched("test_mission", PackedStringArray(), 1)
+	GMissionEconomy._on_grid_initialized(0, 0, 0.0)
 
 
 # ---------------------------------------------------------------------------
-# AC-11: resets to 0 on mission_launched, including a second launch in the
-# same session (not just cold boot).
+# AC-11: resets to 0 on grid_initialized, including a second mission
+# launched in the same session (not just cold boot).
 # ---------------------------------------------------------------------------
 
-func test_mission_launched_resets_balance_to_zero_after_prior_gold() -> void:
+func test_grid_initialized_resets_balance_to_zero_after_prior_gold() -> void:
 	GEventBus.resources_changed.emit(500, &"test_source")
 	assert_int(GMissionEconomy.get_gold_balance()).is_equal(500)
 
-	GEventBus.mission_launched.emit("test_mission", PackedStringArray(), 1)
+	GEventBus.grid_initialized.emit(1, 1, 64.0)
 
 	assert_int(GMissionEconomy.get_gold_balance()).is_equal(0)
 
 
 func test_second_mission_launched_in_same_session_resets_cleanly() -> void:
-	GEventBus.mission_launched.emit("first_mission", PackedStringArray(), 1)
+	GEventBus.grid_initialized.emit(1, 1, 64.0)
 	GEventBus.resources_changed.emit(200, &"test_source")
 	assert_int(GMissionEconomy.get_gold_balance()).is_equal(200)
 
-	GEventBus.mission_launched.emit("second_mission", PackedStringArray(), 2)
+	GEventBus.grid_initialized.emit(1, 1, 64.0)
 
 	assert_int(GMissionEconomy.get_gold_balance()).is_equal(0)
+
+
+## Real bug fix regression guard (2026-08-11): proves the reset genuinely
+## precedes a same-dispatch mission_launched -> WaveManager SCOUT-entry ->
+## ResourceEconomy Scout-grant cascade, which is exactly the race that used
+## to wipe the grant when the reset was triggered by mission_launched
+## itself (see this file's own header comment). grid_initialized firing
+## first, followed by mission_launched carrying a real grant, must leave
+## the grant intact.
+func test_grant_arriving_after_reset_via_mission_launched_is_not_wiped() -> void:
+	GEventBus.grid_initialized.emit(1, 1, 64.0)
+	assert_int(GMissionEconomy.get_gold_balance()).is_equal(0)
+
+	GEventBus.mission_launched.emit("test_mission", PackedStringArray(), 1)
+	GEventBus.resources_changed.emit(50, &"mission_start_grant")
+
+	assert_int(GMissionEconomy.get_gold_balance()).is_equal(50)
 
 
 # ---------------------------------------------------------------------------
