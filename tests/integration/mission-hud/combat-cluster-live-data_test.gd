@@ -22,6 +22,11 @@ var _hud: MissionHud
 
 func before_test() -> void:
 	GGrid.initialize(_make_config())
+	# TD-test-004: GMissionEconomy is a real, persistent Autoload -- reset to
+	# a known 0 baseline the same way mission_economy_test.gd does, since
+	# _on_resources_changed() now reads its real get_gold_balance() directly
+	# (2026-08-10 fix) instead of echoing the signal's own raw payload.
+	GMissionEconomy._on_grid_initialized(0, 0, 0.0)
 	_hud = MissionHudTestHelper.build_hud()
 	add_child(_hud)
 
@@ -30,6 +35,7 @@ func after_test() -> void:
 	if _hud != null and is_instance_valid(_hud):
 		_hud.queue_free()
 	_hud = null
+	GMissionEconomy._on_grid_initialized(0, 0, 0.0)
 
 
 func _boss_spawn(entity_id: int, hp_max: float = 500.0) -> MonsterSpawnedEvent:
@@ -211,10 +217,26 @@ func test_phase_timer_tick_updates_timer_label() -> void:
 ## 2026-08-06: text is now just the number (design/quick-specs/gold-
 ## currency-icon-2026-08-06.md) -- the GoldIcon sibling carries the "this is
 ## gold" meaning "Gold: " used to.
-func test_resources_changed_shows_absolute_gold_balance() -> void:
-	GEventBus.resources_changed.emit(150, &"monster_drop")
+##
+## Regression guard (2026-08-10, player-reported: "the calculation for
+## currency seems wrong" after buying a tower): resources_changed's payload
+## is a signed DELTA (every real emitter sends one -- see tower_system.gd's
+## placement cost/sell refund, resource_economy.gd's Scout grant,
+## defense_building.gd's tech/structure costs), never an absolute balance.
+## The label previously displayed that raw delta directly, so a second gold
+## event after the first (e.g. a tower purchase after the mission-start
+## grant) showed the wrong number outright -- a single emit from a 0
+## baseline couldn't catch this, since the delta and the new total were
+## coincidentally identical. This test now emits two deltas and asserts the
+## label reflects the true running balance GMissionEconomy accumulates, not
+## either raw payload.
+func test_resources_changed_shows_the_real_accumulated_balance_not_the_raw_delta() -> void:
+	GEventBus.resources_changed.emit(50, &"mission_start_grant")
+	assert_str(_hud._gold_label.text).is_equal("50")
 
-	assert_str(_hud._gold_label.text).is_equal("150")
+	GEventBus.resources_changed.emit(-10, &"tower_placed")
+
+	assert_str(_hud._gold_label.text).is_equal("40")
 
 
 func test_materials_earned_accumulates_a_running_tally() -> void:

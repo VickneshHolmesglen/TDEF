@@ -55,9 +55,7 @@ var _skill_cooldown_labels: Array[Label] = []
 ## a single tower's bar can be removed immediately without rebuilding the host.
 var _tower_hp_bar_labels: Dictionary[int, Label] = {}
 ## AC-64: materials_earned is a per-event delta — this is the running total
-## this story accumulates and renders (resources_changed's gold, by contrast,
-## is already an absolute balance per its own EventBus doc comment, no
-## accumulation needed).
+## this story accumulates and renders.
 var _materials_tally: Dictionary[String, int] = {}
 
 @onready var _banner: Control = $Banner
@@ -692,17 +690,30 @@ func _on_materials_earned(material_type: String, quantity: int, _source: String)
 	_materials_label.text = " | ".join(parts)
 
 
-## AC-64 (gold half): resources_changed's gold is already an absolute
-## balance per its own EventBus doc comment — displayed directly, no tally.
+## Real bug found and fixed 2026-08-10 (player-reported: "the calculation
+## for currency seems wrong" after buying a tower): this handler used to
+## display `gold` directly, on the mistaken assumption that resources_
+## changed's payload was already an absolute balance. Every real emitter
+## (resource_economy.gd's Scout grant, tower_system.gd's placement cost/sell
+## refund, defense_building.gd's tech/structure costs) actually sends a
+## signed DELTA -- so buying a 10g tower made the label jump straight to
+## "-10" instead of showing the new balance (e.g. 40). The very first grant
+## from a zero baseline happened to look correct by coincidence (delta ==
+## new total), masking the bug until a second gold-changing event occurred.
+## Reads GMissionEconomy directly instead (its own public get_gold_balance()
+## API, already the sole authoritative accumulator of these same deltas) —
+## same "read the domain Autoload directly" precedent PlanningCluster's
+## _refresh_affordability() already established for this exact discrepancy.
+##
 ## Code review fix: originally missing the _terminal guard (see
 ## _on_hero_health_changed()'s identical fix note). 2026-08-06: text is now
 ## just the number — the GoldIcon sibling (GoldRow) carries the "this is
 ## gold" meaning the word "Gold" used to (design/quick-specs/gold-currency-
 ## icon-2026-08-06.md).
-func _on_resources_changed(gold: int, _source: StringName) -> void:
+func _on_resources_changed(_gold: int, _source: StringName) -> void:
 	if _terminal:
 		return
-	_gold_label.text = "%d" % gold
+	_gold_label.text = "%d" % GMissionEconomy.get_gold_balance()
 
 
 ## AC-65: toast-only (this story's own scope note calls out "live
