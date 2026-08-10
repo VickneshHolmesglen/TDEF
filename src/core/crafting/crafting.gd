@@ -33,11 +33,27 @@ extends Node
 
 const RESTORE_ORDER: int = 25
 
+## Group membership added 2026-08-10 (Crafting Panel UI story): Crafting is
+## deliberately scene-instanced, not an Autoload (ADR-0023) — until this
+## story, it had never actually been instanced in any real scene at all (a
+## real gap, mirroring this same session's ResourceEconomy discovery). Its
+## one real instance now lives as a shell-owned child of SanctuaryUI.tscn
+## (persists across room switches within one Sanctuary visit, resets on
+## Sanctuary scene reload), following EquipmentForge's own identical,
+## already-established precedent (equipment_forge.gd's own doc comment) —
+## the Crafting Panel SCREEN (a RoomHost-hosted, destroy-and-recreate room,
+## unlike this node) discovers the shell-owned instance via
+## `get_tree().get_first_node_in_group(&"crafting")` rather than a direct
+## node-path reference, since RoomHost's generic mount mechanism has no
+## room-specific injection seam.
+const GROUP_NAME: StringName = &"crafting"
+
 var _discovery_ledger: Dictionary[StringName, bool] = {}
 var _craft_resolving: bool = false  ## Story 004 — single-frame double-confirm guard
 
 
 func _ready() -> void:
+	add_to_group(GROUP_NAME)
 	GEventBus.tech_unlocked.connect(_on_tech_unlocked)
 	GEventBus.item_added.connect(_on_item_added)
 	GSavePersistence.register(self, RESTORE_ORDER)

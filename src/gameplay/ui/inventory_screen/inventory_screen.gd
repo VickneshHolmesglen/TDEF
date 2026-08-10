@@ -25,9 +25,17 @@ extends Control
 ##
 ## Out of scope for this story (see story doc's "Out of Scope" section): Story 002's
 ## tab-switching content/categorization logic (TabStripPlaceholder below is a static,
-## non-interactive strip only), Crafting panel's real content (AC-14, deferred — no
-## Crafting GDD exists), slot-expansion-driven live grid growth (Story 003), any
+## non-interactive strip only), slot-expansion-driven live grid growth (Story 003), any
 ## drag-and-drop/context-menu interaction, and all scene-transition/navigation wiring.
+##
+## Crafting panel's real content (2026-08-10, player-requested): AC-14's
+## former "deferred — no Crafting GDD exists" note is stale — design/gdd/
+## crafting.md exists and is Designed. Implements crafting.md's "core
+## functionality" scope only (deliberately deferred by explicit user
+## decision): the unlock-cascade one-shot VFX flash, material-drain pulse
+## animation, and full gamepad D-pad spatial-adjacency crossing between the
+## recipe list and this grid (mouse/keyboard-tab navigation works via each
+## recipe row's own focusable Craft button).
 
 const GRID_COLUMNS: int = 5
 const SLOT_SIZE: Vector2 = Vector2(64, 64)
@@ -40,6 +48,15 @@ const TAB_LABEL_KEYS: Dictionary[StringName, String] = {
 	&"TowerComponent": "INVENTORY_TAB_TOWER_COMPONENT",
 	&"Material": "INVENTORY_TAB_MATERIAL",
 	&"CraftedGood": "INVENTORY_TAB_CRAFTED_GOOD",
+}
+
+## Crafting panel — category grouping order. Matches Inventory.TAB_ORDER's
+## own TowerComponent-before-CraftedGood ordering (design/gdd/crafting.md UI
+## Requirements: "mirrors the left panel's fixed tabs where applicable").
+const RECIPE_CATEGORY_ORDER: Array[String] = ["tower_component", "crafted_good"]
+const RECIPE_CATEGORY_LABEL_KEYS: Dictionary[String, String] = {
+	"tower_component": "CRAFTING_CATEGORY_TOWER_COMPONENT",
+	"crafted_good": "CRAFTING_CATEGORY_CRAFTED_GOOD",
 }
 
 ## Injectable for tests (a caller may still supply an isolated Inventory
@@ -58,21 +75,52 @@ const TAB_LABEL_KEYS: Dictionary[StringName, String] = {
 @onready var _input_mode_tracker: InputModeTracker = $InputModeTracker
 @onready var _tab_strip: HBoxContainer = $MainLayout/LeftPanel/TabStripPlaceholder
 @onready var _slot_grid: GridContainer = $MainLayout/LeftPanel/SlotGrid
-@onready var _crafting_placeholder_label: Label = $MainLayout/RightPanel/CraftingPlaceholderLabel
+## Crafting is deliberately NOT an Autoload (ADR-0023: "Scene-instanced,
+## Sanctuary-only") — unlike Inventory, there is no GCrafting global to fall
+## back to. Real gap found and fixed here (2026-08-10, mirrors this same
+## session's ResourceEconomy discovery): Crafting had a fully-implemented,
+## fully-unit-tested backend (resolve_craft(), discovery ledger, save/restore)
+## but was never instanced in any real scene. Fixed by giving it a shell-
+## owned instance as a child of SanctuaryUI.tscn (persists across room
+## switches within one Sanctuary visit) and following EquipmentForge's own
+## already-established discovery pattern — NOT a direct $Crafting child of
+## this scene, which RoomHost destroys and recreates on every room switch;
+## a Crafting instance living there would silently wipe its discovery
+## ledger every time the player left and returned to this tab.
+@export var crafting: Crafting
+@onready var _recipe_list_host: VBoxContainer = $MainLayout/RightPanel/RecipeScroll/RecipeListHost
 
 var _slot_buttons: Array[Button] = []
 var _slot_focus_rings: Array[Panel] = []
+## Second overlay ring per slot, distinct from _slot_focus_rings (keyboard
+## focus) — lights up while a Crafting recipe row is hovered/focused,
+## highlighting which left-panel slots that recipe would consume
+## (design/gdd/crafting.md UI Requirements: "Selecting a recipe row
+## highlights ... the specific Inventory slots on the left panel that would
+## be consumed"). Kept as a separate node/color (Accent Cyan, not the
+## keyboard ring's gold) so both can be visible at once without one
+## overwriting the other's state.
+var _slot_craft_preview_rings: Array[Panel] = []
+var _crafting_rarity_frames: Array[RarityFrame] = []
+var _crafting_item_icons: Array[TextureRect] = []
+var _crafting_quantity_labels: Array[Label] = []
 
 
 func _ready() -> void:
 	if inventory == null:
 		inventory = GInventory
-
-	_crafting_placeholder_label.text = tr("INVENTORY_CRAFTING_PLACEHOLDER")
+	if crafting == null:
+		crafting = get_tree().get_first_node_in_group(&"crafting") as Crafting
 
 	_build_tab_strip_placeholder()
 	_build_slot_grid()
 	_wire_focus_neighbors()
+	_build_crafting_panel()
+
+	GEventBus.recipe_discovered.connect(_on_recipe_discovered)
+	GEventBus.item_added.connect(_on_inventory_item_changed)
+	GEventBus.item_removed.connect(_on_inventory_item_changed)
+	GEventBus.component_crafted.connect(_on_component_crafted)
 
 	# Single connection for the whole grid — Signal.connect() dedups by
 	# (target object, method) and does NOT treat differing .bind() arguments
@@ -83,6 +131,22 @@ func _ready() -> void:
 	# correct pattern; focus_entered/focus_exited remain per-button below
 	# since those ARE legitimately distinct signals per Button instance.
 	_input_mode_tracker.input_mode_changed.connect(_on_input_mode_changed)
+
+
+## RoomHost contract (ADR-0032 Section 1): any hosted room that owns EventBus
+## subscriptions must expose this exact method, called synchronously before
+## teardown. This room previously had none — now that _ready() connects 4
+## signals, omitting this would leak them into a freed node the next time the
+## player navigates away from this room.
+func disconnect_own_subscriptions() -> void:
+	if GEventBus.recipe_discovered.is_connected(_on_recipe_discovered):
+		GEventBus.recipe_discovered.disconnect(_on_recipe_discovered)
+	if GEventBus.item_added.is_connected(_on_inventory_item_changed):
+		GEventBus.item_added.disconnect(_on_inventory_item_changed)
+	if GEventBus.item_removed.is_connected(_on_inventory_item_changed):
+		GEventBus.item_removed.disconnect(_on_inventory_item_changed)
+	if GEventBus.component_crafted.is_connected(_on_component_crafted):
+		GEventBus.component_crafted.disconnect(_on_component_crafted)
 
 
 # ---------------------------------------------------------------------------
@@ -181,6 +245,29 @@ func _create_slot_button(index: int) -> Button:
 	button.add_child(quantity_label)
 
 	_apply_slot_visual(button, rarity_frame, item_icon, quantity_label, index)
+	_crafting_rarity_frames.append(rarity_frame)
+	_crafting_item_icons.append(item_icon)
+	_crafting_quantity_labels.append(quantity_label)
+
+	# Crafting preview ring (see _slot_craft_preview_rings' own doc comment) —
+	# built manually rather than via FocusRingFactory.build(), which hardcodes
+	# the child name "FocusRing"; this slot already has one of those for
+	# keyboard focus, so a second call would collide.
+	var craft_preview_ring := Panel.new()
+	craft_preview_ring.name = "CraftPreviewRing"
+	var craft_preview_style := StyleBoxFlat.new()
+	craft_preview_style.bg_color = Color(0.0, 0.0, 0.0, 0.0)
+	craft_preview_style.border_width_left = 3
+	craft_preview_style.border_width_right = 3
+	craft_preview_style.border_width_top = 3
+	craft_preview_style.border_width_bottom = 3
+	craft_preview_style.border_color = ShellChromeStyle.UI_ACCENT_CYAN
+	craft_preview_ring.add_theme_stylebox_override("panel", craft_preview_style)
+	craft_preview_ring.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	craft_preview_ring.visible = false
+	craft_preview_ring.set_anchors_preset(Control.PRESET_FULL_RECT)
+	button.add_child(craft_preview_ring)
+	_slot_craft_preview_rings.append(craft_preview_ring)
 
 	# Shared builder (extracted 2026-07-20 from Mission HUD's identical ~15-line
 	# StyleBoxFlat construction, originally duplicated here too — see
@@ -206,10 +293,14 @@ func _create_slot_button(index: int) -> Button:
 	return button
 
 
-## Computed once at slot-build time, matching this screen's existing
-## one-time-at-mount rendering convention (the pre-existing text rendering
-## this replaces was never live-refreshed either — a known limitation this
-## spec doesn't fix or worsen). Empty slot: no text, no frame, no icon.
+## Called once at slot-build time AND on every live refresh since the
+## Crafting panel was added (2026-08-10) — buying/crafting changes left-panel
+## contents, so this can no longer be a one-time render (previously a
+## documented, accepted limitation; now load-bearing correctness for
+## design/gdd/crafting.md's "left-panel drain feedback" requirement). Empty
+## slot: no text, no frame, no icon — explicitly reset, not just skipped, so
+## a slot that WAS occupied and just emptied out (its last unit consumed by a
+## craft) doesn't keep showing stale icon/quantity/rarity-frame state.
 ## Occupied slot with a real icon: icon + corner quantity label, no text —
 ## the icon carries the "what this is" meaning the text used to. Occupied
 ## slot with no icon yet (every material today, until Phase 3 art lands):
@@ -220,14 +311,17 @@ func _apply_slot_visual(button: Button, rarity_frame: RarityFrame, item_icon: Te
 	var contents: Dictionary = inventory.get_slot_contents(index)
 	if contents.is_empty():
 		button.text = ""
+		rarity_frame.rarity = ""
+		item_icon.texture = null
+		item_icon.visible = false
+		quantity_label.visible = false
 		return
 
 	var item_id: String = contents["item_id"]
 	var quantity: int = contents["quantity"]
 	var definition: ItemDefinitionResource = GGameDataRegistry.get_item_definition(StringName(item_id))
 
-	if definition != null and definition.rarity != "":
-		rarity_frame.rarity = definition.rarity
+	rarity_frame.rarity = definition.rarity if definition != null else ""
 
 	if definition != null and definition.icon != null:
 		button.text = ""
@@ -237,6 +331,9 @@ func _apply_slot_visual(button: Button, rarity_frame: RarityFrame, item_icon: Te
 		quantity_label.visible = true
 	else:
 		button.text = "%s x%d" % [item_id, quantity]
+		item_icon.texture = null
+		item_icon.visible = false
+		quantity_label.visible = false
 
 
 func _on_slot_mouse_entered(highlight: ColorRect) -> void:
@@ -294,3 +391,237 @@ func _neighbor_path(button: Button, neighbor_index: int, has_neighbor: bool) -> 
 	if has_neighbor:
 		return button.get_path_to(_slot_buttons[neighbor_index])
 	return button.get_path_to(button)
+
+
+# ---------------------------------------------------------------------------
+# Right panel — Crafting (design/gdd/crafting.md)
+# ---------------------------------------------------------------------------
+
+func _build_crafting_panel() -> void:
+	_refresh_crafting_panel()
+
+
+func _on_recipe_discovered(_recipe_id: String, _recipe_category: String) -> void:
+	_refresh_crafting_panel()
+
+
+## Fires for both Crafting's own consume/output calls (resolve_craft()) and
+## every other Inventory mutation in the game — a live left-panel refresh is
+## correct regardless of source, and re-checking craftability on every
+## material change is exactly Rule 4's own "craftability flickers on and off
+## with the player's current material stock" requirement.
+func _on_inventory_item_changed(_item_id: String, _item_type: String, _quantity: int) -> void:
+	_refresh_crafting_panel()
+	_refresh_all_slot_visuals()
+
+
+func _on_component_crafted(_component_id: String, _component_type: String, _quality_tier: int) -> void:
+	_refresh_crafting_panel()
+
+
+func _refresh_all_slot_visuals() -> void:
+	for i: int in range(_slot_buttons.size()):
+		_apply_slot_visual(_slot_buttons[i], _crafting_rarity_frames[i], _crafting_item_icons[i], _crafting_quantity_labels[i], i)
+
+
+## Rebuilds the entire recipe list from scratch — simplest correct approach
+## given this panel only refreshes on discrete discovery/inventory events
+## (never per-frame), matching this screen's existing rebuild-on-change
+## precedent (_build_tab_strip_placeholder()/_build_slot_grid() are also
+## build-once-then-static outside their own refresh triggers).
+func _refresh_crafting_panel() -> void:
+	for child: Node in _recipe_list_host.get_children():
+		_recipe_list_host.remove_child(child)
+		child.queue_free()
+
+	# Matches equipment_forge_screen.gd's identical guard: real gameplay
+	# always finds the shell-owned instance via the "crafting" group, but an
+	# isolated test mounting InventoryScreen.tscn on its own (no SanctuaryUI
+	# in its tree) has nothing to discover — an empty recipe list, not a
+	# crash, is the correct fallback.
+	if crafting == null:
+		return
+
+	var owned_totals: Dictionary = _compute_owned_totals()
+
+	for category: String in RECIPE_CATEGORY_ORDER:
+		var recipes_in_category: Array[RecipeResource] = _discovered_recipes_in_category(category)
+		if recipes_in_category.is_empty():
+			continue
+		# Rule 4 / UI Requirements "Default sort": Ready-to-craft first, then
+		# Material-insufficient. Tech-locked is omitted -- a recipe is only
+		# ever listed here once DISCOVERED (Rule 4), and discovery requires
+		# the tech gate to already be satisfied, so a discovered-but-tech-
+		# locked row can never actually occur (flagged as a pre-existing GDD
+		# inconsistency between Rule 4 and the Visual/Audio table, not
+		# something this implementation needs to resolve).
+		recipes_in_category.sort_custom(_is_recipe_ready_first)
+
+		var header := Label.new()
+		header.text = tr(RECIPE_CATEGORY_LABEL_KEYS[category])
+		header.add_theme_color_override("font_color", ShellChromeStyle.UI_PARCHMENT)
+		_recipe_list_host.add_child(header)
+
+		for recipe: RecipeResource in recipes_in_category:
+			_recipe_list_host.add_child(_create_recipe_row(recipe, owned_totals))
+
+
+func _is_recipe_ready_first(a: RecipeResource, b: RecipeResource) -> bool:
+	var a_ready: bool = crafting.is_craftable(a.recipe_id)
+	var b_ready: bool = crafting.is_craftable(b.recipe_id)
+	return a_ready and not b_ready
+
+
+func _discovered_recipes_in_category(category: String) -> Array[RecipeResource]:
+	var result: Array[RecipeResource] = []
+	for recipe: RecipeResource in GGameDataRegistry.get_all_recipes().values():
+		if recipe.recipe_category == category and crafting.is_discovered(recipe.recipe_id):
+			result.append(recipe)
+	return result
+
+
+## Sums current holdings by both item_type and rarity, using the exact same
+## unlocked+stackable filter as Inventory.has_items()/has_items_by_rarity()
+## (ADR-0016) -- displayed "current" counts must match what actually gates
+## craftability, not a naive raw sum across every slot.
+func _compute_owned_totals() -> Dictionary:
+	var by_item_type: Dictionary[StringName, int] = {}
+	var by_rarity: Dictionary[StringName, int] = {}
+	for i: int in range(inventory.get_slot_count()):
+		var contents: Dictionary = inventory.get_slot_contents(i)
+		if contents.is_empty():
+			continue
+		if contents.get("locked", false) or contents.get("instance_id", -1) != -1:
+			continue
+		var definition: ItemDefinitionResource = GGameDataRegistry.get_item_definition(StringName(contents["item_id"] as String))
+		if definition == null:
+			continue
+		var quantity: int = contents["quantity"] as int
+		by_item_type[definition.item_type] = by_item_type.get(definition.item_type, 0) + quantity
+		if definition.rarity != "":
+			var rarity_key := StringName(definition.rarity)
+			by_rarity[rarity_key] = by_rarity.get(rarity_key, 0) + quantity
+	return {"by_item_type": by_item_type, "by_rarity": by_rarity}
+
+
+## One recipe row: output icon + name, a Craft button (filled when
+## craftable, outlined otherwise -- ShellChromeStyle's established filled-
+## vs-outline actionable convention), and one cost line per input material
+## ("[key] current/required", UI Parchment if sufficient else UI Warning
+## Orange with a "!" badge -- both signals present per the GDD's own
+## colorblind-safety requirement, never color-only).
+func _create_recipe_row(recipe: RecipeResource, owned_totals: Dictionary) -> Control:
+	var row := PanelContainer.new()
+	row.name = "Recipe_%s" % String(recipe.recipe_id)
+	row.add_theme_stylebox_override("panel", ShellChromeStyle.chrome_panel_stylebox())
+
+	var content := VBoxContainer.new()
+	row.add_child(content)
+
+	var title_row := HBoxContainer.new()
+	content.add_child(title_row)
+
+	var output_definition: ItemDefinitionResource = GGameDataRegistry.get_item_definition(recipe.output_item_id)
+
+	var icon := TextureRect.new()
+	icon.custom_minimum_size = Vector2(32, 32)
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	if output_definition != null and output_definition.icon != null:
+		icon.texture = output_definition.icon
+	title_row.add_child(icon)
+
+	var name_label := Label.new()
+	name_label.text = output_definition.display_name if output_definition != null else String(recipe.output_item_id)
+	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	name_label.add_theme_color_override("font_color", ShellChromeStyle.UI_PARCHMENT)
+	title_row.add_child(name_label)
+
+	var craftable: bool = crafting.is_craftable(recipe.recipe_id)
+
+	var craft_button := Button.new()
+	craft_button.text = tr("CRAFTING_CRAFT_BUTTON")
+	craft_button.disabled = not craftable
+	craft_button.focus_mode = Control.FOCUS_ALL
+	craft_button.add_theme_stylebox_override("normal", ShellChromeStyle.chrome_button_stylebox(craftable))
+	craft_button.pressed.connect(_on_craft_button_pressed.bind(recipe.recipe_id))
+	# Craft button focus doubles as this row's "selected" state for keyboard/
+	# gamepad users (UI Requirements: "Focus rendering: same visible
+	# non-color highlight ... applied identically to recipe rows") -- full
+	# D-pad spatial-adjacency crossing into the left-panel grid is deferred
+	# (see this file's class doc comment), but Tab/Shift+Tab and mouse hover
+	# both already reach the left-panel-highlight preview through this.
+	craft_button.focus_entered.connect(_on_recipe_row_hover.bind(recipe.recipe_id, true))
+	craft_button.focus_exited.connect(_on_recipe_row_hover.bind(recipe.recipe_id, false))
+	title_row.add_child(craft_button)
+
+	var by_item_type: Dictionary = owned_totals["by_item_type"]
+	var by_rarity: Dictionary = owned_totals["by_rarity"]
+	for key: StringName in recipe.inputs:
+		var required: int = recipe.inputs[key]
+		var current: int = by_rarity.get(key, 0) if RecipeResource.VALID_RARITIES.has(key) else by_item_type.get(key, 0)
+		var sufficient: bool = current >= required
+
+		var cost_line := HBoxContainer.new()
+		content.add_child(cost_line)
+
+		var cost_label := Label.new()
+		cost_label.text = "%s %d/%d" % [String(key), current, required]
+		cost_label.add_theme_color_override("font_color", ShellChromeStyle.UI_PARCHMENT if sufficient else ShellChromeStyle.UI_WARNING_ORANGE)
+		cost_line.add_child(cost_label)
+
+		if not sufficient:
+			var badge := Label.new()
+			badge.text = "!"
+			badge.add_theme_stylebox_override("normal", ShellChromeStyle.badge_stylebox())
+			cost_line.add_child(badge)
+
+	row.mouse_entered.connect(_on_recipe_row_hover.bind(recipe.recipe_id, true))
+	row.mouse_exited.connect(_on_recipe_row_hover.bind(recipe.recipe_id, false))
+
+	return row
+
+
+func _on_craft_button_pressed(recipe_id: StringName) -> void:
+	# No direct refresh call needed here: resolve_craft() on success emits
+	# component_crafted plus item_removed/item_added (both already
+	# subscribed above), and a rejected/no-op attempt changes nothing to
+	# refresh -- see resolve_craft()'s own doc comment for its exact
+	# success/failure event contract.
+	crafting.resolve_craft(recipe_id)
+
+
+## Highlights (Accent Cyan ring, distinct from the keyboard-focus gold ring)
+## every left-panel slot holding a material this recipe's inputs would
+## consume -- "what could I make" made concrete per the GDD's own Player
+## Fantasy section. Best-effort: a recipe cost of "8 Common" doesn't map to
+## a specific 8 units across possibly-many Common-tier slots, so every slot
+## matching ANY of the recipe's input keys lights up, not a quantity-exact
+## subset.
+func _on_recipe_row_hover(recipe_id: StringName, hovering: bool) -> void:
+	for ring: Panel in _slot_craft_preview_rings:
+		ring.visible = false
+	if not hovering:
+		return
+	var recipe: RecipeResource = GGameDataRegistry.get_recipe(recipe_id)
+	if recipe == null:
+		return
+	for i: int in _slots_matching_cost(recipe.inputs):
+		_slot_craft_preview_rings[i].visible = true
+
+
+func _slots_matching_cost(cost: Dictionary) -> Array[int]:
+	var matches: Array[int] = []
+	for i: int in range(inventory.get_slot_count()):
+		var contents: Dictionary = inventory.get_slot_contents(i)
+		if contents.is_empty():
+			continue
+		var definition: ItemDefinitionResource = GGameDataRegistry.get_item_definition(StringName(contents["item_id"] as String))
+		if definition == null:
+			continue
+		for key: StringName in cost:
+			var is_match: bool = StringName(definition.rarity) == key if RecipeResource.VALID_RARITIES.has(key) else definition.item_type == key
+			if is_match:
+				matches.append(i)
+				break
+	return matches

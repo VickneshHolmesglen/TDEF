@@ -39,8 +39,10 @@ layout_mode = 2
 size_flags_horizontal = 3
 size_flags_stretch_ratio = 1.0
 
-[node name="CraftingPlaceholderLabel" type="Label" parent="MainLayout/RightPanel"]
+[node name="RecipeScroll" type="ScrollContainer" parent="MainLayout/RightPanel"]
 layout_mode = 2
-horizontal_alignment = 1
-vertical_alignment = 1
-autowrap_mode = 3
+
+[node name="RecipeListHost" type="VBoxContainer" parent="MainLayout/RightPanel/RecipeScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 12
