@@ -218,3 +218,49 @@ func test_cursor_size_scales_with_footprint() -> void:
 	@warning_ignore("unsafe_property_access")
 	var cursor: ColorRect = _cluster().get("_placement_cursor")
 	assert_that(cursor.size).is_equal(Vector2(128.0, 128.0))  # 2x2 footprint * 64px cells
+
+
+# ---------------------------------------------------------------------------
+# Translucent placement drag-preview (2026-08-10, player-requested addition):
+# "a translucent image of it should follow my mouse to the point i place it".
+# ---------------------------------------------------------------------------
+
+func test_selecting_a_tile_shows_its_translucent_archetype_icon_at_preview() -> void:
+	var blueprints: Dictionary = GGameDataRegistry.get_all_tower_blueprints()
+	var archer: TowerBlueprintData = blueprints[&"archer"]
+	_cluster()._on_tower_button_pressed(&"archer")
+
+	_cluster()._on_tower_placement_preview_updated(Vector2i(0, 0), archer.foundation.footprint, true)
+
+	@warning_ignore("unsafe_property_access")
+	var icon: TextureRect = _cluster().get("_placement_preview_icon")
+	assert_bool(icon.visible).is_true()
+	assert_object(icon.texture).is_equal(TowerInstance.ARCHETYPE_TEXTURES[archer.foundation.archetype])
+
+
+## Regression guard: TextureRect's default expand_mode (EXPAND_KEEP_SIZE)
+## makes its minimum size equal the texture's native resolution, and
+## Control.set_size() clamps up to minimum size -- found live via Godot MCP
+## as a 36x64 target preview silently rendering at the tower art's full
+## ~858x1003 native resolution, covering most of the grid.
+func test_preview_icon_is_scaled_down_to_target_display_height_not_native_resolution() -> void:
+	var blueprints: Dictionary = GGameDataRegistry.get_all_tower_blueprints()
+	var archer: TowerBlueprintData = blueprints[&"archer"]
+	_cluster()._on_tower_button_pressed(&"archer")
+
+	_cluster()._on_tower_placement_preview_updated(Vector2i(0, 0), archer.foundation.footprint, true)
+
+	@warning_ignore("unsafe_property_access")
+	var icon: TextureRect = _cluster().get("_placement_preview_icon")
+	assert_float(icon.size.y).is_equal_approx(TowerInstance.TARGET_DISPLAY_HEIGHT, 0.01)
+
+
+func test_sentinel_cell_hides_the_preview_icon_too() -> void:
+	_cluster()._on_tower_button_pressed(&"archer")
+	_cluster()._on_tower_placement_preview_updated(Vector2i(0, 0), Vector2i(1, 1), true)
+
+	_cluster()._on_tower_placement_preview_updated(Vector2i(-1, -1), Vector2i.ZERO, false)
+
+	@warning_ignore("unsafe_property_access")
+	var icon: TextureRect = _cluster().get("_placement_preview_icon")
+	assert_bool(icon.visible).is_false()

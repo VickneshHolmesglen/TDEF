@@ -77,6 +77,19 @@ const TILE_ICON_MARGIN: float = 12.0
 const PLACEMENT_VALID_COLOR: Color = Color(0.2, 0.85, 0.3, 0.35)
 const PLACEMENT_INVALID_COLOR: Color = Color(0.9, 0.2, 0.2, 0.35)
 
+## Translucent drag-preview of the tower actually being placed (2026-08-10,
+## player-requested addition) — layered on top of PlacementCursor's own
+## valid/invalid tint so the cursor communicates both "which tower" and
+## "would this placement succeed" at once. Uses the exact same per-archetype
+## art and uniform-scale-by-height logic as TowerInstance.configure() so the
+## preview matches what the tower will actually look like once placed.
+@onready var _placement_preview_icon: TextureRect = $NonReadyControls/PlacementPreviewIcon
+## Tracked locally (not read from mission_scene.gd/the_gap.gd) so this stays
+## a pure EventBus-driven listener like every other host in this file —
+## set the instant this cluster's own tile is pressed, cleared whenever the
+## cursor hides (deselected or placement completes).
+var _preview_blueprint_id: StringName = &""
+
 var _build_buttons: Dictionary[StringName, Button] = {}
 var _build_button_group := ButtonGroup.new()
 
@@ -135,6 +148,14 @@ func _ready() -> void:
 	GEventBus.resources_changed.connect(_on_resources_changed)
 	GEventBus.tower_placement_preview_updated.connect(_on_tower_placement_preview_updated)
 	_build_tower_list()
+	# TextureRect's default expand_mode (EXPAND_KEEP_SIZE) makes its minimum
+	# size equal the texture's native resolution, and Control.set_size()
+	# clamps up to minimum size -- without this, _update_placement_preview_
+	# icon()'s manually-computed small preview size gets silently overridden
+	# back to the tower art's full native resolution (found live via MCP:
+	# a 36x64 target rendered as 858x1003, covering most of the grid).
+	_placement_preview_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_placement_preview_icon.stretch_mode = TextureRect.STRETCH_SCALE
 
 
 func _exit_tree() -> void:
@@ -459,6 +480,7 @@ func _blueprint_entry_text(data: TowerBlueprintData) -> String:
 ## activates") — the mission scene (owner of the real TowerSystem) is the
 ## sole consumer of this signal; this cluster never calls TowerSystem itself.
 func _on_tower_button_pressed(blueprint_id: StringName) -> void:
+	_preview_blueprint_id = blueprint_id
 	GEventBus.tower_blueprint_selected.emit(blueprint_id)
 
 
@@ -492,9 +514,34 @@ func _refresh_affordability() -> void:
 func _on_tower_placement_preview_updated(cell: Vector2i, footprint: Vector2i, valid: bool) -> void:
 	if cell == Vector2i(-1, -1):
 		_placement_cursor.visible = false
+		_placement_preview_icon.visible = false
+		_preview_blueprint_id = &""
 		return
 	_placement_cursor.visible = true
 	_placement_cursor.color = PLACEMENT_VALID_COLOR if valid else PLACEMENT_INVALID_COLOR
 	_placement_cursor.size = Vector2(footprint.x, footprint.y) * CELL_SIZE_PX
 	var world_pos: Vector2 = GGrid.cell_to_world(cell) - Vector2(CELL_SIZE_PX, CELL_SIZE_PX) * 0.5
 	_placement_cursor.position = _world_to_screen(world_pos)
+	_update_placement_preview_icon()
+
+
+## Looks up the selected blueprint's archetype art and sizes/centers it
+## within the cursor's footprint box, mirroring TowerInstance.configure()'s
+## uniform-scale-by-height so the preview matches the placed tower's look.
+func _update_placement_preview_icon() -> void:
+	var blueprints: Dictionary = GGameDataRegistry.get_all_tower_blueprints()
+	var data: TowerBlueprintData = blueprints.get(_preview_blueprint_id) as TowerBlueprintData
+	if data == null:
+		_placement_preview_icon.visible = false
+		return
+	var texture: Texture2D = TowerInstance.ARCHETYPE_TEXTURES.get(data.foundation.archetype)
+	if texture == null:
+		_placement_preview_icon.visible = false
+		return
+	_placement_preview_icon.texture = texture
+	var uniform_scale: float = TowerInstance.TARGET_DISPLAY_HEIGHT / float(texture.get_height())
+	var icon_size: Vector2 = Vector2(texture.get_width(), texture.get_height()) * uniform_scale
+	_placement_preview_icon.size = icon_size
+	var cursor_center: Vector2 = _placement_cursor.position + _placement_cursor.size * 0.5
+	_placement_preview_icon.position = cursor_center - icon_size * 0.5
+	_placement_preview_icon.visible = true

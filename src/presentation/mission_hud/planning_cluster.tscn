@@ -27,3 +27,8 @@ text = "Sell"
 [node name="PlacementCursor" type="ColorRect" parent="NonReadyControls"]
 visible = false
 mouse_filter = 2
+
+[node name="PlacementPreviewIcon" type="TextureRect" parent="NonReadyControls"]
+visible = false
+mouse_filter = 2
+modulate = Color(1, 1, 1, 0.6)
