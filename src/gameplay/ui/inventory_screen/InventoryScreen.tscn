@@ -27,7 +27,7 @@ layout_mode = 2
 size_flags_horizontal = 3
 size_flags_stretch_ratio = 2.0
 
-[node name="TabStripPlaceholder" type="HBoxContainer" parent="MainLayout/LeftPanel"]
+[node name="TabStrip" type="HBoxContainer" parent="MainLayout/LeftPanel"]
 layout_mode = 2
 
 [node name="SlotGrid" type="GridContainer" parent="MainLayout/LeftPanel"]

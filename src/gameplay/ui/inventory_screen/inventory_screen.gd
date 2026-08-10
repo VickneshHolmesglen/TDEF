@@ -23,10 +23,23 @@ extends Control
 ## recurring Godot 4.6.2 class-cache fragility where a fresh class_name isn't
 ## picked up by a bare headless boot). This scene is only ever instanced directly.
 ##
-## Out of scope for this story (see story doc's "Out of Scope" section): Story 002's
-## tab-switching content/categorization logic (TabStripPlaceholder below is a static,
-## non-interactive strip only), slot-expansion-driven live grid growth (Story 003), any
-## drag-and-drop/context-menu interaction, and all scene-transition/navigation wiring.
+## Out of scope for this story (see story doc's "Out of Scope" section):
+## slot-expansion-driven live grid growth (Story 003), any drag-and-drop/
+## context-menu interaction, and all scene-transition/navigation wiring.
+##
+## Tab switching (2026-08-10, player-requested): Story 002's own deferred
+## "tab-switching content/categorization logic" is now implemented — each
+## TAB_ORDER entry is a real toggle button that filters the slot grid to
+## that item_type. Per inventory.md Rule 3, tabs are a view over ONE shared
+## slot pool (capacity/locks/expansion are never per-category), not four
+## separate slot ranges — so an EMPTY slot is not yet "assigned" to any
+## category and remains visible on every tab (it's available capacity for
+## whatever gets placed there next); only OCCUPIED slots hide when their
+## item's item_type doesn't match the active tab. Deferred by the same
+## "core functionality" scope decision as the Crafting panel: keyboard/
+## gamepad focus-neighbor rewiring per tab switch (inventory.md's own
+## D-pad-wraps-to-cycle-tabs spec), drag-and-drop, and tooltips are all
+## pre-existing gaps this change doesn't newly introduce or attempt to close.
 ##
 ## Crafting panel's real content (2026-08-10, player-requested): AC-14's
 ## former "deferred — no Crafting GDD exists" note is stale — design/gdd/
@@ -73,7 +86,7 @@ const RECIPE_CATEGORY_LABEL_KEYS: Dictionary[String, String] = {
 @export var inventory: Inventory
 
 @onready var _input_mode_tracker: InputModeTracker = $InputModeTracker
-@onready var _tab_strip: HBoxContainer = $MainLayout/LeftPanel/TabStripPlaceholder
+@onready var _tab_strip: HBoxContainer = $MainLayout/LeftPanel/TabStrip
 @onready var _slot_grid: GridContainer = $MainLayout/LeftPanel/SlotGrid
 ## Crafting is deliberately NOT an Autoload (ADR-0023: "Scene-instanced,
 ## Sanctuary-only") — unlike Inventory, there is no GCrafting global to fall
@@ -105,6 +118,10 @@ var _crafting_rarity_frames: Array[RarityFrame] = []
 var _crafting_item_icons: Array[TextureRect] = []
 var _crafting_quantity_labels: Array[Label] = []
 
+var _tab_buttons: Dictionary[StringName, Button] = {}
+var _tab_button_group := ButtonGroup.new()
+var _active_tab: StringName = Inventory.TAB_ORDER[0]
+
 
 func _ready() -> void:
 	if inventory == null:
@@ -112,9 +129,10 @@ func _ready() -> void:
 	if crafting == null:
 		crafting = get_tree().get_first_node_in_group(&"crafting") as Crafting
 
-	_build_tab_strip_placeholder()
+	_build_tab_strip()
 	_build_slot_grid()
 	_wire_focus_neighbors()
+	_refresh_slot_visibility()
 	_build_crafting_panel()
 
 	GEventBus.recipe_discovered.connect(_on_recipe_discovered)
@@ -153,14 +171,58 @@ func disconnect_own_subscriptions() -> void:
 # Left panel — tab-strip placeholder (static, non-interactive; AC-13 framing only)
 # ---------------------------------------------------------------------------
 
-func _build_tab_strip_placeholder() -> void:
+func _build_tab_strip() -> void:
 	for tab: StringName in Inventory.TAB_ORDER:
-		var label := Label.new()
-		label.text = tr(TAB_LABEL_KEYS.get(tab, String(tab)))
-		label.focus_mode = Control.FOCUS_NONE  ## non-interactive per this story's scope
-		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		_tab_strip.add_child(label)
+		var button := Button.new()
+		button.name = "Tab_%s" % String(tab)
+		button.text = tr(TAB_LABEL_KEYS.get(tab, String(tab)))
+		button.toggle_mode = true
+		button.button_group = _tab_button_group
+		button.button_pressed = tab == _active_tab
+		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		button.pressed.connect(_on_tab_pressed.bind(tab))
+		_tab_strip.add_child(button)
+		_tab_buttons[tab] = button
+
+
+func _on_tab_pressed(tab: StringName) -> void:
+	_active_tab = tab
+	_refresh_slot_visibility()
+
+
+## Rule 3: tabs filter ONE shared slot pool by item_type, not four separate
+## ranges. Empty slots stay visible on every tab (unassigned capacity);
+## occupied slots hide when their item's item_type doesn't match the active
+## tab. Called at build time and after every event that can change slot
+## contents (_refresh_all_slot_visuals()'s own call sites).
+##
+## get_slot_contents() returns a non-empty Dictionary for a real,
+## already-allocated InventorySlot even when nothing is placed in it yet
+## (Rule 5's pre-locked mandatory equip slots: item_id == "", locked ==
+## true, instance_id == -1) — found live via Godot MCP: `contents.is_empty()`
+## alone treated these as "occupied by an unrecognized item" (item_id ""
+## resolves to no ItemDefinitionResource) and hid them on every tab except
+## whichever one null item_type coincidentally matched. Checking item_id
+## directly is the correct "is this slot actually holding something" test.
+##
+## quantity <= 0 is also treated as empty — real bug found and fixed
+## 2026-08-10 (live MCP repro): Inventory.consume_by_type()/consume_by_rarity()
+## emit item_removed BEFORE nulling out an exhausted slot (decrementing
+## slot.quantity to 0 happens first, the `_slots[i] = null` line runs after
+## the emit() call returns), so a handler reacting synchronously to
+## item_removed — as this one does — observes a transient "quantity 0 but
+## item_id still populated" state, not the final cleared slot. Filtering on
+## quantity as well makes this correct regardless of that emit ordering.
+func _refresh_slot_visibility() -> void:
+	for i: int in range(_slot_buttons.size()):
+		var contents: Dictionary = inventory.get_slot_contents(i)
+		var item_id: String = contents.get("item_id", "") as String
+		var quantity: int = contents.get("quantity", 0) as int
+		var visible_on_tab: bool = true
+		if item_id != "" and quantity > 0:
+			var definition: ItemDefinitionResource = GGameDataRegistry.get_item_definition(StringName(item_id))
+			visible_on_tab = definition != null and definition.item_type == _active_tab
+		_slot_buttons[i].visible = visible_on_tab
 
 
 # ---------------------------------------------------------------------------
@@ -309,7 +371,20 @@ func _create_slot_button(index: int) -> Button:
 ## resolved definition has non-empty rarity data.
 func _apply_slot_visual(button: Button, rarity_frame: RarityFrame, item_icon: TextureRect, quantity_label: Label, index: int) -> void:
 	var contents: Dictionary = inventory.get_slot_contents(index)
-	if contents.is_empty():
+	var item_id: String = contents.get("item_id", "") as String
+	var quantity: int = contents.get("quantity", 0) as int
+	# Real bugs found and fixed 2026-08-10 (while adding category tab
+	# filtering): (1) get_slot_contents() returns a non-empty Dictionary for
+	# a real, already-allocated but not-yet-filled InventorySlot (Rule 5's
+	# pre-locked mandatory equip slots: item_id == "", locked == true) --
+	# contents.is_empty() alone missed this and fell through to the
+	# occupied-slot branch below with an empty item_id, rendering a stray
+	# " x0" on every such slot. (2) Inventory.consume_by_type()/
+	# consume_by_rarity() emit item_removed BEFORE nulling out an exhausted
+	# slot, so a handler reacting synchronously (as _refresh_all_slot_
+	# visuals() does) can observe a transient "quantity 0 but item_id still
+	# populated" state -- treating quantity <= 0 as empty too closes that.
+	if contents.is_empty() or item_id == "" or quantity <= 0:
 		button.text = ""
 		rarity_frame.rarity = ""
 		item_icon.texture = null
@@ -317,8 +392,6 @@ func _apply_slot_visual(button: Button, rarity_frame: RarityFrame, item_icon: Te
 		quantity_label.visible = false
 		return
 
-	var item_id: String = contents["item_id"]
-	var quantity: int = contents["quantity"]
 	var definition: ItemDefinitionResource = GGameDataRegistry.get_item_definition(StringName(item_id))
 
 	rarity_frame.rarity = definition.rarity if definition != null else ""
@@ -422,12 +495,13 @@ func _on_component_crafted(_component_id: String, _component_type: String, _qual
 func _refresh_all_slot_visuals() -> void:
 	for i: int in range(_slot_buttons.size()):
 		_apply_slot_visual(_slot_buttons[i], _crafting_rarity_frames[i], _crafting_item_icons[i], _crafting_quantity_labels[i], i)
+	_refresh_slot_visibility()
 
 
 ## Rebuilds the entire recipe list from scratch — simplest correct approach
 ## given this panel only refreshes on discrete discovery/inventory events
 ## (never per-frame), matching this screen's existing rebuild-on-change
-## precedent (_build_tab_strip_placeholder()/_build_slot_grid() are also
+## precedent (_build_tab_strip()/_build_slot_grid() are also
 ## build-once-then-static outside their own refresh triggers).
 func _refresh_crafting_panel() -> void:
 	for child: Node in _recipe_list_host.get_children():
