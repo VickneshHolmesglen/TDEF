@@ -118,3 +118,21 @@ func test_successful_placement_clears_selection_and_returns_to_free_cursor() -> 
 
 	assert_bool(placed).is_true()
 	assert_str(String(_scene.get("_selected_blueprint_id"))).is_equal("")
+
+
+## Regression guard (2026-08-10): a real live-play bug reported as "I can't
+## place a tower" -- CombatCluster is a full-viewport Control (anchors_preset
+## 15, covering the entire screen) left at Godot's default mouse_filter
+## (STOP). Every mouse click and mouse-motion event over the grid was being
+## silently consumed by this always-on background overlay before it could
+## ever reach _unhandled_input() -- confirmed live via Godot MCP with a
+## direct before/after comparison: a real simulated click over the grid
+## produced zero effect with the default filter, and correctly reached
+## _attempt_placement_at() once mouse_filter was set to IGNORE. This had
+## nothing to do with mouse position tracking (a separate, unrelated MCP
+## background-mode limitation) -- the click was never delivered at all.
+## DamageNumberHost (a sibling full-viewport overlay) already sets
+## mouse_filter=2 for the exact same reason; CombatCluster itself never did.
+func test_combat_cluster_does_not_swallow_input_over_the_grid() -> void:
+	var combat_cluster: Control = _scene.get_node("GameplayRoot/HUD/CombatCluster") as Control
+	assert_int(combat_cluster.mouse_filter).is_equal(Control.MOUSE_FILTER_IGNORE)

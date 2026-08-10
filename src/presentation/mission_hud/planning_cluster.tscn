@@ -12,17 +12,21 @@ script = ExtResource("1_pc")
 [node name="BossTelegraphHost" type="Node2D" parent="."]
 
 [node name="CompositionPreviewHost" type="VBoxContainer" parent="."]
+position = Vector2(8, 148)
 
 [node name="ReadyButton" type="Button" parent="."]
+position = Vector2(8, 64)
 text = "Ready"
 
 [node name="SellButton" type="Button" parent="."]
+position = Vector2(8, 100)
 visible = false
 text = "Sell"
 
 [node name="NonReadyControls" type="Control" parent="."]
 
 [node name="BuildList" type="HBoxContainer" parent="NonReadyControls"]
+position = Vector2(8, 8)
 
 [node name="PlacementCursor" type="ColorRect" parent="NonReadyControls"]
 visible = false

@@ -265,6 +265,16 @@ func test_successful_placement_clears_selection_and_returns_to_free_cursor() -> 
 	assert_bool(placed).is_true()
 	assert_str(String(_scene.get("_selected_blueprint_id"))).is_equal("")
 
+
+## Regression guard (2026-08-10): mirrors mission_scene_test.gd's identical
+## check -- see that test's doc comment for the full account of the real
+## live-play bug ("I can't place a tower") this closes. CombatCluster is
+## duplicated per-scene (the_gap.tscn has its own copy, separate from
+## MissionScene.tscn's), so both needed the fix and both need the guard.
+func test_combat_cluster_does_not_swallow_input_over_the_grid() -> void:
+	var combat_cluster: Control = _scene.get_node("HUD/CombatCluster") as Control
+	assert_int(combat_cluster.mouse_filter).is_equal(Control.MOUSE_FILTER_IGNORE)
+
 # ---------------------------------------------------------------------------
 # AC-6 (code review gap): real Hero combat vs. a real spawned monster within
 # this assembled scene. Previously untested and undisclosed. Mechanism read
