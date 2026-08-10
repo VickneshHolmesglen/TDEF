@@ -218,11 +218,27 @@ func _unhandled_input(event: InputEvent) -> void:
 		if _selected_blueprint_id == &"":
 			return
 		var cell: Vector2i = GGrid.world_to_cell(get_global_mouse_position())
-		$GameplayRoot/TowerSystem.place_tower(_selected_blueprint_id, cell)
+		_attempt_placement_at(cell)
 	elif event is InputEventMouseMotion:
 		_update_placement_preview()
 	elif event is InputEventKey and event.pressed and event.keycode == KEY_SPACE:
 		GEventBus.player_ready.emit()
+
+
+## Attempts to place the currently-selected blueprint at `cell`. Split out
+## from _unhandled_input so tests can exercise the placement-then-cleanup
+## logic without simulating mouse position (see mission_scene_test.gd's
+## test_successful_placement_clears_selection_and_returns_to_free_cursor).
+func _attempt_placement_at(cell: Vector2i) -> bool:
+	var placed: bool = $GameplayRoot/TowerSystem.place_tower(_selected_blueprint_id, cell)
+	if placed:
+		# design/ux/interaction-patterns.md line 61: "Confirm action ...
+		# returns cursor to free-cursor mode." Without this, the stale
+		# selection kept showing the invalid-placement (red) cursor over
+		# the tower just placed the next time the mouse crossed its cell.
+		_selected_blueprint_id = &""
+		_update_placement_preview()
+	return placed
 
 
 ## Grid Placement Cursor (design/ux/interaction-patterns.md) — this scene

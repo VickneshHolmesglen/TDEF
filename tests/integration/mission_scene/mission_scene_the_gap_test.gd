@@ -245,6 +245,26 @@ func test_the_gap_tower_placement_creates_and_removes_real_tower_visual() -> voi
 	var tower_visuals_after: Dictionary = _scene.get("_tower_visuals") as Dictionary
 	assert_int(tower_visuals_after.size()).is_equal(0)
 
+
+## Regression guard (2026-08-10): a real live-play bug reported as "a red spot
+## when I click on a tower" -- design/ux/interaction-patterns.md line 61
+## requires a successful placement to "return cursor to free-cursor mode,"
+## but the_gap.gd's _unhandled_input never cleared _selected_blueprint_id.
+## The player's mouse then sat over the tower just placed, and the next
+## mouse-motion event re-ran the placement preview against that now-occupied
+## cell -- rendering the invalid-placement (red) cursor directly on top of
+## the tower that was just bought. Mirrors mission_scene_test.gd's identical
+## regression test for the generic MissionScene shell.
+func test_successful_placement_clears_selection_and_returns_to_free_cursor() -> void:
+	await get_tree().create_timer(1.2).timeout
+	GEventBus.tower_blueprint_selected.emit(&"archer")
+	var placeable_cell: Vector2i = Vector2i(2, 3)
+
+	var placed: bool = _scene.call("_attempt_placement_at", placeable_cell)
+
+	assert_bool(placed).is_true()
+	assert_str(String(_scene.get("_selected_blueprint_id"))).is_equal("")
+
 # ---------------------------------------------------------------------------
 # AC-6 (code review gap): real Hero combat vs. a real spawned monster within
 # this assembled scene. Previously untested and undisclosed. Mechanism read

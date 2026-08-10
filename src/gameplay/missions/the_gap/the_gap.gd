@@ -309,8 +309,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		if _selected_blueprint_id == &"":
 			return
 		var cell: Vector2i = GGrid.world_to_cell(get_global_mouse_position())
-		var placed: bool = _tower_system.place_tower(_selected_blueprint_id, cell)
-		print("[the_gap][debug] tower placement attempt at %s -> %s" % [cell, placed])
+		_attempt_placement_at(cell)
 	elif event is InputEventMouseMotion:
 		_update_placement_preview()
 	elif event is InputEventKey and event.pressed:
@@ -318,6 +317,23 @@ func _unhandled_input(event: InputEvent) -> void:
 			GEventBus.player_ready.emit()
 		elif event.keycode == KEY_K and debug_controls_enabled:
 			_debug_kill_hero()
+
+
+## Attempts to place the currently-selected blueprint at `cell`. Split out
+## from _unhandled_input so tests can exercise the placement-then-cleanup
+## logic without simulating mouse position (mirrors mission_scene.gd's
+## identical helper).
+func _attempt_placement_at(cell: Vector2i) -> bool:
+	var placed: bool = _tower_system.place_tower(_selected_blueprint_id, cell)
+	print("[the_gap][debug] tower placement attempt at %s -> %s" % [cell, placed])
+	if placed:
+		# design/ux/interaction-patterns.md line 61: "Confirm action ...
+		# returns cursor to free-cursor mode." Without this, the stale
+		# selection kept showing the invalid-placement (red) cursor over
+		# the tower just placed the next time the mouse crossed its cell.
+		_selected_blueprint_id = &""
+		_update_placement_preview()
+	return placed
 
 
 ## QA-ONLY STOPGAP — NOT a real combat path. See class doc comment deviation #5.

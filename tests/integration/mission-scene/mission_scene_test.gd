@@ -100,3 +100,21 @@ func test_later_selection_replaces_earlier_one() -> void:
 	GEventBus.tower_blueprint_selected.emit(&"longshot_sniper")
 
 	assert_str(String(_scene.get("_selected_blueprint_id"))).is_equal("longshot_sniper")
+
+
+## Regression guard (2026-08-10): a real live-play bug reported as "a red spot
+## when I click on a tower" -- design/ux/interaction-patterns.md line 61
+## requires a successful placement to "return cursor to free-cursor mode,"
+## but the selection was never cleared. The player's mouse then sat over the
+## tower just placed, and the next mouse-motion event re-ran the placement
+## preview against that now-occupied cell -- rendering the invalid-placement
+## (red) cursor directly on top of the tower that was just bought.
+func test_successful_placement_clears_selection_and_returns_to_free_cursor() -> void:
+	GMissionSelect.select_mission("the_gap")
+	GMissionSelect.confirm_launch()
+	GEventBus.tower_blueprint_selected.emit(&"archer")
+
+	var placed: bool = _scene.call("_attempt_placement_at", Vector2i(1, 1))
+
+	assert_bool(placed).is_true()
+	assert_str(String(_scene.get("_selected_blueprint_id"))).is_equal("")
