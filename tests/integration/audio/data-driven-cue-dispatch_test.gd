@@ -187,6 +187,31 @@ func test_skill_unlocked_dispatches_its_mapped_cue() -> void:
 	assert_int(_dispatcher.get_dispatch_count()).is_equal(1)
 
 
+## Epic 06 Story 013: the enter-range-tick/pause-descending-tone pair, now
+## wireable since tower_mastery_proximity_changed's discrete edge-detection
+## signal exists. Two distinct cue names for the two distinct stingers.
+func test_tower_mastery_proximity_entered_dispatches_the_enter_cue() -> void:
+	var map := AudioCueMap.new()
+	map.entries = [_fixture_entry(&"tower_mastery_proximity_entered", &"SFX", &"", false)]
+	_dispatcher.set_cue_map(map)
+
+	GEventBus.tower_mastery_proximity_changed.emit("found_basic|weap_basic|focus_none|power_none", true)
+
+	assert_that(_dispatcher.get_last_played_event()).is_equal(&"tower_mastery_proximity_entered")
+	assert_int(_dispatcher.get_dispatch_count()).is_equal(1)
+
+
+func test_tower_mastery_proximity_exited_dispatches_the_exit_cue() -> void:
+	var map := AudioCueMap.new()
+	map.entries = [_fixture_entry(&"tower_mastery_proximity_exited", &"SFX", &"", false)]
+	_dispatcher.set_cue_map(map)
+
+	GEventBus.tower_mastery_proximity_changed.emit("found_basic|weap_basic|focus_none|power_none", false)
+
+	assert_that(_dispatcher.get_last_played_event()).is_equal(&"tower_mastery_proximity_exited")
+	assert_int(_dispatcher.get_dispatch_count()).is_equal(1)
+
+
 # ---------------------------------------------------------------------------
 # Story 004 wiring: real dispatch registers a voice against its family's cap.
 # ---------------------------------------------------------------------------

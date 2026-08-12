@@ -88,16 +88,34 @@ running `the_gap.tscn`: `skill_unlocked` correctly produced a
 zero errors. Full project regression clean (296/296 across affected suites
 in this latest pass).
 
+## Update — 2026-08-13 (same day, enter-range/pause stingers)
+
+Item 1 below ("flagged for whoever revisits this if a real explicit pause
+signal is added later") is now resolved for the audio side: added
+`GEventBus.tower_mastery_proximity_changed(build_signature: String,
+in_range: bool)`, emitted from `TowerMastery._recompute_signatures_in_range()`
+via an edge-detection diff against the previous in-range set — fires exactly
+once per real transition, verified silent on a recompute that leaves
+membership unchanged (`test_recompute_with_unchanged_membership_does_not_reemit`).
+Wired to two distinct `AudioCueDispatcher` cues
+(`tower_mastery_proximity_entered`/`_exited`), matching the GDD's two
+distinct stingers. **The visual arc's own pause detection (`TowerMasteryFeedback`)
+was deliberately left on its existing timeout heuristic, not migrated to
+this new signal** — that would be a separate, riskier refactor of already-
+shipped, already-tested visual code, outside this pass's narrower audio-
+wiring scope. 5 new tests in `cell-boundary-proximity-tracking_test.gd`,
+2 new tests in `data-driven-cue-dispatch_test.gd`. No real sound content
+exists for either cue (unchanged OQ-2 gap) — only the mechanism is real.
+
 ## Known Limitations (documented, not fabricated as resolved)
 
-1. **Paused-out-of-range detection is a timeout heuristic, not an explicit
-   signal.** Story 010's `tick()` only emits `mastery_progress_updated`
-   while a signature is actively accruing — there is no "hero left range"
-   event anywhere in `event-bus.md`'s Tower Mastery row. `TowerMasteryFeedback`
-   infers the pause via a 0.5s staleness timeout (no update received →
-   assume out of range). This is a reasonable, testable heuristic, not
-   frame-perfect detection — flagged for whoever revisits this if a real
-   explicit pause signal is added later.
+1. ~~**Paused-out-of-range detection is a timeout heuristic, not an explicit
+   signal.**~~ **Partially resolved 2026-08-13** — see Update section above.
+   The visual arc (`TowerMasteryFeedback`) still uses its original timeout
+   heuristic (a reasonable, already-tested approach, deliberately not
+   touched); a real discrete signal (`tower_mastery_proximity_changed`) now
+   exists and is used for the audio stingers, which need a precise trigger
+   moment in a way the visual arc's own softer heuristic doesn't.
 2. **Fixed-screen-space-diameter is not counter-scaled against a live
    camera zoom.** The arc renders at a fixed local-pixel radius; true
    zoom-invariance requires reading an active `Camera2D.zoom` and inversely
@@ -107,9 +125,13 @@ in this latest pass).
    a zoom feature.
 3. ~~**HUD corner callout**: not built. Blocked on Mission HUD, which has no
    code anywhere in this project yet.~~ **Built 2026-07-20** — see Update section above.
-4. **Real audio stingers**: not built. Blocked on the absence of an audio
-   bible or sound assets. This story's own scope note already anticipated
-   only specifying category/direction, not shipping final sound.
+4. ~~**Real audio stingers**: not built.~~ **Mechanism built 2026-08-13** —
+   `skill_unlocked`, `tower_mastery_proximity_entered`, and
+   `tower_mastery_proximity_exited` are all wired into `AudioCueDispatcher`.
+   Real sound content itself remains unbuilt (no audio bible/sound assets
+   authored for these 3 cues specifically) — this story's own scope note
+   already anticipated only specifying category/direction, not shipping
+   final sound.
 5. **Archetype glyph**: renders as a placeholder filled circle. No real
    per-archetype glyph asset catalogue exists; swap `_draw_glyph()`'s body
    when the Art Director supplies real assets.

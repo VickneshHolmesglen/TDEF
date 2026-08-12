@@ -163,3 +163,74 @@ func test_tower_lifecycle_event_before_any_hero_position_does_not_crash() -> voi
 	# the lifecycle handlers' recompute must be a no-op, not a crash.
 	_place_with_loadout(1, Vector2i(4, 4))
 	assert_int(_tower_mastery._signatures_in_range.size()).is_equal(0)
+
+
+# ---------------------------------------------------------------------------
+# tower_mastery_proximity_changed (2026-08-13, Story 013 Audio Requirement d):
+# discrete edge-detection diff, fires only on an actual entered/exited
+# transition, never on a recompute that leaves membership unchanged.
+# ---------------------------------------------------------------------------
+
+func test_entering_range_emits_proximity_changed_true() -> void:
+	var spy := EventBusSpy.new()
+	spy.watch(GEventBus.tower_mastery_proximity_changed)
+
+	_place_with_loadout(1, Vector2i(4, 4))
+	var signature: String = _tower_mastery._active_signature_by_tower[1]
+	_tower_mastery._on_hero_position_changed(Vector2i(4, 4))
+
+	assert_int(spy.count("tower_mastery_proximity_changed")).is_equal(1)
+	var args: Array = (spy.emissions["tower_mastery_proximity_changed"] as Array)[0] as Array
+	assert_str(args[0] as String).is_equal(signature)
+	assert_bool(args[1] as bool).is_true()
+	spy.disconnect_all()
+
+
+func test_exiting_range_emits_proximity_changed_false() -> void:
+	_place_with_loadout(1, Vector2i(4, 4))
+	var signature: String = _tower_mastery._active_signature_by_tower[1]
+	_tower_mastery._on_hero_position_changed(Vector2i(4, 4))
+
+	var spy := EventBusSpy.new()
+	spy.watch(GEventBus.tower_mastery_proximity_changed)
+
+	_tower_mastery._on_hero_position_changed(Vector2i(10, 10))  # walks out of radius
+
+	assert_int(spy.count("tower_mastery_proximity_changed")).is_equal(1)
+	var args: Array = (spy.emissions["tower_mastery_proximity_changed"] as Array)[0] as Array
+	assert_str(args[0] as String).is_equal(signature)
+	assert_bool(args[1] as bool).is_false()
+	spy.disconnect_all()
+
+
+func test_recompute_with_unchanged_membership_does_not_reemit() -> void:
+	_place_with_loadout(1, Vector2i(4, 4))
+	_tower_mastery._on_hero_position_changed(Vector2i(4, 4))
+
+	var spy := EventBusSpy.new()
+	spy.watch(GEventBus.tower_mastery_proximity_changed)
+
+	# Same cell again -- membership doesn't change, must stay silent (no
+	# per-recompute spam, only real transitions).
+	_tower_mastery._on_hero_position_changed(Vector2i(4, 4))
+
+	assert_int(spy.count("tower_mastery_proximity_changed")).is_equal(0)
+	spy.disconnect_all()
+
+
+func test_tower_removed_under_stationary_hero_emits_proximity_changed_false() -> void:
+	_place_with_loadout(1, Vector2i(4, 4))
+	var signature: String = _tower_mastery._active_signature_by_tower[1]
+	_tower_mastery._on_hero_position_changed(Vector2i(4, 4))
+
+	var spy := EventBusSpy.new()
+	spy.watch(GEventBus.tower_mastery_proximity_changed)
+
+	_grid.remove(Vector2i(4, 4))
+	_tower_mastery._on_tower_removed(1, Vector2i(4, 4), "BASIC", "")
+
+	assert_int(spy.count("tower_mastery_proximity_changed")).is_equal(1)
+	var args: Array = (spy.emissions["tower_mastery_proximity_changed"] as Array)[0] as Array
+	assert_str(args[0] as String).is_equal(signature)
+	assert_bool(args[1] as bool).is_false()
+	spy.disconnect_all()

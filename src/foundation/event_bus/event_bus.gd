@@ -584,6 +584,21 @@ signal mastery_progress_updated(tower_id: int, skill_id: String, progress_percen
 ## Key subscribers: Hero Skill Build, Encyclopedia, Mission HUD.
 signal skill_unlocked(skill_id: String, source_tower_id: int)
 
+## Fires the instant a build_signature's hero-proximity state flips (entered
+## or exited range) — added 2026-08-13 (Epic 06 Story 013's Audio
+## Requirement d) to give the enter-range-tick/pause-descending-tone stinger
+## pair a real discrete trigger. `mastery_progress_updated` deliberately
+## cannot serve this role: it only fires while actively accruing, so
+## "stopped firing" is an absence, not an event — exactly the "timeout
+## heuristic, not an explicit signal" gap tower-mastery_feedback.gd's own
+## visual pause-detection already documented as a known limitation. Emitted
+## from TowerMastery._recompute_signatures_in_range() by diffing the
+## previous and new in-range sets, not from tick() (which only runs for
+## already-in-range signatures) — this is a state-transition signal, not a
+## per-frame status broadcast.
+## Key subscribers: Audio.
+signal tower_mastery_proximity_changed(build_signature: String, in_range: bool)
+
 # =============================================================================
 # Equipment Forge System
 # =============================================================================

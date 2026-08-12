@@ -125,13 +125,16 @@ func _connect_all_events() -> void:
 	# Epic 06 Story 013 (tower-mastery.md Audio Requirement d): the
 	# skill_unlocked chime half of this story's blocked "Audio stingers" item
 	# -- reuses this exact mechanism (AC-10a's no-op-if-unmapped guarantee),
-	# same precedent as structure_upgraded above. Only the discrete-event half
-	# is wireable here: the enter-range-tick/pause-descending-tone pair has no
-	# corresponding EventBus signal (mastery_progress_updated fires
-	# continuously as progress climbs, not on a discrete enter/exit
-	# transition) -- inventing a new signal for that is a design decision
-	# belonging to tower-mastery.md's own owner, not made unilaterally here.
+	# same precedent as structure_upgraded above.
 	_wire(GEventBus.skill_unlocked, func(_a: String, _b: int) -> void: dispatch_cue(&"skill_unlocked"))
+	# The enter-range-tick/pause-descending-tone pair (2026-08-13): now
+	# wireable since tower_mastery_proximity_changed's discrete edge-detection
+	# signal exists (see event_bus.gd's own doc comment for why
+	# mastery_progress_updated couldn't serve this role). Two distinct cue
+	# names, matching the GDD's two distinct stingers -- entering plays a
+	# short tick, exiting plays a descending tone, never the same sound.
+	_wire(GEventBus.tower_mastery_proximity_changed, func(_a: String, in_range: bool) -> void:
+			dispatch_cue(&"tower_mastery_proximity_entered" if in_range else &"tower_mastery_proximity_exited"))
 
 
 func _wire(event_signal: Signal, callable: Callable) -> void:

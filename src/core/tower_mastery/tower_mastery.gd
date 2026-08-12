@@ -225,6 +225,19 @@ func _recompute_signatures_in_range(hero_cell: Vector2i) -> void:
 		var signature: String = _active_signature_by_tower.get(tower_id, "")
 		if signature != "":
 			in_range[signature] = true
+
+	# tower_mastery_proximity_changed (2026-08-13, Story 013 Audio d): a
+	# discrete edge-detection diff against the PREVIOUS in-range set --
+	# fires once per actual transition, never on every recompute (a
+	# recompute that doesn't change a signature's membership must stay
+	# silent, or every hero step would spam the stinger).
+	for signature: String in in_range:
+		if not _signatures_in_range.get(signature, false):
+			GEventBus.tower_mastery_proximity_changed.emit(signature, true)
+	for signature: String in _signatures_in_range:
+		if _signatures_in_range[signature] and not in_range.get(signature, false):
+			GEventBus.tower_mastery_proximity_changed.emit(signature, false)
+
 	_signatures_in_range = in_range
 
 
