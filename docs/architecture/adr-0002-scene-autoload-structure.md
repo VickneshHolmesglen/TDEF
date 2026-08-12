@@ -65,8 +65,11 @@ The game has 25 systems split across two top-level contexts (SANCTUARY and MISSI
 | 11 | `Menagerie` | `src/core/menagerie.gd` | Owns creature lifecycle state; exposes `request_sacrifice()` as a direct-call method (ADR-0020 Criterion B) to Equipment Forge; boots after DefenseBuilding, no Autoload-time dependency between the two | ADR-0026 (Proposed 2026-07-17) |
 | 12 | `MissionSelect` | `src/core/mission_select.gd` | Owns mission catalogue completion state and `MissionRuntimeState`; exposes `retry_current_mission()` as a direct-call method (ADR-0020 Criterion B) to Mission HUD; MissionRuntimeState must survive the SANCTUARY→MISSION scene transition, which requires Autoload status independent of the direct-call reason; boots after Menagerie, no Autoload-time dependency between the two | ADR-0028 (Proposed 2026-07-17) |
 | 13 | `HeroSkillBuild` | `src/core/hero_skill_build.gd` | Owns equippable-skill library, active/passive slot bindings, and Ultimate derivation; resolved Ultimate/slot state must exist continuously across the SANCTUARY→MISSION transition so a freshly-instantiated Hero receives it at `mission_launched`; boots after MissionSelect, no Autoload-time dependency between the two | ADR-0030 (Proposed 2026-07-17) |
+| 14 | `AudioSystem` | `src/core/audio/audio_system.gd` | Owns the procedural bus graph and generic EventBus-driven cue dispatch; must be cross-context (bus volumes and cue mappings apply identically in Sanctuary and Mission); no Autoload-time dependency on 9-13, appended after HeroSkillBuild to avoid renumbering | **None** — Epic 12 shipped without a dedicated ADR (matches Sanctuary UI/Tarot Deck UI's own established precedent, per `epic-12-audio-system/EPIC.md`'s own Governing ADRs table); backfilled into this table 2026-08-12 |
+| 15 | `Encyclopedia` | `src/core/encyclopedia/encyclopedia.gd` | Owns the cross-system discovery ledger (species/rune/recipe entries); must be cross-context since discovery events fire from both Mission (monster/rune discovery) and Sanctuary (crafting/menagerie) systems; `SaveRestorer` at `restore_order=35`, the highest in the project (restores last, after every system it logs discoveries from); boots after AudioSystem, no Autoload-time dependency | **None** — Epic 13 shipped without a dedicated ADR (same established precedent, per `epic-13-encyclopedia/EPIC.md`'s own Governing ADRs table); backfilled into this table 2026-08-12 |
+| 16 | `Tarot` | `src/core/tarot/tarot.gd` | Owns the Tarot deck/mastery/rune-discovery ledgers; converted from scene-instanced (its original ADR-0027 classification) to Autoload to fix a live save-data-loss bug (`production/qa/bugs/BUG-0001.md`) and make its `is_card_unlocked()` reachable from Sanctuary UI (ADR-0034's flagged gap); boots after Encyclopedia, no Autoload-time dependency | ADR-0035 (Accepted 2026-08-12) |
 
-**This order is a build invariant.** Adding any new Autoload requires an ADR revision to verify boot dependency ordering.
+**This order is a build invariant.** Adding any new Autoload requires an ADR revision to verify boot dependency ordering. **16 Autoloads total** (corrected 2026-08-12 — this table previously stopped at 13 despite `project.godot` already listing 16; see this ADR's own "Known staleness" note, now resolved by this backfill).
 
 ### Autoload / Scene-Instanced Boundary
 
@@ -85,6 +88,9 @@ The game has 25 systems split across two top-level contexts (SANCTUARY and MISSI
 | Menagerie | Autoload #11 | Owns creature lifecycle state; direct-call action API (`request_sacrifice()`) consumed by Equipment Forge (see ADR-0026) — **reclassified 2026-07-17**, was originally scene-instanced in this ADR |
 | MissionSelect | Autoload #12 | Owns mission completion ledger and `MissionRuntimeState`; direct-call action API (`retry_current_mission()`) consumed by Mission HUD (see ADR-0028) — **reclassified 2026-07-17**, was originally scene-instanced in this ADR; `MissionRuntimeState` survival across the SANCTUARY→MISSION scene transition is an independent, additional reason for Autoload status beyond the direct-call requirement |
 | HeroSkillBuild | Autoload #13 | Owns equippable-skill library, active/passive slot bindings, Ultimate derivation (see ADR-0030) — **new system, added 2026-07-17**; resolved Ultimate/slot state must exist continuously across the SANCTUARY→MISSION transition so a freshly-instantiated Hero receives it at `mission_launched` |
+| AudioSystem | Autoload #14 | Owns the procedural bus graph and generic cue dispatch; cross-context by nature (bus volumes/cue mappings apply identically in both scenes) — **added 2026-07-25, backfilled into this table 2026-08-12**, no dedicated ADR (Epic 12's own established precedent) |
+| Encyclopedia | Autoload #15 | Owns the cross-system discovery ledger; cross-context since discovery events fire from both Mission and Sanctuary systems; `SaveRestorer` at `restore_order=35` (highest in the project) — **added 2026-07-25, backfilled into this table 2026-08-12**, no dedicated ADR (Epic 13's own established precedent) |
+| Tarot | Autoload #16 | Owns the Tarot deck/mastery/rune-discovery ledgers; direct-call read API (`is_card_unlocked()`) consumed by Building Upgrade — **reclassified 2026-08-12** from scene-instanced (its original ADR-0027 classification), fixing a live save-data-loss bug and a Sanctuary-UI-reachability gap in the same change (see ADR-0035) |
 | Hero | Scene-instanced | Mission-only; recreated each mission |
 | TowerManager | Scene-instanced | Mission-only |
 | MonsterManager | Scene-instanced | Mission-only |
@@ -160,7 +166,7 @@ func transition_to_sanctuary() -> void
 PROJECT LAUNCH
   │
   ▼ Autoloads boot in order
-  EventBus(1) → SavePersistence(2) → Grid(3) → Pathfinding(4) → GameDataRegistry(5) → SceneManager(6) → WaveManager(7) → MissionEconomy(8) → Inventory(9) → DefenseBuilding(10) → Menagerie(11) → MissionSelect(12) → HeroSkillBuild(13)
+  EventBus(1) → SavePersistence(2) → Grid(3) → Pathfinding(4) → GameDataRegistry(5) → SceneManager(6) → WaveManager(7) → MissionEconomy(8) → Inventory(9) → DefenseBuilding(10) → Menagerie(11) → MissionSelect(12) → HeroSkillBuild(13) → AudioSystem(14) → Encyclopedia(15) → Tarot(16)
   │
   ▼ SceneManager loads initial scene
   ┌──────────────────┐         ┌─────────────────────────┐
@@ -171,10 +177,11 @@ PROJECT LAUNCH
   │                  │         │  D&S, Constellation     │
   │                  │         │  MissionHUD             │
   └──────────────────┘         └─────────────────────────┘
-  Autoloads persist across both scenes (EventBus, Save, Grid, Pathfinding, GameDataRegistry, SceneManager, WaveManager, MissionEconomy, Inventory, DefenseBuilding, Menagerie, MissionSelect, HeroSkillBuild)
+  Autoloads persist across both scenes (EventBus, Save, Grid, Pathfinding, GameDataRegistry, SceneManager, WaveManager, MissionEconomy, Inventory, DefenseBuilding, Menagerie, MissionSelect, HeroSkillBuild, AudioSystem, Encyclopedia, Tarot)
   WaveManager idles in IDLE state during SanctuaryScene; activates on mission_launched
   MissionEconomy holds a stale balance during SanctuaryScene; resets to 0 on the next mission_launched
   Inventory, DefenseBuilding, Menagerie, MissionSelect, and HeroSkillBuild are always live (both scenes) but their screens are only reachable while SanctuaryScene is loaded — Sanctuary-only per their own GDDs' Rule 11/similar. MissionSelect's MissionRuntimeState and HeroSkillBuild's resolved Ultimate/slot bindings are the two pieces of this group actively read DURING MissionScene (the former by retry_current_mission() on DEFEAT; the latter by the freshly-instantiated Hero at mission_launched) — the others are read only in Sanctuary.
+  AudioSystem and Encyclopedia are genuinely cross-context (bus/cue state and discovery logging both apply in either scene). Tarot is read during MissionScene too, as of ADR-0036 — Wave Manager's own consumption of mission_modifier_applied calls GTarot.compute_rune_bonus() at every WAVE_ACTIVE entry.
 ```
 
 ## Alternatives Considered
@@ -207,7 +214,7 @@ PROJECT LAUNCH
 - MissionSelect's and HeroSkillBuild's Autoload status additionally means their session-critical state (`MissionRuntimeState`, resolved Ultimate/slot bindings) genuinely survives the SANCTUARY→MISSION transition — bugs both ADR-0028 and ADR-0030 caught before they could manifest as runtime data-loss defects.
 
 ### Negative
-- 13 global Autoload singletons — GDScript has no access modifiers to prevent misuse. Convention and code review are the only enforcement mechanisms.
+- 16 global Autoload singletons (corrected 2026-08-12 — this figure was left at 13 for over two weeks after AudioSystem/Encyclopedia shipped, and Tarot's own conversion added a 16th; see "Known staleness" note below) — GDScript has no access modifiers to prevent misuse. Convention and code review are the only enforcement mechanisms.
 - SceneManager exists in Sanctuary even when idle. Its idle state must be well-defined (no active mission reference held).
 - Inventory, DefenseBuilding, Menagerie, MissionSelect, and HeroSkillBuild now persist for the entire game lifetime rather than being freed/recreated with the Sanctuary scene — their internal state must be explicitly reset only via `SaveRestorer.reset_to_defaults()` (a new-game path), never implicitly by scene teardown, since there is no scene teardown for an Autoload. (MissionSelect's `MissionRuntimeState` and HeroSkillBuild's resolved Ultimate are the exceptions within this group — both are explicitly never persisted, so `reset_to_defaults()` need not clear them, only each system's actually-persisted structures.)
 
@@ -230,7 +237,7 @@ PROJECT LAUNCH
 **Technical Requirements covered**: TR-gc-002, TR-gc-003, TR-hero-001, TR-monster-001, TR-monster-004, TR-path-001
 
 ## Performance Implications
-- **CPU**: 8 Autoloads with negligible per-frame overhead (EventBus, Grid, and MissionEconomy have no `_process`).
+- **CPU**: 16 Autoloads (corrected 2026-08-12, was stale at 8), the large majority with negligible per-frame overhead (EventBus, Grid, MissionEconomy, and most of the later-added query/ledger Autoloads have no `_process`).
 - **Memory**: Area2D instances have a smaller physics footprint than CharacterBody2D — no velocity integration or dynamic collision resolution against other monsters.
 - **Load Time**: SceneManager enables async loading screens — mission scene loads while transition UI is visible.
 - **Network**: Not applicable.
@@ -239,7 +246,7 @@ PROJECT LAUNCH
 Greenfield project. Set Project Settings → Autoloads in this exact order before creating any scene.
 
 ## Validation Criteria
-- [ ] Project Settings → Autoloads lists all 13 in correct order: EventBus, SavePersistence, Grid, Pathfinding, GameDataRegistry, SceneManager, WaveManager, MissionEconomy, Inventory, DefenseBuilding, Menagerie, MissionSelect, HeroSkillBuild.
+- [x] Project Settings → Autoloads lists all 16 in correct order: EventBus, SavePersistence, Grid, Pathfinding, GameDataRegistry, SceneManager, WaveManager, MissionEconomy, Inventory, DefenseBuilding, Menagerie, MissionSelect, HeroSkillBuild, AudioSystem, Encyclopedia, Tarot. Confirmed against `project.godot`'s real `[autoload]` section 2026-08-12.
 - [ ] All scene-instanced systems connect to EventBus in `_ready()` without null-reference errors.
 - [ ] SceneManager.transition_to_mission() and transition_to_sanctuary() complete without orphaned nodes or dangling connections.
 - [ ] 100 simultaneous Area2D monster instances on a 16×12 grid at 60 FPS on minimum-spec PC hardware — confirmed by performance test.
@@ -261,6 +268,9 @@ Greenfield project. Set Project Settings → Autoloads in this exact order befor
 - ADR-0028 — Mission Select runtime state and retry architecture (added MissionSelect as Autoload #12, 2026-07-17)
 - ADR-0030 — Hero Skill Build Ultimate lookup-table architecture (added HeroSkillBuild as Autoload #13, 2026-07-17)
 - ADR-0035 — Tarot Autoload Conversion (added Tarot as an Autoload, 2026-08-12 — fixes `production/qa/bugs/BUG-0001.md`)
+- ADR-0036 — Tarot Modifier Consumption (Wave Manager reads `GTarot.compute_rune_bonus()` directly, made possible by ADR-0035's conversion)
+- `production/epics/epic-12-audio-system/EPIC.md` — AudioSystem shipped as Autoload #14 without a dedicated ADR (established precedent)
+- `production/epics/epic-13-encyclopedia/EPIC.md` — Encyclopedia shipped as Autoload #15 without a dedicated ADR (same precedent)
 - `design/gdd/game-concept.md` — States and Transitions table
 
-**Known staleness (not fixed in this pass, flagged for a future formal revision)**: this ADR's own Autoload position table (above) was last fully revised 2026-07-17 (through Autoload #13, HeroSkillBuild) and was never updated for `AudioSystem` (ADR unclear) or `Encyclopedia` (ADR-0033/epic-13), both of which are already real Autoloads per `project.godot` today, nor for `Tarot` (`GTarot`, added 2026-08-12 by ADR-0035, see this ADR's own file for the full decision). A future pass should backfill all 3 into this ADR's table/count rather than leaving the "13-Autoload build invariant" text stale.
+**Known staleness — RESOLVED 2026-08-12**: this ADR's own Autoload position table was previously last fully revised 2026-07-17 (through Autoload #13, HeroSkillBuild) and had never been updated for `AudioSystem` (#14, no dedicated ADR), `Encyclopedia` (#15, no dedicated ADR), or `Tarot` (#16, ADR-0035) — all three backfilled into this ADR's boot-order table, boundary table, architecture diagram, and every stale count reference (13→16) in this pass.
