@@ -42,6 +42,7 @@ extends Node2D
 const CELL_SIZE: float = 64.0
 
 const TowerInstanceScene: PackedScene = preload("res://src/core/tower/TowerInstance.tscn")
+const ProjectileVisualScene: PackedScene = preload("res://src/scenes/ProjectileVisual.tscn")
 
 @onready var _mission_select_screen: Control = $MissionSelectScreen
 @onready var _gameplay_root: Node2D = $GameplayRoot
@@ -89,6 +90,7 @@ func _ready() -> void:
 	GEventBus.tower_placed.connect(_on_tower_placed)
 	GEventBus.tower_removed.connect(_on_tower_removed)
 	GEventBus.tower_destroyed.connect(_on_tower_destroyed)
+	GEventBus.tower_attacked.connect(_on_tower_attacked)
 
 
 func _exit_tree() -> void:
@@ -99,6 +101,7 @@ func _exit_tree() -> void:
 	GEventBus.tower_placed.disconnect(_on_tower_placed)
 	GEventBus.tower_removed.disconnect(_on_tower_removed)
 	GEventBus.tower_destroyed.disconnect(_on_tower_destroyed)
+	GEventBus.tower_attacked.disconnect(_on_tower_attacked)
 
 
 ## Real bug fix, 2026-08-09 — see grid_initialized's own doc comment
@@ -199,6 +202,29 @@ func _on_tower_removed(tower_id: int, _grid_position: Vector2i, _archetype: Stri
 
 func _on_tower_destroyed(tower_id: int, _grid_position: Vector2i, _archetype: String, _footprint: Array, _constellation_eligibility_tag: String) -> void:
 	_free_tower_visual(tower_id)
+
+
+## Visual-only first pass (design/gdd/tower.md "Projectile Types"): spawns a
+## purely cosmetic flight-path visual, colored/shaped by the firing tower's
+## archetype and WeaponComponent.projectile_type. Does not gate or delay
+## damage — damage_status.gd's existing one-frame resolution is unchanged.
+## Support archetype towers never fire a projectile (Rule 5a — they emit
+## tower_aura_pulse instead), so are skipped here.
+func _on_tower_attacked(tower_id: int, target_monster_id: int, _damage_amount: float,
+		_is_siege: bool, _is_armored: bool) -> void:
+	var tower_vis: TowerInstance = _tower_visuals.get(tower_id) as TowerInstance
+	if tower_vis == null:
+		return
+	var state: TowerMissionState = _tower_system.placed_towers.get(tower_id) as TowerMissionState
+	if state == null or state.foundation.archetype == "support":
+		return
+	var target: MonsterEntity = _monster_manager._entity_lookup.get(target_monster_id) as MonsterEntity
+	if target == null:
+		return
+	var projectile: ProjectileVisual = ProjectileVisualScene.instantiate()
+	_gameplay_root.add_child(projectile)
+	projectile.configure(state.foundation.archetype, state.weapon.projectile_type,
+			tower_vis.global_position, target)
 
 
 func _free_tower_visual(tower_id: int) -> void:

@@ -240,7 +240,8 @@ signal tower_component_equipped(payload: TowerComponentEquippedEvent)
 ## is_siege: derived from originating tower's Foundation.siege flag (true for T4 only).
 ## is_armored: pre-resolved by Tower System from target's MonsterResource.archetype_tag
 ##   (true when archetype_tag == &"armored"); D&S applies 50% tower damage mitigation.
-## Key subscribers: Damage & Status, Monster System, Audio.
+## Key subscribers: Damage & Status, Monster System, Audio, Mission Scene
+## (2026-08-13 — spawns a purely cosmetic projectile visual, does not gate damage).
 signal tower_attacked(
 	tower_id: int,
 	target_monster_id: int,
