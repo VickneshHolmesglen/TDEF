@@ -209,7 +209,10 @@ func _on_tower_destroyed(tower_id: int, _grid_position: Vector2i, _archetype: St
 ## archetype and WeaponComponent.projectile_type. Does not gate or delay
 ## damage — damage_status.gd's existing one-frame resolution is unchanged.
 ## Support archetype towers never fire a projectile (Rule 5a — they emit
-## tower_aura_pulse instead), so are skipped here.
+## tower_aura_pulse instead), so are skipped here. BALLISTIC weapons with a
+## nonzero aoe_radius_cells also get a ground-plane detonation ring on
+## arrival ("AoE Detonation" section) — ProjectileVisual spawns that itself
+## once the flight completes.
 func _on_tower_attacked(tower_id: int, target_monster_id: int, _damage_amount: float,
 		_is_siege: bool, _is_armored: bool) -> void:
 	var tower_vis: TowerInstance = _tower_visuals.get(tower_id) as TowerInstance
@@ -223,8 +226,9 @@ func _on_tower_attacked(tower_id: int, target_monster_id: int, _damage_amount: f
 		return
 	var projectile: ProjectileVisual = ProjectileVisualScene.instantiate()
 	_gameplay_root.add_child(projectile)
+	var aoe_radius_world: float = state.weapon.aoe_radius_cells * CELL_SIZE
 	projectile.configure(state.foundation.archetype, state.weapon.projectile_type,
-			tower_vis.global_position, target)
+			tower_vis.global_position, target, aoe_radius_world)
 
 
 func _free_tower_visual(tower_id: int) -> void:

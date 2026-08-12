@@ -9,12 +9,12 @@ extends Node2D
 ##
 ## Deferred to a later, fully-scoped pass (not attempted here): per-element
 ## color sub-variants (fire/frost/etc — WeaponComponent has no per-element
-## field yet, only archetype), AoE detonation rings, HOMING re-acquisition
-## when the original target dies before impact (this pass just dissipates),
-## and instance pooling (spawned/freed per-shot like TowerInstance/
-## MonsterInstance already are — acceptable at this project's current
-## concurrent-tower scale, revisit if the GDD's 80 shots/sec peak becomes
-## a real profiled cost).
+## field yet, only archetype), HOMING re-acquisition when the original
+## target dies before impact (this pass just dissipates), and instance
+## pooling (spawned/freed per-shot like TowerInstance/MonsterInstance
+## already are — acceptable at this project's current concurrent-tower
+## scale, revisit if the GDD's 80 shots/sec peak becomes a real profiled
+## cost). AoE detonation rings ARE covered — see _spawn_aoe_ring().
 
 const FLIGHT_SPEED: float = 900.0   ## world units/sec — BALLISTIC/HOMING travel time
 const BEAM_DURATION: float = 0.15   ## seconds a BEAM stays visible
@@ -29,12 +29,16 @@ const ARCHETYPE_COLORS: Dictionary[String, Color] = {
 	"elemental": Color(0.65, 0.85, 1.0),      ## ice blue — matches the current elemental placeholder art
 }
 
+const AoeRingVisualScene: PackedScene = preload("res://src/scenes/AoeRingVisual.tscn")
+
 var _projectile_type: String = "BALLISTIC"
 var _target_entity: Node2D = null   ## weak by convention — validity checked every frame, never assumed
 var _target_last_known: Vector2 = Vector2.ZERO
 var _start_position: Vector2 = Vector2.ZERO
 var _elapsed: float = 0.0
 var _flight_duration: float = 0.2
+var _color: Color = Color.WHITE
+var _aoe_radius: float = 0.0   ## world units; 0 = no detonation ring (BALLISTIC single-target or non-BALLISTIC)
 
 @onready var _line: Line2D = $Line2D
 
@@ -43,15 +47,20 @@ var _flight_duration: float = 0.2
 ## projectile_type: WeaponComponent.projectile_type ("HOMING"/"BALLISTIC"/"BEAM").
 ## target: the live MonsterEntity being fired at — may already be null/freed
 ## by the time this is called (same-frame death race); handled gracefully.
-func configure(archetype: String, projectile_type: String, start_pos: Vector2, target: Node2D) -> void:
+## aoe_radius: world units (already cell-size-scaled by the caller). Only
+## meaningful for BALLISTIC — WeaponComponent.aoe_radius_cells is BALLISTIC-only
+## per its own doc comment, but this is re-checked at arrival time regardless.
+func configure(archetype: String, projectile_type: String, start_pos: Vector2, target: Node2D,
+		aoe_radius: float = 0.0) -> void:
 	_projectile_type = projectile_type
 	_start_position = start_pos
 	global_position = start_pos
 	_target_entity = target
 	_target_last_known = target.global_position if is_instance_valid(target) else start_pos
+	_aoe_radius = aoe_radius
 
-	var color: Color = ARCHETYPE_COLORS.get(archetype, Color.WHITE)
-	_line.default_color = color
+	_color = ARCHETYPE_COLORS.get(archetype, Color.WHITE)
+	_line.default_color = _color
 
 	if projectile_type == "BEAM":
 		_flight_duration = BEAM_DURATION
@@ -71,7 +80,23 @@ func _process(delta: float) -> void:
 		_:
 			_update_ballistic()
 	if _elapsed >= _flight_duration:
+		if _projectile_type == "BALLISTIC" and _aoe_radius > 0.0:
+			_spawn_aoe_ring()
 		queue_free()
+
+
+## design/gdd/tower.md "AoE Detonation": plays on every BALLISTIC AoE arrival,
+## including zero-damage detonations — this node has no knowledge of whether
+## damage was actually dealt, it fires purely off the projectile's own visual
+## arrival, which is exactly the always-play behavior the GDD requires.
+func _spawn_aoe_ring() -> void:
+	var parent: Node = get_parent()
+	if parent == null:
+		return
+	var ring: Node2D = AoeRingVisualScene.instantiate()
+	parent.add_child(ring)
+	ring.global_position = global_position
+	ring.configure(_aoe_radius, _color)
 
 
 ## Instant connection, persists for BEAM_DURATION, then cuts — no travel.
