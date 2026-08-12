@@ -101,7 +101,7 @@ This epic is complete when:
   `design/gdd/resource-economy.md` are verified
 - All Logic and Integration stories have passing test files in `tests/`
 - ~~ADRs exist covering the requirements table above~~ — **Done**: ADR-0016, ADR-0017, ADR-0018, ADR-0011 all Accepted (2026-07-13)
-- Both GDDs have passed `/design-review` (still not yet run — outstanding, non-blocking for architecture purposes)
+- ~~Both GDDs have passed `/design-review` (still not yet run — outstanding, non-blocking for architecture purposes)~~ **Corrected 2026-08-13**: this claim was itself stale/inaccurate — both GDDs' own status headers confirm `/design-review` was run multiple times (`inventory.md`: 2026-07-14, re-reviewed 2026-07-17; `resource-economy.md`: 2026-07-14, re-reviewed 2026-07-15), each pass finding and fixing real blockers. Both currently sit at `Needs Revision` status only because neither has had a final confirmation pass to flip the label to `Approved` — matches the same documentation-process gap already tracked for Epic 05's 3 systems, not blocking for architecture/implementation purposes.
 - ~~`event-bus.md` catalogue updated with `item_pickup_rejected` and `resources_changed`~~ — **Done** (2026-07-13)
 
 ## Next Step

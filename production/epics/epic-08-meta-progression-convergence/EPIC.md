@@ -3,7 +3,7 @@
 > **Layer**: Advanced (depends on Feature layer + Hero)
 > **GDDs**: `design/gdd/hero-skill-build.md`, `design/gdd/equipment-forge.md`
 > **Architecture Module**: Hero Skill Build System, Equipment Forge System (both currently stale pre-emptive stubs in `architecture.md`'s Module Ownership section)
-> **Status**: Complete — all 4 governing ADRs `Accepted`; Hero Skill Build (Stories 001-007) Complete 2026-07-19; Equipment Forge Stories 008-016 all Complete 2026-07-19 — **EPIC 08 FULLY COMPLETE**, batch `/code-review` still deferred/pending
+> **Status**: Complete — all 4 governing ADRs `Accepted`; Hero Skill Build (Stories 001-007) Complete 2026-07-19; Equipment Forge Stories 008-016 all Complete 2026-07-19 — **EPIC 08 FULLY COMPLETE**, batch `/code-review` completed 2026-07-19, APPROVED (see note below — this header line was stale, corrected 2026-08-13)
 > **Stories**: 16/16 stories `Complete`
 >
 > **✅ Equipment Forge Story 015 (Concurrency Guard & Orphaned Rune References) implemented 2026-07-19** — single shared `_forge_resolving` guard now spans all 3 operation types (craft/imbue/sacrifice), replacing Story 010's narrower `_craft_resolving`. New `is_rune_id_known()` classifier (checks Constellation's fixed shape set, Tarot cards, Sacrifice recipes — no unified rune catalogue exists in this codebase) drives orphan handling for the Available Rune Ledger at restore time: orphaned entries retained but unselectable, load never blocked (AC-25 fully implemented). AC-24 (orphaned already-imbued runes) left explicitly PARTIAL — it presumes a rune_id→stat_delta lookup for consumed items that doesn't exist, the exact gap Story 013 already flagged; not silently expanded into. 15 new tests, all passing.
