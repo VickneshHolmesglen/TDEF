@@ -260,4 +260,7 @@ Greenfield project. Set Project Settings → Autoloads in this exact order befor
 - ADR-0026 — Menagerie creature lifecycle state machine (added Menagerie as Autoload #11, 2026-07-17)
 - ADR-0028 — Mission Select runtime state and retry architecture (added MissionSelect as Autoload #12, 2026-07-17)
 - ADR-0030 — Hero Skill Build Ultimate lookup-table architecture (added HeroSkillBuild as Autoload #13, 2026-07-17)
+- ADR-0035 — Tarot Autoload Conversion (added Tarot as an Autoload, 2026-08-12 — fixes `production/qa/bugs/BUG-0001.md`)
 - `design/gdd/game-concept.md` — States and Transitions table
+
+**Known staleness (not fixed in this pass, flagged for a future formal revision)**: this ADR's own Autoload position table (above) was last fully revised 2026-07-17 (through Autoload #13, HeroSkillBuild) and was never updated for `AudioSystem` (ADR unclear) or `Encyclopedia` (ADR-0033/epic-13), both of which are already real Autoloads per `project.godot` today, nor for `Tarot` (`GTarot`, added 2026-08-12 by ADR-0035, see this ADR's own file for the full decision). A future pass should backfill all 3 into this ADR's table/count rather than leaving the "13-Autoload build invariant" text stale.

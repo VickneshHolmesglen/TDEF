@@ -170,9 +170,11 @@ func test_repeated_restore_of_the_same_data_never_reemits_encyclopedia_entry_add
 # ---------------------------------------------------------------------------
 
 func test_full_save_restore_cycle_does_not_cause_upstream_systems_to_refire_discovery_events() -> void:
-	# Constellation and Tarot are scene-instanced (not Autoloads) -- real
-	# instances added to the tree, matching their own test suites' own
-	# convention.
+	# Constellation is scene-instanced (not an Autoload); Tarot became a
+	# real Autoload via ADR-0035 (2026-08-12) but this test still
+	# constructs its own local, isolated instance (freed at the end of
+	# this test function) to exercise get_save_data()/restore_save_data()
+	# directly without touching the real GTarot Autoload's own state.
 	var constellation := Constellation.new()
 	add_child(constellation)
 	var tarot := Tarot.new()

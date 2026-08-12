@@ -10,11 +10,11 @@
 ## time, never a hardcoded expected string, since this class's entire job is
 ## being a passthrough live read, not owning any state of its own.
 ##
-## The Tarot-risk half, RESOLVED 2026-07-25: Tarot now exists as a real,
-## shell-owned child of TarotDeckUI.tscn (the "tarot" group) -- these tests
-## exercise the real live read (get_active_card_count()) against it, plus
-## the one remaining genuine "not available" case (a chip instantiated
-## standalone, outside its normal host).
+## The Tarot-risk half, RESOLVED 2026-08-12 (ADR-0035): Tarot is now a real
+## Autoload (GTarot) -- these tests exercise the real live read
+## (get_active_card_count()) directly against it, including confirming a
+## standalone (unhosted) chip reads it identically, since availability no
+## longer depends on any shell being mounted.
 extends GdUnitTestSuite
 
 var _runner: GdUnitSceneRunner
@@ -23,10 +23,15 @@ var _chip: SnapshotChip
 
 
 func before_test() -> void:
+	GTarot.reset_to_defaults()
 	_runner = scene_runner("res://src/presentation/tarot_deck_ui/TarotDeckUI.tscn")
 	@warning_ignore("unsafe_cast")
 	_shell = _runner.scene() as TarotDeckUI
 	_chip = _shell.get_snapshot_chip()
+
+
+func after_test() -> void:
+	GTarot.reset_to_defaults()
 
 
 # ---------------------------------------------------------------------------
@@ -63,23 +68,28 @@ func test_tarot_risk_summary_is_available_when_hosted_inside_the_real_shell() ->
 	var summary: Dictionary = _chip.get_tarot_risk_summary()
 
 	assert_bool(summary.get("available", false)).is_true()
-	assert_int(summary.get("equipped_card_count", -1)).is_equal(0)  # fresh Tarot instance, empty deck
+	assert_int(summary.get("equipped_card_count", -1)).is_equal(0)  # GTarot reset to defaults in before_test()
 
 
 func test_tarot_risk_summary_reflects_live_deck_changes() -> void:
-	var tarot: Tarot = _shell.get_tree().get_first_node_in_group(&"tarot") as Tarot
-	tarot._card_unlocked[&"iron_resolve"] = true
-	tarot.equip_card(&"iron_resolve")
+	GTarot._card_unlocked[&"iron_resolve"] = true
+	GTarot.equip_card(&"iron_resolve")
 
 	var summary: Dictionary = _chip.get_tarot_risk_summary()
 
 	assert_int(summary["equipped_card_count"] as int).is_equal(1)
 
 
-func test_tarot_risk_summary_is_not_available_when_no_shell_hosts_the_chip() -> void:
+## ADR-0035: GTarot is a real Autoload, always reachable regardless of
+## whether this chip is hosted inside a shell -- a standalone chip reads
+## the exact same live GTarot state a shell-hosted one does.
+func test_tarot_risk_summary_is_available_for_a_standalone_unhosted_chip() -> void:
+	GTarot._card_unlocked[&"iron_resolve"] = true
+	GTarot.equip_card(&"iron_resolve")
 	var standalone_chip := SnapshotChip.new()
 
 	var summary: Dictionary = standalone_chip.get_tarot_risk_summary()
 
-	assert_bool(summary.get("available", true)).is_false()
+	assert_bool(summary.get("available", false)).is_true()
+	assert_int(summary.get("equipped_card_count", -1)).is_equal(1)
 	standalone_chip.free()

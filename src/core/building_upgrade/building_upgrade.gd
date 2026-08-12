@@ -75,19 +75,13 @@ func is_visible(upgrade_id: StringName) -> bool:
 ## system owns that category. Returns false for an unrecognized key (should
 ## never happen post-validate(), but never errors here either way).
 ##
-## Real gap found 2026-08-11 (not this system's to fix): unlike Inventory/
-## DefenseBuilding/Menagerie (all real Autoloads), Tarot is NOT an Autoload
-## and is only ever instanced inside TarotDeckUI.tscn — a scene reached via
-## a full SceneManager transition AWAY from Sanctuary. No live Tarot
-## instance exists in the tree while the player is anywhere in Sanctuary UI
-## (where this system's own screen lives), so the "tarot" group lookup
-## below will find nothing there today. Failing closed (false, not a crash)
-## on a missing instance is the correct, honest behavior — matches
-## equipment_forge_screen.gd's own established `if equipment_forge == null:
-## return` null-guard convention — rather than silently pretending the
-## requirement passed. See design/gdd/building-upgrade.md's Open Questions
-## for the full account; fixing Tarot's own scene-lifecycle reachability is
-## out of this system's scope.
+## RESOLVED 2026-08-12 (ADR-0035): Tarot is now a real Autoload (GTarot),
+## reachable from any Sanctuary UI context including this system's own
+## screen — the previously-documented gap (Tarot only reachable while
+## TarotDeckUI.tscn was mounted, failing every "tarot" requirement closed
+## from Sanctuary) is closed. This read is now a genuine ADR-0020
+## Criterion A direct-Autoload-call instance, matching the building/
+## equipment/creature branches below.
 func _requirement_satisfied(requirement_type: String, identifier: StringName) -> bool:
 	match requirement_type:
 		"building":
@@ -95,8 +89,7 @@ func _requirement_satisfied(requirement_type: String, identifier: StringName) ->
 		"equipment":
 			return GInventory.has_specific_item(identifier)
 		"tarot":
-			var tarot: Tarot = get_tree().get_first_node_in_group(&"tarot") as Tarot
-			return tarot != null and tarot.is_card_unlocked(identifier)
+			return GTarot.is_card_unlocked(identifier)
 		"creature":
 			return GMenagerie.has_creature_species(identifier)
 		_:

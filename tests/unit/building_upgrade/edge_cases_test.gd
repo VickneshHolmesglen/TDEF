@@ -8,14 +8,16 @@
 ## content (requirements: building=habitat_expansion_tier_1,
 ## creature=glimmer_hare, tarot=iron_resolve), matching
 ## building_upgrade_test.gd's/content_validation_test.gd's own established
-## real-content convention. AC-11 additionally registers one test-only
-## second BuildingUpgradeResource directly into the registry (see
+## real-content convention. GTarot is a real Autoload (ADR-0035), reset
+## directly in before_test()/after_test() like the other 3 upstream
+## Autoloads. AC-11 additionally registers one test-only second
+## BuildingUpgradeResource directly into the registry (see
 ## SHARED_REQUIREMENT_UPGRADE_ID) so the "two upgrades share a requirement"
 ## claim is driven through the real can_purchase() registry path rather
 ## than a permanent new .tres file. _requirement_satisfied() is called
 ## directly where isolating a single branch (GDScript's underscore-prefix
 ## convention, not true privacy -- same direct-access pattern this project
-## already uses for other "private" test seams, e.g. Tarot._card_unlocked).
+## already uses for other "private" test seams, e.g. GTarot._card_unlocked).
 extends GdUnitTestSuite
 
 const UPGRADE_ID: StringName = &"upgrade_watchtower_reinforced"
@@ -35,17 +37,15 @@ const REQUIRED_TAROT_CARD: StringName = &"iron_resolve"
 const SHARED_REQUIREMENT_UPGRADE_ID: StringName = &"test_shared_requirement_upgrade"
 
 var _building_upgrade: BuildingUpgrade
-var _tarot: Tarot
 
 
 func before_test() -> void:
 	GDefenseBuilding.reset_to_defaults()
 	GInventory.reset_to_defaults()
 	GMenagerie.reset_to_defaults()
+	GTarot.reset_to_defaults()
 	_building_upgrade = BuildingUpgrade.new()
-	add_child(_building_upgrade)  # _requirement_satisfied()'s "tarot" branch calls get_tree()
-	_tarot = Tarot.new()
-	add_child(_tarot)  # triggers _ready() -> add_to_group("tarot")
+	add_child(_building_upgrade)
 
 
 func after_test() -> void:
@@ -53,14 +53,11 @@ func after_test() -> void:
 		remove_child(_building_upgrade)
 		_building_upgrade.free()
 	_building_upgrade = null
-	if _tarot != null and is_instance_valid(_tarot):
-		remove_child(_tarot)
-		_tarot.free()
-	_tarot = null
 	GGameDataRegistry._building_upgrades.erase(SHARED_REQUIREMENT_UPGRADE_ID)
 	GDefenseBuilding.reset_to_defaults()
 	GInventory.reset_to_defaults()
 	GMenagerie.reset_to_defaults()
+	GTarot.reset_to_defaults()
 
 
 ## Registers SHARED_REQUIREMENT_UPGRADE_ID (AC-11's "upgrade B") directly
@@ -91,7 +88,7 @@ func _satisfy_creature_requirement() -> void:
 
 
 func _satisfy_tarot_requirement() -> void:
-	_tarot._card_unlocked[REQUIRED_TAROT_CARD] = true
+	GTarot._card_unlocked[REQUIRED_TAROT_CARD] = true
 
 
 func _seed_material_cost() -> void:

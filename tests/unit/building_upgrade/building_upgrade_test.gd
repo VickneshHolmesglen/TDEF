@@ -3,18 +3,17 @@
 ## BuildingUpgrade reads 4 real upstream systems directly (no injection seam,
 ## matching Crafting's/EquipmentForge's own established "read the domain
 ## Autoload/instance directly" convention): GDefenseBuilding, GInventory,
-## GMenagerie (all real Autoloads), and Tarot (NOT an Autoload — discovered
-## via the "tarot" group, which is empty in this isolated test tree; see the
-## GDD's own Open Questions for the full account). Real content used:
-## upgrade_watchtower_reinforced (assets/data/building_upgrades/), which
-## requires building=habitat_expansion_tier_1, creature=glimmer_hare,
+## GMenagerie, and (ADR-0035, 2026-08-12) GTarot — all 4 are now real
+## Autoloads. Real content used: upgrade_watchtower_reinforced
+## (assets/data/building_upgrades/), which requires
+## building=habitat_expansion_tier_1, creature=glimmer_hare,
 ## tarot=iron_resolve.
 ##
-## GDefenseBuilding/GInventory/GMenagerie are real, persistent Autoloads —
-## TD-test-004 convention: reset directly in before_test()/after_test()
-## rather than instantiating isolated copies (matches
-## mission_economy_test.gd's own established pattern for this class of
-## cross-suite state).
+## GDefenseBuilding/GInventory/GMenagerie/GTarot are real, persistent
+## Autoloads — TD-test-004 convention: reset directly in
+## before_test()/after_test() rather than instantiating isolated copies
+## (matches mission_economy_test.gd's own established pattern for this
+## class of cross-suite state).
 extends GdUnitTestSuite
 
 const UPGRADE_ID: StringName = &"upgrade_watchtower_reinforced"
@@ -27,10 +26,11 @@ var _building_upgrade: BuildingUpgrade
 
 func before_test() -> void:
 	_building_upgrade = BuildingUpgrade.new()
-	add_child(_building_upgrade)  # real gap found live: _requirement_satisfied()'s "tarot" branch calls get_tree(), which is null on a Node never added to a tree — Crafting.new()'s own established no-add_child() convention doesn't apply here
+	add_child(_building_upgrade)  # triggers _ready(): GSavePersistence.register(), _seed_purchasable_state()
 	GDefenseBuilding.reset_to_defaults()
 	GMenagerie.reset_to_defaults()
 	GInventory.reset_to_defaults()
+	GTarot.reset_to_defaults()
 
 
 func after_test() -> void:
@@ -41,6 +41,7 @@ func after_test() -> void:
 	GDefenseBuilding.reset_to_defaults()
 	GMenagerie.reset_to_defaults()
 	GInventory.reset_to_defaults()
+	GTarot.reset_to_defaults()
 
 
 func _build_watchtower() -> void:
@@ -109,28 +110,30 @@ func test_not_purchasable_when_only_some_requirements_met() -> void:
 	assert_bool(_building_upgrade.can_purchase(UPGRADE_ID)).is_false()
 
 
-func test_tarot_requirement_fails_closed_with_no_live_tarot_instance() -> void:
-	# Documented gap (GDD Open Questions): no Tarot instance is reachable
-	# from an isolated test tree (or real Sanctuary UI) today. This proves
-	# the fail-closed behavior is deliberate, not a crash.
+## ADR-0035: Tarot is now a real Autoload (GTarot), always reachable —
+## this replaces the old "fails closed with no live Tarot instance" gap
+## test (that premise no longer exists). iron_resolve (REQUIRED_TAROT_CARD)
+## is Common content (unlock_tech_id = "" -> unlocked from the start per
+## Tarot.is_card_unlocked()'s own default-unlock branch), so this proves
+## the "tarot" branch genuinely reaches GTarot.is_card_unlocked() and
+## reflects its real return value, rather than failing closed as it did
+## before ADR-0035 (when no instance was reachable at all). An unrecognized
+## tarot requirement id still fails closed safely (edge_cases_test.gd's AC-10b).
+func test_tarot_requirement_resolves_via_the_real_gtarot_autoload() -> void:
 	_build_watchtower()
 	_satisfy_building_requirement()
 	_satisfy_creature_requirement()
-	assert_bool(_building_upgrade.can_purchase(UPGRADE_ID)).is_false()
+
+	assert_bool(GTarot.is_card_unlocked(REQUIRED_TAROT_CARD)).is_true()  # Common card, unlocked by default
+	assert_bool(_building_upgrade.can_purchase(UPGRADE_ID)).is_true()
 
 
 func test_purchasable_once_every_requirement_is_independently_satisfied() -> void:
 	_build_watchtower()
 	_satisfy_building_requirement()
 	_satisfy_creature_requirement()
-	var tarot := Tarot.new()
-	add_child(tarot)  # triggers _ready(): add_to_group("tarot")
-	tarot._card_unlocked[REQUIRED_TAROT_CARD] = true
 
-	assert_bool(_building_upgrade.can_purchase(UPGRADE_ID)).is_true()
-
-	remove_child(tarot)
-	tarot.free()
+	assert_bool(_building_upgrade.can_purchase(UPGRADE_ID)).is_true()  # tarot requirement auto-satisfied (Common card)
 
 
 # ---------------------------------------------------------------------------
@@ -158,9 +161,6 @@ func test_resolve_upgrade_succeeds_and_does_not_consume_requirement_inputs() -> 
 	_satisfy_building_requirement()
 	_satisfy_creature_requirement()
 	_seed_material_cost()
-	var tarot := Tarot.new()
-	add_child(tarot)
-	tarot._card_unlocked[REQUIRED_TAROT_CARD] = true
 
 	var spy := EventBusSpy.new()
 	spy.watch(GEventBus.structure_upgraded)
@@ -179,11 +179,9 @@ func test_resolve_upgrade_succeeds_and_does_not_consume_requirement_inputs() -> 
 	assert_bool(GDefenseBuilding.is_structure_built(&"watchtower_tier_1")).is_true()
 	assert_bool(GDefenseBuilding.is_structure_built(TARGET_STRUCTURE)).is_true()
 	assert_bool(GMenagerie.has_creature_species(REQUIRED_SPECIES)).is_true()
-	assert_bool(tarot.is_card_unlocked(REQUIRED_TAROT_CARD)).is_true()
+	assert_bool(GTarot.is_card_unlocked(REQUIRED_TAROT_CARD)).is_true()
 
 	spy.disconnect_all()
-	remove_child(tarot)
-	tarot.free()
 
 
 func test_resolve_upgrade_is_permanent_and_rejects_a_second_purchase() -> void:
@@ -191,15 +189,9 @@ func test_resolve_upgrade_is_permanent_and_rejects_a_second_purchase() -> void:
 	_satisfy_building_requirement()
 	_satisfy_creature_requirement()
 	_seed_material_cost()
-	var tarot := Tarot.new()
-	add_child(tarot)
-	tarot._card_unlocked[REQUIRED_TAROT_CARD] = true
 
 	assert_bool(_building_upgrade.resolve_upgrade(UPGRADE_ID)).is_true()
 	assert_bool(_building_upgrade.resolve_upgrade(UPGRADE_ID)).is_false()  # already purchased
-
-	remove_child(tarot)
-	tarot.free()
 
 
 # ---------------------------------------------------------------------------

@@ -34,6 +34,7 @@ GMissionSelect="*res://src/core/mission_select/mission_select.gd"
 GHeroSkillBuild="*res://src/core/hero_skill_build/hero_skill_build.gd"
 GAudioSystem="*res://src/core/audio/audio_system.gd"
 GEncyclopedia="*res://src/core/encyclopedia/encyclopedia.gd"
+GTarot="*res://src/core/tarot/tarot.gd"
 _mcp_game_helper="*res://addons/godot_ai/runtime/game_helper.gd"
 
 [display]

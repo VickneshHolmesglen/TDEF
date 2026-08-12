@@ -30,10 +30,11 @@ var _screen: Control
 func before_test() -> void:
 	_forge = EquipmentForge.new()
 	_building_upgrade = BuildingUpgrade.new()
-	add_child(_building_upgrade)  # _requirement_satisfied()'s "tarot" branch calls get_tree()
+	add_child(_building_upgrade)
 	GInventory.reset_to_defaults()
 	GDefenseBuilding.reset_to_defaults()
 	GMenagerie.reset_to_defaults()
+	GTarot.reset_to_defaults()
 	_runner = scene_runner("res://src/gameplay/ui/equipment_forge_screen/EquipmentForgeScreen.tscn")
 	_screen = _runner.scene() as Control
 	_screen.set("equipment_forge", _forge)
@@ -52,6 +53,7 @@ func after_test() -> void:
 	GInventory.reset_to_defaults()
 	GDefenseBuilding.reset_to_defaults()
 	GMenagerie.reset_to_defaults()
+	GTarot.reset_to_defaults()
 
 
 func _rebuild_all() -> void:
@@ -326,13 +328,19 @@ func test_requirement_chips_use_distinct_category_tags() -> void:
 ## see building-upgrade.md's own Open Questions) -- closes a coverage gap
 ## /code-review found (only building/creature glyphs were previously
 ## asserted, not tarot).
-func test_tarot_requirement_chip_is_unmet_with_no_live_tarot_instance() -> void:
+## ADR-0035 (2026-08-12): Tarot is now a real Autoload (GTarot), reachable
+## from Equipment Forge's own Sanctuary UI screen -- this replaces the old
+## "unmet with no live Tarot instance" gap test (that premise no longer
+## exists). iron_resolve (this upgrade's own "tarot" requirement) is
+## Common content, unlocked by default, so the chip now genuinely reads
+## satisfied via the real GTarot.is_card_unlocked() call.
+func test_tarot_requirement_chip_is_satisfied_via_the_real_gtarot_autoload() -> void:
 	GDefenseBuilding._structure_ledger[&"watchtower_tier_1"] = true
 	_rebuild_all()
 
 	var chip_row: Control = _screen.call("get_upgrade_chip_row", UPGRADE_ID)
 	var tarot_chip: Label = chip_row.get_node("Chip_tarot") as Label
-	assert_str(tarot_chip.text).contains("✗")
+	assert_str(tarot_chip.text).contains("✓")
 
 
 ## AC-6: an unresolvable equipment id falls back to a title-cased id rather

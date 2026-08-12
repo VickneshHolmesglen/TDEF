@@ -945,7 +945,7 @@ requirements:
   - id: TR-buildupgrade-002
     system: building-upgrade
     gdd: design/gdd/building-upgrade.md
-    requirement: "Cross-system read architecture - direct Autoload calls (DefenseBuilding.is_structure_built, Inventory.has_specific_item, Menagerie.has_creature_species, all ADR-0020 Criterion A) plus a flagged, not-yet-ADR-0020-covered group-lookup read of Tarot (scene-instanced, not an Autoload); covered by ADR-0034"
+    requirement: "Cross-system read architecture - direct Autoload calls (DefenseBuilding.is_structure_built, Inventory.has_specific_item, Menagerie.has_creature_species, GTarot.is_card_unlocked, all ADR-0020 Criterion A); covered by ADR-0034. Tarot converted to a real Autoload (GTarot) via ADR-0035 (2026-08-12), closing the gap this requirement originally flagged (Tarot's read was NOT yet an ADR-0020 instance) and production/qa/bugs/BUG-0001.md in the same change."
     created: 2026-08-12
     revised: ""
     status: active

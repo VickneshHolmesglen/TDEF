@@ -4,11 +4,10 @@
 ## structure_upgraded->Audio dispatch wiring (AC-9) and re-arm behavior
 ## (AC-9b).
 ##
-## Uses the real GDefenseBuilding/GInventory/GMenagerie Autoloads (TD-test-004
-## convention — reset directly in before_test()/after_test()) and a real
-## BuildingUpgrade instance added to the test's own tree (get_tree() is
-## needed by _requirement_satisfied()'s "tarot" branch, matching
-## building_upgrade_test.gd's own established convention). Real content:
+## Uses the real GDefenseBuilding/GInventory/GMenagerie/GTarot Autoloads
+## (TD-test-004 convention — reset directly in before_test()/after_test();
+## GTarot joined this Autoload set via ADR-0035, 2026-08-12) and a real
+## BuildingUpgrade instance added to the test's own tree. Real content:
 ## upgrade_watchtower_reinforced (target_structure_id=watchtower_tier_1,
 ## requirements: building=habitat_expansion_tier_1, creature=glimmer_hare,
 ## tarot=iron_resolve).
@@ -21,7 +20,6 @@ const REQUIRED_SPECIES: StringName = &"glimmer_hare"
 const REQUIRED_TAROT_CARD: StringName = &"iron_resolve"
 
 var _building_upgrade: BuildingUpgrade
-var _tarot: Tarot
 var _spy: EventBusSpy
 
 
@@ -34,6 +32,7 @@ func before_test() -> void:
 	GDefenseBuilding.reset_to_defaults()
 	GInventory.reset_to_defaults()
 	GMenagerie.reset_to_defaults()
+	GTarot.reset_to_defaults()
 	# Defensive: SceneTree (and its groups) is one global singleton for the
 	# entire gdUnit4 process run, shared across every test suite -- an
 	# unrelated test elsewhere that leaves a stray "building_upgrade" group
@@ -50,9 +49,7 @@ func before_test() -> void:
 			stray.get_parent().remove_child(stray)
 			stray.free()
 	_building_upgrade = BuildingUpgrade.new()
-	add_child(_building_upgrade)  # _requirement_satisfied()'s "tarot" branch calls get_tree()
-	_tarot = Tarot.new()
-	add_child(_tarot)  # triggers _ready() -> add_to_group("tarot")
+	add_child(_building_upgrade)
 	_spy = EventBusSpy.new()
 	_spy.watch(GEventBus.building_upgrade_became_purchasable)
 	_spy.watch(GEventBus.structure_upgraded)
@@ -66,13 +63,10 @@ func after_test() -> void:
 		remove_child(_building_upgrade)
 		_building_upgrade.free()
 	_building_upgrade = null
-	if _tarot != null and is_instance_valid(_tarot):
-		remove_child(_tarot)
-		_tarot.free()
-	_tarot = null
 	GDefenseBuilding.reset_to_defaults()
 	GInventory.reset_to_defaults()
 	GMenagerie.reset_to_defaults()
+	GTarot.reset_to_defaults()
 
 
 ## Builds BOTH the upgrade's own target_structure_id (watchtower_tier_1 --
@@ -102,7 +96,7 @@ func _lose_creature_requirement() -> void:
 
 
 func _satisfy_tarot_requirement() -> void:
-	_tarot._card_unlocked[REQUIRED_TAROT_CARD] = true
+	GTarot._card_unlocked[REQUIRED_TAROT_CARD] = true
 
 
 func _seed_material_cost() -> void:

@@ -39,7 +39,7 @@ Building Upgrade is the Sanctuary's convergence layer: a purchasable, permanent 
 
 ## Known Blockers
 
-- **`"tarot"`-keyed upgrade content cannot ship yet.** Tarot has no live, Sanctuary-reachable instance (ADR-0034 Risks; `building-upgrade.md` Open Questions) — any upgrade using a `"tarot"` requirement fails closed permanently. Not this epic's own defect to fix; needs Tarot's own architecture ADR (likely Autoload conversion).
+- ~~**`"tarot"`-keyed upgrade content cannot ship yet.**~~ **RESOLVED 2026-08-12 (ADR-0035)** — Tarot converted to a real Autoload (`GTarot`), reachable from any Sanctuary UI context. `"tarot"`-keyed upgrade content can now ship.
 - **BUG-0001 (S1-Critical, `production/qa/bugs/BUG-0001.md`)**: independent of this epic, but touches the same Tarot dependency — Tarot's entire save ledger silently drops from any save taken outside `TarotDeckUI.tscn`. Filed, not fixed, by this session.
 - ~~**TR-buildupgrade-004's stories are not yet implemented**~~ **RESOLVED 2026-08-12** — the 2026-08-12 design-review revision (per-requirement legibility, Connection Badge, purchase chime, `BuildingUpgradeResource.validate()`, prerequisite-chain cycle guard + tier cap) is now implemented and tested across Stories 002-004: per-requirement legibility chips (Story 003), prerequisite-cycle guard + chain cap (Story 002), and PURCHASABLE Connection Badge + purchase chime (Story 004).
 - **No Watchtower/Habitat Expansion mechanical effect exists yet** for `structure_upgraded` to drive (GDD Rule 7, deliberately scaffolded — matches `defense-building.md`'s own precedent for Watchtower's base effect). Not blocking this epic; purchasing an upgrade today has no downstream mechanical consequence beyond the ledger write + notification.

@@ -8,9 +8,9 @@ extends Control
 ## dialog for deck edits — fully reversible at zero cost).
 ## ADR: docs/architecture/adr-0011-ui-dual-focus-handling.md (focus/hover),
 ##      docs/architecture/adr-0027-tarot-modifier-aggregation-pipeline.md
-##      (data side — Tarot is scene-instanced, not an Autoload; this screen
-##      discovers the shell-owned instance via the "tarot" group, mirroring
-##      equipment_forge_screen.gd's own identical pattern)
+##      (data side), docs/architecture/adr-0035-tarot-autoload-conversion.md
+##      (2026-08-12) — Tarot is now a real Autoload (GTarot); this screen's
+##      `tarot` export defaults to it directly instead of a group lookup
 ##
 ## Conflict Indicator (epic-11 Story 004, GDD Core Rule 6): closes a real gap
 ## found 2026-07-25 — Story 004 built the mapping/query engine
@@ -85,8 +85,7 @@ const CARD_TEXTURES: Dictionary[StringName, Texture2D] = {
 }
 const CARD_ICON_MAX_WIDTH: int = 32
 
-## Injectable for tests; defaults to the shell-owned instance discovered via
-## the "tarot" group (Tarot is scene-instanced per ADR-0027, not an Autoload).
+## Injectable for tests; defaults to the real GTarot Autoload (ADR-0035).
 @export var tarot: Tarot
 
 ## Injectable for tests; defaults to the shell-owned instance discovered via
@@ -103,7 +102,7 @@ var _pool_buttons: Dictionary[StringName, Button] = {}
 
 func _ready() -> void:
 	if tarot == null:
-		tarot = get_tree().get_first_node_in_group(&"tarot") as Tarot
+		tarot = GTarot
 	if conflict_indicator == null:
 		var shell: Node = get_tree().get_first_node_in_group(&"tarot_deck_ui")
 		if shell != null and shell.has_method(&"get_conflict_indicator"):
