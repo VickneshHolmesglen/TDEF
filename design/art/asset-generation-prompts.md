@@ -52,6 +52,88 @@ reconstructing the art-bible constraints from scratch each time.
 
 ---
 
+## Hero Placeholder Sprite (2D stopgap, not the final asset)
+
+**Date:** 2026-08-13
+**Target:** replaces `src/core/hero/Hero.tscn`'s bare `PlaceholderVisual`
+(a plain light-blue `ColorRect`, no silhouette at all) with a real, readable
+2D sprite. **This is explicitly NOT the Hero's final asset** —
+`design/art/characters/hero-visual-profile.md` specifies the Hero as the
+game's one real-time 3D model (rigged idle/combat animation, 4 tower-fusion
+variants, ≤6,000 tri budget), which needs an actual 3D modeling pipeline this
+project does not currently have. This prompt produces a flat 2D stand-in
+sprite (same ChatGPT + manual alpha-cut pipeline as monsters/structures)
+purely so the Hero is visually legible on the field today — a discovered gap
+where the hero was dealing real damage and killing monsters on screen while
+rendering as an unstyled blue square. Swap for the real 3D asset once that
+pipeline exists; do not treat this sprite as done/final.
+**Status:** Not yet generated.
+
+```
+Single fantasy character, front-three-quarter view, standing idle pose,
+centered on a flat pure black (#000000) background for easy cutout. A
+"warden-smith" archetype — equal parts craftsperson and sentinel, not a
+classical knight, not a wizard, not a rogue. No full-enclosure plate helmet,
+no plumed helmet, no robes, no scrolls, no floating magic instruments, no
+asymmetric hood-and-dagger silhouette, no cape.
+
+Silhouette: lean and deliberate, not bulky — tall vertical proportions
+(roughly 1.8:1 height to width), feet planted wide relative to the torso to
+read as grounded and weighted. Head/crown is a clean point or rounded dome
+shape (a narrow visor-ridge, or a close-wrap hardened hood), never a flat
+top or wide brim.
+
+Gear: worn hardened-leather panels as the dominant surface (shaped, visibly
+stitched, edge-reinforced, tanned dark warm brown — not black, not bright),
+with irregular hammer-worked plate armor at the shoulder, forearm, and shin
+(smith-made, not uniform factory metal). A wrapped-cord grip on a single
+carried tool-weapon (a smith's hammer or a short polearm reads better than a
+sword — this is a maker who fights, not a soldier). No purely decorative
+elements; every piece of kit should look functional.
+
+Color palette: dark warm brown leather (approx. HSL 30°, 35%, 28%), plate
+armor in a muted fieldstone grey (#7E8590) with lit edges shifting toward
+parchment cream (#F5EDCB), wrapped grips/cords in a desaturated amber
+(warmer/darker than bright gold). Skin, where visible at wrist or jaw, no
+lighter than parchment cream — not bright white, not a bright saturated tan.
+Do NOT use Herald Gold (#F5C01A), no purple, no green, no cyan.
+
+Expression/posture: composed and alert, not smiling, not in a dramatic
+action pose — weight resting into the legs, slight forward lean, ready but
+not reacting. A hand-painted miniature figurine read, not a theatrical
+fantasy hero pose.
+
+Style: hand-painted miniature cabinet-diorama aesthetic, painterly
+pixel-art texture with visible brushwork, consistent with this project's
+existing character/creature art (matches the Menagerie species portraits
+and monster sprites already generated for this project) — warm, carved,
+tactile, not a flat vector/anime-style character.
+```
+
+**Constraint mapping** (why each clause is there):
+- "warden-smith archetype... not a classical knight/wizard/rogue" + the full
+  exclusion list → `hero-visual-profile.md` §1's binding archetype rules,
+  copied directly rather than paraphrased since a generator given only "not
+  a knight" tends to default straight back to knight-adjacent designs.
+- "1.8:1 height to width... feet planted wide" + "clean point or rounded
+  dome" crown → §2's Silhouette Rules (Binding), the aspect ratio and crown
+  rules that hold across every Hero state including this stopgap.
+- Leather/plate/grip material list with exact color values → §3's Material
+  & Color Spec table, reused verbatim so the placeholder doesn't clash with
+  the real 3D asset's eventual palette when it replaces this sprite.
+- "composed and alert... not a dramatic action pose" → §4's expression
+  register and §5.3.1's "hand-painted figurine, not theatrical performance"
+  posture philosophy.
+- "matches the Menagerie species portraits and monster sprites" → same
+  cross-reference-to-existing-approved-art anchor used in every other prompt
+  in this log, so the generator has a concrete style target.
+- Explicit "this is NOT the final asset" framing in the target note (not the
+  prompt itself, which the generator never sees) → prevents this stopgap
+  from silently becoming treated as done; the real Hero needs 3D production
+  this project doesn't have tooling for yet.
+
+---
+
 ## Gold Coin Icon (currency HUD icon)
 
 **Date:** 2026-08-06
