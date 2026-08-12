@@ -935,3 +935,31 @@ requirements:
     created: 2026-07-17
     revised: ""
     status: active
+  - id: TR-buildupgrade-001
+    system: building-upgrade
+    gdd: design/gdd/building-upgrade.md
+    requirement: "BuildingUpgradeResource recipe model - 1-4 requirement categories (building/equipment/tarot/creature) checked non-destructively against 4 upstream systems, plus a gold+material cost that IS spent; covered by ADR-0034"
+    created: 2026-08-12
+    revised: ""
+    status: active
+  - id: TR-buildupgrade-002
+    system: building-upgrade
+    gdd: design/gdd/building-upgrade.md
+    requirement: "Cross-system read architecture - direct Autoload calls (DefenseBuilding.is_structure_built, Inventory.has_specific_item, Menagerie.has_creature_species, all ADR-0020 Criterion A) plus a flagged, not-yet-ADR-0020-covered group-lookup read of Tarot (scene-instanced, not an Autoload); covered by ADR-0034"
+    created: 2026-08-12
+    revised: ""
+    status: active
+  - id: TR-buildupgrade-003
+    system: building-upgrade
+    gdd: design/gdd/building-upgrade.md
+    requirement: "Permanent PURCHASED ledger (_purchased_upgrades), persisted via SaveRestorer at restore_order=33 (after Defense Building=21, Tarot=22, Equipment Forge=32); covered by ADR-0034"
+    created: 2026-08-12
+    revised: ""
+    status: active
+  - id: TR-buildupgrade-004
+    system: building-upgrade
+    gdd: design/gdd/building-upgrade.md
+    requirement: "Player-facing notification model - VISIBLE_LOCKED per-requirement legibility (Rule 2a), PURCHASABLE-transition Connection Badge + purchase confirmatory chime (Rule 6a, reusing Sanctuary UI's and Defense Building's existing conventions); added by the 2026-08-12 design-review revision, not yet implemented in code - see building-upgrade.md's Status line"
+    created: 2026-08-12
+    revised: ""
+    status: active

@@ -30,7 +30,7 @@
 #   Superseded entries:     Grep pattern="status: superseded"
 
 version: 1
-last_updated: "2026-07-24"  # ADR-0032 added — formalizes the shared destroy-and-recreate + terminal-latch presentation-shell hosting pattern both sanctuary-ui.md and tarot-deck-ui.md independently re-derived through their own multi-pass design reviews, closing the "no dedicated ADR yet" gap both Epic 10 and Epic 11 flagged. Prior entry: ADR-0020-0030 (all 11 originally-required ADRs from the 2026-07-17 architecture review now written). ADR-0029 surfaced a project-wide gap: SavePersistence has no mid-session re-restore for scene-instanced systems recreated on scene transition — flagged on Crafting/Constellation/Tarot/EquipmentForge/TowerMastery entries, blocked their implementation pending resolution. ADR-0030 amended ADR-0029's SkillDefinitionResource in place to unify both systems' field needs. During /create-epics research: found and fixed restore_order errors in ADR-0029 (31->34) and ADR-0030 (32->31) that had drifted from save-persistence.md's own authoritative table (itself corrected same-day, after these ADRs were drafted from the GDDs' stale self-proposed values) — also resolved that doc's own flagged Hero-Skill-Build-vs-Tower-Mastery ordering question. **2026-07-18 (Sprint 6, S6-01): the mid-session-restore gap is now RESOLVED** — ADR-0003 revised to cache the last-loaded master Dictionary and restore late-registering SaveRestorers immediately from that cache (see ADR-0003's 2026-07-18 revision note). The "do not implement until resolved" WARNING on Crafting/Constellation/Tarot/EquipmentForge/TowerMastery's entries below is stale and has been updated accordingly.
+last_updated: "2026-08-12"  # ADR-0034 added (Building Upgrade Cross-System Requirements Model) — backfilled for an already-shipped system (implemented 2026-08-11), formalizing its reads of DefenseBuilding/Inventory/Menagerie (all ADR-0020 Criterion A) and flagging its Tarot group-lookup read as explicitly NOT an ADR-0020 instance (Tarot isn't an Autoload). Found and corrected a stale claim on tarot_progress_ledger ("nothing calls into it directly" — false, Building Upgrade and pre-existing Equipment Forge/Crafting group-lookups already do) and a genuine, previously-undocumented gap: Tarot only registers with SavePersistence while its one TarotDeckUI.tscn-child instance is alive, so any save taken elsewhere silently omits it entirely (production/qa/bugs/BUG-0001.md) — distinct from and not fixed by ADR-0003's 2026-07-18 mid-session-restore fix. Prior entry: ADR-0032 added — formalizes the shared destroy-and-recreate + terminal-latch presentation-shell hosting pattern both sanctuary-ui.md and tarot-deck-ui.md independently re-derived through their own multi-pass design reviews, closing the "no dedicated ADR yet" gap both Epic 10 and Epic 11 flagged. Prior entry: ADR-0020-0030 (all 11 originally-required ADRs from the 2026-07-17 architecture review now written). ADR-0029 surfaced a project-wide gap: SavePersistence has no mid-session re-restore for scene-instanced systems recreated on scene transition — flagged on Crafting/Constellation/Tarot/EquipmentForge/TowerMastery entries, blocked their implementation pending resolution. ADR-0030 amended ADR-0029's SkillDefinitionResource in place to unify both systems' field needs. During /create-epics research: found and fixed restore_order errors in ADR-0029 (31->34) and ADR-0030 (32->31) that had drifted from save-persistence.md's own authoritative table (itself corrected same-day, after these ADRs were drafted from the GDDs' stale self-proposed values) — also resolved that doc's own flagged Hero-Skill-Build-vs-Tower-Mastery ordering question. **2026-07-18 (Sprint 6, S6-01): the mid-session-restore gap is now RESOLVED** — ADR-0003 revised to cache the last-loaded master Dictionary and restore late-registering SaveRestorers immediately from that cache (see ADR-0003's 2026-07-18 revision note). The "do not implement until resolved" WARNING on Crafting/Constellation/Tarot/EquipmentForge/TowerMastery's entries below is stale and has been updated accordingly. — formalizes the shared destroy-and-recreate + terminal-latch presentation-shell hosting pattern both sanctuary-ui.md and tarot-deck-ui.md independently re-derived through their own multi-pass design reviews, closing the "no dedicated ADR yet" gap both Epic 10 and Epic 11 flagged. Prior entry: ADR-0020-0030 (all 11 originally-required ADRs from the 2026-07-17 architecture review now written). ADR-0029 surfaced a project-wide gap: SavePersistence has no mid-session re-restore for scene-instanced systems recreated on scene transition — flagged on Crafting/Constellation/Tarot/EquipmentForge/TowerMastery entries, blocked their implementation pending resolution. ADR-0030 amended ADR-0029's SkillDefinitionResource in place to unify both systems' field needs. During /create-epics research: found and fixed restore_order errors in ADR-0029 (31->34) and ADR-0030 (32->31) that had drifted from save-persistence.md's own authoritative table (itself corrected same-day, after these ADRs were drafted from the GDDs' stale self-proposed values) — also resolved that doc's own flagged Hero-Skill-Build-vs-Tower-Mastery ordering question. **2026-07-18 (Sprint 6, S6-01): the mid-session-restore gap is now RESOLVED** — ADR-0003 revised to cache the last-loaded master Dictionary and restore late-registering SaveRestorers immediately from that cache (see ADR-0003's 2026-07-18 revision note). The "do not implement until resolved" WARNING on Crafting/Constellation/Tarot/EquipmentForge/TowerMastery's entries below is stale and has been updated accordingly.
 
 # ─── STATE OWNERSHIP ─────────────────────────────────────────────────────────
 # Who is the authoritative owner of each piece of shared game state.
@@ -303,12 +303,13 @@ state_ownership:
     status: active
     owner_system: tarot
     adr: docs/architecture/adr-0027-tarot-modifier-aggregation-pipeline.md
-    interface: "Tarot (scene-instanced node — nothing calls into it directly, so it needs no Autoload status) — _mastery_missions_played: Dictionary[StringName, int] (card_id -> count; mastery_tier is ALWAYS derived via F6, never independently stored), _rune_discovered: Dictionary[StringName, bool] (linked_rune_id -> discovered, one-way terminal, mirrors ADR-0022/0023's Discovery Ledger shape), _card_unlocked: Dictionary[StringName, bool] (card_id -> unlocked; READ-ONLY from Tarot's own logic — write side is a genuinely unresolved external dependency, no system currently owns it), _deck_template: Array[StringName] (persisted Sanctuary-time equipped list). _active_mission_deck (mission-locked snapshot) is explicitly NOT persisted — ephemeral runtime-only. Persisted via SaveRestorer, restore_order=22."
-    write_access: tarot-only (except _card_unlocked, whose writer is unresolved — see ADR Risks). RESOLVED (flagged 2026-07-17 by ADR-0029, fixed 2026-07-18) — SavePersistence's mid-session-restore gap for scene-instanced nodes is closed by ADR-0003's 2026-07-18 revision (cached late-registration restore); see ADR-0003 for the fix.
+    interface: "Tarot (scene-instanced node, not an Autoload) — _mastery_missions_played: Dictionary[StringName, int] (card_id -> count; mastery_tier is ALWAYS derived via F6, never independently stored), _rune_discovered: Dictionary[StringName, bool] (linked_rune_id -> discovered, one-way terminal, mirrors ADR-0022/0023's Discovery Ledger shape), _card_unlocked: Dictionary[StringName, bool] (card_id -> unlocked; READ-ONLY from Tarot's own logic; as of 2026-08-12, ADR-0034/tarot.md Rule 1's unlock_tech_id field gives it a real write path via a live GDefenseBuilding.is_tech_unlocked() pull-check, OR'd with this dict as a seam for any future non-tech unlock source), _deck_template: Array[StringName] (persisted Sanctuary-time equipped list). _active_mission_deck (mission-locked snapshot) is explicitly NOT persisted — ephemeral runtime-only. Persisted via SaveRestorer, restore_order=22. **CORRECTION 2026-08-12 (ADR-0034 review)**: this entry previously claimed 'nothing calls into it directly, so it needs no Autoload status' — false as of Building Upgrade's own group-based `get_tree().get_first_node_in_group(&\"tarot\")` lookup (and Equipment Forge's pre-existing identical pattern) — see ADR-0034's Risks section for why this is NOT an ADR-0020 Criterion A/B instance (Tarot isn't an Autoload, so ADR-0020's own stated scope doesn't cover it)."
+    write_access: tarot-only (except _card_unlocked, whose write side is now the OR'd combination described above — no longer fully unresolved, though the non-tech-source seam remains open). PARTIALLY RESOLVED (flagged 2026-07-17 by ADR-0029, fixed 2026-07-18) — SavePersistence's mid-session-restore gap for already-registered scene-instanced nodes is closed by ADR-0003's 2026-07-18 revision. **NOT covered by that fix, found 2026-08-12 (production/qa/bugs/BUG-0001.md)**: Tarot's own `_ready()`/`_exit_tree()` only register/unregister with SavePersistence while its one instance (child of TarotDeckUI.tscn) is alive at all — any save taken while that scene isn't mounted omits Tarot entirely, a distinct and still-open gap ADR-0003's fix does not address (it fixes late-registration ordering, not the initial registration's own scene-lifetime dependency).
     referenced_by:
       - docs/architecture/adr-0027-tarot-modifier-aggregation-pipeline.md
+      - docs/architecture/adr-0034-building-upgrade-cross-system-requirements.md
     added: 2026-07-17
-    revised: ""
+    revised: "2026-08-12 — corrected 'no direct callers' claim (Building Upgrade's group-lookup is a direct caller); flagged BUG-0001's save-registration gap as distinct from ADR-0003's already-fixed mid-session-restore gap"
 
   - state: mission_select_state
     status: active
@@ -341,6 +342,17 @@ state_ownership:
     referenced_by:
       - docs/architecture/adr-0030-hero-skill-build-ultimate-lookup.md
     added: 2026-07-17
+    revised: ""
+
+  - state: building_upgrade_ledger
+    status: active
+    owner_system: building-upgrade
+    adr: docs/architecture/adr-0034-building-upgrade-cross-system-requirements.md
+    interface: "BuildingUpgrade (scene-instanced node, not Autoload — hosted inside Equipment Forge's shell per ADR-0032) — _purchased_upgrades: Dictionary[StringName, bool] (upgrade_id -> PURCHASED, permanent one-way, mirrors defense_building_ledgers' exact shape). Owns no other system's state — reads DefenseBuilding/Inventory/Menagerie via ADR-0020 Criterion A direct calls and Tarot via group-based lookup (flagged, not an ADR-0020 instance — see ADR-0034 Risks). Persisted via SaveRestorer, restore_order=33."
+    write_access: building-upgrade-only
+    referenced_by:
+      - docs/architecture/adr-0034-building-upgrade-cross-system-requirements.md
+    added: 2026-08-12
     revised: ""
 
 # Example:
@@ -550,13 +562,15 @@ interfaces:
       - equipment-forge-system
       - menagerie-system
       - defense-building-system
+      - building-upgrade-system
     adr: docs/architecture/adr-0021-inventory-cross-system-api.md
-    signal_signature: "Criterion A (read/mutate query, ADR-0020) — has_items(cost: Dictionary) -> bool (pre-existing, ADR-0016); has_room_for(item_type: String, quantity: int) -> bool (read-only pre-check); clear_damaged_flag(item_id: String) -> bool and apply_rune_to_item(item_id: String, rune_id: String, stat_delta: Dictionary) -> bool (both in-place mutations, do NOT check InventorySlot.locked, do NOT fire item_added/item_removed — callers must key UI refresh off component_repaired/item_rune_imbued instead); reserve_instance_id() -> int (added for ADR-0025 — mints a collision-safe instance_id from Inventory's own _next_instance_id counter before the item it belongs to is constructed, for callers like Equipment Forge's sacrifice flow that must pass an item_id to another system before creating the item)."
+    signal_signature: "Criterion A (read/mutate query, ADR-0020) — has_items(cost: Dictionary) -> bool (pre-existing, ADR-0016); has_room_for(item_type: String, quantity: int) -> bool (read-only pre-check); has_specific_item(item_id: StringName) -> bool (added for ADR-0034 — narrowly-scoped like has_room_for(), answers 'do I own this exact item_id' rather than has_items()'s item_type/quantity sum); clear_damaged_flag(item_id: String) -> bool and apply_rune_to_item(item_id: String, rune_id: String, stat_delta: Dictionary) -> bool (both in-place mutations, do NOT check InventorySlot.locked, do NOT fire item_added/item_removed — callers must key UI refresh off component_repaired/item_rune_imbued instead); reserve_instance_id() -> int (added for ADR-0025 — mints a collision-safe instance_id from Inventory's own _next_instance_id counter before the item it belongs to is constructed, for callers like Equipment Forge's sacrifice flow that must pass an item_id to another system before creating the item)."
     referenced_by:
       - docs/architecture/adr-0021-inventory-cross-system-api.md
       - docs/architecture/adr-0025-equipment-forge-cross-system-aggregation.md
+      - docs/architecture/adr-0034-building-upgrade-cross-system-requirements.md
     added: 2026-07-17
-    revised: "2026-07-17 — ADR-0025 added reserve_instance_id()"
+    revised: "2026-08-12 — ADR-0034 added has_specific_item() (was: 2026-07-17 — ADR-0025 added reserve_instance_id())"
 
   - contract: defense_building_tech_query
     status: active
@@ -570,6 +584,32 @@ interfaces:
       - docs/architecture/adr-0024-defense-building-tech-tree-data-model.md
       - docs/architecture/adr-0023-crafting-recipe-data-model.md
     added: 2026-07-17
+    revised: ""
+
+  - contract: defense_building_structure_query
+    status: active
+    pattern: direct_call
+    producer: defense-building
+    consumers:
+      - building-upgrade-system
+    adr: docs/architecture/adr-0034-building-upgrade-cross-system-requirements.md
+    signal_signature: "DefenseBuilding.is_structure_built(structure_id: StringName) -> bool — Criterion A (read-only, sole-owner callee, ADR-0020), same producer/Autoload as defense_building_tech_query above but a distinct method reading _structure_ledger rather than _tech_ledger. Same restore_order>21 safety guarantee applies to any future caller of this from its own restore_save_data()."
+    referenced_by:
+      - docs/architecture/adr-0034-building-upgrade-cross-system-requirements.md
+    added: 2026-08-12
+    revised: ""
+
+  - contract: menagerie_creature_species_query
+    status: active
+    pattern: direct_call
+    producer: menagerie
+    consumers:
+      - building-upgrade-system
+    adr: docs/architecture/adr-0034-building-upgrade-cross-system-requirements.md
+    signal_signature: "Menagerie.has_creature_species(species_id: StringName) -> bool — Criterion A (read-only, sole-owner callee, ADR-0020), added for ADR-0034. Distinct from menagerie_sacrifice_request below (a Criterion B mutating action) — this is a pure read answering 'do I own at least one creature of species X,' which get_all_creatures() alone did not previously answer directly."
+    referenced_by:
+      - docs/architecture/adr-0034-building-upgrade-cross-system-requirements.md
+    added: 2026-08-12
     revised: ""
 
   - contract: menagerie_sacrifice_request

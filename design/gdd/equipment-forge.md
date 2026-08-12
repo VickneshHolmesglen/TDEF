@@ -2,9 +2,10 @@
 
 > **Status**: Designed (pending review)
 > **Author**: Vicknesh + Claude Sonnet
-> **Last Updated**: 2026-07-17
+> **Last Updated**: 2026-08-11
 > **Implements Pillar**: Everything Connects · The Sanctuary Is Your Statement
 > **Closes**: `menagerie.md`'s `target_item_id` open question (creature sacrifice → new item). **Known gaps** (10 ACs blocked): new `Inventory.apply_rune_to_item()` and `Menagerie.request_sacrifice()` interfaces don't exist yet; Constellation-sourced rune persistence is untestable until `constellation.md`'s own pre-existing OQ-1 (missing `restore_order`) resolves. See Open Questions and the dedicated "Upstream Assumption Fragility" table in Dependencies.
+> **Rename, 2026-08-11**: the tab-strip/screen this GDD describes is now presented to the player as **"Forge"** (`SANCTUARY_TAB_EQUIPMENT_FORGE` label text changed; the `ROOM_EQUIPMENT_FORGE` state key and `equipment_forge_screen.gd`/`EquipmentForgeScreen.tscn` file/class names are unchanged — a display-only rename, not a new room). The Craft/Imbue two-tab layout this section describes is now 2 of 4 tabs on that same screen; the other 2 (**Assemble Towers**, **Upgrade Buildings**) are separate mechanics owned by their own GDD/quick-spec, not by this one: see `design/quick-specs/tower-assembly-2026-08-11.md` and `design/gdd/building-upgrade.md`.
 
 ## Overview
 
@@ -544,6 +545,7 @@ breaks.
 | **EventBus** | Depended on (hard) | Emits `hero_equipment_crafted`, `item_rune_imbued` (both frozen); emits `recipe_discovered` with a proposed new `recipe_category` value (not yet reflected in `event-bus.md`'s Key Subscribers list — flagged for sign-off) |
 | **Encyclopedia** | Depends on Equipment Forge | Subscribes to `recipe_discovered` |
 | **Mission HUD / Audio** | Depend on Equipment Forge | Subscribe to `hero_equipment_crafted`, `item_rune_imbued` |
+| **Building Upgrade** (new, 2026-08-11) | Depended on (hard, downstream) | `building-upgrade.md`'s `"equipment"` requirement type checks whether a specific crafted `item_id` (Equipment Forge's own craft output) is currently owned, via `Inventory.has_specific_item()` (implemented 2026-08-11) — not a direct call into Equipment Forge itself, but this doc's crafted-item identifiers are the vocabulary that requirement type reads. Building Upgrade's own screen is also hosted as a tab inside Equipment Forge's UI (`building-upgrade.md`'s own Status line) — a second, structural (not just data) dependency in the same direction |
 | **Save & Persistence** | Depended on (hard) | `restore_order = 32`, depends on Hero(30), Menagerie(20), Tarot(22) restoring first (see rationale below) |
 
 **`restore_order = 32` dependency rationale** (the design brief asked this

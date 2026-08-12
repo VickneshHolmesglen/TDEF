@@ -206,6 +206,23 @@ The complete event catalogue follows, organised by the system that publishes eac
 
 ---
 
+#### Building Upgrade System (new, 2026-08-11 — player-requested, see `design/gdd/building-upgrade.md`)
+
+| Event | Payload | Key Subscribers | When Fired |
+|-------|---------|-----------------|------------|
+| `structure_upgraded` | `structure_id: String`, `upgrade_id: String` | None yet — proposed, not yet adopted by a mechanical-effect consumer | An already-built Sanctuary structure gains a permanent upgrade |
+| `building_upgrade_became_purchasable` (added 2026-08-12 design review, `building-upgrade.md` Rule 6a) | `upgrade_id: String` | Sanctuary UI — drives its Connection Badge on the Equipment Forge tab (`sanctuary-ui.md` Core Rule 2 Tuning Knobs) | An upgrade's last unmet `requirements` entry or cost becomes satisfied (`VISIBLE_LOCKED` → `PURCHASABLE`); never fires again for the same `upgrade_id` after it reaches `PURCHASED` |
+
+---
+
+#### Tower Assembly System (new, 2026-08-11 — player-requested, see `design/quick-specs/tower-assembly-2026-08-11.md`)
+
+| Event | Payload | Key Subscribers | When Fired |
+|-------|---------|-----------------|------------|
+| `tower_assembled` | `tower_id: String`, `display_name: String` | Mission HUD (Tower Build Panel refresh), Encyclopedia, Audio | Player combines 4 owned crafted tower components into a new, placeable `TowerBlueprintData` |
+
+---
+
 #### Inventory System
 
 | Event | Payload | Key Subscribers | When Fired |

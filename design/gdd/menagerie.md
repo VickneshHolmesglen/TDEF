@@ -305,6 +305,7 @@ breeding_missions_remaining(tier) = base_breeding_duration + tier_breeding_penal
 | **Save & Persistence** | Hard dependency | `restore_order = 20`, immediately after Inventory (10); save payload is creature instances (id/species/state/happiness/missions_since_tended), HABITAT capacity tier, and active breeding-pen pairings/timers |
 | **Mission HUD** | Soft dependency (downstream) | Reads `creature_happiness_changed`/`creature_bred`/`creature_acquired` for live display only; no functional dependency |
 | **Crafting** | None | Confirmed no direct interface by `crafting.md`'s own Dependencies table — Menagerie is listed there only as a future, anticipated consumer of Inventory's Materials tab |
+| **Building Upgrade** (new, 2026-08-11) | Hard dependency (downstream) | `building-upgrade.md` reads `has_creature_species(species_id) -> bool` (implemented 2026-08-11) as one of its 4 requirement category types; read-only, never mutates Menagerie state |
 
 ## Tuning Knobs
 
