@@ -14,3 +14,4 @@ card_id = &"swift_current"
 rarity = "Common"
 modifiers = [SubResource("Modifier_swift_current")]
 linked_rune_id = &"rune_swift_current"
+unlock_tech_id = &""

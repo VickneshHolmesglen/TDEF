@@ -14,4 +14,5 @@ card_id = &"lucky_charm"
 rarity = "Common"
 modifiers = [SubResource("Modifier_lucky_charm")]
 linked_rune_id = &"rune_lucky_charm"
+unlock_tech_id = &""
 rune_bonus_flat = 0.05

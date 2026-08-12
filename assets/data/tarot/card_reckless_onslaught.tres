@@ -19,3 +19,4 @@ card_id = &"reckless_onslaught"
 rarity = "Rare"
 modifiers = [SubResource("Modifier_speed"), SubResource("Modifier_reward")]
 linked_rune_id = &"rune_reckless_onslaught"
+unlock_tech_id = &"tech_production_4"

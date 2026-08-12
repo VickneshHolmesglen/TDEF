@@ -15,11 +15,13 @@ extends Node
 ## (Story 007) are explicitly out of scope here — see story-001's own file.
 ##
 ## `_card_unlocked` is the runtime TarotProgressLedger's read-only-from-Tarot
-## slice (AC-2): Tarot's own logic (equip_card's gate) only ever reads it.
-## No system currently owns the write side — "how a Tarot card becomes
-## unlocked" (Defense Building tech tree vs. Encyclopedia purchase) is an
-## explicitly unresolved external dependency per tarot.md's own Open
-## Questions, not fabricated here. Tests set it directly as a seam.
+## slice (AC-2): Tarot's own logic (equip_card's gate) only ever reads it,
+## never writes it directly. Tests still set it directly as a seam (a
+## non-tech unlock path, e.g. a future Encyclopedia purchase, would write
+## here too). Defense Building tech tree unlocks are wired as a second,
+## OR'd check in is_card_unlocked() — see TarotCardResource.unlock_tech_id
+## and that function's own doc comment. Closes tarot.md's previously
+## unresolved "how a Tarot card becomes unlocked" Open Question.
 ##
 ## Story 002 (TR-tarot-001, ADR-0027): the modifier resolution pipeline
 ## (`_resolve_scout_modifiers()`, Rule 6) fires on `mission_phase_changed`
@@ -138,8 +140,22 @@ func get_current_deck() -> Array[StringName]:
 	return _current_deck.duplicate()
 
 
+## Pull-based, matches Crafting's tech-gated recipe check (crafting.gd):
+## _card_unlocked itself is still checked first (the existing test seam, and
+## a future non-tech unlock source like Encyclopedia purchase) — an
+## unlock_tech_id gate is a second, independently-true OR branch, never the
+## only path. DefenseBuilding's tech ledger is a permanent one-way unlock
+## (never revoked), so no caching/reconciliation is needed here: this always
+## reflects DefenseBuilding's live state.
 func is_card_unlocked(card_id: StringName) -> bool:
-	return _card_unlocked.get(card_id, false)
+	if _card_unlocked.get(card_id, false):
+		return true
+	var card: TarotCardResource = GGameDataRegistry.get_tarot_card(card_id)
+	if card == null:
+		return false
+	if card.unlock_tech_id == &"":
+		return true
+	return GDefenseBuilding.is_tech_unlocked(card.unlock_tech_id)
 
 
 ## Rule 3/AC-5/AC-6: rejects (no event fires) if locked, the card is already

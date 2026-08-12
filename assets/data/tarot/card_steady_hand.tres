@@ -14,3 +14,4 @@ card_id = &"steady_hand"
 rarity = "Common"
 modifiers = [SubResource("Modifier_steady_hand")]
 linked_rune_id = &"rune_steady_hand"
+unlock_tech_id = &""

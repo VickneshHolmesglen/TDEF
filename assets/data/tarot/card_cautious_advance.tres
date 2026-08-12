@@ -14,3 +14,4 @@ card_id = &"cautious_advance"
 rarity = "Common"
 modifiers = [SubResource("Modifier_cautious_advance")]
 linked_rune_id = &"rune_cautious_advance"
+unlock_tech_id = &""

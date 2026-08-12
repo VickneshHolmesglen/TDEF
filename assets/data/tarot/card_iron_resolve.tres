@@ -14,3 +14,4 @@ card_id = &"iron_resolve"
 rarity = "Common"
 modifiers = [SubResource("Modifier_iron_resolve")]
 linked_rune_id = &"rune_iron_resolve"
+unlock_tech_id = &""

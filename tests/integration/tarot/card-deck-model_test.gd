@@ -129,7 +129,12 @@ func test_dual_edge_card_carries_both_modifier_entries() -> void:
 # ---------------------------------------------------------------------------
 
 func test_equip_rejects_a_card_that_is_not_unlocked() -> void:
-	var ok: bool = _tarot.equip_card(&"iron_resolve")
+	# Uses an unregistered card_id (not "iron_resolve") so this AC-2 seam
+	# test is independent of any real card's content-authored
+	# unlock_tech_id — Common cards like iron_resolve are unlocked from the
+	# start by content design (see TarotCardResource.unlock_tech_id and
+	# assets/data/tarot/*.tres), so they would no longer prove this gate.
+	var ok: bool = _tarot.equip_card(&"unregistered_test_card")
 	assert_bool(ok).is_false()
 	assert_int(_tarot.get_active_card_count()).is_equal(0)
 

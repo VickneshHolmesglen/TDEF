@@ -14,3 +14,4 @@ card_id = &"grim_resolve"
 rarity = "Rare"
 modifiers = [SubResource("Modifier_grim_resolve")]
 linked_rune_id = &"rune_grim_resolve"
+unlock_tech_id = &"tech_production_3"

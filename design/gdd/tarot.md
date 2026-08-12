@@ -33,8 +33,9 @@ The Tarot System is the sanctuary's pre-mission wager layer: it lets the player 
    | Field | Type | Description |
    |-------|------|-------------|
    | `card_id` | `StringName` | Unique identifier |
-   | `rarity` | `enum {Common, Rare, Legendary}` | Gates *card* unlock (owned/granted by Defense Building tech tree or Encyclopedia purchase — out of scope for this GDD; Tarot only reads the resulting `unlocked: bool`) |
-   | `unlocked` | `bool` | Whether the player has obtained this card at all. Set by an external system; Tarot never sets this itself |
+   | `rarity` | `enum {Common, Rare, Legendary}` | Informs content design's `unlock_tech_id` assignment (see below) — Common cards are typically ungated, Rare/Legendary typically gated behind a Defense Building tech node |
+   | `unlock_tech_id` | `StringName` | Defense Building tech node id gating this card's unlock; `""` means unlocked from the start. Content-authored, fixed per card (not mutable per-playthrough state) |
+   | `unlocked` (runtime, not a Resource field) | `bool` | Whether the player has this card equippable. Lives on Tarot's own `_card_unlocked` runtime ledger (a future non-tech unlock source writes here), OR-combined at query time with a live `GDefenseBuilding.is_tech_unlocked(unlock_tech_id)` check — see `is_card_unlocked()` |
    | `modifiers` | `Array[TarotModifierEntry]` | 1–2 entries (see Rule 2). Most cards carry exactly 1; "dual-edge" risk/reward cards (Rule 2a) carry 2 |
    | `linked_rune_id` | `StringName` | The rune this card unlocks on discovery (Rule 9). One card → exactly one rune, 1:1 |
    | `mastery_tier` | `int` | 0–4, save-persisted per card instance (Group 4) |
@@ -306,7 +307,7 @@ threshold = {0: 0, 1: 3, 2: 8, 3: 15, 4: 25}
 | **Monster System / Registry** | The registered `tarot_speed_scalar` constant's exact name, default, and range (`design/registry/entities.yaml`) — Tarot must not diverge from this | Registry reference |
 | **Damage & Status Registry** | The registered `hero_damage_bonus_multiplier` constant — Tarot must not define a competing hero-damage modifier (Rule 9) | Registry reference (read-only constraint) |
 | **Save & Persistence** | `register(ref, restore_order=22)`, `get_save_data()`/`restore_save_data()`/`reset_to_defaults()` three-function interface | Direct API call per save-persistence.md's hybrid pattern |
-| **Defense Building / Encyclopedia** (card unlock source) | The `unlocked: bool` flag per card — Tarot reads this, never sets it | Assumed external interface; **flagged assumption** — no GDD currently formally owns "how a Tarot card becomes unlocked" (analogous to how tech tree nodes unlock Crafting recipes via `tech_unlocked`). This document treats it as out-of-scope and pre-existing, but it is not yet resolved anywhere. |
+| **Defense Building** (card unlock source, resolved 2026-08-12) | `is_tech_unlocked(tech_id)` — read-only, checked live (no caching) against each card's own `unlock_tech_id` field | Direct API call, same pull-based pattern Crafting uses for recipe tech-gates (`crafting.md`'s `tech_unlocked` dependency) |
 
 ### Downstream — Systems that depend on the Tarot System
 
@@ -318,6 +319,7 @@ threshold = {0: 0, 1: 3, 2: 8, 3: 15, 4: 25}
 | **Equipment Forge** | `tarot_rune_discovered` | EventBus subscription |
 | **Save & Persistence** | `tarot_deck_changed` (also drives its own save-trigger table); deck composition + mastery via the three-function interface | EventBus + direct API |
 | **Tarot Deck UI** | `tarot_deck_changed`; read-only access to `run_modifier_selected` conflict state (Rule 8) | EventBus |
+| **Building Upgrade** (new, 2026-08-11) | `is_card_unlocked(card_id)` — read-only, checked as one of `building-upgrade.md`'s 4 requirement category types; never mutates Tarot state | Direct API call |
 
 ## Tuning Knobs
 
@@ -442,11 +444,12 @@ Deck editing (swapping cards in the Sanctuary tray) requires **no confirmation d
   Rule 1's table.
 - **AC-2**: GIVEN any `TarotCardResource`, WHEN Tarot's own codepaths are
   exercised across a full deck-edit + mission lifecycle, THEN Tarot never
-  writes to that card's `unlocked` field — only reads it. **Interface
-  dependency flagged (qa-lead)**: this AC can only verify Tarot's read-only
-  behavior; it cannot test the *setting* side of `unlocked`, since no GDD
-  currently owns "how a Tarot card becomes unlocked" (Defense Building tech
-  tree or Encyclopedia purchase — neither designed). See Open Questions.
+  *writes* to that card's `unlocked` state via `unlock_tech_id` — the
+  Defense Building tech-gate half is resolved entirely by Defense Building's
+  own `resolve_tech_unlock()`; Tarot's `is_card_unlocked()` only ever reads
+  `GDefenseBuilding.is_tech_unlocked()`. The `_card_unlocked` runtime ledger
+  remains a genuine write surface (a future non-tech unlock source, e.g.
+  Encyclopedia purchase), unaffected by this resolution.
 - **AC-3** *(Config/Data)*: GIVEN a card's `modifiers` array, WHEN content
   is validated pre-ship, THEN every entry's `modifier_type` is one of the
   four registered types (Rule 7's table) — a card authored with any other
@@ -689,7 +692,6 @@ Deck editing (swapping cards in the Sanctuary tray) requires **no confirmation d
 
 | Question | Owner | Notes |
 |---|---|---|
-| No GDD currently owns "how a Tarot card becomes unlocked" (`unlocked: bool` is read but never set by this system) | Defense Building / Encyclopedia owner | Rule 1 names two candidate sources (Defense Building tech tree, Encyclopedia purchase) but neither is designed. AC-2 can only verify Tarot's read-only behavior on this field until an upstream owner defines the setting side — analogous to `crafting.md`'s `tech_unlocked` dependency and `constellation.md`'s OQ-4 pattern. |
 | `tarot_wave_config_override` is fully specified mechanically (Rule 7, closes OQ-2's structural-override dimension) but has zero authored content | Mission / content pipeline owner | No mission currently has an alternate `WaveConfig` variant tagged for it. AC-15 (positive path) is blocked on this; only AC-38's negative/fallback path is testable today. Per Rule 7's own scope-flag, a card using this `modifier_type` should not ship until at least one mission has an authored variant. |
 | Rune discovery bar — "any mission attempt" vs. "`MISSION_COMPLETE` only" | Tarot GDD owner (systems-designer) | Rule 15 explicitly flags this as its own most-swappable assumption. This document defaults to the permissive "any attempt" bar for consistency with Rule 10's mastery-accrual reasoning. If playtesting shows first-rune discovery happens too early, swap the discovery gate to `MISSION_COMPLETE`-only — AC-22/AC-28 would need to be re-parameterized (the `DEFEAT` half of AC-22's discovery assertion would no longer hold) but the mastery-XP half of AC-22 would be unaffected, since Rule 10 is a separate, unflagged rule. |
 | No `design/gdd/mission-select.md` exists yet | Mission Select owner | Flagged already in this GDD's own Dependencies section, but surfaced here as an AC-level gap found during this review: AC-17 and AC-19 (resolution ordering against `run_modifier_selected`, and the Tarot Deck UI conflict indicator) are only testable today against a mock built from `event-bus.md`'s frozen payload shape (`modifier_id`, `modifier_value`), not against a real Mission Select system. If Mission Select's own GDD later adds structure to that payload, these two ACs should be revisited alongside the read-only subscription itself. |

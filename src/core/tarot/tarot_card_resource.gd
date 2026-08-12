@@ -20,6 +20,11 @@ extends Resource
 @export var modifiers: Array[TarotModifierEntry] = []
 @export var linked_rune_id: StringName = &""
 
+## Defense Building tech node id gating this card's unlock (Tarot.is_card_unlocked()
+## reads GDefenseBuilding.is_tech_unlocked(unlock_tech_id) — same pull-based pattern
+## Crafting uses for recipe tiers). Empty string means unlocked from the start.
+@export var unlock_tech_id: StringName = &""
+
 ## Story 005 (Formula F5): fixed value baked into this card's linked rune
 ## definition — "roughly half of its linked card's Tier-0 base_modifier_value's
 ## marginal effect, a design guideline, not a formula" per tarot.md's own

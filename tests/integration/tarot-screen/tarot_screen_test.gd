@@ -16,6 +16,13 @@ extends GdUnitTestSuite
 const CARD_IRON_RESOLVE: StringName = &"iron_resolve"
 const CARD_LUCKY_CHARM: StringName = &"lucky_charm"
 
+## Rare rarity, unlock_tech_id = &"tech_production_2" (assets/data/tarot/card_bountiful_harvest.tres)
+## -- the "starts locked" fixture for these 2 tests. iron_resolve (Common,
+## unlock_tech_id = "") is unlocked from the start by content design as of
+## the Defense Building tech-tree wiring (see TarotCardResource.unlock_tech_id),
+## so it can no longer stand in for "a card the player has not unlocked yet."
+const CARD_LOCKED_BY_DEFAULT: StringName = &"bountiful_harvest"
+
 var _tarot: Tarot
 var _runner: GdUnitSceneRunner
 var _screen: Control
@@ -25,6 +32,11 @@ var _conflict_indicator: ConflictIndicator
 
 
 func before_test() -> void:
+	# GDefenseBuilding is a real, persistent Autoload -- is_card_unlocked()
+	# now reads it live (TD-test-004 convention), so reset it here to
+	# guarantee CARD_LOCKED_BY_DEFAULT's tech gate is actually unmet
+	# regardless of what an earlier test in the same run left behind.
+	GDefenseBuilding.reset_to_defaults()
 	_tarot = Tarot.new()
 	_conflict_indicator = ConflictIndicator.new()
 	add_child(_conflict_indicator)
@@ -43,6 +55,7 @@ func after_test() -> void:
 		_conflict_indicator.disconnect_own_subscriptions()
 		_conflict_indicator.queue_free()
 	_conflict_indicator = null
+	GDefenseBuilding.reset_to_defaults()
 
 
 func _rebuild_all() -> void:
@@ -63,7 +76,7 @@ func _unlock(card_id: StringName) -> void:
 
 func test_locked_card_shows_locked_state() -> void:
 	_rebuild_all()
-	var button: Button = _screen.call("get_pool_button", CARD_IRON_RESOLVE)
+	var button: Button = _screen.call("get_pool_button", CARD_LOCKED_BY_DEFAULT)
 	assert_object(button).is_not_null()
 	assert_str(button.text).contains("LOCKED")
 
@@ -87,10 +100,10 @@ func test_pressing_an_unlocked_card_equips_it() -> void:
 
 func test_pressing_a_locked_card_does_not_equip_it_and_flags_rejection() -> void:
 	@warning_ignore("unsafe_method_access")
-	_screen.call("_on_pool_card_pressed", CARD_IRON_RESOLVE)
+	_screen.call("_on_pool_card_pressed", CARD_LOCKED_BY_DEFAULT)
 
 	assert_array(_tarot.get_current_deck()).is_empty()
-	assert_that(_screen.call("get_last_rejected_card_id")).is_equal(CARD_IRON_RESOLVE)
+	assert_that(_screen.call("get_last_rejected_card_id")).is_equal(CARD_LOCKED_BY_DEFAULT)
 
 
 func test_pressing_an_equipped_card_in_the_pool_unequips_it() -> void:
