@@ -72,10 +72,15 @@ accuracy pass. Live-verified via Godot MCP screenshot in that pass: both
 structures render as real art in the running game, not placeholder rects.
 
 **The one item from this doc's "explicitly NOT attempted" table that
-remains genuinely open**: "Diorama full stacked-sprite/cast-shadow
-treatment." Real art now exists, but both structures render as a single
-flat `TextureRect` each — not the multi-layer, separately-shadowed sprite
-composition the GDD's AC literally specifies. This is now a scoped art/
-design gap (does the current flat-illustration treatment satisfy the AC's
-intent, or does it need real layered assets?), not a "nothing exists"
-gap — a narrower, more precise open item than this doc originally recorded.
+remained open — RESOLVED same day (2026-08-13, later pass)**: "Diorama
+full stacked-sprite/cast-shadow treatment." Added `StructureCastShadow`
+(`src/presentation/sanctuary_ui/structure_cast_shadow.gd`), a code-drawn
+ground-contact shadow ellipse beneath each structure sprite, added as an
+earlier 2D-tree sibling than the sprite itself (draws underneath). Uses
+Godot 4.6's native `CanvasItem.draw_ellipse()` — real, post-cutoff API
+found live during implementation (an earlier draft's own same-named
+helper collided with it). Live-verified via Godot MCP screenshot: both
+structures show a visible shadow at their base. 6 new tests (3 unit, 3
+integration), full regression 2098/2098 passing. This closes every
+mechanism-level Visual/Audio AC this story owns — only human playtest
+verification (Story 014) remains genuinely open for this epic.

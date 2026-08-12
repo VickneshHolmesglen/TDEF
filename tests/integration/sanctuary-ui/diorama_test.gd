@@ -210,3 +210,47 @@ func test_departing_triggers_the_diorama_pull_back_without_erroring() -> void:
 	# runtime assertion (matches the GDD's own explicit exclusion of
 	# Visual/Audio Requirements from black-box assertions) -- this test only
 	# confirms triggering it doesn't error and DEPARTING still activates.
+
+
+# ---------------------------------------------------------------------------
+# Cast-shadow layer (art bible Principle 1, GDD's "full stacked-sprite/
+# cast-shadow treatment" requirement) -- added 2026-08-13.
+# ---------------------------------------------------------------------------
+
+func test_building_a_structure_adds_a_shadow_layer_beneath_it() -> void:
+	GEventBus.sanctuary_structure_built.emit("watchtower_tier_1", "watchtower")
+
+	var world: Node2D = _shell.get_diorama().call("get_world")
+	var shadow: Node = world.get_node_or_null("Shadow_watchtower")
+	var sprite: Node = world.get_node_or_null("Structure_watchtower")
+
+	assert_object(shadow).is_not_null()
+	assert_object(sprite).is_not_null()
+	# 2D tree-order compositing: the shadow must be an earlier sibling than
+	# the sprite so it draws underneath, not on top.
+	assert_int(shadow.get_index()).is_less(sprite.get_index())
+
+
+func test_shadow_layer_uses_a_unique_name_per_structure_type() -> void:
+	GEventBus.sanctuary_structure_built.emit("watchtower_tier_1", "watchtower")
+	GEventBus.sanctuary_structure_built.emit("habitat_expansion_tier_1", "habitat_expansion")
+
+	var world: Node2D = _shell.get_diorama().call("get_world")
+	# Real gap found live via Godot MCP (2026-08-13): Godot renames a second
+	# same-named Control sibling to an anonymous "@Control@N" rather than the
+	# expected "Shadow2" -- giving each shadow a structure-type-qualified
+	# name avoids this entirely.
+	assert_object(world.get_node_or_null("Shadow_watchtower")).is_not_null()
+	assert_object(world.get_node_or_null("Shadow_habitat_expansion")).is_not_null()
+
+
+func test_shadow_is_sized_proportional_to_its_structure_sprite() -> void:
+	GEventBus.sanctuary_structure_built.emit("watchtower_tier_1", "watchtower")
+
+	var world: Node2D = _shell.get_diorama().call("get_world")
+	var shadow: Control = world.get_node("Shadow_watchtower") as Control
+	var sprite: Control = world.get_node("Structure_watchtower") as Control
+
+	# _build_shadow_for(): ellipse_size = sprite_display_size * (0.7, 0.18)
+	assert_float(shadow.size.x).is_equal_approx(sprite.size.x * 0.7, 0.01)
+	assert_float(shadow.size.y).is_equal_approx(sprite.size.y * 0.18, 0.01)

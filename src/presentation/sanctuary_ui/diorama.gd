@@ -141,6 +141,7 @@ func _render_structure(structure_type: String) -> void:
 		return
 
 	var visual: Control = _build_watchtower_sprite()
+	_world.add_child(_build_shadow_for(STRUCTURE_POSITIONS["watchtower"], visual.size, "watchtower"))  # added BEFORE the sprite -- draws underneath (2D tree-order compositing)
 	_world.add_child(visual)
 	_rendered_structure_types[structure_type] = visual
 
@@ -158,6 +159,7 @@ func _render_habitat(structure_id: String) -> void:
 
 	if not _rendered_structure_types.has("habitat_expansion"):
 		var visual: TextureRect = _build_habitat_sprite(tier)
+		_world.add_child(_build_shadow_for(STRUCTURE_POSITIONS["habitat_expansion"], visual.size, "habitat_expansion"))  # draws underneath, same convention as watchtower
 		_world.add_child(visual)
 		_rendered_structure_types["habitat_expansion"] = visual
 		_habitat_tier = tier
@@ -170,6 +172,29 @@ func _render_habitat(structure_id: String) -> void:
 	var tex_rect := _rendered_structure_types["habitat_expansion"] as TextureRect
 	tex_rect.texture = HABITAT_TEXTURES[tier]
 	_habitat_tier = tier
+
+
+## Art bible Principle 1 ("Everything Has Weight and Depth"): a ground-
+## contact cast-shadow layer beneath a structure sprite, closing the
+## GDD's own "full stacked-sprite/cast-shadow treatment" requirement.
+## Positioned at the sprite's base (bottom-center of its bounding box,
+## not its full center) and sized proportional to sprite width so it
+## reads as ground contact, not a second copy of the sprite silhouette.
+## structure_type only names the node uniquely (Godot's own sibling-name
+## collision resolution otherwise renames a second same-named Control to
+## an anonymous "@Control@N", found live via Godot MCP while verifying
+## this — cosmetic, not a rendering defect, but worth a real name).
+func _build_shadow_for(structure_center: Vector2, sprite_display_size: Vector2, structure_type: String) -> StructureCastShadow:
+	var shadow := StructureCastShadow.new()
+	shadow.name = "Shadow_%s" % structure_type
+	shadow.ellipse_size = Vector2(sprite_display_size.x * 0.7, sprite_display_size.y * 0.18)
+	shadow.size = shadow.ellipse_size
+	shadow.position = Vector2(
+		structure_center.x - shadow.size.x / 2.0,
+		structure_center.y + sprite_display_size.y / 2.0 - shadow.size.y / 2.0
+	)
+	shadow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return shadow
 
 
 ## Real art path (2026-07-31) -- see WATCHTOWER_TEXTURE's own doc comment.
