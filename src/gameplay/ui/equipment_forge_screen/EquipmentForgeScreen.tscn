@@ -25,9 +25,17 @@ theme_override_constants/separation = 8
 [node name="HeaderRow" type="HBoxContainer" parent="MainLayout"]
 layout_mode = 2
 
-[node name="TabToggleButton" type="Button" parent="MainLayout/HeaderRow"]
+[node name="CraftTabButton" type="Button" parent="MainLayout/HeaderRow"]
 layout_mode = 2
-text = "Craft / Imbue"
+text = "Craft"
+
+[node name="ImbueTabButton" type="Button" parent="MainLayout/HeaderRow"]
+layout_mode = 2
+text = "Imbue"
+
+[node name="UpgradeTabButton" type="Button" parent="MainLayout/HeaderRow"]
+layout_mode = 2
+text = "Upgrade Buildings"
 
 [node name="CraftView" type="PanelContainer" parent="MainLayout"]
 layout_mode = 2
@@ -61,5 +69,16 @@ size_flags_horizontal = 3
 [node name="RuneList" type="VBoxContainer" parent="MainLayout/ImbueView/RuneColumn"]
 layout_mode = 2
 
+[node name="UpgradeView" type="PanelContainer" parent="MainLayout"]
+visible = false
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="UpgradeList" type="VBoxContainer" parent="MainLayout/UpgradeView"]
+layout_mode = 2
+
 [node name="ImbueConfirmDialog" type="ConfirmationDialog" parent="."]
 title = "Confirm Imbue"
+
+[node name="UpgradeConfirmDialog" type="ConfirmationDialog" parent="."]
+title = "Confirm Upgrade"

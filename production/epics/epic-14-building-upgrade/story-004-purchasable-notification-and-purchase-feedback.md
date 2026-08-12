@@ -1,7 +1,7 @@
 # Story 004: PURCHASABLE Notification & Purchase Feedback
 
 > **Epic**: Building Upgrade System
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Advanced
 > **Type**: Integration
 > **Estimate**: M (3-4 hours)
@@ -23,6 +23,7 @@
 - Required: New EventBus signals must be typed GDScript signal parameters, never untyped `Dictionary`, for ≤4 fields (ADR-0001, `dictionary_event_payload` forbidden pattern)
 - Required: A subscriber that itself emits a further event must do so deferred if it would create a Level-1 cascade (`synchronous_level1_cascade` forbidden pattern) — check whether Sanctuary UI's Connection Badge handler emits anything further in response; if not, this doesn't apply
 - Forbidden: Dictionary-payload events
+- Guardrail: N/A — no gameplay-loop/rendering/physics impact; edge-detection is a Dictionary lookup per re-evaluation (already the existing frequency, Rule 4), not a new per-frame cost
 
 ---
 
@@ -32,6 +33,7 @@
 
 - [ ] **AC-8**: GIVEN an upgrade transitions from `VISIBLE_LOCKED` to `PURCHASABLE` (its last unmet requirement or cost becomes satisfied), WHEN this happens while the player is not viewing the Building Upgrade tab, THEN a Sanctuary UI Connection Badge appears on the Equipment Forge tab (`sanctuary-ui.md` Core Rule 2) without requiring the player to have opened the tab.
 - [ ] **AC-9**: GIVEN a successful purchase per AC-3 (Story 001), WHEN it resolves, THEN the confirmatory chime plays exactly once, independent of whether `structure_upgraded`'s consuming system exists yet.
+- [ ] **AC-9b** (added during `/story-readiness`, closing a Definition-of-Done minimum-AC gap — Integration stories require ≥3 testable criteria; promotes an edge case already named in this story's own QA Test Cases to a formal AC): GIVEN an upgrade transitions `VISIBLE_LOCKED` → `PURCHASABLE` → (Rule 4's live re-evaluation) back to `VISIBLE_LOCKED` → `PURCHASABLE` again, WHEN the second `PURCHASABLE` transition occurs, THEN `building_upgrade_became_purchasable` fires again for the same `upgrade_id` — the edge-detection state must not treat "already fired once" as permanent, only "not currently purchasable" as the re-armable condition.
 
 ---
 
@@ -77,3 +79,10 @@
 
 - Depends on: Story 001 (DONE — extends `resolve_upgrade()`/`can_purchase()`)
 - Unlocks: None
+
+## Completion Notes
+**Completed**: 2026-08-12
+**Criteria**: 3/3 passing (AC-8, AC-9, AC-9b)
+**Deviations**: ADVISORY — initial implementation pass was cut off mid-work (missing method bodies), completed directly; a real prerequisite-chain notification gap and a missing badge-level test were both found and fixed during `/code-review`; a pre-existing, unrelated cross-suite test-isolation quirk and a pre-existing, unrelated cosmetic Connection Badge positioning issue were both found and documented (not fixed — out of this story's scope).
+**Test Evidence**: Integration — `tests/integration/building_upgrade/purchasable_notification_test.gd` (7 tests) + `tests/integration/sanctuary-ui/connection-badges_test.gd` (1 new test) + `production/qa/evidence/building-upgrade-notification-evidence.md` (live Godot MCP verification)
+**Code Review**: Complete — APPROVED (2 real findings from 3 specialist passes, both fixed)

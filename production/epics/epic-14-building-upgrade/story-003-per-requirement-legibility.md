@@ -1,7 +1,7 @@
 # Story 003: Per-Requirement Legibility (VISIBLE_LOCKED chips)
 
 > **Epic**: Building Upgrade System
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Advanced
 > **Type**: UI
 > **Estimate**: M (3-4 hours)
@@ -31,6 +31,7 @@
 *From GDD `design/gdd/building-upgrade.md`, scoped to this story:*
 
 - [ ] **AC-6**: GIVEN an upgrade with 2+ `requirements` entries where at least one is satisfied and at least one is not, WHEN `VISIBLE_LOCKED` is rendered, THEN each entry shows its own satisfied/unmet state and the specific target's resolved display name independently — not one collapsed pass/fail state for the whole upgrade.
+- [ ] **AC-6b** (added during `/story-readiness`, closing a Definition-of-Done minimum-AC gap — UI stories require ≥2 testable criteria): GIVEN an upgrade with `requirements` entries spanning 2+ different categories (e.g. `"building"` and `"equipment"`), WHEN `VISIBLE_LOCKED` is rendered, THEN each category renders a distinct, non-color-only icon/shape — a colorblind player can distinguish which chip is which category without relying on color alone (Control Manifest's non-color-first rule).
 
 ---
 
@@ -61,6 +62,11 @@
 - Verify: Each requirement renders as its own chip with its own category icon, resolved display name (not a raw id), and satisfied/unmet state — not a single collapsed lock icon for the whole row.
 - Pass condition: A player looking at the screen can correctly state, for each of the upgrade's requirements, whether it's met and what it specifically is — verified via the same experiential-test approach `sanctuary-ui.md`'s AC-302 already uses for Connection Badge legibility (a moderated read-back, not just "the icon renders").
 
+**Manual check: AC-6b**
+- Setup: Same as AC-6, with an upgrade whose `requirements` span at least 2 different categories.
+- Verify: Each category's icon is a distinct shape/glyph, not just a distinct color — a colorblind simulation filter (or grayscale screenshot) should still let a viewer tell the categories apart.
+- Pass condition: No two categories are distinguishable by color alone.
+
 ---
 
 ## Test Evidence
@@ -77,3 +83,10 @@
 
 - Depends on: Story 001 (DONE — reads its `_requirement_satisfied()` per-entry results)
 - Unlocks: None
+
+## Completion Notes
+**Completed**: 2026-08-12
+**Criteria**: 2/2 passing (AC-6, AC-6b)
+**Deviations**: ADVISORY (self-corrected) — first implementation pass added an out-of-scope "Tower Assembly" tab and left the old binary READY/REQUIREMENTS_UNMET tag in place; both found during review and fixed before code-review/story-done.
+**Test Evidence**: UI — `production/qa/evidence/building-upgrade-requirement-legibility-evidence.md` (2 live Godot MCP screenshots) + 6 automated integration tests in `tests/integration/equipment-forge-screen/equipment_forge_screen_test.gd`
+**Code Review**: Complete — APPROVED (3 specialist passes, 2 minor coverage gaps found and closed)

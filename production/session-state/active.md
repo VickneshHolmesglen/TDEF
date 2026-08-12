@@ -2882,3 +2882,37 @@ Spawned `engine-programmer`, which proposed a clean 2-line guard (`if payload.ki
 - Full project regression clean (1765/1765, up from 1762 with the 3 new tests, 0 errors/failures, orphan count unchanged at 185).
 - Committed and pushed (`039645d`): the dispatcher wiring, 3 new tests, and both Story 003/004 files' documentation updated to reflect the closed deferral.
 - **Recommended next pickup**: same externally-blocked/lower-priority items as every recent extract (Epic 10 Story 013/014, residual 185 orphans, Audio System's unwired sidechain ducking, `tarot_wave_config_override`'s now-scoped-and-declined implementation gap). No further self-directed "quick wins" are obviously left at this point — future work likely needs either new user-directed scope (a new system, a new mission, real asset content) or a deliberate decision to tackle one of the above despite its cost/blocker.
+
+## Session Extract — /story-done Story 002 (Building Upgrade content validation), 2026-08-12
+- Verdict: COMPLETE
+- Story: production/epics/epic-14-building-upgrade/story-002-content-validation-cycle-guard-and-chain-cap.md — Content Validation, Prerequisite Cycle Guard \& Chain Cap
+- Tech debt logged: None
+- Next recommended: Story 003 (Per-Requirement Legibility) or Story 004 (PURCHASABLE Notification \& Purchase Feedback), both Ready, independent of each other
+
+## Session Extract — /story-done Story 003 (Building Upgrade per-requirement legibility), 2026-08-12
+- Verdict: COMPLETE
+- Story: production/epics/epic-14-building-upgrade/story-003-per-requirement-legibility.md — Per-Requirement Legibility (VISIBLE_LOCKED chips)
+- Real scope creep found and self-corrected mid-implementation: first pass added an unrelated out-of-scope "Tower Assembly" tab and left the old binary tag in place instead of the actual per-requirement chips; stripped back out and re-implemented correctly before code-review
+- Live-verified via Godot MCP (2 real screenshots) in addition to 6 automated tests
+- Tech debt logged: None
+- Next recommended: Story 004 (PURCHASABLE Notification & Purchase Feedback) or Story 005 (Edge-Case Regression Coverage), both Ready
+
+## Session Extract — /story-done Story 004 (Building Upgrade PURCHASABLE notification & purchase chime), 2026-08-12
+- Verdict: COMPLETE
+- Story: production/epics/epic-14-building-upgrade/story-004-purchasable-notification-and-purchase-feedback.md
+- BuildingUpgrade became an active EventBus subscriber for the first time (6 signals) to detect PURCHASABLE transitions and emit building_upgrade_became_purchasable, wired into Sanctuary UI's existing Connection Badge mechanism and Audio's existing generic cue-dispatch mechanism (structure_upgraded) for the purchase chime.
+- Real issues found and fixed: (1) first implementation agent pass was cut off mid-work leaving broken code (undefined method calls), completed directly; (2) a real gap where purchasing one upgrade never re-checked a chained upgrade whose prerequisite it just satisfied, found during /code-review; (3) a missing badge-level test in the pre-existing connection-badges_test.gd, found during /code-review.
+- Non-blocking findings documented, not fixed (out of scope): a pre-existing cross-suite test-isolation quirk (an unrelated test elsewhere leaves a stray Node in the "building_upgrade" Godot group across suites within one gdUnit4 process — mitigated defensively in this story's own test, root cause not isolated); a pre-existing cosmetic Connection Badge positioning issue (badge sits at the very edge of its button, confirmed to affect the pre-existing Defense Building badge identically, not new).
+- Live-verified via Godot MCP against the real SanctuaryUI.tscn scene (2 screenshots, badge visibility programmatically confirmed).
+- Tech debt logged: None (all findings documented in Completion Notes / evidence docs instead)
+- Next recommended: Story 005 (Edge-Case Regression Coverage), Ready, independent, small (XS 1-2 hrs)
+
+## Session Extract — /story-done Story 005 (Building Upgrade edge-case regression coverage), 2026-08-12
+- Verdict: COMPLETE
+- Story: production/epics/epic-14-building-upgrade/story-005-edge-case-regression-coverage.md
+- Test-only story (per its own scope) — no production code changed. Wrote tests/unit/building_upgrade/edge_cases_test.gd (6 tests) covering AC-10 (unrecognized requirement id fails closed via can_purchase()), AC-10b (all 4 requirement categories independently null-safe), AC-11 (shared requirement across two upgrades unaffected by one's purchase).
+- Real issues found and fixed during /code-review: godot-gdscript-specialist and qa-tester both independently flagged that the first-draft AC-10 test only exercised the isolated _requirement_satisfied() branch, never the public can_purchase() path the AC/QA Test Case text actually specifies (false-positive risk). qa-tester additionally caught the same substitution problem in the AC-11 test (re-checking the same instance instead of a genuinely separate upgrade). Fixed both: AC-10 now mutates the live registered upgrade_watchtower_reinforced resource via GGameDataRegistry.get_building_upgrade() and asserts through real can_purchase(); AC-11 now registers a second real BuildingUpgradeResource directly into the registry ledger (matching the established direct-dict test-seam convention) and asserts its own can_purchase() is unaffected.
+- Full regression: 2067/2067 passing, 0 errors/failures, orphan count unchanged from pre-existing baseline (unrelated exit-mission-select_test.gd quirk).
+- Tech debt logged: None
+- **Epic 14 (Building Upgrade System) is now fully Complete — 5/5 stories closed.** EPIC.md and production/epics/index.md both updated.
+- Next recommended: None identified within Epic 14 — pick next open item from production/epics/index.md or design/gdd/systems-index.md

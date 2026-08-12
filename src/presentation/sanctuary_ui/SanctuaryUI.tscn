@@ -1,4 +1,4 @@
-[gd_scene load_steps=8 format=3 uid="uid://sanctuaryui0scene"]
+[gd_scene load_steps=10 format=3 uid="uid://sanctuaryui0scene"]
 
 [ext_resource type="Script" path="res://src/presentation/sanctuary_ui/sanctuary_ui.gd" id="1_su"]
 [ext_resource type="Script" path="res://src/presentation/sanctuary_ui/tab_strip.gd" id="2_ts"]
@@ -7,6 +7,8 @@
 [ext_resource type="Script" path="res://src/core/equipment_forge/equipment_forge.gd" id="5_ef"]
 [ext_resource type="Script" path="res://src/presentation/sanctuary_ui/diorama.gd" id="6_dio"]
 [ext_resource type="Script" path="res://src/core/crafting/crafting.gd" id="7_craft"]
+[ext_resource type="Script" path="res://src/core/building_upgrade/building_upgrade.gd" id="8_bldup"]
+[ext_resource type="Script" path="res://src/core/tower_assembly/tower_assembly.gd" id="9_towasm"]
 
 [node name="SanctuaryUI" type="Control"]
 layout_mode = 3
@@ -31,6 +33,12 @@ script = ExtResource("5_ef")
 
 [node name="Crafting" type="Node" parent="."]
 script = ExtResource("7_craft")
+
+[node name="BuildingUpgrade" type="Node" parent="."]
+script = ExtResource("8_bldup")
+
+[node name="TowerAssembly" type="Node" parent="."]
+script = ExtResource("9_towasm")
 
 [node name="Chrome" type="Control" parent="."]
 layout_mode = 1

@@ -3,8 +3,8 @@
 > **Layer**: Advanced
 > **GDD**: `design/gdd/building-upgrade.md`
 > **Architecture Module**: Building Upgrade System (no entry in `architecture.md`'s Module Ownership section — that document's last full pass predates this system, 2026-07-13; same pre-existing gap Epic 08 already documented for Hero Skill Build/Equipment Forge)
-> **Status**: Ready — backend/UI implemented 2026-08-11, `/design-review` passed (with revisions) 2026-08-12, ADR-0034 written and Accepted same day, stories created same day.
-> **Stories**: 5 created — 2 Complete (1 retroactive), 3 Ready
+> **Status**: Complete — backend/UI implemented 2026-08-11, `/design-review` passed (with revisions) 2026-08-12, ADR-0034 written and Accepted same day, all 5 stories created and closed same day.
+> **Stories**: 5 created — 5/5 Complete (1 retroactive)
 
 ## Stories
 
@@ -12,9 +12,9 @@
 |---|-------|------|--------|-----|
 | 001 | Core Requirement Resolution & Purchase Ledger | Logic | Complete (retroactive) | ADR-0034 |
 | 002 | Content Validation — Prerequisite Cycle Guard & Chain Cap | Logic | Complete | ADR-0034 |
-| 003 | Per-Requirement Legibility (VISIBLE_LOCKED chips) | UI | Ready | N/A — reuses Crafting's checklist convention |
-| 004 | PURCHASABLE Notification & Purchase Feedback | Integration | Ready | N/A — reuses Sanctuary UI Connection Badge + Defense Building chime |
-| 005 | Edge-Case Regression Coverage | Logic | Ready | ADR-0034 |
+| 003 | Per-Requirement Legibility (VISIBLE_LOCKED chips) | UI | Complete | N/A — reuses Crafting's checklist convention |
+| 004 | PURCHASABLE Notification & Purchase Feedback | Integration | Complete | N/A — reuses Sanctuary UI Connection Badge + Defense Building chime |
+| 005 | Edge-Case Regression Coverage | Logic | Complete | ADR-0034 |
 
 ## Overview
 
@@ -41,7 +41,7 @@ Building Upgrade is the Sanctuary's convergence layer: a purchasable, permanent 
 
 - **`"tarot"`-keyed upgrade content cannot ship yet.** Tarot has no live, Sanctuary-reachable instance (ADR-0034 Risks; `building-upgrade.md` Open Questions) — any upgrade using a `"tarot"` requirement fails closed permanently. Not this epic's own defect to fix; needs Tarot's own architecture ADR (likely Autoload conversion).
 - **BUG-0001 (S1-Critical, `production/qa/bugs/BUG-0001.md`)**: independent of this epic, but touches the same Tarot dependency — Tarot's entire save ledger silently drops from any save taken outside `TarotDeckUI.tscn`. Filed, not fixed, by this session.
-- **TR-buildupgrade-004's stories are not yet implemented** — the 2026-08-12 design-review revision (per-requirement legibility, Connection Badge, purchase chime, `BuildingUpgradeResource.validate()`, prerequisite-chain cycle guard + tier cap) exists only in `design/gdd/building-upgrade.md` today, not in `src/core/building_upgrade/building_upgrade.gd` or `equipment_forge_screen.gd`. This is this epic's primary remaining implementation work — the backend/UI that already shipped 2026-08-11 predates and does not yet reflect these additions.
+- ~~**TR-buildupgrade-004's stories are not yet implemented**~~ **RESOLVED 2026-08-12** — the 2026-08-12 design-review revision (per-requirement legibility, Connection Badge, purchase chime, `BuildingUpgradeResource.validate()`, prerequisite-chain cycle guard + tier cap) is now implemented and tested across Stories 002-004: per-requirement legibility chips (Story 003), prerequisite-cycle guard + chain cap (Story 002), and PURCHASABLE Connection Badge + purchase chime (Story 004).
 - **No Watchtower/Habitat Expansion mechanical effect exists yet** for `structure_upgraded` to drive (GDD Rule 7, deliberately scaffolded — matches `defense-building.md`'s own precedent for Watchtower's base effect). Not blocking this epic; purchasing an upgrade today has no downstream mechanical consequence beyond the ledger write + notification.
 
 ## Definition of Done

@@ -57,6 +57,10 @@ extends VBoxContainer
 ##   Defense Building      -> sanctuary_structure_built(structure_id, type)
 ##                             (exact match, no substitution needed)
 ##   Equipment Forge        -> item_rune_imbued(item_id, rune_id, rune_source)
+##                             (2026-08-12: also building_upgrade_became_
+##                             purchasable(upgrade_id), added by
+##                             building-upgrade.md Rule 6a/Story 004 for the
+##                             same tab -- an exact match, no substitution)
 ## This substitution should be confirmed against each room's own owning
 ## designer before this GDD is treated as fully Approved, exactly as OQ-6
 ## already asks -- not silently treated as settled by this implementation.
@@ -152,6 +156,7 @@ func _exit_tree() -> void:
 	GEventBus.creature_returned_from_breeding_pen.disconnect(_on_creature_returned_from_breeding_pen)
 	GEventBus.sanctuary_structure_built.disconnect(_on_sanctuary_structure_built)
 	GEventBus.item_rune_imbued.disconnect(_on_item_rune_imbued)
+	GEventBus.building_upgrade_became_purchasable.disconnect(_on_building_upgrade_became_purchasable)
 
 
 func _input(event: InputEvent) -> void:
@@ -262,6 +267,7 @@ func _connect_badge_triggers() -> void:
 	GEventBus.creature_returned_from_breeding_pen.connect(_on_creature_returned_from_breeding_pen)
 	GEventBus.sanctuary_structure_built.connect(_on_sanctuary_structure_built)
 	GEventBus.item_rune_imbued.connect(_on_item_rune_imbued)
+	GEventBus.building_upgrade_became_purchasable.connect(_on_building_upgrade_became_purchasable)
 
 
 func _on_recipe_discovered(_recipe_id: String, _recipe_category: String) -> void:
@@ -277,6 +283,14 @@ func _on_sanctuary_structure_built(_structure_id: String, _structure_type: Strin
 
 
 func _on_item_rune_imbued(_item_id: String, _rune_id: String, _rune_source: String) -> void:
+	_increment_badge(4)  # ROOM_EQUIPMENT_FORGE
+
+
+## Story 004 (TR-buildupgrade-004, Rule 6a, AC-8): Building Upgrade's own
+## screen is hosted as a tab inside Equipment Forge (building-upgrade.md's
+## Status line), not a room of its own -- same tab index as
+## _on_item_rune_imbued above, added 2026-08-12.
+func _on_building_upgrade_became_purchasable(_upgrade_id: String) -> void:
 	_increment_badge(4)  # ROOM_EQUIPMENT_FORGE
 
 

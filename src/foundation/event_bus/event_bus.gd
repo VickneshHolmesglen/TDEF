@@ -500,6 +500,39 @@ signal tech_unlocked(tech_id: String, tech_category: String)
 ## Key subscribers: Mission HUD, Audio.
 signal sanctuary_structure_built(structure_id: String, structure_type: String)
 
+## An already-built Sanctuary structure gains a permanent upgrade (player-
+## requested Building Upgrade System, design/gdd/building-upgrade.md Rule 6 —
+## added 2026-08-11). Building Upgrade only emits this; it owns no
+## mechanical effect itself. Which system reacts (Menagerie for Habitat
+## Expansion, a future consumer for Watchtower) and what the effect is are
+## deliberately undefined scaffolding, mirroring sanctuary_structure_built's
+## own decoupled precedent.
+## Key subscribers: none yet — proposed, not yet adopted by a consumer.
+signal structure_upgraded(structure_id: String, upgrade_id: String)
+
+## An upgrade's last unmet requirements/cost entry becomes satisfied —
+## VISIBLE_LOCKED -> PURCHASABLE (player-requested Building Upgrade System,
+## design/gdd/building-upgrade.md Rule 6a — added 2026-08-12 design review,
+## Story 004/TR-buildupgrade-004). Fires only on that edge, never on every
+## re-evaluation while already PURCHASABLE, and never again for the same
+## upgrade_id once it reaches PURCHASED; re-armable if the upgrade later
+## reverts to VISIBLE_LOCKED (Rule 4) and becomes PURCHASABLE again.
+## Key subscribers: Sanctuary UI — drives its Connection Badge on the
+## Equipment Forge tab (sanctuary-ui.md Core Rule 2 Tuning Knobs).
+signal building_upgrade_became_purchasable(upgrade_id: String)
+
+## Player combines 4 owned crafted tower components into a new, placeable
+## TowerBlueprintData (player-requested Tower Assembly, design/quick-specs/
+## tower-assembly-2026-08-11.md). Not part of Building Upgrade (Story 004) —
+## restored here because src/core/tower_assembly/tower_assembly.gd and its
+## own 12-test suite already depend on this exact signal existing (pre-
+## existing, uncommitted 2026-08-11 work found while implementing this
+## story; removing it would break that unrelated system, not just revert
+## scope creep). Fires only after the new blueprint is already registered
+## via GameDataRegistry — a subscriber can immediately query it.
+## Key subscribers: Mission HUD (Tower Build Panel refresh), Encyclopedia, Audio.
+signal tower_assembled(tower_id: String, display_name: String)
+
 # =============================================================================
 # Inventory System
 # =============================================================================

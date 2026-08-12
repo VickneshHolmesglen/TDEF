@@ -1,7 +1,7 @@
 # Story 005: Edge-Case Regression Coverage
 
 > **Epic**: Building Upgrade System
-> **Status**: Ready
+> **Status**: Complete
 > **Layer**: Advanced
 > **Type**: Logic
 > **Estimate**: XS (1-2 hours)
@@ -30,8 +30,9 @@
 
 *From GDD `design/gdd/building-upgrade.md`, scoped to this story:*
 
-- [ ] **AC-10**: GIVEN a `requirements` entry references an unrecognized `structure_id`/`item_id`/`card_id`/`species_id`, WHEN checked, THEN the entry resolves `false` and the upgrade never reaches `PURCHASABLE` via that entry.
-- [ ] **AC-11**: GIVEN two upgrades (same or different `target_structure_id`) share an identical `requirements` entry, WHEN one is `PURCHASED`, THEN the shared requirement remains independently satisfied and unaffected for the other upgrade's own evaluation.
+- [x] **AC-10**: GIVEN a `requirements` entry references an unrecognized `structure_id`/`item_id`/`card_id`/`species_id`, WHEN checked, THEN the entry resolves `false` and the upgrade never reaches `PURCHASABLE` via that entry.
+- [x] **AC-11**: GIVEN two upgrades (same or different `target_structure_id`) share an identical `requirements` entry, WHEN one is `PURCHASED`, THEN the shared requirement remains independently satisfied and unaffected for the other upgrade's own evaluation.
+- [x] **AC-10b** (added during `/story-readiness`, closing a Definition-of-Done minimum-AC gap — Logic stories require ≥3 testable criteria; promotes an edge case already named in this story's own QA Test Cases to a formal AC): GIVEN each of the 4 requirement categories (`"building"`, `"equipment"`, `"tarot"`, `"creature"`) independently references an unrecognized id, WHEN checked, THEN every category's own resolution branch — not just one — resolves `false` safely, confirming `_requirement_satisfied()`'s null-safety holds uniformly across all 4 branches, not only the one AC-10 happens to exercise.
 
 ---
 
@@ -65,7 +66,7 @@
 **Required evidence**:
 - `tests/unit/building_upgrade/edge_cases_test.gd` — must exist and pass
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created — 6 test functions, all passing
 
 ---
 
@@ -73,3 +74,10 @@
 
 - Depends on: Story 001 (DONE)
 - Unlocks: None
+
+## Completion Notes
+**Completed**: 2026-08-12
+**Criteria**: 3/3 passing (AC-10, AC-10b, AC-11)
+**Deviations**: ADVISORY — during `/code-review`, the first draft's AC-10 and AC-11 tests were found to test only the isolated `_requirement_satisfied()` branch rather than the public `can_purchase()` path the AC/QA Test Case text actually specifies (a false-positive risk: both would still pass even if `can_purchase()` itself had a bug). Fixed directly: AC-10's test now temporarily mutates the live registered `upgrade_watchtower_reinforced` resource's `requirements["building"]` via `GGameDataRegistry.get_building_upgrade()` and asserts through real `can_purchase()`; AC-11's test now registers a genuine second `BuildingUpgradeResource` (`SHARED_REQUIREMENT_UPGRADE_ID`) directly into the registry ledger (same direct-dict test-seam convention already used for `GDefenseBuilding._structure_ledger`/`Tarot._card_unlocked`) and asserts its own `can_purchase()` is unaffected by the first upgrade's purchase — avoiding new permanent `.tres` content per the story's own test-only scope.
+**Test Evidence**: Logic — `tests/unit/building_upgrade/edge_cases_test.gd` (6 tests, 0 failures)
+**Code Review**: Complete — APPROVED (2 real findings from 2 specialist passes — godot-gdscript-specialist and qa-tester independently flagged the same AC-10 gap; qa-tester additionally caught the AC-11 gap — both fixed)

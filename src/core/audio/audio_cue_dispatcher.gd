@@ -110,6 +110,16 @@ func _connect_all_events() -> void:
 	_wire(GEventBus.component_repaired, func(_a: String, _b: String) -> void: dispatch_cue(&"component_repaired"))
 	_wire(GEventBus.sanctuary_structure_built, func(_a: String, _b: String) -> void: dispatch_cue(&"sanctuary_structure_built"))
 	_wire(GEventBus.hero_equipment_crafted, func(_a: String, _b: String, _c: int) -> void: dispatch_cue(&"hero_equipment_crafted"))
+	# Story 004 (TR-buildupgrade-004, Rule 6a, AC-9): reuses this exact
+	# generic-dispatch mechanism rather than adding chime logic inside
+	# BuildingUpgrade.resolve_upgrade() -- Rule 6's "emits and does nothing
+	# further" contract means the purchase-confirmation cue belongs entirely
+	# to whoever already owns generic EventBus->audio dispatch, matching how
+	# sanctuary_structure_built (the closest sibling, Defense Building's own
+	# tech-node-unlock feedback) is wired the exact same way one line above.
+	# AC-10a's own no-op-if-unmapped guarantee means this is safe to wire
+	# even before a real "structure_upgraded" AudioCueMap entry is authored.
+	_wire(GEventBus.structure_upgraded, func(_a: String, _b: String) -> void: dispatch_cue(&"structure_upgraded"))
 	_wire(GEventBus.game_paused, func() -> void: dispatch_cue(&"game_paused"))
 	_wire(GEventBus.game_unpaused, func() -> void: dispatch_cue(&"game_unpaused"))
 

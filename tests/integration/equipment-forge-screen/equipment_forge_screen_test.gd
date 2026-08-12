@@ -19,17 +19,25 @@ extends GdUnitTestSuite
 
 const RECIPE_IRON_SWORD: StringName = &"recipe_iron_sword"  # ungated, weapon, needs 4 Material, rune_slot_count=2
 
+const UPGRADE_ID: StringName = &"upgrade_watchtower_reinforced"
+
 var _forge: EquipmentForge
+var _building_upgrade: BuildingUpgrade
 var _runner: GdUnitSceneRunner
 var _screen: Control
 
 
 func before_test() -> void:
 	_forge = EquipmentForge.new()
+	_building_upgrade = BuildingUpgrade.new()
+	add_child(_building_upgrade)  # _requirement_satisfied()'s "tarot" branch calls get_tree()
 	GInventory.reset_to_defaults()
+	GDefenseBuilding.reset_to_defaults()
+	GMenagerie.reset_to_defaults()
 	_runner = scene_runner("res://src/gameplay/ui/equipment_forge_screen/EquipmentForgeScreen.tscn")
 	_screen = _runner.scene() as Control
 	_screen.set("equipment_forge", _forge)
+	_screen.set("building_upgrade", _building_upgrade)
 	_rebuild_all()
 
 
@@ -37,7 +45,13 @@ func after_test() -> void:
 	if _forge != null and is_instance_valid(_forge):
 		_forge.free()
 	_forge = null
+	if _building_upgrade != null and is_instance_valid(_building_upgrade):
+		remove_child(_building_upgrade)
+		_building_upgrade.free()
+	_building_upgrade = null
 	GInventory.reset_to_defaults()
+	GDefenseBuilding.reset_to_defaults()
+	GMenagerie.reset_to_defaults()
 
 
 func _rebuild_all() -> void:
@@ -47,6 +61,8 @@ func _rebuild_all() -> void:
 	_screen.call("_rebuild_item_list")
 	@warning_ignore("unsafe_method_access")
 	_screen.call("_rebuild_rune_list")
+	@warning_ignore("unsafe_method_access")
+	_screen.call("_rebuild_upgrade_list")
 
 
 func _discover(recipe_id: StringName) -> void:
@@ -71,10 +87,18 @@ func test_defaults_to_craft_view() -> void:
 	assert_bool(imbue_view.visible).is_false()
 
 
-func test_tab_toggle_switches_views() -> void:
+func test_tab_button_switches_to_imbue_view() -> void:
 	@warning_ignore("unsafe_method_access")
-	_screen.call("_on_tab_toggle_pressed")
+	_screen.call("_on_tab_button_pressed", 1)  # TAB_IMBUE
 	assert_bool(_screen.call("is_showing_craft")).is_false()
+
+
+func test_upgrade_tab_is_reachable() -> void:
+	@warning_ignore("unsafe_method_access")
+	_screen.call("_on_tab_button_pressed", 2)  # TAB_UPGRADE
+	assert_int(_screen.call("get_active_tab")).is_equal(2)
+	var upgrade_view: Control = _screen.get_node("MainLayout/UpgradeView") as Control
+	assert_bool(upgrade_view.visible).is_true()
 
 
 # ---------------------------------------------------------------------------
@@ -204,6 +228,122 @@ func test_orphaned_rune_is_not_listed() -> void:
 	_rebuild_all()
 
 	assert_object(_screen.call("get_rune_button", &"rune_orphaned")).is_null()
+
+
+# ---------------------------------------------------------------------------
+# Upgrade Buildings tab
+# ---------------------------------------------------------------------------
+
+func test_upgrade_not_listed_before_its_target_structure_is_built() -> void:
+	assert_object(_screen.call("get_upgrade_button", UPGRADE_ID)).is_null()
+
+
+func test_upgrade_listed_as_visible_locked_once_target_structure_is_built() -> void:
+	GDefenseBuilding._structure_ledger[&"watchtower_tier_1"] = true
+	_rebuild_all()
+
+	var button: Button = _screen.call("get_upgrade_button", UPGRADE_ID)
+	assert_object(button).is_not_null()
+	assert_str(button.text).contains("VISIBLE_LOCKED")
+
+
+func test_pressing_an_ineligible_upgrade_does_not_open_the_confirmation_dialog() -> void:
+	GDefenseBuilding._structure_ledger[&"watchtower_tier_1"] = true
+	_rebuild_all()
+
+	@warning_ignore("unsafe_method_access")
+	_screen.call("_on_upgrade_pressed", UPGRADE_ID)
+
+	var dialog: ConfirmationDialog = _screen.get_node("UpgradeConfirmDialog") as ConfirmationDialog
+	assert_bool(dialog.visible).is_false()
+
+
+## AC-6 (Story 003, Rule 2a): each requirements entry renders as its own
+## chip -- upgrade_watchtower_reinforced's real content requires "building",
+## "creature", and "tarot" (assets/data/building_upgrades/
+## upgrade_watchtower_reinforced.tres) -- 3 chips, one per entry, not one
+## collapsed pass/fail state for the whole row.
+func test_visible_locked_upgrade_renders_one_chip_per_requirement() -> void:
+	GDefenseBuilding._structure_ledger[&"watchtower_tier_1"] = true
+	_rebuild_all()
+
+	var chip_row: Control = _screen.call("get_upgrade_chip_row", UPGRADE_ID)
+	assert_object(chip_row).is_not_null()
+	assert_int(chip_row.get_child_count()).is_equal(3)
+
+
+## AC-6: chip text names the specific target, not a raw StringName id --
+## upgrade_watchtower_reinforced's own "building" requirement targets
+## habitat_expansion_tier_1 (distinct from its own target_structure_id,
+## watchtower_tier_1 -- confirmed by reading the real .tres content), so its
+## chip must contain a resolved (title-cased) name, never the flat id
+## embedded verbatim as the whole label with no humanization.
+func test_requirement_chip_shows_resolved_name_not_raw_id() -> void:
+	GDefenseBuilding._structure_ledger[&"watchtower_tier_1"] = true
+	_rebuild_all()
+
+	var chip_row: Control = _screen.call("get_upgrade_chip_row", UPGRADE_ID)
+	var building_chip: Label = chip_row.get_node("Chip_building") as Label
+	assert_str(building_chip.text).contains("Habitat Expansion Tier 1")
+
+
+## AC-6: an unmet requirement's chip shows the unmet glyph; a satisfied
+## one shows the satisfied glyph -- independently per entry, confirming
+## this isn't one collapsed state for the whole upgrade.
+func test_unmet_and_satisfied_requirements_render_distinct_chip_glyphs() -> void:
+	GDefenseBuilding._structure_ledger[&"watchtower_tier_1"] = true  # target_structure_id -- visibility only
+	GDefenseBuilding._structure_ledger[&"habitat_expansion_tier_1"] = true  # satisfies the "building" requirement itself
+	_rebuild_all()
+
+	var chip_row: Control = _screen.call("get_upgrade_chip_row", UPGRADE_ID)
+	var building_chip: Label = chip_row.get_node("Chip_building") as Label
+	assert_str(building_chip.text).contains("✓")
+	var creature_chip: Label = chip_row.get_node("Chip_creature") as Label
+	# no creature seeded -- unmet.
+	assert_str(creature_chip.text).contains("✗")
+
+
+## AC-6b: the 4 requirement categories each get a distinct, non-color-only
+## tag (this content's 3 present categories, at minimum, must not collide).
+func test_requirement_chips_use_distinct_category_tags() -> void:
+	GDefenseBuilding._structure_ledger[&"watchtower_tier_1"] = true
+	_rebuild_all()
+
+	var chip_row: Control = _screen.call("get_upgrade_chip_row", UPGRADE_ID)
+	var building_chip: Label = chip_row.get_node("Chip_building") as Label
+	var creature_chip: Label = chip_row.get_node("Chip_creature") as Label
+	var tarot_chip: Label = chip_row.get_node("Chip_tarot") as Label
+	var seen_tags: Dictionary[String, bool] = {}
+	for chip: Label in [building_chip, creature_chip, tarot_chip]:
+		for category_tag: String in ["[Bldg]", "[Equip]", "[Tarot]", "[Creature]"]:
+			if chip.text.contains(category_tag):
+				seen_tags[category_tag] = true
+	assert_int(seen_tags.size()).is_equal(3)  # 3 distinct tags for 3 distinct categories -- no collisions
+
+
+## AC-6: the tarot requirement is also independently unmet (no Tarot node
+## in this scene tree, per _requirement_satisfied()'s fail-closed branch --
+## see building-upgrade.md's own Open Questions) -- closes a coverage gap
+## /code-review found (only building/creature glyphs were previously
+## asserted, not tarot).
+func test_tarot_requirement_chip_is_unmet_with_no_live_tarot_instance() -> void:
+	GDefenseBuilding._structure_ledger[&"watchtower_tier_1"] = true
+	_rebuild_all()
+
+	var chip_row: Control = _screen.call("get_upgrade_chip_row", UPGRADE_ID)
+	var tarot_chip: Label = chip_row.get_node("Chip_tarot") as Label
+	assert_str(tarot_chip.text).contains("✗")
+
+
+## AC-6: an unresolvable equipment id falls back to a title-cased id rather
+## than crashing or showing the flat raw id -- closes a coverage gap
+## /code-review found (the "equipment" branch's null-definition fallback
+## had no real content exercising it, since upgrade_watchtower_reinforced
+## has no "equipment" requirement).
+func test_equipment_display_name_falls_back_to_title_case_for_unknown_item_id() -> void:
+	@warning_ignore("unsafe_method_access")
+	var resolved: String = _screen.call("_resolve_requirement_display_name", "equipment", &"not_a_real_item_id")
+	assert_str(resolved).is_equal("Not A Real Item Id")
 
 
 # ---------------------------------------------------------------------------

@@ -1,17 +1,30 @@
 extends Control
 
-## Equipment Forge Screen (Sanctuary UI Story 005's Room Hosting scope, epic-10).
+## Forge Screen (Sanctuary UI Story 005's Room Hosting scope, epic-10;
+## restructured 2026-08-12, Building Upgrade Story 003, into a 3-tab Forge:
+## Craft / Imbue / Upgrade Buildings).
 ##
 ## GDD source: design/gdd/equipment-forge.md — UI Requirements section
-## (persistent Craft/Imbue tab toggle; Craft reuses Crafting's own recipe-
-## list panel; Imbue is a sequential item -> slot -> rune selection with a
+## (Craft/Imbue tab toggle; Craft reuses Crafting's own recipe-list panel;
+## Imbue is a sequential item -> slot -> rune selection with a
 ## Menagerie-sacrifice-style two-step confirmation, since a consumed rune is
-## non-fungible and unique).
+## non-fungible and unique) plus design/gdd/building-upgrade.md (Upgrade tab,
+## Rule 2a's per-requirement legibility).
 ## ADR: docs/architecture/adr-0011-ui-dual-focus-handling.md (focus/hover),
 ##      docs/architecture/adr-0025-equipment-forge-cross-system-aggregation.md
 ##      (data side — EquipmentForge is scene-instanced, not an Autoload; this
 ##      screen discovers the shell-owned instance via the "equipment_forge"
-##      group, see equipment_forge.gd's own doc comment)
+##      group, see equipment_forge.gd's own doc comment). BuildingUpgrade is
+##      discovered the identical way, via its own "building_upgrade" group —
+##      same shell-instancing reason (RoomHost's generic mount mechanism has
+##      no room-specific injection seam).
+##
+## A "Tower Assembly" 4th tab (design/quick-specs/tower-assembly-2026-08-11.md)
+## was drafted into this file by an earlier implementation pass but is out of
+## scope for both this screen's own GDD and Story 003 — removed 2026-08-12,
+## not part of any epic/story currently in flight. TowerAssembly's own
+## backend (src/core/tower_assembly/) is untouched; only this screen's UI
+## wiring for it was reverted.
 ##
 ## Scope, honestly bounded:
 ## - "Reuses Crafting's own recipe-list panel wholesale" (GDD) is not
@@ -38,13 +51,32 @@ extends Control
 
 const FOCUS_RING_COLOR: Color = Color(1.0, 0.85, 0.2, 1.0)  ## placeholder — art-director TBD
 
-## Injectable for tests; defaults to the shell-owned instance discovered via
-## the "equipment_forge" group (see equipment_forge.gd's own doc comment for
-## why this can't be a direct Autoload reference).
+const TAB_CRAFT: int = 0
+const TAB_IMBUE: int = 1
+const TAB_UPGRADE: int = 2
+
+## Non-color-safe, distinct-shape textual tags per requirement category
+## (Rule 2a/AC-6b) — this project has no authored icon set for these 4
+## categories yet, so a bracketed text tag (matching this screen's own
+## existing "[CRAFTABLE]"/"[MISSING_MATERIALS]" tag convention) is used
+## instead of a graphical icon. Revisit once real icon assets exist.
+const REQUIREMENT_CATEGORY_TAGS: Dictionary[String, String] = {
+	"building": "[Bldg]",
+	"equipment": "[Equip]",
+	"tarot": "[Tarot]",
+	"creature": "[Creature]",
+}
+
+## Injectable for tests; defaults to the shell-owned instances discovered via
+## the "equipment_forge"/"building_upgrade" groups (see each system's own
+## doc comment for why these can't be direct Autoload references).
 @export var equipment_forge: EquipmentForge
+@export var building_upgrade: BuildingUpgrade
 
 @onready var _input_mode_tracker: InputModeTracker = $InputModeTracker
-@onready var _tab_toggle_button: Button = $MainLayout/HeaderRow/TabToggleButton
+@onready var _craft_tab_button: Button = $MainLayout/HeaderRow/CraftTabButton
+@onready var _imbue_tab_button: Button = $MainLayout/HeaderRow/ImbueTabButton
+@onready var _upgrade_tab_button: Button = $MainLayout/HeaderRow/UpgradeTabButton
 @onready var _craft_view: Control = $MainLayout/CraftView
 @onready var _recipe_list: VBoxContainer = $MainLayout/CraftView/RecipeList
 @onready var _imbue_view: Control = $MainLayout/ImbueView
@@ -52,22 +84,34 @@ const FOCUS_RING_COLOR: Color = Color(1.0, 0.85, 0.2, 1.0)  ## placeholder — a
 @onready var _rune_list: VBoxContainer = $MainLayout/ImbueView/RuneColumn/RuneList
 @onready var _imbue_cancel_button: Button = $MainLayout/ImbueView/ItemColumn/CancelSelectionButton
 @onready var _imbue_confirm_dialog: ConfirmationDialog = $ImbueConfirmDialog
+@onready var _upgrade_view: Control = $MainLayout/UpgradeView
+@onready var _upgrade_list: VBoxContainer = $MainLayout/UpgradeView/UpgradeList
+@onready var _upgrade_confirm_dialog: ConfirmationDialog = $UpgradeConfirmDialog
 
 var _recipe_buttons: Dictionary[StringName, Button] = {}
 var _item_buttons: Dictionary[int, Button] = {}
 var _rune_buttons: Dictionary[StringName, Button] = {}
-var _showing_craft: bool = true
+var _upgrade_buttons: Dictionary[StringName, Button] = {}      ## upgrade_id -> the row's purchase Button
+var _upgrade_chip_rows: Dictionary[StringName, Control] = {}   ## upgrade_id -> its per-requirement chip HBoxContainer
+
+var _active_tab: int = TAB_CRAFT
 var _selected_instance_id: int = -1
 var _pending_imbue_rune_id: StringName = &""
+var _pending_upgrade_id: StringName = &""
 
 
 func _ready() -> void:
 	if equipment_forge == null:
 		equipment_forge = get_tree().get_first_node_in_group(&"equipment_forge") as EquipmentForge
+	if building_upgrade == null:
+		building_upgrade = get_tree().get_first_node_in_group(&"building_upgrade") as BuildingUpgrade
 
-	_tab_toggle_button.pressed.connect(_on_tab_toggle_pressed)
+	_craft_tab_button.pressed.connect(_on_tab_button_pressed.bind(TAB_CRAFT))
+	_imbue_tab_button.pressed.connect(_on_tab_button_pressed.bind(TAB_IMBUE))
+	_upgrade_tab_button.pressed.connect(_on_tab_button_pressed.bind(TAB_UPGRADE))
 	_imbue_cancel_button.pressed.connect(_on_cancel_item_selection_pressed)
 	_imbue_confirm_dialog.confirmed.connect(_on_imbue_confirmed)
+	_upgrade_confirm_dialog.confirmed.connect(_on_upgrade_confirmed)
 	_input_mode_tracker.input_mode_changed.connect(_on_input_mode_changed)
 
 	GEventBus.recipe_discovered.connect(_on_forge_state_changed)
@@ -75,10 +119,14 @@ func _ready() -> void:
 	GEventBus.item_rune_imbued.connect(_on_forge_state_changed)
 	GEventBus.constellation_rune_discovered.connect(_on_forge_state_changed)
 	GEventBus.tarot_rune_discovered.connect(_on_forge_state_changed)
+	GEventBus.structure_upgraded.connect(_on_forge_state_changed)
+	GEventBus.item_added.connect(_on_forge_state_changed)
+	GEventBus.item_removed.connect(_on_forge_state_changed)
 
 	_rebuild_recipe_list()
 	_rebuild_item_list()
 	_rebuild_rune_list()
+	_rebuild_upgrade_list()
 	_apply_view_visibility()
 
 
@@ -88,33 +136,41 @@ func disconnect_own_subscriptions() -> void:
 	GEventBus.item_rune_imbued.disconnect(_on_forge_state_changed)
 	GEventBus.constellation_rune_discovered.disconnect(_on_forge_state_changed)
 	GEventBus.tarot_rune_discovered.disconnect(_on_forge_state_changed)
+	GEventBus.structure_upgraded.disconnect(_on_forge_state_changed)
+	GEventBus.item_added.disconnect(_on_forge_state_changed)
+	GEventBus.item_removed.disconnect(_on_forge_state_changed)
 
 
 func _on_forge_state_changed(_a: Variant = null, _b: Variant = null, _c: Variant = null) -> void:
 	_rebuild_recipe_list()
 	_rebuild_item_list()
 	_rebuild_rune_list()
+	_rebuild_upgrade_list()
 
 
 # ---------------------------------------------------------------------------
-# Craft / Imbue tab toggle (GDD: shoulder-button LB/RB convention on a real
-# gamepad -- implemented as an explicit button, matching menagerie_screen.gd/
-# defense_building_screen.gd's own precedent of buttons over exact gamepad-
-# context fidelity)
+# 3-way tab strip (Craft / Imbue / Upgrade Buildings)
 # ---------------------------------------------------------------------------
 
-func _on_tab_toggle_pressed() -> void:
-	_showing_craft = not _showing_craft
+func _on_tab_button_pressed(tab: int) -> void:
+	_active_tab = tab
 	_apply_view_visibility()
 
 
 func _apply_view_visibility() -> void:
-	_craft_view.visible = _showing_craft
-	_imbue_view.visible = not _showing_craft
+	_craft_view.visible = _active_tab == TAB_CRAFT
+	_imbue_view.visible = _active_tab == TAB_IMBUE
+	_upgrade_view.visible = _active_tab == TAB_UPGRADE
 
 
+func get_active_tab() -> int:
+	return _active_tab
+
+
+## Back-compat accessor — Craft was tab 0 both before and after this
+## restructure, so this still reads correctly for any existing caller.
 func is_showing_craft() -> bool:
-	return _showing_craft
+	return _active_tab == TAB_CRAFT
 
 
 # ---------------------------------------------------------------------------
@@ -273,6 +329,146 @@ func _on_imbue_confirmed() -> void:
 
 
 # ---------------------------------------------------------------------------
+# Upgrade Buildings tab — Defense Building structures gated on a
+# recipe-style combination of building/equipment/tarot/creature requirements.
+# See design/gdd/building-upgrade.md Rule 2/2a/6a.
+# ---------------------------------------------------------------------------
+
+func _rebuild_upgrade_list() -> void:
+	for child: Node in _upgrade_list.get_children():
+		child.queue_free()
+	_upgrade_buttons.clear()
+	_upgrade_chip_rows.clear()
+
+	if building_upgrade == null:
+		return
+	var all_upgrades: Dictionary[StringName, BuildingUpgradeResource] = GGameDataRegistry.get_all_building_upgrades()
+	var upgrade_ids: Array = all_upgrades.keys()
+	upgrade_ids.sort()
+
+	for upgrade_id: StringName in upgrade_ids:
+		if not building_upgrade.is_visible(upgrade_id):
+			continue  # target structure not yet built -- Rule 3
+		var upgrade: BuildingUpgradeResource = all_upgrades[upgrade_id]
+		var row: VBoxContainer = _create_upgrade_row(upgrade)
+		_upgrade_list.add_child(row)
+
+
+## Rule 2a/AC-6/AC-6b: each upgrade renders as a header purchase Button
+## (unchanged single-confirm interaction) plus one chip row beneath it with
+## an independent Label per requirements entry -- category tag, resolved
+## display name, and satisfied/unmet state, never a single collapsed
+## pass/fail flag for the whole upgrade (the previous READY/
+## REQUIREMENTS_UNMET binary tag this replaces).
+func _create_upgrade_row(upgrade: BuildingUpgradeResource) -> VBoxContainer:
+	var row := VBoxContainer.new()
+	row.name = "UpgradeRow_%s" % String(upgrade.upgrade_id)
+
+	var header := Button.new()
+	header.name = "Header"
+	header.focus_mode = Control.FOCUS_ALL
+	header.clip_text = true
+	header.text = _upgrade_header_text(upgrade)
+	header.disabled = building_upgrade.is_purchased(upgrade.upgrade_id)
+	header.pressed.connect(_on_upgrade_pressed.bind(upgrade.upgrade_id))
+	_wire_focus_ring(header)
+	row.add_child(header)
+	_upgrade_buttons[upgrade.upgrade_id] = header
+
+	var chip_row := HBoxContainer.new()
+	chip_row.name = "RequirementChips"
+	var status: Dictionary[String, bool] = building_upgrade.get_requirement_status(upgrade.upgrade_id)
+	for category: String in upgrade.requirements:
+		var identifier: StringName = upgrade.requirements[category]
+		var satisfied: bool = status.get(category, false)
+		var chip := Label.new()
+		chip.name = "Chip_%s" % category
+		chip.text = _requirement_chip_text(category, identifier, satisfied)
+		chip_row.add_child(chip)
+	row.add_child(chip_row)
+	_upgrade_chip_rows[upgrade.upgrade_id] = chip_row
+
+	return row
+
+
+func _upgrade_header_text(upgrade: BuildingUpgradeResource) -> String:
+	if building_upgrade.is_purchased(upgrade.upgrade_id):
+		return "%s [PURCHASED]" % String(upgrade.upgrade_id)
+	var tag: String = "PURCHASABLE" if building_upgrade.can_purchase(upgrade.upgrade_id) else "VISIBLE_LOCKED"
+	return "%s [%s]" % [String(upgrade.upgrade_id), tag]
+
+
+## AC-6: satisfied (checkmark) vs unmet (cross), non-color-safe by symbol
+## alone. AC-6b: REQUIREMENT_CATEGORY_TAGS gives each category its own
+## distinct bracketed text tag (no icon assets exist for these 4 categories
+## yet -- see the const's own doc comment), so a colorblind player can tell
+## categories apart without relying on color.
+func _requirement_chip_text(category: String, identifier: StringName, satisfied: bool) -> String:
+	var state_glyph: String = "✓" if satisfied else "✗"  # checkmark / cross
+	var category_tag: String = REQUIREMENT_CATEGORY_TAGS.get(category, "[%s]" % category)
+	return "%s %s %s" % [state_glyph, category_tag, _resolve_requirement_display_name(category, identifier)]
+
+
+## AC-6: resolves the specific target's player-facing name, never a raw
+## StringName id. Only ItemDefinitionResource ("equipment") has a real
+## display_name field in this project today -- StructureResource,
+## SpeciesResource, and TarotCardResource carry no display-name field at
+## all (confirmed by reading each Resource script directly, not assumed).
+## Adding one to any of those 3 is a data-model change outside this UI
+## story's own scope, so a title-cased id is used as an honest fallback for
+## those categories -- still player-facing text, not the flat internal id,
+## but not a genuinely authored name either. Flagged here, not silently
+## passed off as equivalent to the equipment case.
+func _resolve_requirement_display_name(category: String, identifier: StringName) -> String:
+	match category:
+		"building":
+			return _title_case(String(identifier))
+		"equipment":
+			var definition: ItemDefinitionResource = GGameDataRegistry.get_item_definition(identifier)
+			return definition.display_name if definition != null else _title_case(String(identifier))
+		"tarot":
+			return _title_case(String(identifier))
+		"creature":
+			return _title_case(String(identifier))
+		_:
+			return String(identifier)
+
+
+func _title_case(raw_id: String) -> String:
+	var words: PackedStringArray = raw_id.replace("_", " ").split(" ", false)
+	var titled: PackedStringArray = []
+	for word: String in words:
+		titled.append(word.capitalize())
+	return " ".join(titled)
+
+
+func _on_upgrade_pressed(upgrade_id: StringName) -> void:
+	if not building_upgrade.can_purchase(upgrade_id):
+		return
+	_pending_upgrade_id = upgrade_id
+	_upgrade_confirm_dialog.dialog_text = tr("FORGE_UPGRADE_CONFIRM_TEXT")
+	_upgrade_confirm_dialog.popup_centered()
+
+
+func _on_upgrade_confirmed() -> void:
+	if _pending_upgrade_id == &"":
+		return
+	building_upgrade.resolve_upgrade(_pending_upgrade_id)
+	_pending_upgrade_id = &""
+
+
+func get_upgrade_button(upgrade_id: StringName) -> Button:
+	return _upgrade_buttons.get(upgrade_id)
+
+
+## Test/inspection accessor (Story 003, AC-6/AC-6b) -- the HBoxContainer
+## holding one Label chip per requirements entry for this upgrade, or null
+## if the upgrade isn't currently listed (e.g. HIDDEN, Rule 3).
+func get_upgrade_chip_row(upgrade_id: StringName) -> Control:
+	return _upgrade_chip_rows.get(upgrade_id)
+
+
+# ---------------------------------------------------------------------------
 # Focus ring (ADR-0011, matches the other room screens)
 # ---------------------------------------------------------------------------
 
@@ -300,7 +496,7 @@ func _on_button_focus_changed(button: Button, ring: Panel) -> void:
 
 
 func _on_input_mode_changed(_mode: InputModeTracker.InputMode) -> void:
-	for buttons: Dictionary in [_recipe_buttons, _item_buttons, _rune_buttons]:
+	for buttons: Dictionary in [_recipe_buttons, _item_buttons, _rune_buttons, _upgrade_buttons]:
 		for key: Variant in buttons.keys():
 			var button: Button = buttons[key]
 			var ring: Panel = button.get_node_or_null("FocusRing") as Panel

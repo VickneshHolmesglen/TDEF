@@ -65,6 +65,14 @@ func test_equipment_forge_badge_appears_on_item_rune_imbued() -> void:
 	assert_bool(_tab_strip.is_badge_visible(4)).is_true()
 
 
+## Story 004 (TR-buildupgrade-004, Rule 6a, AC-8): Building Upgrade's own
+## screen shares the Equipment Forge tab (index 4) -- exact-match trigger,
+## added 2026-08-12, same pattern as item_rune_imbued directly above.
+func test_equipment_forge_badge_appears_on_building_upgrade_became_purchasable() -> void:
+	GEventBus.building_upgrade_became_purchasable.emit("upgrade_watchtower_reinforced")
+	assert_bool(_tab_strip.is_badge_visible(4)).is_true()
+
+
 # ---------------------------------------------------------------------------
 # Loadout (index 5) never shows a badge, under any trigger event
 # ---------------------------------------------------------------------------
