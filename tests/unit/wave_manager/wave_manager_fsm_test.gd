@@ -203,6 +203,27 @@ func test_player_ready_during_wave_active_is_silently_ignored() -> void:
 	assert_int(_wm._phase).is_equal(WaveManager.Phase.WAVE_ACTIVE)
 
 # ---------------------------------------------------------------------------
+# EC-8 (wave-manager.md): player_ready during PRE_WAVE ("Skip Countdown")
+# cancels the remaining countdown and immediately transitions to WAVE_ACTIVE.
+# Real bug found live 2026-08-12: _on_player_ready()'s match statement had no
+# Phase.PRE_WAVE case at all, silently falling into the ignored-phases branch
+# — the Skip Countdown button did nothing.
+# ---------------------------------------------------------------------------
+
+func test_player_ready_during_pre_wave_skips_countdown_to_wave_active() -> void:
+	_wm._phase = WaveManager.Phase.PRE_WAVE
+	_wm._pre_wave_timer.start()
+
+	GEventBus.player_ready.emit()
+
+	assert_int(_wm._phase).is_equal(WaveManager.Phase.WAVE_ACTIVE)
+	assert_bool(_wm._pre_wave_timer.is_stopped()).is_true()
+	assert_bool(_spy.was_emitted("mission_phase_changed")).is_true()
+	var args: Array = (_spy.emissions["mission_phase_changed"] as Array)[0]
+	assert_str(args[0]).is_equal("PRE_WAVE")
+	assert_str(args[1]).is_equal("WAVE_ACTIVE")
+
+# ---------------------------------------------------------------------------
 # AC-19: mission_phase_changed payload — previous phase name, new phase name,
 # timestamp. NOTE: the real EventBus signature is
 # mission_phase_changed(previous_phase: String, new_phase: String, timestamp: float)

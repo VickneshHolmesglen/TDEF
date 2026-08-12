@@ -918,6 +918,16 @@ func _on_player_ready() -> void:
 			# must gate here too, not just on the timer-driven path.
 			_check_rebuild_gate()
 			_transition_to(Phase.PRE_WAVE)
+		Phase.PRE_WAVE:
+			# EC-8 (wave-manager.md): pressing Ready (relabeled "Skip Countdown"
+			# by Mission HUD's planning_cluster.gd during PRE_WAVE, same event)
+			# cancels the remaining 10s countdown and immediately transitions to
+			# WAVE_ACTIVE. _transition_to()'s own _stop_phase_timers() call
+			# handles cancelling _pre_wave_timer — no separate stop() needed
+			# here. Real gap found live 2026-08-12: this case was missing
+			# entirely, silently falling into the `_` no-op branch below, so
+			# the Skip Countdown button did nothing.
+			_transition_to(Phase.WAVE_ACTIVE)
 		_:
 			pass  # silently ignored (WAVE_ACTIVE and all other phases)
 
