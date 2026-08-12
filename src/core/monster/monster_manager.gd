@@ -51,6 +51,12 @@ var _entity_lookup: Dictionary = {}      # entity_id(int) -> MonsterEntity
 var _entity_id_counter: int = 0
 var _current_wave_index: int = -1
 var _is_wave_active: bool = false
+## ADR-0036: F2's unclamped running multiplicative product across all
+## equipped tarot_speed_scalar_mult cards -- reset to 1.0 on every mission's
+## (and retry's) wave 1, since MonsterManager is a static MissionScene child,
+## never destroyed/recreated between attempts.
+var _tarot_speed_scalar_raw: float = 1.0
+## F4's clamped output ([0.50, 2.00]) -- what monster_speed_scaling actually reads.
 var _tarot_speed_scalar: float = 1.0
 
 ## Dependency injection — set from Autoloads in _ready(), overrideable in tests.
@@ -376,6 +382,14 @@ func _on_wave_started(wave_number: int, _total_waves: int, _wave_difficulty: flo
 	_is_wave_active = true
 	if wave_number == 1:
 		_entity_id_counter = 0
+		# ADR-0036: reset the Tarot speed-scalar aggregate on every mission's
+		# first wave -- required for retry (MissionSelect.retry_current_mission()
+		# reuses this same MonsterManager instance, re-emitting mission_launched
+		# without destroying/recreating the scene), otherwise a retried mission
+		# would compound this attempt's product against the failed attempt's
+		# stale value instead of restarting from F4's "no card -> 1.0" baseline.
+		_tarot_speed_scalar_raw = 1.0
+		_tarot_speed_scalar = 1.0
 	active_monsters.clear()
 	spawning_entities.clear()
 	_entity_lookup.clear()
@@ -416,9 +430,17 @@ func _on_wave_completed(_wave_number: int, _enemies_remaining: int, _was_boss_br
 	_entity_lookup.clear()
 
 
-func _on_mission_modifier_applied(modifier_type: StringName, modifier_value: float, _source: String) -> void:
-	if modifier_type == &"monster_speed_scalar":
-		_tarot_speed_scalar = modifier_value
+## ADR-0036: F2/F4 -- Formula F2's multiplicative running product across all
+## equipped tarot_speed_scalar_mult cards, clamped [0.50, 2.00] per F4. Real
+## bug fixed here (2026-08-12): this handler previously checked
+## modifier_type == "monster_speed_scalar", a string that matches nothing
+## Tarot ever emits (the real registered value is "tarot_speed_scalar_mult",
+## tarot.md Rule 7's table) -- and even if it had matched, did a last-write-
+## wins overwrite instead of F2's multiplicative stacking across cards.
+func _on_mission_modifier_applied(modifier_type: String, modifier_value: float, _source: String) -> void:
+	if modifier_type == "tarot_speed_scalar_mult":
+		_tarot_speed_scalar_raw *= modifier_value
+		_tarot_speed_scalar = clamp(_tarot_speed_scalar_raw, 0.50, 2.00)
 
 
 ## Dead code at MVP (Grid locks tower writes during WAVE_ACTIVE). Kept for post-MVP.

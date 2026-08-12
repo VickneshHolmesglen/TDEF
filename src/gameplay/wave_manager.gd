@@ -109,6 +109,22 @@ var _spawn_cell: Vector2i = Vector2i(-1, -1)
 var _wave_spawn_entries: Array[WaveSpawnEntry] = []
 var _wave_reward_scalar: float = 1.0
 
+## ADR-0036 (Rule 7/F2/F3): Formula F2's unclamped running multiplicative
+## product across all equipped tarot_reward_scalar_mult cards. Reset in
+## _reset_all_state() (fresh mission or retry). Composed into
+## _wave_reward_scalar at every WAVE_ACTIVE entry, per F3.
+var _tarot_reward_multiplier_raw: float = 1.0
+
+## ADR-0036 (Rule 7/Rule 8 stacking rule): REPLACE-type first-event-wins
+## guards for tarot_difficulty_growth_rate / tarot_wave_config_override.
+## Multiple equipped cards targeting the same REPLACE type is a data-error
+## case the Tarot Deck UI should already prevent at equip-time; the first
+## event received (== lowest deck-slot index, since Tarot emits in
+## _active_mission_deck array order) wins, the rest are logged and discarded.
+var _tarot_growth_rate_override_applied: bool = false
+var _winning_growth_rate_source_card_id: String = ""
+var _tarot_wave_config_override_applied: bool = false
+
 ## Story 004 (F1 formula, wave-manager.md): difficulty_growth_rate comes from
 ## the mission's WaveConfig (Story 006) — until that lands, use a settable
 ## test-injection field, matching this file's established pattern for other
@@ -164,6 +180,7 @@ var _round_robin_counter: int = 0
 ## — deliberately NOT part of _reset_all_state()'s field list, since it is
 ## assigned anew from real mission data every call, not reset to a default.
 var _difficulty_tier: int = 0
+var _current_mission_id: String = ""  ## ADR-0036: needed by tarot_wave_config_override's content-error log format
 
 ## Test-injection seam mirroring MonsterManager's `_grid` field convention
 ## (src/core/monster/monster_manager.gd) — production code reads from this
@@ -219,6 +236,7 @@ func _ready() -> void:
 	GEventBus.boss_died.connect(_on_boss_died)
 	GEventBus.monster_breached.connect(_on_monster_breached)
 	GEventBus.monsters_died_batch.connect(_on_monsters_died_batch)
+	GEventBus.mission_modifier_applied.connect(_on_mission_modifier_applied)
 
 
 func _exit_tree() -> void:
@@ -231,6 +249,7 @@ func _exit_tree() -> void:
 	GEventBus.boss_died.disconnect(_on_boss_died)
 	GEventBus.monster_breached.disconnect(_on_monster_breached)
 	GEventBus.monsters_died_batch.disconnect(_on_monsters_died_batch)
+	GEventBus.mission_modifier_applied.disconnect(_on_mission_modifier_applied)
 
 
 func _make_timer(node_name: String, callback: Callable, wait_time: float) -> Timer:
@@ -278,7 +297,17 @@ func _transition_to(new_phase: Phase) -> void:
 		# until _enter_wave_active() runs, afterward. _wave_index (still at
 		# its pre-increment value here) already equals w - 1, so it's used
 		# directly as the formula's exponent without re-deriving it from w.
-		_wave_reward_scalar = pow(1.0 + difficulty_growth_rate, float(_wave_index))
+		# ADR-0036 (tarot.md Formula F3): composes Tarot's reward layer on top
+		# of this system's own natural formula. _tarot_reward_multiplier_raw
+		# is F2's running product (1.0 when no tarot_reward_scalar_mult card
+		# is equipped); compute_rune_bonus() is read fresh here rather than
+		# cached at SCOUT entry -- rune discovery only happens at mission end,
+		# so it cannot change mid-mission and a fresh read is always correct.
+		var wave_reward_scalar_natural: float = pow(1.0 + difficulty_growth_rate, float(_wave_index))
+		var rune_reward_bonus: float = GTarot.compute_rune_bonus(&"tarot_reward_scalar_mult")
+		_wave_reward_scalar = clamp(
+				wave_reward_scalar_natural * _tarot_reward_multiplier_raw + rune_reward_bonus,
+				1.00, 4.768)
 		GEventBus.wave_started.emit(_wave_index + 1, _wave_scripts_count, _wave_reward_scalar)
 	GEventBus.mission_phase_changed.emit(
 			_phase_name(previous_phase), _phase_name(new_phase), Time.get_unix_time_from_system())
@@ -748,6 +777,7 @@ func _validate_difficulty_growth_rate() -> void:
 func _on_mission_launched(mission_id: String, _modifiers: PackedStringArray, difficulty_tier: int) -> void:
 	_reset_all_state()
 	_difficulty_tier = difficulty_tier
+	_current_mission_id = mission_id  # ADR-0036: needed by tarot_wave_config_override's content-error log format
 	_wave_config = _load_wave_config(mission_id)
 	# Code review fix (Story 006): _default_load_wave_config() establishes a
 	# "never return null" contract, but _wave_config_loader is an injectable
@@ -813,6 +843,14 @@ func _reset_all_state() -> void:
 	_wave_clear_fired = false
 	_templates_ready = false
 	_rebuild_pending_gate = false
+	# ADR-0036: reset on every mission launch AND retry (retry_current_mission()
+	# re-emits mission_launched on this same Autoload instance without
+	# recreating it) -- without this, a retried mission would compound the
+	# reward multiplier against the failed attempt's stale value.
+	_tarot_reward_multiplier_raw = 1.0
+	_tarot_growth_rate_override_applied = false
+	_winning_growth_rate_source_card_id = ""
+	_tarot_wave_config_override_applied = false
 
 
 ## Resolves this mission's WaveConfig via the injectable _wave_config_loader
@@ -930,6 +968,44 @@ func _on_player_ready() -> void:
 			_transition_to(Phase.WAVE_ACTIVE)
 		_:
 			pass  # silently ignored (WAVE_ACTIVE and all other phases)
+
+
+## ADR-0036 (tarot.md Rule 7's table): consumes the 3 modifier_type values
+## this system owns (tarot_speed_scalar_mult is Monster System's own, not
+## consumed here). Fires at SCOUT entry, before PRE_WAVE begins -- well
+## before _wave_reward_scalar's first computation at wave 1's WAVE_ACTIVE
+## entry, and before difficulty_growth_rate is read anywhere.
+func _on_mission_modifier_applied(modifier_type: String, modifier_value: float, source_card_id: String) -> void:
+	match modifier_type:
+		"tarot_reward_scalar_mult":
+			_tarot_reward_multiplier_raw *= modifier_value
+		"tarot_difficulty_growth_rate":
+			if _tarot_growth_rate_override_applied:
+				push_warning("WaveManager: Multiple REPLACE-type Tarot modifiers targeting tarot_difficulty_growth_rate — using slot-index-first card '%s', discarding '%s'." % [_winning_growth_rate_source_card_id, source_card_id])
+				return
+			_tarot_growth_rate_override_applied = true
+			_winning_growth_rate_source_card_id = source_card_id
+			# tarot.md Rule 7: clamped to this system's own validated range —
+			# a mastery-scaled card can exceed [0.10, 0.25] (e.g. Grim Resolve
+			# at Tier 4: 0.25 x 1.75 = 0.4375); _validate_difficulty_growth_rate()
+			# only push_errors and only runs once at mission launch, before this
+			# override applies, so it never re-validates the overridden value.
+			difficulty_growth_rate = clamp(modifier_value, 0.10, 0.25)
+		"tarot_wave_config_override":
+			if _tarot_wave_config_override_applied:
+				return
+			_tarot_wave_config_override_applied = true
+			# Data-model gap (ADR-0036 Constraints): mission_modifier_applied's
+			# payload has no field capable of encoding a target WaveConfig
+			# variant identifier (modifier_value is a float; TarotModifierEntry
+			# has no string/path field). Every event of this type is therefore
+			# unresolvable by construction today — always takes EC-6's
+			# documented graceful-degradation path. Not a shortcut: this is the
+			# only behavior the current Tarot content schema supports, per
+			# tarot.md's own "Vertical Slice scope-flagged" note.
+			push_warning("WaveManager: tarot_wave_config_override targeting %s has no valid alternate WaveConfig for mission %s — using mission's default WaveConfig." % [source_card_id, _current_mission_id])
+		_:
+			pass  # not owned by Wave Manager (tarot_speed_scalar_mult is Monster System's)
 
 
 ## Bug found and fixed during S4-09 (Assemble The Gap Mission Scene) integration

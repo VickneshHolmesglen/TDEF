@@ -38,6 +38,11 @@ func before_test() -> void:
 	# that care about the resolved cell value override it directly.
 	_wm._spawn_cells = [Vector2i(0, 0)]
 
+	# ADR-0036: GTarot is a real Autoload, shared across the whole test
+	# process — reset for isolation (its compute_rune_bonus() is now read by
+	# every WAVE_ACTIVE transition's F3 composition).
+	GTarot.reset_to_defaults()
+
 	_spy = EventBusSpy.new()
 	_spy.watch(GEventBus.wave_started)
 	_spy.watch(GEventBus.monster_spawn_requested)
@@ -48,6 +53,7 @@ func after_test() -> void:
 	_spy = null
 	remove_child(_wm)
 	_wm.free()
+	GTarot.reset_to_defaults()
 
 # ---------------------------------------------------------------------------
 # F1 / AC-17: boundary table — wave_reward_scalar = (1 + r)^(w - 1),
@@ -329,10 +335,12 @@ func test_validate_difficulty_growth_rate_does_not_log_for_default_value() -> vo
 func test_wave_reward_scalar_computed_once_per_wave_not_per_spawn() -> void:
 	var source: String = FileAccess.get_file_as_string("res://src/gameplay/wave_manager.gd")
 
-	# The pow() call for _wave_reward_scalar appears exactly once in the file,
-	# inside _transition_to() — not inside _run_spawn_sequence()'s per-entry
-	# loop, which would make it O(entries) instead of O(1) per wave.
-	var occurrences: int = source.count("_wave_reward_scalar = pow(")
+	# ADR-0036: the natural (pre-Tarot) formula's pow() call now feeds a local
+	# wave_reward_scalar_natural, composed with Tarot's F3 layer into
+	# _wave_reward_scalar via clamp() — still exactly once per wave, inside
+	# _transition_to(), not inside _run_spawn_sequence()'s per-entry loop
+	# (which would make it O(entries) instead of O(1) per wave).
+	var occurrences: int = source.count("wave_reward_scalar_natural: float = pow(")
 	assert_int(occurrences).is_equal(1)
 
 	var run_spawn_sequence_start: int = source.find("func _run_spawn_sequence")
@@ -341,6 +349,108 @@ func test_wave_reward_scalar_computed_once_per_wave_not_per_spawn() -> void:
 	assert_int(transition_to_start).is_greater(-1)
 	# The single pow() call site is textually inside _transition_to(), which
 	# is defined before _run_spawn_sequence() in this file.
-	var pow_call_index: int = source.find("_wave_reward_scalar = pow(")
+	var pow_call_index: int = source.find("wave_reward_scalar_natural: float = pow(")
 	assert_int(pow_call_index).is_greater(transition_to_start)
 	assert_int(pow_call_index).is_less(run_spawn_sequence_start)
+
+# ---------------------------------------------------------------------------
+# ADR-0036 (tarot.md Rule 7/Formula F2/F3): Wave Manager's consumption of
+# mission_modifier_applied. Uses real registered Tarot content
+# (card_bountiful_harvest: tarot_reward_scalar_mult, base 1.75,
+# linked_rune_id=rune_bountiful_harvest, rune_bonus_flat default 0.05).
+# ---------------------------------------------------------------------------
+
+func test_tarot_reward_scalar_mult_composes_into_wave_reward_scalar() -> void:
+	_wm._phase = WaveManager.Phase.PRE_WAVE
+	_wm._templates_ready = true
+	_wm.difficulty_growth_rate = 0.20
+	_wm._wave_index = 0  # about to start wave 1 -> natural = (1.20)^0 = 1.0
+
+	GEventBus.mission_modifier_applied.emit("tarot_reward_scalar_mult", 1.75, "bountiful_harvest")
+	_wm._transition_to(WaveManager.Phase.WAVE_ACTIVE)
+
+	# natural(1.0) * 1.75 + rune_bonus(0.0, not discovered) = 1.75
+	assert_float(_wm._wave_reward_scalar).is_equal_approx(1.75, 0.001)
+
+
+func test_tarot_reward_scalar_mult_stacks_multiplicatively_across_two_cards() -> void:
+	_wm._phase = WaveManager.Phase.PRE_WAVE
+	_wm._templates_ready = true
+	_wm.difficulty_growth_rate = 0.20
+	_wm._wave_index = 0
+
+	GEventBus.mission_modifier_applied.emit("tarot_reward_scalar_mult", 1.75, "bountiful_harvest")
+	GEventBus.mission_modifier_applied.emit("tarot_reward_scalar_mult", 1.20, "some_other_card")
+	_wm._transition_to(WaveManager.Phase.WAVE_ACTIVE)
+
+	# natural(1.0) * (1.75 * 1.20) + 0.0 = 2.10
+	assert_float(_wm._wave_reward_scalar).is_equal_approx(2.10, 0.001)
+
+
+func test_tarot_reward_scalar_mult_composes_discovered_rune_bonus() -> void:
+	_wm._phase = WaveManager.Phase.PRE_WAVE
+	_wm._templates_ready = true
+	_wm.difficulty_growth_rate = 0.20
+	_wm._wave_index = 0
+	GTarot._rune_discovered[&"rune_bountiful_harvest"] = true
+
+	GEventBus.mission_modifier_applied.emit("tarot_reward_scalar_mult", 1.75, "bountiful_harvest")
+	_wm._transition_to(WaveManager.Phase.WAVE_ACTIVE)
+
+	# natural(1.0) * 1.75 + rune_bonus(0.05) = 1.80
+	assert_float(_wm._wave_reward_scalar).is_equal_approx(1.80, 0.001)
+
+
+func test_wave_reward_scalar_final_hard_clamped_at_ceiling() -> void:
+	_wm._phase = WaveManager.Phase.PRE_WAVE
+	_wm._templates_ready = true
+	_wm.difficulty_growth_rate = 0.25
+	_wm._wave_index = 7  # natural = 1.25^7 = 4.768 (wave-manager.md's own worst case)
+
+	GEventBus.mission_modifier_applied.emit("tarot_reward_scalar_mult", 2.00, "reckless_onslaught")
+	_wm._transition_to(WaveManager.Phase.WAVE_ACTIVE)
+
+	assert_float(_wm._wave_reward_scalar).is_equal_approx(4.768, 0.001)
+
+
+# ---------------------------------------------------------------------------
+# ADR-0036: tarot_difficulty_growth_rate REPLACE
+# ---------------------------------------------------------------------------
+
+func test_tarot_difficulty_growth_rate_replaces_authored_value() -> void:
+	_wm.difficulty_growth_rate = 0.20
+
+	GEventBus.mission_modifier_applied.emit("tarot_difficulty_growth_rate", 0.15, "some_card")
+
+	assert_float(_wm.difficulty_growth_rate).is_equal_approx(0.15, 0.001)
+
+
+## Real gap found during ADR-0036's godot-specialist validation: a
+## mastery-scaled card (e.g. Grim Resolve at Tier 4: 0.25 x 1.75 = 0.4375)
+## can exceed [0.10, 0.25] — must be clamped, not applied raw.
+func test_tarot_difficulty_growth_rate_override_is_clamped_to_valid_range() -> void:
+	GEventBus.mission_modifier_applied.emit("tarot_difficulty_growth_rate", 0.4375, "grim_resolve")
+
+	assert_float(_wm.difficulty_growth_rate).is_equal_approx(0.25, 0.001)
+
+
+func test_second_tarot_difficulty_growth_rate_card_is_discarded_data_error_case() -> void:
+	GEventBus.mission_modifier_applied.emit("tarot_difficulty_growth_rate", 0.15, "first_card")
+	GEventBus.mission_modifier_applied.emit("tarot_difficulty_growth_rate", 0.22, "second_card")
+
+	# First event (== lowest deck-slot index) wins; second is discarded.
+	assert_float(_wm.difficulty_growth_rate).is_equal_approx(0.15, 0.001)
+
+
+# ---------------------------------------------------------------------------
+# ADR-0036: tarot_wave_config_override — data-model gap means every event is
+# currently unresolvable by construction (EC-6's fallback path).
+# ---------------------------------------------------------------------------
+
+func test_tarot_wave_config_override_always_takes_fallback_path() -> void:
+	var original_wave_config: WaveConfig = _wm._wave_config
+
+	GEventBus.mission_modifier_applied.emit("tarot_wave_config_override", 1.0, "some_card")
+
+	assert_bool(_wm._tarot_wave_config_override_applied).is_true()
+	assert_object(_wm._wave_config).is_same(original_wave_config)  # unchanged

@@ -1,10 +1,14 @@
 ## Unit tests for Story 006 (TR-tarot-001, ADR-0027): the edge cases owned
-## by this story (EC-1, EC-9) — the other 2 (EC-2/EC-6, AC-37/38) are
-## genuinely blocked on Wave Manager's/Monster System's own consumption-side
-## aggregation logic, which does not exist yet (confirmed by inspection —
-## neither subscribes to mission_modifier_applied). Not fabricated here; see
-## this story's own file for the full accounting. EC-3/4/5/7/8 are already
-## covered by Stories 002-005's own test files, per this story's Out of Scope.
+## by this story (EC-1, EC-9) — the other 2 (EC-2/EC-6, AC-37/38) are covered
+## by ADR-0036's consumption-side test files, not here, since the actual
+## aggregation/clamp/fallback logic they test lives in Wave Manager/Monster
+## System, not Tarot: `tests/unit/monster/monster_tarot_speed_scalar_test.gd`
+## (AC-37/EC-2) and `tests/unit/wave_manager/wave_manager_reward_scalar_test.gd`
+## (AC-38/EC-6, `test_tarot_wave_config_override_always_takes_fallback_path`).
+## RESOLVED 2026-08-12 (ADR-0036) — previously genuinely blocked, since
+## neither system subscribed to mission_modifier_applied at all. EC-3/4/5/7/8
+## are already covered by Stories 002-005's own test files, per this story's
+## Out of Scope.
 ##
 ## Tarot is instantiated directly (Tarot.new(), no add_child()) — handler
 ## methods called directly, matching this system's established convention.
@@ -93,20 +97,9 @@ func test_rune_bonus_survives_permanent_unequip_across_multiple_missions() -> vo
 	assert_int(_tarot.get_mastery_missions_played(&"iron_resolve")).is_equal(1)
 
 # ---------------------------------------------------------------------------
-# AC-37 (EC-2) and AC-38 (EC-6) are NOT implemented in this file — deliberately,
-# not by omission. Both require consumption-side logic that doesn't exist:
-#
-# AC-37 needs Monster System's own tarot_speed_scalar aggregation/clamp
-# (the exact warning-log text is specified as something Monster System
-# produces, per Story 002's own established F1-only boundary for Tarot).
-#
-# AC-38 needs Wave Manager's own tarot_wave_config_override consumption
-# logic (discard-and-log on an invalid/missing target variant).
-#
-# Neither Monster System nor Wave Manager subscribes to
-# mission_modifier_applied anywhere in this codebase (confirmed by
-# inspection) — the same genuine downstream gap Story 002's own AC-15/17
-# already flagged. No placeholder test is included for either: an empty
-# passing test would misrepresent coverage that doesn't exist. Tracked in
-# this story's own file instead.
+# AC-37 (EC-2) and AC-38 (EC-6): RESOLVED 2026-08-12 (ADR-0036). Not
+# duplicated here since the actual assertions belong to the consuming
+# systems' own test files (see class doc comment above) — this file only
+# ever owned Tarot's emission side (Stories 001-005), never the consumption
+# side these two ACs test.
 # ---------------------------------------------------------------------------

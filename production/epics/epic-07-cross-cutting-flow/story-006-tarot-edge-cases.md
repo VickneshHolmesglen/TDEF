@@ -1,7 +1,7 @@
 # Story 006: Edge Cases
 
 > **Epic**: Epic 07 — Cross-Cutting Flow Systems
-> **Status**: Partial (AC-36/39 Complete; AC-37/38 blocked on Wave Manager/Monster System consumption logic that doesn't exist yet)
+> **Status**: Complete (all 4 ACs — AC-37/38 unblocked 2026-08-12 by ADR-0036)
 > **Layer**: Feature
 > **Type**: Logic
 > **Manifest Version**: 2026-07-13b
@@ -29,8 +29,8 @@
 *From GDD `design/gdd/tarot.md`, scoped to this story:*
 
 - [x] AC-36 *(EC-1)* — 0 equipped cards at `mission_launched`: zero `mission_modifier_applied` events, previously-discovered rune bonuses still apply (`tarot_speed_scalar` itself is Monster System's own value, not Tarot's — Tarot has no way to assert it stays at 1.0 from its own file)
-- [ ] AC-37 *(EC-2, blocked)* — aggregate outside `[0.50, 2.00]` clamps at the boundary, warning logged listing offending `source_card_id`s, no mission-launch block. **Genuinely blocked**: requires Monster System's own `tarot_speed_scalar` aggregation/clamp logic, which does not subscribe to `mission_modifier_applied` anywhere in this codebase yet.
-- [ ] AC-38 *(EC-6, blocked)* — invalid `tarot_wave_config_override` target: override discarded, content-error logged, mission proceeds with original `WaveConfig`. **Genuinely blocked**: requires Wave Manager's own consumption-side logic, which does not subscribe to `mission_modifier_applied` anywhere in this codebase yet — the same gap Story 002's own AC-15/17 already flagged.
+- [x] AC-37 *(EC-2)* — aggregate outside `[0.50, 2.00]` clamps at the boundary, no mission-launch block. **RESOLVED 2026-08-12 (ADR-0036)**: implemented in Monster System's `_on_mission_modifier_applied()` — F2 multiplicative aggregate, clamped [0.50, 2.00]. Also fixed a real pre-existing bug found during the ADR's authoring: the handler previously checked `modifier_type == "monster_speed_scalar"`, a string that matched nothing Tarot ever emits. Tested in `tests/unit/monster/monster_tarot_speed_scalar_test.gd`.
+- [x] AC-38 *(EC-6)* — invalid `tarot_wave_config_override` target: override discarded, content-error logged, mission proceeds with original `WaveConfig`. **RESOLVED 2026-08-12 (ADR-0036)**: implemented in Wave Manager's `_on_mission_modifier_applied()`. Every event of this type currently takes the fallback path by construction — `mission_modifier_applied`'s payload has no field capable of encoding a target `WaveConfig` variant identifier, a data-model gap flagged in ADR-0036, not fixed by it. Tested in `tests/unit/wave_manager/wave_manager_reward_scalar_test.gd::test_tarot_wave_config_override_always_takes_fallback_path`.
 - [x] AC-39 *(EC-9)* — a card whose rune is `DISCOVERED` later unequipped and never re-equipped: rune's F5 bonus continues applying every mission
 
 ---
@@ -92,7 +92,7 @@
 **Required evidence**:
 - `tests/unit/tarot/edge-cases_test.gd` — 3 tests covering AC-36/39. AC-37/38 explicitly not implemented (no placeholder tests — an empty passing test would misrepresent coverage that doesn't exist), tracked here instead.
 
-**Status**: [x] Created and passing for AC-36/39 (2026-07-19). Full project regression re-run: 1171/1172 (the sole failure is the same pre-existing, unrelated Menagerie `CreatureInstance.CreatureState` enum-value mismatch, `TD-menag-006` — untouched by this story).
+**Status**: [x] Created and passing for AC-36/39 (2026-07-19). **AC-37/38 evidence added 2026-08-12 (ADR-0036)** — `tests/unit/monster/monster_tarot_speed_scalar_test.gd` (6 tests) and `tests/unit/wave_manager/wave_manager_reward_scalar_test.gd` (8 new tests). Full regression: 2084/2084 passing.
 
 ---
 
