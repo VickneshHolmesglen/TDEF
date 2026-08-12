@@ -127,7 +127,12 @@ func trigger_voice(family: StringName) -> int:
 
 	_last_stolen_voice_id = -1
 	var cap: int = _family_caps.get(family, -1)
-	if cap >= 0 and voices.size() >= cap:
+	# Real bug found during /code-review (2026-08-13): a family cap of 0
+	# (a plausible future OQ-8 tuning value, meaning "fully muted") made
+	# voices.size() (0) >= cap (0) true on the very first trigger, calling
+	# pop_front() on an empty array -- returns null, which crashes assigning
+	# to this statically-typed int field. Not empty guards against this.
+	if cap >= 0 and voices.size() >= cap and not voices.is_empty():
 		_last_stolen_voice_id = voices.pop_front()
 
 	_next_voice_id += 1

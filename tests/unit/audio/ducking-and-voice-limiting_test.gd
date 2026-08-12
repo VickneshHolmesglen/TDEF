@@ -16,6 +16,24 @@ func after_test() -> void:
 	_limiter = null
 
 
+## Real bug found during /code-review (2026-08-13): a family cap of 0 made
+## trigger_voice()'s first call for that family compute
+## voices.size() (0) >= cap (0) as true, calling pop_front() on an empty
+## array -- returns null, which crashes assigning to _last_stolen_voice_id
+## (a statically-typed int field). Never hit by DEFAULT_FAMILY_CAPS (all 6
+## values are >= 1) or any other existing test, but set_family_cap() is a
+## public API explicitly documented as usable once OQ-8's placeholder caps
+## are replaced with real tuned values -- 0 ("fully muted") is a plausible
+## future value.
+func test_trigger_voice_with_zero_cap_does_not_crash() -> void:
+	_limiter.set_family_cap(&"combat_impact", 0)
+
+	var voice_id: int = _limiter.trigger_voice(&"combat_impact")
+
+	assert_int(voice_id).is_greater(0)  # a voice is still always issued (AC-11: never dropped)
+	assert_int(_limiter.get_last_stolen_voice_id()).is_equal(-1)  # nothing to steal, not a crash
+
+
 # ---------------------------------------------------------------------------
 # AC-11: oldest-voice stealing beyond a family's cap.
 # ---------------------------------------------------------------------------
