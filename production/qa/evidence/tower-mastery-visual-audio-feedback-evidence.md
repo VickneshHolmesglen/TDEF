@@ -63,19 +63,30 @@ own path-update/hero-class banner). `MissionHud` now subscribes to
 that same toast feed, guarded by the existing `_terminal` latch so it can't
 fire after DEFEAT/MISSION_COMPLETE.
 
-**Known gap, flagged not silently faked**: the story's own example text is
-"Skill Learned: [Name]", but `SkillDefinitionResource` (the real catalogue
-Resource `GameDataRegistry` loads, `src/core/skill_definition_resource.gd`)
-has no `display_name` field — only `skill_id`. The callout uses the raw
-`skill_id` as a placeholder label (e.g. "Skill Learned: phys_cleave"). A real
-human-readable name needs a schema addition to `SkillDefinitionResource`,
-not invented here.
+**RESOLVED 2026-08-13**: `SkillDefinitionResource` gained a `display_name`
+field (all 8 real content files updated: `phys_cleave`→"Cleave", etc.).
+`MissionHud._on_skill_unlocked()` now looks it up via
+`GGameDataRegistry.get_skill_definition()`, falling back to the raw
+`skill_id` for an unrecognized skill (never a crash). The callout now
+reads e.g. `"Skill Learned: Cleave"`, matching the story's own "[Name]"
+example text. `test_skill_unlocked_shows_a_toast` updated; a new
+`test_skill_unlocked_falls_back_to_raw_id_for_unrecognized_skill` added.
 
-2 new tests (`tests/integration/mission-hud/combat-cluster-live-data_test.gd`:
-`test_skill_unlocked_shows_a_toast`, `test_skill_unlocked_suppressed_after_terminal`),
-both passing. Live-MCP-verified against the real running `the_gap.tscn`:
-`skill_unlocked` correctly produced a `"Skill Learned: phys_cleave"` toast,
-zero errors. Full project regression clean.
+**Also resolved 2026-08-13**: `skill_unlocked` wired into
+`AudioCueDispatcher`'s generic dispatch mechanism (`_connect_all_events()`),
+now possible since Epic 12/Audio System shipped Complete 2026-07-25 (after
+this evidence file's original pass). No real sound content exists yet
+(unchanged OQ-2 gap — same "mechanism real, content placeholder" convention
+every other cue uses) — only the wiring/dispatch mechanism itself is real.
+New test: `data-driven-cue-dispatch_test.gd::test_skill_unlocked_dispatches_its_mapped_cue`.
+
+2 original tests (`tests/integration/mission-hud/combat-cluster-live-data_test.gd`:
+`test_skill_unlocked_shows_a_toast`, `test_skill_unlocked_suppressed_after_terminal`)
+plus the 2 new ones above, all passing. Live-MCP-verified against the real
+running `the_gap.tscn`: `skill_unlocked` correctly produced a
+`"Skill Learned: phys_cleave"` toast at the time of that original pass,
+zero errors. Full project regression clean (296/296 across affected suites
+in this latest pass).
 
 ## Known Limitations (documented, not fabricated as resolved)
 

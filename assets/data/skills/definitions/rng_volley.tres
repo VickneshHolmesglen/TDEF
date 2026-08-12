@@ -5,6 +5,7 @@
 [resource]
 script = ExtResource("1_def")
 skill_id = &"rng_volley"
+display_name = "Volley"
 category = "ranged"
 passive_slot_count = 2
 source_build_signature = &""

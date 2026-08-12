@@ -764,15 +764,16 @@ func _update_retry_focus_ring(_arg: Variant = null) -> void:
 # for _show_transient_banner()'s path-update/hero-class messaging).
 # ---------------------------------------------------------------------------
 
-## KNOWN GAP, flagged not silently faked: the story's own example text is
-## "Skill Learned: [Name]", but `SkillDefinitionResource` (the real catalogue
-## Resource GameDataRegistry loads) has no `display_name` field at all — only
-## `skill_id`. Uses the raw skill_id as a placeholder label; a real display
-## name needs a schema addition to SkillDefinitionResource, not invented here.
+## RESOLVED 2026-08-13: SkillDefinitionResource gained a display_name field
+## (8 real content files updated). Falls back to the raw skill_id for an
+## unrecognized id — matches this project's established unknown-content-id
+## fallback convention, never a crash.
 func _on_skill_unlocked(skill_id: String, _source_tower_id: int) -> void:
 	if _terminal:
 		return
-	_show_toast("Skill Learned: %s" % skill_id)
+	var definition: SkillDefinitionResource = GGameDataRegistry.get_skill_definition(StringName(skill_id))
+	var label: String = definition.display_name if definition != null else skill_id
+	_show_toast("Skill Learned: %s" % label)
 
 
 func _show_toast(text: String) -> void:

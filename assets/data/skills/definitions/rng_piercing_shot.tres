@@ -5,6 +5,7 @@
 [resource]
 script = ExtResource("1_def")
 skill_id = &"rng_piercing_shot"
+display_name = "Piercing Shot"
 category = "ranged"
 passive_slot_count = 1
 source_build_signature = &"found_longshot_t1|weap_longshot_t1|focus_longshot_t1|power_none"

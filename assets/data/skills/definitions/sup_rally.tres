@@ -5,6 +5,7 @@
 [resource]
 script = ExtResource("1_def")
 skill_id = &"sup_rally"
+display_name = "Rally"
 category = "support"
 passive_slot_count = 1
 source_build_signature = &"found_rally_t1|weap_rally_t1|focus_rally_t1|power_none"

@@ -274,10 +274,19 @@ func test_item_removed_shows_a_toast() -> void:
 # the half of that story blocked until Mission HUD existed in code.
 # ---------------------------------------------------------------------------
 
+## RESOLVED 2026-08-13: SkillDefinitionResource gained display_name (real
+## content: phys_cleave -> "Cleave") — the toast now shows the real name,
+## closing the gap this test's own comment history previously documented.
 func test_skill_unlocked_shows_a_toast() -> void:
 	GEventBus.skill_unlocked.emit("phys_cleave", 7)
 
-	assert_str((_hud._toast_host.get_child(0) as Label).text).is_equal("Skill Learned: phys_cleave")
+	assert_str((_hud._toast_host.get_child(0) as Label).text).is_equal("Skill Learned: Cleave")
+
+
+func test_skill_unlocked_falls_back_to_raw_id_for_unrecognized_skill() -> void:
+	GEventBus.skill_unlocked.emit("not_a_real_skill", 7)
+
+	assert_str((_hud._toast_host.get_child(0) as Label).text).is_equal("Skill Learned: not_a_real_skill")
 
 
 func test_skill_unlocked_suppressed_after_terminal() -> void:

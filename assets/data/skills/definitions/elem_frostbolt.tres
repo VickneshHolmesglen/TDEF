@@ -5,6 +5,7 @@
 [resource]
 script = ExtResource("1_def")
 skill_id = &"elem_frostbolt"
+display_name = "Frostbolt"
 category = "elemental"
 passive_slot_count = 1
 source_build_signature = &"found_frostbolt_t1|weap_frostbolt_t1|focus_frostbolt_t1|power_frostbolt_slow_t1"

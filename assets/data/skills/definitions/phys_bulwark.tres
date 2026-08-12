@@ -5,6 +5,7 @@
 [resource]
 script = ExtResource("1_def")
 skill_id = &"phys_bulwark"
+display_name = "Bulwark"
 category = "physical"
 passive_slot_count = 2
 source_build_signature = &""

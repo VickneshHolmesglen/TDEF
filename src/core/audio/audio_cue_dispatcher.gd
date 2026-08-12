@@ -122,6 +122,16 @@ func _connect_all_events() -> void:
 	_wire(GEventBus.structure_upgraded, func(_a: String, _b: String) -> void: dispatch_cue(&"structure_upgraded"))
 	_wire(GEventBus.game_paused, func() -> void: dispatch_cue(&"game_paused"))
 	_wire(GEventBus.game_unpaused, func() -> void: dispatch_cue(&"game_unpaused"))
+	# Epic 06 Story 013 (tower-mastery.md Audio Requirement d): the
+	# skill_unlocked chime half of this story's blocked "Audio stingers" item
+	# -- reuses this exact mechanism (AC-10a's no-op-if-unmapped guarantee),
+	# same precedent as structure_upgraded above. Only the discrete-event half
+	# is wireable here: the enter-range-tick/pause-descending-tone pair has no
+	# corresponding EventBus signal (mastery_progress_updated fires
+	# continuously as progress climbs, not on a discrete enter/exit
+	# transition) -- inventing a new signal for that is a design decision
+	# belonging to tower-mastery.md's own owner, not made unilaterally here.
+	_wire(GEventBus.skill_unlocked, func(_a: String, _b: int) -> void: dispatch_cue(&"skill_unlocked"))
 
 
 func _wire(event_signal: Signal, callable: Callable) -> void:

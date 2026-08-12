@@ -20,6 +20,10 @@ extends Resource
 
 ## Unique skill identifier.
 @export var skill_id: StringName = &""
+## Player-facing name. Real gap found 2026-07-20 (Epic 06 Story 013): this
+## field didn't exist, so Mission HUD's skill_unlocked toast showed the raw
+## skill_id (e.g. "Skill Learned: phys_cleave") instead of a real name.
+@export var display_name: String = ""
 ## Must match tower.md's Foundation archetype enum exactly: physical|ranged|elemental|support.
 @export var category: String = ""
 ## Number of passive sub-slots this skill provides. Valid range: 1-3.
@@ -39,6 +43,8 @@ func validate() -> Array[String]:
 	var errors: Array[String] = []
 	if skill_id == &"":
 		errors.append("skill_id must not be empty")
+	if display_name == "":
+		errors.append("display_name must not be empty")
 	const VALID_CATEGORIES: Array[String] = ["physical", "ranged", "elemental", "support"]
 	if not VALID_CATEGORIES.has(category):
 		errors.append("category must be one of %s (got '%s')" % [VALID_CATEGORIES, category])

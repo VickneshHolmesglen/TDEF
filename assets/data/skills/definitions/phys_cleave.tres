@@ -5,6 +5,7 @@
 [resource]
 script = ExtResource("1_def")
 skill_id = &"phys_cleave"
+display_name = "Cleave"
 category = "physical"
 passive_slot_count = 1
 source_build_signature = &"found_archer_t1|weap_archer_t1|focus_archer_t1|power_none"

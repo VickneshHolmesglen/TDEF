@@ -172,6 +172,21 @@ func test_dispatch_with_empty_cue_map_never_errors() -> void:
 	assert_int(_dispatcher.get_dispatch_count()).is_equal(0)
 
 
+## Epic 06 Story 013 (tower-mastery.md Audio Requirement d): the
+## skill_unlocked chime half of this story's blocked "Audio stingers" item --
+## no real content exists yet (same OQ-2 gap as every other cue), so this
+## confirms the wiring/dispatch mechanism itself, not real playback.
+func test_skill_unlocked_dispatches_its_mapped_cue() -> void:
+	var map := AudioCueMap.new()
+	map.entries = [_fixture_entry(&"skill_unlocked", &"SFX", &"", false)]
+	_dispatcher.set_cue_map(map)
+
+	GEventBus.skill_unlocked.emit("phys_cleave", 42)
+
+	assert_that(_dispatcher.get_last_played_event()).is_equal(&"skill_unlocked")
+	assert_int(_dispatcher.get_dispatch_count()).is_equal(1)
+
+
 # ---------------------------------------------------------------------------
 # Story 004 wiring: real dispatch registers a voice against its family's cap.
 # ---------------------------------------------------------------------------

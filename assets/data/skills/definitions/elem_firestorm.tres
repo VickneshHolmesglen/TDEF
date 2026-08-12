@@ -5,6 +5,7 @@
 [resource]
 script = ExtResource("1_def")
 skill_id = &"elem_firestorm"
+display_name = "Firestorm"
 category = "elemental"
 passive_slot_count = 3
 source_build_signature = &""
