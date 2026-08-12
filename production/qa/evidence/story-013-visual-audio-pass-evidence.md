@@ -56,3 +56,26 @@ One `simulate_input` `click_element` call, made immediately after a fresh scene 
 ## Verdict
 
 **Partial evidence — chrome/room-hosting/badge/header/DEPARTING-chrome-fade real and live-verified; diorama-dependent visuals (stacked-sprite, camera pull-back, structure flourish) blocked on content that doesn't exist yet, consistent with every prior story's honest gap-flagging in this epic.** Full regression: 85/85 automated tests still passing after all changes.
+
+## Update — 2026-08-13 (later session, diorama status re-verified)
+
+The Diorama mechanism itself went from Story 001's placeholder (referenced
+above) to a real, functioning node on 2026-07-25 (see the story file's own
+Completion Notes) — the camera pull-back beat and `sanctuary_structure_built`
+flourish this doc lists as blocked are both real and tested as of that date.
+
+**Real illustrated art landed 2026-07-31 through 2026-08-03**
+(`watchtower.png`, `habitat_tier_1-4.png`, via the project's manual ChatGPT
+workflow) but this evidence doc and the story's own header were never
+revisited to reflect it until found during a 2026-08-13 documentation-
+accuracy pass. Live-verified via Godot MCP screenshot in that pass: both
+structures render as real art in the running game, not placeholder rects.
+
+**The one item from this doc's "explicitly NOT attempted" table that
+remains genuinely open**: "Diorama full stacked-sprite/cast-shadow
+treatment." Real art now exists, but both structures render as a single
+flat `TextureRect` each — not the multi-layer, separately-shadowed sprite
+composition the GDD's AC literally specifies. This is now a scoped art/
+design gap (does the current flat-illustration treatment satisfy the AC's
+intent, or does it need real layered assets?), not a "nothing exists"
+gap — a narrower, more precise open item than this doc originally recorded.
