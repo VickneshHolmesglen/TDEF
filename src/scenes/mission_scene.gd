@@ -49,6 +49,14 @@ const TowerInstanceScene: PackedScene = preload("res://src/core/tower/TowerInsta
 @onready var _hero: Hero = $GameplayRoot/Hero
 @onready var _camera: Camera2D = $GameplayRoot/Camera2D
 @onready var _monsters_container: Node2D = $GameplayRoot/MonstersContainer
+## Real gap found during /code-review (2026-08-13, closing Epic 10's own
+## deferred gate): these two were re-resolved via $GameplayRoot/... on
+## every call instead of cached here like every other node reference in
+## this file -- a real regression against this file's own established
+## convention and the_gap.gd's own precedent (both specialist passes
+## independently flagged this).
+@onready var _tower_system: TowerSystem = $GameplayRoot/TowerSystem
+@onready var _monster_manager: MonsterManager = $GameplayRoot/MonsterManager
 
 ## Tower Build Panel's own pending selection (Mission HUD's Planning Cluster,
 ## added 2026-08-10) — empty string means nothing selected, matching
@@ -159,8 +167,7 @@ func _set_hero_placeholder_stats() -> void:
 
 ## Mirrors the_gap.gd's own identical visual-grouping handler.
 func _on_monster_spawned(payload: MonsterSpawnedEvent) -> void:
-	var monster_manager: MonsterManager = $GameplayRoot/MonsterManager
-	var entity: MonsterEntity = monster_manager._entity_lookup.get(payload.entity_id) as MonsterEntity
+	var entity: MonsterEntity = _monster_manager._entity_lookup.get(payload.entity_id) as MonsterEntity
 	if entity == null:
 		return
 	entity.reparent(_monsters_container)
@@ -230,7 +237,7 @@ func _unhandled_input(event: InputEvent) -> void:
 ## logic without simulating mouse position (see mission_scene_test.gd's
 ## test_successful_placement_clears_selection_and_returns_to_free_cursor).
 func _attempt_placement_at(cell: Vector2i) -> bool:
-	var placed: bool = $GameplayRoot/TowerSystem.place_tower(_selected_blueprint_id, cell)
+	var placed: bool = _tower_system.place_tower(_selected_blueprint_id, cell)
 	if placed:
 		# design/ux/interaction-patterns.md line 61: "Confirm action ...
 		# returns cursor to free-cursor mode." Without this, the stale
@@ -255,5 +262,5 @@ func _update_placement_preview() -> void:
 	if data == null:
 		return
 	var cell: Vector2i = GGrid.world_to_cell(get_global_mouse_position())
-	var preview: PlacementPreview = $GameplayRoot/TowerSystem.get_placement_preview(_selected_blueprint_id, cell)
+	var preview: PlacementPreview = _tower_system.get_placement_preview(_selected_blueprint_id, cell)
 	GEventBus.tower_placement_preview_updated.emit(cell, data.foundation.footprint, preview.valid)
