@@ -84,6 +84,7 @@ const ELEMENT_TRAIL_CONFIGS: Dictionary[String, Dictionary] = {
 }
 
 const AoeRingVisualScene: PackedScene = preload("res://src/scenes/AoeRingVisual.tscn")
+const ArmoredHitSparkVFXScene: PackedScene = preload("res://src/scenes/ArmoredHitSparkVFX.tscn")
 
 var _projectile_type: String = "BALLISTIC"
 var _target_entity: Node2D = null   ## weak by convention — validity checked every frame, never assumed
@@ -94,6 +95,7 @@ var _flight_duration: float = 0.2
 var _color: Color = Color.WHITE
 var _aoe_radius: float = 0.0   ## world units; 0 = no detonation ring (BALLISTIC single-target or non-BALLISTIC)
 var _element: String = ""      ## forwarded to the AoE ring for its own per-element particle burst
+var _is_armored: bool = false  ## design/gdd/monster.md "Armored Hit Effect" — spawns a spark on arrival
 
 @onready var _line: Line2D = $Line2D
 @onready var _trail_particles: CPUParticles2D = $TrailParticles2D
@@ -108,8 +110,12 @@ var _element: String = ""      ## forwarded to the AoE ring for its own per-elem
 ## per its own doc comment, but this is re-checked at arrival time regardless.
 ## element: WeaponComponent.element — only consulted when archetype is
 ## "elemental"; ignored (and harmless if non-empty) for every other archetype.
+## is_armored: tower_attacked's own is_armored flag (pre-resolved by Tower
+## System — this node never reads monster state directly, matching D&S's
+## own "never reads monster state directly" convention). Hero hits never
+## set this — see ArmoredHitSparkVFX's own doc comment for why.
 func configure(archetype: String, projectile_type: String, start_pos: Vector2, target: Node2D,
-		aoe_radius: float = 0.0, element: String = "") -> void:
+		aoe_radius: float = 0.0, element: String = "", is_armored: bool = false) -> void:
 	_projectile_type = projectile_type
 	_start_position = start_pos
 	global_position = start_pos
@@ -117,6 +123,7 @@ func configure(archetype: String, projectile_type: String, start_pos: Vector2, t
 	_target_last_known = target.global_position if is_instance_valid(target) else start_pos
 	_aoe_radius = aoe_radius
 	_element = element
+	_is_armored = is_armored
 
 	if archetype == "elemental" and ELEMENT_COLORS.has(element):
 		_color = ELEMENT_COLORS[element]
@@ -174,6 +181,8 @@ func _process(delta: float) -> void:
 	if _elapsed >= _flight_duration:
 		if _projectile_type == "BALLISTIC" and _aoe_radius > 0.0:
 			_spawn_aoe_ring()
+		if _is_armored:
+			_spawn_armored_spark()
 		queue_free()
 
 
@@ -189,6 +198,20 @@ func _spawn_aoe_ring() -> void:
 	parent.add_child(ring)
 	ring.global_position = global_position
 	ring.configure(_aoe_radius, _color, _element)
+
+
+## design/gdd/monster.md "Armored Hit Effect" — plays at the hit point on
+## arrival, for every projectile_type (BALLISTIC/HOMING/BEAM alike), not
+## just AoE hits. Uses the target's live position if it's still around,
+## falling back to the last-known position if it died mid-flight (same
+## fallback convention as _update_ballistic/_update_homing use already).
+func _spawn_armored_spark() -> void:
+	var parent: Node = get_parent()
+	if parent == null:
+		return
+	var spark: Node2D = ArmoredHitSparkVFXScene.instantiate()
+	parent.add_child(spark)
+	spark.global_position = _target_entity.global_position if is_instance_valid(_target_entity) else _target_last_known
 
 
 ## Returns the Line2D points for the trailing tail: a plain straight segment

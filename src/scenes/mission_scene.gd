@@ -297,7 +297,7 @@ func _on_tower_destroyed(tower_id: int, _grid_position: Vector2i, archetype: Str
 ## arrival ("AoE Detonation" section) — ProjectileVisual spawns that itself
 ## once the flight completes.
 func _on_tower_attacked(tower_id: int, target_monster_id: int, _damage_amount: float,
-		_is_siege: bool, _is_armored: bool, _effect_type: String, _effect_value: float,
+		_is_siege: bool, is_armored: bool, _effect_type: String, _effect_value: float,
 		_effect_duration: float) -> void:
 	var tower_vis: TowerInstance = _tower_visuals.get(tower_id) as TowerInstance
 	if tower_vis == null:
@@ -312,7 +312,7 @@ func _on_tower_attacked(tower_id: int, target_monster_id: int, _damage_amount: f
 	_gameplay_root.add_child(projectile)
 	var aoe_radius_world: float = state.weapon.aoe_radius_cells * CELL_SIZE
 	projectile.configure(state.foundation.archetype, state.weapon.projectile_type,
-			tower_vis.global_position, target, aoe_radius_world, state.weapon.element)
+			tower_vis.global_position, target, aoe_radius_world, state.weapon.element, is_armored)
 
 	# design/gdd/tower.md "Tower TARGETING/ATTACKING States" — both fire from
 	# this same event; see TowerInstance's own TARGETING consts for why they
