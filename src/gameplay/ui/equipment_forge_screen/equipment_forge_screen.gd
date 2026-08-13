@@ -19,12 +19,17 @@ extends Control
 ##      same shell-instancing reason (RoomHost's generic mount mechanism has
 ##      no room-specific injection seam).
 ##
-## A "Tower Assembly" 4th tab (design/quick-specs/tower-assembly-2026-08-11.md)
-## was drafted into this file by an earlier implementation pass but is out of
-## scope for both this screen's own GDD and Story 003 — removed 2026-08-12,
-## not part of any epic/story currently in flight. TowerAssembly's own
-## backend (src/core/tower_assembly/) is untouched; only this screen's UI
-## wiring for it was reverted.
+## Tower Assembly 4th tab (design/quick-specs/tower-assembly-2026-08-11.md,
+## player-requested 2026-08-14): a prior pass drafted this tab, then reverted
+## it as out of scope for this screen's GDD/Story 003 (see git history) —
+## re-added on direct player request. Discovers TowerAssembly the same way
+## as EquipmentForge/BuildingUpgrade, via the "tower_assembly" group.
+## 4-column slot pickers (Foundation/Weapon/Focus/Power); an owned
+## TowerComponent item is classified into its column by loading its
+## component_resource_path and checking its resolved Resource's runtime
+## type (FoundationComponent/WeaponComponent/FocusComponent/PowerComponent)
+## — not by trusting a naming convention, matching TowerAssembly.
+## assemble_tower()'s own cross-check discipline.
 ##
 ## Scope, honestly bounded:
 ## - "Reuses Crafting's own recipe-list panel wholesale" (GDD) is not
@@ -53,7 +58,13 @@ const FOCUS_RING_COLOR: Color = Color(1.0, 0.85, 0.2, 1.0)  ## placeholder — a
 
 const TAB_CRAFT: int = 0
 const TAB_IMBUE: int = 1
-const TAB_UPGRADE: int = 2
+const TAB_ASSEMBLE: int = 2
+const TAB_UPGRADE: int = 3
+
+## Slot key -> component script's global class_name, used to classify an
+## owned TowerComponent item into its assembly column purely from its
+## resolved Resource's runtime type.
+const SLOT_KEYS: Array[String] = ["foundation", "weapon", "focus", "power"]
 
 ## Non-color-safe, distinct-shape textual tags per requirement category
 ## (Rule 2a/AC-6b) — this project has no authored icon set for these 4
@@ -68,14 +79,16 @@ const REQUIREMENT_CATEGORY_TAGS: Dictionary[String, String] = {
 }
 
 ## Injectable for tests; defaults to the shell-owned instances discovered via
-## the "equipment_forge"/"building_upgrade" groups (see each system's own
-## doc comment for why these can't be direct Autoload references).
+## the "equipment_forge"/"building_upgrade"/"tower_assembly" groups (see each
+## system's own doc comment for why these can't be direct Autoload references).
 @export var equipment_forge: EquipmentForge
 @export var building_upgrade: BuildingUpgrade
+@export var tower_assembly: TowerAssembly
 
 @onready var _input_mode_tracker: InputModeTracker = $InputModeTracker
 @onready var _craft_tab_button: Button = $MainLayout/HeaderRow/CraftTabButton
 @onready var _imbue_tab_button: Button = $MainLayout/HeaderRow/ImbueTabButton
+@onready var _assemble_tab_button: Button = $MainLayout/HeaderRow/AssembleTabButton
 @onready var _upgrade_tab_button: Button = $MainLayout/HeaderRow/UpgradeTabButton
 @onready var _craft_view: Control = $MainLayout/CraftView
 @onready var _recipe_list: VBoxContainer = $MainLayout/CraftView/RecipeList
@@ -87,17 +100,34 @@ const REQUIREMENT_CATEGORY_TAGS: Dictionary[String, String] = {
 @onready var _upgrade_view: Control = $MainLayout/UpgradeView
 @onready var _upgrade_list: VBoxContainer = $MainLayout/UpgradeView/UpgradeList
 @onready var _upgrade_confirm_dialog: ConfirmationDialog = $UpgradeConfirmDialog
+@onready var _assemble_view: Control = $MainLayout/AssembleView
+@onready var _assemble_slot_lists: Dictionary[String, VBoxContainer] = {
+	"foundation": $MainLayout/AssembleView/SlotColumns/FoundationColumn/FoundationList,
+	"weapon": $MainLayout/AssembleView/SlotColumns/WeaponColumn/WeaponList,
+	"focus": $MainLayout/AssembleView/SlotColumns/FocusColumn/FocusList,
+	"power": $MainLayout/AssembleView/SlotColumns/PowerColumn/PowerList,
+}
+@onready var _assembled_list: VBoxContainer = $MainLayout/AssembleView/SlotColumns/AssembledColumn/AssembledList
+@onready var _assemble_name_edit: LineEdit = $MainLayout/AssembleView/AssembleFooter/AssembleNameEdit
+@onready var _assemble_button: Button = $MainLayout/AssembleView/AssembleFooter/AssembleButton
+@onready var _assemble_confirm_dialog: ConfirmationDialog = $AssembleConfirmDialog
 
 var _recipe_buttons: Dictionary[StringName, Button] = {}
 var _item_buttons: Dictionary[int, Button] = {}
 var _rune_buttons: Dictionary[StringName, Button] = {}
 var _upgrade_buttons: Dictionary[StringName, Button] = {}      ## upgrade_id -> the row's purchase Button
 var _upgrade_chip_rows: Dictionary[StringName, Control] = {}   ## upgrade_id -> its per-requirement chip HBoxContainer
+var _assemble_component_buttons: Dictionary[String, Dictionary] = {}  ## slot -> {instance_id: Button}
 
 var _active_tab: int = TAB_CRAFT
 var _selected_instance_id: int = -1
 var _pending_imbue_rune_id: StringName = &""
 var _pending_upgrade_id: StringName = &""
+## slot ("foundation"/"weapon"/"focus"/"power") -> selected instance_id, or
+## -1 if that slot has no selection yet. Reset on every successful assembly
+## and on tab-away-and-back is deliberately NOT done -- a player switching
+## tabs mid-selection (e.g. to check Craft) should not lose their picks.
+var _assemble_selection: Dictionary[String, int] = {"foundation": -1, "weapon": -1, "focus": -1, "power": -1}
 
 
 func _ready() -> void:
@@ -105,13 +135,18 @@ func _ready() -> void:
 		equipment_forge = get_tree().get_first_node_in_group(&"equipment_forge") as EquipmentForge
 	if building_upgrade == null:
 		building_upgrade = get_tree().get_first_node_in_group(&"building_upgrade") as BuildingUpgrade
+	if tower_assembly == null:
+		tower_assembly = get_tree().get_first_node_in_group(&"tower_assembly") as TowerAssembly
 
 	_craft_tab_button.pressed.connect(_on_tab_button_pressed.bind(TAB_CRAFT))
 	_imbue_tab_button.pressed.connect(_on_tab_button_pressed.bind(TAB_IMBUE))
+	_assemble_tab_button.pressed.connect(_on_tab_button_pressed.bind(TAB_ASSEMBLE))
 	_upgrade_tab_button.pressed.connect(_on_tab_button_pressed.bind(TAB_UPGRADE))
 	_imbue_cancel_button.pressed.connect(_on_cancel_item_selection_pressed)
 	_imbue_confirm_dialog.confirmed.connect(_on_imbue_confirmed)
 	_upgrade_confirm_dialog.confirmed.connect(_on_upgrade_confirmed)
+	_assemble_button.pressed.connect(_on_assemble_button_pressed)
+	_assemble_confirm_dialog.confirmed.connect(_on_assemble_confirmed)
 	_input_mode_tracker.input_mode_changed.connect(_on_input_mode_changed)
 
 	GEventBus.recipe_discovered.connect(_on_forge_state_changed)
@@ -122,11 +157,13 @@ func _ready() -> void:
 	GEventBus.structure_upgraded.connect(_on_forge_state_changed)
 	GEventBus.item_added.connect(_on_forge_state_changed)
 	GEventBus.item_removed.connect(_on_forge_state_changed)
+	GEventBus.tower_assembled.connect(_on_forge_state_changed)
 
 	_rebuild_recipe_list()
 	_rebuild_item_list()
 	_rebuild_rune_list()
 	_rebuild_upgrade_list()
+	_rebuild_assemble_lists()
 	_apply_view_visibility()
 
 
@@ -139,6 +176,7 @@ func disconnect_own_subscriptions() -> void:
 	GEventBus.structure_upgraded.disconnect(_on_forge_state_changed)
 	GEventBus.item_added.disconnect(_on_forge_state_changed)
 	GEventBus.item_removed.disconnect(_on_forge_state_changed)
+	GEventBus.tower_assembled.disconnect(_on_forge_state_changed)
 
 
 func _on_forge_state_changed(_a: Variant = null, _b: Variant = null, _c: Variant = null) -> void:
@@ -146,6 +184,7 @@ func _on_forge_state_changed(_a: Variant = null, _b: Variant = null, _c: Variant
 	_rebuild_item_list()
 	_rebuild_rune_list()
 	_rebuild_upgrade_list()
+	_rebuild_assemble_lists()
 
 
 # ---------------------------------------------------------------------------
@@ -160,6 +199,7 @@ func _on_tab_button_pressed(tab: int) -> void:
 func _apply_view_visibility() -> void:
 	_craft_view.visible = _active_tab == TAB_CRAFT
 	_imbue_view.visible = _active_tab == TAB_IMBUE
+	_assemble_view.visible = _active_tab == TAB_ASSEMBLE
 	_upgrade_view.visible = _active_tab == TAB_UPGRADE
 
 
@@ -469,6 +509,151 @@ func get_upgrade_chip_row(upgrade_id: StringName) -> Control:
 
 
 # ---------------------------------------------------------------------------
+# Assemble Towers tab — combines 4 owned crafted tower components into a new
+# placeable TowerBlueprintData. See design/quick-specs/tower-assembly-
+# 2026-08-11.md and TowerAssembly.assemble_tower()'s own doc comment.
+# ---------------------------------------------------------------------------
+
+func _rebuild_assemble_lists() -> void:
+	for slot: String in SLOT_KEYS:
+		var list: VBoxContainer = _assemble_slot_lists[slot]
+		for child: Node in list.get_children():
+			child.queue_free()
+		_assemble_component_buttons[slot] = {}
+
+	for i: int in range(GInventory.get_slot_count()):
+		var contents: Dictionary = GInventory.get_slot_contents(i)
+		if contents.is_empty():
+			continue
+		if (contents.get("quantity", 0) as int) <= 0 or contents.get("damaged", false):
+			continue
+		var item_id: StringName = StringName(contents["item_id"] as String)
+		var slot: String = _classify_component_slot(item_id)
+		if slot == "":
+			continue
+		var instance_id: int = contents["instance_id"] as int
+		var definition: ItemDefinitionResource = GGameDataRegistry.get_item_definition(item_id)
+		var button: Button = _create_assemble_component_button(slot, instance_id, definition)
+		_assemble_slot_lists[slot].add_child(button)
+		_assemble_component_buttons[slot][instance_id] = button
+
+	_rebuild_assembled_list()
+
+
+## Classifies an owned TowerComponent item into its assembly column by
+## loading its component_resource_path and checking the resolved Resource's
+## runtime type -- matches TowerAssembly._resolve_component_resource()'s own
+## cross-check discipline (never trusts a naming convention). Returns "" for
+## any non-TowerComponent item or an item with no valid component link.
+func _classify_component_slot(item_id: StringName) -> String:
+	var definition: ItemDefinitionResource = GGameDataRegistry.get_item_definition(item_id)
+	if definition == null or definition.item_type != &"TowerComponent" or definition.component_resource_path == "":
+		return ""
+	var component: Resource = ResourceLoader.load(definition.component_resource_path)
+	if component is FoundationComponent:
+		return "foundation"
+	if component is WeaponComponent:
+		return "weapon"
+	if component is FocusComponent:
+		return "focus"
+	if component is PowerComponent:
+		return "power"
+	return ""
+
+
+func _create_assemble_component_button(slot: String, instance_id: int, definition: ItemDefinitionResource) -> Button:
+	var button := Button.new()
+	button.name = "Component_%d" % instance_id
+	button.focus_mode = Control.FOCUS_ALL
+	button.clip_text = true
+	var display_name: String = definition.display_name if definition != null else str(instance_id)
+	var selected: bool = _assemble_selection.get(slot, -1) == instance_id
+	button.text = "%s [SELECTED]" % display_name if selected else display_name
+	button.pressed.connect(_on_assemble_component_pressed.bind(slot, instance_id))
+	_wire_focus_ring(button)
+	return button
+
+
+## Pressing an already-selected component in its own slot deselects it --
+## every slot always has a way back to "none selected" without a modal,
+## mirroring Imbue's CancelSelectionButton role but inline on the button
+## itself rather than a separate control (this tab has 4 independent
+## selections, not 1).
+func _on_assemble_component_pressed(slot: String, instance_id: int) -> void:
+	_assemble_selection[slot] = -1 if _assemble_selection.get(slot, -1) == instance_id else instance_id
+	_rebuild_assemble_lists()
+
+
+func _rebuild_assembled_list() -> void:
+	for child: Node in _assembled_list.get_children():
+		child.queue_free()
+	if tower_assembly == null:
+		return
+	var tower_ids: Array[StringName] = tower_assembly.get_all_assembled_tower_ids()
+	tower_ids.sort()
+	for tower_id: StringName in tower_ids:
+		var blueprint: TowerBlueprintData = tower_assembly.get_assembled_blueprint(tower_id)
+		if blueprint == null:
+			continue
+		var label := Label.new()
+		label.name = "Assembled_%s" % String(tower_id)
+		label.text = blueprint.display_name
+		_assembled_list.add_child(label)
+
+
+## GDD: single press arms the confirmation modal -- assembly consumes 4 real
+## crafted items, a hard-to-reverse action in the same category as Imbue/
+## Upgrade, which both already use ConfirmationDialog rather than a bare
+## single-press commit. A no-op with any slot unselected or an empty name --
+## matches this file's established "safe no-op on an ineligible target"
+## convention (_on_recipe_pressed's own comment).
+func _on_assemble_button_pressed() -> void:
+	if not _all_slots_selected() or _assemble_name_edit.text.strip_edges() == "":
+		return
+	_assemble_confirm_dialog.dialog_text = tr("FORGE_ASSEMBLE_CONFIRM_TEXT")
+	_assemble_confirm_dialog.popup_centered()
+
+
+func _all_slots_selected() -> bool:
+	for slot: String in SLOT_KEYS:
+		if _assemble_selection.get(slot, -1) == -1:
+			return false
+	return true
+
+
+func _on_assemble_confirmed() -> void:
+	if tower_assembly == null or not _all_slots_selected():
+		return
+	var display_name: String = _assemble_name_edit.text.strip_edges()
+	tower_assembly.assemble_tower(
+			_assemble_selection["foundation"], _assemble_selection["weapon"],
+			_assemble_selection["focus"], _assemble_selection["power"], display_name)
+	# Reset regardless of the call's own success/rejection -- a rejected
+	# assembly (e.g. a selected component was consumed elsewhere between
+	# selection and confirm) leaves nothing meaningful to keep selected; the
+	# rebuild below re-lists whatever the player still actually owns.
+	_assemble_selection = {"foundation": -1, "weapon": -1, "focus": -1, "power": -1}
+	_assemble_name_edit.text = ""
+	_rebuild_assemble_lists()
+
+
+# ---------------------------------------------------------------------------
+# Assemble tab test/inspection accessors
+# ---------------------------------------------------------------------------
+
+func get_assemble_component_button(slot: String, instance_id: int) -> Button:
+	return (_assemble_component_buttons.get(slot, {}) as Dictionary).get(instance_id)
+
+
+func get_assemble_selection(slot: String) -> int:
+	return _assemble_selection.get(slot, -1)
+
+
+func get_assembled_list() -> VBoxContainer:
+	return _assembled_list
+
+
+# ---------------------------------------------------------------------------
 # Focus ring (ADR-0011, matches the other room screens)
 # ---------------------------------------------------------------------------
 
@@ -499,6 +684,13 @@ func _on_input_mode_changed(_mode: InputModeTracker.InputMode) -> void:
 	for buttons: Dictionary in [_recipe_buttons, _item_buttons, _rune_buttons, _upgrade_buttons]:
 		for key: Variant in buttons.keys():
 			var button: Button = buttons[key]
+			var ring: Panel = button.get_node_or_null("FocusRing") as Panel
+			if ring != null:
+				ring.visible = button.has_focus() and _input_mode_tracker.is_focus_ring_visible()
+	for slot: String in _assemble_component_buttons:
+		var slot_buttons: Dictionary = _assemble_component_buttons[slot]
+		for instance_id: Variant in slot_buttons:
+			var button: Button = slot_buttons[instance_id]
 			var ring: Panel = button.get_node_or_null("FocusRing") as Panel
 			if ring != null:
 				ring.visible = button.has_focus() and _input_mode_tracker.is_focus_ring_visible()

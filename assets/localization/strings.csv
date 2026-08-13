@@ -14,6 +14,7 @@ FORGE_TAB_ASSEMBLE,Assemble Towers
 FORGE_TAB_UPGRADE,Upgrade Buildings
 FORGE_ASSEMBLE_NAME_PLACEHOLDER,Tower Name
 FORGE_ASSEMBLE_BUTTON,Assemble Tower
+FORGE_ASSEMBLE_CONFIRM_TEXT,Assemble this tower? The 4 selected components will be consumed.
 FORGE_UPGRADE_CONFIRM_TEXT,Purchase this upgrade?
 MENAGERIE_NO_SELECTION,Select a creature to view details
 MENAGERIE_SACRIFICE_CONFIRM_TEXT,Sacrifice this creature? This cannot be undone.

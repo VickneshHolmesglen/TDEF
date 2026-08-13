@@ -23,6 +23,7 @@ const UPGRADE_ID: StringName = &"upgrade_watchtower_reinforced"
 
 var _forge: EquipmentForge
 var _building_upgrade: BuildingUpgrade
+var _tower_assembly: TowerAssembly
 var _runner: GdUnitSceneRunner
 var _screen: Control
 
@@ -31,6 +32,8 @@ func before_test() -> void:
 	_forge = EquipmentForge.new()
 	_building_upgrade = BuildingUpgrade.new()
 	add_child(_building_upgrade)
+	_tower_assembly = TowerAssembly.new()
+	add_child(_tower_assembly)
 	GInventory.reset_to_defaults()
 	GDefenseBuilding.reset_to_defaults()
 	GMenagerie.reset_to_defaults()
@@ -39,6 +42,7 @@ func before_test() -> void:
 	_screen = _runner.scene() as Control
 	_screen.set("equipment_forge", _forge)
 	_screen.set("building_upgrade", _building_upgrade)
+	_screen.set("tower_assembly", _tower_assembly)
 	_rebuild_all()
 
 
@@ -50,6 +54,10 @@ func after_test() -> void:
 		remove_child(_building_upgrade)
 		_building_upgrade.free()
 	_building_upgrade = null
+	if _tower_assembly != null and is_instance_valid(_tower_assembly):
+		remove_child(_tower_assembly)
+		_tower_assembly.free()
+	_tower_assembly = null
 	GInventory.reset_to_defaults()
 	GDefenseBuilding.reset_to_defaults()
 	GMenagerie.reset_to_defaults()
@@ -65,6 +73,8 @@ func _rebuild_all() -> void:
 	_screen.call("_rebuild_rune_list")
 	@warning_ignore("unsafe_method_access")
 	_screen.call("_rebuild_upgrade_list")
+	@warning_ignore("unsafe_method_access")
+	_screen.call("_rebuild_assemble_lists")
 
 
 func _discover(recipe_id: StringName) -> void:
@@ -95,10 +105,18 @@ func test_tab_button_switches_to_imbue_view() -> void:
 	assert_bool(_screen.call("is_showing_craft")).is_false()
 
 
+func test_assemble_tab_is_reachable() -> void:
+	@warning_ignore("unsafe_method_access")
+	_screen.call("_on_tab_button_pressed", 2)  # TAB_ASSEMBLE
+	assert_int(_screen.call("get_active_tab")).is_equal(2)
+	var assemble_view: Control = _screen.get_node("MainLayout/AssembleView") as Control
+	assert_bool(assemble_view.visible).is_true()
+
+
 func test_upgrade_tab_is_reachable() -> void:
 	@warning_ignore("unsafe_method_access")
-	_screen.call("_on_tab_button_pressed", 2)  # TAB_UPGRADE
-	assert_int(_screen.call("get_active_tab")).is_equal(2)
+	_screen.call("_on_tab_button_pressed", 3)  # TAB_UPGRADE
+	assert_int(_screen.call("get_active_tab")).is_equal(3)
 	var upgrade_view: Control = _screen.get_node("MainLayout/UpgradeView") as Control
 	assert_bool(upgrade_view.visible).is_true()
 
@@ -352,6 +370,121 @@ func test_equipment_display_name_falls_back_to_title_case_for_unknown_item_id() 
 	@warning_ignore("unsafe_method_access")
 	var resolved: String = _screen.call("_resolve_requirement_display_name", "equipment", &"not_a_real_item_id")
 	assert_str(resolved).is_equal("Not A Real Item Id")
+
+
+# ---------------------------------------------------------------------------
+# Assemble Towers tab (design/quick-specs/tower-assembly-2026-08-11.md)
+# ---------------------------------------------------------------------------
+
+const FOUNDATION_ITEM: StringName = &"iron_foundation_component"
+const WEAPON_ITEM: StringName = &"advanced_weapon_component"
+const FOCUS_ITEM: StringName = &"basic_focus_component"
+const POWER_ITEM: StringName = &"tier4_power_component"
+
+
+## Places one of each real crafted tower component into Inventory and
+## returns their instance_ids keyed by slot -- mirrors tower_assembly_test.gd's
+## own _seed_full_component_set() helper.
+func _seed_full_component_set() -> Dictionary[String, int]:
+	var ids: Dictionary[String, int] = {}
+	for entry: Array in [["foundation", FOUNDATION_ITEM], ["weapon", WEAPON_ITEM], ["focus", FOCUS_ITEM], ["power", POWER_ITEM]]:
+		var slot: String = entry[0]
+		var item_id: StringName = entry[1]
+		var definition: ItemDefinitionResource = GGameDataRegistry.get_item_definition(item_id)
+		var slot_index: int = GInventory.add_unique_item(definition)
+		ids[slot] = GInventory.get_slot_contents(slot_index)["instance_id"] as int
+	return ids
+
+
+func test_owned_components_are_listed_in_their_correct_slot_columns() -> void:
+	var ids: Dictionary[String, int] = _seed_full_component_set()
+	_rebuild_all()
+
+	for slot: String in ids:
+		@warning_ignore("unsafe_method_access")
+		var button: Button = _screen.call("get_assemble_component_button", slot, ids[slot])
+		assert_object(button).is_not_null()
+
+
+func test_pressing_a_component_selects_it_and_pressing_again_deselects() -> void:
+	var ids: Dictionary[String, int] = _seed_full_component_set()
+	_rebuild_all()
+
+	@warning_ignore("unsafe_method_access")
+	_screen.call("_on_assemble_component_pressed", "foundation", ids["foundation"])
+	@warning_ignore("unsafe_method_access")
+	assert_int(_screen.call("get_assemble_selection", "foundation")).is_equal(ids["foundation"])
+
+	@warning_ignore("unsafe_method_access")
+	_screen.call("_on_assemble_component_pressed", "foundation", ids["foundation"])
+	@warning_ignore("unsafe_method_access")
+	assert_int(_screen.call("get_assemble_selection", "foundation")).is_equal(-1)
+
+
+func test_assemble_button_with_incomplete_selection_does_not_open_confirm_dialog() -> void:
+	var ids: Dictionary[String, int] = _seed_full_component_set()
+	_rebuild_all()
+	# Only 3 of 4 slots selected -- foundation is deliberately left unset.
+	@warning_ignore("unsafe_method_access")
+	_screen.call("_on_assemble_component_pressed", "weapon", ids["weapon"])
+	@warning_ignore("unsafe_method_access")
+	_screen.call("_on_assemble_component_pressed", "focus", ids["focus"])
+	@warning_ignore("unsafe_method_access")
+	_screen.call("_on_assemble_component_pressed", "power", ids["power"])
+	(_screen.get_node("MainLayout/AssembleView/AssembleFooter/AssembleNameEdit") as LineEdit).text = "My Tower"
+
+	@warning_ignore("unsafe_method_access")
+	_screen.call("_on_assemble_button_pressed")
+
+	var dialog: ConfirmationDialog = _screen.get_node("AssembleConfirmDialog") as ConfirmationDialog
+	assert_bool(dialog.visible).is_false()
+
+
+func test_assemble_button_with_empty_name_does_not_open_confirm_dialog() -> void:
+	var ids: Dictionary[String, int] = _seed_full_component_set()
+	_rebuild_all()
+	for slot: String in ids:
+		@warning_ignore("unsafe_method_access")
+		_screen.call("_on_assemble_component_pressed", slot, ids[slot])
+
+	@warning_ignore("unsafe_method_access")
+	_screen.call("_on_assemble_button_pressed")
+
+	var dialog: ConfirmationDialog = _screen.get_node("AssembleConfirmDialog") as ConfirmationDialog
+	assert_bool(dialog.visible).is_false()
+
+
+func test_full_selection_and_confirm_assembles_consumes_and_lists_the_new_tower() -> void:
+	var ids: Dictionary[String, int] = _seed_full_component_set()
+	_rebuild_all()
+	for slot: String in ids:
+		@warning_ignore("unsafe_method_access")
+		_screen.call("_on_assemble_component_pressed", slot, ids[slot])
+	(_screen.get_node("MainLayout/AssembleView/AssembleFooter/AssembleNameEdit") as LineEdit).text = "My Custom Tower"
+
+	@warning_ignore("unsafe_method_access")
+	_screen.call("_on_assemble_button_pressed")
+	var dialog: ConfirmationDialog = _screen.get_node("AssembleConfirmDialog") as ConfirmationDialog
+	assert_bool(dialog.visible).is_true()
+
+	@warning_ignore("unsafe_method_access")
+	_screen.call("_on_assemble_confirmed")
+
+	# Source items consumed.
+	for slot: String in ids:
+		assert_bool(GInventory.get_slot_contents_by_instance_id(ids[slot]).is_empty()).is_true()
+	# Selections and name reset.
+	for slot: String in ids:
+		@warning_ignore("unsafe_method_access")
+		assert_int(_screen.call("get_assemble_selection", slot)).is_equal(-1)
+	assert_str((_screen.get_node("MainLayout/AssembleView/AssembleFooter/AssembleNameEdit") as LineEdit).text).is_equal("")
+	# New tower shows up in the Assembled Towers column.
+	@warning_ignore("unsafe_method_access")
+	var assembled_list: VBoxContainer = _screen.call("get_assembled_list")
+	var names: Array[String] = []
+	for child: Node in assembled_list.get_children():
+		names.append((child as Label).text)
+	assert_array(names).contains(["My Custom Tower"])
 
 
 # ---------------------------------------------------------------------------
