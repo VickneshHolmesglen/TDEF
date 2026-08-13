@@ -1,0 +1,63 @@
+[gd_resource type="Resource" script_class="TowerBlueprintData" load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://src/core/tower/tower_blueprint_data.gd" id="1"]
+[ext_resource type="Script" path="res://src/core/tower/foundation_component.gd" id="2"]
+[ext_resource type="Script" path="res://src/core/tower/weapon_component.gd" id="3"]
+[ext_resource type="Script" path="res://src/core/tower/focus_component.gd" id="4"]
+[ext_resource type="Script" path="res://src/core/tower/power_component.gd" id="5"]
+
+[sub_resource type="Resource" id="Foundation_firebolt"]
+script = ExtResource("2")
+component_id = "found_firebolt_t1"
+archetype = "elemental"
+hp_base = 90.0
+tier = 1
+tier_multiplier = 1.0
+tier_dps_multiplier = 1.0
+tier_cost_factor = 1.0
+tier_boss_dps_multiplier = 1.0
+footprint = Vector2i(1, 1)
+pre_placement_perk = ""
+archetype_cost_factor = 1.0
+damaged = false
+
+[sub_resource type="Resource" id="Weapon_firebolt"]
+script = ExtResource("3")
+component_id = "weap_firebolt_t1"
+weapon_damage = 14.0
+attack_speed = 0.7
+projectile_type = "BALLISTIC"
+element = "fire"
+aura_effect_type = ""
+aura_effect_value = 0.0
+aura_radius_cells = 0
+aoe_radius_cells = 2
+damaged = false
+
+[sub_resource type="Resource" id="Focus_firebolt"]
+script = ExtResource("4")
+component_id = "focus_firebolt_t1"
+targeting_mode = "LOWEST_HP"
+attack_range_cells = 4
+cone_half_angle = 90.0
+facing_direction = "N"
+damaged = false
+
+[sub_resource type="Resource" id="Power_firebolt"]
+script = ExtResource("5")
+component_id = "power_firebolt_burn_t1"
+effect_type = "burn"
+effect_value = 0.1
+effect_duration = 3.0
+constellation_eligibility_tag = "elemental_fire"
+damaged = false
+
+[resource]
+script = ExtResource("1")
+tower_id = &"firebolt_turret"
+display_name = "Firebolt Turret"
+placement_cost = 10
+foundation = SubResource("Foundation_firebolt")
+weapon = SubResource("Weapon_firebolt")
+focus = SubResource("Focus_firebolt")
+power = SubResource("Power_firebolt")
