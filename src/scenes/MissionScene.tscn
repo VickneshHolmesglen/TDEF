@@ -178,4 +178,42 @@ anchor_right = 0.5
 anchor_bottom = 0.5
 text = "Retry"
 
+[node name="BreachFlashOverlay" type="Control" parent="GameplayRoot/HUD"]
+layout_mode = 3
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+
+[node name="TopEdge" type="ColorRect" parent="GameplayRoot/HUD/BreachFlashOverlay"]
+layout_mode = 3
+anchor_right = 1.0
+offset_bottom = 24.0
+mouse_filter = 2
+color = Color(1, 0, 0, 0)
+
+[node name="BottomEdge" type="ColorRect" parent="GameplayRoot/HUD/BreachFlashOverlay"]
+layout_mode = 3
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -24.0
+mouse_filter = 2
+color = Color(1, 0, 0, 0)
+
+[node name="LeftEdge" type="ColorRect" parent="GameplayRoot/HUD/BreachFlashOverlay"]
+layout_mode = 3
+anchor_bottom = 1.0
+offset_right = 24.0
+mouse_filter = 2
+color = Color(1, 0, 0, 0)
+
+[node name="RightEdge" type="ColorRect" parent="GameplayRoot/HUD/BreachFlashOverlay"]
+layout_mode = 3
+anchor_left = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -24.0
+mouse_filter = 2
+color = Color(1, 0, 0, 0)
+
 [node name="PauseMenu" parent="GameplayRoot" instance=ExtResource("8_pause")]

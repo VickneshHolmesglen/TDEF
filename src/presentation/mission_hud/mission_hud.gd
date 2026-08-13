@@ -75,6 +75,27 @@ var _materials_tally: Dictionary[String, int] = {}
 @onready var _retry_button: Button = $RetryButton
 var _retry_focus_ring: Panel = null
 
+## monster.md "Breach — Visual Feedback": STANDARD/ELITE breach flashes only
+## the goal-side screen edge red; BOSS breach (tier==2) flashes all four
+## edges. "One flash per event, no stacking" — each edge gets its own tween
+## so a rapid second breach on the same edge restarts the fade rather than
+## layering.
+const BREACH_FLASH_COLOR: Color = Color(1.0, 0.0, 0.0, 0.55)
+const BREACH_FLASH_IN_DURATION: float = 0.25  ## within the GDD's 0.2-0.3s window
+const BREACH_FLASH_FADE_DURATION: float = 0.5
+const BREACH_COUNTER_PULSE_SCALE: float = 1.2
+const BREACH_COUNTER_PULSE_DURATION: float = 0.3
+@onready var _breach_flash_top: ColorRect = $BreachFlashOverlay/TopEdge
+@onready var _breach_flash_bottom: ColorRect = $BreachFlashOverlay/BottomEdge
+@onready var _breach_flash_left: ColorRect = $BreachFlashOverlay/LeftEdge
+@onready var _breach_flash_right: ColorRect = $BreachFlashOverlay/RightEdge
+var _breach_flash_tweens: Dictionary[StringName, Tween] = {}
+var _breach_counter_pulse_tween: Tween = null
+## Computed lazily from GGrid.get_goal_cells() on first breach — the goal
+## cell's position doesn't change mid-mission, so this is cached rather than
+## recomputed per breach.
+var _goal_side_edge: StringName = &""
+
 ## Story 001's Rule 4 fields don't track current phase directly (each handler
 ## branches on the new_phase argument it receives) — Story 005 needs to know
 ## the CURRENT phase at the moment tower_destroyed fires (AC-23's own gate),
@@ -397,12 +418,18 @@ func _on_monsters_died_batch(payloads: Array[MonsterDiedEvent]) -> void:
 
 ## AC-5: breach counter never resets mid-mission (only via _reset_local_state()
 ## at the SCOUT mount). Also decrements the display-only enemy count, tier-agnostic.
-func _on_monster_breached(_entity_id: int, _monster_id: StringName, _tier: int) -> void:
+func _on_monster_breached(_entity_id: int, _monster_id: StringName, tier: int) -> void:
 	if _terminal:
 		return
 	_enemies_alive_display = maxi(_enemies_alive_display - 1, 0)
 	_breach_count += 1
 	_on_breach_count_changed_display()  # AC-59
+	_pulse_breach_counter()
+	if tier == BOSS_TIER:
+		for edge: StringName in [&"top", &"bottom", &"left", &"right"]:
+			_flash_breach_edge(edge)
+	else:
+		_flash_breach_edge(_get_goal_side_edge())
 
 
 ## AC-61: renders/updates this tower_id's bar immediately, creating its Label
@@ -627,6 +654,77 @@ func _on_boss_hp_changed(entity_id: int, current_hp: float, max_hp: float) -> vo
 ## AC-59.
 func _on_breach_count_changed_display() -> void:
 	_breach_counter_label.text = "Breaches: %d" % _breach_count
+
+
+## monster.md "Breach counter pulses (scale pop 1.2x, 0.3s)". Restarts on
+## every breach rather than stacking — matches the "no stacking" flash rule.
+func _pulse_breach_counter() -> void:
+	if _breach_counter_pulse_tween != null and _breach_counter_pulse_tween.is_valid():
+		_breach_counter_pulse_tween.kill()
+	_breach_counter_label.pivot_offset = _breach_counter_label.size * 0.5
+	_breach_counter_label.scale = Vector2.ONE
+	_breach_counter_pulse_tween = create_tween()
+	_breach_counter_pulse_tween.tween_property(_breach_counter_label, "scale",
+			Vector2.ONE * BREACH_COUNTER_PULSE_SCALE, BREACH_COUNTER_PULSE_DURATION * 0.5)
+	_breach_counter_pulse_tween.tween_property(_breach_counter_label, "scale",
+			Vector2.ONE, BREACH_COUNTER_PULSE_DURATION * 0.5)
+
+
+## Determines which single screen edge is "goal-side" from GGrid's goal
+## cell(s), relative to grid center — cached after first computation since
+## the goal doesn't move mid-mission. Falls back to &"bottom" (this project's
+## path generally runs top-to-bottom) if no goal cell is registered yet.
+func _get_goal_side_edge() -> StringName:
+	if _goal_side_edge != &"":
+		return _goal_side_edge
+	var goal_cells: Array[Vector2i] = GGrid.get_goal_cells()
+	if goal_cells.is_empty():
+		return &"bottom"
+	var cols: int = GGrid.get_grid_cols()
+	var rows: int = GGrid.get_grid_rows()
+	var goal: Vector2i = goal_cells[0]
+	var dx: float = goal.x - (cols - 1) * 0.5
+	var dy: float = goal.y - (rows - 1) * 0.5
+	# Normalize by axis extent so a wide-but-shallow grid doesn't always
+	# resolve to a left/right edge (or vice versa for a tall-but-narrow one).
+	var norm_x: float = dx / maxf(float(cols) * 0.5, 1.0)
+	var norm_y: float = dy / maxf(float(rows) * 0.5, 1.0)
+	if absf(norm_x) >= absf(norm_y):
+		_goal_side_edge = &"right" if norm_x > 0.0 else &"left"
+	else:
+		_goal_side_edge = &"bottom" if norm_y > 0.0 else &"top"
+	return _goal_side_edge
+
+
+## Flashes a single screen edge red then fades it out. "One flash per event,
+## no stacking" — killing any in-flight tween for this edge and resetting
+## alpha to full before restarting satisfies that without a queue.
+func _flash_breach_edge(edge: StringName) -> void:
+	var rect: ColorRect = _breach_flash_rect_for(edge)
+	if rect == null:
+		return
+	if _breach_flash_tweens.has(edge):
+		var existing: Tween = _breach_flash_tweens[edge]
+		if existing.is_valid():
+			existing.kill()
+	rect.color = BREACH_FLASH_COLOR
+	var tween: Tween = create_tween()
+	tween.tween_interval(BREACH_FLASH_IN_DURATION)
+	tween.tween_property(rect, "color:a", 0.0, BREACH_FLASH_FADE_DURATION)
+	_breach_flash_tweens[edge] = tween
+
+
+func _breach_flash_rect_for(edge: StringName) -> ColorRect:
+	match edge:
+		&"top":
+			return _breach_flash_top
+		&"bottom":
+			return _breach_flash_bottom
+		&"left":
+			return _breach_flash_left
+		&"right":
+			return _breach_flash_right
+	return null
 
 
 ## AC-62: floating damage number, spawned as a transient fading Label —
