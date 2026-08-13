@@ -4,6 +4,17 @@ Reference log of prompts used with external image generators for game art,
 kept so a prompt can be reused, tweaked, or regenerated later without
 reconstructing the art-bible constraints from scratch each time.
 
+> **Batch request, not yet started (0/4)**: `assets/art-generation-requests-2026-08-13-mission-cards.md`
+> is a standalone, upload-ready prompt batch for the 4 Mission Select card
+> environment-motif icons (The Gap, The Foothills, The Hollow, The Narrows) —
+> closes `mission-select.md`'s "no mission-card art exists" gap flagged in
+> `mission_select_screen.gd`'s own doc comment. **Different style from every
+> other batch in this log**: flat solid-color silhouette/pictogram icons (UI
+> Parchment `#DDD4B0` only, on black for cutout), explicitly NOT the
+> hand-painted diorama/pixel-art register every other asset in this project
+> uses — `mission-select.md` requires this screen to read as "a clean
+> operations screen," not a diorama piece.
+
 > **Batch request, not yet started (0/5)**: `assets/art-generation-requests-2026-08-07-terrain.md`
 > is a standalone, upload-ready prompt batch for the 5 Mission Field terrain
 > tiles (one per `Grid.CellType`: PLACEABLE/PATH/SPAWN/GOAL/BLOCKED),

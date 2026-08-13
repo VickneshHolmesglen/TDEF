@@ -94,6 +94,12 @@ func _on_run_modifier_selected(_modifier_id: String, _modifier_value: float) -> 
 # Mission list (primary/left region, always visible)
 # ---------------------------------------------------------------------------
 
+## design/gdd/mission-select.md "small flat environment-motif icon" — Art
+## Bible 3.3's 24x24px minimum readable size, with headroom for this list's
+## row height.
+const MISSION_ICON_SIZE: Vector2 = Vector2(32.0, 32.0)
+
+
 func _rebuild_mission_list() -> void:
 	for child: Node in _mission_list.get_children():
 		child.queue_free()
@@ -106,7 +112,7 @@ func _rebuild_mission_list() -> void:
 	for mission_id: String in mission_ids:
 		var entry: MissionEntry = entries[mission_id]
 		var button: Button = _create_mission_button(entry)
-		_mission_list.add_child(button)
+		_mission_list.add_child(_build_mission_row(entry, button))
 		_mission_buttons[mission_id] = button
 
 
@@ -116,9 +122,31 @@ func _create_mission_button(entry: MissionEntry) -> Button:
 	button.focus_mode = Control.FOCUS_ALL
 	button.clip_text = true
 	button.text = _mission_entry_text(entry)
+	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	button.pressed.connect(_on_mission_pressed.bind(entry.mission_id))
 	_wire_focus_ring(button)
 	return button
+
+
+## Wraps the button with its optional card icon in an HBoxContainer. The
+## button itself remains the direct target of _mission_buttons/
+## get_mission_button() (test/focus accessor) — this wrapper is purely
+## presentational and doesn't change what's tracked or how focus/press wiring
+## works. entry.icon == null (not yet art-authored for this mission) renders
+## as no icon, not an error — matches MissionEntry.icon's own doc comment.
+func _build_mission_row(entry: MissionEntry, button: Button) -> HBoxContainer:
+	var row := HBoxContainer.new()
+	row.name = "Row_%s" % entry.mission_id
+	if entry.icon != null:
+		var icon_rect := TextureRect.new()
+		icon_rect.name = "Icon"
+		icon_rect.texture = entry.icon
+		icon_rect.custom_minimum_size = MISSION_ICON_SIZE
+		icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		row.add_child(icon_rect)
+	row.add_child(button)
+	return row
 
 
 ## GDD: "fully covered on the mission card itself" — 3-tier best-time summary,

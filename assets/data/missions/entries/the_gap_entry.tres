@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" path="res://src/core/mission_entry.gd" id="1_entry"]
 [ext_resource type="Script" path="res://src/foundation/grid/grid_config.gd" id="2_grid"]
+[ext_resource type="Texture2D" path="res://assets/art/ui/mission_card_the_gap.png" id="3_icon"]
 
 [sub_resource type="Resource" id="Resource_grid_gap"]
 script = ExtResource("2_grid")
@@ -207,3 +208,4 @@ display_name = "The Gap"
 grid_config = SubResource("Resource_grid_gap")
 wave_config_path = "res://assets/data/waves/the_gap_waves.tres"
 base_wave_count = 6
+icon = ExtResource("3_icon")

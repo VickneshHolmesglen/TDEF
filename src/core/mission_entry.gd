@@ -32,6 +32,13 @@ extends Resource
 @export var base_wave_count: int = 5
 ## Suggested difficulty tier (1-3) shown in the catalogue UI.
 @export var recommended_difficulty_tier: int = 1
+## design/gdd/mission-select.md "Mission list presentation": "a small flat
+## environment-motif icon (silhouette-level, not a diorama render)" shown per
+## card. Optional at load time (null renders as no icon, not an error) since
+## not every mission entry is guaranteed art-complete the moment it's
+## authored — matches this project's established "content can lag code"
+## tolerance for other optional per-entry art fields.
+@export var icon: Texture2D = null
 
 
 ## Load-time validation. Called by GameDataRegistry at boot (ADR-0009 pattern).

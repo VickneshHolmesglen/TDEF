@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" path="res://src/core/mission_entry.gd" id="1_entry"]
 [ext_resource type="Script" path="res://src/foundation/grid/grid_config.gd" id="2_grid"]
+[ext_resource type="Texture2D" path="res://assets/art/ui/mission_card_the_foothills.png" id="3_icon"]
 
 [sub_resource type="Resource" id="Resource_grid_foothills"]
 script = ExtResource("2_grid")
@@ -208,3 +209,4 @@ grid_config = SubResource("Resource_grid_foothills")
 wave_config_path = "res://assets/data/waves/the_foothills_waves.tres"
 base_wave_count = 5
 recommended_difficulty_tier = 1
+icon = ExtResource("3_icon")

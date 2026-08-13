@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" path="res://src/core/mission_entry.gd" id="1_entry"]
 [ext_resource type="Script" path="res://src/foundation/grid/grid_config.gd" id="2_grid"]
+[ext_resource type="Texture2D" path="res://assets/art/ui/mission_card_the_narrows.png" id="3_icon"]
 
 [sub_resource type="Resource" id="Resource_grid_narrows"]
 script = ExtResource("2_grid")
@@ -99,3 +100,4 @@ grid_config = SubResource("Resource_grid_narrows")
 wave_config_path = "res://assets/data/waves/the_narrows_waves.tres"
 base_wave_count = 4
 recommended_difficulty_tier = 2
+icon = ExtResource("3_icon")
