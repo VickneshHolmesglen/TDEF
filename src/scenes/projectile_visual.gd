@@ -13,9 +13,9 @@ extends Node2D
 ## TowerInstance/MonsterInstance already are — acceptable at this project's
 ## current concurrent-tower scale, revisit if the GDD's 80 shots/sec peak
 ## becomes a real profiled cost). AoE detonation rings and per-element
-## (fire/frost) color ARE covered — see _spawn_aoe_ring() and ELEMENT_COLORS.
-## Poison/lightning/arcane sub-colors are out of MVP scope per the GDD's own
-## Vertical-Slice/Alpha staging and fall back to the generic elemental color.
+## (fire/frost/poison/lightning) color ARE covered — see _spawn_aoe_ring()
+## and ELEMENT_COLORS. Arcane is Alpha scope per the GDD's own staging and
+## falls back to the generic elemental color.
 
 const FLIGHT_SPEED: float = 900.0   ## world units/sec — BALLISTIC/HOMING travel time
 const BEAM_DURATION: float = 0.15   ## seconds a BEAM stays visible
@@ -30,13 +30,16 @@ const ARCHETYPE_COLORS: Dictionary[String, Color] = {
 	"elemental": Color(0.65, 0.85, 1.0),      ## ice blue — generic fallback for an unset/unrecognized element
 }
 
-## design/gdd/tower.md "Elemental sub-type color language" table — MVP scope
-## (Fire + Frost) only. Poison/lightning/arcane are Vertical Slice/Alpha
-## scope and have no assigned color yet; WeaponComponent.element for those
-## falls through to ARCHETYPE_COLORS["elemental"] above.
+## design/gdd/tower.md "Elemental sub-type color language" table — Fire,
+## Frost (MVP scope) and Poison, Lightning (Vertical Slice scope) all have
+## real colors. Arcane is Alpha scope and has none yet; WeaponComponent.element
+## == "arcane" (or any unrecognized value) falls through to
+## ARCHETYPE_COLORS["elemental"] above.
 const ELEMENT_COLORS: Dictionary[String, Color] = {
-	"fire": Color(0.85, 0.35, 0.1),    ## red-orange
-	"frost": Color(0.65, 0.85, 1.0),   ## ice blue / white
+	"fire": Color(0.85, 0.35, 0.1),      ## red-orange
+	"frost": Color(0.65, 0.85, 1.0),     ## ice blue / white
+	"poison": Color(0.42, 0.8, 0.15),    ## acid green
+	"lightning": Color(0.95, 0.9, 0.35), ## electric yellow / white
 }
 
 const AoeRingVisualScene: PackedScene = preload("res://src/scenes/AoeRingVisual.tscn")
