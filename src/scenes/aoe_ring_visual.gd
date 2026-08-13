@@ -20,7 +20,7 @@ extends Node2D
 ## configure() with a recognized element, so they get the ring only, exactly
 ## as before this pass — the GDD's particle-burst mandate is elemental-only.
 
-const DURATION: float = 0.4  ## seconds, per the GDD's "~0.4s" spec
+const DURATION: float = 0.4  ## seconds, default — per the GDD's own "~0.4s" AoE Detonation spec
 const RING_WIDTH: float = 4.0
 
 ## Per-element one-shot burst parameters. Color is NOT duplicated here — it
@@ -64,7 +64,8 @@ const ELEMENT_PARTICLE_CONFIGS: Dictionary[String, Dictionary] = {
 var _target_radius: float = 32.0
 var _color: Color = Color.WHITE
 var _elapsed: float = 0.0
-## DURATION unless an element burst is active and its own lifetime runs
+var _duration: float = DURATION  ## overridable per-call — see configure()'s duration param
+## _duration unless an element burst is active and its own lifetime runs
 ## longer — the ring's own fade timing (_draw()) is never affected by this,
 ## only how long this node stays alive to let the particle burst finish.
 var _self_destruct_time: float = DURATION
@@ -72,17 +73,24 @@ var _self_destruct_time: float = DURATION
 @onready var _particles: CPUParticles2D = $CPUParticles2D
 
 
-## target_radius: world units (WeaponComponent.aoe_radius_cells * cell_size).
+## target_radius: world units (WeaponComponent.aoe_radius_cells * cell_size,
+## or any other radius for non-AoE-detonation uses of this generic ring —
+## e.g. the Support aura pulse and tower placement-confirm ripple both reuse
+## this same node for their own "expanding ring" visual).
 ## color: the firing tower's archetype/element color, matching
 ## ProjectileVisual's own ARCHETYPE_COLORS/ELEMENT_COLORS (no distinct
 ## AoE-ring palette specified by the GDD).
 ## element: WeaponComponent.element — only recognized values in
 ## ELEMENT_PARTICLE_CONFIGS get a particle burst; anything else (including
 ## "" for non-elemental archetypes, and "arcane") gets the ring only.
-func configure(target_radius: float, color: Color, element: String = "") -> void:
+## duration: seconds for the ring's own expand-then-fade — defaults to
+## DURATION (the AoE Detonation spec's own "~0.4s"); other reuses of this
+## node pass their own spec'd duration (e.g. placement-confirm's "~0.3s").
+func configure(target_radius: float, color: Color, element: String = "", duration: float = DURATION) -> void:
 	_target_radius = target_radius
 	_color = color
-	_self_destruct_time = DURATION
+	_duration = duration
+	_self_destruct_time = _duration
 	if ELEMENT_PARTICLE_CONFIGS.has(element):
 		_spawn_particle_burst(color, ELEMENT_PARTICLE_CONFIGS[element] as Dictionary)
 
@@ -124,7 +132,7 @@ func _process(delta: float) -> void:
 
 
 func _draw() -> void:
-	var t: float = clampf(_elapsed / DURATION, 0.0, 1.0)
+	var t: float = clampf(_elapsed / _duration, 0.0, 1.0)
 	var radius: float = _target_radius * t
 	var color: Color = _color
 	color.a = 1.0 - t

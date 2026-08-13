@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://plcrjctflsh0scn0first0pass"]
+
+[ext_resource type="Script" path="res://src/scenes/placement_reject_flash.gd" id="1_reject_flash"]
+
+[node name="PlacementRejectFlash" type="Node2D"]
+script = ExtResource("1_reject_flash")

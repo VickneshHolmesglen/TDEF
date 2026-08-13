@@ -44,12 +44,21 @@ const CELL_SIZE: float = 64.0
 const TowerInstanceScene: PackedScene = preload("res://src/core/tower/TowerInstance.tscn")
 const ProjectileVisualScene: PackedScene = preload("res://src/scenes/ProjectileVisual.tscn")
 const AoeRingVisualScene: PackedScene = preload("res://src/scenes/AoeRingVisual.tscn")
+const PlacementRejectFlashScene: PackedScene = preload("res://src/scenes/PlacementRejectFlash.tscn")
 
 ## design/gdd/tower.md "Archetype projectile color language": Support =
 ## "Warm gold / pale light." Support towers never fire a projectile (Rule
 ## 5a), so this never lived in ProjectileVisual's own ARCHETYPE_COLORS —
 ## it's used only for the aura pulse ring.
 const SUPPORT_AURA_COLOR: Color = Color(0.95, 0.75, 0.3)
+
+## design/gdd/tower.md "Placement Confirmed" Visual/Audio Requirements: the
+## ghost "solidifies to full opacity" — no archetype/element color is
+## specified for the ripple itself (unlike the projectile/detonation VFX,
+## which are explicitly elemental), so a neutral pale color is used
+## uniformly across every archetype.
+const PLACEMENT_CONFIRM_COLOR: Color = Color(0.95, 0.95, 0.9)
+const PLACEMENT_CONFIRM_DURATION: float = 0.3  ## seconds, per the GDD's own "~0.3s" spec
 
 @onready var _mission_select_screen: Control = $MissionSelectScreen
 @onready var _gameplay_root: Node2D = $GameplayRoot
@@ -209,6 +218,22 @@ func _on_tower_placed(payload: TowerPlacedEvent) -> void:
 	if state != null:
 		vis.set_idle_ambient(state.weapon.element)
 	_tower_visuals[payload.tower_id] = vis
+	_spawn_placement_confirm_ripple(vis.position, payload.footprint)
+
+
+## design/gdd/tower.md "Placement Confirmed" Visual/Audio Requirements: "Ghost
+## solidifies to full opacity with a brief outward scale ripple on footprint
+## cells (~0.3s). Tower immediately enters IDLE appearance." The IDLE
+## appearance half is already satisfied by `vis` itself appearing
+## immediately above — this only adds the ripple. Reuses AoeRingVisual (the
+## same "expanding ring" shape as the AoE detonation/aura pulse VFX) at a
+## shorter, configurable duration rather than building a distinct node.
+func _spawn_placement_confirm_ripple(world_position: Vector2, footprint: Vector2i) -> void:
+	var ripple: Node2D = AoeRingVisualScene.instantiate()
+	_gameplay_root.add_child(ripple)
+	ripple.global_position = world_position
+	var radius: float = maxf(footprint.x, footprint.y) * CELL_SIZE * 0.6
+	ripple.configure(radius, PLACEMENT_CONFIRM_COLOR, "", PLACEMENT_CONFIRM_DURATION)
 
 
 func _on_tower_removed(tower_id: int, _grid_position: Vector2i, _archetype: String, _constellation_eligibility_tag: String) -> void:
@@ -302,7 +327,8 @@ func _unhandled_input(event: InputEvent) -> void:
 ## logic without simulating mouse position (see mission_scene_test.gd's
 ## test_successful_placement_clears_selection_and_returns_to_free_cursor).
 func _attempt_placement_at(cell: Vector2i) -> bool:
-	var placed: bool = _tower_system.place_tower(_selected_blueprint_id, cell)
+	var blueprint_id: StringName = _selected_blueprint_id
+	var placed: bool = _tower_system.place_tower(blueprint_id, cell)
 	if placed:
 		# design/ux/interaction-patterns.md line 61: "Confirm action ...
 		# returns cursor to free-cursor mode." Without this, the stale
@@ -310,7 +336,26 @@ func _attempt_placement_at(cell: Vector2i) -> bool:
 		# the tower just placed the next time the mouse crossed its cell.
 		_selected_blueprint_id = &""
 		_update_placement_preview()
+	else:
+		_spawn_placement_reject_flash(cell, blueprint_id)
 	return placed
+
+
+## design/gdd/tower.md "Placement Rejected" Visual/Audio Requirements:
+## "Footprint cells flash red (2–3 rapid pulses, ~0.4s), then return to
+## normal grid state." Fires for every rejection gate (phase/resource/
+## footprint/path) uniformly — place_tower() collapses all 4 into a single
+## bool, so this can't (and per the GDD doesn't need to) distinguish why.
+func _spawn_placement_reject_flash(cell: Vector2i, blueprint_id: StringName) -> void:
+	var blueprints: Dictionary = GGameDataRegistry.get_all_tower_blueprints()
+	var data: TowerBlueprintData = blueprints.get(blueprint_id) as TowerBlueprintData
+	if data == null:
+		return
+	var footprint: Vector2i = data.foundation.footprint
+	var flash: Node2D = PlacementRejectFlashScene.instantiate()
+	_gameplay_root.add_child(flash)
+	flash.global_position = GGrid.cell_to_world(cell) + Vector2(footprint - Vector2i.ONE) * CELL_SIZE * 0.5
+	flash.configure(Vector2(footprint) * CELL_SIZE)
 
 
 ## Grid Placement Cursor (design/ux/interaction-patterns.md) — this scene
