@@ -6,3 +6,8 @@
 script = ExtResource("1_instance")
 
 [node name="Sprite2D" type="Sprite2D" parent="."]
+
+[node name="IdleParticles2D" type="CPUParticles2D" parent="."]
+emitting = false
+amount = 3
+one_shot = false

@@ -43,6 +43,13 @@ const CELL_SIZE: float = 64.0
 
 const TowerInstanceScene: PackedScene = preload("res://src/core/tower/TowerInstance.tscn")
 const ProjectileVisualScene: PackedScene = preload("res://src/scenes/ProjectileVisual.tscn")
+const AoeRingVisualScene: PackedScene = preload("res://src/scenes/AoeRingVisual.tscn")
+
+## design/gdd/tower.md "Archetype projectile color language": Support =
+## "Warm gold / pale light." Support towers never fire a projectile (Rule
+## 5a), so this never lived in ProjectileVisual's own ARCHETYPE_COLORS —
+## it's used only for the aura pulse ring.
+const SUPPORT_AURA_COLOR: Color = Color(0.95, 0.75, 0.3)
 
 @onready var _mission_select_screen: Control = $MissionSelectScreen
 @onready var _gameplay_root: Node2D = $GameplayRoot
@@ -91,6 +98,7 @@ func _ready() -> void:
 	GEventBus.tower_removed.connect(_on_tower_removed)
 	GEventBus.tower_destroyed.connect(_on_tower_destroyed)
 	GEventBus.tower_attacked.connect(_on_tower_attacked)
+	GEventBus.tower_aura_pulse.connect(_on_tower_aura_pulse)
 
 
 func _exit_tree() -> void:
@@ -102,6 +110,7 @@ func _exit_tree() -> void:
 	GEventBus.tower_removed.disconnect(_on_tower_removed)
 	GEventBus.tower_destroyed.disconnect(_on_tower_destroyed)
 	GEventBus.tower_attacked.disconnect(_on_tower_attacked)
+	GEventBus.tower_aura_pulse.disconnect(_on_tower_aura_pulse)
 
 
 ## Real bug fix, 2026-08-09 — see grid_initialized's own doc comment
@@ -193,6 +202,12 @@ func _on_tower_placed(payload: TowerPlacedEvent) -> void:
 	_gameplay_root.add_child(vis)
 	vis.position = GGrid.cell_to_world(payload.grid_position) + Vector2(payload.footprint - Vector2i.ONE) * CELL_SIZE * 0.5
 	vis.configure(payload.archetype)
+	# state.weapon is already populated in _tower_system.placed_towers by the
+	# time tower_placed fires (TowerSystem sets it before emitting) -- same
+	# access pattern already used by _on_tower_attacked.
+	var state: TowerMissionState = _tower_system.placed_towers.get(payload.tower_id) as TowerMissionState
+	if state != null:
+		vis.set_idle_ambient(state.weapon.element)
 	_tower_visuals[payload.tower_id] = vis
 
 
@@ -230,6 +245,25 @@ func _on_tower_attacked(tower_id: int, target_monster_id: int, _damage_amount: f
 	var aoe_radius_world: float = state.weapon.aoe_radius_cells * CELL_SIZE
 	projectile.configure(state.foundation.archetype, state.weapon.projectile_type,
 			tower_vis.global_position, target, aoe_radius_world, state.weapon.element)
+
+
+## design/gdd/tower.md "Support aura visibility requirements": "Per-pulse VFX
+## (required): On each tower_aura_pulse emission, the Mission HUD must
+## trigger a brief visual pulse effect (expanding ring, burst, or glow) at
+## the Support tower's grid position. This VFX is the player's only
+## confirmation that the aura is firing during WAVE_ACTIVE. Without it, the
+## player cannot know whether the Support tower is contributing." Was
+## entirely unimplemented before this pass — reuses AoeRingVisual (an
+## expanding-then-fading ring is one of the GDD's own 3 sanctioned options)
+## rather than building a distinct effect from scratch.
+func _on_tower_aura_pulse(payload: TowerAuraPulseEvent) -> void:
+	var tower_vis: TowerInstance = _tower_visuals.get(payload.tower_id) as TowerInstance
+	if tower_vis == null:
+		return
+	var ring: Node2D = AoeRingVisualScene.instantiate()
+	_gameplay_root.add_child(ring)
+	ring.global_position = tower_vis.global_position
+	ring.configure(payload.aura_radius_cells * CELL_SIZE, SUPPORT_AURA_COLOR)
 
 
 func _free_tower_visual(tower_id: int) -> void:

@@ -13,9 +13,9 @@ extends Node2D
 ##
 ## Element particle signatures follow tower.md's "Elemental sub-type color
 ## language" table's own Visual signature column (fire=ember/heat, frost=
-## crystalline/snowflake, poison=cloud puff, lightning=fast sharp burst).
-## Arcane has no assigned signature yet (Alpha scope) and gets no particle
-## burst, matching ProjectileVisual's own ELEMENT_COLORS fallback treatment.
+## crystalline/snowflake, poison=cloud puff, lightning=fast sharp burst,
+## arcane=geometric fragments/no physical material — orbiting rather than
+## radiating outward, see ELEMENT_PARTICLE_CONFIGS's orbit_min/orbit_max).
 ## Non-elemental archetypes (physical/ranged BALLISTIC AoE) never call
 ## configure() with a recognized element, so they get the ring only, exactly
 ## as before this pass — the GDD's particle-burst mandate is elemental-only.
@@ -51,6 +51,13 @@ const ELEMENT_PARTICLE_CONFIGS: Dictionary[String, Dictionary] = {
 		"velocity_min": 80.0, "velocity_max": 160.0,
 		"gravity": Vector2.ZERO,
 		"scale_min": 1.5, "scale_max": 3.0,
+	},
+	"arcane": {
+		"amount": 12, "lifetime": 0.55,
+		"velocity_min": 10.0, "velocity_max": 25.0,
+		"gravity": Vector2.ZERO,  ## no physical material -- nothing pulls on it
+		"scale_min": 3.0, "scale_max": 6.0,
+		"orbit_min": 2.0, "orbit_max": 5.0,  ## fragments circle rather than radiate outward
 	},
 }
 
@@ -95,6 +102,8 @@ func _spawn_particle_burst(color: Color, config: Dictionary) -> void:
 	_particles.gravity = config["gravity"] as Vector2
 	_particles.scale_amount_min = config["scale_min"] as float
 	_particles.scale_amount_max = config["scale_max"] as float
+	_particles.orbit_velocity_min = config.get("orbit_min", 0.0) as float
+	_particles.orbit_velocity_max = config.get("orbit_max", 0.0) as float
 	_particles.color = color
 
 	var ramp := Gradient.new()

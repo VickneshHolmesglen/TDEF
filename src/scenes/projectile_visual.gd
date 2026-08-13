@@ -13,11 +13,10 @@ extends Node2D
 ## TowerInstance/MonsterInstance already are — acceptable at this project's
 ## current concurrent-tower scale, revisit if the GDD's 80 shots/sec peak
 ## becomes a real profiled cost). AoE detonation rings and per-element
-## (fire/frost/poison/lightning) color ARE covered — see _spawn_aoe_ring()
-## and ELEMENT_COLORS. Arcane is Alpha scope per the GDD's own staging and
-## falls back to the generic elemental color. Per-element flight-trail
-## particles ARE covered — see ELEMENT_TRAIL_CONFIGS and _update_jagged_tail()
-## for why lightning is deliberately excluded from the particle trail.
+## (fire/frost/poison/lightning/arcane) color ARE covered — see
+## _spawn_aoe_ring() and ELEMENT_COLORS. Per-element flight-trail particles
+## ARE covered — see ELEMENT_TRAIL_CONFIGS and _tail_points() for why
+## lightning is deliberately excluded from the particle trail.
 
 const FLIGHT_SPEED: float = 900.0   ## world units/sec — BALLISTIC/HOMING travel time
 const BEAM_DURATION: float = 0.15   ## seconds a BEAM stays visible
@@ -35,22 +34,27 @@ const ARCHETYPE_COLORS: Dictionary[String, Color] = {
 }
 
 ## design/gdd/tower.md "Elemental sub-type color language" table — Fire,
-## Frost (MVP scope) and Poison, Lightning (Vertical Slice scope) all have
-## real colors. Arcane is Alpha scope and has none yet; WeaponComponent.element
-## == "arcane" (or any unrecognized value) falls through to
-## ARCHETYPE_COLORS["elemental"] above.
+## Frost (MVP scope), Poison, Lightning (Vertical Slice scope), and Arcane
+## (Alpha scope) all have real colors now. WeaponComponent.element for any
+## unrecognized value falls through to ARCHETYPE_COLORS["elemental"] above.
 const ELEMENT_COLORS: Dictionary[String, Color] = {
 	"fire": Color(0.85, 0.35, 0.1),      ## red-orange
 	"frost": Color(0.65, 0.85, 1.0),     ## ice blue / white
 	"poison": Color(0.42, 0.8, 0.15),    ## acid green
 	"lightning": Color(0.95, 0.9, 0.35), ## electric yellow / white
+	"arcane": Color(0.55, 0.25, 0.75),   ## purple / violet
 }
 
 ## design/gdd/tower.md "Elemental sub-type color language" table's own Visual
-## signature column: fire=ember/heat, frost=crystalline/snowflake, poison=drip.
-## Lightning ("jagged arc, no smooth trail") is deliberately absent — a smooth
-## continuous particle trail would contradict its own defined signature; see
-## _update_jagged_tail() for how lightning is differentiated instead.
+## signature column: fire=ember/heat, frost=crystalline/snowflake, poison=drip,
+## arcane=geometric fragments/no physical material. Lightning ("jagged arc, no
+## smooth trail") is deliberately absent — a smooth continuous particle trail
+## would contradict its own defined signature; see _tail_points() for how
+## lightning is differentiated instead.
+## "orbit_min"/"orbit_max" (optional, default 0 via .get() in
+## _start_trail_particles) drive CPUParticles2D.orbit_velocity — arcane's own
+## "no physical material" signature: fragments circle the flight path instead
+## of moving directly outward like the other 3 elements' straightforward drift.
 const ELEMENT_TRAIL_CONFIGS: Dictionary[String, Dictionary] = {
 	"fire": {
 		"amount": 8, "lifetime": 0.3,
@@ -69,6 +73,13 @@ const ELEMENT_TRAIL_CONFIGS: Dictionary[String, Dictionary] = {
 		"velocity_min": 5.0, "velocity_max": 10.0,
 		"gravity": Vector2(0.0, 40.0),  ## drip particles fall
 		"scale_min": 2.0, "scale_max": 3.5,
+	},
+	"arcane": {
+		"amount": 7, "lifetime": 0.4,
+		"velocity_min": 2.0, "velocity_max": 8.0,
+		"gravity": Vector2.ZERO,  ## no physical material -- nothing pulls on it
+		"scale_min": 2.0, "scale_max": 3.5,
+		"orbit_min": 1.5, "orbit_max": 3.5,
 	},
 }
 
@@ -139,6 +150,8 @@ func _start_trail_particles(config: Dictionary) -> void:
 	_trail_particles.gravity = config["gravity"] as Vector2
 	_trail_particles.scale_amount_min = config["scale_min"] as float
 	_trail_particles.scale_amount_max = config["scale_max"] as float
+	_trail_particles.orbit_velocity_min = config.get("orbit_min", 0.0) as float
+	_trail_particles.orbit_velocity_max = config.get("orbit_max", 0.0) as float
 	_trail_particles.color = _color
 
 	var ramp := Gradient.new()
