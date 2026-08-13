@@ -69,9 +69,18 @@ const REMOVE_DURATION: float = 0.4  ## seconds
 ## next attack-cycle length (1.0 / attack_speed) so it reads as "counting
 ## down to the next shot" even though it technically starts at the previous
 ## shot's moment rather than proactively at true acquisition time.
+##
+## The "orientation snap" itself is the weapon-slot glow dot's POSITION
+## snapping toward the target (see _weapon_glow_offset below) — never the
+## tower's own rotation/_sprite. design/gdd/tower.md's Data Model table is
+## explicit: tower_facing_dir is "Never updated during TARGETING or ATTACKING
+## states." Rotating the whole sprite here (a real, shipped bug — the tower
+## visibly spun to face its target like a turret) violated that rule; the
+## body must stay static and only this small weapon-slot indicator moves.
 const ORIENTATION_SNAP_DURATION: float = 0.1  ## seconds — fast enough to read as a "snap," not a smooth pan
 const WEAPON_GLOW_PEAK_ALPHA: float = 0.5
 const WEAPON_GLOW_RADIUS: float = 6.0  ## world units
+const WEAPON_GLOW_ORBIT_RADIUS: float = TARGET_DISPLAY_HEIGHT * 0.3  ## distance of the glow dot from tower center
 
 ## design/gdd/tower.md "Tower ATTACKING State": "Attack animation on fire
 ## (recoil, beam flash, energy discharge, or AoE effect by weapon type)...
@@ -111,7 +120,11 @@ var element: String = ""
 var _base_sprite_scale: Vector2 = Vector2.ONE
 var _weapon_glow_alpha: float = 0.0
 var _weapon_glow_color: Color = Color.WHITE
-var _rotation_tween: Tween = null
+## Position of the weapon-slot glow dot, relative to tower center — this is
+## what "snaps" toward the target, never _sprite.rotation. Starts facing "up"
+## to match this file's previous fixed-position default.
+var _weapon_glow_offset: Vector2 = Vector2(0.0, -WEAPON_GLOW_ORBIT_RADIUS)
+var _glow_offset_tween: Tween = null
 var _glow_tween: Tween = null
 var _punch_tween: Tween = null
 var _has_perk_badge: bool = false
@@ -192,15 +205,11 @@ func play_remove_animation() -> void:
 func play_targeting_orientation(target_world_position: Vector2, glow_color: Color, glow_duration: float) -> void:
 	var to_target: Vector2 = target_world_position - global_position
 	if to_target.length_squared() > 0.0:
-		if _rotation_tween != null and _rotation_tween.is_valid():
-			_rotation_tween.kill()
-		# Placeholder art is authored facing "up" (a common top-down default);
-		# the + PI/2 offset makes rotation=0 correspond to that assumed facing.
-		# Approximation, not a verified art-authoring guarantee — flagged
-		# rather than silently assumed correct.
-		var target_angle: float = to_target.angle() + PI / 2.0
-		_rotation_tween = create_tween()
-		_rotation_tween.tween_property(_sprite, "rotation", target_angle, ORIENTATION_SNAP_DURATION) \
+		if _glow_offset_tween != null and _glow_offset_tween.is_valid():
+			_glow_offset_tween.kill()
+		var target_offset: Vector2 = to_target.normalized() * WEAPON_GLOW_ORBIT_RADIUS
+		_glow_offset_tween = create_tween()
+		_glow_offset_tween.tween_method(_set_weapon_glow_offset, _weapon_glow_offset, target_offset, ORIENTATION_SNAP_DURATION) \
 				.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 
 	if _glow_tween != null and _glow_tween.is_valid():
@@ -213,6 +222,11 @@ func play_targeting_orientation(target_world_position: Vector2, glow_color: Colo
 
 func _set_weapon_glow_alpha(alpha: float) -> void:
 	_weapon_glow_alpha = alpha
+	queue_redraw()
+
+
+func _set_weapon_glow_offset(offset: Vector2) -> void:
+	_weapon_glow_offset = offset
 	queue_redraw()
 
 
@@ -256,7 +270,7 @@ func _draw() -> void:
 	if _weapon_glow_alpha > 0.0:
 		var glow_color: Color = _weapon_glow_color
 		glow_color.a = _weapon_glow_alpha
-		draw_circle(Vector2(0.0, -TARGET_DISPLAY_HEIGHT * 0.3), WEAPON_GLOW_RADIUS, glow_color)
+		draw_circle(_weapon_glow_offset, WEAPON_GLOW_RADIUS, glow_color)
 	if _has_perk_badge:
 		var badge_pos := Vector2(TARGET_DISPLAY_HEIGHT * 0.35, -TARGET_DISPLAY_HEIGHT * 0.45)
 		draw_circle(badge_pos, PERK_BADGE_RADIUS, PERK_BADGE_COLOR)
