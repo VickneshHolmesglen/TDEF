@@ -52,6 +52,7 @@ var _elapsed: float = 0.0
 var _flight_duration: float = 0.2
 var _color: Color = Color.WHITE
 var _aoe_radius: float = 0.0   ## world units; 0 = no detonation ring (BALLISTIC single-target or non-BALLISTIC)
+var _element: String = ""      ## forwarded to the AoE ring for its own per-element particle burst
 
 @onready var _line: Line2D = $Line2D
 
@@ -73,6 +74,7 @@ func configure(archetype: String, projectile_type: String, start_pos: Vector2, t
 	_target_entity = target
 	_target_last_known = target.global_position if is_instance_valid(target) else start_pos
 	_aoe_radius = aoe_radius
+	_element = element
 
 	if archetype == "elemental" and ELEMENT_COLORS.has(element):
 		_color = ELEMENT_COLORS[element]
@@ -114,7 +116,7 @@ func _spawn_aoe_ring() -> void:
 	var ring: Node2D = AoeRingVisualScene.instantiate()
 	parent.add_child(ring)
 	ring.global_position = global_position
-	ring.configure(_aoe_radius, _color)
+	ring.configure(_aoe_radius, _color, _element)
 
 
 ## Instant connection, persists for BEAM_DURATION, then cuts — no travel.
