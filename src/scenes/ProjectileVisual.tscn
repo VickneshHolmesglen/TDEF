@@ -7,3 +7,8 @@ script = ExtResource("1_projectile")
 
 [node name="Line2D" type="Line2D" parent="."]
 width = 3.0
+
+[node name="TrailParticles2D" type="CPUParticles2D" parent="."]
+emitting = false
+amount = 8
+one_shot = false
