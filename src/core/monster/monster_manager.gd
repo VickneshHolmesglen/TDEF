@@ -484,7 +484,7 @@ func _spawn_entity(res: MonsterResource, spawn_cell: Vector2i, wave_index: int,
 	# visible sprite is still a fully correct simulation entity.
 	var instance := MONSTER_INSTANCE_SCENE.instantiate() as MonsterInstance
 	entity.add_child(instance)
-	instance.configure(res.monster_id, res.tier)
+	instance.configure(res.monster_id, res.tier, res.display_name)
 
 	var path: Array[Vector2i] = _pathfinding.find_path(spawn_cell, res.tier)
 	if path.is_empty():

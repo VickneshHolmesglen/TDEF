@@ -36,20 +36,111 @@ const TARGET_LONG_EDGE_BY_TIER: Dictionary[int, float] = {
 	2: 112.0,
 }
 
+## design/gdd/monster.md "Tier Badge / Icon": "STANDARD: None. ELITE: 12x12px
+## world-space icon, top-right of sprite bounding box, single downward
+## chevron or elite-mark glyph — follows same spec pattern as tower
+## pre-placement perk badge. BOSS: 16x16px world-space icon, top-right,
+## skull or crown glyph (art bible to define)." No art bible glyph asset
+## exists yet, so both are drawn procedurally via _draw() — the same
+## _draw()-based approach TowerInstance's own perk badge already uses.
+## Crown chosen over skull for BOSS (simpler to read as a clean silhouette
+## at this size without dedicated art); GDD explicitly leaves this open.
+const ELITE_BADGE_SIZE: float = 12.0
+const BOSS_BADGE_SIZE: float = 16.0
+const ELITE_BADGE_COLOR: Color = Color(0.784, 0.847, 0.909)  ## Silver / cold-white — GDD's own #C8D8E8 provisional value
+const BOSS_BADGE_COLOR: Color = Color(0.9, 0.75, 0.2)  ## gold crown
+
+## design/gdd/monster.md: "Plus: floating display_name nameplate above
+## sprite, Y-offset above bounding box top, using HUD font." No dedicated
+## HUD font/theme resource exists yet anywhere in this project (checked —
+## Mission HUD's own screens use Godot's default theme throughout), so the
+## nameplate Label uses the default font rather than a fabricated one.
+const NAMEPLATE_Y_OFFSET: float = 10.0  ## world units above the sprite's own top edge
+
+var _tier: int = 0
+## Half-extent of the actual rendered sprite (texture size x uniform_scale),
+## computed fresh in configure() — badges/nameplate position relative to
+## this, not TARGET_LONG_EDGE_BY_TIER, since source art aspect ratios vary
+## per monster (see this file's own unscaled-sprite doc comment above).
+var _sprite_half_size: Vector2 = Vector2(32.0, 32.0)
+
 @onready var _sprite: Sprite2D = $Sprite2D
+@onready var _nameplate: Label = $Nameplate
 
 
+## display_name: MonsterResource.display_name — only consulted for BOSS
+## (tier == 2); ignored for STANDARD/ELITE, which get no nameplate at MVP.
 ## Sets the displayed texture for the given monster_id and scales it to fit
 ## the grid (see TARGET_LONG_EDGE_BY_TIER). Logs a warning and leaves the
 ## sprite empty if no art exists for that id yet.
-func configure(monster_id: StringName, tier: int = 0) -> void:
+func configure(monster_id: StringName, tier: int = 0, display_name: String = "") -> void:
+	_tier = tier
 	var texture: Texture2D = MONSTER_TEXTURES.get(monster_id, null)
 	if texture == null:
 		push_warning("[MonsterInstance] no art authored for monster_id '%s'" % monster_id)
 		_sprite.texture = null
+		_nameplate.visible = false
+		queue_redraw()
 		return
 	_sprite.texture = texture
 	var target_long_edge: float = TARGET_LONG_EDGE_BY_TIER.get(tier, 64.0)
 	var longest_edge: float = maxf(texture.get_width(), texture.get_height())
 	var uniform_scale: float = target_long_edge / longest_edge
 	_sprite.scale = Vector2(uniform_scale, uniform_scale)
+	_sprite_half_size = Vector2(texture.get_width(), texture.get_height()) * uniform_scale * 0.5
+
+	if tier == 2:
+		_nameplate.text = display_name
+		_nameplate.visible = true
+		# get_minimum_size() (not .size) — recomputes synchronously from font
+		# metrics the instant .text is set; .size can still reflect the
+		# pre-update layout until Godot's next Control layout pass runs,
+		# which would misposition/clip the nameplate on its very first frame.
+		var label_size: Vector2 = _nameplate.get_minimum_size()
+		# Centered horizontally, sitting just above the sprite's top edge.
+		_nameplate.position = Vector2(-label_size.x * 0.5,
+				-_sprite_half_size.y - NAMEPLATE_Y_OFFSET - label_size.y)
+	else:
+		_nameplate.visible = false
+
+	queue_redraw()
+
+
+func _draw() -> void:
+	match _tier:
+		1:
+			_draw_elite_badge()
+		2:
+			_draw_boss_badge()
+
+
+## A single downward chevron — GDD's own first-listed option.
+func _draw_elite_badge() -> void:
+	var half: float = ELITE_BADGE_SIZE * 0.5
+	var center := Vector2(_sprite_half_size.x - half, -_sprite_half_size.y + half)
+	var points := PackedVector2Array([
+		center + Vector2(-half, -half * 0.4),
+		center + Vector2(0.0, half * 0.5),
+		center + Vector2(half, -half * 0.4),
+	])
+	draw_polyline(points, ELITE_BADGE_COLOR, 2.5, true)
+
+
+## A simple 3-point crown silhouette (base band + left/center/right spikes,
+## center spike tallest) — a procedural placeholder until a real glyph
+## asset exists.
+func _draw_boss_badge() -> void:
+	var half: float = BOSS_BADGE_SIZE * 0.5
+	var center := Vector2(_sprite_half_size.x - half, -_sprite_half_size.y + half)
+	var base_rect := Rect2(center + Vector2(-half, half * 0.2), Vector2(BOSS_BADGE_SIZE, half * 0.6))
+	draw_rect(base_rect, BOSS_BADGE_COLOR, true)
+	var point_width: float = half * 0.6
+	for i in range(3):
+		var spike_x: float = center.x - half + point_width * (0.5 + float(i) * 1.1)
+		var spike_height: float = half * (0.9 if i == 1 else 0.5)
+		var points := PackedVector2Array([
+			Vector2(spike_x - point_width * 0.5, center.y + half * 0.2),
+			Vector2(spike_x, center.y - spike_height),
+			Vector2(spike_x + point_width * 0.5, center.y + half * 0.2),
+		])
+		draw_colored_polygon(points, BOSS_BADGE_COLOR)

@@ -56,3 +56,45 @@ func test_configure_scales_boss_tier_sprite_larger_than_standard() -> void:
 func test_configure_uniform_scale_preserves_aspect_ratio() -> void:
 	_instance.configure(&"goblin_runner", 0)
 	assert_float(_instance._sprite.scale.x).is_equal_approx(_instance._sprite.scale.y, 0.0001)
+
+
+# ---------------------------------------------------------------------------
+# design/gdd/monster.md "Tier Badge / Icon" — STANDARD gets no badge/
+# nameplate, ELITE gets a badge only, BOSS gets a badge + nameplate.
+# ---------------------------------------------------------------------------
+
+func test_configure_standard_tier_records_no_badge_and_no_nameplate() -> void:
+	_instance.configure(&"goblin_runner", 0, "Goblin Runner")
+	assert_int(_instance._tier).is_equal(0)
+	assert_bool(_instance._nameplate.visible).is_false()
+
+
+func test_configure_elite_tier_records_tier_but_no_nameplate() -> void:
+	_instance.configure(&"forest_troll_elite", 1, "Forest Troll")
+	assert_int(_instance._tier).is_equal(1)
+	# ELITE gets a badge (drawn via _draw(), not independently assertable
+	# here) but explicitly no nameplate — that's BOSS-only per the GDD.
+	assert_bool(_instance._nameplate.visible).is_false()
+
+
+func test_configure_boss_tier_shows_nameplate_with_display_name() -> void:
+	_instance.configure(&"goblin_warlord_boss", 2, "Goblin Warlord")
+	assert_int(_instance._tier).is_equal(2)
+	assert_bool(_instance._nameplate.visible).is_true()
+	assert_str(_instance._nameplate.text).is_equal("Goblin Warlord")
+
+
+func test_configure_boss_nameplate_is_positioned_above_the_sprite_top_edge() -> void:
+	_instance.configure(&"goblin_warlord_boss", 2, "Goblin Warlord")
+	# Nameplate's bottom edge (position.y + its own height) must sit above
+	# (a smaller/more-negative Y than) the sprite's own top edge.
+	var nameplate_bottom: float = _instance._nameplate.position.y + _instance._nameplate.get_minimum_size().y
+	assert_float(nameplate_bottom).is_less(-_instance._sprite_half_size.y)
+
+
+func test_configure_switching_from_boss_to_standard_hides_the_nameplate() -> void:
+	_instance.configure(&"goblin_warlord_boss", 2, "Goblin Warlord")
+	assert_bool(_instance._nameplate.visible).is_true()
+
+	_instance.configure(&"goblin_runner", 0)
+	assert_bool(_instance._nameplate.visible).is_false()

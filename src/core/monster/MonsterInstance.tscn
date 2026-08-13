@@ -6,3 +6,8 @@
 script = ExtResource("1_instance")
 
 [node name="Sprite2D" type="Sprite2D" parent="."]
+
+[node name="Nameplate" type="Label" parent="."]
+visible = false
+horizontal_alignment = 1
+vertical_alignment = 1
