@@ -298,6 +298,23 @@ func _on_tower_attacked(tower_id: int, target_monster_id: int, _damage_amount: f
 	projectile.configure(state.foundation.archetype, state.weapon.projectile_type,
 			tower_vis.global_position, target, aoe_radius_world, state.weapon.element)
 
+	# design/gdd/tower.md "Tower TARGETING/ATTACKING States" — both fire from
+	# this same event; see TowerInstance's own TARGETING consts for why they
+	# can't be triggered any earlier in this codebase's actual state machine.
+	var tower_color: Color = _resolve_tower_color(state.foundation.archetype, state.weapon.element)
+	tower_vis.play_targeting_orientation(target.global_position, tower_color, 1.0 / state.weapon.attack_speed)
+	tower_vis.play_attack_punch(tower_color)
+
+
+## Shared color resolution for tower-owned VFX (TARGETING glow, ATTACKING
+## punch) — matches ProjectileVisual's own ARCHETYPE_COLORS/ELEMENT_COLORS
+## exactly (referenced directly, not duplicated) so a tower's own visual
+## reaction to firing always matches the color of what it just fired.
+func _resolve_tower_color(archetype: String, element: String) -> Color:
+	if archetype == "elemental" and ProjectileVisual.ELEMENT_COLORS.has(element):
+		return ProjectileVisual.ELEMENT_COLORS[element]
+	return ProjectileVisual.ARCHETYPE_COLORS.get(archetype, Color.WHITE)
+
 
 ## design/gdd/tower.md "Support aura visibility requirements": "Per-pulse VFX
 ## (required): On each tower_aura_pulse emission, the Mission HUD must
