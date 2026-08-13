@@ -228,7 +228,7 @@ func _on_tower_attacked(tower_id: int, target_monster_id: int, _damage_amount: f
 	_gameplay_root.add_child(projectile)
 	var aoe_radius_world: float = state.weapon.aoe_radius_cells * CELL_SIZE
 	projectile.configure(state.foundation.archetype, state.weapon.projectile_type,
-			tower_vis.global_position, target, aoe_radius_world)
+			tower_vis.global_position, target, aoe_radius_world, state.weapon.element)
 
 
 func _free_tower_visual(tower_id: int) -> void:

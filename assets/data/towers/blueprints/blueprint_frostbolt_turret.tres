@@ -27,6 +27,7 @@ component_id = "weap_frostbolt_t1"
 weapon_damage = 16.0
 attack_speed = 0.8
 projectile_type = "BALLISTIC"
+element = "frost"
 aura_effect_type = ""
 aura_effect_value = 0.0
 aura_radius_cells = 0

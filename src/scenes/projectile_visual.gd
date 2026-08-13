@@ -7,14 +7,15 @@ extends Node2D
 ## deferral — this node does NOT gate or delay damage delivery, matching
 ## Rule 20's "visual attack animations are cosmetic" framing.
 ##
-## Deferred to a later, fully-scoped pass (not attempted here): per-element
-## color sub-variants (fire/frost/etc — WeaponComponent has no per-element
-## field yet, only archetype), HOMING re-acquisition when the original
-## target dies before impact (this pass just dissipates), and instance
-## pooling (spawned/freed per-shot like TowerInstance/MonsterInstance
-## already are — acceptable at this project's current concurrent-tower
-## scale, revisit if the GDD's 80 shots/sec peak becomes a real profiled
-## cost). AoE detonation rings ARE covered — see _spawn_aoe_ring().
+## Deferred to a later, fully-scoped pass (not attempted here): HOMING
+## re-acquisition when the original target dies before impact (this pass
+## just dissipates), and instance pooling (spawned/freed per-shot like
+## TowerInstance/MonsterInstance already are — acceptable at this project's
+## current concurrent-tower scale, revisit if the GDD's 80 shots/sec peak
+## becomes a real profiled cost). AoE detonation rings and per-element
+## (fire/frost) color ARE covered — see _spawn_aoe_ring() and ELEMENT_COLORS.
+## Poison/lightning/arcane sub-colors are out of MVP scope per the GDD's own
+## Vertical-Slice/Alpha staging and fall back to the generic elemental color.
 
 const FLIGHT_SPEED: float = 900.0   ## world units/sec — BALLISTIC/HOMING travel time
 const BEAM_DURATION: float = 0.15   ## seconds a BEAM stays visible
@@ -26,7 +27,16 @@ const TAIL_FRACTION: float = 0.08   ## fraction of flight behind the head for th
 const ARCHETYPE_COLORS: Dictionary[String, Color] = {
 	"physical": Color(0.494, 0.522, 0.565),   ## Fieldstone Grey — matches project palette
 	"ranged": Color(0.42, 0.28, 0.16),        ## brown / wood / metal
-	"elemental": Color(0.65, 0.85, 1.0),      ## ice blue — matches the current elemental placeholder art
+	"elemental": Color(0.65, 0.85, 1.0),      ## ice blue — generic fallback for an unset/unrecognized element
+}
+
+## design/gdd/tower.md "Elemental sub-type color language" table — MVP scope
+## (Fire + Frost) only. Poison/lightning/arcane are Vertical Slice/Alpha
+## scope and have no assigned color yet; WeaponComponent.element for those
+## falls through to ARCHETYPE_COLORS["elemental"] above.
+const ELEMENT_COLORS: Dictionary[String, Color] = {
+	"fire": Color(0.85, 0.35, 0.1),    ## red-orange
+	"frost": Color(0.65, 0.85, 1.0),   ## ice blue / white
 }
 
 const AoeRingVisualScene: PackedScene = preload("res://src/scenes/AoeRingVisual.tscn")
@@ -50,8 +60,10 @@ var _aoe_radius: float = 0.0   ## world units; 0 = no detonation ring (BALLISTIC
 ## aoe_radius: world units (already cell-size-scaled by the caller). Only
 ## meaningful for BALLISTIC — WeaponComponent.aoe_radius_cells is BALLISTIC-only
 ## per its own doc comment, but this is re-checked at arrival time regardless.
+## element: WeaponComponent.element — only consulted when archetype is
+## "elemental"; ignored (and harmless if non-empty) for every other archetype.
 func configure(archetype: String, projectile_type: String, start_pos: Vector2, target: Node2D,
-		aoe_radius: float = 0.0) -> void:
+		aoe_radius: float = 0.0, element: String = "") -> void:
 	_projectile_type = projectile_type
 	_start_position = start_pos
 	global_position = start_pos
@@ -59,7 +71,10 @@ func configure(archetype: String, projectile_type: String, start_pos: Vector2, t
 	_target_last_known = target.global_position if is_instance_valid(target) else start_pos
 	_aoe_radius = aoe_radius
 
-	_color = ARCHETYPE_COLORS.get(archetype, Color.WHITE)
+	if archetype == "elemental" and ELEMENT_COLORS.has(element):
+		_color = ELEMENT_COLORS[element]
+	else:
+		_color = ARCHETYPE_COLORS.get(archetype, Color.WHITE)
 	_line.default_color = _color
 
 	if projectile_type == "BEAM":

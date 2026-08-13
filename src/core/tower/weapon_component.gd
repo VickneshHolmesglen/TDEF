@@ -11,6 +11,12 @@ extends Resource
 @export var weapon_damage: float = 10.0     # [8.0, 120.0]
 @export var attack_speed: float = 1.0       # [0.5, 4.0]
 @export var projectile_type: String = "BALLISTIC"  # HOMING | BALLISTIC | BEAM | AURA
+## Elemental archetype only — "" | fire | frost | poison | lightning | arcane
+## (design/gdd/tower.md "Elemental sub-type color language"). Poison/lightning/
+## arcane have no assigned VFX color yet (Vertical Slice/Alpha scope); "" or
+## an unrecognized value falls back to the generic elemental placeholder color
+## in ProjectileVisual. Ignored for all other archetypes.
+@export var element: String = ""
 @export var aura_effect_type: String = ""   # Support/AURA only, any effect id or ""
 @export var aura_effect_value: float = 0.0  # Support/AURA only, [0.0, ...]
 @export var aura_radius_cells: int = 0      # Support/AURA only, [1, 6]
