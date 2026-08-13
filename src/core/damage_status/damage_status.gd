@@ -32,8 +32,12 @@ func _exit_tree() -> void:
 
 
 ## D1 formula: floor(raw_damage × mitigation). is_siege unused at MVP.
+## effect_type/effect_value/effect_duration (2026-08-13): burn/poison status
+## ticks are resolved by Monster System's own status-tick pass, not D&S — see
+## damage-status.md Rule I.3's exception note. Ignored here on purpose.
 func _on_tower_attacked(_tower_id: int, target_monster_id: int, damage_amount: float,
-		_is_siege: bool, is_armored: bool) -> void:
+		_is_siege: bool, is_armored: bool, _effect_type: String, _effect_value: float,
+		_effect_duration: float) -> void:
 	var resolved: float = damage_amount * (ARMORED_MITIGATION_MULTIPLIER if is_armored else 1.0)
 	var final_damage: int = floori(resolved)
 	if final_damage <= 0:

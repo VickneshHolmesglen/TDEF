@@ -48,7 +48,7 @@ class _LocalBus extends Node:
 	signal tower_damaged(tower_id: int, damage_dealt: float, current_hp: float, max_hp: float)
 	signal tower_sell_requested(tower_id: int)
 	signal tower_component_equipped(payload: TowerComponentEquippedEvent)
-	signal tower_attacked(tower_id: int, target_monster_id: int, damage_amount: float, is_siege: bool, is_armored: bool)
+	signal tower_attacked(tower_id: int, target_monster_id: int, damage_amount: float, is_siege: bool, is_armored: bool, effect_type: String, effect_value: float, effect_duration: float)
 	signal tower_aura_pulse(payload: TowerAuraPulseEvent)
 	signal pre_placement_perk_activated(tower_id: int, perk_type: String)
 	signal tower_wave_summary(payload: TowerWaveSummary)

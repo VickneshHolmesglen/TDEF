@@ -240,14 +240,23 @@ signal tower_component_equipped(payload: TowerComponentEquippedEvent)
 ## is_siege: derived from originating tower's Foundation.siege flag (true for T4 only).
 ## is_armored: pre-resolved by Tower System from target's MonsterResource.archetype_tag
 ##   (true when archetype_tag == &"armored"); D&S applies 50% tower damage mitigation.
-## Key subscribers: Damage & Status, Monster System, Audio, Mission Scene
+## effect_type/effect_value/effect_duration: the firing tower's own PowerComponent
+##   fields, forwarded unconditionally (empty effect_type = no status effect on this
+##   hit). Added 2026-08-13 so Monster System's status-tick pass (see damage-status.md
+##   Rule I.3's exception note) can apply burn/poison without a direct query into
+##   TowerSystem's placed_towers state.
+## Key subscribers: Damage & Status, Monster System (direct-hit AND status-tick
+## subscriptions), Audio, Mission Scene
 ## (2026-08-13 — spawns a purely cosmetic projectile visual, does not gate damage).
 signal tower_attacked(
 	tower_id: int,
 	target_monster_id: int,
 	damage_amount: float,
 	is_siege: bool,
-	is_armored: bool
+	is_armored: bool,
+	effect_type: String,
+	effect_value: float,
+	effect_duration: float
 )
 
 ## Support archetype tower's attack timer expires. Emitted unconditionally (no target needed).

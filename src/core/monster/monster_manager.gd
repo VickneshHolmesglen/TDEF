@@ -4,12 +4,14 @@ extends Node
 ## Scene-instanced manager for all active monster entities.
 ##
 ## GDD source: design/gdd/monster.md
-## ADR-0006: 4-pass centralized _physics_process:
-##   Pass 1 — damage drain       (sets DEAD before Pass 3 checks breach)
-##   Pass 2 — BOSS logic         (scan throttle, telegraph countdown, cooldown)
-##   Pass 3 — movement           (advance ACTIVE entities; detect breach; filter list)
-##   Pass 4 — death & absorbed flush  (ADR-0033: monster_died or one monsters_died_batch
-##                                     depending on frame death count; then monster_hp_absorbed)
+## ADR-0006: centralized _physics_process (amended 2026-08-13 — 5th pass added):
+##   Pass 1  — damage drain       (sets DEAD before Pass 3 checks breach)
+##   Pass 1b — status ticks       (burn/poison DoT — ADR-0006 amendment; see
+##                                 damage-status.md Rule I.3's exception note)
+##   Pass 2  — BOSS logic         (scan throttle, telegraph countdown, cooldown)
+##   Pass 3  — movement           (advance ACTIVE entities; detect breach; filter list)
+##   Pass 4  — death & absorbed flush  (ADR-0033: monster_died or one monsters_died_batch
+##                                      depending on frame death count; then monster_hp_absorbed)
 ##
 ## MonsterManager is NOT an Autoload. It lives in the mission scene.
 ## Dependencies are injected by _ready() from Autoloads and overrideable in tests.
@@ -27,6 +29,13 @@ const HP_DIFFICULTY_GROWTH_RATE := 0.35
 const SPEED_WAVE_GROWTH_RATE := 0.06
 const CELL_SIZE := 64.0                    ## world units per grid cell
 const DEATH_BATCH_THRESHOLD := 20          ## ADR-0033 / event-bus.md Formula 2's F_per_frame > 20
+
+## damage-status.md Formula D5: tick interval for burn/poison DoT ticks.
+const STATUS_TICK_INTERVAL := 1.0          ## seconds
+## damage-status.md Rule I.3: the only 2 effect_type values Monster System
+## recognizes as a DoT. Anything else (including "slow", still out of scope)
+## is silently ignored.
+const RECOGNIZED_DOT_EFFECTS: Array[String] = ["burn", "poison"]
 
 const MONSTER_INSTANCE_SCENE: PackedScene = preload("res://src/core/monster/MonsterInstance.tscn")
 
@@ -87,6 +96,7 @@ func _ready() -> void:
 	GEventBus.mission_modifier_applied.connect(_on_mission_modifier_applied)
 	GEventBus.path_invalidated.connect(_on_path_invalidated)
 	GEventBus.monster_damage_taken.connect(_on_monster_damage_taken)
+	GEventBus.tower_attacked.connect(_on_tower_attacked_status)
 
 
 func _exit_tree() -> void:
@@ -96,6 +106,7 @@ func _exit_tree() -> void:
 	GEventBus.mission_modifier_applied.disconnect(_on_mission_modifier_applied)
 	GEventBus.path_invalidated.disconnect(_on_path_invalidated)
 	GEventBus.monster_damage_taken.disconnect(_on_monster_damage_taken)
+	GEventBus.tower_attacked.disconnect(_on_tower_attacked_status)
 
 # ---------------------------------------------------------------------------
 # Main loop
@@ -105,6 +116,7 @@ func _physics_process(delta: float) -> void:
 	if not _is_wave_active:
 		return
 	_pass1_damage()
+	_pass1b_status_ticks(delta)
 	_pass2_boss_logic(delta)
 	_pass3_movement(delta)
 	_pass4_death_and_absorbed_flush()
@@ -155,6 +167,67 @@ func _emit_death(entity: MonsterEntity, kill_source: StringName) -> void:
 	ev.wave_reward_scalar = entity.spawn_wave_reward_scalar
 	_pending_deaths.append(ev)
 	entity.queue_free()
+
+
+## Applies a burn/poison hit as a new, independent ActiveStatusEffect instance
+## (stacks, does not refresh existing instances of the same effect_type — see
+## ActiveStatusEffect's own doc comment). Reads tower_attacked directly rather
+## than going through D&S/_pending_damage — damage-status.md Rule I.3's
+## exception note explains why status ticks are a named exception to D&S's
+## "single pipeline" ownership.
+func _on_tower_attacked_status(_tower_id: int, target_monster_id: int, _damage_amount: float,
+		_is_siege: bool, _is_armored: bool, effect_type: String, effect_value: float,
+		effect_duration: float) -> void:
+	if not RECOGNIZED_DOT_EFFECTS.has(effect_type):
+		return
+	var entity: MonsterEntity = _entity_lookup.get(target_monster_id) as MonsterEntity
+	if entity == null or entity.lifecycle_state == MonsterEntity.State.DEAD:
+		return
+	var num_ticks: int = maxi(roundi(effect_duration / STATUS_TICK_INTERVAL), 1)
+	var effect := ActiveStatusEffect.new()
+	effect.effect_type = effect_type
+	effect.ticks_remaining = num_ticks
+	effect.tick_interval_remaining = STATUS_TICK_INTERVAL
+	effect.tick_damage = (effect_value * entity.scaled_hp) / float(num_ticks)
+	entity.active_status_effects.append(effect)
+
+
+# ---------------------------------------------------------------------------
+# Pass 1b — Status Ticks (burn/poison DoT)
+# ---------------------------------------------------------------------------
+
+## damage-status.md Formula D5. Each active instance ticks down independently;
+## a tick that kills the entity stops processing that entity's remaining
+## instances this frame (matches Pass 1's own DEAD-short-circuit convention).
+## Iterates active_status_effects back-to-front so remove_at() during the loop
+## is safe without a second filter pass.
+func _pass1b_status_ticks(delta: float) -> void:
+	for entity in active_monsters:
+		if entity.lifecycle_state == MonsterEntity.State.DEAD or entity.active_status_effects.is_empty():
+			continue
+		var i: int = entity.active_status_effects.size() - 1
+		while i >= 0:
+			var effect: ActiveStatusEffect = entity.active_status_effects[i]
+			effect.tick_interval_remaining -= delta
+			if effect.tick_interval_remaining <= 0.0:
+				effect.tick_interval_remaining += STATUS_TICK_INTERVAL
+				effect.ticks_remaining -= 1
+				var pre_tick_hp: float = entity.current_hp
+				entity.current_hp -= effect.tick_damage
+				entity.last_hit_source = &"tower"
+				if entity.current_hp <= 0.0:
+					entity.current_hp = 0.0
+					entity.lifecycle_state = MonsterEntity.State.DEAD
+					_pending_absorbed.erase(entity.entity_id)
+					_emit_death(entity, &"tower")
+					break
+				if entity.resource.tier == 2:
+					GEventBus.boss_hp_changed.emit(entity.entity_id, entity.current_hp, entity.scaled_hp)
+				var absorbed: float = minf(effect.tick_damage, pre_tick_hp)
+				_pending_absorbed[entity.entity_id] = (_pending_absorbed.get(entity.entity_id, 0.0) as float) + absorbed
+			if effect.ticks_remaining <= 0:
+				entity.active_status_effects.remove_at(i)
+			i -= 1
 
 # ---------------------------------------------------------------------------
 # Pass 2 — BOSS Logic

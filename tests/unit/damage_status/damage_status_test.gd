@@ -28,7 +28,7 @@ func after_test() -> void:
 # AC-1: D1 no armor — floor(47.3) = 47
 # ---------------------------------------------------------------------------
 func test_d1_no_armor_floors_raw_damage() -> void:
-	_ds._on_tower_attacked(0, 1, 47.3, false, false)
+	_ds._on_tower_attacked(0, 1, 47.3, false, false, "", 0.0, 0.0)
 	await get_tree().process_frame
 
 	var emissions: Array = _spy.emissions.get("monster_damage_taken", []) as Array
@@ -45,7 +45,7 @@ func test_d1_no_armor_floors_raw_damage() -> void:
 # AC-2: D1 armored — floor(80.7 × 0.50) = floor(40.35) = 40
 # ---------------------------------------------------------------------------
 func test_d1_armored_applies_50_percent_mitigation() -> void:
-	_ds._on_tower_attacked(0, 1, 80.7, false, true)
+	_ds._on_tower_attacked(0, 1, 80.7, false, true, "", 0.0, 0.0)
 	await get_tree().process_frame
 
 	var emissions: Array = _spy.emissions.get("monster_damage_taken", []) as Array
@@ -56,7 +56,7 @@ func test_d1_armored_applies_50_percent_mitigation() -> void:
 
 # AC-2 edge case: floor(2.5)=2 — distinguishes floori from roundi
 func test_d1_armored_floor_not_round_on_half_value() -> void:
-	_ds._on_tower_attacked(0, 1, 5.0, false, true)
+	_ds._on_tower_attacked(0, 1, 5.0, false, true, "", 0.0, 0.0)
 	await get_tree().process_frame
 
 	var emissions: Array = _spy.emissions.get("monster_damage_taken", []) as Array
@@ -71,7 +71,7 @@ func test_d1_armored_floor_not_round_on_half_value() -> void:
 # is_crit=false on the payload ARE the invariant being validated here.
 # ---------------------------------------------------------------------------
 func test_d1_elite_target_does_not_affect_tower_pipeline() -> void:
-	_ds._on_tower_attacked(0, 1, 80.7, false, false)
+	_ds._on_tower_attacked(0, 1, 80.7, false, false, "", 0.0, 0.0)
 	await get_tree().process_frame
 
 	var emissions: Array = _spy.emissions.get("monster_damage_taken", []) as Array
@@ -85,7 +85,7 @@ func test_d1_elite_target_does_not_affect_tower_pipeline() -> void:
 # AC-4: Zero-damage guard — floor(0.9) = 0 → NOT emitted
 # ---------------------------------------------------------------------------
 func test_d1_zero_final_damage_suppresses_emission() -> void:
-	_ds._on_tower_attacked(0, 1, 0.9, false, false)
+	_ds._on_tower_attacked(0, 1, 0.9, false, false, "", 0.0, 0.0)
 	await get_tree().process_frame
 
 	assert_bool(_spy.was_emitted("monster_damage_taken")).is_false()
@@ -264,7 +264,7 @@ func test_lifesteal_zero_fraction_skips_pending_registration() -> void:
 # AC-12: is_instance_valid guard — freed node emits nothing after await
 # ---------------------------------------------------------------------------
 func test_freed_node_emits_no_signal_after_frame_boundary() -> void:
-	_ds._on_tower_attacked(0, 1, 50.0, false, false)  # coroutine suspends at await
+	_ds._on_tower_attacked(0, 1, 50.0, false, false, "", 0.0, 0.0)  # coroutine suspends at await
 	_ds.free()  # immediate free while coroutine is suspended
 	_ds = null
 	await get_tree().process_frame  # coroutine resumes: is_instance_valid(self) = false → returns

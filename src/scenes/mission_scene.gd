@@ -214,7 +214,8 @@ func _on_tower_destroyed(tower_id: int, _grid_position: Vector2i, _archetype: St
 ## arrival ("AoE Detonation" section) — ProjectileVisual spawns that itself
 ## once the flight completes.
 func _on_tower_attacked(tower_id: int, target_monster_id: int, _damage_amount: float,
-		_is_siege: bool, _is_armored: bool) -> void:
+		_is_siege: bool, _is_armored: bool, _effect_type: String, _effect_value: float,
+		_effect_duration: float) -> void:
 	var tower_vis: TowerInstance = _tower_visuals.get(tower_id) as TowerInstance
 	if tower_vis == null:
 		return

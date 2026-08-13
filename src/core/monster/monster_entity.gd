@@ -59,3 +59,8 @@ var boss_attack_cooldown_remaining: float = 0.0
 
 ## tower_id locked in when the prepare phase starts. -1 = no locked target.
 var boss_locked_target_id: int = -1
+
+## Independent in-flight burn/poison DoT instances (design/gdd/damage-status.md
+## Rule I.3 amendment; ADR-0006 5th pass). Stacks, does not refresh — see
+## ActiveStatusEffect's own doc comment for why.
+var active_status_effects: Array[ActiveStatusEffect] = []

@@ -3,6 +3,34 @@
 ## Status
 Accepted
 
+## Amendment (2026-08-13) — 5th Pass: Status Ticks
+
+This ADR's own Consequences → Negative section flagged this exact scenario in advance: *"a future 5th pass would require deliberate design."* `design/gdd/damage-status.md`'s Rule I.3 amendment brings burn/poison status effects into scope, and Monster System (not D&S — see that GDD's Rule I.1 second named exception) is the natural owner, since DoT state is inherently per-entity and must be freed when the entity is.
+
+**New pass, inserted between Pass 1 and Pass 2:**
+
+```
+PASS 1b — STATUS TICK PASS (burn/poison DoT, design/gdd/damage-status.md Formula D5)
+├─ Monster System subscribes to tower_attacked directly (independent of D&S's own
+│    subscription) — reads effect_type/effect_value/effect_duration, ignores the rest
+├─ On a recognized effect_type ("burn"/"poison"): appends a new, independent
+│    ActiveStatusEffect instance to the target MonsterEntity.active_status_effects
+│    (stacks, does not refresh existing instances — a design decision, see the GDD)
+├─ Each _physics_process frame, for each non-DEAD entity with active instances:
+│    decrement tick_interval_remaining by delta; at ≤0, apply tick_damage to
+│    current_hp, reset the interval, decrement ticks_remaining
+├─ A tick that reduces current_hp ≤ 0 sets DEAD and routes through the same
+│    _emit_death()/_pending_deaths path Pass 1 already uses — no new death code path
+└─ Expired instances (ticks_remaining ≤ 0) are removed from the entity's array;
+     iteration is back-to-front so remove_at() mid-loop is safe (no second filter pass)
+```
+
+**Why Pass 1b (not folded into Pass 1, not a 6th pass after Pass 4)**: Pass 1's own damage drain is a single deterministic sweep over `_pending_damage` — a buffered event queue, unrelated in shape to per-entity persistent timer state. Folding status ticks into Pass 1 would mean iterating `active_monsters` twice for two different reasons inside one pass, which is harder to read than two clearly-named passes. Placing it immediately after Pass 1 (rather than after Pass 3/4) preserves this ADR's own DEAD-priority guarantee: a lethal status tick must still set DEAD before Pass 3's movement/breach check runs, exactly like a lethal direct hit.
+
+**Why a new EventBus subscription rather than routing through `_pending_damage`**: `_pending_damage` is typed `Array[MonsterDamageTaken]`, D&S's own resolved-damage payload shape. Status ticks have no armored mitigation, crit, or tier-bonus multiplier to resolve (D&S's actual job) — there is nothing for D&S to compute, only a fixed formula (Formula D5) applied directly against `PowerComponent` data Tower System already puts on the event. Manufacturing a fake `MonsterDamageTaken` per tick just to reuse the buffer would misattribute the damage's origin (D&S never touched it) for no real benefit.
+
+**Consequence update**: the original Negative "a future 5th pass would require deliberate design" is resolved by this amendment — the design is documented above, not improvised in code. No change to the 4 original passes' behavior; Pass numbering for Pass 2/3/4 is unchanged (the new pass is named "1b," not renumbered into the sequence, so this document's existing cross-references to "Pass 3"/"Pass 4" elsewhere remain accurate).
+
 ## Date
 2026-05-22
 

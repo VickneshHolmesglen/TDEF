@@ -248,7 +248,8 @@ func _try_attack(state: TowerMissionState) -> void:
 	var is_armored: bool = entry["is_armored"] as bool
 	var is_siege: bool = state.foundation.tier == 4
 	var damage: float = state.weapon.weapon_damage * state.foundation.tier_dps_multiplier
-	GEventBus.tower_attacked.emit.call_deferred(state.tower_id, target_id, damage, is_siege, is_armored)
+	GEventBus.tower_attacked.emit.call_deferred(state.tower_id, target_id, damage, is_siege, is_armored,
+			state.power.effect_type, state.power.effect_value, state.power.effect_duration)
 
 
 ## Returns the entity_id of the lowest-HP monster in range, or -1 if none.
