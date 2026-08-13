@@ -89,6 +89,7 @@ const DEFAULT_SPECIES_DIR: String = "res://assets/data/species/"
 const DEFAULT_TAROT_CARDS_DIR: String = "res://assets/data/tarot/"
 const DEFAULT_EQUIPMENT_RECIPES_DIR: String = "res://assets/data/equipment_recipes/"
 const DEFAULT_SACRIFICE_RECIPES_DIR: String = "res://assets/data/sacrifice_recipes/"
+const DEFAULT_BUILDING_UPGRADES_DIR: String = "res://assets/data/building_upgrades/"
 
 # Test injection seam — override via _inject() before add_child() triggers _ready().
 var _monsters_dir: String = DEFAULT_MONSTERS_DIR
@@ -108,6 +109,7 @@ var _item_definitions_dir: String = DEFAULT_ITEM_DEFINITIONS_DIR
 var _recipes_dir: String = DEFAULT_RECIPES_DIR
 var _species_dir: String = DEFAULT_SPECIES_DIR
 var _tarot_cards_dir: String = DEFAULT_TAROT_CARDS_DIR
+var _building_upgrades_dir: String = DEFAULT_BUILDING_UPGRADES_DIR
 
 var _monster_resources: Dictionary[StringName, MonsterResource] = {}
 var _perk_registry: TowerPerkRegistry = null
@@ -126,6 +128,7 @@ var _item_definitions: Dictionary[StringName, ItemDefinitionResource] = {}
 var _recipes: Dictionary[StringName, RecipeResource] = {}
 var _species: Dictionary[StringName, SpeciesResource] = {}
 var _tarot_cards: Dictionary[StringName, TarotCardResource] = {}
+var _building_upgrades: Dictionary[StringName, BuildingUpgradeResource] = {}
 
 
 func _ready() -> void:
@@ -146,10 +149,11 @@ func _ready() -> void:
 	_load_tarot_cards()
 	_load_equipment_recipes()
 	_load_sacrifice_recipes()
+	_load_building_upgrades()  ## must run after _load_structures() — validate() cross-references get_structure()
 
 
 ## Inject alternate scan paths before add_child() triggers _ready(). Tests only.
-func _inject(monsters_dir: String, perk_registry_path: String, tower_blueprints_dir: String = DEFAULT_TOWER_BLUEPRINTS_DIR, missions_dir: String = DEFAULT_MISSIONS_DIR, skills_dir: String = DEFAULT_SKILLS_DIR, ultimate_combo_table_path: String = DEFAULT_ULTIMATE_COMBO_TABLE_PATH, drop_tables_dir: String = DEFAULT_DROP_TABLES_DIR, tech_nodes_dir: String = DEFAULT_TECH_NODES_DIR, structures_dir: String = DEFAULT_STRUCTURES_DIR, item_definitions_dir: String = DEFAULT_ITEM_DEFINITIONS_DIR, recipes_dir: String = DEFAULT_RECIPES_DIR, species_dir: String = DEFAULT_SPECIES_DIR, tarot_cards_dir: String = DEFAULT_TAROT_CARDS_DIR, mission_entries_dir: String = DEFAULT_MISSION_ENTRIES_DIR, skill_definitions_dir: String = DEFAULT_SKILL_DEFINITIONS_DIR, equipment_recipes_dir: String = DEFAULT_EQUIPMENT_RECIPES_DIR, sacrifice_recipes_dir: String = DEFAULT_SACRIFICE_RECIPES_DIR) -> void:
+func _inject(monsters_dir: String, perk_registry_path: String, tower_blueprints_dir: String = DEFAULT_TOWER_BLUEPRINTS_DIR, missions_dir: String = DEFAULT_MISSIONS_DIR, skills_dir: String = DEFAULT_SKILLS_DIR, ultimate_combo_table_path: String = DEFAULT_ULTIMATE_COMBO_TABLE_PATH, drop_tables_dir: String = DEFAULT_DROP_TABLES_DIR, tech_nodes_dir: String = DEFAULT_TECH_NODES_DIR, structures_dir: String = DEFAULT_STRUCTURES_DIR, item_definitions_dir: String = DEFAULT_ITEM_DEFINITIONS_DIR, recipes_dir: String = DEFAULT_RECIPES_DIR, species_dir: String = DEFAULT_SPECIES_DIR, tarot_cards_dir: String = DEFAULT_TAROT_CARDS_DIR, mission_entries_dir: String = DEFAULT_MISSION_ENTRIES_DIR, skill_definitions_dir: String = DEFAULT_SKILL_DEFINITIONS_DIR, equipment_recipes_dir: String = DEFAULT_EQUIPMENT_RECIPES_DIR, sacrifice_recipes_dir: String = DEFAULT_SACRIFICE_RECIPES_DIR, building_upgrades_dir: String = DEFAULT_BUILDING_UPGRADES_DIR) -> void:
 	_monsters_dir = monsters_dir
 	_perk_registry_path = perk_registry_path
 	_tower_blueprints_dir = tower_blueprints_dir
@@ -167,6 +171,7 @@ func _inject(monsters_dir: String, perk_registry_path: String, tower_blueprints_
 	_skill_definitions_dir = skill_definitions_dir
 	_equipment_recipes_dir = equipment_recipes_dir
 	_sacrifice_recipes_dir = sacrifice_recipes_dir
+	_building_upgrades_dir = building_upgrades_dir
 
 
 # ---------------------------------------------------------------------------
@@ -230,6 +235,24 @@ func get_all_tarot_cards() -> Dictionary[StringName, TarotCardResource]:
 ## immutable data), only the Dictionary container is isolated.
 func get_all_tower_blueprints() -> Dictionary[StringName, TowerBlueprintData]:
 	return _tower_blueprints.duplicate()
+
+
+## Tower Assembly (2026-08-11, player-requested, design/quick-specs/
+## tower-assembly-2026-08-11.md): registers a blueprint assembled at runtime
+## from player-owned crafted components, extending the boot-loaded static
+## dictionary — a real public API, not a private-dict reach-in (that pattern
+## is this project's established TEST-only convention, e.g.
+## `_item_definitions.erase(...)` in slot-icons-and-rarity_test.gd, never
+## acceptable from production code). TowerSystem.get_all_tower_blueprints()
+## (via its own boot-time `_tower_table` copy) will not see a blueprint
+## registered here until TowerSystem re-reads the registry — callers
+## assembling a tower mid-Sanctuary-session should not expect an
+## already-running TowerSystem instance to pick this up retroactively
+## (TowerSystem is scene-instanced per-mission and reads the registry fresh
+## at its own _ready(), so any blueprint registered before the next mission
+## launch is picked up naturally).
+func register_dynamic_tower_blueprint(blueprint: TowerBlueprintData) -> void:
+	_tower_blueprints[blueprint.tower_id] = blueprint
 
 
 ## Returns the MissionResource for mission_id, or null if not found/loaded.
@@ -326,6 +349,17 @@ func get_structure(structure_id: StringName) -> StructureResource:
 ## get_all_monster_resources() (S018).
 func get_all_structures() -> Dictionary[StringName, StructureResource]:
 	return _structures.duplicate()
+
+
+## Returns the BuildingUpgradeResource for upgrade_id, or null if not
+## found/loaded. O(1) Dictionary lookup, mirrors get_structure() exactly.
+func get_building_upgrade(upgrade_id: StringName) -> BuildingUpgradeResource:
+	return _building_upgrades.get(upgrade_id, null)
+
+
+## Returns a shallow copy of the upgrade_id -> BuildingUpgradeResource cache.
+func get_all_building_upgrades() -> Dictionary[StringName, BuildingUpgradeResource]:
+	return _building_upgrades.duplicate()
 
 
 ## Returns the ItemDefinitionResource for item_id, or null if not found/loaded.
@@ -626,6 +660,36 @@ func _load_structures() -> void:
 		if _structures.has(structure.structure_id):
 			push_error("[GameDataRegistry] %s: duplicate structure_id '%s' — overwriting previous entry." % [file_name, structure.structure_id])
 		_structures[structure.structure_id] = structure
+
+
+func _load_building_upgrades() -> void:
+	if not DirAccess.dir_exists_absolute(_building_upgrades_dir):
+		push_error("[GameDataRegistry] Building upgrades directory does not exist: %s" % _building_upgrades_dir)
+		return
+	var file_names_by_upgrade_id: Dictionary[StringName, String] = {}  # for the second pass' error messages
+	for file_name: String in DirAccess.get_files_at(_building_upgrades_dir):
+		if not file_name.ends_with(".tres"):
+			continue
+		var upgrade: BuildingUpgradeResource = ResourceLoader.load(_building_upgrades_dir + file_name) as BuildingUpgradeResource
+		if upgrade == null:
+			push_error("[GameDataRegistry] %s: failed to load as BuildingUpgradeResource." % file_name)
+			continue
+		var errors: Array[String] = upgrade.validate()
+		for err: String in errors:
+			push_error("[GameDataRegistry] %s: %s" % [file_name, err])
+		if _building_upgrades.has(upgrade.upgrade_id):
+			push_error("[GameDataRegistry] %s: duplicate upgrade_id '%s' — overwriting previous entry." % [file_name, upgrade.upgrade_id])
+		_building_upgrades[upgrade.upgrade_id] = upgrade
+		file_names_by_upgrade_id[upgrade.upgrade_id] = file_name
+	# Second pass (Story 002, TR-buildupgrade-001): prerequisite chain
+	# validation (cross-structure rejection + same-structure cycle/length
+	# cap) needs the full sibling set, which only exists once every upgrade
+	# in this load has already been gathered above.
+	for upgrade_id: StringName in _building_upgrades:
+		var upgrade: BuildingUpgradeResource = _building_upgrades[upgrade_id]
+		var chain_errors: Array[String] = upgrade.validate_chain(_building_upgrades)
+		for err: String in chain_errors:
+			push_error("[GameDataRegistry] %s: %s" % [file_names_by_upgrade_id.get(upgrade_id, String(upgrade_id)), err])
 
 
 func _load_item_definitions() -> void:

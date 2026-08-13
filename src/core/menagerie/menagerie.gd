@@ -165,6 +165,22 @@ func get_all_creatures() -> Array[CreatureInstance]:
 	return _creatures.duplicate()
 
 
+## Real gap found and fixed 2026-08-11 (player-requested Building Upgrade
+## System, `design/gdd/building-upgrade.md`'s `"creature"` requirement
+## type): get_all_creatures() returns every owned instance, forcing every
+## caller that only wants "do I own at least one of species X" to
+## re-implement the same linear scan. Any CreatureState counts (including
+## SACRIFICED — deliberately not filtered: this doc's own Rule 5 treats
+## `requirements` as "does this exist in my save history," not "is it
+## currently alive," matching Defense Building's own is_structure_built()
+## precedent of never un-checking a permanent milestone).
+func has_creature_species(species_id: StringName) -> bool:
+	for creature: CreatureInstance in _creatures:
+		if creature.species == species_id:
+			return true
+	return false
+
+
 # ---------------------------------------------------------------------------
 # Story 010 (TR-menag-002, aggregate formula half): Formula 3 —
 # menagerie_quality_bonus. HABITAT-only, never divides by zero.

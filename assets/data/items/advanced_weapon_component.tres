@@ -9,3 +9,4 @@ item_type = &"TowerComponent"
 display_name = "Advanced Weapon Component"
 is_unique_instance = true
 base_stats = {}
+component_resource_path = "res://assets/data/tower_components/weapon_advanced.tres"

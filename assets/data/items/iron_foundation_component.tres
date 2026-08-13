@@ -9,3 +9,4 @@ item_type = &"TowerComponent"
 display_name = "Iron Foundation"
 is_unique_instance = true
 base_stats = {}
+component_resource_path = "res://assets/data/tower_components/foundation_iron.tres"

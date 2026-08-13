@@ -194,7 +194,9 @@ restore_order = dependency_layer_index * 10 + intra_layer_index
 | 31 | Hero Skill Build | Advanced; depends on Hero |
 | 32 | Equipment Forge | Advanced; depends on Hero + Menagerie + Tarot |
 | 34 | Tower Mastery | Advanced; depends on Hero (must restore after 30). *(Added 2026-07-17 — this system had no `restore_order` assignment at all; `tower-mastery.md` had self-proposed `31`, which collides with Hero Skill Build's already-assigned slot above — 34 is the correct collision-free value.)* **Open ordering question, not resolved by this pass**: `systems-index.md`'s dependency map lists Hero Skill Build as depending on Tower Mastery, which would require Tower Mastery to restore *before* 31, not after — but Tower Mastery also depends on Hero (30), and neither GDD documents whether Hero Skill Build's restore actually reads Tower Mastery's restored state or only its own independently-saved unlock list. Flagged for the two GDD owners to confirm rather than guessed at here. |
+| 33 | Building Upgrade | Advanced; depends on Defense Building (21), Tarot, Menagerie, Equipment Forge (32) — all already restored by this slot. *(Added 2026-08-11, player-requested — `building-upgrade.md`'s own doc claims this exact slot, the one gap between Equipment Forge (32) and Tower Mastery (34).)* |
 | 35 | Encyclopedia | Advanced; restored last — logs discoveries from all other systems. *(Renumbered 33→35 on 2026-07-17 to make room for Tower Mastery at 34 while preserving "restores last.")* |
+| 36 | Tower Assembly | Advanced; independent at restore time — an assembled `TowerBlueprintData`'s saved payload is fully self-contained (component stats copied at assembly time, not re-derived from Crafting/Inventory state). *(Added 2026-08-11, player-requested — see `design/quick-specs/tower-assembly-2026-08-11.md`.)* |
 
 ## Edge Cases
 

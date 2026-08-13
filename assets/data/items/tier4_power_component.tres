@@ -9,3 +9,4 @@ item_type = &"TowerComponent"
 display_name = "Tier 4 Power Component"
 is_unique_instance = true
 base_stats = {}
+component_resource_path = "res://assets/data/tower_components/power_tier4.tres"

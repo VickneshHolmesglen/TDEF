@@ -456,6 +456,22 @@ func has_items(cost: Dictionary) -> bool:
 	return true
 
 
+## Real gap found and fixed 2026-08-11 (player-requested Building Upgrade
+## System, `design/gdd/building-upgrade.md`'s `"equipment"` requirement
+## type): has_items() only sums by item_type/quantity, never "do I own this
+## exact item_id." Deliberately does NOT apply has_items()'s own locked/
+## unique-instance exclusion — a piece of equipment the player has already
+## equipped (locked, per Rule 5) still counts as owned for gating purposes
+## (Player Fantasy: "the gear you forged for the hero to wear" is named
+## explicitly as an already-equipped example), unlike has_items()'s
+## narrower "is this available to consume right now" semantics.
+func has_specific_item(item_id: StringName) -> bool:
+	for slot: InventorySlot in _slots:
+		if slot != null and slot.item_id == item_id and slot.quantity > 0:
+			return true
+	return false
+
+
 ## TD-craft-001/TD-defbuild-002 resolution (Sprint 6, S6-06b): rarity-keyed
 ## counterpart to has_items(), for recipe/tech/structure cost tables authored
 ## as "N of rarity tier X" (Formula 1/3) rather than "N of a specific

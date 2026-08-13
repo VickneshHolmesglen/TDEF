@@ -46,6 +46,16 @@ extends Resource
 ## content placeholder") -- never hardcoded as a UI-side item_id->texture
 ## lookup table, matching this project's own data-driven-values rule.
 @export var icon: Texture2D = null
+## Tower Assembly (2026-08-11, player-requested, design/quick-specs/
+## tower-assembly-2026-08-11.md): path to a standalone `.tres` whose root
+## resource is a real FoundationComponent/WeaponComponent/FocusComponent/
+## PowerComponent — the bridge between a crafted TowerComponent item sitting
+## inert in Inventory and the real component schema TowerSystem's
+## placement/combat code actually reads. Only meaningful when
+## item_type == &"TowerComponent"; empty string for every other item_type
+## (crafted components had no gameplay effect at all before this — see the
+## quick-spec's own Motivation section).
+@export var component_resource_path: String = ""
 
 const VALID_ITEM_TYPES: Array[StringName] = [&"Equipment", &"TowerComponent", &"Material", &"CraftedGood"]
 const VALID_RARITIES: Array[String] = ["", "Common", "Uncommon", "Rare"]
@@ -69,4 +79,8 @@ func validate() -> Array[String]:
 		errors.append("equipment_category must be one of \"\"/weapon/armor/accessory/trinket (got '%s')" % equipment_category)
 	if item_type == &"Equipment" and equipment_category == "":
 		errors.append("equipment_category must not be empty when item_type is Equipment")
+	if item_type == &"TowerComponent" and component_resource_path == "":
+		errors.append("component_resource_path must not be empty when item_type is TowerComponent (Tower Assembly cannot resolve this item to a real component)")
+	if item_type != &"TowerComponent" and component_resource_path != "":
+		errors.append("component_resource_path must be empty when item_type is not TowerComponent (got '%s')" % component_resource_path)
 	return errors
