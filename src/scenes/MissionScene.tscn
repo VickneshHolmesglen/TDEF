@@ -16,7 +16,9 @@
 [node name="MissionScene" type="Node2D"]
 script = ExtResource("1_ctrl")
 
-[node name="MissionSelectScreen" parent="." instance=ExtResource("2_msscreen")]
+[node name="MissionSelectLayer" type="CanvasLayer" parent="."]
+
+[node name="MissionSelectScreen" parent="MissionSelectLayer" instance=ExtResource("2_msscreen")]
 
 [node name="GameplayRoot" type="Node2D" parent="."]
 

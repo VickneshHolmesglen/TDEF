@@ -71,7 +71,7 @@ const SUPPORT_AURA_COLOR: Color = Color(0.95, 0.75, 0.3)
 const PLACEMENT_CONFIRM_COLOR: Color = Color(0.95, 0.95, 0.9)
 const PLACEMENT_CONFIRM_DURATION: float = 0.3  ## seconds, per the GDD's own "~0.3s" spec
 
-@onready var _mission_select_screen: Control = $MissionSelectScreen
+@onready var _mission_select_screen: Control = $MissionSelectLayer/MissionSelectScreen
 @onready var _gameplay_root: Node2D = $GameplayRoot
 @onready var _grid_visual: Node2D = $GameplayRoot/GridVisual
 @onready var _hero: Hero = $GameplayRoot/Hero

@@ -30,7 +30,7 @@ func after_test() -> void:
 
 
 func test_mission_select_screen_is_visible_and_gameplay_hidden_at_fresh_mount() -> void:
-	var mission_select_screen: Control = _scene.get_node("MissionSelectScreen") as Control
+	var mission_select_screen: Control = _scene.get_node("MissionSelectLayer/MissionSelectScreen") as Control
 	var gameplay_root: Node2D = _scene.get_node("GameplayRoot") as Node2D
 
 	assert_bool(mission_select_screen.visible).is_true()
@@ -46,7 +46,7 @@ func test_confirming_a_real_launch_swaps_to_gameplay() -> void:
 	# Awaiting the signal here would hang forever (it already fired).
 	GMissionSelect.confirm_launch()
 
-	var mission_select_screen: Control = _scene.get_node("MissionSelectScreen") as Control
+	var mission_select_screen: Control = _scene.get_node("MissionSelectLayer/MissionSelectScreen") as Control
 	var gameplay_root: Node2D = _scene.get_node("GameplayRoot") as Node2D
 	assert_bool(mission_select_screen.visible).is_false()
 	assert_bool(gameplay_root.visible).is_true()
