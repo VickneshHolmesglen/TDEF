@@ -6,10 +6,13 @@ extends Node
 ## GDD source: design/gdd/monster.md
 ## ADR-0006: centralized _physics_process (amended 2026-08-13 — 5th pass added):
 ##   Pass 1  — damage drain       (sets DEAD before Pass 3 checks breach)
-##   Pass 1b — status ticks       (burn/poison DoT — ADR-0006 amendment; see
-##                                 damage-status.md Rule I.3's exception note)
+##   Pass 1b — status effects     (burn/poison DoT ticks + slow duration decay —
+##                                 ADR-0006 amendment; see damage-status.md
+##                                 Rule I.3's exception note)
 ##   Pass 2  — BOSS logic         (scan throttle, telegraph countdown, cooldown)
-##   Pass 3  — movement           (advance ACTIVE entities; detect breach; filter list)
+##   Pass 3  — movement           (advance ACTIVE entities via effective speed —
+##                                 scaled_speed x active slow multipliers;
+##                                 detect breach; filter list)
 ##   Pass 4  — death & absorbed flush  (ADR-0033: monster_died or one monsters_died_batch
 ##                                      depending on frame death count; then monster_hp_absorbed)
 ##
@@ -33,9 +36,18 @@ const DEATH_BATCH_THRESHOLD := 20          ## ADR-0033 / event-bus.md Formula 2'
 ## damage-status.md Formula D5: tick interval for burn/poison DoT ticks.
 const STATUS_TICK_INTERVAL := 1.0          ## seconds
 ## damage-status.md Rule I.3: the only 2 effect_type values Monster System
-## recognizes as a DoT. Anything else (including "slow", still out of scope)
-## is silently ignored.
+## recognizes as a DoT. Anything else is silently ignored by the DoT path
+## (may still be a recognized slow — see RECOGNIZED_SLOW_EFFECTS).
 const RECOGNIZED_DOT_EFFECTS: Array[String] = ["burn", "poison"]
+## damage-status.md Formula D6: the only effect_type value Monster System
+## recognizes as a slow. Kept as an array (not a single constant) for the
+## same extensibility reason RECOGNIZED_DOT_EFFECTS is one.
+const RECOGNIZED_SLOW_EFFECTS: Array[String] = ["slow"]
+## damage-status.md Formula D6: minimum speed_multiplier a single
+## ActiveSlowEffect instance may have, regardless of how large effect_value
+## is. Prevents one extreme content value from freezing a monster in place
+## entirely (0 speed is a stuck-forever state, not a strong slow).
+const SPEED_MULTIPLIER_FLOOR := 0.05
 
 const MONSTER_INSTANCE_SCENE: PackedScene = preload("res://src/core/monster/MonsterInstance.tscn")
 
@@ -116,7 +128,7 @@ func _physics_process(delta: float) -> void:
 	if not _is_wave_active:
 		return
 	_pass1_damage()
-	_pass1b_status_ticks(delta)
+	_pass1b_status_effects(delta)
 	_pass2_boss_logic(delta)
 	_pass3_movement(delta)
 	_pass4_death_and_absorbed_flush()
@@ -178,8 +190,15 @@ func _emit_death(entity: MonsterEntity, kill_source: StringName) -> void:
 func _on_tower_attacked_status(_tower_id: int, target_monster_id: int, _damage_amount: float,
 		_is_siege: bool, _is_armored: bool, effect_type: String, effect_value: float,
 		effect_duration: float) -> void:
-	if not RECOGNIZED_DOT_EFFECTS.has(effect_type):
-		return
+	if RECOGNIZED_DOT_EFFECTS.has(effect_type):
+		_apply_dot_effect(target_monster_id, effect_type, effect_value, effect_duration)
+	elif RECOGNIZED_SLOW_EFFECTS.has(effect_type):
+		_apply_slow_effect(target_monster_id, effect_value, effect_duration)
+	# Anything else (including "" — no Power effect equipped) is silently ignored.
+
+
+func _apply_dot_effect(target_monster_id: int, effect_type: String, effect_value: float,
+		effect_duration: float) -> void:
 	var entity: MonsterEntity = _entity_lookup.get(target_monster_id) as MonsterEntity
 	if entity == null or entity.lifecycle_state == MonsterEntity.State.DEAD:
 		return
@@ -192,42 +211,89 @@ func _on_tower_attacked_status(_tower_id: int, target_monster_id: int, _damage_a
 	entity.active_status_effects.append(effect)
 
 
+## damage-status.md Formula D6. speed_multiplier is 1.0 - effect_value, floored
+## at SPEED_MULTIPLIER_FLOOR — never applied by mutating scaled_speed (immutable
+## after spawn per ADR-0006).
+func _apply_slow_effect(target_monster_id: int, effect_value: float, effect_duration: float) -> void:
+	var entity: MonsterEntity = _entity_lookup.get(target_monster_id) as MonsterEntity
+	if entity == null or entity.lifecycle_state == MonsterEntity.State.DEAD:
+		return
+	var slow := ActiveSlowEffect.new()
+	slow.remaining_duration = effect_duration
+	slow.speed_multiplier = maxf(SPEED_MULTIPLIER_FLOOR, 1.0 - effect_value)
+	entity.active_slow_effects.append(slow)
+
+
+## Product of every active slow instance's speed_multiplier (1.0 if none are
+## active) — the multiplicative-stacking combination rule from Formula D6.
+## Never mutates entity.scaled_speed itself.
+func _effective_speed(entity: MonsterEntity) -> float:
+	var multiplier: float = 1.0
+	for slow: ActiveSlowEffect in entity.active_slow_effects:
+		multiplier *= slow.speed_multiplier
+	return entity.scaled_speed * multiplier
+
+
 # ---------------------------------------------------------------------------
-# Pass 1b — Status Ticks (burn/poison DoT)
+# Pass 1b — Status Effects (burn/poison DoT ticks + slow duration decay)
 # ---------------------------------------------------------------------------
 
-## damage-status.md Formula D5. Each active instance ticks down independently;
-## a tick that kills the entity stops processing that entity's remaining
-## instances this frame (matches Pass 1's own DEAD-short-circuit convention).
-## Iterates active_status_effects back-to-front so remove_at() during the loop
-## is safe without a second filter pass.
-func _pass1b_status_ticks(delta: float) -> void:
+## damage-status.md Formulas D5 (DoT) and D6 (slow). Each active DoT instance
+## ticks down independently; a tick that kills the entity stops processing
+## that entity's remaining instances this frame (matches Pass 1's own
+## DEAD-short-circuit convention). Slow instances have no ticks — they just
+## decay by delta and are dropped once expired; the movement pass (Pass 3)
+## reads active_slow_effects fresh every frame via _effective_speed(), so no
+## separate "reapply" step is needed here. Iterates both arrays back-to-front
+## so remove_at() during the loop is safe without a second filter pass.
+func _pass1b_status_effects(delta: float) -> void:
 	for entity in active_monsters:
-		if entity.lifecycle_state == MonsterEntity.State.DEAD or entity.active_status_effects.is_empty():
+		if entity.lifecycle_state == MonsterEntity.State.DEAD:
 			continue
-		var i: int = entity.active_status_effects.size() - 1
-		while i >= 0:
-			var effect: ActiveStatusEffect = entity.active_status_effects[i]
-			effect.tick_interval_remaining -= delta
-			if effect.tick_interval_remaining <= 0.0:
-				effect.tick_interval_remaining += STATUS_TICK_INTERVAL
-				effect.ticks_remaining -= 1
-				var pre_tick_hp: float = entity.current_hp
-				entity.current_hp -= effect.tick_damage
-				entity.last_hit_source = &"tower"
-				if entity.current_hp <= 0.0:
-					entity.current_hp = 0.0
-					entity.lifecycle_state = MonsterEntity.State.DEAD
-					_pending_absorbed.erase(entity.entity_id)
-					_emit_death(entity, &"tower")
-					break
-				if entity.resource.tier == 2:
-					GEventBus.boss_hp_changed.emit(entity.entity_id, entity.current_hp, entity.scaled_hp)
-				var absorbed: float = minf(effect.tick_damage, pre_tick_hp)
-				_pending_absorbed[entity.entity_id] = (_pending_absorbed.get(entity.entity_id, 0.0) as float) + absorbed
-			if effect.ticks_remaining <= 0:
-				entity.active_status_effects.remove_at(i)
-			i -= 1
+		_tick_dot_instances(entity, delta)
+		if entity.lifecycle_state == MonsterEntity.State.DEAD:
+			continue  # a DoT tick just killed this entity — skip its slow decay too
+		_decay_slow_instances(entity, delta)
+
+
+func _tick_dot_instances(entity: MonsterEntity, delta: float) -> void:
+	if entity.active_status_effects.is_empty():
+		return
+	var i: int = entity.active_status_effects.size() - 1
+	while i >= 0:
+		var effect: ActiveStatusEffect = entity.active_status_effects[i]
+		effect.tick_interval_remaining -= delta
+		if effect.tick_interval_remaining <= 0.0:
+			effect.tick_interval_remaining += STATUS_TICK_INTERVAL
+			effect.ticks_remaining -= 1
+			var pre_tick_hp: float = entity.current_hp
+			entity.current_hp -= effect.tick_damage
+			entity.last_hit_source = &"tower"
+			if entity.current_hp <= 0.0:
+				entity.current_hp = 0.0
+				entity.lifecycle_state = MonsterEntity.State.DEAD
+				_pending_absorbed.erase(entity.entity_id)
+				_emit_death(entity, &"tower")
+				return
+			if entity.resource.tier == 2:
+				GEventBus.boss_hp_changed.emit(entity.entity_id, entity.current_hp, entity.scaled_hp)
+			var absorbed: float = minf(effect.tick_damage, pre_tick_hp)
+			_pending_absorbed[entity.entity_id] = (_pending_absorbed.get(entity.entity_id, 0.0) as float) + absorbed
+		if effect.ticks_remaining <= 0:
+			entity.active_status_effects.remove_at(i)
+		i -= 1
+
+
+func _decay_slow_instances(entity: MonsterEntity, delta: float) -> void:
+	if entity.active_slow_effects.is_empty():
+		return
+	var i: int = entity.active_slow_effects.size() - 1
+	while i >= 0:
+		var slow: ActiveSlowEffect = entity.active_slow_effects[i]
+		slow.remaining_duration -= delta
+		if slow.remaining_duration <= 0.0:
+			entity.active_slow_effects.remove_at(i)
+		i -= 1
 
 # ---------------------------------------------------------------------------
 # Pass 2 — BOSS Logic
@@ -298,8 +364,10 @@ func _pass3_movement(delta: float) -> void:
 
 
 func _advance_entity(entity: MonsterEntity, delta: float) -> void:
-	# Convert cells/sec to world-units/sec using CELL_SIZE
-	var budget: float = entity.scaled_speed * CELL_SIZE * delta
+	# Convert cells/sec to world-units/sec using CELL_SIZE. Reads effective
+	# speed (scaled_speed x active slow multipliers, Formula D6) fresh every
+	# frame — scaled_speed itself is never mutated (stays immutable per ADR-0006).
+	var budget: float = _effective_speed(entity) * CELL_SIZE * delta
 	while budget > 0.0 and entity.path_step_index < entity.current_path.size():
 		var target_world: Vector2 = _grid.cell_to_world(entity.current_path[entity.path_step_index])
 		var dist: float = entity.global_position.distance_to(target_world)

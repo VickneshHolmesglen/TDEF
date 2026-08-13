@@ -31,6 +31,31 @@ PASS 1b — STATUS TICK PASS (burn/poison DoT, design/gdd/damage-status.md Formu
 
 **Consequence update**: the original Negative "a future 5th pass would require deliberate design" is resolved by this amendment — the design is documented above, not improvised in code. No change to the 4 original passes' behavior; Pass numbering for Pass 2/3/4 is unchanged (the new pass is named "1b," not renumbered into the sequence, so this document's existing cross-references to "Pass 3"/"Pass 4" elsewhere remain accurate).
 
+## Amendment (2026-08-13, same day, follow-up) — Pass 1b Extended to Slow; Pass 3 Reads Effective Speed
+
+`design/gdd/damage-status.md`'s Rule I.3 is amended a second time the same day — slow moves into scope alongside burn/poison. Renamed Pass 1b from "Status Tick Pass" to "Status Effects Pass" (still Pass 1b, not renumbered) since it now owns two mechanically distinct sub-behaviors:
+
+```
+PASS 1b — STATUS EFFECTS PASS (extended)
+├─ (unchanged) burn/poison DoT ticks — see the original 2026-08-13 amendment above
+└─ NEW: slow duration decay (design/gdd/damage-status.md Formula D6)
+     ├─ On a recognized effect_type ("slow"): appends a new, independent
+     │    ActiveSlowEffect instance to MonsterEntity.active_slow_effects
+     │    (multiplicative stacking, not refresh — a user design decision made
+     │    explicitly before implementation, see the GDD's own Amendment note)
+     ├─ Each frame: decrement remaining_duration by delta; at ≤0, remove the
+     │    instance. No ticks, no HP interaction — this sub-behavior never
+     │    touches current_hp or _pending_absorbed at all.
+     └─ speed_multiplier (1.0 - effect_value, floored) is computed ONCE when
+          the instance is created, not recomputed per frame
+```
+
+**Movement Model decision amended**: this ADR's own "Movement Model: Position-Based via `global_position`" section (above) states velocity is computed as `direction × scaled_speed × delta`. As of this amendment, Pass 3 (`_advance_entity`) computes velocity as `direction × effective_speed × delta`, where `effective_speed = scaled_speed × Π(active ActiveSlowEffect.speed_multiplier)` via a new `_effective_speed(entity)` helper. **`scaled_speed` itself is never written to** — it remains exactly as immutable-after-spawn as this ADR's own Key Interfaces list already documented (`var scaled_speed: float # immutable after spawn`). With zero active slow instances (the common case for every monster that has never been slowed), `effective_speed` equals `scaled_speed` exactly — this is a pure extension, not a behavior change, for any monster the mechanic doesn't touch.
+
+**Why multiplicative stacking, not additive-capped**: a user design decision, made explicitly via a scoping question before implementation began (not a default assumption). Multiplicative combination structurally guarantees `effective_speed` can never reach zero or go negative regardless of how many `ActiveSlowEffect` instances are simultaneously active on one monster — no separate clamp is needed at the combination site itself (only the per-instance `speed_multiplier_floor`, applied once at instance-creation time, exists as a safety floor against one single extreme content value).
+
+**Why no new pass for slow (reused Pass 1b rather than a 6th pass)**: slow shares the exact same lifecycle shape as DoT — per-entity, `PowerComponent`-sourced, freed automatically when the entity is (EC-16), read from the same `tower_attacked` event Pass 1b's DoT half already subscribes to. Splitting it into its own pass would mean iterating `active_monsters` a third time per frame for no architectural benefit; Pass 1b's own two internal helper functions (`_tick_dot_instances`/`_decay_slow_instances`) keep the two sub-behaviors readable without a new top-level pass.
+
 ## Date
 2026-05-22
 

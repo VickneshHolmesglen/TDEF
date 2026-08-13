@@ -64,3 +64,9 @@ var boss_locked_target_id: int = -1
 ## Rule I.3 amendment; ADR-0006 5th pass). Stacks, does not refresh — see
 ## ActiveStatusEffect's own doc comment for why.
 var active_status_effects: Array[ActiveStatusEffect] = []
+
+## Independent in-flight slow instances (design/gdd/damage-status.md Formula D6,
+## amended 2026-08-13). Combines multiplicatively, does not refresh — see
+## ActiveSlowEffect's own doc comment for why. Read by Monster System's movement
+## pass to compute effective speed; never mutates scaled_speed itself.
+var active_slow_effects: Array[ActiveSlowEffect] = []
