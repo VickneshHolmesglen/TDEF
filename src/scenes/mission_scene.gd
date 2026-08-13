@@ -45,6 +45,7 @@ const TowerInstanceScene: PackedScene = preload("res://src/core/tower/TowerInsta
 const ProjectileVisualScene: PackedScene = preload("res://src/scenes/ProjectileVisual.tscn")
 const AoeRingVisualScene: PackedScene = preload("res://src/scenes/AoeRingVisual.tscn")
 const PlacementRejectFlashScene: PackedScene = preload("res://src/scenes/PlacementRejectFlash.tscn")
+const TowerDestroyVFXScene: PackedScene = preload("res://src/scenes/TowerDestroyVFX.tscn")
 
 ## design/gdd/tower.md "Archetype projectile color language": Support =
 ## "Warm gold / pale light." Support towers never fire a projectile (Rule
@@ -216,6 +217,7 @@ func _on_tower_placed(payload: TowerPlacedEvent) -> void:
 	# access pattern already used by _on_tower_attacked.
 	var state: TowerMissionState = _tower_system.placed_towers.get(payload.tower_id) as TowerMissionState
 	if state != null:
+		vis.element = state.weapon.element
 		vis.set_idle_ambient(state.weapon.element)
 	_tower_visuals[payload.tower_id] = vis
 	_spawn_placement_confirm_ripple(vis.position, payload.footprint)
@@ -236,12 +238,37 @@ func _spawn_placement_confirm_ripple(world_position: Vector2, footprint: Vector2
 	ripple.configure(radius, PLACEMENT_CONFIRM_COLOR, "", PLACEMENT_CONFIRM_DURATION)
 
 
+## design/gdd/tower.md "Tower Voluntarily Removed": calm dissolve, no debris,
+## no flash — TowerInstance animates and frees itself; see
+## play_remove_animation()'s own doc comment.
 func _on_tower_removed(tower_id: int, _grid_position: Vector2i, _archetype: String, _constellation_eligibility_tag: String) -> void:
-	_free_tower_visual(tower_id)
+	var vis: TowerInstance = _tower_visuals.get(tower_id) as TowerInstance
+	if vis == null:
+		return
+	_tower_visuals.erase(tower_id)
+	vis.play_remove_animation()
 
 
-func _on_tower_destroyed(tower_id: int, _grid_position: Vector2i, _archetype: String, _footprint: Array, _constellation_eligibility_tag: String) -> void:
-	_free_tower_visual(tower_id)
+## design/gdd/tower.md "Tower DESTROYED (Terminal)": the sudden/violent
+## counterpart to voluntary removal — red flash then an archetype-appropriate
+## particle burst (TowerDestroyVFX). The TowerInstance itself is freed
+## immediately (no lingering wreckage on the grid — GDD step 3, "no visual
+## remnant on cells") and the VFX node spawns in its place. footprint size is
+## approximated at one cell (CELL_SIZE) — no current blueprint uses a
+## footprint larger than 1x1 (see tower_placed's own precedent for this
+## simplification), and the destroyed-event payload carries occupied cells,
+## not a footprint size, so there is nothing more precise to read here anyway.
+func _on_tower_destroyed(tower_id: int, _grid_position: Vector2i, archetype: String,
+		_footprint: Array, _constellation_eligibility_tag: String) -> void:
+	var vis: TowerInstance = _tower_visuals.get(tower_id) as TowerInstance
+	if vis == null:
+		return
+	_tower_visuals.erase(tower_id)
+	var vfx: Node2D = TowerDestroyVFXScene.instantiate()
+	_gameplay_root.add_child(vfx)
+	vfx.global_position = vis.global_position
+	vfx.configure(archetype, vis.element, Vector2(CELL_SIZE, CELL_SIZE))
+	vis.queue_free()
 
 
 ## Visual-only first pass (design/gdd/tower.md "Projectile Types"): spawns a
@@ -289,15 +316,6 @@ func _on_tower_aura_pulse(payload: TowerAuraPulseEvent) -> void:
 	_gameplay_root.add_child(ring)
 	ring.global_position = tower_vis.global_position
 	ring.configure(payload.aura_radius_cells * CELL_SIZE, SUPPORT_AURA_COLOR)
-
-
-func _free_tower_visual(tower_id: int) -> void:
-	var vis: TowerInstance = _tower_visuals.get(tower_id) as TowerInstance
-	if vis == null:
-		return
-	if is_instance_valid(vis):
-		vis.queue_free()
-	_tower_visuals.erase(tower_id)
 
 
 func _on_tower_blueprint_selected(blueprint_id: StringName) -> void:

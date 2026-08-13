@@ -1,0 +1,11 @@
+[gd_scene load_steps=2 format=3 uid="uid://twrdstryvfx0scn0first0pass"]
+
+[ext_resource type="Script" path="res://src/scenes/tower_destroy_vfx.gd" id="1_destroy_vfx"]
+
+[node name="TowerDestroyVFX" type="Node2D"]
+script = ExtResource("1_destroy_vfx")
+
+[node name="CPUParticles2D" type="CPUParticles2D" parent="."]
+emitting = false
+amount = 14
+one_shot = true

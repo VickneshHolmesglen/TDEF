@@ -52,6 +52,18 @@ const IDLE_AMBIENT_CONFIGS: Dictionary[String, Dictionary] = {
 	},
 }
 
+## design/gdd/tower.md "Tower Voluntarily Removed" Visual/Audio Requirements:
+## "Smooth dissolve or retract animation (~0.3–0.5s)."
+const REMOVE_DURATION: float = 0.4  ## seconds
+
+## WeaponComponent.element — cached here at placement time (see
+## mission_scene.gd's _on_tower_placed) so tower_destroyed's VFX can read it
+## even though TowerSystem.placed_towers[tower_id] is already erased by the
+## time tower_destroyed fires (TowerSystem erases before emitting). Presentation
+## metadata living on the presentation node, not re-derived from a system
+## lookup that may no longer be valid.
+var element: String = ""
+
 @onready var _sprite: Sprite2D = $Sprite2D
 @onready var _idle_particles: CPUParticles2D = $IdleParticles2D
 
@@ -98,3 +110,18 @@ func set_idle_ambient(element: String) -> void:
 	_idle_particles.color_ramp = ramp
 
 	_idle_particles.emitting = true
+
+
+## design/gdd/tower.md "Tower Voluntarily Removed": "Smooth dissolve or
+## retract animation (~0.3–0.5s). No debris, no red flash — reads as
+## 'packed up, not killed.'" Deliberately the calm counterpart to
+## TowerDestroyVFX's sudden/violent flash-and-burst — this node animates and
+## frees ITSELF; the caller does not queue_free() separately. The idle
+## ambient particles (if any) are children of this node and are freed
+## along with it automatically, no separate cleanup needed.
+func play_remove_animation() -> void:
+	var tween := create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(self, "scale", Vector2.ZERO, REMOVE_DURATION).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	tween.tween_property(self, "modulate:a", 0.0, REMOVE_DURATION).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	tween.chain().tween_callback(queue_free)
