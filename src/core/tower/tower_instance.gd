@@ -87,6 +87,19 @@ const PUNCH_FLASH_IN_DURATION: float = 0.06
 const PUNCH_FLASH_OUT_DURATION: float = 0.12
 const PUNCH_SCALE_PEAK: float = 1.12
 
+## design/gdd/tower.md "Pre-Placement Perk Indicator": "Persistent icon badge
+## on the tower sprite (top-right corner of cell, 12–16px on-screen)...
+## Binary — present or absent; not a progress meter... the specific perk is
+## communicated via HUD tooltip, not the badge." A plain colored badge is
+## therefore sufficient — it never needs to encode WHICH perk, only that one
+## exists. Set via set_perk_badge(), driven by mission_scene.gd's
+## pre_placement_perk_activated subscription. Never cleared mid-lifetime —
+## the GDD's "removed if voluntarily removed and re-placed" requirement is
+## satisfied structurally: a removed tower's TowerInstance is freed entirely
+## (play_remove_animation()), and a fresh instance always starts with no badge.
+const PERK_BADGE_COLOR: Color = Color(0.784, 0.502, 0.102)  ## Sanctum Amber — this project's established "special status" color
+const PERK_BADGE_RADIUS: float = 7.0  ## world units — ~14px on-screen, within the GDD's 12-16px spec
+
 ## WeaponComponent.element — cached here at placement time (see
 ## mission_scene.gd's _on_tower_placed) so tower_destroyed's VFX can read it
 ## even though TowerSystem.placed_towers[tower_id] is already erased by the
@@ -101,6 +114,7 @@ var _weapon_glow_color: Color = Color.WHITE
 var _rotation_tween: Tween = null
 var _glow_tween: Tween = null
 var _punch_tween: Tween = null
+var _has_perk_badge: bool = false
 
 @onready var _sprite: Sprite2D = $Sprite2D
 @onready var _idle_particles: CPUParticles2D = $IdleParticles2D
@@ -223,12 +237,27 @@ func play_attack_punch(color: Color) -> void:
 	_punch_tween.tween_property(_sprite, "scale", _base_sprite_scale, PUNCH_FLASH_OUT_DURATION)
 
 
-## Draws the TARGETING weapon-slot glow only — the ATTACKING punch lives
-## entirely on _sprite's own modulate/scale (no custom draw needed for it),
-## keeping the two channels structurally as well as visually separate.
+## design/gdd/tower.md "Pre-Placement Perk Indicator" — see PERK_BADGE_COLOR's
+## own doc comment. active: true on pre_placement_perk_activated; this method
+## is never called with false in the current implementation (see that
+## comment for why forfeiture doesn't need an explicit "turn off" path) but
+## accepts the parameter for correctness/testability rather than a bare
+## "activate" method that could only ever do one thing.
+func set_perk_badge(active: bool) -> void:
+	_has_perk_badge = active
+	queue_redraw()
+
+
+## Draws the TARGETING weapon-slot glow and the perk badge. The ATTACKING
+## punch lives entirely on _sprite's own modulate/scale (no custom draw
+## needed for it), keeping that channel structurally separate from both of
+## these.
 func _draw() -> void:
-	if _weapon_glow_alpha <= 0.0:
-		return
-	var color: Color = _weapon_glow_color
-	color.a = _weapon_glow_alpha
-	draw_circle(Vector2(0.0, -TARGET_DISPLAY_HEIGHT * 0.3), WEAPON_GLOW_RADIUS, color)
+	if _weapon_glow_alpha > 0.0:
+		var glow_color: Color = _weapon_glow_color
+		glow_color.a = _weapon_glow_alpha
+		draw_circle(Vector2(0.0, -TARGET_DISPLAY_HEIGHT * 0.3), WEAPON_GLOW_RADIUS, glow_color)
+	if _has_perk_badge:
+		var badge_pos := Vector2(TARGET_DISPLAY_HEIGHT * 0.35, -TARGET_DISPLAY_HEIGHT * 0.45)
+		draw_circle(badge_pos, PERK_BADGE_RADIUS, PERK_BADGE_COLOR)
+		draw_arc(badge_pos, PERK_BADGE_RADIUS, 0.0, TAU, 24, Color(0.95, 0.95, 0.9), 1.5, true)

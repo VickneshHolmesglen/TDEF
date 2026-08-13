@@ -109,6 +109,7 @@ func _ready() -> void:
 	GEventBus.tower_destroyed.connect(_on_tower_destroyed)
 	GEventBus.tower_attacked.connect(_on_tower_attacked)
 	GEventBus.tower_aura_pulse.connect(_on_tower_aura_pulse)
+	GEventBus.pre_placement_perk_activated.connect(_on_pre_placement_perk_activated)
 
 
 func _exit_tree() -> void:
@@ -121,6 +122,7 @@ func _exit_tree() -> void:
 	GEventBus.tower_destroyed.disconnect(_on_tower_destroyed)
 	GEventBus.tower_attacked.disconnect(_on_tower_attacked)
 	GEventBus.tower_aura_pulse.disconnect(_on_tower_aura_pulse)
+	GEventBus.pre_placement_perk_activated.disconnect(_on_pre_placement_perk_activated)
 
 
 ## Real bug fix, 2026-08-09 — see grid_initialized's own doc comment
@@ -333,6 +335,19 @@ func _on_tower_aura_pulse(payload: TowerAuraPulseEvent) -> void:
 	_gameplay_root.add_child(ring)
 	ring.global_position = tower_vis.global_position
 	ring.configure(payload.aura_radius_cells * CELL_SIZE, SUPPORT_AURA_COLOR)
+
+
+## design/gdd/tower.md "Pre-Placement Perk Indicator" — see
+## TowerInstance.set_perk_badge()'s own doc comment for why no "forfeit"
+## path is needed here: a voluntarily-removed tower's TowerInstance is freed
+## entirely, and TowerSystem's own fix (2026-08-13, found while implementing
+## this) already guarantees this event never fires for an Intermission
+## placement or a tower with no perk configured.
+func _on_pre_placement_perk_activated(tower_id: int, _perk_type: String) -> void:
+	var tower_vis: TowerInstance = _tower_visuals.get(tower_id) as TowerInstance
+	if tower_vis == null:
+		return
+	tower_vis.set_perk_badge(true)
 
 
 func _on_tower_blueprint_selected(blueprint_id: StringName) -> void:

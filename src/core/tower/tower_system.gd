@@ -151,8 +151,18 @@ func place_tower(blueprint_id: StringName, top_left: Vector2i) -> bool:
 	payload.focus_component_id = state.focus.component_id
 	payload.power_component_id = state.power.component_id
 	GEventBus.tower_placed.emit(payload)
-	if placed_in_scout:
-		GEventBus.pre_placement_perk_activated.emit(tower_id, String(state.foundation.archetype))
+	# Real bug fixed here (2026-08-13, found while implementing the
+	# perk-badge VFX): this previously fired unconditionally for every
+	# Scout-Phase placement, using the tower's ARCHETYPE as perk_type. Per
+	# this file's own schema table ("pre_placement_perk: any perk type id,
+	# or '' -- empty string = no perk") and Rule 12's own text ("A Foundation
+	# component with pre_placement_perk = '' has no perk"), a tower with no
+	# perk configured must not fire this event at all. No shipped blueprint
+	# currently sets a non-empty pre_placement_perk, so this bug produced no
+	# visibly wrong behavior yet -- it would have the moment content authors
+	# added a real perk.
+	if placed_in_scout and state.foundation.pre_placement_perk != "":
+		GEventBus.pre_placement_perk_activated.emit(tower_id, state.foundation.pre_placement_perk)
 	return true
 
 

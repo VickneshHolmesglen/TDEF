@@ -173,16 +173,42 @@ func test_place_tower_blocks_all_paths_returns_false() -> void:
 
 
 # ---------------------------------------------------------------------------
-# AC-6: SCOUT placement fires pre_placement_perk_activated
+# AC-6: SCOUT placement fires pre_placement_perk_activated (tower has a perk)
 # ---------------------------------------------------------------------------
 
+## Real bug fix regression (2026-08-13): the fixture previously never set
+## pre_placement_perk, so this test was inadvertently exercising the BUG
+## (unconditional emission using archetype as perk_type) rather than the
+## real "has a perk" case the AC actually describes. Now sets a real perk
+## and asserts the emitted perk_type matches it, not the archetype.
 func test_place_tower_scout_fires_pre_placement_perk() -> void:
 	_ts._current_phase = TowerSystem.Phase.SCOUT
+	var data: TowerBlueprintData = _ts._tower_table[BLUEPRINT_ID] as TowerBlueprintData
+	data.foundation.pre_placement_perk = "test_perk_id"
 
 	_ts.place_tower(BLUEPRINT_ID, Vector2i(5, 5))
 
 	assert_bool(_spy.was_emitted("pre_placement_perk_activated")).is_true()
 	assert_bool(_spy.was_emitted("tower_placed")).is_true()
+	var emissions: Array = _spy.emissions.get("pre_placement_perk_activated", []) as Array
+	var perk_type: String = emissions[0][1] as String
+	assert_str(perk_type).is_equal("test_perk_id")
+
+
+## Real bug fix regression (2026-08-13): before the fix, this case was
+## completely untested -- a Scout-Phase placement with NO perk configured
+## incorrectly fired the event anyway (using the archetype string as a fake
+## perk_type). design/gdd/tower.md Rule 12: "A Foundation component with
+## pre_placement_perk = '' has no perk."
+func test_place_tower_scout_with_no_perk_does_not_fire_pre_placement_perk() -> void:
+	_ts._current_phase = TowerSystem.Phase.SCOUT
+	# _make_data()'s default foundation.pre_placement_perk is already "" --
+	# no perk configured, matching every real shipped blueprint today.
+
+	_ts.place_tower(BLUEPRINT_ID, Vector2i(5, 5))
+
+	assert_bool(_spy.was_emitted("tower_placed")).is_true()
+	assert_bool(_spy.was_emitted("pre_placement_perk_activated")).is_false()
 
 
 # ---------------------------------------------------------------------------
