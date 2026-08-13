@@ -1,0 +1,13 @@
+[gd_scene load_steps=2 format=3 uid="uid://mnstrdthvfx0scn0first0pass"]
+
+[ext_resource type="Script" path="res://src/scenes/monster_death_vfx.gd" id="1_death_vfx"]
+
+[node name="MonsterDeathVFX" type="Node2D"]
+script = ExtResource("1_death_vfx")
+
+[node name="DissolveSprite" type="Sprite2D" parent="."]
+
+[node name="CPUParticles2D" type="CPUParticles2D" parent="."]
+emitting = false
+amount = 10
+one_shot = true

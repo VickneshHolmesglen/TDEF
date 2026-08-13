@@ -46,6 +46,16 @@ const ProjectileVisualScene: PackedScene = preload("res://src/scenes/ProjectileV
 const AoeRingVisualScene: PackedScene = preload("res://src/scenes/AoeRingVisual.tscn")
 const PlacementRejectFlashScene: PackedScene = preload("res://src/scenes/PlacementRejectFlash.tscn")
 const TowerDestroyVFXScene: PackedScene = preload("res://src/scenes/TowerDestroyVFX.tscn")
+const MonsterDeathVFXScene: PackedScene = preload("res://src/scenes/MonsterDeathVFX.tscn")
+
+## design/monster.md "Death VFX" BOSS row: "screen micro-shake (0.1-0.15s,
+## low amplitude)." Camera2D.offset (not .position) is used specifically
+## because it's independent of whatever is actually driving camera position
+## — the shake can never fight with or permanently displace the camera's
+## real tracked position, it always resets to Vector2.ZERO when done.
+const BOSS_DEATH_SHAKE_DURATION: float = 0.12
+const BOSS_DEATH_SHAKE_MAGNITUDE: float = 6.0  ## world units
+const BOSS_DEATH_SHAKE_STEPS: int = 4
 
 ## design/gdd/tower.md "Archetype projectile color language": Support =
 ## "Warm gold / pale light." Support towers never fire a projectile (Rule
@@ -110,6 +120,8 @@ func _ready() -> void:
 	GEventBus.tower_attacked.connect(_on_tower_attacked)
 	GEventBus.tower_aura_pulse.connect(_on_tower_aura_pulse)
 	GEventBus.pre_placement_perk_activated.connect(_on_pre_placement_perk_activated)
+	GEventBus.monster_died.connect(_on_monster_died)
+	GEventBus.monsters_died_batch.connect(_on_monsters_died_batch)
 
 
 func _exit_tree() -> void:
@@ -123,6 +135,8 @@ func _exit_tree() -> void:
 	GEventBus.tower_attacked.disconnect(_on_tower_attacked)
 	GEventBus.tower_aura_pulse.disconnect(_on_tower_aura_pulse)
 	GEventBus.pre_placement_perk_activated.disconnect(_on_pre_placement_perk_activated)
+	GEventBus.monster_died.disconnect(_on_monster_died)
+	GEventBus.monsters_died_batch.disconnect(_on_monsters_died_batch)
 
 
 ## Real bug fix, 2026-08-09 — see grid_initialized's own doc comment
@@ -348,6 +362,43 @@ func _on_pre_placement_perk_activated(tower_id: int, _perk_type: String) -> void
 	if tower_vis == null:
 		return
 	tower_vis.set_perk_badge(true)
+
+
+## design/gdd/monster.md "Death VFX — death_vfx_scene Specification":
+## "Death VFX is NOT instantiated on breach." monster_died/monsters_died_batch
+## only fire for real kills — a breach frees the entity via a completely
+## separate path (monster_breached, MonsterManager's Pass 3) that this scene
+## never subscribes to, so that exclusion is already structurally satisfied
+## without any extra check here.
+func _on_monster_died(payload: MonsterDiedEvent) -> void:
+	_spawn_monster_death_vfx(payload)
+
+
+## ADR-0033: batches into one event when > DEATH_BATCH_THRESHOLD deaths
+## land in a single frame. Same per-death VFX either way — this handler
+## just unpacks the array.
+func _on_monsters_died_batch(payloads: Array[MonsterDiedEvent]) -> void:
+	for payload: MonsterDiedEvent in payloads:
+		_spawn_monster_death_vfx(payload)
+
+
+func _spawn_monster_death_vfx(payload: MonsterDiedEvent) -> void:
+	var vfx: Node2D = MonsterDeathVFXScene.instantiate()
+	_gameplay_root.add_child(vfx)
+	vfx.global_position = payload.world_position
+	vfx.configure(payload.monster_id, payload.tier)
+	if payload.tier == 2:
+		_shake_camera_for_boss_death()
+
+
+func _shake_camera_for_boss_death() -> void:
+	var shake_tween := create_tween()
+	var step_duration: float = BOSS_DEATH_SHAKE_DURATION / float(BOSS_DEATH_SHAKE_STEPS)
+	for i in range(BOSS_DEATH_SHAKE_STEPS):
+		var jitter := Vector2(randf_range(-BOSS_DEATH_SHAKE_MAGNITUDE, BOSS_DEATH_SHAKE_MAGNITUDE),
+				randf_range(-BOSS_DEATH_SHAKE_MAGNITUDE, BOSS_DEATH_SHAKE_MAGNITUDE))
+		shake_tween.tween_property(_camera, "offset", jitter, step_duration)
+	shake_tween.tween_property(_camera, "offset", Vector2.ZERO, step_duration)
 
 
 func _on_tower_blueprint_selected(blueprint_id: StringName) -> void:
