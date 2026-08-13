@@ -212,6 +212,17 @@ var _intermission_timer: Timer
 var _watchdog_stall_timer: Timer
 var _watchdog_force_timer: Timer
 
+## GDD Formula F2: emits phase_timer_tick once per second during SCOUT and
+## INTERMISSION. Extended (beyond F2's own documented SCOUT/INTERMISSION-only
+## scope — see wave-manager.md's "Type note") to also tick during PRE_WAVE,
+## since that is exactly the "counting down to monster spawn" window players
+## see after pressing Ready — wave_countdown_warning alone only fires once at
+## PRE_WAVE entry and never updates again, leaving the HUD frozen for the
+## full 10s. Repeating (one_shot=false) rather than one of the phase-duration
+## timers themselves, since it must keep running across whichever phase is
+## active without being torn down/recreated at every transition.
+var _phase_tick_timer: Timer
+
 # =============================================================================
 # Lifecycle
 # =============================================================================
@@ -222,6 +233,13 @@ func _ready() -> void:
 	_intermission_timer = _make_timer("_intermission_timer", _on_intermission_timer_timeout, intermission_duration_sec)
 	_watchdog_stall_timer = _make_timer("_watchdog_stall_timer", _on_watchdog_stall_timeout, watchdog_stall_sec)
 	_watchdog_force_timer = _make_timer("_watchdog_force_timer", _on_watchdog_force_timeout, watchdog_force_sec)
+
+	_phase_tick_timer = Timer.new()
+	_phase_tick_timer.name = "_phase_tick_timer"
+	_phase_tick_timer.one_shot = false
+	_phase_tick_timer.wait_time = 1.0
+	_phase_tick_timer.timeout.connect(_on_phase_tick_timer_timeout)
+	add_child(_phase_tick_timer)
 
 	_grid = GGrid
 	_wave_config_loader = _default_load_wave_config
@@ -321,6 +339,7 @@ func _stop_phase_timers() -> void:
 	_intermission_timer.stop()
 	_watchdog_stall_timer.stop()
 	_watchdog_force_timer.stop()
+	_phase_tick_timer.stop()
 
 
 func _phase_name(phase: Phase) -> String:
@@ -354,10 +373,12 @@ func _enter_idle() -> void:
 
 func _enter_scout() -> void:
 	_scout_timer.start()
+	_phase_tick_timer.start()
 
 
 func _enter_pre_wave() -> void:
 	_pre_wave_timer.start()
+	_phase_tick_timer.start()
 
 
 func _enter_wave_active() -> void:
@@ -396,6 +417,7 @@ func _enter_wave_active() -> void:
 
 func _enter_intermission() -> void:
 	_intermission_timer.start()
+	_phase_tick_timer.start()
 	# AC-27 (Story 002): fires immediately on INTERMISSION entry, carrying the
 	# upcoming wave's composition for Mission HUD's "forewarning" display.
 	var next_wave: int = _wave_index + 1
@@ -924,6 +946,27 @@ func _on_pre_wave_timer_timeout() -> void:
 	if _phase_locked: return
 	if _phase != Phase.PRE_WAVE: return
 	_transition_to(Phase.WAVE_ACTIVE)
+
+
+## GDD Formula F2 — see _phase_tick_timer's own doc comment for the PRE_WAVE
+## scope extension. Reads time_left off whichever phase-duration timer is
+## live for the current phase; a no-op for phases with no duration timer
+## (WAVE_ACTIVE, MISSION_COMPLETE, DEFEAT, IDLE) — unreachable in practice
+## since _phase_tick_timer is only ever started from _enter_scout()/
+## _enter_pre_wave()/_enter_intermission() and stopped by _stop_phase_timers()
+## on every other transition, but guarded rather than assumed.
+func _on_phase_tick_timer_timeout() -> void:
+	var duration_timer: Timer
+	match _phase:
+		Phase.SCOUT:
+			duration_timer = _scout_timer
+		Phase.PRE_WAVE:
+			duration_timer = _pre_wave_timer
+		Phase.INTERMISSION:
+			duration_timer = _intermission_timer
+		_:
+			return
+	GEventBus.phase_timer_tick.emit(_phase_name(_phase), maxf(0.0, duration_timer.time_left))
 
 
 ## Story 005: `_check_rebuild_gate()` is called here — once, at the

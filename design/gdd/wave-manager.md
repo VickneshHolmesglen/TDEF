@@ -84,7 +84,7 @@ The Wave Manager is invisible. What the player feels is that the mission has a s
    |-------|--------------|----------------|-------|
    | `IDLE` | App start / mission end | None | None |
    | `SCOUT` | `mission_launched` received | Tower placement, Tarot selection | 60s; `phase_timer_tick` every second |
-   | `PRE_WAVE` | Scout timer expires **or** player presses Ready | None | 10s; `wave_countdown_warning` fires at entry |
+   | `PRE_WAVE` | Scout timer expires **or** player presses Ready | None | 10s; `wave_countdown_warning` fires at entry, `phase_timer_tick` every second thereafter (2026-08-13 extension — see Formula F2) |
    | `WAVE_ACTIVE` | PRE_WAVE countdown expires | Hero combat, tower monitoring | None |
    | `INTERMISSION` | Wave cleared (more waves remain) | Tower repositioning | 30s; `phase_timer_tick` every second |
    | `MISSION_COMPLETE` | Final wave cleared | None | None |
@@ -279,11 +279,11 @@ wave_reward_scalar = 1.0 × (1 + r) ^ (w - 1)
 ```
 seconds_remaining = max(0.0, phase_duration - elapsed)
 ```
-`phase_timer_tick` fires every 1.0 second during SCOUT and INTERMISSION. Payload: `phase: String`, `seconds_remaining: float` (floored to nearest int for display). The `max(0.0, …)` clamp prevents frame-boundary slop (timer firing at `elapsed = phase_duration + one_frame_slop`) from producing a negative seconds_remaining value on the HUD.
+`phase_timer_tick` fires every 1.0 second during SCOUT, PRE_WAVE, and INTERMISSION. Payload: `phase: String`, `seconds_remaining: float` (floored to nearest int for display). The `max(0.0, …)` clamp prevents frame-boundary slop (timer firing at `elapsed = phase_duration + one_frame_slop`) from producing a negative seconds_remaining value on the HUD.
 
 **Purpose:** Powers the Mission HUD countdown display. No gameplay logic depends on this value — display signal only.
 
-**Type note:** F2 applies exclusively to `phase_timer_tick` (emitted every 1.0s during SCOUT and INTERMISSION). `wave_countdown_warning` is a separate signal with a different contract: it fires once at PRE_WAVE entry with `seconds_remaining: int` (a fixed integral value — 10 at default `pre_wave_countdown`). The `int` type for `wave_countdown_warning.seconds_remaining` matches the UI Requirements table and is not subject to F2's float flooring logic.
+**Type note:** F2 applies to `phase_timer_tick` (emitted every 1.0s during SCOUT, PRE_WAVE, and INTERMISSION — PRE_WAVE added 2026-08-13; see below). `wave_countdown_warning` is a separate signal with a different contract: it fires once at PRE_WAVE entry with `seconds_remaining: int` (a fixed integral value — 10 at default `pre_wave_countdown`). The `int` type for `wave_countdown_warning.seconds_remaining` matches the UI Requirements table and is not subject to F2's float flooring logic. `phase_timer_tick` was originally scoped to SCOUT/INTERMISSION only, with `wave_countdown_warning`'s single entry-time firing considered sufficient for PRE_WAVE. In practice this left the HUD frozen on a static "Wave incoming: 10s" for the entire PRE_WAVE window (no per-second update after entry) — a real, player-visible gap, not a hypothetical. `phase_timer_tick` now also ticks during PRE_WAVE to close it; `wave_countdown_warning` is unchanged (still fires once at entry, still drives the entry-moment audio sting per `event-bus.md`).
 
 ## Edge Cases
 
@@ -442,7 +442,7 @@ Wave Manager's responsibilities end at signal emission. The Mission HUD is the s
 | Player-facing feedback | Wave Manager's role | Consuming system |
 |------------------------|--------------------|--------------------|
 | Scout phase countdown (60s→0) | Emits `phase_timer_tick` every 1s | Mission HUD |
-| "Wave incoming" 10s countdown | Emits `wave_countdown_warning` at PRE_WAVE entry | Mission HUD |
+| "Wave incoming" 10s countdown | Emits `wave_countdown_warning` at PRE_WAVE entry (audio sting), then `phase_timer_tick` every 1s for the rest of the countdown | Mission HUD |
 | Wave number announce | Emits `wave_started` | Mission HUD |
 | Intermission countdown (30s→0) | Emits `phase_timer_tick` every 1s | Mission HUD |
 | "Wave cleared" feedback | Emits `wave_completed` | Mission HUD |

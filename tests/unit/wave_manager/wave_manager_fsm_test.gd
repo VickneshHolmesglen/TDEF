@@ -90,16 +90,19 @@ func test_transition_to_ignored_when_phase_locked() -> void:
 	assert_bool(_spy.was_emitted("mission_phase_changed")).is_false()
 
 # ---------------------------------------------------------------------------
-# AC-5: 5 Timer child nodes created in _ready() with the documented names
+# AC-5: 5 Timer child nodes created in _ready() with the documented names.
+# A 6th, _phase_tick_timer (repeating, phase_timer_tick's own driver — see
+# below), was added 2026-08-13; this test's count was updated alongside it.
 # ---------------------------------------------------------------------------
 
 func test_ready_creates_five_named_timer_nodes() -> void:
-	assert_int(_wm.get_child_count()).is_equal(5)
+	assert_int(_wm.get_child_count()).is_equal(6)
 	assert_str(_wm._scout_timer.name).is_equal("_scout_timer")
 	assert_str(_wm._pre_wave_timer.name).is_equal("_pre_wave_timer")
 	assert_str(_wm._intermission_timer.name).is_equal("_intermission_timer")
 	assert_str(_wm._watchdog_stall_timer.name).is_equal("_watchdog_stall_timer")
 	assert_str(_wm._watchdog_force_timer.name).is_equal("_watchdog_force_timer")
+	assert_str(_wm._phase_tick_timer.name).is_equal("_phase_tick_timer")
 
 # ---------------------------------------------------------------------------
 # AC-6: Each Timer is one_shot and has its timeout signal connected
@@ -277,3 +280,74 @@ func test_monster_died_ignored_outside_wave_active() -> void:
 
 	# Guard pattern: handler discards events received outside WAVE_ACTIVE.
 	assert_int(_wm._enemies_alive).is_equal(1)
+
+# ---------------------------------------------------------------------------
+# phase_timer_tick (Formula F2, 2026-08-13): real bug found live — the signal
+# was declared on EventBus but never emitted by any production code, so the
+# Mission HUD's phase timer stayed frozen on "Timer: --" the whole session.
+# _phase_tick_timer is repeating (one_shot=false) and separate from the 5
+# one-shot phase-duration timers above.
+# ---------------------------------------------------------------------------
+
+func test_phase_tick_timer_is_repeating_with_one_second_interval() -> void:
+	assert_bool(_wm._phase_tick_timer.one_shot).is_false()
+	assert_float(_wm._phase_tick_timer.wait_time).is_equal(1.0)
+	assert_int(_wm._phase_tick_timer.timeout.get_connections().size()).is_greater(0)
+
+
+func test_phase_tick_timer_starts_on_scout_entry_and_emits_phase_timer_tick() -> void:
+	_spy.watch(GEventBus.phase_timer_tick)
+	_wm._phase = WaveManager.Phase.SCOUT
+	_wm._scout_timer.start()
+
+	_wm._phase_tick_timer.emit_signal("timeout")
+
+	assert_bool(_spy.was_emitted("phase_timer_tick")).is_true()
+	var args: Array = (_spy.emissions["phase_timer_tick"] as Array)[0]
+	assert_str(args[0]).is_equal("SCOUT")
+	assert_float(args[1] as float).is_greater(0.0)
+
+
+## The PRE_WAVE extension this story adds — see wave-manager.md Formula F2's
+## Type note. wave_countdown_warning alone (fired once at PRE_WAVE entry)
+## left the HUD frozen for the full 10s; phase_timer_tick now also ticks here.
+func test_phase_tick_timer_emits_during_pre_wave() -> void:
+	_spy.watch(GEventBus.phase_timer_tick)
+	_wm._phase = WaveManager.Phase.PRE_WAVE
+	_wm._pre_wave_timer.start()
+
+	_wm._phase_tick_timer.emit_signal("timeout")
+
+	assert_bool(_spy.was_emitted("phase_timer_tick")).is_true()
+	var args: Array = (_spy.emissions["phase_timer_tick"] as Array)[0]
+	assert_str(args[0]).is_equal("PRE_WAVE")
+
+
+func test_phase_tick_timer_emits_during_intermission() -> void:
+	_spy.watch(GEventBus.phase_timer_tick)
+	_wm._phase = WaveManager.Phase.INTERMISSION
+	_wm._intermission_timer.start()
+
+	_wm._phase_tick_timer.emit_signal("timeout")
+
+	assert_bool(_spy.was_emitted("phase_timer_tick")).is_true()
+	var args: Array = (_spy.emissions["phase_timer_tick"] as Array)[0]
+	assert_str(args[0]).is_equal("INTERMISSION")
+
+
+func test_phase_tick_timer_does_not_emit_during_wave_active() -> void:
+	_spy.watch(GEventBus.phase_timer_tick)
+	_wm._phase = WaveManager.Phase.WAVE_ACTIVE
+
+	_wm._phase_tick_timer.emit_signal("timeout")
+
+	assert_bool(_spy.was_emitted("phase_timer_tick")).is_false()
+
+
+func test_transition_to_wave_active_stops_phase_tick_timer() -> void:
+	_wm._phase = WaveManager.Phase.PRE_WAVE
+	_wm._phase_tick_timer.start()
+
+	_wm._transition_to(WaveManager.Phase.WAVE_ACTIVE)
+
+	assert_bool(_wm._phase_tick_timer.is_stopped()).is_true()
