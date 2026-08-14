@@ -44,11 +44,18 @@ var cells: Dictionary = {}  # Vector2i -> Grid.CellType (int)
 ## Real terrain art (2026-08-08, design/art/asset-generation-prompts.md's
 ## terrain batch) — replaces the original flat-solid-color placeholder fill.
 ## One shared tile per Grid.CellType, reused across every mission (per user's
-## own scope decision — not per-mission bespoke terrain). Source images are
-## native ChatGPT-generation resolution (1254x1254) — resized once per
-## configure() call to cell_px, never per-cell, per this project's own
-## "always scale new art explicitly" lesson (design/art/asset-generation-
+## own scope decision at the time — not per-mission bespoke terrain). Source
+## images are native ChatGPT-generation resolution (1254x1254) — resized
+## once per configure() call to cell_px, never per-cell, per this project's
+## own "always scale new art explicitly" lesson (design/art/asset-generation-
 ## prompts.md's own recurring-bug-class note).
+##
+## 2026-08-15 update in progress: player asked for per-mission environment
+## flavour, reversing the "shared across every mission" decision above for
+## Placeable/Path/Blocked (Spawn/Goal stay shared — see
+## assets/art-generation-requests-2026-08-15-mission-terrain.md's own scope
+## note). Not yet wired — the art for this doesn't exist yet; this file
+## still renders the single shared set below until it does.
 const TEXTURE_BY_TYPE := {
 	0: preload("res://assets/art/terrain/placeable.png"),  # PLACEABLE
 	1: preload("res://assets/art/terrain/path.png"),       # PATH

@@ -4,6 +4,30 @@ Reference log of prompts used with external image generators for game art,
 kept so a prompt can be reused, tweaked, or regenerated later without
 reconstructing the art-bible constraints from scratch each time.
 
+> **Batch request, not yet started (0/12)**: `assets/art-generation-requests-2026-08-15-mission-terrain.md`
+> is a standalone, upload-ready prompt batch for per-mission terrain tiles —
+> player-requested ("I want the environment to have some flavour"): every
+> mission currently renders with the exact same 5 shared terrain tiles,
+> regardless of which one you're playing. Reskins Placeable/Path/Blocked (3
+> types) per mission (4 missions = 12 tiles), matching each mission's
+> already-shipped card-icon biome (The Gap = canyon, The Foothills = hills,
+> The Hollow = cave/crystal, The Narrows = river). Spawn/Goal stay shared —
+> functional landmarks, not biome-specific. Same reserved-color discipline
+> as every other batch (no green even for Foothills' "grass," no purple even
+> for Hollow's "crystals," no cyan, no red) plus the same tileable-border
+> requirements the original terrain batch's Path regeneration already had
+> to learn the hard way.
+
+> **Batch request, not yet started (0/8)**: `assets/art-generation-requests-2026-08-15-mission-props.md`
+> is a standalone, upload-ready prompt batch for scattered decorative props —
+> companion to the mission-terrain batch above (same player request). 2 prop
+> variants per mission (8 total): rock rubble/stone shards (Gap), dried
+> grass/shrub (Foothills), crystal shards/roots (Hollow), river stones/reeds
+> (Narrows). Cutout pipeline (alpha-cut, like materials icons), meant to be
+> randomly scattered across buildable ground at low density for visual
+> variety — purely cosmetic, baked into the same single-Image grid texture
+> as the terrain tiles, no gameplay-logic changes.
+
 > **Batch request, complete (4/4, 2026-08-13)**: `assets/art-generation-requests-2026-08-13-mission-cards.md`
 > is a standalone, upload-ready prompt batch for the 4 Mission Select card
 > environment-motif icons (The Gap, The Foothills, The Hollow, The Narrows) —
