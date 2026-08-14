@@ -48,17 +48,21 @@ reconstructing the art-bible constraints from scratch each time.
 > materials — rarity is signaled separately by a code-drawn frame
 > (`RarityFrame`), not baked into the icon.
 
-> **Batch request, in progress (15/22)**: `assets/art-generation-requests-2026-08-03-tarot.md`
+> **Batch request, complete (22/22, 2026-08-15)**: `assets/art-generation-requests-2026-08-03-tarot.md`
 > is the original standalone prompt batch for the full classic 22 Major
 > Arcana (only 12 `TarotCardResource` entries are authored today, so this
 > batch is deliberately art-ahead-of-content — see the file's own scope
-> note). 15 cards sliced, wired, and clean (`assets/art/tarot/`), 10 of the
-> 12 real cards now have art. **The remaining 7** (Strength/Hermit's own
-> mockup-reject issue was already resolved on retry; only The Lovers is
-> still outstanding from that batch) are pulled into a fresh, standalone
-> batch: `assets/art-generation-requests-2026-08-07-tarot-remaining.md`
-> (The Lovers retry + Wheel of Fortune, The Devil, The Tower, The Sun,
-> Judgement, The World, all not yet generated).
+> note). The remaining 7 (The Lovers retry + Wheel of Fortune, The Devil,
+> The Tower, The Sun, Judgement, The World) were pulled into
+> `assets/art-generation-requests-2026-08-07-tarot-remaining.md`, generated
+> clean on the first pass (correct palette throughout — no purple/green/cyan
+> — no baked-in text/frame on any of the 7), sliced, alpha-cut, and archived
+> to `assets/art/tarot/`. **10 of the 12 real cards have art** (unchanged by
+> this batch — these 7 are reference art only, not new content; see the
+> remaining-batch file's own step 4). `reckless_onslaught`/`swift_current`
+> still have no art and no obvious Major-Arcana fit among the 22 now
+> available — wiring any of the 22 to a `TarotCardResource` remains a
+> separate content decision, not done here.
 
 > **Batch request, partially generated**: `assets/art-generation-requests-2026-08-02.md`
 > is a standalone, upload-ready prompt batch. Its Section 3 (tower
