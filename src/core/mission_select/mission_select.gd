@@ -269,7 +269,15 @@ func confirm_launch() -> void:
 	# re-deliver the identical object to Grid.
 	var entry: MissionEntry = GGameDataRegistry.get_mission_entry(_current_mission_id)
 	_runtime_mission_id = _current_mission_id
-	_runtime_grid_config = entry.grid_config if entry != null else null
+	# Player-requested 2026-08-15: every launch generates a fresh procedural
+	# map (MapGenerator) instead of reusing the mission's static, hand-
+	# authored grid_config.cells layout. entry.grid_config still supplies
+	# cols/rows/cell_size (content-authored per mission) -- only the cell
+	# layout itself is now generated, never read from the .tres. retry_
+	# current_mission() below intentionally reuses this same generated
+	# instance rather than regenerating, so a retry keeps the map you were
+	# just playing.
+	_runtime_grid_config = MapGenerator.generate(entry.grid_config.cols, entry.grid_config.rows, entry.grid_config.cell_size) if entry != null else null
 	_runtime_difficulty_tier = difficulty_tier
 	_runtime_modifiers = modifiers
 	_runtime_launch_timestamp = Time.get_unix_time_from_system()
