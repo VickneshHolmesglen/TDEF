@@ -132,7 +132,7 @@ func _ready() -> void:
 	# on an absent method logs an engine-level error but does not halt or
 	# otherwise surface as a clear diagnostic).
 	if _grid_visual.has_method(&"configure"):
-		_grid_visual.call(&"configure", config.cols, config.rows, config.cell_size, config.cells)
+		_grid_visual.call(&"configure", config.cols, config.rows, config.cell_size, config.cells, "the_gap")
 	else:
 		push_error("[the_gap] GridVisual node ($GridVisual) has no configure() method — grid will not render. Check grid_visual.gd for a renamed/removed method.")
 

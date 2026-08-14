@@ -4,29 +4,32 @@ Reference log of prompts used with external image generators for game art,
 kept so a prompt can be reused, tweaked, or regenerated later without
 reconstructing the art-bible constraints from scratch each time.
 
-> **Batch request, not yet started (0/12)**: `assets/art-generation-requests-2026-08-15-mission-terrain.md`
+> **Batch request, complete (12/12, 2026-08-15)**: `assets/art-generation-requests-2026-08-15-mission-terrain.md`
 > is a standalone, upload-ready prompt batch for per-mission terrain tiles —
-> player-requested ("I want the environment to have some flavour"): every
-> mission currently renders with the exact same 5 shared terrain tiles,
-> regardless of which one you're playing. Reskins Placeable/Path/Blocked (3
-> types) per mission (4 missions = 12 tiles), matching each mission's
-> already-shipped card-icon biome (The Gap = canyon, The Foothills = hills,
-> The Hollow = cave/crystal, The Narrows = river). Spawn/Goal stay shared —
-> functional landmarks, not biome-specific. Same reserved-color discipline
-> as every other batch (no green even for Foothills' "grass," no purple even
-> for Hollow's "crystals," no cyan, no red) plus the same tileable-border
-> requirements the original terrain batch's Path regeneration already had
-> to learn the hard way.
+> player-requested ("I want the environment to have some flavour"). Reskins
+> Placeable/Path/Blocked (3 types) per mission (4 missions = 12 tiles),
+> matching each mission's already-shipped card-icon biome (The Gap = canyon,
+> The Foothills = hills, The Hollow = cave/crystal, The Narrows = river).
+> Spawn/Goal stay shared. Generated clean on the first pass — correct
+> reserved-color discipline throughout (Foothills' "grass" renders warm
+> golden-amber not green, Hollow's "crystals" render Scout Blue not purple),
+> straight non-converging Path borders on all 4. All 12 sliced and wired
+> into `grid_visual.gd`'s `TEXTURE_BY_TYPE_BY_MISSION`. Live-verified against
+> all 4 real missions.
 
-> **Batch request, not yet started (0/8)**: `assets/art-generation-requests-2026-08-15-mission-props.md`
+> **Batch request, complete (8/8, 2026-08-15)**: `assets/art-generation-requests-2026-08-15-mission-props.md`
 > is a standalone, upload-ready prompt batch for scattered decorative props —
-> companion to the mission-terrain batch above (same player request). 2 prop
-> variants per mission (8 total): rock rubble/stone shards (Gap), dried
-> grass/shrub (Foothills), crystal shards/roots (Hollow), river stones/reeds
-> (Narrows). Cutout pipeline (alpha-cut, like materials icons), meant to be
-> randomly scattered across buildable ground at low density for visual
-> variety — purely cosmetic, baked into the same single-Image grid texture
-> as the terrain tiles, no gameplay-logic changes.
+> companion to the mission-terrain batch above. 2 prop variants per mission
+> (8 total): rock rubble/stone shards (Gap), dried grass/shrub (Foothills),
+> crystal shards/roots (Hollow), river stones/reeds (Narrows). Alpha-cut,
+> archived to `assets/art/props/`, baked into the same single-Image grid
+> texture as the terrain tiles via `Image.blend_rect()` at ~18% density on
+> Placeable cells only — no gameplay-logic changes. **Real bug found and
+> fixed during live verification**: `blend_rect()` requires src/dst to share
+> the exact same `Image` format; the base grid image was `FORMAT_RGB8` while
+> the alpha-cut props are `FORMAT_RGBA8`, so every single blend call failed
+> silently (logged an engine error, placed nothing) until the base image was
+> switched to `FORMAT_RGBA8` too.
 
 > **Batch request, complete (4/4, 2026-08-13)**: `assets/art-generation-requests-2026-08-13-mission-cards.md`
 > is a standalone, upload-ready prompt batch for the 4 Mission Select card

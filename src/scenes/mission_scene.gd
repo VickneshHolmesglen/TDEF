@@ -155,7 +155,13 @@ func _on_grid_initialized(cols: int, rows: int, cell_size: float) -> void:
 			for col: int in range(cols):
 				var cell := Vector2i(col, row)
 				cells[cell] = GGrid.get_cell_type(cell)
-		_grid_visual.call(&"configure", cols, rows, cell_size, cells)
+		# Per-mission terrain/prop flavour (2026-08-15): _current_mission_id
+		# is already set by the time GGrid.initialize() (and therefore this
+		# handler) runs -- confirm_launch()/retry_current_mission() both set
+		# it before calling GGrid.initialize(), which is what synchronously
+		# fires grid_initialized. Direct Autoload call, matches this file's
+		# own established ADR-0020 Criterion A/B precedent elsewhere.
+		_grid_visual.call(&"configure", cols, rows, cell_size, cells, GMissionSelect.get_current_mission_id())
 	else:
 		push_error("[MissionScene] GridVisual node has no configure() method — grid will not render.")
 
