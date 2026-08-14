@@ -4,27 +4,34 @@ Reference log of prompts used with external image generators for game art,
 kept so a prompt can be reused, tweaked, or regenerated later without
 reconstructing the art-bible constraints from scratch each time.
 
-> **Batch request, not yet started (0/4)**: `assets/art-generation-requests-2026-08-13-mission-cards.md`
+> **Batch request, complete (4/4, 2026-08-13)**: `assets/art-generation-requests-2026-08-13-mission-cards.md`
 > is a standalone, upload-ready prompt batch for the 4 Mission Select card
 > environment-motif icons (The Gap, The Foothills, The Hollow, The Narrows) —
-> closes `mission-select.md`'s "no mission-card art exists" gap flagged in
+> closed `mission-select.md`'s "no mission-card art exists" gap flagged in
 > `mission_select_screen.gd`'s own doc comment. **Different style from every
 > other batch in this log**: flat solid-color silhouette/pictogram icons (UI
 > Parchment `#DDD4B0` only, on black for cutout), explicitly NOT the
 > hand-painted diorama/pixel-art register every other asset in this project
 > uses — `mission-select.md` requires this screen to read as "a clean
-> operations screen," not a diorama piece.
+> operations screen," not a diorama piece. All 4 sliced, alpha-cut, wired
+> into `MissionEntry.icon` and `mission_select_screen.gd`.
 
-> **Batch request, not yet started (0/5)**: `assets/art-generation-requests-2026-08-07-terrain.md`
+> **Batch request, complete (5/5, 2026-08-08)**: `assets/art-generation-requests-2026-08-07-terrain.md`
 > is a standalone, upload-ready prompt batch for the 5 Mission Field terrain
 > tiles (one per `Grid.CellType`: PLACEABLE/PATH/SPAWN/GOAL/BLOCKED),
-> replacing `grid_visual.gd`'s current flat-solid-color rendering — closes
-> the "never ship flat shapes" gap for the entire 16×12 mission grid, shared
-> across all 4 missions. **Different pipeline from every other batch in this
-> log**: opaque full-bleed tiles, no black-background cutout, no alpha-cut
-> step. **Do not use green or red anywhere** — both are semantically
-> reserved game-wide (heal-only / damage-only); SPAWN/GOAL are
-> differentiated by iconography (rift motif / gate motif) instead.
+> replacing `grid_visual.gd`'s flat-solid-color rendering — closed the "never
+> ship flat shapes" gap for the entire 16×12 mission grid, shared across all
+> 4 missions. **Different pipeline from every other batch in this log**:
+> opaque full-bleed tiles, no black-background cutout, no alpha-cut step.
+> All 5 generated, sliced, and wired into `grid_visual.gd`'s `TEXTURE_BY_TYPE`
+> (commit `c2eabaf`); Path was regenerated once more after shipping to read
+> distinct from Placeable (commit `792c502`). **2026-08-14 note**: a second,
+> unrelated raw sheet was found sitting unprocessed at `assets/` root —
+> its Path tile didn't tile (borders converged to a point) and its Spawn
+> tile used reserved Boss Purple instead of Scout Blue. Since the real
+> shipped tiles are already correct and superior to this sheet, it was not
+> used to replace anything; deleted at the user's request rather than
+> processed.
 
 > **Batch request, complete (15/15, 2026-08-07)**: `assets/art-generation-requests-2026-08-06-materials.md`
 > is a standalone, upload-ready prompt batch for the 15 real monster-drop
