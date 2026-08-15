@@ -92,17 +92,46 @@ const PHASE_SCOUT: String = "SCOUT"
 const SCOUT_STARTING_GOLD: int = 50
 const SCOUT_GRANT_SOURCE: StringName = &"mission_start_grant"
 
+## Formula 5 (design/gdd/resource-economy.md, Rule 10) — Wave-Completion Gold
+## Grant. Fully specified in the GDD since 2026-07-14 but never implemented;
+## Story 013 only ever covered the Scout starting grant (AC-09/AC-10), never
+## picked up Formula 5's own AC-18a/AC-18b/AC-19a/AC-19b. base_wave_gold=20
+## is the GDD's documented default (safe range 15-25).
+const BASE_WAVE_GOLD: int = 20
+const WAVE_COMPLETION_GRANT_SOURCE: StringName = &"wave_completion_grant"
+
+## Formula 5's own wave_reward_scalar(w) term. wave_completed's payload
+## (wave_number/enemies_remaining/was_boss_breached) does not carry this
+## scalar, so it's cached here from wave_started's own 3rd argument
+## (wave_difficulty — the identical _wave_reward_scalar WaveManager already
+## broadcasts, and the same value MonsterDiedEvent.wave_reward_scalar
+## forwards per-kill for Formulas 2/3 above). wave_started always fires
+## before the matching wave_completed for the same wave (WaveManager's own
+## FSM — PRE_WAVE always precedes WAVE_ACTIVE, which is the only phase that
+## can produce a wave_completed), so this is never stale for a real wave.
+##
+## This is a second mutable field, honestly flagged as a deviation from
+## ADR-0017's "exactly one mutable field" framing (_menagerie_quality_bonus
+## above) — that ADR predates Formula 5 (added to the GDD 2026-07-14, after
+## ADR-0017 was written) and doesn't anticipate this need. Worth an ADR
+## retrofit if this system grows further, not done here.
+var _current_wave_reward_scalar: float = 1.0
+
 
 func _ready() -> void:
 	GEventBus.monster_died.connect(_on_monster_died)
 	GEventBus.monsters_died_batch.connect(_on_monsters_died_batch)
 	GEventBus.mission_phase_changed.connect(_on_mission_phase_changed)
+	GEventBus.wave_started.connect(_on_wave_started)
+	GEventBus.wave_completed.connect(_on_wave_completed)
 
 
 func _exit_tree() -> void:
 	GEventBus.monster_died.disconnect(_on_monster_died)
 	GEventBus.monsters_died_batch.disconnect(_on_monsters_died_batch)
 	GEventBus.mission_phase_changed.disconnect(_on_mission_phase_changed)
+	GEventBus.wave_started.disconnect(_on_wave_started)
+	GEventBus.wave_completed.disconnect(_on_wave_completed)
 
 
 func _on_monster_died(payload: MonsterDiedEvent) -> void:
@@ -141,6 +170,22 @@ func _on_monsters_died_batch(payloads: Array[MonsterDiedEvent]) -> void:
 func _on_mission_phase_changed(_previous_phase: String, new_phase: String, _timestamp: float) -> void:
 	if new_phase == PHASE_SCOUT:
 		GEventBus.resources_changed.emit(SCOUT_STARTING_GOLD, SCOUT_GRANT_SOURCE)
+
+
+## Caches the just-started wave's reward scalar for _on_wave_completed()
+## below to read — see _current_wave_reward_scalar's own doc comment for why
+## this can't be read directly off wave_completed's payload instead.
+func _on_wave_started(_wave_number: int, _total_waves: int, wave_difficulty: float) -> void:
+	_current_wave_reward_scalar = wave_difficulty
+
+
+## Formula 5 (Rule 10): gold_grant(w) = round(base_wave_gold × wave_reward_scalar(w)).
+## Fires unconditionally on every wave_completed — the GDD's rule text states
+## no exception for a boss-breach or force-clear wave (was_boss_breached is
+## read by other systems, e.g. Mission HUD's banner text, not by this gate).
+func _on_wave_completed(_wave_number: int, _enemies_remaining: int, _was_boss_breached: bool) -> void:
+	var gold_grant: int = int(round(BASE_WAVE_GOLD * _current_wave_reward_scalar))
+	GEventBus.resources_changed.emit(gold_grant, WAVE_COMPLETION_GRANT_SOURCE)
 
 
 ## Story 008 entry point: resolves payload's drop table, then rolls Formula 1 and
