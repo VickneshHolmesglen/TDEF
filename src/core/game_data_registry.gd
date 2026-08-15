@@ -444,11 +444,33 @@ func get_all_species() -> Dictionary[StringName, SpeciesResource]:
 # Loaders
 # ---------------------------------------------------------------------------
 
+## Real, ship-blocking bug found 2026-08-15 via a live exported .exe (the
+## Mission Select screen rendered completely empty — only the static Launch
+## button remained, no mission list). Root cause: Godot's export pipeline
+## lists resource files with a trailing ".remap" suffix appended
+## (DirAccess.get_files_at() returns "foo.tres.remap", not "foo.tres", for
+## every resource file in an EXPORTED build — this suffix does not exist in
+## editor/`res://` filesystem mode, which is why this was never caught
+## running the project via the editor all session). Every one of this
+## file's 16 directory-scan loaders filtered on `file_name.ends_with(".tres")`,
+## which silently rejects every single file once exported — the entire
+## content-driven pipeline (monsters, towers, missions, tarot, recipes,
+## skills, everything) loaded ZERO entries in any exported build, not just
+## missions. Call this at the top of every `for file_name in
+## DirAccess.get_files_at(...)` loop below to normalize the name back to
+## its real extension before checking/using it — a no-op in editor mode
+## (no ".remap" suffix there), so this fixes export without changing
+## editor-mode/test behavior at all.
+static func _strip_export_remap_suffix(file_name: String) -> String:
+	return file_name.trim_suffix(".remap") if file_name.ends_with(".remap") else file_name
+
+
 func _load_monster_resources() -> void:
 	if not DirAccess.dir_exists_absolute(_monsters_dir):
 		push_error("[GameDataRegistry] Monsters directory does not exist: %s" % _monsters_dir)
 		return
-	for file_name: String in DirAccess.get_files_at(_monsters_dir):
+	for raw_file_name: String in DirAccess.get_files_at(_monsters_dir):
+		var file_name: String = _strip_export_remap_suffix(raw_file_name)
 		if not file_name.ends_with(".tres"):
 			continue
 		var resource: MonsterResource = ResourceLoader.load(_monsters_dir + file_name) as MonsterResource
@@ -477,7 +499,8 @@ func _load_tower_blueprints() -> void:
 	if not DirAccess.dir_exists_absolute(_tower_blueprints_dir):
 		push_error("[GameDataRegistry] Tower blueprints directory does not exist: %s" % _tower_blueprints_dir)
 		return
-	for file_name: String in DirAccess.get_files_at(_tower_blueprints_dir):
+	for raw_file_name: String in DirAccess.get_files_at(_tower_blueprints_dir):
+		var file_name: String = _strip_export_remap_suffix(raw_file_name)
 		if not file_name.ends_with(".tres"):
 			continue
 		var blueprint: TowerBlueprintData = ResourceLoader.load(_tower_blueprints_dir + file_name) as TowerBlueprintData
@@ -500,7 +523,8 @@ func _load_tarot_cards() -> void:
 	if not DirAccess.dir_exists_absolute(_tarot_cards_dir):
 		push_error("[GameDataRegistry] Tarot cards directory does not exist: %s" % _tarot_cards_dir)
 		return
-	for file_name: String in DirAccess.get_files_at(_tarot_cards_dir):
+	for raw_file_name: String in DirAccess.get_files_at(_tarot_cards_dir):
+		var file_name: String = _strip_export_remap_suffix(raw_file_name)
 		if not file_name.ends_with(".tres"):
 			continue
 		var card: TarotCardResource = ResourceLoader.load(_tarot_cards_dir + file_name) as TarotCardResource
@@ -518,7 +542,8 @@ func _load_mission_resources() -> void:
 	if not DirAccess.dir_exists_absolute(_missions_dir):
 		push_error("[GameDataRegistry] Missions directory does not exist: %s" % _missions_dir)
 		return
-	for file_name: String in DirAccess.get_files_at(_missions_dir):
+	for raw_file_name: String in DirAccess.get_files_at(_missions_dir):
+		var file_name: String = _strip_export_remap_suffix(raw_file_name)
 		if not file_name.ends_with(".tres"):
 			continue
 		var mission: MissionResource = ResourceLoader.load(_missions_dir + file_name) as MissionResource
@@ -537,7 +562,8 @@ func _load_mission_entries() -> void:
 	if not DirAccess.dir_exists_absolute(_mission_entries_dir):
 		push_error("[GameDataRegistry] Mission entries directory does not exist: %s" % _mission_entries_dir)
 		return
-	for file_name: String in DirAccess.get_files_at(_mission_entries_dir):
+	for raw_file_name: String in DirAccess.get_files_at(_mission_entries_dir):
+		var file_name: String = _strip_export_remap_suffix(raw_file_name)
 		if not file_name.ends_with(".tres"):
 			continue
 		var entry: MissionEntry = ResourceLoader.load(_mission_entries_dir + file_name) as MissionEntry
@@ -556,7 +582,8 @@ func _load_skill_resources() -> void:
 	if not DirAccess.dir_exists_absolute(_skills_dir):
 		push_error("[GameDataRegistry] Skills directory does not exist: %s" % _skills_dir)
 		return
-	for file_name: String in DirAccess.get_files_at(_skills_dir):
+	for raw_file_name: String in DirAccess.get_files_at(_skills_dir):
+		var file_name: String = _strip_export_remap_suffix(raw_file_name)
 		if not file_name.ends_with(".tres"):
 			continue
 		# ultimate_combo_table.tres lives in this same directory (single-resource
@@ -580,7 +607,8 @@ func _load_skill_definitions() -> void:
 	if not DirAccess.dir_exists_absolute(_skill_definitions_dir):
 		push_error("[GameDataRegistry] Skill definitions directory does not exist: %s" % _skill_definitions_dir)
 		return
-	for file_name: String in DirAccess.get_files_at(_skill_definitions_dir):
+	for raw_file_name: String in DirAccess.get_files_at(_skill_definitions_dir):
+		var file_name: String = _strip_export_remap_suffix(raw_file_name)
 		if not file_name.ends_with(".tres"):
 			continue
 		var definition: SkillDefinitionResource = ResourceLoader.load(_skill_definitions_dir + file_name) as SkillDefinitionResource
@@ -609,7 +637,8 @@ func _load_drop_tables() -> void:
 	if not DirAccess.dir_exists_absolute(_drop_tables_dir):
 		push_error("[GameDataRegistry] Drop tables directory does not exist: %s" % _drop_tables_dir)
 		return
-	for file_name: String in DirAccess.get_files_at(_drop_tables_dir):
+	for raw_file_name: String in DirAccess.get_files_at(_drop_tables_dir):
+		var file_name: String = _strip_export_remap_suffix(raw_file_name)
 		if not file_name.ends_with(".tres"):
 			continue
 		var drop_table: DropTableResource = ResourceLoader.load(_drop_tables_dir + file_name) as DropTableResource
@@ -628,7 +657,8 @@ func _load_tech_nodes() -> void:
 	if not DirAccess.dir_exists_absolute(_tech_nodes_dir):
 		push_error("[GameDataRegistry] Tech nodes directory does not exist: %s" % _tech_nodes_dir)
 		return
-	for file_name: String in DirAccess.get_files_at(_tech_nodes_dir):
+	for raw_file_name: String in DirAccess.get_files_at(_tech_nodes_dir):
+		var file_name: String = _strip_export_remap_suffix(raw_file_name)
 		if not file_name.ends_with(".tres"):
 			continue
 		var tech_node: TechNodeResource = ResourceLoader.load(_tech_nodes_dir + file_name) as TechNodeResource
@@ -647,7 +677,8 @@ func _load_structures() -> void:
 	if not DirAccess.dir_exists_absolute(_structures_dir):
 		push_error("[GameDataRegistry] Structures directory does not exist: %s" % _structures_dir)
 		return
-	for file_name: String in DirAccess.get_files_at(_structures_dir):
+	for raw_file_name: String in DirAccess.get_files_at(_structures_dir):
+		var file_name: String = _strip_export_remap_suffix(raw_file_name)
 		if not file_name.ends_with(".tres"):
 			continue
 		var structure: StructureResource = ResourceLoader.load(_structures_dir + file_name) as StructureResource
@@ -667,7 +698,8 @@ func _load_building_upgrades() -> void:
 		push_error("[GameDataRegistry] Building upgrades directory does not exist: %s" % _building_upgrades_dir)
 		return
 	var file_names_by_upgrade_id: Dictionary[StringName, String] = {}  # for the second pass' error messages
-	for file_name: String in DirAccess.get_files_at(_building_upgrades_dir):
+	for raw_file_name: String in DirAccess.get_files_at(_building_upgrades_dir):
+		var file_name: String = _strip_export_remap_suffix(raw_file_name)
 		if not file_name.ends_with(".tres"):
 			continue
 		var upgrade: BuildingUpgradeResource = ResourceLoader.load(_building_upgrades_dir + file_name) as BuildingUpgradeResource
@@ -696,7 +728,8 @@ func _load_item_definitions() -> void:
 	if not DirAccess.dir_exists_absolute(_item_definitions_dir):
 		push_error("[GameDataRegistry] Item definitions directory does not exist: %s" % _item_definitions_dir)
 		return
-	for file_name: String in DirAccess.get_files_at(_item_definitions_dir):
+	for raw_file_name: String in DirAccess.get_files_at(_item_definitions_dir):
+		var file_name: String = _strip_export_remap_suffix(raw_file_name)
 		if not file_name.ends_with(".tres"):
 			continue
 		var item_definition: ItemDefinitionResource = ResourceLoader.load(_item_definitions_dir + file_name) as ItemDefinitionResource
@@ -715,7 +748,8 @@ func _load_recipes() -> void:
 	if not DirAccess.dir_exists_absolute(_recipes_dir):
 		push_error("[GameDataRegistry] Recipes directory does not exist: %s" % _recipes_dir)
 		return
-	for file_name: String in DirAccess.get_files_at(_recipes_dir):
+	for raw_file_name: String in DirAccess.get_files_at(_recipes_dir):
+		var file_name: String = _strip_export_remap_suffix(raw_file_name)
 		if not file_name.ends_with(".tres"):
 			continue
 		var recipe: RecipeResource = ResourceLoader.load(_recipes_dir + file_name) as RecipeResource
@@ -734,7 +768,8 @@ func _load_species() -> void:
 	if not DirAccess.dir_exists_absolute(_species_dir):
 		push_error("[GameDataRegistry] Species directory does not exist: %s" % _species_dir)
 		return
-	for file_name: String in DirAccess.get_files_at(_species_dir):
+	for raw_file_name: String in DirAccess.get_files_at(_species_dir):
+		var file_name: String = _strip_export_remap_suffix(raw_file_name)
 		if not file_name.ends_with(".tres"):
 			continue
 		var species: SpeciesResource = ResourceLoader.load(_species_dir + file_name) as SpeciesResource
@@ -753,7 +788,8 @@ func _load_equipment_recipes() -> void:
 	if not DirAccess.dir_exists_absolute(_equipment_recipes_dir):
 		push_error("[GameDataRegistry] Equipment recipes directory does not exist: %s" % _equipment_recipes_dir)
 		return
-	for file_name: String in DirAccess.get_files_at(_equipment_recipes_dir):
+	for raw_file_name: String in DirAccess.get_files_at(_equipment_recipes_dir):
+		var file_name: String = _strip_export_remap_suffix(raw_file_name)
 		if not file_name.ends_with(".tres"):
 			continue
 		var recipe: EquipmentRecipeResource = ResourceLoader.load(_equipment_recipes_dir + file_name) as EquipmentRecipeResource
@@ -772,7 +808,8 @@ func _load_sacrifice_recipes() -> void:
 	if not DirAccess.dir_exists_absolute(_sacrifice_recipes_dir):
 		push_error("[GameDataRegistry] Sacrifice recipes directory does not exist: %s" % _sacrifice_recipes_dir)
 		return
-	for file_name: String in DirAccess.get_files_at(_sacrifice_recipes_dir):
+	for raw_file_name: String in DirAccess.get_files_at(_sacrifice_recipes_dir):
+		var file_name: String = _strip_export_remap_suffix(raw_file_name)
 		if not file_name.ends_with(".tres"):
 			continue
 		var recipe: SacrificeRecipeResource = ResourceLoader.load(_sacrifice_recipes_dir + file_name) as SacrificeRecipeResource

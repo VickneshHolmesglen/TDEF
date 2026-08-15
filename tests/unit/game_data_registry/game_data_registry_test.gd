@@ -435,3 +435,32 @@ func test_ready_missing_combo_table_logs_push_error_no_crash() -> void:
 	await assert_error(func() -> void: _registry._ready()) \
 		.is_push_error("[GameDataRegistry] %s: failed to load as UltimateComboTable." % MISSING_COMBO_TABLE_PATH)
 	assert_object(_registry.get_ultimate_combo_table()).is_null()
+
+
+# ---------------------------------------------------------------------------
+# Export .remap suffix stripping (real ship-blocking bug found 2026-08-15
+# via a live exported .exe -- DirAccess.get_files_at() lists every resource
+# file with a trailing ".remap" appended in an exported build only, e.g.
+# "the_gap_entry.tres.remap" instead of "the_gap_entry.tres". All 16 of this
+# file's directory-scan loaders filtered on file_name.ends_with(".tres"),
+# which silently rejected every file once exported -- the entire
+# content-driven pipeline loaded zero entries in any exported build. Never
+# caught before because every test/dev session this whole project ran
+# exclusively via the editor's res:// filesystem, which never has this
+# suffix.)
+# ---------------------------------------------------------------------------
+
+func test_strip_export_remap_suffix_strips_tres_remap() -> void:
+	assert_str(GameDataRegistry._strip_export_remap_suffix("the_gap_entry.tres.remap")).is_equal("the_gap_entry.tres")
+
+
+func test_strip_export_remap_suffix_is_a_noop_in_editor_mode() -> void:
+	assert_str(GameDataRegistry._strip_export_remap_suffix("the_gap_entry.tres")).is_equal("the_gap_entry.tres")
+
+
+func test_strip_export_remap_suffix_handles_any_extension_not_just_tres() -> void:
+	assert_str(GameDataRegistry._strip_export_remap_suffix("icon.png.remap")).is_equal("icon.png")
+
+
+func test_strip_export_remap_suffix_does_not_touch_a_name_only_containing_remap() -> void:
+	assert_str(GameDataRegistry._strip_export_remap_suffix("remapped_data.tres")).is_equal("remapped_data.tres")
