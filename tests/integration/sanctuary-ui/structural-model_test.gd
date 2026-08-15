@@ -89,6 +89,28 @@ func test_diorama_rect_equals_frame_minus_tab_strip_and_header_when_overview_act
 
 
 # ---------------------------------------------------------------------------
+# Player-reported 2026-08-16: "a lot of grey area" -- Diorama/RoomHost's
+# content zone had no background fill, rendering on Godot's raw default
+# clear color. Fix: ContentBackground, a UI_CHROME-filled ColorRect sized to
+# the exact same rect, sitting behind both.
+# ---------------------------------------------------------------------------
+
+func test_content_background_uses_ui_chrome_color() -> void:
+	assert_bool(_shell._content_background.color.is_equal_approx(ShellChromeStyle.UI_CHROME)).is_true()
+
+
+func test_content_background_rect_equals_frame_minus_tab_strip_and_header() -> void:
+	_shell.size = Vector2(1920.0, 1080.0)
+
+	var background: ColorRect = _shell._content_background
+	var expected_position := Vector2(SanctuaryUI.TAB_STRIP_WIDTH, SanctuaryUI.HEADER_HEIGHT)
+	var expected_size: Vector2 = _shell.size - expected_position
+
+	assert_vector(background.position).is_equal(expected_position)
+	assert_vector(background.size).is_equal(expected_size)
+
+
+# ---------------------------------------------------------------------------
 # AC-4: chrome (tab strip + resource header) always present and rendering
 # ---------------------------------------------------------------------------
 

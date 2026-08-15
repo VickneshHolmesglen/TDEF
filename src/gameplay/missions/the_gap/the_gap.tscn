@@ -140,8 +140,10 @@ anchors_preset = 2
 anchor_top = 1.0
 anchor_bottom = 1.0
 offset_left = 8.0
-offset_top = -120.0
+offset_top = -140.0
+offset_right = 268.0
 offset_bottom = -8.0
+clip_contents = true
 
 [node name="PlanningClusterHost" type="Node" parent="HUD"]
 

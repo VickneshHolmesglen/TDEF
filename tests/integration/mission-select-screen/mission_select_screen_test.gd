@@ -30,6 +30,15 @@ func after_test() -> void:
 # Mission list
 # ---------------------------------------------------------------------------
 
+## Player-reported 2026-08-16: "a lot of grey area" -- this screen had no
+## background fill at all, rendering on Godot's raw default clear color.
+## Fix: a UI_CHROME-filled Background ColorRect (same token every other
+## screen-space chrome in this project uses).
+func test_background_uses_ui_chrome_color() -> void:
+	var color: Color = _screen.call("get_background_color")
+	assert_bool(color.is_equal_approx(ShellChromeStyle.UI_CHROME)).is_true()
+
+
 func test_mission_list_contains_both_authored_missions() -> void:
 	assert_object(_screen.call("get_mission_button", "the_gap")).is_not_null()
 	assert_object(_screen.call("get_mission_button", "the_narrows")).is_not_null()

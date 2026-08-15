@@ -270,6 +270,34 @@ func test_item_removed_shows_a_toast() -> void:
 
 
 # ---------------------------------------------------------------------------
+# Player-reported 2026-08-16: ToastHost is anchored with anchor_top ==
+# anchor_bottom, so Godot grows/repositions it to fit however many toasts are
+# alive -- a busy wave with several drops made the whole log visibly climb up
+# the screen. Fix: MissionHud.MAX_VISIBLE_TOASTS caps live toasts, evicting
+# the oldest immediately so the box never needs to grow past the fixed rect
+# MissionScene.tscn/the_gap.tscn now declare for ToastHost.
+# ---------------------------------------------------------------------------
+
+func test_toast_count_never_exceeds_max_visible() -> void:
+	for i in range(MissionHud.MAX_VISIBLE_TOASTS + 3):
+		GEventBus.item_added.emit("wood", "material", i + 1)
+
+	assert_int(_hud._toast_host.get_child_count()).is_equal(MissionHud.MAX_VISIBLE_TOASTS)
+
+
+func test_toast_overflow_evicts_oldest_first() -> void:
+	for i in range(MissionHud.MAX_VISIBLE_TOASTS + 2):
+		GEventBus.item_added.emit("wood", "material", i + 1)
+
+	# The 2 oldest (+1 wood, +2 wood) were evicted -- the surviving toasts are
+	# the most recent MAX_VISIBLE_TOASTS, oldest-to-newest top-to-bottom.
+	var first_surviving: int = 3
+	for i in range(MissionHud.MAX_VISIBLE_TOASTS):
+		var expected_text: String = "+%d wood" % (first_surviving + i)
+		assert_str((_hud._toast_host.get_child(i) as Label).text).is_equal(expected_text)
+
+
+# ---------------------------------------------------------------------------
 # Epic 06 Story 013 (tower-mastery.md): skill_unlocked HUD corner callout —
 # the half of that story blocked until Mission HUD existed in code.
 # ---------------------------------------------------------------------------

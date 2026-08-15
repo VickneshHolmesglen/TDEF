@@ -114,6 +114,20 @@ const HEADER_HEIGHT: float = 64.0
 ## -- no GDD requirement fills it with anything else).
 const RESOURCE_HEADER_WIDTH: float = 320.0
 
+## Player-reported 2026-08-16: a "lot of grey area" was visible throughout
+## the Sanctuary UI. Root cause: Diorama/RoomHost's content zone had no
+## background fill at all -- every room (Overview's diorama, Inventory &
+## Crafting, Menagerie, Defense Building, Equipment Forge) rendered directly
+## on Godot's raw default viewport clear color, not any intentional color.
+## Fix: a single UI_CHROME-filled ColorRect sized to the exact same content
+## rect as Diorama/RoomHost (see _configure_chrome_layout()), sitting behind
+## both -- closes the gap for every room at once since they all mount inside
+## this same content zone. Uses the art bible's own existing UI Chrome Dark
+## token (already used for the tab strip/resource header), not new art --
+## the art bible's own UI shape grammar calls for flat chrome here, not a
+## painterly scene (reserved for Diorama's own future backdrop art, a
+## separate and still-open piece of work).
+@onready var _content_background: ColorRect = $ContentBackground
 @onready var _diorama: Control = $Diorama
 @onready var _room_host: RoomHost = $RoomHost
 @onready var _chrome: Control = $Chrome
@@ -451,7 +465,9 @@ func _configure_chrome_layout() -> void:
 	_tab_strip.offset_right = TAB_STRIP_WIDTH
 	_tab_strip.offset_bottom = 0.0
 
-	for content: Control in [_diorama, _room_host]:
+	_content_background.color = ShellChromeStyle.UI_CHROME
+
+	for content: Control in [_content_background, _diorama, _room_host]:
 		content.anchor_left = 0.0
 		content.anchor_top = 0.0
 		content.anchor_right = 1.0

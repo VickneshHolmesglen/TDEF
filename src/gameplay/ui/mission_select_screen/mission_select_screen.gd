@@ -31,6 +31,12 @@ const RUN_MODIFIER_STEPS: Dictionary[StringName, Array] = {
 ## Injectable for tests; defaults to the real GMissionSelect Autoload.
 @export var mission_select: MissionSelect
 
+## Player-reported 2026-08-16 (see sanctuary_ui.gd's _content_background for
+## the matching Sanctuary-side fix): this screen had no background fill at
+## all, rendering on Godot's raw default clear color instead of anything
+## intentional -- reuses the same UI Chrome Dark token every other screen-
+## space chrome in this project already uses (ShellChromeStyle.UI_CHROME).
+@onready var _background: ColorRect = $Background
 @onready var _input_mode_tracker: InputModeTracker = $InputModeTracker
 @onready var _mission_list: VBoxContainer = $MainLayout/TopRow/MissionListPanel/MissionList
 @onready var _config_panel: Control = $MainLayout/TopRow/ConfigPanel
@@ -49,6 +55,8 @@ var _launch_armed: bool = false
 func _ready() -> void:
 	if mission_select == null:
 		mission_select = GMissionSelect
+
+	_background.color = ShellChromeStyle.UI_CHROME
 
 	_input_mode_tracker.input_mode_changed.connect(_on_input_mode_changed)
 	_back_button.pressed.connect(_on_back_pressed)
@@ -329,6 +337,10 @@ func get_tier_button(tier: int) -> Button:
 
 func get_modifier_button(modifier_id: StringName) -> Button:
 	return _modifier_buttons.get(modifier_id)
+
+
+func get_background_color() -> Color:
+	return _background.color
 
 
 func get_launch_button() -> Button:

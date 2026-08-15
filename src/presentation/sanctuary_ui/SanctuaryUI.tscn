@@ -14,6 +14,10 @@
 layout_mode = 3
 script = ExtResource("1_su")
 
+[node name="ContentBackground" type="ColorRect" parent="."]
+layout_mode = 1
+mouse_filter = 2
+
 [node name="Diorama" type="Control" parent="."]
 layout_mode = 1
 script = ExtResource("6_dio")

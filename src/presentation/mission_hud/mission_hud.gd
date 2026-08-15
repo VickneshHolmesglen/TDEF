@@ -18,6 +18,18 @@ extends CanvasLayer
 ## state fields, their mutation handlers, and the mount/unmount lifecycle.
 
 const BOSS_TIER: int = 2  ## MonsterResource.tier: 0=STANDARD 1=ELITE 2=BOSS
+
+## Player-reported 2026-08-16: the toast log kept growing/repositioning as
+## more items were picked up -- ToastHost is anchored with anchor_top ==
+## anchor_bottom (both pinned to the screen bottom), so Godot sizes it to fit
+## all live children and grows it *upward* from that anchor point with no
+## cap. A busy wave with several drops in quick succession made the whole
+## log visibly climb up the screen. Fix: bound how many toasts can be alive
+## at once -- the oldest is force-dismissed the instant a new one would
+## exceed this, so the box never needs to grow past MissionScene.tscn's/
+## the_gap.tscn's own fixed ToastHost rect (offset_top=-140, 132px tall,
+## fits 5 single-line toasts at ~23px + separation with room to spare).
+const MAX_VISIBLE_TOASTS: int = 5
 const PlanningClusterScene: PackedScene = preload("res://src/presentation/mission_hud/planning_cluster.tscn")
 const BANNER_DURATION_SECONDS: float = 3.0  ## Rule 13's fixed auto-dismiss duration
 
@@ -875,8 +887,20 @@ func _on_skill_unlocked(skill_id: String, _source_tower_id: int) -> void:
 
 
 func _show_toast(text: String) -> void:
+	# Force-dismiss the oldest toast(s) first so the log never exceeds
+	# MAX_VISIBLE_TOASTS -- see that constant's own doc comment.
+	while _toast_host.get_child_count() >= MAX_VISIBLE_TOASTS:
+		# remove_child() (not just queue_free()) so get_child_count() reflects
+		# the removal immediately -- several toasts can fire within the same
+		# frame (e.g. a multi-material drop), and queue_free() alone only
+		# detaches at end-of-frame, which would undercount mid-loop here.
+		var oldest: Label = _toast_host.get_child(0)
+		_toast_host.remove_child(oldest)
+		oldest.queue_free()
+
 	var toast := Label.new()
 	toast.text = text
+	toast.clip_text = true
 	_toast_host.add_child(toast)
 	var tween: Tween = create_tween()
 	tween.tween_interval(2.0)
