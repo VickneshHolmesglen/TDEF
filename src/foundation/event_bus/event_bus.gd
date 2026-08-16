@@ -171,7 +171,8 @@ signal hero_class_unlocked(archetype: StringName, is_deep: bool)
 
 ## Tower placed during SCOUT or INTERMISSION only. WAVE_ACTIVE placement is blocked.
 ## Key subscribers: Constellation, Hero, Pathfinding (dirty-check + deferred rebuild),
-##   Mission HUD, Audio.
+##   Mission HUD, Audio, Planning Cluster (Build Panel placement-confirmation
+##   pulse — added 2026-08-17, Art & Animation Pipeline Upgrade vertical slice).
 ## placed_in_scout: true only for SCOUT placements.
 ## constellation_eligibility_tag added 2026-07-18 (Sprint 6, S6-08): closes
 ## constellation.md OQ-4 — this field was already documented as "added
@@ -205,7 +206,10 @@ signal tower_destroyed(
 )
 
 ## Boss attack reduces tower HP and tower survives. Primary HP observable.
-## Key subscribers: Mission HUD (tower HP bar update).
+## Key subscribers: Mission HUD (tower HP bar update), Mission Scene
+## (TowerInstance.play_hit_flash() — added 2026-08-17, Art & Animation
+## Pipeline Upgrade vertical slice; previously unsubscribed here entirely,
+## so a damaged tower had zero sprite-level reaction).
 signal tower_damaged(tower_id: int, damage_dealt: float, current_hp: float, max_hp: float)
 
 ## Emitted by Mission HUD when player presses Sell in SCOUT or INTERMISSION.
@@ -239,12 +243,26 @@ signal tower_component_equipped(payload: TowerComponentEquippedEvent)
 ## Tower fires at a monster.
 ## is_siege: derived from originating tower's Foundation.siege flag (true for T4 only).
 ## is_armored: pre-resolved by Tower System from target's MonsterResource.archetype_tag
-##   (true when archetype_tag == &"armored"); D&S applies 50% tower damage mitigation.
+##   (true when archetype_tag == &"armored"); D&S applies 50% tower damage mitigation,
+##   reduced further by armor_penetration below (Tower Stats System Phase 1).
+## damage_amount: as of Phase 1, already includes crit/vs-tag/boss multipliers AND the
+##   target's elemental-resistance reduction for the firing weapon's element -- element
+##   itself never crosses this signal, since TowerSystem resolves resistance upstream via
+##   its own monster cache (keeps Damage & Status a pure math node with no registry
+##   dependency). armor_penetration is the only new damage-modifier field carried here,
+##   because armored-mitigation is D&S's own job, not TowerSystem's.
 ## effect_type/effect_value/effect_duration: the firing tower's own PowerComponent
-##   fields, forwarded unconditionally (empty effect_type = no status effect on this
-##   hit). Added 2026-08-13 so Monster System's status-tick pass (see damage-status.md
-##   Rule I.3's exception note) can apply burn/poison without a direct query into
-##   TowerSystem's placed_towers state.
+##   fields. effect_type can now be "" for TWO distinct reasons (Phase 1) -- no Power
+##   equipped at all, OR a status_proc_chance roll failed this hit -- subscribers that
+##   care about the distinction cannot infer it from this signal alone. Added
+##   2026-08-13 so Monster System's status-tick pass (see damage-status.md Rule I.3's
+##   exception note) can apply burn/poison without a direct query into TowerSystem's
+##   placed_towers state.
+## armor_penetration: (Tower Stats System Phase 1, 2026-08-16) the firing weapon's
+##   WeaponComponent.armor_penetration, [0.0, 1.0] -- D&S uses this to reduce the
+##   armored-mitigation multiplier above.
+## is_crit: (Phase 1) whether this hit rolled a critical hit -- damage_amount already
+##   has crit_multiplier applied; this is carried separately for VFX/audio/HUD hooks.
 ## Key subscribers: Damage & Status, Monster System (direct-hit AND status-tick
 ## subscriptions), Audio, Mission Scene
 ## (2026-08-13 — spawns a purely cosmetic projectile visual, does not gate damage).
@@ -256,7 +274,9 @@ signal tower_attacked(
 	is_armored: bool,
 	effect_type: String,
 	effect_value: float,
-	effect_duration: float
+	effect_duration: float,
+	armor_penetration: float,
+	is_crit: bool
 )
 
 ## Support archetype tower's attack timer expires. Emitted unconditionally (no target needed).
@@ -377,6 +397,18 @@ signal tower_placement_blocked(blocked_cells: Array, primary_blocking_cell: Vect
 ## Resource payload (5 fields). See ADR-0007 for canonical deferred dispatch pattern.
 ## Key subscribers: Monster System (apply HP reduction), Mission HUD.
 signal monster_damage_taken(payload: MonsterDamageTaken)
+
+## Emitted synchronously by Monster System's _pass1_damage(), the one place in
+## the codebase that resolves monster_damage_taken's entity_id against a live
+## MonsterEntity AND still has that entity (global_position included) in hand
+## — DamageStatus (monster_damage_taken's own emitter) never has a position to
+## give, only entity_id. Closes the KNOWN GAP flagged in Mission HUD's
+## _on_monster_damage_taken() (2026-08-06): floating damage numbers previously
+## had no real world position and were rendered as a stacked feed near the
+## boss bar instead. Skipped entirely for a dead/already-removed entity_id
+## (same guard _pass1_damage() already applies before this point).
+## Key subscribers: Mission HUD (floating damage number, positioned at the hit monster).
+signal monster_damage_number_requested(entity_id: int, world_position: Vector2, amount: int, is_crit: bool)
 
 ## Frame N+2 from triggering hero_auto_attacked. Fires only when heal_amount > 0.
 ## Cascade exemption: synchronous emission at depth 1 from monster_hp_absorbed (depth 0).

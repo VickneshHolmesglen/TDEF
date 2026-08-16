@@ -35,10 +35,17 @@ const DEATH_BATCH_THRESHOLD := 20          ## ADR-0033 / event-bus.md Formula 2'
 
 ## damage-status.md Formula D5: tick interval for burn/poison DoT ticks.
 const STATUS_TICK_INTERVAL := 1.0          ## seconds
-## damage-status.md Rule I.3: the only 2 effect_type values Monster System
+## damage-status.md Rule I.3: the effect_type values Monster System
 ## recognizes as a DoT. Anything else is silently ignored by the DoT path
-## (may still be a recognized slow — see RECOGNIZED_SLOW_EFFECTS).
-const RECOGNIZED_DOT_EFFECTS: Array[String] = ["burn", "poison"]
+## (may still be a recognized slow — see RECOGNIZED_SLOW_EFFECTS). "bleed"
+## added by Tower Stats System Phase 1 (player-requested 2026-08-16) —
+## reuses this DoT machinery verbatim, no other code change; it is
+## authored as a physical effect (no elemental identity of its own), but
+## note this DoT tick path does not currently read elemental resistance at
+## all (burn/poison don't either) — "bleed is unresisted while poison
+## isn't" is not yet a real distinction, see design/gdd/damage-status.md's
+## Phase 1 addendum.
+const RECOGNIZED_DOT_EFFECTS: Array[String] = ["burn", "poison", "bleed"]
 ## damage-status.md Formula D6: the only effect_type value Monster System
 ## recognizes as a slow. Kept as an array (not a single constant) for the
 ## same extensibility reason RECOGNIZED_DOT_EFFECTS is one.
@@ -145,6 +152,19 @@ func _pass1_damage() -> void:
 		var pre_hit_hp: float = entity.current_hp
 		entity.current_hp -= float(dmg.amount)
 		entity.last_hit_source = &"hero" if dmg.source_type == 1 else &"tower"
+		# Player-reported 2026-08-16: floating damage numbers rendered near the
+		# boss bar instead of on the hit monster (Mission HUD's own KNOWN GAP
+		# comment) -- this is the one place monster_damage_taken's entity_id
+		# still resolves to a live entity with a real global_position, so the
+		# HUD-facing position is sourced from here instead.
+		GEventBus.monster_damage_number_requested.emit(entity.entity_id, entity.global_position, dmg.amount, dmg.is_crit)
+		# Art & Animation Pipeline Upgrade, vertical slice (design/art/
+		# animation-pipeline.md §2 "Monsters: procedural first") -- monster_
+		# instance.gd previously had zero Tween usage at all despite being
+		# the highest on-screen-frequency entity in the game; this is the
+		# closest existing call site to "a monster just took a hit."
+		if entity.monster_instance != null:
+			entity.monster_instance.play_hit_flash()
 		if entity.current_hp <= 0.0:
 			entity.current_hp = 0.0
 			entity.lifecycle_state = MonsterEntity.State.DEAD
@@ -187,14 +207,18 @@ func _emit_death(entity: MonsterEntity, kill_source: StringName) -> void:
 ## than going through D&S/_pending_damage — damage-status.md Rule I.3's
 ## exception note explains why status ticks are a named exception to D&S's
 ## "single pipeline" ownership.
+## armor_penetration/is_crit (Tower Stats System Phase 1, 2026-08-16):
+## irrelevant to DoT/slow application — accepted here only because GDScript
+## requires exact signal arity match, not silently dropped extra args.
 func _on_tower_attacked_status(_tower_id: int, target_monster_id: int, _damage_amount: float,
 		_is_siege: bool, _is_armored: bool, effect_type: String, effect_value: float,
-		effect_duration: float) -> void:
+		effect_duration: float, _armor_penetration: float, _is_crit: bool) -> void:
 	if RECOGNIZED_DOT_EFFECTS.has(effect_type):
 		_apply_dot_effect(target_monster_id, effect_type, effect_value, effect_duration)
 	elif RECOGNIZED_SLOW_EFFECTS.has(effect_type):
 		_apply_slow_effect(target_monster_id, effect_value, effect_duration)
-	# Anything else (including "" — no Power effect equipped) is silently ignored.
+	# Anything else (including "" — no Power effect equipped, OR a failed
+	# status_proc_chance roll as of Phase 1) is silently ignored.
 
 
 func _apply_dot_effect(target_monster_id: int, effect_type: String, effect_value: float,
@@ -485,6 +509,7 @@ func _spawn_entity(res: MonsterResource, spawn_cell: Vector2i, wave_index: int,
 	var instance := MONSTER_INSTANCE_SCENE.instantiate() as MonsterInstance
 	entity.add_child(instance)
 	instance.configure(res.monster_id, res.tier, res.display_name)
+	entity.monster_instance = instance
 
 	var path: Array[Vector2i] = _pathfinding.find_path(spawn_cell, res.tier)
 	if path.is_empty():

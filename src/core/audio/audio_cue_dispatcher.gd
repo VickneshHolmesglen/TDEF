@@ -101,7 +101,7 @@ func _connect_all_events() -> void:
 	_wire(GEventBus.hero_skill_activated, func(_a: String, _b: Vector2) -> void: dispatch_cue(&"hero_skill_activated"))
 	_wire(GEventBus.hero_class_unlocked, func(_a: StringName, _b: bool) -> void: dispatch_cue(&"hero_class_unlocked"))
 	_wire(GEventBus.tower_placed, func(_a: TowerPlacedEvent) -> void: dispatch_cue(&"tower_placed"))
-	_wire(GEventBus.tower_attacked, func(_a: int, _b: int, _c: float, _d: bool, _e: bool, _f: String, _g: float, _h: float) -> void: dispatch_cue(&"tower_attacked"))
+	_wire(GEventBus.tower_attacked, func(_a: int, _b: int, _c: float, _d: bool, _e: bool, _f: String, _g: float, _h: float, _i: float, _j: bool) -> void: dispatch_cue(&"tower_attacked"))
 	_wire(GEventBus.pre_placement_perk_activated, func(_a: int, _b: String) -> void: dispatch_cue(&"pre_placement_perk_activated"))
 	_wire(GEventBus.boss_died, func(_a: int, _b: StringName, _c: int, _d: String) -> void: dispatch_cue(&"boss_died"))
 	_wire(GEventBus.hero_damage_taken, func(_a: int, _b: int) -> void: dispatch_cue(&"hero_damage_taken"))

@@ -12,11 +12,37 @@ extends Node2D
 ## yet designed; call configure() manually until that wiring exists.
 
 ## Archetype -> art lookup. All 4 archetypes now have placeholder art.
+## "elemental" here is the fallback used when no per-element texture exists
+## below (see ELEMENT_TEXTURES) — kept so an unrecognized/future element
+## never renders with no texture at all.
 const ARCHETYPE_TEXTURES: Dictionary[String, Texture2D] = {
 	"ranged": preload("res://assets/art/towers/tower_ranged_base.png"),
 	"physical": preload("res://assets/art/towers/tower_physical_base.png"),
 	"elemental": preload("res://assets/art/towers/tower_elem_ice.png"),
 	"support": preload("res://assets/art/towers/tower_support_base.png"),
+}
+
+## Real bug found and fixed 2026-08-17 (Art & Animation Pipeline Upgrade
+## audit): configure() previously only ever received `archetype`, never
+## `element`, so every "elemental" archetype tower rendered as ice art
+## regardless of its real WeaponComponent.element — including the shipped
+## Firebolt Turret (element="fire"), which has silently displayed as an ice
+## tower since it was added. 8 elemental sprites already exist in
+## assets/art/towers/ (fire/ice/lightning/poison/earth/water/wind/shadow/
+## holy); ELEMENT_TEXTURES wires them all up. _resolve_tower_color() in
+## mission_scene.gd already resolved per-element COLOR correctly (and
+## IDLE_AMBIENT_CONFIGS already resolved fire/frost particles correctly) —
+## only the sprite texture itself was never element-aware.
+const ELEMENT_TEXTURES: Dictionary[String, Texture2D] = {
+	"fire": preload("res://assets/art/towers/tower_elem_fire.png"),
+	"frost": preload("res://assets/art/towers/tower_elem_ice.png"),
+	"lightning": preload("res://assets/art/towers/tower_elem_lightning.png"),
+	"poison": preload("res://assets/art/towers/tower_elem_poison.png"),
+	"earth": preload("res://assets/art/towers/tower_elem_earth.png"),
+	"water": preload("res://assets/art/towers/tower_elem_water.png"),
+	"wind": preload("res://assets/art/towers/tower_elem_wind.png"),
+	"shadow": preload("res://assets/art/towers/tower_elem_shadow.png"),
+	"holy": preload("res://assets/art/towers/tower_elem_holy.png"),
 }
 
 ## Target on-screen height (world units, matches MonsterManager.CELL_SIZE=64
@@ -96,6 +122,19 @@ const PUNCH_FLASH_IN_DURATION: float = 0.06
 const PUNCH_FLASH_OUT_DURATION: float = 0.12
 const PUNCH_SCALE_PEAK: float = 1.12
 
+## Art & Animation Pipeline Upgrade, vertical slice (design/art/animation-
+## pipeline.md §2 "Towers: procedural only"). The directive's Tower Animation
+## section explicitly asks for "anticipation" ahead of "firing motion" — this
+## codebase's real constraint (see this file's own TARGETING doc comment
+## above) is that TARGETING and ATTACKING both fire from the same
+## tower_attacked event, so a true pre-attack anticipation beat can't be
+## triggered any earlier than the punch itself. Folded into play_attack_punch()
+## as its first tween stage instead of a separately-timed call — a quick
+## pull-back before the existing flash+scale-out reads as "wind up, then
+## release" within the same visual beat.
+const CHARGE_UP_DURATION: float = 0.05
+const CHARGE_UP_SCALE_TROUGH: float = 0.94
+
 ## design/gdd/tower.md "Pre-Placement Perk Indicator": "Persistent icon badge
 ## on the tower sprite (top-right corner of cell, 12–16px on-screen)...
 ## Binary — present or absent; not a progress meter... the specific perk is
@@ -108,6 +147,17 @@ const PUNCH_SCALE_PEAK: float = 1.12
 ## (play_remove_animation()), and a fresh instance always starts with no badge.
 const PERK_BADGE_COLOR: Color = Color(0.784, 0.502, 0.102)  ## Sanctum Amber — this project's established "special status" color
 const PERK_BADGE_RADIUS: float = 7.0  ## world units — ~14px on-screen, within the GDD's 12-16px spec
+
+## Art & Animation Pipeline Upgrade, vertical slice: closes a real gap found
+## during the audit — mission_scene.gd never subscribed to tower_damaged at
+## all (only mission_hud.gd's HP-bar text reacts to it), so a tower being hit
+## by a monster had zero sprite-level feedback. play_hit_flash() (below)
+## fills that loop using src/shaders/hit_flash.gdshader — a shader parameter
+## flash rather than a second modulate-tween, so it can run independently of
+## (and simultaneously with) play_attack_punch()'s own modulate-driven flash
+## without the two fighting over the same property.
+const HIT_FLASH_SHADER: Shader = preload("res://src/shaders/hit_flash.gdshader")
+const HIT_FLASH_DURATION: float = 0.18  ## seconds, matches this file's other flash timings' rough scale
 
 ## WeaponComponent.element — cached here at placement time (see
 ## mission_scene.gd's _on_tower_placed) so tower_destroyed's VFX can read it
@@ -128,16 +178,36 @@ var _glow_offset_tween: Tween = null
 var _glow_tween: Tween = null
 var _punch_tween: Tween = null
 var _has_perk_badge: bool = false
+## Per-instance ShaderMaterial wrapping the shared HIT_FLASH_SHADER resource
+## (compiled once, cached by the rendering server via preload() — only the
+## lightweight parameter-holding ShaderMaterial itself is per-instance, which
+## is required since each tower's flash_amount varies independently).
+var _hit_flash_material: ShaderMaterial = null
+var _hit_flash_tween: Tween = null
 
 @onready var _sprite: Sprite2D = $Sprite2D
 @onready var _idle_particles: CPUParticles2D = $IdleParticles2D
 
 
-## Sets the displayed texture for the given Foundation archetype and scales
-## it to TARGET_DISPLAY_HEIGHT. Logs a warning and leaves the sprite empty
-## if no art exists for that archetype yet.
-func configure(archetype: String) -> void:
-	var texture: Texture2D = ARCHETYPE_TEXTURES.get(archetype, null)
+func _ready() -> void:
+	_hit_flash_material = ShaderMaterial.new()
+	_hit_flash_material.shader = HIT_FLASH_SHADER
+	_sprite.material = _hit_flash_material
+
+
+## Sets the displayed texture for the given Foundation archetype (and, for
+## "elemental" archetype towers, the real WeaponComponent.element — see
+## ELEMENT_TEXTURES's own doc comment for the bug this closes) and scales it
+## to TARGET_DISPLAY_HEIGHT. Logs a warning and leaves the sprite empty if no
+## art exists for that archetype/element combination yet. element defaults to
+## "" for non-elemental archetypes, which always fall through to
+## ARCHETYPE_TEXTURES regardless.
+func configure(archetype: String, element: String = "") -> void:
+	var texture: Texture2D = null
+	if archetype == "elemental":
+		texture = ELEMENT_TEXTURES.get(element)
+	if texture == null:
+		texture = ARCHETYPE_TEXTURES.get(archetype, null)
 	if texture == null:
 		push_warning("[TowerInstance] no art authored for archetype '%s'" % archetype)
 		_sprite.texture = null
@@ -243,12 +313,33 @@ func play_attack_punch(color: Color) -> void:
 	_sprite.modulate = Color.WHITE
 	_sprite.scale = _base_sprite_scale
 	_punch_tween = create_tween()
-	_punch_tween.set_parallel(true)
+	# Charge-up (anticipation): a quick pull-back before the flash+scale-out
+	# below — see CHARGE_UP_DURATION's own doc comment for why this is folded
+	# into the same tween chain rather than a separately-timed call.
+	_punch_tween.tween_property(_sprite, "scale", _base_sprite_scale * CHARGE_UP_SCALE_TROUGH, CHARGE_UP_DURATION)
+	_punch_tween.chain().set_parallel(true)
 	_punch_tween.tween_property(_sprite, "modulate", color, PUNCH_FLASH_IN_DURATION)
 	_punch_tween.tween_property(_sprite, "scale", _base_sprite_scale * PUNCH_SCALE_PEAK, PUNCH_FLASH_IN_DURATION)
 	_punch_tween.chain().set_parallel(true)
 	_punch_tween.tween_property(_sprite, "modulate", Color.WHITE, PUNCH_FLASH_OUT_DURATION)
 	_punch_tween.tween_property(_sprite, "scale", _base_sprite_scale, PUNCH_FLASH_OUT_DURATION)
+
+
+## Art & Animation Pipeline Upgrade, vertical slice — see HIT_FLASH_SHADER's
+## own doc comment for the real feedback gap this closes (towers took damage
+## with zero sprite reaction). Driven independently of play_attack_punch()'s
+## modulate/scale channel via a shader uniform instead, so a tower being hit
+## mid-punch (e.g. by a different monster while it's also firing) shows both
+## effects at once rather than one overwriting the other.
+func play_hit_flash() -> void:
+	if _hit_flash_tween != null and _hit_flash_tween.is_valid():
+		_hit_flash_tween.kill()
+	_hit_flash_material.set_shader_parameter("flash_amount", 1.0)
+	_hit_flash_tween = create_tween()
+	_hit_flash_tween.tween_method(
+		func(v: float) -> void: _hit_flash_material.set_shader_parameter("flash_amount", v),
+		1.0, 0.0, HIT_FLASH_DURATION
+	)
 
 
 ## design/gdd/tower.md "Pre-Placement Perk Indicator" — see PERK_BADGE_COLOR's

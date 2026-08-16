@@ -27,6 +27,20 @@ extends Resource
 @export var footprint: Vector2i = Vector2i(1, 1)     # (1,1) or (2,2)
 @export var pre_placement_perk: String = ""          # any perk id, or ""
 @export var archetype_cost_factor: float = 1.0       # [0.5, 2.0]
+## Tower Stats System Phase 1 (player-requested 2026-08-16): StringName tag
+## (matching MonsterResource.archetype_tag, e.g. &"armored") -> float damage
+## multiplier, e.g. {&"armored": 1.3} for +30% damage vs armored monsters.
+## Missing key = 1.0 (no bonus) — fully backward-compatible, no migration
+## needed for existing content. Stacks multiplicatively alongside (does NOT
+## replace) tier_boss_dps_multiplier above, which stays the dedicated T4-vs-
+## BOSS mechanic with its own hard-validated {1.0, 2.0} gate — this field is
+## an independent, additional, freely-authored bonus layer, generalizing the
+## SAME shape of bonus to any tag without touching that tested formula.
+## Deliberately a Dictionary, not a single scalar field, so a future tag-
+## keyed mechanic (e.g. a not-yet-designed "Affinity" system) could
+## contribute more entries later without a schema migration — this reserves
+## the extension room without committing to or designing that mechanic here.
+@export var bonus_damage_vs_tags: Dictionary = {}
 @export var damaged: bool = false
 
 
@@ -63,4 +77,9 @@ func validate() -> bool:
 	if archetype_cost_factor < 0.5 or archetype_cost_factor > 2.0:
 		push_error("[FoundationComponent] archetype_cost_factor %.2f outside [0.5, 2.0]" % archetype_cost_factor)
 		valid = false
+	for tag: Variant in bonus_damage_vs_tags:
+		var multiplier: float = bonus_damage_vs_tags[tag] as float
+		if multiplier <= 0.0:
+			push_error("[FoundationComponent] bonus_damage_vs_tags[%s] must be > 0.0, got %.2f" % [tag, multiplier])
+			valid = false
 	return valid

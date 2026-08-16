@@ -41,7 +41,11 @@ var _tower_id_counter: int = 0
 var _current_phase: Phase = Phase.UNKNOWN
 
 ## Entity position/HP cache (TR-tower-003: no direct MonsterEntity refs).
-## Keyed by entity_id: int → {cell: Vector2i, hp: float, is_armored: bool}
+## Keyed by entity_id: int → {cell: Vector2i, hp: float, is_armored: bool,
+## archetype_tag: StringName, elemental_resistances: Dictionary}. The last 2
+## keys added by Tower Stats System Phase 1 (player-requested 2026-08-16) —
+## see _on_monster_spawned()'s own doc comment for the is_armored bugfix
+## that came with them.
 var _monster_cache: Dictionary = {}
 
 ## DI seams — untyped so RefCounted stubs work in unit tests.
@@ -248,6 +252,14 @@ func _get_effective_range(focus: FocusComponent) -> int:
 # Attack resolution
 # ---------------------------------------------------------------------------
 
+## Tower Stats System Phase 1 (player-requested 2026-08-16): damage
+## composition expanded from the old `weapon_damage × tier_dps_multiplier`
+## to `base_damage × crit_mult × vs_tag_mult × boss_mult`, then reduced by
+## the target's elemental resistance for weapon.element (see design/gdd/
+## tower.md's new Damage Resolution Formula section). Crit and the status-
+## effect proc chance are each an independent per-attack roll — a failed
+## proc roll forwards effect_type as "" (Power effect not applied this hit),
+## same convention as "no Power equipped at all."
 func _try_attack(state: TowerMissionState) -> void:
 	var target_id: int = _find_lowest_hp_target(state)
 	if target_id == -1:
@@ -257,9 +269,46 @@ func _try_attack(state: TowerMissionState) -> void:
 	var entry: Dictionary = _monster_cache[target_id] as Dictionary
 	var is_armored: bool = entry["is_armored"] as bool
 	var is_siege: bool = state.foundation.tier == 4
-	var damage: float = state.weapon.weapon_damage * state.foundation.tier_dps_multiplier
+
+	var base_damage: float = state.weapon.weapon_damage * state.foundation.tier_dps_multiplier
+	var is_crit: bool = randf() < state.weapon.crit_chance
+	var crit_mult: float = state.weapon.crit_multiplier if is_crit else 1.0
+	var vs_tag_mult: float = _resolve_vs_tag_multiplier(state.foundation, entry)
+	var boss_mult: float = state.foundation.tier_boss_dps_multiplier if entry.get("is_boss", false) else 1.0
+	var damage: float = base_damage * crit_mult * vs_tag_mult * boss_mult
+	var resistance: float = _resolve_element_resistance(state.weapon.element, entry)
+	damage *= 1.0 - resistance
+
+	var effect_type: String = state.power.effect_type
+	var effect_value: float = state.power.effect_value
+	var effect_duration: float = state.power.effect_duration
+	if effect_type != "" and randf() >= state.weapon.status_proc_chance:
+		effect_type = ""  # proc roll failed — no status effect on this hit
+
 	GEventBus.tower_attacked.emit.call_deferred(state.tower_id, target_id, damage, is_siege, is_armored,
-			state.power.effect_type, state.power.effect_value, state.power.effect_duration)
+			effect_type, effect_value, effect_duration, state.weapon.armor_penetration, is_crit)
+
+
+## Looks up foundation.bonus_damage_vs_tags against the target's cached
+## archetype_tag. Returns 1.0 (no bonus) if the tag is absent or the
+## dictionary has no entry for it — missing-key-means-no-bonus is the same
+## backward-compatible convention MonsterResource.elemental_resistances uses.
+func _resolve_vs_tag_multiplier(foundation: FoundationComponent, monster_cache_entry: Dictionary) -> float:
+	var tag: StringName = monster_cache_entry.get("archetype_tag", &"") as StringName
+	if tag == &"":
+		return 1.0
+	return foundation.bonus_damage_vs_tags.get(tag, 1.0) as float
+
+
+## Looks up the target's cached elemental_resistances against the weapon's
+## element. "" (physical) never resolves to anything but 0.0 resistance —
+## no monster content authors a "" key in elemental_resistances (see that
+## field's own doc comment).
+func _resolve_element_resistance(element: String, monster_cache_entry: Dictionary) -> float:
+	if element == "":
+		return 0.0
+	var resistances: Dictionary = monster_cache_entry.get("elemental_resistances", {}) as Dictionary
+	return resistances.get(element, 0.0) as float
 
 
 ## Returns the entity_id of the lowest-HP monster in range, or -1 if none.
@@ -304,11 +353,34 @@ func _on_boss_tower_attack_attempted(_boss_entity_id: int, target_tower_id: int,
 # ---------------------------------------------------------------------------
 
 ## Synchronous subscription (Tower GDD Rule 14a: must receive before tower_attacked).
+##
+## Real pre-existing bugs found and fixed here (Tower Stats System Phase 1,
+## player-requested 2026-08-16): this used to hardcode "is_armored": false
+## unconditionally — MonsterSpawnedEvent's payload never carried archetype/
+## tag info (ADR-0001 Rule 3 caps event payloads at 5 fields; this one only
+## has entity_id/monster_id/wave_index/grid_position/hp_max), so the
+## armored-monster 50% damage mitigation in damage_status.gd has never
+## actually fired in real gameplay — every monster was silently treated as
+## unarmored regardless of its real archetype_tag. Separately,
+## FoundationComponent.tier_boss_dps_multiplier (validated to 2.0 at tower
+## tier 4, documented in tower.md's own DPS-ceiling formula as "the boss
+## variant") was never actually multiplied into any damage computation
+## anywhere in this file — dead data, same bug class as is_armored. Both
+## fixed by looking up the real MonsterResource via the payload's
+## monster_id (the same GameDataRegistry-lookup-by-id pattern used
+## everywhere else in this codebase for resolving static content), which
+## also gives elemental_resistances a real source now.
 func _on_monster_spawned(payload: MonsterSpawnedEvent) -> void:
+	var resource: MonsterResource = GGameDataRegistry.get_monster_resource(payload.monster_id)
+	var is_armored: bool = resource != null and resource.archetype_tag == &"armored"
+	var elemental_resistances: Dictionary = resource.elemental_resistances if resource != null else {}
 	_monster_cache[payload.entity_id] = {
 		"cell": payload.grid_position,
 		"hp": payload.hp_max,
-		"is_armored": false,
+		"is_armored": is_armored,
+		"archetype_tag": resource.archetype_tag if resource != null else &"",
+		"elemental_resistances": elemental_resistances,
+		"is_boss": resource != null and resource.tier == 2,
 	}
 
 

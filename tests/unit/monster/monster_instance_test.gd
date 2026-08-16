@@ -98,3 +98,24 @@ func test_configure_switching_from_boss_to_standard_hides_the_nameplate() -> voi
 
 	_instance.configure(&"goblin_runner", 0)
 	assert_bool(_instance._nameplate.visible).is_false()
+
+
+# ---------------------------------------------------------------------------
+# Art & Animation Pipeline Upgrade (2026-08-17) — play_hit_flash()
+# ---------------------------------------------------------------------------
+
+func test_ready_assigns_a_shader_material_to_the_sprite() -> void:
+	assert_object(_instance._sprite.material).is_instanceof(ShaderMaterial)
+
+
+func test_play_hit_flash_sets_flash_amount_to_full() -> void:
+	_instance.play_hit_flash()
+	var material := _instance._sprite.material as ShaderMaterial
+	assert_float(material.get_shader_parameter("flash_amount")).is_equal_approx(1.0, 0.001)
+
+
+func test_play_hit_flash_called_twice_kills_the_prior_tween_without_error() -> void:
+	_instance.play_hit_flash()
+	_instance.play_hit_flash()
+	var material := _instance._sprite.material as ShaderMaterial
+	assert_float(material.get_shader_parameter("flash_amount")).is_equal_approx(1.0, 0.001)

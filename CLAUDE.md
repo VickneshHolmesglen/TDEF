@@ -85,3 +85,7 @@ driver failure, never resolved). All asset generation is manual via ChatGPT:
 
 `assets/source/` holds raw generated sheets only — nothing loads these directly.
 `assets/art/` is the only engine-referenced asset tree.
+
+Animation-ready source art (SpriteFrames, procedural Tween/shader polish) is
+planned per `design/art/animation-pipeline.md` — read that doc before adding
+any `AnimatedSprite2D`, `Skeleton2D`, `AnimationPlayer`, or `.gdshader` file.

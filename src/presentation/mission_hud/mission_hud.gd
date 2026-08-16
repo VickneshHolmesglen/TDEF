@@ -58,7 +58,13 @@ var _ultimate_focus_ring: Panel = null
 ## screen.gd's established icon-with-text-fallback pattern (ItemDefinition
 ## Resource.icon == null falls back to plain text, same "content can lag
 ## code" tolerance -- see that file's _apply_slot_visual() doc comment).
-@onready var _materials_row: HBoxContainer = $CombatCluster/Chrome/MaterialsRow
+##
+## Player-requested 2026-08-16 ("UI Changes.PNG" yellow box): pulled out of
+## the Chrome VBoxContainer's top-right vertical stack and repositioned as an
+## independent CombatCluster child (matching PlanningCluster's own manual-
+## position pattern for its Ready/Composition elements) so item drops render
+## in their own dedicated screen zone instead of stacking under Gold.
+@onready var _materials_row: HBoxContainer = $CombatCluster/MaterialsRow
 @onready var _skill_cooldown_host: HBoxContainer = $CombatCluster/Chrome/SkillCooldownHost
 ## Player-reported 2026-08-16: replaced the original "Skill N: Ready" /
 ## "Skill N: 3.2s" text-Label placeholder with real icon buttons matching
@@ -190,7 +196,7 @@ func _ready() -> void:
 	GEventBus.hero_health_changed.connect(_on_hero_health_changed)
 	GEventBus.hero_skill_cooldown_updated.connect(_on_skill_cooldown_display_updated)
 	GEventBus.boss_hp_changed.connect(_on_boss_hp_changed)
-	GEventBus.monster_damage_taken.connect(_on_monster_damage_taken)
+	GEventBus.monster_damage_number_requested.connect(_on_monster_damage_number_requested)
 	GEventBus.wave_started.connect(_on_wave_started)
 	GEventBus.phase_timer_tick.connect(_on_phase_timer_tick)
 	GEventBus.wave_countdown_warning.connect(_on_wave_countdown_warning)
@@ -245,7 +251,7 @@ func _exit_tree() -> void:
 	GEventBus.hero_health_changed.disconnect(_on_hero_health_changed)
 	GEventBus.hero_skill_cooldown_updated.disconnect(_on_skill_cooldown_display_updated)
 	GEventBus.boss_hp_changed.disconnect(_on_boss_hp_changed)
-	GEventBus.monster_damage_taken.disconnect(_on_monster_damage_taken)
+	GEventBus.monster_damage_number_requested.disconnect(_on_monster_damage_number_requested)
 	GEventBus.wave_started.disconnect(_on_wave_started)
 	GEventBus.phase_timer_tick.disconnect(_on_phase_timer_tick)
 	GEventBus.wave_countdown_warning.disconnect(_on_wave_countdown_warning)
@@ -832,25 +838,27 @@ func _breach_flash_rect_for(edge: StringName) -> ColorRect:
 ## the same fire-and-forget ColorRect-pulse pattern _fire_boss_confirmation_pulse()
 ## already established for this cluster.
 ##
-## KNOWN GAP, flagged not silently faked: AC-62 asks for "the relevant world
-## position." MonsterManager (the only system that knows a live entity's
-## global_position) is NOT an Autoload and is not currently wired as one of
-## this HUD's classified direct-call dependencies (ADR-0031's 3 existing
-## Criterion A/B calls are all Autoloads) — granting MissionHud a live
-## position lookup would be a new cross-system dependency this story doesn't
-## have the authority to add unilaterally. Rendered instead as a stacked
-## feed anchored near the boss bar; a follow-up ADR is needed before this can
-## use payload.entity_id's real world position.
-func _on_monster_damage_taken(payload: MonsterDamageTaken) -> void:
+## RESOLVED 2026-08-16 (player-reported: numbers were popping up top-right
+## near the boss bar instead of on the monster): the KNOWN GAP this handler
+## used to document is closed by monster_damage_number_requested, a new
+## EventBus signal emitted by Monster System's _pass1_damage() — the one
+## place entity_id resolves to a live entity with a real global_position (see
+## that signal's own doc comment for why DamageStatus, monster_damage_taken's
+## emitter, could never have supplied one). world_position is converted to
+## screen space via the same canvas-transform pattern PlanningCluster's
+## _world_to_screen() already established for this HUD's other world-anchored
+## overlays (route lines, blocked-cell markers, boss telegraph).
+func _on_monster_damage_number_requested(_entity_id: int, world_position: Vector2, amount: int, is_crit: bool) -> void:
 	if _terminal:
 		return
 	var number := Label.new()
-	var text: String = str(payload.amount)
-	if payload.is_crit:
+	var text: String = str(amount)
+	if is_crit:
 		text += "!"
 	number.text = text
-	number.modulate = Color(1.0, 0.3, 0.3) if payload.is_crit else Color(1.0, 1.0, 1.0)
-	number.position = Vector2(0.0, randf_range(-8.0, 8.0))  # slight jitter so a burst doesn't fully overlap
+	number.modulate = Color(1.0, 0.3, 0.3) if is_crit else Color(1.0, 1.0, 1.0)
+	var screen_pos: Vector2 = get_viewport().get_canvas_transform() * world_position
+	number.position = screen_pos + Vector2(randf_range(-8.0, 8.0), -16.0)  # slight jitter so a burst doesn't fully overlap
 	_damage_number_host.add_child(number)
 	var tween: Tween = create_tween()
 	tween.set_parallel(true)

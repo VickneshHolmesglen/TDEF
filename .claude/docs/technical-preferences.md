@@ -47,12 +47,15 @@
 ## Forbidden Patterns
 
 <!-- Add patterns that should never appear in this project's codebase -->
-- [None configured yet — add as architectural decisions are made]
+- Third-party 2D animation/sprite-sheet plugins without a documented justification. Evaluated and rejected 2026-08-17: Importality, AnimSheet, Anima, Pixels-Prof — see `design/art/animation-pipeline.md` §3 for reasoning per plugin.
+- `Viewport.use_hdr_2d` for 2D glow/bloom — confirmed live-tested to darken the entire scene as a side effect (see `docs/engine-reference/godot/VERSION.md`'s Glow rework entry). Any glow/emissive VFX must route around this, not through engine Glow.
 
 ## Allowed Libraries / Addons
 
 <!-- Add approved third-party dependencies here. Only add when actively integrating — not speculatively. -->
-- [None configured yet — add as dependencies are approved]
+- Native `SpriteFrames`/`AnimatedSprite2D` for frame animation, scoped per-entity per `design/art/animation-pipeline.md` §2 (not a blanket conversion).
+- `Tween`-based procedural polish — the project's established pattern (`TowerInstance.play_attack_punch()`, `mission_hud.gd`'s combat pulse/breach flash/damage numbers/toasts, etc.). Prefer extending this idiom over introducing a new animation-authoring paradigm.
+- Minimal custom `.gdshader` files scoped to a single named effect (see `src/shaders/`) — not general-purpose shader packs.
 
 ## Architecture Decisions Log
 

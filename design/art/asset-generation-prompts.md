@@ -4,6 +4,17 @@ Reference log of prompts used with external image generators for game art,
 kept so a prompt can be reused, tweaked, or regenerated later without
 reconstructing the art-bible constraints from scratch each time.
 
+> **Batch request, awaiting generation (0/1, 2026-08-17)**: `assets/art-generation-requests-2026-08-17-goblin-runner-walk.md`
+> is a standalone, upload-ready prompt for the project's **first sprite-sheet
+> (multi-frame) generation request** — a 4-frame walk cycle for `goblin_runner`,
+> the Art & Animation Pipeline Upgrade's vertical-slice enemy pick (see
+> `design/art/animation-pipeline.md`). References the creature's own already-
+> shipped static prompt (2026-08-02 batch below) so the new pose set stays
+> the same creature/materials/silhouette, not a redesign. Once generated and
+> dropped into `assets/source/monsters/`, will be sliced and wired into
+> `MonsterInstance` as a new `"move"` animation, active only while
+> `goblin_runner` is actively pathing.
+
 > **Batch request, complete (12/12, 2026-08-15)**: `assets/art-generation-requests-2026-08-15-mission-terrain.md`
 > is a standalone, upload-ready prompt batch for per-mission terrain tiles —
 > player-requested ("I want the environment to have some flavour"). Reskins

@@ -708,6 +708,75 @@ constants:
     added: 2026-04-22
     revised: "2026-07-15"
 
+  - name: tower_armored_mitigation_multiplier
+    status: active
+    source: design/gdd/damage-status.md
+    referenced_by:
+      - design/gdd/damage-status.md
+      - design/gdd/tower.md
+      - design/gdd/monster.md
+    value: 0.50
+    unit: damage multiplier (tower-vs-armored-monster hits only)
+    notes: "Formula D1's armored_mitigation_multiplier. Extended 2026-08-16 (Tower
+      Stats System Phase 1, player-requested): a new per-weapon armor_penetration
+      stat [0.0, 1.0] reduces this multiplier's effect (0.0 pen = this value
+      unchanged; 1.0 pen = mitigation fully countered, effective multiplier 1.0).
+      Registered here for the first time alongside that change -- this constant
+      existed in code/GDD prose since D&S's original authoring but had no
+      registry entry until now. Real bug closed the same day: TowerSystem's own
+      monster cache hardcoded is_armored=false unconditionally, so this
+      mitigation never actually applied in real gameplay before the fix (see
+      tower.md's Dependencies table, Tower Attacked row)."
+    added: "2026-08-16"
+    revised: ""
+
+  - name: tower_crit_chance
+    status: active
+    source: design/gdd/tower.md
+    referenced_by:
+      - design/gdd/tower.md
+    value: 0.0
+    unit: probability [0.0, 0.8] (WeaponComponent stat)
+    notes: "Tower Stats System Phase 1 (player-requested 2026-08-16). Deliberately
+      a DISTINCT entity from hero_crit_chance_cap below despite the conceptual
+      similarity (a per-attack crit roll) -- towers use a flat WeaponComponent
+      field, not Hero's Dictionary+get_effective_stat() runtime-modifier system
+      (towers have no equipment/rune modifier stack). Flagged explicitly so
+      consistency-check tooling does not merge these as 'the same fact under two
+      names' -- they are two independently authored, unrelated stat systems."
+    added: "2026-08-16"
+    revised: ""
+
+  - name: tower_crit_multiplier
+    status: active
+    source: design/gdd/tower.md
+    referenced_by:
+      - design/gdd/tower.md
+    value: 1.5
+    unit: damage multiplier [1.0, 3.0] (WeaponComponent stat, default value)
+    notes: "Tower Stats System Phase 1 (player-requested 2026-08-16). Flat
+      multiplier, no base-plus-bonus split (unlike hero_crit_multiplier_base) --
+      see tower_crit_chance's own note on why this is a distinct entity from
+      Hero's identically-conceptual crit stat."
+    added: "2026-08-16"
+    revised: ""
+
+  - name: monster_elemental_resistances
+    status: active
+    source: design/gdd/monster.md
+    referenced_by:
+      - design/gdd/monster.md
+      - design/gdd/tower.md
+    value: {}
+    unit: per-element resist fraction [0.0, 0.9] (MonsterResource stat, missing key = 0.0)
+    notes: "Tower Stats System Phase 1 (player-requested 2026-08-16). Keyed by
+      the same element vocabulary as WeaponComponent.element (fire/frost/poison/
+      lightning/arcane). Fully backward-compatible -- no existing monster .tres
+      needs a migration, a missing key already means 0.0 resistance. Capped at
+      0.9 (not 1.0) so no element can make a monster fully damage-immune."
+    added: "2026-08-16"
+    revised: ""
+
   - name: hero_damage_bonus_multiplier
     status: active
     source: design/gdd/damage-status.md

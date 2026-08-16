@@ -101,16 +101,17 @@ layout_mode = 2
 size_flags_vertical = 4
 text = "0"
 
-[node name="MaterialsRow" type="HBoxContainer" parent="HUD/CombatCluster/Chrome"]
-layout_mode = 2
-theme_override_constants/separation = 10
-
 [node name="SkillCooldownHost" type="HBoxContainer" parent="HUD/CombatCluster/Chrome"]
 layout_mode = 2
 theme_override_constants/separation = 6
 
 [node name="TowerHpBarsHost" type="VBoxContainer" parent="HUD/CombatCluster/Chrome"]
 layout_mode = 2
+
+[node name="MaterialsRow" type="HBoxContainer" parent="HUD/CombatCluster"]
+layout_mode = 1
+position = Vector2(1012, 400)
+theme_override_constants/separation = 10
 
 [node name="DamageNumberHost" type="Control" parent="HUD/CombatCluster"]
 layout_mode = 1

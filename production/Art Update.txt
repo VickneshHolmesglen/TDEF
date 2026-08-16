@@ -1,0 +1,757 @@
+# Art & Animation Pipeline Upgrade — Project-Wide Implementation
+
+We are upgrading this Godot project's art and animation workflow.
+
+Treat this as a **project-wide development/process change**, not as a request to immediately replace existing artwork.
+
+Your job is to inspect the current repository, understand the existing art pipeline and architecture, update the project's persistent documentation/instructions so future Claude Code sessions follow the new workflow, and then implement the improvements incrementally and safely.
+
+## 1. Start in Plan Mode
+
+Before modifying anything:
+
+1. Inspect the repository.
+2. Read all relevant project instructions, including `CLAUDE.md` and any design/art/asset documentation.
+3. Identify:
+   - Godot version.
+   - Existing asset directory structure.
+   - Current sprite/import workflow.
+   - Existing `Sprite2D`, `AnimatedSprite2D`, `AnimationPlayer`, `AnimationTree`, `Skeleton2D`, shader, particle, and tween usage.
+   - Current enemy/tower/companion animation systems.
+   - UI animation systems.
+   - Existing `.import` conventions.
+   - Existing editor plugins/addons.
+   - Existing art-generation request documents.
+4. Determine what already works and should be preserved.
+5. Produce a phased implementation plan.
+6. Do NOT perform a large destructive refactor.
+
+Prefer adapting the existing architecture over replacing working systems.
+
+---
+
+# 2. New Art Pipeline
+
+The project should no longer assume:
+
+`AI image → flattened PNG → final game asset`
+
+as the default pipeline for assets that need movement.
+
+The preferred pipeline is now:
+
+`Concept / AI generation`
+→ `animation-ready source art`
+→ `Krita / Pixelorama / Aseprite where appropriate`
+→ `automated or standardized Godot import`
+→ `SpriteFrames / AnimationPlayer / Skeleton2D`
+→ `AnimationTree where state blending is useful`
+→ `Shaders + GPUParticles2D`
+→ `final in-game presentation`
+
+Static assets can remain static when animation provides no meaningful visual benefit.
+
+Do not animate things merely because they can be animated.
+
+---
+
+# 3. Preserve Existing Art Direction
+
+Do NOT replace the established visual identity.
+
+Existing project art direction remains authoritative unless the repository documentation says otherwise.
+
+Preserve the established:
+
+- hand-painted miniature cabinet-diorama aesthetic;
+- painterly pixel-art texture;
+- visible brushwork;
+- slight oblique/isometric presentation where applicable;
+- readable silhouettes;
+- restrained visual effects;
+- existing semantic color rules;
+- established UI palette;
+- existing black-background/cutout workflow where that asset class requires it;
+- terrain-specific full-bleed/opaque workflow;
+- mission-card-specific flat pictogram workflow.
+
+Existing palette restrictions and semantic color meanings MUST continue to be respected.
+
+In particular, locate the project's existing art-direction documents rather than recreating the palette from memory.
+
+The goal is:
+
+**make the existing visual language feel alive and polished, not change the visual language.**
+
+---
+
+# 4. Animation-Ready Asset Design
+
+For characters, enemies, companions, towers, and other objects requiring significant movement, evaluate whether they should use:
+
+### A. Frame animation
+
+Best for:
+
+- small creatures;
+- highly organic motion;
+- effects;
+- short attacks;
+- deaths;
+- transformations;
+- sprite-sheet assets.
+
+Typical animation naming should be standardized around concepts such as:
+
+- `idle`
+- `move`
+- `attack`
+- `hit`
+- `death`
+- `spawn`
+- `special`
+
+Only create animations actually required by the entity.
+
+### B. 2D cutout/skeletal animation
+
+Evaluate `Skeleton2D` / `Bone2D` for larger painterly assets where preserving detail is preferable to generating many complete frames.
+
+Possible layers include:
+
+- head;
+- torso;
+- front/rear arms;
+- weapon;
+- front/rear legs;
+- accessories;
+- shadow;
+- glow/effect layers.
+
+Do not force skeletal animation onto assets where sprite-frame animation is simpler or visually better.
+
+### C. Procedural animation
+
+Use Godot animation/tween systems for:
+
+- recoil;
+- squash/stretch;
+- hover;
+- bounce;
+- shake;
+- pulse;
+- UI transitions;
+- subtle environmental movement.
+
+Prefer cheap procedural motion when new artwork is unnecessary.
+
+---
+
+# 5. Godot Animation Architecture
+
+Use Godot's built-in systems as the foundation.
+
+Prefer:
+
+### `AnimatedSprite2D`
+
+For straightforward frame-based animations.
+
+### `AnimationPlayer`
+
+For:
+
+- complex property animation;
+- tower recoil;
+- UI animation;
+- environment animation;
+- synchronized effects;
+- cutout animation;
+- animation events.
+
+### `AnimationTree`
+
+Use where genuine state-machine/blending complexity exists.
+
+Do NOT introduce `AnimationTree` simply to play a few simple clips.
+
+### `Skeleton2D`
+
+Use selectively for animation-ready layered artwork.
+
+Avoid unnecessary architecture.
+
+---
+
+# 6. VFX Pipeline
+
+Stop treating every visual effect as something that needs a generated PNG.
+
+Prefer Godot shaders and particles for appropriate effects.
+
+Evaluate use of:
+
+- `GPUParticles2D`;
+- CanvasItem shaders;
+- shader-based glow;
+- dissolve;
+- distortion;
+- hit flash;
+- outline/highlight;
+- fog;
+- sparks;
+- dust;
+- rift energy;
+- projectile trails;
+- subtle environmental effects.
+
+Effects must remain visually restrained.
+
+Gameplay readability takes priority over spectacle.
+
+Semantic colors must remain consistent with the existing design system.
+
+---
+
+# 7. Environmental Motion
+
+The battlefield should not feel completely static.
+
+Evaluate subtle animation for things such as:
+
+- spawn-rift pulsing;
+- goal/sanctuary light flickering;
+- drifting dust;
+- occasional ambient particles;
+- subtle fog;
+- banners;
+- small environmental movement.
+
+Do NOT turn the battlefield into visual noise.
+
+Ambient motion should generally be noticeable only when looking for it.
+
+---
+
+# 8. Tower Animation
+
+Audit the existing towers.
+
+Where appropriate, towers should communicate attacks physically.
+
+Examples:
+
+- recoil;
+- weapon rotation;
+- anticipation;
+- firing motion;
+- projectile spawn timing;
+- brief muzzle/effect flash;
+- recovery motion;
+- idle mechanical movement where appropriate.
+
+Attack animation timing must correspond with actual gameplay attack timing.
+
+Do not allow visuals and damage events to drift apart.
+
+---
+
+# 9. Enemy Animation
+
+Audit existing enemies and bosses.
+
+Establish a reusable animation contract where appropriate.
+
+Potential states:
+
+`spawn → move → attack → hit → death`
+
+Bosses may have additional states.
+
+Do not require every enemy to implement every possible state.
+
+Animation systems must not break pathfinding, movement, targeting, health, combat, or pooling.
+
+Visual animation should remain separated from gameplay logic wherever practical.
+
+---
+
+# 10. Companion Animation
+
+Companions should feel alive without requiring expensive animation.
+
+Evaluate:
+
+- idle loops;
+- breathing;
+- blinking;
+- ear/tail/wing movement;
+- small hops;
+- hover movement;
+- reaction animations;
+- ability animations.
+
+Prefer small high-quality motions over large numbers of mediocre frames.
+
+---
+
+# 11. UI Motion
+
+Audit the major UI screens.
+
+Introduce a consistent motion language using `AnimationPlayer`, Tween, or an appropriate lightweight solution.
+
+Candidates include:
+
+- button hover;
+- button press;
+- panel entrance/exit;
+- mission-card selection;
+- inventory item movement;
+- crafting completion;
+- loot acquisition;
+- tower-selection feedback;
+- upgrade feedback;
+- screen transitions.
+
+Animations should be short and responsive.
+
+Never delay gameplay unnecessarily because a UI animation is playing.
+
+---
+
+# 12. Free Godot Add-ons
+
+Investigate compatibility with the project's actual Godot version before installing anything.
+
+Potential tools to evaluate:
+
+## Importality
+
+High priority.
+
+Evaluate it for importing animation/source files from tools such as:
+
+- Aseprite;
+- Krita;
+- Pixelorama;
+- Pencil2D;
+- Piskel.
+
+Use it if it materially simplifies the project's source-art → Godot pipeline.
+
+## AnimSheet
+
+High priority for generated sprite sheets.
+
+Evaluate whether it can simplify conversion of standardized sprite sheets into:
+
+- `SpriteFrames`;
+- `AnimatedSprite2D`;
+- `AnimationPlayer`.
+
+## Anima
+
+Evaluate for UI/procedural animation.
+
+Do NOT introduce it if native Godot Tween/AnimationPlayer already handles our requirements cleanly.
+
+## Pixels-Prof
+
+Optional.
+
+Evaluate as an editor-integrated pixel-art cleanup/animation tool.
+
+Do not make it a required dependency unless it clearly improves the workflow.
+
+### Plugin rule
+
+Do NOT blindly install all plugins.
+
+For each candidate:
+
+1. Confirm current Godot-version compatibility.
+2. Confirm it is actively usable.
+3. Check licensing.
+4. Determine what problem it solves.
+5. Determine whether native Godot already solves the problem adequately.
+6. Avoid abandoned or unnecessary dependencies.
+
+Prefer fewer well-justified plugins.
+
+---
+
+# 13. 3D / Blender Pipeline
+
+If this project currently uses or later introduces 3D assets, standardize around:
+
+`Blender`
+→ `.blend` or GLB/glTF
+→ `Godot importer`
+→ `AnimationLibrary`
+→ `AnimationPlayer / AnimationTree`
+
+Prefer glTF-compatible workflows.
+
+Evaluate reusable `AnimationLibrary` resources rather than unnecessarily duplicating animations.
+
+Do not introduce Blender into purely 2D systems without a concrete benefit.
+
+---
+
+# 14. AI Art Generation Requests Must Change
+
+Update the project's art-generation documentation.
+
+Future prompts should explicitly state whether an asset is:
+
+- static;
+- frame-animated;
+- cutout/skeletal;
+- procedural-animation-supported;
+- VFX;
+- UI;
+- terrain.
+
+For animated assets, prompts/specifications should define appropriate information such as:
+
+- target resolution;
+- orientation;
+- pivot;
+- frame dimensions;
+- frame count;
+- frame order;
+- animation name;
+- expected FPS;
+- looping/non-looping;
+- transparency/cutout requirements;
+- required negative space;
+- layer separation requirements;
+- weapon separation;
+- effect separation;
+- shadow separation.
+
+Do NOT invent requirements that are irrelevant to the particular asset.
+
+---
+
+# 15. Sprite-Sheet Standard
+
+If the existing project does not already have a better convention, design a consistent sprite-sheet specification.
+
+It should cover:
+
+- frame dimensions;
+- gutters;
+- padding;
+- transparent background requirements;
+- frame order;
+- animation naming;
+- FPS metadata/conventions;
+- loop rules;
+- origin/pivot rules.
+
+Generated sprite sheets must be deterministic enough that tooling can slice them automatically.
+
+Avoid manual per-asset slicing wherever practical.
+
+---
+
+# 16. Import Presets
+
+Investigate whether Godot import settings can be standardized for the project's art categories.
+
+Examples:
+
+### Pixel/painterly sprites
+
+Determine appropriate:
+
+- filtering;
+- mipmaps;
+- compression;
+- texture repeat;
+- scaling behavior.
+
+### UI
+
+Use settings appropriate for UI clarity.
+
+### Terrain
+
+Preserve seamless/full-bleed requirements.
+
+### VFX
+
+Allow appropriate filtering where it improves effects.
+
+Do not globally disable filtering without checking how the current project renders its painterly pixel-art assets.
+
+---
+
+# 17. Folder Structure
+
+Inspect the existing folder structure first.
+
+Do not reorganize working directories merely for aesthetics.
+
+If necessary, propose a structure conceptually similar to:
+
+`assets/source/`
+`assets/sprites/`
+`assets/animations/`
+`assets/vfx/`
+`assets/shaders/`
+`assets/ui/`
+`assets/terrain/`
+
+and corresponding reusable runtime resources.
+
+Only migrate existing assets if there is a concrete maintenance benefit and references can be updated safely.
+
+---
+
+# 18. Reusable Animation Components
+
+Look for opportunities to avoid duplicating animation logic.
+
+Possible reusable components include:
+
+- hit flash;
+- spawn effect;
+- death effect;
+- hover animation;
+- button interaction;
+- tower recoil;
+- floating loot;
+- damage number;
+- selection highlight.
+
+Prefer composition over copying animation code into every entity.
+
+---
+
+# 19. Performance
+
+This is a tower-defense game and potentially many enemies/effects may be visible simultaneously.
+
+Account for:
+
+- particle counts;
+- shader cost;
+- overdraw;
+- texture memory;
+- animation processing;
+- large sprite sheets;
+- excessive unique materials;
+- excessive AnimationTrees;
+- off-screen animation.
+
+Prefer scalable effects.
+
+Consider disabling or reducing nonessential animation when objects are far away/off-screen if profiling demonstrates a meaningful benefit.
+
+Do not prematurely optimize without evidence, but avoid obviously expensive designs.
+
+---
+
+# 20. Documentation
+
+Update persistent project documentation so future Claude Code sessions understand this pipeline automatically.
+
+Determine the correct documents based on the existing repository.
+
+At minimum, ensure the project has persistent guidance covering:
+
+- art direction;
+- animation architecture;
+- animation-ready asset requirements;
+- sprite-sheet conventions;
+- import settings;
+- VFX rules;
+- plugin policy;
+- AI-generation requirements;
+- folder conventions;
+- performance considerations.
+
+Update `CLAUDE.md` with a **concise summary and links/references** to detailed documentation rather than bloating `CLAUDE.md` with the entire specification.
+
+The detailed specification should live in the appropriate design/docs location.
+
+---
+
+# 21. Preserve Existing Assets
+
+Do NOT regenerate or replace existing approved artwork simply because the new pipeline exists.
+
+Classify existing assets into:
+
+1. **Keep static**
+2. **Add procedural animation**
+3. **Convert to frame animation later**
+4. **Convert to layered/cutout animation later**
+5. **Replace only when genuinely necessary**
+
+This avoids throwing away completed work.
+
+---
+
+# 22. First Implementation Pass
+
+After repository analysis and approval of the plan, implement a small vertical slice.
+
+Choose representative assets already present in the project.
+
+Prefer something equivalent to:
+
+### One enemy
+
+Add/improve:
+
+- idle/movement presentation;
+- attack feedback if applicable;
+- hit feedback;
+- death feedback.
+
+### One tower
+
+Add:
+
+- anticipation/recoil;
+- synchronized firing effect;
+- projectile timing feedback.
+
+### One environmental element
+
+For example:
+
+- spawn-rift pulse;
+- goal light;
+- subtle ambient particles.
+
+### One UI element
+
+For example:
+
+- mission card;
+- main-menu button;
+- inventory panel.
+
+Use these as the reference implementation.
+
+Do NOT convert the entire project before validating the result.
+
+---
+
+# 23. Validation
+
+For each implementation verify:
+
+- project launches;
+- scenes load;
+- no broken resource paths;
+- no missing textures;
+- no parser errors;
+- no new runtime errors;
+- gameplay behavior remains unchanged unless intentionally modified;
+- animation timing matches gameplay;
+- art palette remains compliant;
+- effects remain readable;
+- performance remains acceptable.
+
+Where possible, run the project and inspect the result rather than assuming the implementation works.
+
+---
+
+# 24. Deliverables
+
+Start by returning:
+
+## A. Current-State Audit
+
+Explain how art and animation currently work in this repository.
+
+## B. Gap Analysis
+
+Identify the highest-impact deficiencies.
+
+## C. Plugin Evaluation
+
+For each candidate:
+
+`Importality`
+`AnimSheet`
+`Anima`
+`Pixels-Prof`
+
+report:
+
+- compatibility;
+- usefulness;
+- license;
+- maintenance/activity;
+- install / don't install recommendation;
+- exact problem it would solve here.
+
+## D. Proposed Architecture
+
+Show how the upgraded pipeline integrates with the existing project.
+
+## E. Migration Strategy
+
+Classify existing asset categories according to:
+
+`keep static / procedural / frame animation / cutout / eventual replacement`
+
+## F. Documentation Changes
+
+Identify exactly which repository documents should be created or updated.
+
+## G. Vertical-Slice Plan
+
+Specify the first enemy, tower, environment element, and UI element you recommend upgrading and why.
+
+## H. Risks
+
+Call out dependency, performance, art consistency, import, source-control, and maintenance risks.
+
+---
+
+# 25. Important Constraints
+
+Do not:
+
+- rewrite functioning gameplay systems unnecessarily;
+- replace approved artwork without justification;
+- install plugins merely because they exist;
+- change the established palette;
+- introduce visual effects that undermine gameplay readability;
+- introduce huge sprite sheets without considering memory;
+- couple animation tightly to combat logic;
+- assume AI-generated animation sheets will always have perfectly consistent frames;
+- commit generated/import cache files that the project's `.gitignore` intentionally excludes;
+- modify project-wide import settings without testing representative assets.
+
+Prefer:
+
+**native Godot first → lightweight reusable systems → carefully selected free plugins → custom tooling only where justified.**
+
+---
+
+# End Goal
+
+The game should move from:
+
+**good static artwork placed into Godot**
+
+to:
+
+**a coherent art-production pipeline where artwork, animation, shaders, particles, UI motion, and gameplay feedback work together.**
+
+The visual target is a polished, living miniature-diorama tower-defense game while preserving the project's existing identity.
+
+Begin with repository inspection and Plan Mode.
+
+Do not start a project-wide conversion yet.
+
+Show me the audit and implementation plan first and wait for approval before making the major changes.

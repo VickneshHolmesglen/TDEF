@@ -118,6 +118,7 @@ func _ready() -> void:
 	GEventBus.tower_removed.connect(_on_tower_removed)
 	GEventBus.tower_destroyed.connect(_on_tower_destroyed)
 	GEventBus.tower_attacked.connect(_on_tower_attacked)
+	GEventBus.tower_damaged.connect(_on_tower_damaged)
 	GEventBus.tower_aura_pulse.connect(_on_tower_aura_pulse)
 	GEventBus.pre_placement_perk_activated.connect(_on_pre_placement_perk_activated)
 	GEventBus.monster_died.connect(_on_monster_died)
@@ -133,6 +134,7 @@ func _exit_tree() -> void:
 	GEventBus.tower_removed.disconnect(_on_tower_removed)
 	GEventBus.tower_destroyed.disconnect(_on_tower_destroyed)
 	GEventBus.tower_attacked.disconnect(_on_tower_attacked)
+	GEventBus.tower_damaged.disconnect(_on_tower_damaged)
 	GEventBus.tower_aura_pulse.disconnect(_on_tower_aura_pulse)
 	GEventBus.pre_placement_perk_activated.disconnect(_on_pre_placement_perk_activated)
 	GEventBus.monster_died.disconnect(_on_monster_died)
@@ -233,11 +235,15 @@ func _on_tower_placed(payload: TowerPlacedEvent) -> void:
 	var vis: TowerInstance = TowerInstanceScene.instantiate()
 	_gameplay_root.add_child(vis)
 	vis.position = GGrid.cell_to_world(payload.grid_position) + Vector2(payload.footprint - Vector2i.ONE) * CELL_SIZE * 0.5
-	vis.configure(payload.archetype)
 	# state.weapon is already populated in _tower_system.placed_towers by the
 	# time tower_placed fires (TowerSystem sets it before emitting) -- same
-	# access pattern already used by _on_tower_attacked.
+	# access pattern already used by _on_tower_attacked. Looked up BEFORE
+	# configure() (2026-08-17 fix) so the real element can be passed in --
+	# see TowerInstance.ELEMENT_TEXTURES's own doc comment for the bug this
+	# closes (every elemental tower silently rendered as ice art).
 	var state: TowerMissionState = _tower_system.placed_towers.get(payload.tower_id) as TowerMissionState
+	var element: String = state.weapon.element if state != null else ""
+	vis.configure(payload.archetype, element)
 	if state != null:
 		vis.element = state.weapon.element
 		vis.set_idle_ambient(state.weapon.element)
@@ -302,9 +308,13 @@ func _on_tower_destroyed(tower_id: int, _grid_position: Vector2i, archetype: Str
 ## nonzero aoe_radius_cells also get a ground-plane detonation ring on
 ## arrival ("AoE Detonation" section) — ProjectileVisual spawns that itself
 ## once the flight completes.
+## armor_penetration/is_crit (Tower Stats System Phase 1, 2026-08-16):
+## not yet consumed here — accepted only because GDScript requires exact
+## signal arity match. A crit-hit visual hook is a plausible future use of
+## is_crit but is not required for Phase 1 correctness.
 func _on_tower_attacked(tower_id: int, target_monster_id: int, _damage_amount: float,
 		_is_siege: bool, is_armored: bool, _effect_type: String, _effect_value: float,
-		_effect_duration: float) -> void:
+		_effect_duration: float, _armor_penetration: float, _is_crit: bool) -> void:
 	var tower_vis: TowerInstance = _tower_visuals.get(tower_id) as TowerInstance
 	if tower_vis == null:
 		return
@@ -326,6 +336,19 @@ func _on_tower_attacked(tower_id: int, target_monster_id: int, _damage_amount: f
 	var tower_color: Color = _resolve_tower_color(state.foundation.archetype, state.weapon.element)
 	tower_vis.play_targeting_orientation(target.global_position, tower_color, 1.0 / state.weapon.attack_speed)
 	tower_vis.play_attack_punch(tower_color)
+
+
+## Art & Animation Pipeline Upgrade, vertical slice (2026-08-17) — real gap
+## found during the audit: this scene never subscribed to tower_damaged at
+## all (only mission_hud.gd's HP-bar text reacted to it), so a tower being
+## hit by a monster had zero sprite-level feedback. See TowerInstance.
+## play_hit_flash()'s own doc comment for why this is a separate shader-
+## driven channel from play_attack_punch()'s modulate/scale flash.
+func _on_tower_damaged(tower_id: int, _damage_dealt: float, _current_hp: float, _max_hp: float) -> void:
+	var tower_vis: TowerInstance = _tower_visuals.get(tower_id) as TowerInstance
+	if tower_vis == null:
+		return
+	tower_vis.play_hit_flash()
 
 
 ## Shared color resolution for tower-owned VFX (TARGETING glow, ATTACKING

@@ -108,6 +108,20 @@ var _preview_blueprint_id: StringName = &""
 var _build_buttons: Dictionary[StringName, Button] = {}
 var _build_button_group := ButtonGroup.new()
 
+## Art & Animation Pipeline Upgrade, vertical slice (design/art/animation-
+## pipeline.md §2/§G7): this file previously had zero Tween usage despite
+## sitting next to mission_hud.gd's 5 create_tween() sites (combat pulse,
+## breach pulse/flash, damage numbers, toasts) — a real, audited
+## inconsistency. This extends that same scale-pop idiom
+## (_pulse_breach_counter()'s pattern in mission_hud.gd) to the Build Panel:
+## the tile that was just successfully used to place a tower pops briefly,
+## closing the "player pressed a tile, did it work?" feedback gap the tile
+## itself never gave (only the world-space placement ripple + HUD gold
+## deduction currently confirm a successful placement).
+const PLACEMENT_PULSE_SCALE: float = 1.2
+const PLACEMENT_PULSE_DURATION: float = 0.2
+var _placement_pulse_tween: Tween = null
+
 ## MonsterResource.tier index -> display bucket name (matches MissionHud's
 ## BOSS_TIER=2 comment: 0=STANDARD 1=ELITE 2=BOSS). Fixed engine-side vocabulary,
 ## not game-balance data — not a gameplay-code-rules violation to keep local.
@@ -147,10 +161,19 @@ var _inspected_tower_id: int = -1
 var _is_pre_wave: bool = false
 var _sell_focus_ring: Panel = null
 
+## Tower Stats Panel (player-requested 2026-08-16, "UI Changes.PNG" blue box):
+## shows the selected Build Panel tile's full stats while it's armed for
+## placement. Additive alongside the existing tooltip_text-on-hover (2026-08-11)
+## rather than replacing it — a persistent panel is useful once a tile is
+## already selected and the cursor has moved away from the build list itself.
+@onready var _tower_stats_panel: PanelContainer = $TowerStatsPanel
+@onready var _tower_stats_label: Label = $TowerStatsPanel/StatsLabel
+
 
 func _ready() -> void:
 	GEventBus.path_invalidated.connect(_on_path_invalidated)
 	GEventBus.tower_placement_blocked.connect(_on_tower_placement_blocked)
+	GEventBus.tower_placed.connect(_on_tower_placed)
 	_ready_button.pressed.connect(_on_ready_pressed)
 	_build_ready_focus_ring()
 	_ready_button.focus_entered.connect(_update_ready_focus_ring)
@@ -171,6 +194,7 @@ func _ready() -> void:
 	# a 36x64 target rendered as 858x1003, covering most of the grid).
 	_placement_preview_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_placement_preview_icon.stretch_mode = TextureRect.STRETCH_SCALE
+	_tower_stats_panel.visible = false
 
 
 func _exit_tree() -> void:
@@ -178,6 +202,8 @@ func _exit_tree() -> void:
 		GEventBus.path_invalidated.disconnect(_on_path_invalidated)
 	if GEventBus.tower_placement_blocked.is_connected(_on_tower_placement_blocked):
 		GEventBus.tower_placement_blocked.disconnect(_on_tower_placement_blocked)
+	if GEventBus.tower_placed.is_connected(_on_tower_placed):
+		GEventBus.tower_placed.disconnect(_on_tower_placed)
 	if _input_mode_tracker != null and _input_mode_tracker.input_mode_changed.is_connected(_update_ready_focus_ring):
 		_input_mode_tracker.input_mode_changed.disconnect(_update_ready_focus_ring)
 	if _input_mode_tracker != null and _input_mode_tracker.input_mode_changed.is_connected(_update_sell_focus_ring):
@@ -342,18 +368,39 @@ func _render_tier_bucketed(composition: Array) -> void:
 			_composition_preview_host.add_child(label)
 
 
-## AC-36: one line per WaveSpawnEntry-aggregated composition entry, resolved
-## to display_name — NO tier aggregation, full information per tower.md
-## Rule 8's "complete information" mandate for SCOUT's Wave 1 preview.
+const COMPOSITION_ICON_SIZE: Vector2 = Vector2(24, 24)
+
+## AC-36: one row per WaveSpawnEntry-aggregated composition entry — NO tier
+## aggregation, full information per tower.md Rule 8's "complete information"
+## mandate for SCOUT's Wave 1 preview. Player-requested 2026-08-16 ("UI
+## Changes.PNG" red box): each row shows the monster's real sprite
+## (MonsterInstance.MONSTER_TEXTURES, the same art already rendered on the
+## live monster) instead of its display_name text — falls back to text for
+## any monster_id with no authored art yet, matching this project's
+## established icon-with-text-fallback convention (_build_material_chip()).
 func _render_full_breakdown(composition: Array) -> void:
 	_clear_composition_preview_host()
 	for entry: Dictionary in composition:
-		var resource: MonsterResource = GGameDataRegistry.get_monster_resource(entry["monster_id"])
+		var monster_id: StringName = entry["monster_id"]
+		var resource: MonsterResource = GGameDataRegistry.get_monster_resource(monster_id)
 		if resource == null:
 			continue
-		var label := Label.new()
-		label.text = "%s x%d" % [resource.display_name, entry["count"] as int]
-		_composition_preview_host.add_child(label)
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 6)
+		var texture: Texture2D = MonsterInstance.MONSTER_TEXTURES.get(monster_id)
+		var count_label := Label.new()
+		if texture != null:
+			var icon := TextureRect.new()
+			icon.texture = texture
+			icon.custom_minimum_size = COMPOSITION_ICON_SIZE
+			icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			row.add_child(icon)
+			count_label.text = "x%d" % (entry["count"] as int)
+		else:
+			count_label.text = "%s x%d" % [resource.display_name, entry["count"] as int]
+		row.add_child(count_label)
+		_composition_preview_host.add_child(row)
 
 
 func _clear_composition_preview_host() -> void:
@@ -529,6 +576,64 @@ func _blueprint_entry_text(data: TowerBlueprintData) -> String:
 func _on_tower_button_pressed(blueprint_id: StringName) -> void:
 	_preview_blueprint_id = blueprint_id
 	GEventBus.tower_blueprint_selected.emit(blueprint_id)
+	_show_tower_stats(blueprint_id)
+
+
+## Player-requested 2026-08-16 ("UI Changes.PNG" blue box): full stat readout
+## for the currently-armed blueprint, expanding on _blueprint_entry_text()'s
+## tooltip-only summary with every Tower Stats System Phase 1 field (crit,
+## armor penetration, element resistance interaction, status proc chance,
+## vs-tag bonuses) so the player can actually compare towers before placing.
+func _show_tower_stats(blueprint_id: StringName) -> void:
+	var blueprints: Dictionary = GGameDataRegistry.get_all_tower_blueprints()
+	var data: TowerBlueprintData = blueprints.get(blueprint_id) as TowerBlueprintData
+	if data == null:
+		_tower_stats_panel.visible = false
+		return
+	var lines: PackedStringArray = []
+	lines.append(data.display_name)
+	lines.append("Cost: %dg   Footprint: %dx%d" % [data.placement_cost, data.foundation.footprint.x, data.foundation.footprint.y])
+	if data.weapon.projectile_type == "AURA":
+		lines.append("Aura: %s +%d%%" % [data.weapon.aura_effect_type, int(data.weapon.aura_effect_value * 100.0)])
+	else:
+		lines.append("Damage: %.1f   Speed: %.2f/s" % [data.weapon.weapon_damage, data.weapon.attack_speed])
+		lines.append("DPS: %.1f   Range: %d cells" % [data.weapon.weapon_damage * data.weapon.attack_speed, data.focus.attack_range_cells])
+		if data.weapon.element != "":
+			lines.append("Element: %s" % data.weapon.element.capitalize())
+		if data.weapon.crit_chance > 0.0:
+			lines.append("Crit: %d%% chance, %.1fx dmg" % [int(data.weapon.crit_chance * 100.0), data.weapon.crit_multiplier])
+		if data.weapon.armor_penetration > 0.0:
+			lines.append("Armor Pen: %d%%" % int(data.weapon.armor_penetration * 100.0))
+		if data.power != null and data.power.effect_type != "":
+			var proc_suffix: String = "" if is_equal_approx(data.weapon.status_proc_chance, 1.0) else " (%d%% chance)" % int(data.weapon.status_proc_chance * 100.0)
+			lines.append("Effect: %s%s" % [data.power.effect_type.capitalize(), proc_suffix])
+	for tag: Variant in data.foundation.bonus_damage_vs_tags:
+		var bonus_pct: int = int((data.foundation.bonus_damage_vs_tags[tag] as float - 1.0) * 100.0)
+		lines.append("+%d%% dmg vs %s" % [bonus_pct, String(tag)])
+	if data.foundation.pre_placement_perk != "":
+		lines.append("Perk: %s" % data.foundation.pre_placement_perk)
+	_tower_stats_label.text = "\n".join(lines)
+	_tower_stats_panel.visible = true
+
+
+## See PLACEMENT_PULSE_SCALE's own doc comment. _preview_blueprint_id is the
+## blueprint armed at press time (_on_tower_button_pressed) and only clears
+## on deselection (_on_tower_placement_preview_updated's sentinel case) — a
+## successful placement is the natural conclusion of that same selection
+## session, so it's still valid here. Guarded defensively (button lookup can
+## simply miss, e.g. if selection was already cleared some other way) rather
+## than assumed.
+func _on_tower_placed(_payload: TowerPlacedEvent) -> void:
+	var button: Button = _build_buttons.get(_preview_blueprint_id)
+	if button == null:
+		return
+	if _placement_pulse_tween != null and _placement_pulse_tween.is_valid():
+		_placement_pulse_tween.kill()
+	button.pivot_offset = button.size * 0.5
+	button.scale = Vector2.ONE
+	_placement_pulse_tween = create_tween()
+	_placement_pulse_tween.tween_property(button, "scale", Vector2.ONE * PLACEMENT_PULSE_SCALE, PLACEMENT_PULSE_DURATION * 0.5)
+	_placement_pulse_tween.tween_property(button, "scale", Vector2.ONE, PLACEMENT_PULSE_DURATION * 0.5)
 
 
 ## Re-checks every row's affordability whenever gold changes (SCOUT/
@@ -563,6 +668,7 @@ func _on_tower_placement_preview_updated(cell: Vector2i, footprint: Vector2i, va
 		_placement_cursor.visible = false
 		_placement_preview_icon.visible = false
 		_preview_blueprint_id = &""
+		_tower_stats_panel.visible = false
 		return
 	_placement_cursor.visible = true
 	_placement_cursor.color = PLACEMENT_VALID_COLOR if valid else PLACEMENT_INVALID_COLOR

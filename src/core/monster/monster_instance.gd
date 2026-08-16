@@ -64,8 +64,41 @@ var _tier: int = 0
 ## per monster (see this file's own unscaled-sprite doc comment above).
 var _sprite_half_size: Vector2 = Vector2(32.0, 32.0)
 
+## Art & Animation Pipeline Upgrade, vertical slice (design/art/animation-
+## pipeline.md §2 "Monsters: procedural first"). This file had zero Tween
+## usage anywhere before this — the highest on-screen-frequency entity in
+## the game had no self-driven feedback of any kind. Mirrors TowerInstance's
+## identical hit-flash pattern (src/core/tower/tower_instance.gd) so both
+## entity types share one visual vocabulary for "just took damage."
+const HIT_FLASH_SHADER: Shader = preload("res://src/shaders/hit_flash.gdshader")
+const HIT_FLASH_DURATION: float = 0.18
+var _hit_flash_material: ShaderMaterial = null
+var _hit_flash_tween: Tween = null
+
 @onready var _sprite: Sprite2D = $Sprite2D
 @onready var _nameplate: Label = $Nameplate
+
+
+func _ready() -> void:
+	_hit_flash_material = ShaderMaterial.new()
+	_hit_flash_material.shader = HIT_FLASH_SHADER
+	_sprite.material = _hit_flash_material
+
+
+## See HIT_FLASH_SHADER's own doc comment. Independent of any other visual
+## channel on this sprite (there are none yet) — a shader parameter flash
+## rather than a modulate tween so a future addition (e.g. a status-effect
+## tint) can't fight this over the same property, matching the reasoning
+## TowerInstance.play_hit_flash() already established.
+func play_hit_flash() -> void:
+	if _hit_flash_tween != null and _hit_flash_tween.is_valid():
+		_hit_flash_tween.kill()
+	_hit_flash_material.set_shader_parameter("flash_amount", 1.0)
+	_hit_flash_tween = create_tween()
+	_hit_flash_tween.tween_method(
+		func(v: float) -> void: _hit_flash_material.set_shader_parameter("flash_amount", v),
+		1.0, 0.0, HIT_FLASH_DURATION
+	)
 
 
 ## display_name: MonsterResource.display_name — only consulted for BOSS

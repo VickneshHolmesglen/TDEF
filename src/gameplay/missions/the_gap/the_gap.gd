@@ -385,7 +385,12 @@ func _on_tower_placed(payload: TowerPlacedEvent) -> void:
 	var vis: TowerInstance = TowerInstanceScene.instantiate()
 	add_child(vis)
 	vis.position = GGrid.cell_to_world(payload.grid_position) + Vector2(payload.footprint - Vector2i.ONE) * CELL_SIZE * 0.5
-	vis.configure(payload.archetype)
+	# 2026-08-17 fix (mirrors mission_scene.gd's identical fix) — see
+	# TowerInstance.ELEMENT_TEXTURES's own doc comment: configure() previously
+	# only ever received archetype, so every elemental tower silently
+	# rendered as ice art regardless of its real element.
+	var state: TowerMissionState = _tower_system.placed_towers.get(payload.tower_id) as TowerMissionState
+	vis.configure(payload.archetype, state.weapon.element if state != null else "")
 	_tower_visuals[payload.tower_id] = vis
 
 

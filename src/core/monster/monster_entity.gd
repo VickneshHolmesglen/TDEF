@@ -46,6 +46,15 @@ var spawn_wave_reward_scalar: float = 1.0
 ## The wave this entity was spawned on (forwarded in boss_died and monster_died).
 var wave_index: int = -1
 
+## Art & Animation Pipeline Upgrade, vertical slice (2026-08-17): cached
+## reference to this entity's presentation-layer child (set by
+## MonsterManager._spawn_entity() right after instantiation) so
+## _pass1_damage() can trigger play_hit_flash() without a string-based
+## get_node() lookup. Null-safe — an entity with no visible sprite (art
+## missing for its monster_id) is still a fully correct simulation entity,
+## per MonsterInstance's own "non-fatal to spawning" doc comment.
+var monster_instance: MonsterInstance = null
+
 # ---- BOSS-only runtime fields (safe to leave at defaults for STANDARD/ELITE) ----
 
 ## Frames remaining before next tower scan. Initialized to 0 so BOSS scans on its first frame.

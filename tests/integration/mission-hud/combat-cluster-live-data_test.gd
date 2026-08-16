@@ -180,26 +180,33 @@ func test_other_towers_bars_survive_a_different_towers_destruction() -> void:
 # ---------------------------------------------------------------------------
 
 func test_monster_damage_taken_spawns_a_floating_number() -> void:
-	var payload := MonsterDamageTaken.new()
-	payload.entity_id = 1
-	payload.amount = 42
-	payload.is_crit = false
-
-	GEventBus.monster_damage_taken.emit(payload)
+	GEventBus.monster_damage_number_requested.emit(1, Vector2(100.0, 200.0), 42, false)
 
 	assert_int(_hud._damage_number_host.get_child_count()).is_equal(1)
 	assert_str((_hud._damage_number_host.get_child(0) as Label).text).is_equal("42")
 
 
 func test_crit_damage_number_gets_the_crit_marker() -> void:
-	var payload := MonsterDamageTaken.new()
-	payload.entity_id = 1
-	payload.amount = 99
-	payload.is_crit = true
-
-	GEventBus.monster_damage_taken.emit(payload)
+	GEventBus.monster_damage_number_requested.emit(1, Vector2(100.0, 200.0), 99, true)
 
 	assert_str((_hud._damage_number_host.get_child(0) as Label).text).is_equal("99!")
+
+
+## Player-reported 2026-08-16: numbers were rendering near the boss bar
+## instead of on the hit monster — regression test for the fix
+## (monster_damage_number_requested carries a real world_position, converted
+## to screen space via the viewport's canvas transform).
+func test_damage_number_spawns_at_the_monster_world_position() -> void:
+	var world_position := Vector2(320.0, 150.0)
+	GEventBus.monster_damage_number_requested.emit(1, world_position, 42, false)
+
+	var expected_screen_pos: Vector2 = _hud.get_viewport().get_canvas_transform() * world_position
+	var number := _hud._damage_number_host.get_child(0) as Label
+	# x carries randf_range(-8.0, 8.0) jitter (see _on_monster_damage_number_
+	# requested()'s own comment) -- assert it lands within that jitter band
+	# rather than an exact value.
+	assert_float(absf(number.position.x - expected_screen_pos.x)).is_less_equal(8.0)
+	assert_float(number.position.y).is_equal_approx(expected_screen_pos.y - 16.0, 0.01)
 
 
 # ---------------------------------------------------------------------------

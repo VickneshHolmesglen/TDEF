@@ -44,3 +44,37 @@ func test_configure_each_known_archetype_resolves_a_distinct_texture() -> void:
 		assert_object(tex).is_not_null()
 		assert_bool(seen.has(tex)).is_false()
 		seen[tex] = true
+
+
+## Regression test for the 2026-08-17 fix (Art & Animation Pipeline Upgrade
+## audit): configure() previously only received archetype, so every
+## "elemental" tower rendered as ice art regardless of its real element --
+## including the shipped Firebolt Turret (element="fire"). See
+## TowerInstance.ELEMENT_TEXTURES's own doc comment.
+func test_configure_elemental_archetype_with_element_resolves_element_texture() -> void:
+	_instance.configure("elemental", "fire")
+	assert_object(_instance._sprite.texture).is_equal(TowerInstance.ELEMENT_TEXTURES["fire"])
+	assert_object(_instance._sprite.texture).is_not_equal(TowerInstance.ARCHETYPE_TEXTURES["elemental"])
+
+
+## element="" (or an element with no entry in ELEMENT_TEXTURES) must still
+## fall back to the generic elemental texture, not leave the sprite empty --
+## this is the pre-fix behavior for non-elemental archetypes and for any
+## element not yet in ELEMENT_TEXTURES.
+func test_configure_elemental_archetype_with_unknown_element_falls_back_to_archetype_texture() -> void:
+	_instance.configure("elemental", "totally_unknown_element")
+	assert_object(_instance._sprite.texture).is_equal(TowerInstance.ARCHETYPE_TEXTURES["elemental"])
+
+
+# ---------------------------------------------------------------------------
+# Art & Animation Pipeline Upgrade (2026-08-17) — play_hit_flash()
+# ---------------------------------------------------------------------------
+
+func test_ready_assigns_a_shader_material_to_the_sprite() -> void:
+	assert_object(_instance._sprite.material).is_instanceof(ShaderMaterial)
+
+
+func test_play_hit_flash_sets_flash_amount_to_full() -> void:
+	_instance.play_hit_flash()
+	var material := _instance._sprite.material as ShaderMaterial
+	assert_float(material.get_shader_parameter("flash_amount")).is_equal_approx(1.0, 0.001)

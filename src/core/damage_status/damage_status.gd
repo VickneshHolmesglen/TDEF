@@ -35,10 +35,26 @@ func _exit_tree() -> void:
 ## effect_type/effect_value/effect_duration (2026-08-13): burn/poison status
 ## ticks are resolved by Monster System's own status-tick pass, not D&S — see
 ## damage-status.md Rule I.3's exception note. Ignored here on purpose.
+##
+## armor_penetration/is_crit (Tower Stats System Phase 1, 2026-08-16):
+## armor_penetration reduces the armored-mitigation multiplier itself —
+## effective_mitigation = ARMORED_MITIGATION_MULTIPLIER + (1.0 -
+## ARMORED_MITIGATION_MULTIPLIER) × armor_penetration, clamped to
+## [ARMORED_MITIGATION_MULTIPLIER, 1.0] (0% pen = today's flat 0.5, 100% pen
+## = mitigation fully countered). damage_amount arrives with crit already
+## applied (TowerSystem's own job) — is_crit is only forwarded here so
+## MonsterDamageTaken carries a real value instead of the previous hardcoded
+## false, for any VFX/audio/HUD hook that wants to react to a tower crit.
 func _on_tower_attacked(_tower_id: int, target_monster_id: int, damage_amount: float,
 		_is_siege: bool, is_armored: bool, _effect_type: String, _effect_value: float,
-		_effect_duration: float) -> void:
-	var resolved: float = damage_amount * (ARMORED_MITIGATION_MULTIPLIER if is_armored else 1.0)
+		_effect_duration: float, armor_penetration: float, is_crit: bool) -> void:
+	var mitigation: float = 1.0
+	if is_armored:
+		mitigation = clampf(
+			ARMORED_MITIGATION_MULTIPLIER + (1.0 - ARMORED_MITIGATION_MULTIPLIER) * armor_penetration,
+			ARMORED_MITIGATION_MULTIPLIER, 1.0
+		)
+	var resolved: float = damage_amount * mitigation
 	var final_damage: int = floori(resolved)
 	if final_damage <= 0:
 		return
@@ -49,7 +65,7 @@ func _on_tower_attacked(_tower_id: int, target_monster_id: int, damage_amount: f
 	ev.entity_id = target_monster_id
 	ev.amount = final_damage
 	ev.source_type = 0  # 0 = tower (see MonsterDamageTaken source_type values)
-	ev.is_crit = false
+	ev.is_crit = is_crit
 	ev.hero_bonus_tier = 0
 	GEventBus.monster_damage_taken.emit(ev)
 

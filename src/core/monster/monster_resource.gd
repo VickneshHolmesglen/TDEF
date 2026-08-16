@@ -19,6 +19,16 @@ extends Resource
 @export_group("Combat Stats")
 @export var base_hp: float = 100.0
 @export var base_speed: float = 1.0  ## cells per second at wave 1
+## Tower Stats System Phase 1 (player-requested 2026-08-16): StringName
+## element (matching WeaponComponent.element -- "fire"/"frost"/"poison"/
+## "lightning"/"arcane") -> float resist fraction [0.0, 0.9]. Missing key =
+## 0.0 (no resistance) -- fully backward-compatible, no data migration
+## needed for existing monster content. Read by TowerSystem's monster cache
+## (see tower_system.gd::_on_monster_spawned()) and applied in
+## _try_attack()'s damage formula; physical hits (WeaponComponent.element ==
+## "") never consult this dictionary at all. Capped at 0.9, not 1.0, so no
+## element can make a monster fully damage-immune.
+@export var elemental_resistances: Dictionary = {}
 
 @export_group("Drop / Economy")
 @export var drop_table_id: StringName = &""
@@ -52,4 +62,8 @@ func validate() -> Array[String]:
 			errors.append("BOSS tier requires base_attack_interval > 0")
 		if boss_attack_range_cells <= 0:
 			errors.append("BOSS tier requires boss_attack_range_cells > 0")
+	for element: Variant in elemental_resistances:
+		var resistance: float = elemental_resistances[element] as float
+		if resistance < 0.0 or resistance > 0.9:
+			errors.append("elemental_resistances[%s] must be in [0.0, 0.9] (got %.2f)" % [element, resistance])
 	return errors

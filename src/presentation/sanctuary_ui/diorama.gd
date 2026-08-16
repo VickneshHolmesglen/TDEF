@@ -63,6 +63,25 @@ const STRUCTURE_SIZE: Vector2 = Vector2(64, 64)
 const WATCHTOWER_TEXTURE: Texture2D = preload("res://assets/art/sanctuary/watchtower.png")
 const WATCHTOWER_DISPLAY_HEIGHT: float = 64.0  ## matches STRUCTURE_SIZE.y for scale consistency with the habitat placeholder rect
 
+## Art & Animation Pipeline Upgrade, vertical slice (design/art/animation-
+## pipeline.md §2 "Environment: procedural only"). The directive names
+## "goal/sanctuary light flickering" explicitly as an example of the subtle
+## environmental motion this pass should add; the watchtower is the one
+## single, reusable (non-per-mission) Sanctuary structure asset today, making
+## it the lowest-risk demonstrative pick. A small beacon-glow blob pulses at
+## the tower's top, matching the tower idle-ambient precedent
+## (TowerInstance.set_idle_ambient()) of "quietly present, never competing"
+## rather than a loud effect. Deliberately NOT reusing Sanctum Amber
+## (already the project's established "special status" badge color, e.g.
+## TowerInstance.PERK_BADGE_COLOR) -- a warm lantern-white avoids implying a
+## gameplay-state meaning that isn't there (Art Bible P3: color communicates
+## before it decorates).
+const BEACON_GLOW_COLOR: Color = Color(1.0, 0.92, 0.75)
+const BEACON_GLOW_RADIUS: float = 5.0
+const BEACON_GLOW_MIN_ALPHA: float = 0.25
+const BEACON_GLOW_MAX_ALPHA: float = 0.65
+const BEACON_GLOW_PULSE_DURATION: float = 1.8  ## seconds per half-cycle -- slow, "noticeable only when looking for it"
+
 ## Real habitat_expansion tier art (2026-08-01, see
 ## design/quick-specs/habitat-expansion-tiered-art-2026-08-01.md) -- unlike
 ## watchtower (single-tier), habitat_expansion has 4 real authored tiers
@@ -143,6 +162,7 @@ func _render_structure(structure_type: String) -> void:
 	var visual: Control = _build_watchtower_sprite()
 	_world.add_child(_build_shadow_for(STRUCTURE_POSITIONS["watchtower"], visual.size, "watchtower"))  # added BEFORE the sprite -- draws underneath (2D tree-order compositing)
 	_world.add_child(visual)
+	_world.add_child(_build_beacon_glow(visual))  # added AFTER the sprite -- draws on top, at the tower's beacon point
 	_rendered_structure_types[structure_type] = visual
 
 
@@ -218,6 +238,32 @@ func _build_watchtower_sprite() -> TextureRect:
 	# real click handling here.
 	tex_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return tex_rect
+
+
+## See BEACON_GLOW_COLOR's own doc comment. sprite: the already-positioned
+## watchtower TextureRect, used only to derive the glow's position (top-
+## center of the sprite's bounding box) -- never reparented under it, so it
+## draws in the same _world sibling order as the sprite/shadow above.
+func _build_beacon_glow(sprite: Control) -> Panel:
+	var glow := Panel.new()
+	glow.name = "WatchtowerBeaconGlow"
+	glow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var diameter: float = BEACON_GLOW_RADIUS * 2.0
+	glow.size = Vector2(diameter, diameter)
+	glow.position = Vector2(sprite.position.x + sprite.size.x * 0.5 - BEACON_GLOW_RADIUS, sprite.position.y - BEACON_GLOW_RADIUS * 0.5)
+	var style := StyleBoxFlat.new()
+	style.bg_color = BEACON_GLOW_COLOR
+	style.corner_radius_top_left = int(BEACON_GLOW_RADIUS)
+	style.corner_radius_top_right = int(BEACON_GLOW_RADIUS)
+	style.corner_radius_bottom_left = int(BEACON_GLOW_RADIUS)
+	style.corner_radius_bottom_right = int(BEACON_GLOW_RADIUS)
+	glow.add_theme_stylebox_override("panel", style)
+	glow.modulate.a = BEACON_GLOW_MIN_ALPHA
+	var tween: Tween = glow.create_tween()
+	tween.set_loops()  ## infinite -- "ambient motion should generally be noticeable only when looking for it," never a one-shot
+	tween.tween_property(glow, "modulate:a", BEACON_GLOW_MAX_ALPHA, BEACON_GLOW_PULSE_DURATION)
+	tween.tween_property(glow, "modulate:a", BEACON_GLOW_MIN_ALPHA, BEACON_GLOW_PULSE_DURATION)
+	return glow
 
 
 ## Real art path (2026-08-01) -- see HABITAT_TEXTURES' own doc comment. tier
