@@ -48,6 +48,12 @@ func _composition() -> Array:
 # AC-36: SCOUT mount -> full per-monster breakdown, no aggregation
 # ---------------------------------------------------------------------------
 
+## Player-requested 2026-08-16 ("UI Changes.PNG" red box): each row is now an
+## HBoxContainer (icon + count), not a plain Label with the monster's name —
+## see planning_cluster.gd's _render_full_breakdown() and
+## MonsterInstance.MONSTER_TEXTURES. Both goblin_runner and forest_troll_elite
+## have real authored art, so both rows resolve to icon+"xN" rather than the
+## text fallback (that fallback path is covered by a separate test below).
 func test_scout_mount_renders_full_per_monster_breakdown() -> void:
 	_hud._on_mission_phase_changed("IDLE", "SCOUT", 0.0)
 
@@ -55,8 +61,15 @@ func test_scout_mount_renders_full_per_monster_breakdown() -> void:
 
 	var host: VBoxContainer = _hud._planning_cluster._composition_preview_host
 	assert_int(host.get_child_count()).is_equal(2)
-	assert_str((host.get_child(0) as Label).text).is_equal("Goblin Runner x3")
-	assert_str((host.get_child(1) as Label).text).is_equal("Forest Troll x1")
+	var row0 := host.get_child(0) as HBoxContainer
+	var row1 := host.get_child(1) as HBoxContainer
+	assert_object(row0).is_not_null()
+	assert_object(row1).is_not_null()
+	assert_int(row0.get_child_count()).is_equal(2)  # icon + count label
+	assert_object((row0.get_child(0) as TextureRect).texture).is_equal(MonsterInstance.MONSTER_TEXTURES[&"goblin_runner"])
+	assert_str((row0.get_child(1) as Label).text).is_equal("x3")
+	assert_object((row1.get_child(0) as TextureRect).texture).is_equal(MonsterInstance.MONSTER_TEXTURES[&"forest_troll_elite"])
+	assert_str((row1.get_child(1) as Label).text).is_equal("x1")
 
 
 # ---------------------------------------------------------------------------

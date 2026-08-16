@@ -85,7 +85,7 @@ func _spawn(id: StringName, base_hp: float) -> MonsterEntity:
 func test_ac26_burn_hit_creates_instance_with_correct_formula() -> void:
 	var entity := _spawn(&"goblin", 200.0)
 
-	_mm._on_tower_attacked_status(1, entity.entity_id, 0.0, false, false, "burn", 0.10, 3.0)
+	_mm._on_tower_attacked_status(1, entity.entity_id, 0.0, false, false, "burn", 0.10, 3.0, 0.0, false)
 
 	assert_int(entity.active_status_effects.size()).is_equal(1)
 	var instance: ActiveStatusEffect = entity.active_status_effects[0]
@@ -96,7 +96,7 @@ func test_ac26_burn_hit_creates_instance_with_correct_formula() -> void:
 
 func test_ac26_full_duration_deals_exactly_effect_value_fraction_of_max_hp() -> void:
 	var entity := _spawn(&"goblin", 200.0)
-	_mm._on_tower_attacked_status(1, entity.entity_id, 0.0, false, false, "burn", 0.10, 3.0)
+	_mm._on_tower_attacked_status(1, entity.entity_id, 0.0, false, false, "burn", 0.10, 3.0, 0.0, false)
 
 	for i in range(3):
 		_mm._pass1b_status_effects(1.0)
@@ -108,7 +108,7 @@ func test_ac26_full_duration_deals_exactly_effect_value_fraction_of_max_hp() -> 
 
 func test_ac26_boss_tier_hp_scales_the_same_percentage_no_separate_tuning() -> void:
 	var entity := _spawn(&"boss", 500.0)
-	_mm._on_tower_attacked_status(1, entity.entity_id, 0.0, false, false, "poison", 0.08, 4.0)
+	_mm._on_tower_attacked_status(1, entity.entity_id, 0.0, false, false, "poison", 0.08, 4.0, 0.0, false)
 
 	for i in range(4):
 		_mm._pass1b_status_effects(1.0)
@@ -124,10 +124,10 @@ func test_ac26_boss_tier_hp_scales_the_same_percentage_no_separate_tuning() -> v
 func test_ac27_second_hit_of_same_effect_type_stacks_independently() -> void:
 	var entity := _spawn(&"goblin", 200.0)
 
-	_mm._on_tower_attacked_status(1, entity.entity_id, 0.0, false, false, "burn", 0.10, 3.0)
+	_mm._on_tower_attacked_status(1, entity.entity_id, 0.0, false, false, "burn", 0.10, 3.0, 0.0, false)
 	assert_int(entity.active_status_effects.size()).is_equal(1)
 
-	_mm._on_tower_attacked_status(2, entity.entity_id, 0.0, false, false, "burn", 0.10, 3.0)
+	_mm._on_tower_attacked_status(2, entity.entity_id, 0.0, false, false, "burn", 0.10, 3.0, 0.0, false)
 
 	assert_int(entity.active_status_effects.size()).is_equal(2)
 	# Both instances independently retain their own full tick count -- neither
@@ -138,8 +138,8 @@ func test_ac27_second_hit_of_same_effect_type_stacks_independently() -> void:
 
 func test_ac27_two_stacked_instances_deal_roughly_double_damage() -> void:
 	var entity := _spawn(&"goblin", 200.0)
-	_mm._on_tower_attacked_status(1, entity.entity_id, 0.0, false, false, "burn", 0.10, 3.0)
-	_mm._on_tower_attacked_status(2, entity.entity_id, 0.0, false, false, "burn", 0.10, 3.0)
+	_mm._on_tower_attacked_status(1, entity.entity_id, 0.0, false, false, "burn", 0.10, 3.0, 0.0, false)
+	_mm._on_tower_attacked_status(2, entity.entity_id, 0.0, false, false, "burn", 0.10, 3.0, 0.0, false)
 
 	for i in range(3):
 		_mm._pass1b_status_effects(1.0)
@@ -157,7 +157,7 @@ func test_ac27_two_stacked_instances_deal_roughly_double_damage() -> void:
 func test_ac28_slow_effect_type_creates_no_dot_instance() -> void:
 	var entity := _spawn(&"goblin", 200.0)
 
-	_mm._on_tower_attacked_status(1, entity.entity_id, 0.0, false, false, "slow", 0.15, 2.0)
+	_mm._on_tower_attacked_status(1, entity.entity_id, 0.0, false, false, "slow", 0.15, 2.0, 0.0, false)
 
 	assert_int(entity.active_status_effects.size()).is_equal(0)
 	assert_int(entity.active_slow_effects.size()).is_equal(1)
@@ -166,7 +166,7 @@ func test_ac28_slow_effect_type_creates_no_dot_instance() -> void:
 func test_ac28_empty_effect_type_creates_no_instance() -> void:
 	var entity := _spawn(&"goblin", 200.0)
 
-	_mm._on_tower_attacked_status(1, entity.entity_id, 0.0, false, false, "", 0.0, 0.0)
+	_mm._on_tower_attacked_status(1, entity.entity_id, 0.0, false, false, "", 0.0, 0.0, 0.0, false)
 
 	assert_int(entity.active_status_effects.size()).is_equal(0)
 	assert_int(entity.active_slow_effects.size()).is_equal(0)
@@ -178,7 +178,7 @@ func test_ac28_empty_effect_type_creates_no_instance() -> void:
 
 func test_ac29_killing_tick_sets_dead_and_buffers_a_death_with_tower_kill_source() -> void:
 	var entity := _spawn(&"goblin", 10.0)
-	_mm._on_tower_attacked_status(1, entity.entity_id, 0.0, false, false, "burn", 1.0, 1.0)  # tick_damage = 10.0
+	_mm._on_tower_attacked_status(1, entity.entity_id, 0.0, false, false, "burn", 1.0, 1.0, 0.0, false)  # tick_damage = 10.0
 
 	_mm._pass1b_status_effects(1.0)
 
@@ -198,8 +198,8 @@ func test_ac30_death_mid_effect_discards_remaining_instances_without_error() -> 
 	var entity := _spawn(&"goblin", 20.0)
 	# Two instances, each with tick_damage=10.0 -- both tick in the same
 	# _pass1b_status_effects(1.0) call (single STATUS_TICK_INTERVAL boundary).
-	_mm._on_tower_attacked_status(1, entity.entity_id, 0.0, false, false, "burn", 0.50, 1.0)
-	_mm._on_tower_attacked_status(2, entity.entity_id, 0.0, false, false, "burn", 0.50, 1.0)
+	_mm._on_tower_attacked_status(1, entity.entity_id, 0.0, false, false, "burn", 0.50, 1.0, 0.0, false)
+	_mm._on_tower_attacked_status(2, entity.entity_id, 0.0, false, false, "burn", 0.50, 1.0, 0.0, false)
 	assert_int(entity.active_status_effects.size()).is_equal(2)
 
 	_mm._pass1b_status_effects(1.0)
@@ -214,7 +214,7 @@ func test_ac30_status_application_on_already_dead_entity_is_rejected() -> void:
 	var entity := _spawn(&"goblin", 10.0)
 	entity.lifecycle_state = MonsterEntity.State.DEAD
 
-	_mm._on_tower_attacked_status(1, entity.entity_id, 0.0, false, false, "burn", 0.50, 1.0)
+	_mm._on_tower_attacked_status(1, entity.entity_id, 0.0, false, false, "burn", 0.50, 1.0, 0.0, false)
 
 	assert_int(entity.active_status_effects.size()).is_equal(0)
 
@@ -226,7 +226,7 @@ func test_ac30_status_application_on_already_dead_entity_is_rejected() -> void:
 func test_ac31_slow_hit_creates_instance_with_correct_formula() -> void:
 	var entity := _spawn(&"goblin", 200.0)
 
-	_mm._on_tower_attacked_status(1, entity.entity_id, 0.0, false, false, "slow", 0.15, 2.0)
+	_mm._on_tower_attacked_status(1, entity.entity_id, 0.0, false, false, "slow", 0.15, 2.0, 0.0, false)
 
 	assert_int(entity.active_slow_effects.size()).is_equal(1)
 	var instance: ActiveSlowEffect = entity.active_slow_effects[0]
@@ -242,7 +242,7 @@ func test_ac31_slow_hit_creates_instance_with_correct_formula() -> void:
 func test_ac32_effective_speed_reflects_active_slow_without_mutating_scaled_speed() -> void:
 	var entity := _spawn(&"goblin", 200.0)
 	entity.scaled_speed = 2.0
-	_mm._on_tower_attacked_status(1, entity.entity_id, 0.0, false, false, "slow", 0.15, 2.0)
+	_mm._on_tower_attacked_status(1, entity.entity_id, 0.0, false, false, "slow", 0.15, 2.0, 0.0, false)
 
 	assert_float(_mm._effective_speed(entity)).is_equal_approx(1.7, 0.001)
 	# scaled_speed itself is never mutated by the slow application.
@@ -263,8 +263,8 @@ func test_ac32_no_active_slow_effective_speed_equals_scaled_speed() -> void:
 func test_ac33_two_slow_hits_combine_multiplicatively_not_additively() -> void:
 	var entity := _spawn(&"goblin", 200.0)
 	entity.scaled_speed = 2.0
-	_mm._on_tower_attacked_status(1, entity.entity_id, 0.0, false, false, "slow", 0.15, 2.0)
-	_mm._on_tower_attacked_status(2, entity.entity_id, 0.0, false, false, "slow", 0.15, 2.0)
+	_mm._on_tower_attacked_status(1, entity.entity_id, 0.0, false, false, "slow", 0.15, 2.0, 0.0, false)
+	_mm._on_tower_attacked_status(2, entity.entity_id, 0.0, false, false, "slow", 0.15, 2.0, 0.0, false)
 
 	assert_int(entity.active_slow_effects.size()).is_equal(2)
 	# 2.0 x 0.85 x 0.85 = 1.445, NOT 2.0 x 0.70 = 1.40 (the rejected additive alternative).
@@ -278,7 +278,7 @@ func test_ac33_two_slow_hits_combine_multiplicatively_not_additively() -> void:
 func test_ac34_extreme_effect_value_is_clamped_by_the_floor() -> void:
 	var entity := _spawn(&"goblin", 200.0)
 
-	_mm._on_tower_attacked_status(1, entity.entity_id, 0.0, false, false, "slow", 0.99, 2.0)
+	_mm._on_tower_attacked_status(1, entity.entity_id, 0.0, false, false, "slow", 0.99, 2.0, 0.0, false)
 
 	var instance: ActiveSlowEffect = entity.active_slow_effects[0]
 	# max(0.05, 1.0 - 0.99) = max(0.05, 0.01) = 0.05 -- the floor wins.
@@ -292,7 +292,7 @@ func test_ac34_extreme_effect_value_is_clamped_by_the_floor() -> void:
 func test_ac35_slow_instance_decays_and_expires_after_its_duration() -> void:
 	var entity := _spawn(&"goblin", 200.0)
 	entity.scaled_speed = 2.0
-	_mm._on_tower_attacked_status(1, entity.entity_id, 0.0, false, false, "slow", 0.15, 1.5)
+	_mm._on_tower_attacked_status(1, entity.entity_id, 0.0, false, false, "slow", 0.15, 1.5, 0.0, false)
 
 	_mm._pass1b_status_effects(1.0)
 	assert_float((entity.active_slow_effects[0] as ActiveSlowEffect).remaining_duration).is_equal_approx(0.5, 0.001)
