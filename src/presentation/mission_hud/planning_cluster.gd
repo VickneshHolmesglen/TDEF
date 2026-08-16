@@ -62,9 +62,24 @@ const ROUTE_PREVIEW_WIDTH: float = 3.0
 ## square icon-only tiles (HBoxContainer) -- cost/footprint/DPS/perk details
 ## moved to each tile's tooltip_text, shown on hover, instead of always-on
 ## row text.
-@onready var _build_list: HBoxContainer = $NonReadyControls/BuildList
+##
+## Player-reported 2026-08-16: a single-row HBoxContainer ran off the right
+## edge of the screen once the registry had more blueprints than fit in
+## 1280px (the 6th tile was fully offscreen) -- redesigned to a 3-column
+## GridContainer inside a fixed-size ScrollContainer (BuildListScroll),
+## anchored top-left instead of bottom-right, so the list grows downward
+## and scrolls instead of running off-screen sideways.
+@onready var _build_list: GridContainer = $NonReadyControls/BuildListScroll/BuildList
 const TILE_SIZE: Vector2 = Vector2(48, 48)
 const TILE_ICON_MARGIN: float = 12.0
+## Player-reported 2026-08-16: default theme buttons read as too translucent
+## against the busy rock-textured mission backdrop -- explicit near-opaque
+## styleboxes per button state make the tile face read clearly regardless
+## of what's rendered behind it.
+const TILE_BG_NORMAL: Color = Color(0.13, 0.14, 0.17, 0.96)
+const TILE_BG_HOVER: Color = Color(0.20, 0.22, 0.27, 0.98)
+const TILE_BG_PRESSED: Color = Color(0.09, 0.10, 0.12, 0.98)
+const TILE_BG_DISABLED: Color = Color(0.13, 0.14, 0.17, 0.7)
 ## Grid Placement Cursor (design/ux/interaction-patterns.md's own pattern) --
 ## a single footprint-sized rect that follows the mouse while a blueprint is
 ## selected, colored by TowerSystem.get_placement_preview()'s own validity
@@ -438,6 +453,7 @@ func _build_tower_list() -> void:
 		# rendering as a wide text row.
 		button.custom_minimum_size = TILE_SIZE
 		button.tooltip_text = _blueprint_entry_text(data)
+		_apply_tile_style(button)
 		# GDD ("archetype icon...") — reuses the same real per-archetype art
 		# tower_instance.gd already displays on the placed tower itself
 		# (assets/art/towers/), added 2026-08-11. This list was originally
@@ -455,6 +471,28 @@ func _build_tower_list() -> void:
 		_build_list.add_child(button)
 		_build_buttons[blueprint_id] = button
 	_refresh_affordability()
+
+
+## Near-opaque per-state styleboxes (see TILE_BG_* constants' own doc
+## comment) so each tile reads clearly against the busy rock-textured
+## mission backdrop instead of blending into it under the default theme.
+func _apply_tile_style(button: Button) -> void:
+	for state: StringName in [&"normal", &"hover", &"pressed", &"disabled"]:
+		var style := StyleBoxFlat.new()
+		match state:
+			&"hover":
+				style.bg_color = TILE_BG_HOVER
+			&"pressed":
+				style.bg_color = TILE_BG_PRESSED
+			&"disabled":
+				style.bg_color = TILE_BG_DISABLED
+			_:
+				style.bg_color = TILE_BG_NORMAL
+		style.corner_radius_top_left = 4
+		style.corner_radius_top_right = 4
+		style.corner_radius_bottom_left = 4
+		style.corner_radius_bottom_right = 4
+		button.add_theme_stylebox_override(state, style)
 
 
 ## GDD ("archetype icon, estimated DPS, placement cost, footprint size,

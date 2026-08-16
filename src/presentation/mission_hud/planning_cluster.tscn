@@ -25,8 +25,17 @@ text = "Sell"
 
 [node name="NonReadyControls" type="Control" parent="."]
 
-[node name="BuildList" type="HBoxContainer" parent="NonReadyControls"]
-position = Vector2(1012, 592)
+[node name="BuildListScroll" type="ScrollContainer" parent="NonReadyControls"]
+position = Vector2(8, 8)
+size = Vector2(170, 170)
+horizontal_scroll_mode = 0
+clip_contents = true
+
+[node name="BuildList" type="GridContainer" parent="NonReadyControls/BuildListScroll"]
+layout_mode = 2
+columns = 3
+theme_override_constants/h_separation = 6
+theme_override_constants/v_separation = 6
 
 [node name="PlacementCursor" type="ColorRect" parent="NonReadyControls"]
 visible = false
