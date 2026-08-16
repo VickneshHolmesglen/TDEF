@@ -54,14 +54,17 @@ extends Node
 ## pattern, control manifest: "never key Inventory stacking... on item_id or
 ## stat-value equality").
 
-## Player-requested 2026-08-16: raised from 10 to 14 when Hero equipment
-## slots expanded from 5 to 10 named slots (EQUIPMENT_SLOT_NAMES below) —
-## preserves inventory.md Rule 5a's ≥4-free-discretionary-slots floor (10
-## equip + 4 discretionary = 14; previously 5 equip + 5 discretionary = 10).
+## Player-requested 2026-08-16 (twice): first raised from 10 to 14 when Hero
+## equipment slots expanded from 5 to 10 named slots (EQUIPMENT_SLOT_NAMES
+## below); raised again from 14 to 18 the same day after a live playthrough
+## found only 4 discretionary slots wasn't enough to absorb a mission's
+## material drops (item_pickup_rejected fired constantly, silently losing
+## loot). 10 equip + 8 discretionary = 18; previously 10 equip + 4
+## discretionary = 14; originally 5 equip + 5 discretionary = 10.
 ## SlotExpansionCostTable's slots_after column was shifted +4 at every tier
-## to match (16/22/28/34/40 -> 20/26/32/38/44) — same costs, same +6-per-tier
+## to match (20/26/32/38/44 -> 24/30/36/42/48) — same costs, same +6-per-tier
 ## cadence, just re-based on this new starting point.
-const STARTING_SLOT_COUNT: int = 14  ## GDD Core Rule 1 — Inventory's own tuning constant
+const STARTING_SLOT_COUNT: int = 18  ## GDD Core Rule 1 — Inventory's own tuning constant
 const STACK_CAP_STACKABLE: int = 99  ## GDD Core Rule 2 — Material / CraftedGood cap
 const STACK_CAP_UNIQUE: int = 1      ## GDD Core Rule 2 — Equipment / stat-rolled Tower Component cap
 
@@ -83,21 +86,21 @@ const RESTORE_ORDER: int = 10
 ## matching a Diablo-style paperdoll layout the player provided as
 ## reference) from 5 to 10 fixed Hero equipment slots — a flagged
 ## origination (hero.md never fixes this number). Reserved at the LAST 10
-## indices of the base 14-slot array (4-13), permanently locked, so
+## indices of the base 18-slot array (8-17), permanently locked, so
 ## _find_first_empty_slot() (generic pickups) naturally never lands there —
 ## no changes needed to that method. Slot-expansion (Story 003) only ever
 ## appends new slots after the current end, so these indices stay stable
-## across expansion. At STARTING_SLOT_COUNT=14, this leaves exactly 4
-## discretionary slots (indices 0-3) — satisfies inventory.md Rule 5a's
-## ≥4-free floor exactly, no headroom (Guardrail; STARTING_SLOT_COUNT's own
-## doc comment has the full before/after).
+## across expansion. At STARTING_SLOT_COUNT=18, this leaves exactly 8
+## discretionary slots (indices 0-7) — satisfies inventory.md Rule 5a's
+## ≥4-free floor with 4 slots of headroom (Guardrail; STARTING_SLOT_COUNT's
+## own doc comment has the full before/after).
 const EQUIPMENT_SLOT_NAMES: Array[String] = [
 	"helmet", "chest", "gloves", "pants", "boots", "main_hand",
 	"neck", "ring_1", "ring_2", "offhand",
 ]
 const EQUIPMENT_SLOT_INDEX: Dictionary[String, int] = {
-	"helmet": 4, "chest": 5, "gloves": 6, "pants": 7, "boots": 8, "main_hand": 9,
-	"neck": 10, "ring_1": 11, "ring_2": 12, "offhand": 13,
+	"helmet": 8, "chest": 9, "gloves": 10, "pants": 11, "boots": 12, "main_hand": 13,
+	"neck": 14, "ring_1": 15, "ring_2": 16, "offhand": 17,
 }
 ## ring_1/ring_2 both accept the generic "ring" category, no subtype
 ## restriction (mirrors the old accessory_a/accessory_b precedent this
@@ -126,9 +129,9 @@ var _slots: Array[InventorySlot] = []
 var _next_instance_id: int = 0
 
 ## Number of slot-expansion tiers COMPLETED so far (Story 003). 0 = still at
-## STARTING_SLOT_COUNT (14 slots), no expansion completed yet — tiers 1-5 map
+## STARTING_SLOT_COUNT (18 slots), no expansion completed yet — tiers 1-5 map
 ## directly to SlotExpansionCostTable's row indices once completed (tier 1 complete
-## = 20 slots, ..., tier 5 complete = 44 slots, max). Deliberately 0-based rather
+## = 24 slots, ..., tier 5 complete = 48 slots, max). Deliberately 0-based rather
 ## than starting at 1, so "current tier" and "next tier to buy" (_slot_tier + 1)
 ## never need an off-by-one correction at call sites.
 var _slot_tier: int = 0
@@ -346,7 +349,7 @@ static func get_tab_for_item_type(item_type: StringName) -> StringName:
 
 
 ## Number of expansion tiers completed so far (Story 003). 0 = still at
-## STARTING_SLOT_COUNT (14 slots); 5 = max tier (44 slots). get_slot_count() reflects
+## STARTING_SLOT_COUNT (18 slots); 5 = max tier (48 slots). get_slot_count() reflects
 ## the capacity this implies — this accessor exists separately because "which tier"
 ## and "how many slots" are both independently useful to callers (e.g. UI progress
 ## display vs. capacity checks).
@@ -1099,7 +1102,7 @@ func get_save_data() -> Dictionary:
 ## side effects.
 ##
 ## Story 003 addition: the expected slot-array size is no longer the fixed
-## STARTING_SLOT_COUNT — it is derived from the restored `slot_tier` (0 = 14 slots,
+## STARTING_SLOT_COUNT — it is derived from the restored `slot_tier` (0 = 18 slots,
 ## 1-5 = SlotExpansionCostTable's slots_after for that tier). A payload whose
 ## `slots` size doesn't match its own claimed `slot_tier` is rejected as malformed,
 ## same as any other internally-inconsistent save data.

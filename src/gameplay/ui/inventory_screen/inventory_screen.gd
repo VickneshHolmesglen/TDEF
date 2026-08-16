@@ -199,10 +199,19 @@ func _on_tab_pressed(tab: StringName) -> void:
 
 
 ## Rule 3: tabs filter ONE shared slot pool by item_type, not four separate
-## ranges. Empty slots stay visible on every tab (unassigned capacity);
-## occupied slots hide when their item's item_type doesn't match the active
-## tab. Called at build time and after every event that can change slot
-## contents (_refresh_all_slot_visuals()'s own call sites).
+## ranges — an occupied slot hides when its item's item_type doesn't match
+## the active tab. Called at build time and after every event that can
+## change slot contents (_refresh_all_slot_visuals()'s own call sites).
+##
+## Player-requested 2026-08-16: empty slots no longer stay visible on any
+## tab (the prior behavior — "empty slots are unassigned capacity, always
+## shown" — was never actually mandated by inventory.md's GDD text; it was
+## an implementation-time choice made when tab-switching was first added,
+## now reversed). This also removes an accepted duplication equipment_
+## paperdoll.gd's own doc comment flagged: the 10 reserved Hero equip-slot
+## placeholders (see the next paragraph) used to render in both this flat
+## grid AND the paperdoll — hiding them here makes the paperdoll the sole
+## visualization of equip-slot state, which is what it was built for.
 ##
 ## get_slot_contents() returns a non-empty Dictionary for a real,
 ## already-allocated InventorySlot even when nothing is placed in it yet
@@ -226,7 +235,7 @@ func _refresh_slot_visibility() -> void:
 		var contents: Dictionary = inventory.get_slot_contents(i)
 		var item_id: String = contents.get("item_id", "") as String
 		var quantity: int = contents.get("quantity", 0) as int
-		var visible_on_tab: bool = true
+		var visible_on_tab: bool = false
 		if item_id != "" and quantity > 0:
 			var definition: ItemDefinitionResource = GGameDataRegistry.get_item_definition(StringName(item_id))
 			visible_on_tab = definition != null and definition.item_type == _active_tab

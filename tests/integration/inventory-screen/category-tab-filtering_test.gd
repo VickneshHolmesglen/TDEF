@@ -4,12 +4,14 @@
 ## real toggle button that filters the slot grid to that item_type.
 ##
 ## Rule 3 / this screen's own doc comment: tabs are a view over ONE shared
-## slot pool (capacity/locks/expansion are never per-category) -- an EMPTY
-## slot isn't yet assigned to any category and stays visible on every tab;
-## only OCCUPIED slots hide when their item's item_type doesn't match the
-## active tab. Real item data used throughout: warding_band (Equipment),
-## iron_foundation_component (TowerComponent), common_scrap (Material),
-## healing_salve (CraftedGood).
+## slot pool (capacity/locks/expansion are never per-category) -- an
+## OCCUPIED slot hides when its item's item_type doesn't match the active
+## tab. Player-requested 2026-08-16: EMPTY slots are now hidden on every
+## tab too (previously they stayed visible everywhere as "unassigned
+## capacity" -- an implementation-time choice, never mandated by inventory.
+## md's GDD text, now reversed). Real item data used throughout: warding_band
+## (Equipment), iron_foundation_component (TowerComponent), common_scrap
+## (Material), healing_salve (CraftedGood).
 extends GdUnitTestSuite
 
 var _runner: GdUnitSceneRunner
@@ -55,20 +57,20 @@ func test_first_tab_is_active_by_default() -> void:
 	assert_bool(_tab_button(Inventory.TAB_ORDER[0]).button_pressed).is_true()
 
 
-func test_all_slots_visible_by_default_when_inventory_is_empty() -> void:
+func test_all_slots_hidden_by_default_when_inventory_is_empty() -> void:
 	for i: int in range(GInventory.get_slot_count()):
-		assert_bool(_slot_button(i).visible).is_true()
+		assert_bool(_slot_button(i).visible).is_false()
 
 
 # ---------------------------------------------------------------------------
-# Filtering: empty slots always visible, occupied slots gated by item_type
+# Filtering: empty slots always hidden, occupied slots gated by item_type
 # ---------------------------------------------------------------------------
 
-func test_empty_slots_stay_visible_on_every_tab() -> void:
+func test_empty_slots_stay_hidden_on_every_tab() -> void:
 	for tab: StringName in Inventory.TAB_ORDER:
 		_press_tab(tab)
 		for i: int in range(GInventory.get_slot_count()):
-			assert_bool(_slot_button(i).visible).is_true()
+			assert_bool(_slot_button(i).visible).is_false()
 
 
 func test_material_slot_hidden_on_equipment_tab_visible_on_material_tab() -> void:
@@ -145,12 +147,19 @@ func test_item_added_after_tab_selected_updates_visibility_without_switching_tab
 	assert_bool(_slot_button(0).visible).is_true()
 
 
-func test_item_fully_consumed_reverts_slot_to_visible_on_every_tab() -> void:
+## Player-requested 2026-08-16: previously named "...reverts_to_visible..." —
+## a fully-consumed slot used to fall back to the old "empty slots always
+## visible" state. Now that empty slots are hidden everywhere, consuming a
+## slot down to empty hides it instead.
+func test_item_fully_consumed_hides_slot_on_every_tab() -> void:
 	var salve: ItemDefinitionResource = GGameDataRegistry.get_item_definition(&"healing_salve")
 	GInventory.add_stackable(salve, 3)
-	_press_tab(&"Equipment")
-	assert_bool(_slot_button(0).visible).is_false()
+	_press_tab(&"CraftedGood")
+	assert_bool(_slot_button(0).visible).is_true()
 
 	GInventory.consume_by_type("CraftedGood", 3)  # empties the slot
 
-	assert_bool(_slot_button(0).visible).is_true()
+	assert_bool(_slot_button(0).visible).is_false()
+
+	_press_tab(&"Equipment")
+	assert_bool(_slot_button(0).visible).is_false()

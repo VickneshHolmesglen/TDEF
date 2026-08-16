@@ -86,8 +86,14 @@ the one place it's all visible together, rather than authoring the payoff itself
 3. **Tabs** are fixed, by item category: Equipment, Tower Components,
    Materials, Crafted Goods. Not player-customizable at MVP.
 4. **Slot expansion**: craftable only (no gold cost, no Defense Building
-   structure). 5 tiers, diminishing-returns curve: 10 → 16 → 22 → 28 → 34 → 40
+   structure). 5 tiers, diminishing-returns curve: 18 → 24 → 30 → 36 → 42 → 48
    (max), each tier costing progressively rarer/more materials than the last.
+   **Revised twice, 2026-08-16 (player-requested)**: originally 10 → 16 → 22 →
+   28 → 34 → 40; re-based to 14 → 20 → 26 → 32 → 38 → 44 when Equipment Forge
+   fixed Hero's equipment-slot count at 10 named slots (Rule 5a), then to the
+   current sequence after a live playthrough found the resulting 4
+   discretionary slots insufficient for a mission's material drops. Same
+   +6-per-tier cadence and material costs both times — only the base shifted.
 5. **Equipped-item lock**: any item currently equipped (Hero gear) or
    installed (Tower Component in active use) cannot be removed or discarded
    from inventory while in that state. Locked items still occupy and count
@@ -100,13 +106,15 @@ the one place it's all visible together, rather than authoring the payoff itself
     lock is accounted for.** This is a standing constraint on any future system
     that defines how many Hero gear slots or simultaneously-installed Tower
     Components exist (Hero System, Equipment Forge, Tower System) — not a
-    number this GDD invents today. Neither Hero System nor Equipment Forge
-    (no GDD yet) currently fixes a total equip-slot count, so this rule cannot
-    yet be numerically verified; it is recorded here so that when those counts
-    are fixed, they are checked against a 4-slot floor rather than discovered
-    as a bug after the fact. **If the eventual mandatory-lock count would
-    violate this floor at `starting_slot_count=6`, the Tuning Knob's default/
-    floor must be raised accordingly — 6–15 is provisional, not a promise.**
+    number this GDD invents today. **Resolved 2026-08-16**: Equipment Forge
+    (`equipment-forge.md` Rule 1) fixed Hero's mandatory-lock count at 10
+    named equipment slots; Tower System's per-placed-tower-component lock
+    count is still undefined and remains an open half of this rule. With the
+    Hero half now numeric, `starting_slot_count` was raised to 18 (10 locked +
+    8 discretionary), comfortably clearing the 4-slot floor — not just barely
+    meeting it, after a live playthrough found the floor-exact 14 (10+4) too
+    tight in practice (drops were being rejected constantly with no in-mission
+    recovery path).
 6. **UI presentation**: opening the Inventory screen shows two panels
    together — left is the inventory grid (tabbed), right is the Crafting
    panel. They are one continuous screen, not separate navigable views.
@@ -252,7 +260,7 @@ yet designed) will assign real material names within these rarity tiers.*
 
 | Knob | Default | Safe Range | Affects |
 |---|---|---|---|
-| `starting_slot_count` | 10 | 6–15 (provisional — see Rule 5a: floor must guarantee ≥4 free discretionary slots after mandatory equip/install lock occupancy, a number not yet fixed by Hero/Equipment Forge) | Early-game inventory pressure. Too low frustrates before Crafting is unlocked; too high removes the early "what do I keep" tension |
+| `starting_slot_count` | 18 | 18–24 (Rule 5a's Hero half is now fixed at 10 locked slots; floor is 14 to guarantee ≥4 free discretionary slots, but 14-exact proved too tight in a live playthrough — see Rule 5a's 2026-08-16 note. Tower System's install-lock count is still undefined, so the upper bound remains soft) | Early-game inventory pressure. Too low frustrates before Crafting is unlocked; too high removes the early "what do I keep" tension |
 | `stack_cap_stackable` | 99 | 20–999 | How often Materials/generic Crafted Goods overflow into new stacks. Lower values increase overflow-stack slot pressure |
 | `stack_cap_unique` | 1 | Fixed — do not tune | Equipment/Tower Components never stack; this isn't a balance lever |
 | `max_slot_tier_count` | 5 | 3–7 | Total expansion depth. More tiers = longer-tail slot progression; fewer = players hit the cap earlier and the Formulas curve compresses |

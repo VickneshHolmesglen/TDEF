@@ -957,13 +957,16 @@ constants:
     source: design/gdd/inventory.md
     referenced_by:
       - design/gdd/inventory.md
-    value: 10
+    value: 18
     unit: slots
     notes: "Base Inventory slot count before any craftable expansion. Mission HUD
       and any future progression/tutorial system referencing starting capacity
-      must agree with this value."
+      must agree with this value. Was 10 at authoring; raised to 14 then 18
+      (2026-08-16, player-requested) once Equipment Forge fixed Hero's equipment
+      slot count at 10 named slots, to preserve Rule 5a's >=4-free-discretionary-
+      slot floor with real headroom (10 equip + 8 discretionary)."
     added: 2026-07-10
-    revised: ""
+    revised: "2026-08-16"
 
   - name: inventory_stack_cap_unique
     status: active

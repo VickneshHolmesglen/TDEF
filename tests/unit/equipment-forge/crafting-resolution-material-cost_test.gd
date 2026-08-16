@@ -67,11 +67,17 @@ func test_resolve_craft_rejects_undiscovered_recipe() -> void:
 # AC-9: no-room pre-check rejects before any material is consumed
 # ---------------------------------------------------------------------------
 
+## Player-requested 2026-08-16: STARTING_SLOT_COUNT raised 14 -> 18
+## (discretionary slots 4 -> 8) after a live playthrough found the old
+## floor-exact capacity insufficient — this test's own "fill every
+## discretionary slot" setup grows to match (1 slot from the seeded
+## material + 7 filler items = 8).
 func test_resolve_craft_rejects_when_no_room_zero_consumption() -> void:
 	_discover(RECIPE_IRON_SWORD)
 	_seed_material(4)
-	# Fill all 5 discretionary slots (0-4) so no room remains for the crafted item.
-	for i: int in 5:
+	# Fill all 8 discretionary slots (1 used by the seeded material above, 7
+	# more here) so no room remains for the crafted item.
+	for i: int in 7:
 		var filler := ItemDefinitionResource.new()
 		filler.item_id = StringName("filler_%d" % i)
 		filler.item_type = &"Equipment"

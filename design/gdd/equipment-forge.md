@@ -52,9 +52,10 @@ The Equipment Forge System is the sanctuary's convergence layer — the final cr
    discretionary slots" floor check until Hero or Equipment Forge fixed a
    concrete number; this GDD is that fixing document. `inventory_starting_
    slot_count` was raised from 10 to 14 (registry constant) alongside this
-   expansion — 10 mandatory-locked Hero equipment slots leaves exactly 4
-   free, satisfying the ≥4 floor exactly, with no headroom. **This check
-   considers Hero equipment locks only** — Tower System's per-placed-tower
+   expansion, then to 18 later the same day after a live playthrough found
+   14 (10 locked + 4 free, exactly at the floor) too tight in practice — 10
+   mandatory-locked Hero equipment slots now leaves 8 free, well clear of the
+   ≥4 floor. **This check considers Hero equipment locks only** — Tower System's per-placed-tower
    component lock count (a separate, larger source of locked slots per
    `inventory.md`'s own Defense Building row) is not fixed by any GDD yet and
    is explicitly out of scope here; Inventory's Rule 5a floor must be
@@ -750,8 +751,8 @@ Plain equipment-crafting stays single-confirm, identical justification to `craft
   the Hero System and Inventory initialize, **THEN** exactly 10 named
   equipment slots exist (`helmet`, `chest`, `gloves`, `pants`, `boots`,
   `main_hand`, `neck`, `ring_1`, `ring_2`, `offhand`), and at `inventory_
-  starting_slot_count = 14`, exactly 4 discretionary slots remain free —
-  satisfying Inventory Rule 5a's ≥4-free floor exactly, with no headroom
+  starting_slot_count = 18`, exactly 8 discretionary slots remain free —
+  clearing Inventory Rule 5a's ≥4-free floor with real headroom
   (Rule 1).
 - **AC-2**: **GIVEN** an Equipment item whose category is `ring`,
   **WHEN** an equip action targets either `ring_1` or `ring_2`,

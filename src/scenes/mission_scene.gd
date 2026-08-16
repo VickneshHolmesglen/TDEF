@@ -209,19 +209,19 @@ func _set_hero_placeholder_stats() -> void:
 	_hero.reset_to_defaults()
 
 
-## Mirrors the_gap.gd's own identical visual-grouping handler.
+## Mirrors the_gap.gd's own identical visual-grouping handler. Player-
+## reported 2026-08-16: the flat-colored placeholder ColorRect this handler
+## used to attach here was drawn on top of the real, already-wired
+## MonsterInstance sprite (MonsterManager._spawn_entity() instances it and
+## calls configure() for every spawn, monster_manager.gd:485-487) — the
+## player was seeing that opaque square, not a real hitbox (this project has
+## no collision-shape debug rendering anywhere). Removed; MonsterManager's
+## own presentation layer is the sole visual now.
 func _on_monster_spawned(payload: MonsterSpawnedEvent) -> void:
 	var entity: MonsterEntity = _monster_manager._entity_lookup.get(payload.entity_id) as MonsterEntity
 	if entity == null:
 		return
 	entity.reparent(_monsters_container)
-	var size: float = 40.0 if payload.monster_id == &"goblin_warlord_boss" else 20.0
-	var vis := ColorRect.new()
-	vis.size = Vector2(size, size)
-	vis.position = Vector2(-size / 2.0, -size / 2.0)
-	vis.color = Color(0.9, 0.6, 0.1)
-	vis.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	entity.add_child(vis)
 
 
 ## GGrid.cell_to_world() returns a cell's CENTER — TowerInstance is a Node2D

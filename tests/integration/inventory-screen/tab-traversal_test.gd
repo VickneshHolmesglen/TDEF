@@ -6,6 +6,17 @@
 ## doc comment). This was previously unexercised by any test; the slot grid's
 ## own doc comment predicted correct index-order traversal "by incidental
 ## tree-child order" but that prediction had never been verified.
+##
+## Player-requested 2026-08-16: empty slots are now hidden (invisible), and
+## Godot's automatic ui_focus_next/prev skips non-visible Controls entirely
+## — confirmed live via the Godot MCP bridge, pressing Tab from a focused-
+## but-invisible slot on a freshly-reset (fully empty) inventory jumps focus
+## to the tab strip instead of the next slot. before_test() now seeds 3 real
+## Equipment items so slots 0-2 are actually visible/occupied — the default
+## active tab is Equipment (Inventory.TAB_ORDER[0]), so no tab switch is
+## needed for them to show up, and add_unique_item() allocates the first
+## empty slot in order, landing them at indices 0/1/2 exactly as these tests
+## already assumed.
 extends GdUnitTestSuite
 
 var _runner: GdUnitSceneRunner
@@ -14,6 +25,9 @@ var _screen: Control
 
 func before_test() -> void:
 	GInventory.reset_to_defaults()
+	for item_id: StringName in [&"iron_sword", &"steel_greatsword", &"reinforced_plate"]:
+		var definition: ItemDefinitionResource = GGameDataRegistry.get_item_definition(item_id)
+		GInventory.add_unique_item(definition)
 	_runner = scene_runner("res://src/gameplay/ui/inventory_screen/InventoryScreen.tscn")
 	_screen = _runner.scene() as Control
 

@@ -52,14 +52,17 @@ func test_exactly_10_equipment_slot_names_exist() -> void:
 	])
 
 
-func test_4_discretionary_slots_remain_free_at_starting_capacity() -> void:
-	assert_int(_inventory.get_slot_count()).is_equal(14)  # unchanged — equipment slots are carved out, not additive
+## Player-requested 2026-08-16 (same day, follow-up): STARTING_SLOT_COUNT
+## raised 14 -> 18 after a live playthrough found the floor-exact 4
+## discretionary slots insufficient for a mission's material drops.
+func test_8_discretionary_slots_remain_free_at_starting_capacity() -> void:
+	assert_int(_inventory.get_slot_count()).is_equal(18)  # unchanged — equipment slots are carved out, not additive
 
 	var discretionary_free: int = 0
 	for i: int in range(_inventory.get_slot_count()):
 		if _inventory.is_slot_empty(i):
 			discretionary_free += 1
-	assert_int(discretionary_free).is_equal(4)
+	assert_int(discretionary_free).is_equal(8)
 
 
 func test_fresh_equipment_slots_have_no_item_equipped() -> void:
@@ -183,7 +186,7 @@ func test_equipment_slots_do_not_consume_generic_pickup_capacity() -> void:
 	material.display_name = "Iron Ore"
 	material.is_unique_instance = false
 
-	for i: int in 4:
+	for i: int in 8:
 		_inventory.add_stackable(material, 1)
 
 	for slot_name: String in Inventory.EQUIPMENT_SLOT_NAMES:
