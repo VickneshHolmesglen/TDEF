@@ -300,7 +300,7 @@ Interactions mapped for: **Keyboard/Mouse (primary), Gamepad (partial)**. All in
 | `monster_died` | Enemy count decrements |
 | `monster_breached` | Breach counter increments + scale-pop; screen-edge flash fires |
 | `boss_hp_changed` | Boss HP bar updates |
-| `monster_damage_taken` | Floating damage number spawned at target world position |
+| `monster_damage_number_requested` | Floating damage number spawned at target world position. *(Renamed 2026-08-16 — was documented against `monster_damage_taken`, but that signal's emitter, DamageStatus, never actually has a world position to give; the number previously rendered as a stacked feed near the boss bar instead, a real gap between this spec and the implementation. Fixed by adding this dedicated signal, emitted by Monster System where a live entity position still exists — `monster_damage_taken` itself is unchanged and still drives HP mutation only.)* |
 | `hero_died` | HUD fades out; defeat transition begins |
 | `tower_placed` | Build points counter decrements |
 | `tower_destroyed` | Tower HP bar (if shown) dismounts |
@@ -351,7 +351,7 @@ The HUD is read-heavy — it consumes EventBus events and reads Resources direct
 | Breach count | Monster System | Read | `monster_breached` event | HUD maintains local counter |
 | BOSS display name | MonsterResource | Read | Direct resource read at `monster_spawned` (tier=BOSS) | Nameplate populated once; dismounted on `boss_died` |
 | BOSS current / max HP | Monster System | Read | `boss_hp_changed` event | |
-| Floating damage metadata | D&S System | Read | `monster_damage_taken` event | Fields used: `amount`, `is_crit`, `hero_bonus_tier`, `source_type` |
+| Floating damage metadata | Monster System | Read | `monster_damage_number_requested` event | Fields used: `world_position`, `amount`, `is_crit`. *(Revised 2026-08-16 — previously documented against `monster_damage_taken`/D&S System, but D&S never has a world position to supply; see this doc's Interactions table entry for the same signal for the full correction.)* |
 | Hero current / max HP | Hero System | Read | `hero_health_changed` event (`current_health: float`, `max_health: float`) | Event already in EventBus catalogue |
 | Hero skill cooldowns | Hero System | Read | `hero_skill_cooldown_updated` event | ⚠ Not yet in EventBus catalogue — must be added before implementation |
 | Hero ultimate ready state | Hero System | Read | Derived from skill cooldown state | |
