@@ -17,12 +17,17 @@ extends Resource
 
 @export var sacrifice_recipe_id: StringName = &""
 @export var required_species: StringName = &""
-@export var output_slot: String = ""  ## weapon|armor|accessory|trinket
+@export var output_slot: String = ""  ## weapon|offhand|helmet|chest|gloves|pants|boots|neck|ring
 @export var output_base_item_id: StringName = &""  ## item's base definition, before its pre-imbued rune
 @export var rune_id: StringName = &""  ## fixed per species — e.g. "menagerie_aurora_stag"
 @export var stat_delta: Dictionary[StringName, float] = {}  ## authored per species (Formula 3 guideline)
 
-const VALID_OUTPUT_SLOTS: Array[String] = ["weapon", "armor", "accessory", "trinket"]
+## Expanded 2026-08-16 (player-requested) from the old 4-category weapon/
+## armor/accessory/trinket vocabulary — mirrors EquipmentRecipeResource's
+## own identical VALID_OUTPUT_SLOTS expansion.
+const VALID_OUTPUT_SLOTS: Array[String] = [
+	"weapon", "offhand", "helmet", "chest", "gloves", "pants", "boots", "neck", "ring",
+]
 
 
 ## Load-time validation. Called by GameDataRegistry at boot (ADR-0009 contract).
@@ -33,7 +38,7 @@ func validate() -> Array[String]:
 	if required_species == &"":
 		errors.append("required_species must not be empty")
 	if not VALID_OUTPUT_SLOTS.has(output_slot):
-		errors.append("output_slot must be one of weapon/armor/accessory/trinket (got '%s')" % output_slot)
+		errors.append("output_slot must be one of weapon/offhand/helmet/chest/gloves/pants/boots/neck/ring (got '%s')" % output_slot)
 	if output_base_item_id == &"":
 		errors.append("output_base_item_id must not be empty")
 	if rune_id == &"":

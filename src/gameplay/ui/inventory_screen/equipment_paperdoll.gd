@@ -10,21 +10,29 @@ extends Control
 ## so a class_name buys nothing here and risks exactly that fragility.
 ##
 ## Hero-centered equipment paperdoll (player-requested 2026-08-16) --
-## design/gdd/equipment-forge.md's 5 named Hero equipment slots (weapon,
-## armor, accessory_a, accessory_b, trinket) rendered as slot-icon frames
-## flanking a full-body hero portrait, instead of the existing flat item
-## grid's generic square buttons. Player explicitly asked to copy the
-## LAYOUT STYLE of 3 reference screenshots they provided (hero centered,
-## slot frames in columns either side, a larger weapon slot at the bottom)
+## design/gdd/equipment-forge.md's 10 named Hero equipment slots rendered
+## as slot-icon frames flanking a full-body hero portrait, instead of the
+## existing flat item grid's generic square buttons. Player explicitly
+## asked to copy the LAYOUT STYLE of 3 reference screenshots they provided
 ## -- not to use those images. This project's own established Chrome/
 ## Parchment palette (shell_chrome_style.gd) is used for the frame styling
 ## instead of the references' own dark-fantasy gold skin.
+##
+## Exact slot arrangement is player-specified (2026-08-16 follow-up),
+## matching the reference screenshots precisely: left column top-to-bottom
+## is Helmet/Chest/Gloves/Pants/Boots, with Main Hand at the bottom of that
+## same column; right column top-to-bottom is Neck/Ring 1/Ring 2, with
+## Offhand at the bottom of that column. This required expanding Hero's
+## equip-slot model itself from 5 to 10 real named slots (Inventory.
+## EQUIPMENT_SLOT_NAMES) -- see that constant's own doc comment for the
+## full data-model change (STARTING_SLOT_COUNT, SlotExpansionCostTable,
+## Equipment/Sacrifice recipe categories, all updated to match).
 ##
 ## Player decision (2026-08-16, AskUserQuestion): paperdoll sits ALONGSIDE
 ## the existing filtered SlotGrid on the Equipment tab, not in place of it
 ## -- inventory_screen.gd's own tab-filter logic and its test coverage
 ## (tests/integration/inventory-screen/category-tab-filtering_test.gd) are
-## untouched by this file. Some duplication is an accepted tradeoff: the 5
+## untouched by this file. Some duplication is an accepted tradeoff: the 10
 ## equip slots still also appear as plain buttons in the flat grid below
 ## (they are real, always-present, pre-locked InventorySlot entries in the
 ## same shared pool per inventory.md Rule 5) -- this component is purely an
@@ -42,16 +50,14 @@ extends Control
 ## for in this pass -- this component only shows what's equipped.
 
 const HERO_PORTRAIT: Texture2D = preload("res://assets/art/characters/hero_warden_smith.png")
-const SLOT_SIZE: Vector2 = Vector2(48, 48)
-const WEAPON_SLOT_SIZE: Vector2 = Vector2(56, 84)  ## taller -- "the prominent weapon slot" from the reference layout
+const SLOT_SIZE: Vector2 = Vector2(44, 44)  ## smaller than the old 48px tile -- 6 slots must fit one column's height
 const PORTRAIT_SIZE: Vector2 = Vector2(160, 320)
 
-## Left column top-to-bottom, right column top-to-bottom -- weapon is laid
-## out separately (bottom-center, larger). Mirrors Inventory.EQUIPMENT_SLOT_
-## NAMES' own 5 names; never hardcodes a 6th/different name here.
-const LEFT_COLUMN_SLOTS: Array[String] = ["armor", "accessory_a"]
-const RIGHT_COLUMN_SLOTS: Array[String] = ["accessory_b", "trinket"]
-const WEAPON_SLOT_NAME: String = "weapon"
+## Left column top-to-bottom, right column top-to-bottom -- player-specified
+## exact arrangement (2026-08-16 follow-up). Mirrors Inventory.EQUIPMENT_
+## SLOT_NAMES' own 10 names exactly; never hardcodes a name not present there.
+const LEFT_COLUMN_SLOTS: Array[String] = ["helmet", "chest", "gloves", "pants", "boots", "main_hand"]
+const RIGHT_COLUMN_SLOTS: Array[String] = ["neck", "ring_1", "ring_2", "offhand"]
 
 ## Human-readable placeholder text for an empty slot -- shown until the slot
 ## has a real occupant with a display_name (or, for slots with no icon
@@ -60,11 +66,8 @@ const WEAPON_SLOT_NAME: String = "weapon"
 ## project's other slot/tile UIs already document) -- text is the honest
 ## placeholder, not a guessed-at icon.
 const SLOT_LABEL: Dictionary[String, String] = {
-	"weapon": "Weapon",
-	"armor": "Armor",
-	"accessory_a": "Accessory",
-	"accessory_b": "Accessory",
-	"trinket": "Trinket",
+	"helmet": "Helmet", "chest": "Chest", "gloves": "Gloves", "pants": "Pants", "boots": "Boots",
+	"main_hand": "Main Hand", "neck": "Neck", "ring_1": "Ring 1", "ring_2": "Ring 2", "offhand": "Offhand",
 }
 
 var _slot_frames: Dictionary[String, Panel] = {}
@@ -73,12 +76,11 @@ var _slot_labels: Dictionary[String, Label] = {}
 
 
 func _ready() -> void:
-	custom_minimum_size = Vector2(320, 360)
+	custom_minimum_size = Vector2(320, 400)
 	_build_background()
 	_build_portrait()
 	_build_column(LEFT_COLUMN_SLOTS, true)
 	_build_column(RIGHT_COLUMN_SLOTS, false)
-	_build_weapon_slot()
 	refresh_all()
 	GEventBus.equipment_slot_changed.connect(_on_equipment_slot_changed)
 
@@ -121,23 +123,20 @@ func _build_portrait() -> void:
 	add_child(portrait)
 
 
+const COLUMN_SEPARATION: float = 8.0
+
+
 func _build_column(slot_names: Array[String], is_left: bool) -> void:
 	var column := VBoxContainer.new()
 	column.name = "LeftColumn" if is_left else "RightColumn"
-	column.add_theme_constant_override("separation", 12)
+	column.add_theme_constant_override("separation", int(COLUMN_SEPARATION))
 	column.set_anchors_preset(Control.PRESET_CENTER_LEFT if is_left else Control.PRESET_CENTER_RIGHT)
-	var x_offset: float = 16.0 if is_left else -16.0 - SLOT_SIZE.x
-	column.position = Vector2(x_offset, -float(slot_names.size()) * (SLOT_SIZE.y + 12.0) / 2.0)
+	var x_offset: float = 12.0 if is_left else -12.0 - SLOT_SIZE.x
+	var column_height: float = float(slot_names.size()) * SLOT_SIZE.y + float(slot_names.size() - 1) * COLUMN_SEPARATION
+	column.position = Vector2(x_offset, -column_height / 2.0)
 	add_child(column)
 	for slot_name: String in slot_names:
 		column.add_child(_build_slot_frame(slot_name, SLOT_SIZE))
-
-
-func _build_weapon_slot() -> void:
-	var frame: Panel = _build_slot_frame(WEAPON_SLOT_NAME, WEAPON_SLOT_SIZE)
-	frame.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
-	frame.position = Vector2(-WEAPON_SLOT_SIZE.x / 2.0, -WEAPON_SLOT_SIZE.y - 16.0)
-	add_child(frame)
 
 
 ## Panel, not Button -- this slot frame is read-only (see class doc comment

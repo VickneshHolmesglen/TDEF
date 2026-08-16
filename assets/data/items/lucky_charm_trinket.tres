@@ -10,4 +10,4 @@ display_name = "Lucky Charm Trinket"
 is_unique_instance = true
 base_stats = {}
 rarity = ""
-equipment_category = "trinket"
+equipment_category = "neck"

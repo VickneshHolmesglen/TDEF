@@ -63,11 +63,12 @@ func _make_stackable_definition(item_id: StringName, item_type: StringName = &"M
 ## Fills all STARTING_SLOT_COUNT (10) slots with distinct unique-instance
 ## items via the real public API — no direct _slots mutation — so the
 ## inventory is genuinely full by the same definition Story 001 established.
-## Epic 08 Story 008 (ADR-0025): the last 5 of STARTING_SLOT_COUNT are now
+## Epic 08 Story 008 (ADR-0025); expanded 2026-08-16 alongside the 5->10
+## equip-slot expansion: the last N of STARTING_SLOT_COUNT are now
 ## permanently reserved, locked Hero equipment-slot placeholders (see
-## Inventory.EQUIPMENT_SLOT_INDEX) — only the 5 discretionary indices (0-4)
-## are ever findable by _find_first_empty_slot(), so "full" now means filling
-## those 5, not all 10.
+## Inventory.EQUIPMENT_SLOT_INDEX) — only the discretionary indices are ever
+## findable by _find_first_empty_slot(), so "full" now means filling those,
+## not the full STARTING_SLOT_COUNT (computed dynamically below).
 func _fill_inventory_completely() -> void:
 	var discretionary_count: int = Inventory.STARTING_SLOT_COUNT - Inventory.EQUIPMENT_SLOT_NAMES.size()
 	for i: int in range(discretionary_count):

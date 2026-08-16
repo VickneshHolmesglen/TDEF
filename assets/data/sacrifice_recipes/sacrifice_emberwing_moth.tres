@@ -6,7 +6,7 @@
 script = ExtResource("1_sacrifice")
 sacrifice_recipe_id = &"sacrifice_emberwing_moth"
 required_species = &"emberwing_moth"
-output_slot = "armor"
+output_slot = "chest"
 output_base_item_id = &"reinforced_plate"
 rune_id = &"rune_menagerie_emberwing_moth"
 stat_delta = {&"additive_bonus_total": 0.05}

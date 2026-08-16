@@ -8,8 +8,14 @@
 ## static, boot-loaded content).
 extends GdUnitTestSuite
 
-## equipment-forge.md Rule 1's fixed slot-category vocabulary.
-const EQUIP_SLOT_CATEGORIES: Array[String] = ["weapon", "armor", "accessory", "trinket"]
+## equipment-forge.md Rule 1's fixed slot-category vocabulary. Expanded
+## 2026-08-16 (player-requested) from the old 4-category weapon/armor/
+## accessory/trinket vocabulary alongside the 5->10 equip-slot expansion —
+## 5 new item+recipe pairs (offhand/helmet/gloves/pants/boots) were authored
+## specifically to keep this completeness guarantee intact.
+const EQUIP_SLOT_CATEGORIES: Array[String] = [
+	"weapon", "offhand", "helmet", "chest", "gloves", "pants", "boots", "neck", "ring",
+]
 
 ## menagerie.md Core Rule 1's fixed 5-species roster.
 const MENAGERIE_SPECIES: Array[StringName] = [

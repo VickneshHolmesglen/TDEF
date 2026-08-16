@@ -6,7 +6,7 @@
 script = ExtResource("1_recipe")
 recipe_id = &"recipe_warding_band"
 recipe_category = "hero_equipment"
-output_slot = "accessory"
+output_slot = "ring"
 inputs = {&"Common": 8}
 tech_prerequisite = &""
 output_item_id = &"warding_band"

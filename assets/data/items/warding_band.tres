@@ -10,4 +10,4 @@ display_name = "Warding Band"
 is_unique_instance = true
 base_stats = {}
 rarity = ""
-equipment_category = "accessory"
+equipment_category = "ring"

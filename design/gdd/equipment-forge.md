@@ -38,26 +38,35 @@ The Equipment Forge System is the sanctuary's convergence layer — the final cr
 
 **Hero Equipment Slots**
 
-1. **The hero has exactly 5 fixed equipment slots**: `weapon`, `armor`,
-   `accessory_a`, `accessory_b`, `trinket`. **Flagged assumption/origination**
-   **[Upstream: hero.md]** — `hero.md` never fixes this number (checked; its
-   12-stat model and skill-slot rules are silent on gear slot count).
-   `inventory.md`'s Rule 5a explicitly deferred its "≥4 free discretionary
-   slots" floor check until Hero or Equipment Forge fixed a concrete number;
-   this GDD is that fixing document. At `inventory_starting_slot_count = 10`
-   (registry constant), 5 mandatory-locked Hero equipment slots leaves 5 free
-   — satisfies the ≥4 floor with one slot of headroom. **This check considers
-   Hero equipment locks only** — Tower System's per-placed-tower component
-   lock count (a separate, larger source of locked slots per
+1. **The hero has exactly 10 fixed equipment slots**: `helmet`, `chest`,
+   `gloves`, `pants`, `boots`, `main_hand`, `neck`, `ring_1`, `ring_2`,
+   `offhand`. **Expanded 2026-08-16 (player-requested)** from an earlier
+   5-slot model (`weapon`/`armor`/`accessory_a`/`accessory_b`/`trinket`) to
+   match a Diablo-style paperdoll layout the player specified directly —
+   left column top-to-bottom Helmet/Chest/Gloves/Pants/Boots with Main Hand
+   at the bottom of that column, right column top-to-bottom Neck/Ring 1/
+   Ring 2 with Offhand at the bottom of that column. **Flagged assumption/
+   origination** **[Upstream: hero.md]** — `hero.md` never fixes this number
+   (checked; its 12-stat model and skill-slot rules are silent on gear slot
+   count). `inventory.md`'s Rule 5a explicitly deferred its "≥4 free
+   discretionary slots" floor check until Hero or Equipment Forge fixed a
+   concrete number; this GDD is that fixing document. `inventory_starting_
+   slot_count` was raised from 10 to 14 (registry constant) alongside this
+   expansion — 10 mandatory-locked Hero equipment slots leaves exactly 4
+   free, satisfying the ≥4 floor exactly, with no headroom. **This check
+   considers Hero equipment locks only** — Tower System's per-placed-tower
+   component lock count (a separate, larger source of locked slots per
    `inventory.md`'s own Defense Building row) is not fixed by any GDD yet and
    is explicitly out of scope here; Inventory's Rule 5a floor must be
    re-verified once that number exists too.
 2. Each slot accepts exactly one Equipment item matching that slot's category
-   (`weapon`/`armor`/`accessory`/`trinket` — `accessory_a` and `accessory_b`
-   both accept the generic `accessory` category; there is no
-   accessory-subtype restriction at Alpha). Equipment items are `stack_cap=1`,
-   unique per-instance, per `inventory.md`'s already-established schema — no
-   new stacking rule is introduced here.
+   (`weapon`/`offhand`/`helmet`/`chest`/`gloves`/`pants`/`boots`/`neck`/`ring`
+   — `ring_1` and `ring_2` both accept the generic `ring` category, mirroring
+   the old `accessory_a`/`accessory_b` precedent this replaces; there is no
+   ring-subtype restriction at Alpha. Every other slot maps 1:1 to its own
+   category). Equipment items are `stack_cap=1`, unique per-instance, per
+   `inventory.md`'s already-established schema — no new stacking rule is
+   introduced here.
 3. Equipping/unequipping into a named Hero slot is an Inventory-owned action
    (`equipment_slot_changed(slot, new_item_id, previous_item_id)`,
    Inventory-emitted per `inventory.md`) — Equipment Forge does not perform
@@ -82,7 +91,7 @@ The Equipment Forge System is the sanctuary's convergence layer — the final cr
    |---|---|---|
    | `recipe_id` | StringName | Unique identifier |
    | `recipe_category` | String | Fixed literal `"hero_equipment"` — a new value alongside Crafting's existing `"tower_component"`/`"crafted_good"` |
-   | `output_slot` | String | `weapon`/`armor`/`accessory`/`trinket` (Rule 1's slot categories — **not** Tower's `foundation`/`weapon`/`focus`/`power`; these are two independent vocabularies that happen to share the string `"weapon"`, a naming collision flagged as a content-authoring caution, not a mechanical conflict) |
+   | `output_slot` | String | `weapon`/`offhand`/`helmet`/`chest`/`gloves`/`pants`/`boots`/`neck`/`ring` (Rule 1's slot categories — **not** Tower's `foundation`/`weapon`/`focus`/`power`; these are two independent vocabularies that happen to share the string `"weapon"`, a naming collision flagged as a content-authoring caution, not a mechanical conflict) |
    | `inputs` | Dictionary[StringName, int] | `material_id → quantity`, 1–3 material types, same rarity-tiered materials Crafting consumes |
    | `tech_prerequisite` | StringName | `tech_id` from Defense Building's tech tree, or `""` if ungated |
    | `output_item_id` | StringName | The crafted Equipment item's definition id |
@@ -97,7 +106,7 @@ The Equipment Forge System is the sanctuary's convergence layer — the final cr
    value.
 6. **Catalogue scope (Alpha, flagged assumption)**: this GDD defines the
    mechanism only. A representative catalogue of 6–10 Equipment Recipes
-   spanning all 5 slot categories × a spread of tiers is sufficient for
+   spanning all 9 slot categories × a spread of tiers is sufficient for
    Alpha — full itemization is content-authoring work, matching Crafting's
    own explicit scope boundary (`crafting.md` Open Questions).
 
@@ -154,20 +163,27 @@ The Equipment Forge System is the sanctuary's convergence layer — the final cr
 **Rune System — Slot Model**
 
 11. Every Equipment item has a fixed **rune slot count**, determined solely
-    by its `output_slot` category (never authored per-recipe, never rolled):
+    by its `output_slot` category (never authored per-recipe, never rolled).
+    **Expanded 2026-08-16** alongside Rule 1's 5->10 slot expansion — the
+    old armor-tier count (2) carries forward to every armor-piece slot, and
+    the old accessory/trinket-tier count (1) carries forward to neck/ring;
+    offhand is new and set to the lighter 1-rune tier (matching the old
+    accessory/trinket tier, not the 2-rune weapon tier):
 
     | `output_slot` | `rune_slot_count` |
     |---|---|
     | `weapon` | 2 |
-    | `armor` | 2 |
-    | `accessory_a` / `accessory_b` (category `accessory`) | 1 |
-    | `trinket` | 1 |
+    | `offhand` | 1 |
+    | `helmet` / `chest` / `gloves` / `pants` / `boots` | 2 |
+    | `neck` | 1 |
+    | `ring_1` / `ring_2` (category `ring`) | 1 |
 
     **Flagged assumption/origination** — no other GDD defines rune slot
-    counts. Total possible simultaneously-imbued runes across a full 5-slot
-    loadout: 7. Small, fixed counts are a deliberate choice (per this
-    project's "small, meaningful choice sets" scope discipline) — "which item
-    gets this rune" must stay a real decision, not a rubber stamp.
+    counts. Total possible simultaneously-imbued runes across a full 10-slot
+    loadout: 16 (weapon 2 + offhand 1 + 5 armor pieces x 2 + neck 1 + 2 rings
+    x 1). Small, fixed counts are a deliberate choice (per this project's
+    "small, meaningful choice sets" scope discipline) — "which item gets
+    this rune" must stay a real decision, not a rubber stamp.
 12. **Rune Ledger (Constellation/Tarot-sourced)**: Equipment Forge maintains
     its own playthrough-scoped, save-persisted ledger,
     `available_runes: Dictionary[rune_id, {rune_source: String, stat_delta:
@@ -252,7 +268,7 @@ open question)**
     |---|---|---|
     | `sacrifice_recipe_id` | StringName | Unique identifier |
     | `required_species` | StringName | Must match the target creature's species exactly |
-    | `output_slot` | String | `weapon`/`armor`/`accessory`/`trinket` |
+    | `output_slot` | String | `weapon`/`offhand`/`helmet`/`chest`/`gloves`/`pants`/`boots`/`neck`/`ring` |
     | `output_base_item_id` | StringName | The item's base definition (before its pre-imbued rune) |
     | `quality_tier` | int | Derived, not authored (Formula 2) |
     | `rune_id` | StringName | Fixed per species — e.g. `"menagerie_aurora_stag"` |
@@ -559,7 +575,7 @@ has legitimately already fired across the playthrough (Tarot's own Rune
 Discovery Ledger is the source of truth for which `rune_id`s exist at all).
 **Hero (30)** must restore first so that any item already carrying imbued
 runes in a hero equipment slot can be cross-validated against Hero's
-restored 5-slot loadout without a race (an item's `imbued_runes` field is
+restored 10-slot loadout without a race (an item's `imbued_runes` field is
 Inventory-owned data, but Hero's own restore establishes which slots exist
 to validate against). **Menagerie (20)** must restore first primarily for
 consistency with the same dependency-layer discipline Save & Persistence
@@ -577,8 +593,8 @@ document.)*
 
 | # | Upstream Document | Assumption Borrowed/Originated Here | Consequence If It Changes |
 |---|---|---|---|
-| 1 | `hero.md` | Hero has no fixed equipment slot count of its own; this GDD originates 5 slots (`weapon`/`armor`/`accessory_a`/`accessory_b`/`trinket`), Core Rule 1. | If `hero.md` is revised to define its own slot count/names, this GDD's Core Rule 1, every recipe's `output_slot` values, the rune-slot-count table (Rule 11), and Inventory's Rule 5a floor check must all be re-verified against the new authoritative number — a name/count mismatch would silently break `equipment_slot_changed` routing. |
-| 2 | `hero.md` | Hero's `additive_bonus_total` cap is `hero_additive_bonus_cap = +3.00` (registry constant); rune `additive` magnitude (Formula 3) is guided by this ceiling remaining stable and by other bonus sources (equipment affixes, class perks) not already consuming most of the headroom. | If this cap changes (or if Hero's own affix/perk bonus budget is later found to already consume most of the +3.00 headroom), Formula 3's 0.02–0.08 per-rune guideline must be re-derived — the current range assumes 7 simultaneous runes have ample room alongside other sources. |
+| 1 | `hero.md` | Hero has no fixed equipment slot count of its own; this GDD originates 10 slots (`helmet`/`chest`/`gloves`/`pants`/`boots`/`main_hand`/`neck`/`ring_1`/`ring_2`/`offhand`), Core Rule 1. | If `hero.md` is revised to define its own slot count/names, this GDD's Core Rule 1, every recipe's `output_slot` values, the rune-slot-count table (Rule 11), and Inventory's Rule 5a floor check must all be re-verified against the new authoritative number — a name/count mismatch would silently break `equipment_slot_changed` routing. |
+| 2 | `hero.md` | Hero's `additive_bonus_total` cap is `hero_additive_bonus_cap = +3.00` (registry constant); rune `additive` magnitude (Formula 3) is guided by this ceiling remaining stable and by other bonus sources (equipment affixes, class perks) not already consuming most of the headroom. | If this cap changes (or if Hero's own affix/perk bonus budget is later found to already consume most of the +3.00 headroom), Formula 3's 0.02–0.08 per-rune guideline must be re-derived — the current range assumes 16 simultaneous runes have ample room alongside other sources. |
 | 3 | `hero.md` | Non-direct-coupling: Equipment Forge never calls Hero; Hero reaches this system's output only via Inventory's `equipment_slot_changed` and its own `item_rune_imbued` subscription (Core Rule 3). | If `hero.md` changes how it ingests `item_rune_imbued` (different payload shape, batched delivery, or removal of the direct subscription in favor of a different mechanism), this GDD's rune-imbuing stat-application flow breaks silently — Hero would stop reacting to a correctly-emitted event. |
 | 4 | `crafting.md` | `EquipmentRecipeResource` structurally extends Crafting's `RecipeResource` (fixed, never-rolled output; two-gate discovery via `recipe_discovered`; `quality_tier` 1–4 convention; instant-on-confirm resolution) — reused, not reinvented (Core Rules 4, 5, 7, 9). | If Crafting's own Discovery/Craftability mechanism (its Rules 3/4) or its `quality_tier` definition (its Rule 5) changes, Equipment Forge's equipment recipes silently diverge from the shared Crafting-panel UX and tier semantics unless this GDD is revisited and mirrored in lockstep. |
 | 5 | `crafting.md` | Formula 1 reuses `tower.md`'s `tier_dps_multiplier` (via Crafting's own registered `crafting_material_qty` formula) unchanged, rather than forking a separate Equipment-Forge-only copy. | If `tower.md`'s `tier_dps_multiplier` values change, both Crafting's and Equipment Forge's material costs rescale automatically (intended) — but if Crafting instead forks its own copy in a future revision, Equipment Forge's Formula 1 would need to explicitly choose which copy to follow, since this GDD assumed a single shared constant. |
@@ -588,19 +604,19 @@ document.)*
 | 9 | `constellation.md` | Constellation's Discovery Ledger has **no `restore_order` assigned yet** in `save-persistence.md` (Constellation's own flagged OQ-1, confirmed still open by directly reading `constellation.md`). | Equipment Forge's `available_runes` restore (part of `restore_order = 32`'s responsibility) depends on Constellation's discovered-rune set being available and correctly ordered at restore time — until `save-persistence.md` resolves Constellation's OQ-1, this GDD's own restore behavior for Constellation-sourced runes is **unverifiable end-to-end** and should be treated as a blocking cross-document gap, not just a documentation nicety. |
 | 10 | `tarot.md` | Same decoupled-authoring pattern as Constellation: `tarot_rune_discovered(rune_id, card_id)` populates `available_runes`; Equipment Forge's `stat_delta` is independent of Tarot's own Formula F5 additive bonus applied internally to `modifier_type` — the same discovery event legitimately feeds two separate, non-conflicting bonus systems (Core Rule 12). | If `tarot.md`'s Rule 15 discovery condition is tightened (its own flagged "most swappable assumption" — currently "any mission attempt while equipped," MISSION_COMPLETE or DEFEAT), Equipment Forge's rune-availability timing shifts identically since it listens to the same event — no separate assumption breaks here, but the two documents' discovery-timing narratives should be kept in sync in any future rewrite. |
 | 11 | `inventory.md` | New required interface `Inventory.apply_rune_to_item(item_id, rune_id, stat_delta) -> bool` (Rule 16), and an **explicit exemption to Inventory's Rule 5 equipped-item lock** for this specific mutation (rune imbuing must work on a currently-equipped item). | If `inventory.md`'s Rule 5 is ever tightened to block ALL writes (not just removal/discard) on locked items, this GDD's entire rune-imbuing flow breaks and would require forcing an unequip → imbue → re-equip cycle — a materially worse UX this GDD explicitly designed against. This is the single highest-risk fragility entry in this table, since it requires an upstream document to carve out an exception for a downstream system's needs, not merely stay stable. |
-| 12 | `inventory.md` | Equipment Forge's fixed 5 Hero equipment slots (entry #1 above) are the concrete number Inventory's own Rule 5a ("≥4 free discretionary slots" floor) was explicitly waiting on. | Inventory's own Tuning Knob table (`starting_slot_count` safe range) must be revisited once Tower System's per-tower-component install-lock count is *also* fixed (still undefined as of this authoring pass) — this GDD only closes half of Rule 5a's dependency, not all of it. |
+| 12 | `inventory.md` | Equipment Forge's fixed 10 Hero equipment slots (entry #1 above) are the concrete number Inventory's own Rule 5a ("≥4 free discretionary slots" floor) was explicitly waiting on. | Inventory's own Tuning Knob table (`starting_slot_count` safe range) must be revisited once Tower System's per-tower-component install-lock count is *also* fixed (still undefined as of this authoring pass) — this GDD only closes half of Rule 5a's dependency, not all of it. |
 | 13 | `save-persistence.md` | Equipment Forge's own registered save payload is narrower than `save-persistence.md`'s Line 81 summary ("All crafted equipment in the hero's forge inventory") — actual item data lives in Inventory; Equipment Forge persists only its two ledgers (Core Rule 10). | If an implementer follows `save-persistence.md`'s literal payload description without cross-referencing this GDD, Equipment Forge's save/restore code could end up duplicating item state Inventory already owns, risking desync between two copies of the same data on load. `save-persistence.md` should be corrected to match this GDD at its next revision pass; until then, this GDD's version is authoritative. |
 
 ## Tuning Knobs
 
 | Knob | Default | Safe Range | Too High | Too Low |
 |---|---|---|---|---|
-| `hero_equipment_slot_count` (Core Rule 1) | 5 | 4–6 | Dilutes the meaningfulness of any single gear choice; also risks violating Inventory's Rule 5a ≥4-free-slot floor at higher starting-tier counts once combined with Tower's (still undefined) install-lock count | Removes build-expression headroom; fewer simultaneous affix/rune combinations reduces the "wearable timeline" Player Fantasy this system is built around |
-| `rune_slot_count` — weapon/armor (Core Rule 11) | 2 | 1–3 | Every weapon/armor becomes a near-universal rune sink, reducing "which item gets this rune" to a non-decision | A single slot on the highest-value gear categories makes multi-rune builds nearly impossible, undercutting the "converges everything" fantasy |
-| `rune_slot_count` — accessory/trinket (Core Rule 11) | 1 | 1–2 | Raising these toward parity with weapon/armor flattens the deliberate slot-count hierarchy (weapon/armor as the "premium" rune destinations) | Already at the practical floor — 0 would remove these categories from the rune system entirely, contradicting their inclusion as valid Imbuing targets |
+| `hero_equipment_slot_count` (Core Rule 1) | 10 | 8–12 | Dilutes the meaningfulness of any single gear choice; also risks violating Inventory's Rule 5a ≥4-free-slot floor at higher starting-tier counts once combined with Tower's (still undefined) install-lock count | Removes build-expression headroom; fewer simultaneous affix/rune combinations reduces the "wearable timeline" Player Fantasy this system is built around |
+| `rune_slot_count` — weapon/armor pieces (Core Rule 11) | 2 | 1–3 | Every weapon/armor piece becomes a near-universal rune sink, reducing "which item gets this rune" to a non-decision | A single slot on the highest-value gear categories makes multi-rune builds nearly impossible, undercutting the "converges everything" fantasy |
+| `rune_slot_count` — offhand/neck/ring (Core Rule 11) | 1 | 1–2 | Raising these toward parity with weapon/armor flattens the deliberate slot-count hierarchy (weapon/armor as the "premium" rune destinations) | Already at the practical floor — 0 would remove these categories from the rune system entirely, contradicting their inclusion as valid Imbuing targets |
 | `additive` rune magnitude (Formula 3) | 0.02–0.08 per rune | 0.01–0.12 | At the high end with 7 simultaneous runes, could meaningfully erode headroom under Hero's `hero_additive_bonus_cap` (+3.00), crowding out equipment-affix and class-perk contributions | Rune-imbuing stops feeling like a meaningful reward relative to the effort (a full playthrough of proximity/mastery/tending) required to earn the source discovery |
 | Sacrifice quality tier offset (Formula 2, the `+1` term) | +1 (clamped to [1,4]) | 0–2 | A larger offset (e.g. +2) would make every sacrifice-born item Tier 4 regardless of species, removing the tier spread that currently rewards sacrificing rarer species | An offset of 0 would let a Tier-1-species sacrifice produce a Tier-1 item — indistinguishable in tier from an ordinary material-crafted item, undermining "a sacrifice is always at least a little special" |
-| Equipment Recipe catalogue size (Core Rule 6) | 6–10 recipes at Alpha | 4–15 | A large catalogue this early risks the same combinatorial-authoring burden Crafting explicitly scoped away from at Alpha | Fewer than 4 recipes leaves at least one of the 5 equip-slot categories with no craftable path at all, an obvious content gap |
+| Equipment Recipe catalogue size (Core Rule 6) | 6–10 recipes at Alpha | 4–15 | A large catalogue this early risks the same combinatorial-authoring burden Crafting explicitly scoped away from at Alpha | Fewer than 9 recipes leaves at least one of the 9 equip-slot categories with no craftable path at all, an obvious content gap |
 | `_forge_resolving` guard window | Single-frame (structural, not tunable) | Fixed — do not tune | N/A | N/A — this is a race-condition guard, not a balance lever, identical in nature to Crafting's `_craft_resolving` |
 | Equipment Recipe material cost (Formula 1) | Inherits Crafting's `crafting_material_qty` knobs unchanged | See `crafting.md`'s own Tuning Knobs table (`base_common_qty`/`base_uncommon_qty`/`base_rare_qty`) | Same consequences as documented there — this GDD introduces no separate copy to tune | Same consequences as documented there |
 
@@ -731,16 +747,17 @@ Plain equipment-crafting stays single-confirm, identical justification to `craft
 **Group 1: Hero Equipment Slots (Rules 1–3)**
 
 - **AC-1**: **GIVEN** a fresh save with no prior slot configuration, **WHEN**
-  the Hero System and Inventory initialize, **THEN** exactly 5 named
-  equipment slots exist (`weapon`, `armor`, `accessory_a`, `accessory_b`,
-  `trinket`), and at `inventory_starting_slot_count = 10`, exactly 5
-  discretionary slots remain free — satisfying Inventory Rule 5a's ≥4-free
-  floor with one slot of headroom (Rule 1).
-- **AC-2**: **GIVEN** an Equipment item whose category is `accessory`,
-  **WHEN** an equip action targets either `accessory_a` or `accessory_b`,
-  **THEN** the action succeeds for both — no accessory-subtype restriction
+  the Hero System and Inventory initialize, **THEN** exactly 10 named
+  equipment slots exist (`helmet`, `chest`, `gloves`, `pants`, `boots`,
+  `main_hand`, `neck`, `ring_1`, `ring_2`, `offhand`), and at `inventory_
+  starting_slot_count = 14`, exactly 4 discretionary slots remain free —
+  satisfying Inventory Rule 5a's ≥4-free floor exactly, with no headroom
+  (Rule 1).
+- **AC-2**: **GIVEN** an Equipment item whose category is `ring`,
+  **WHEN** an equip action targets either `ring_1` or `ring_2`,
+  **THEN** the action succeeds for both — no ring-subtype restriction
   exists at Alpha (Rule 2). **GIVEN** the same item, **WHEN** an equip action
-  targets `weapon`, `armor`, or `trinket`, **THEN** it is rejected as a
+  targets any other slot, **THEN** it is rejected as a
   category mismatch (Inventory-owned validation, not re-specified here).
 - **AC-3** — **Integration/architecture check, not a unit test.** **GIVEN**
   the full call graph of Equipment Forge's rune-imbuing and crafting
@@ -819,8 +836,8 @@ Plain equipment-crafting stays single-confirm, identical justification to `craft
 
 - **AC-13**: **GIVEN** a freshly-crafted item for each `output_slot` value,
   **WHEN** `rune_slot_count` is read, **THEN** it matches Rule 11's table
-  exactly: `weapon` = 2, `armor` = 2, `accessory_a`/`accessory_b` = 1,
-  `trinket` = 1.
+  exactly: `weapon` = 2, `offhand` = 1, `helmet`/`chest`/`gloves`/`pants`/
+  `boots` = 2, `neck` = 1, `ring_1`/`ring_2` = 1.
 - **AC-14**: **GIVEN** `constellation_rune_discovered(rune_id, pattern_id)`
   fires for a `rune_id` not previously in `available_runes`, **WHEN** the
   event is processed, **THEN** the rune enters `available_runes` in state
@@ -1001,6 +1018,6 @@ Gap**
 | `recipe_discovered`'s Key Subscribers list extension (Encyclopedia, Crafting UI → + Equipment Forge UI) | EventBus owner | **Documentation-only change, no payload/schema change** — `recipe_category` already generically supports `"hero_equipment"`. Flagged for `event-bus.md` sign-off at its next revision pass, same low-risk-extension precedent as `component_crafted` carrying two categories under one event (Rule 7). Does not block any AC above since the event itself already fires correctly today. |
 | Constellation's Discovery Ledger has no `restore_order` assigned anywhere in `save-persistence.md` | Save & Persistence System owner / Constellation System owner | **This is a gap in `constellation.md`/`save-persistence.md`, not in this GDD** — but it makes AC-26 (Constellation-sourced rune restore-behavior) unverifiable end-to-end until resolved. Treat as a blocking cross-document gap, not a documentation nicety, per Dependencies row #9. Resolve by assigning Constellation a concrete `restore_order` and confirming it precedes 32. |
 | `save-persistence.md`'s Line 81 save-payload summary ("All crafted equipment in the hero's forge inventory") is broader than what Equipment Forge actually persists | Save & Persistence System owner | This GDD's Rule 10 is the authoritative narrower scope (two ledgers only; item data is Inventory's). Flagged for `save-persistence.md`'s next revision pass to correct the mismatch — until then, an implementer following the older summary literally risks duplicating item state Inventory already owns (Dependencies row #13). |
-| Full Equipment Recipe catalogue (6–10 recipes across 5 slots × tier spread) and 5 Sacrifice Recipes' exact `stat_delta`/`rune_id` content | game-designer / content pipeline | Explicitly out of scope for this GDD (Rule 6) — this document defines the mechanism only; itemization is content-authoring work, matching Crafting's own scope boundary. |
+| Full Equipment Recipe catalogue (6–10 recipes across 9 slot categories × tier spread) and 5 Sacrifice Recipes' exact `stat_delta`/`rune_id` content | game-designer / content pipeline | Explicitly out of scope for this GDD (Rule 6) — this document defines the mechanism only; itemization is content-authoring work, matching Crafting's own scope boundary. |
 | **(qa-lead, AC review)** 10 of the 27 ACs above are BLOCKED on interfaces that don't exist yet: AC-9, AC-16(a)–(d), AC-17, AC-19, AC-20 | Inventory System owner / Menagerie System owner | Consolidated cross-reference so the AC-to-interface dependency is explicit in one place, matching the pattern `crafting.md`'s own AC-review entry established for its `has_room_for`/`clear_damaged_flag` blockers. AC-26 is a separate, non-interface cross-document gap (Constellation `restore_order`) and should not be conflated with these 10. |
 | Rune stat magnitude authoring (Formula 3) has no closed-form example to test against, only a guideline range | game-designer | Not a testable Logic-story formula by design (deliberately hand-authored, same precedent as Crafting's Formula 2 and Defense Building's tech-cost table) — no AC above attempts to assert a specific numeric output for Formula 3 beyond the documented worked examples staying within the 0.02–0.08 / ~3%–10% guideline ranges; content review, not automated test, is the correct evidence gate for actual authored rune values. |

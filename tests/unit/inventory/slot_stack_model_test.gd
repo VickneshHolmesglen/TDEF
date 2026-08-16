@@ -50,15 +50,19 @@ func _make_stackable_definition(item_id: StringName) -> ItemDefinitionResource:
 # AC-1: fresh init exposes exactly 10 empty slots
 # ---------------------------------------------------------------------------
 
-## Epic 08 Story 008 (ADR-0025): the last 5 indices (5-9) are now permanently
-## reserved, locked Hero equipment slots (Rule 5a — "locked items still
-## occupy and count against the current slot cap") — only indices 0-4 are
-## discretionary-empty at fresh init. See Inventory.EQUIPMENT_SLOT_INDEX.
+## Epic 08 Story 008 (ADR-0025); expanded 2026-08-16 alongside the 5->10
+## equip-slot expansion: the last N indices are now permanently reserved,
+## locked Hero equipment slots (Rule 5a — "locked items still occupy and
+## count against the current slot cap") — only the discretionary indices
+## are empty at fresh init. See Inventory.EQUIPMENT_SLOT_INDEX. Test name
+## kept as "ten" for minimal diff/history even though STARTING_SLOT_COUNT
+## is now 14 — the assertions below read the real constants, not a literal.
 func test_fresh_init_exposes_ten_empty_slots() -> void:
-	assert_int(_inventory.get_slot_count()).is_equal(10)
-	for i: int in range(5):
+	var discretionary_count: int = Inventory.STARTING_SLOT_COUNT - Inventory.EQUIPMENT_SLOT_NAMES.size()
+	assert_int(_inventory.get_slot_count()).is_equal(Inventory.STARTING_SLOT_COUNT)
+	for i: int in range(discretionary_count):
 		assert_bool(_inventory.is_slot_empty(i)).is_true()
-	for i: int in range(5, 10):
+	for i: int in range(discretionary_count, Inventory.STARTING_SLOT_COUNT):
 		assert_bool(_inventory.is_slot_empty(i)).is_false()  # reserved equipment slot placeholder
 
 
@@ -70,8 +74,9 @@ func test_reset_to_defaults_called_twice_does_not_double_allocate() -> void:
 	_inventory.reset_to_defaults()
 	_inventory.reset_to_defaults()
 
-	assert_int(_inventory.get_slot_count()).is_equal(10)
-	for i: int in range(5):
+	var discretionary_count: int = Inventory.STARTING_SLOT_COUNT - Inventory.EQUIPMENT_SLOT_NAMES.size()
+	assert_int(_inventory.get_slot_count()).is_equal(Inventory.STARTING_SLOT_COUNT)
+	for i: int in range(discretionary_count):
 		assert_bool(_inventory.is_slot_empty(i)).is_true()
 
 
@@ -139,7 +144,7 @@ func test_add_unique_item_rejects_non_unique_definition() -> void:
 	var def := _make_stackable_definition(&"frost_silk")
 	var slot_index: int = _inventory.add_unique_item(def)
 	assert_int(slot_index).is_equal(-1)
-	for i: int in range(5):
+	for i: int in range(Inventory.STARTING_SLOT_COUNT - Inventory.EQUIPMENT_SLOT_NAMES.size()):
 		assert_bool(_inventory.is_slot_empty(i)).is_true()
 
 
@@ -176,7 +181,7 @@ func test_add_stackable_rejects_unique_instance_definition() -> void:
 	var def := _make_unique_definition(&"iron_sword")
 	var leftover: int = _inventory.add_stackable(def, 3)
 	assert_int(leftover).is_equal(3)
-	for i: int in range(5):
+	for i: int in range(Inventory.STARTING_SLOT_COUNT - Inventory.EQUIPMENT_SLOT_NAMES.size()):
 		assert_bool(_inventory.is_slot_empty(i)).is_true()
 
 
@@ -193,7 +198,7 @@ func test_add_stackable_rejects_zero_or_negative_quantity() -> void:
 
 	assert_int(leftover_zero).is_equal(0)
 	assert_int(leftover_negative).is_equal(-5)
-	for i: int in range(5):
+	for i: int in range(Inventory.STARTING_SLOT_COUNT - Inventory.EQUIPMENT_SLOT_NAMES.size()):
 		assert_bool(_inventory.is_slot_empty(i)).is_true()
 
 
@@ -251,7 +256,7 @@ func test_get_save_data_returns_only_primitive_types() -> void:
 	assert_bool(data.has("next_instance_id")).is_true()
 	assert_bool(data["next_instance_id"] is int).is_true()
 	var slots: Array = data["slots"] as Array
-	assert_int(slots.size()).is_equal(10)
+	assert_int(slots.size()).is_equal(Inventory.STARTING_SLOT_COUNT)
 	for entry: Variant in slots:
 		assert_bool(entry is Dictionary).is_true()
 		var entry_dict: Dictionary = entry as Dictionary

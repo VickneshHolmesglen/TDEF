@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="EquipmentRecipeResource" format=3]
+
+[ext_resource type="Script" path="res://src/core/equipment_forge/equipment_recipe_resource.gd" id="1_recipe"]
+
+[resource]
+script = ExtResource("1_recipe")
+recipe_id = &"recipe_wooden_buckler"
+recipe_category = "hero_equipment"
+output_slot = "offhand"
+inputs = {&"Material": 4}
+tech_prerequisite = &""
+output_item_id = &"wooden_buckler"
+quality_tier = 1
+rune_slot_count = 1

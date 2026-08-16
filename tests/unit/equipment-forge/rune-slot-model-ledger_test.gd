@@ -22,15 +22,23 @@ func after_test() -> void:
 # AC-13: rune_slot_count per output_slot matches Rule 11's table exactly
 # ---------------------------------------------------------------------------
 
+## Expanded 2026-08-16 (player-requested) alongside the 5->10 equip-slot
+## expansion — see EquipmentRecipeResource.RUNE_SLOT_COUNT_FOR_SLOT's own
+## doc comment for the full old-category -> new-category mapping.
 func test_rune_slot_count_table_matches_rule_11() -> void:
 	# EquipmentRecipeResource.RUNE_SLOT_COUNT_FOR_SLOT is the single source of
 	# truth (fixed by the Story 015 batch code review — this test previously
 	# read a duplicate, differently-keyed EquipmentForge constant that has
 	# since been removed; see equipment_forge.gd's own doc comment).
 	assert_int(EquipmentRecipeResource.RUNE_SLOT_COUNT_FOR_SLOT["weapon"]).is_equal(2)
-	assert_int(EquipmentRecipeResource.RUNE_SLOT_COUNT_FOR_SLOT["armor"]).is_equal(2)
-	assert_int(EquipmentRecipeResource.RUNE_SLOT_COUNT_FOR_SLOT["accessory"]).is_equal(1)
-	assert_int(EquipmentRecipeResource.RUNE_SLOT_COUNT_FOR_SLOT["trinket"]).is_equal(1)
+	assert_int(EquipmentRecipeResource.RUNE_SLOT_COUNT_FOR_SLOT["offhand"]).is_equal(1)
+	assert_int(EquipmentRecipeResource.RUNE_SLOT_COUNT_FOR_SLOT["helmet"]).is_equal(2)
+	assert_int(EquipmentRecipeResource.RUNE_SLOT_COUNT_FOR_SLOT["chest"]).is_equal(2)
+	assert_int(EquipmentRecipeResource.RUNE_SLOT_COUNT_FOR_SLOT["gloves"]).is_equal(2)
+	assert_int(EquipmentRecipeResource.RUNE_SLOT_COUNT_FOR_SLOT["pants"]).is_equal(2)
+	assert_int(EquipmentRecipeResource.RUNE_SLOT_COUNT_FOR_SLOT["boots"]).is_equal(2)
+	assert_int(EquipmentRecipeResource.RUNE_SLOT_COUNT_FOR_SLOT["neck"]).is_equal(1)
+	assert_int(EquipmentRecipeResource.RUNE_SLOT_COUNT_FOR_SLOT["ring"]).is_equal(1)
 
 
 func test_freshly_crafted_item_rune_slot_count_matches_table_via_recipe() -> void:

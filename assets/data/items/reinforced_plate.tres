@@ -10,4 +10,4 @@ display_name = "Reinforced Plate"
 is_unique_instance = true
 base_stats = {}
 rarity = ""
-equipment_category = "armor"
+equipment_category = "chest"

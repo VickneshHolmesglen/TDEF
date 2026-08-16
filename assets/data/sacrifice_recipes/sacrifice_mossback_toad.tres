@@ -6,7 +6,7 @@
 script = ExtResource("1_sacrifice")
 sacrifice_recipe_id = &"sacrifice_mossback_toad"
 required_species = &"mossback_toad"
-output_slot = "accessory"
+output_slot = "ring"
 output_base_item_id = &"warding_band"
 rune_id = &"rune_menagerie_mossback_toad"
 stat_delta = {&"additive_bonus_total": 0.02}

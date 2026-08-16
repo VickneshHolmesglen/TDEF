@@ -156,13 +156,17 @@ func test_set_slot_locked_on_out_of_range_index_rejected() -> void:
 ## too), locks it, and confirms the Inventory is fully at capacity: no further
 ## add_unique_item() call can place anything, matching the AC's "N-1 free-or-
 ## locked... reports as fully at capacity, not with one free slot" framing.
-## Epic 08 Story 008 (ADR-0025): indices 5-9 are now permanently reserved,
-## locked Hero equipment-slot placeholders (see Inventory.EQUIPMENT_SLOT_INDEX)
-## — add_unique_item()'s _find_first_empty_slot() only ever finds the 5
-## discretionary indices (0-4) at fresh init, so this test now fills exactly
-## those 5, not all 10.
+## Epic 08 Story 008 (ADR-0025); expanded 2026-08-16 alongside the 5->10
+## equip-slot expansion: the LAST N indices of the base slot array are now
+## permanently reserved, locked Hero equipment-slot placeholders (see
+## Inventory.EQUIPMENT_SLOT_INDEX) — add_unique_item()'s _find_first_empty_
+## slot() only ever finds the discretionary indices at fresh init, so this
+## test fills exactly that many, not the full STARTING_SLOT_COUNT. Computed
+## dynamically (STARTING_SLOT_COUNT - EQUIPMENT_SLOT_NAMES.size()) rather
+## than hardcoded, so this test doesn't silently drift stale on the next
+## slot-count change.
 func test_locked_unique_instance_slot_counts_toward_capacity() -> void:
-	var discretionary_count: int = 5
+	var discretionary_count: int = Inventory.STARTING_SLOT_COUNT - Inventory.EQUIPMENT_SLOT_NAMES.size()
 	var last_idx: int = -1
 	for i: int in range(discretionary_count):
 		var def := _make_unique_definition(StringName("sword_%d" % i))

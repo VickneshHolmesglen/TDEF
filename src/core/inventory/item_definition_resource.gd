@@ -34,12 +34,15 @@ extends Resource
 ## consume_by_rarity(), a separate aggregation axis from item_type's
 ## has_items()/consume_by_type().
 @export var rarity: String = ""  ## "" | Common | Uncommon | Rare — Material-tab items only
-## Epic 08, Story 008 (ADR-0025): sub-classifies which of Hero's 5 named
-## equipment slots this item may occupy. Only meaningful when
-## item_type == &"Equipment"; empty string for every other item_type.
-## "accessory" is the shared category for both accessory_a and accessory_b —
-## no subtype restriction at Alpha (Story 008's own Implementation Notes).
-@export var equipment_category: String = ""  ## "" | weapon | armor | accessory | trinket
+## Epic 08, Story 008 (ADR-0025); expanded 2026-08-16 (player-requested)
+## from 4 to 9 categories when Hero equipment slots grew from 5 to 10 named
+## slots. Sub-classifies which of Hero's 10 named equipment slots this item
+## may occupy. Only meaningful when item_type == &"Equipment"; empty string
+## for every other item_type. "ring" is the shared category for both
+## ring_1 and ring_2 — no subtype restriction (mirrors the old
+## accessory_a/accessory_b precedent this replaces). Every other category
+## maps 1:1 to its own named slot.
+@export var equipment_category: String = ""  ## "" | weapon | offhand | helmet | chest | gloves | pants | boots | neck | ring
 ## 2026-08-06 (design/quick-specs/inventory-slot-icons-2026-08-06.md): a
 ## real, data-driven home for slot art. Null = no icon authored yet (the
 ## slot falls back to its pre-existing text rendering, "mechanism real,
@@ -59,7 +62,9 @@ extends Resource
 
 const VALID_ITEM_TYPES: Array[StringName] = [&"Equipment", &"TowerComponent", &"Material", &"CraftedGood"]
 const VALID_RARITIES: Array[String] = ["", "Common", "Uncommon", "Rare"]
-const VALID_EQUIPMENT_CATEGORIES: Array[String] = ["", "weapon", "armor", "accessory", "trinket"]
+const VALID_EQUIPMENT_CATEGORIES: Array[String] = [
+	"", "weapon", "offhand", "helmet", "chest", "gloves", "pants", "boots", "neck", "ring",
+]
 
 
 ## Load-time validation. Called by GameDataRegistry at boot (ADR-0009 contract) —
@@ -76,7 +81,7 @@ func validate() -> Array[String]:
 	if not VALID_RARITIES.has(rarity):
 		errors.append("rarity must be one of \"\"/Common/Uncommon/Rare (got '%s')" % rarity)
 	if not VALID_EQUIPMENT_CATEGORIES.has(equipment_category):
-		errors.append("equipment_category must be one of \"\"/weapon/armor/accessory/trinket (got '%s')" % equipment_category)
+		errors.append("equipment_category must be one of \"\"/weapon/offhand/helmet/chest/gloves/pants/boots/neck/ring (got '%s')" % equipment_category)
 	if item_type == &"Equipment" and equipment_category == "":
 		errors.append("equipment_category must not be empty when item_type is Equipment")
 	if item_type == &"TowerComponent" and component_resource_path == "":

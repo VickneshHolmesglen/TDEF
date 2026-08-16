@@ -31,7 +31,7 @@ func after_test() -> void:
 
 func test_cost_table_tier_1_matches_gdd_exactly() -> void:
 	var cost: Dictionary = SlotExpansionCostTable.get_cost_for_tier(1)
-	assert_int(cost[SlotExpansionCostTable.KEY_SLOTS_AFTER]).is_equal(16)
+	assert_int(cost[SlotExpansionCostTable.KEY_SLOTS_AFTER]).is_equal(20)
 	assert_int(cost[SlotExpansionCostTable.KEY_COMMON]).is_equal(10)
 	assert_int(cost[SlotExpansionCostTable.KEY_UNCOMMON]).is_equal(0)
 	assert_int(cost[SlotExpansionCostTable.KEY_RARE]).is_equal(0)
@@ -39,7 +39,7 @@ func test_cost_table_tier_1_matches_gdd_exactly() -> void:
 
 func test_cost_table_tier_2_matches_gdd_exactly() -> void:
 	var cost: Dictionary = SlotExpansionCostTable.get_cost_for_tier(2)
-	assert_int(cost[SlotExpansionCostTable.KEY_SLOTS_AFTER]).is_equal(22)
+	assert_int(cost[SlotExpansionCostTable.KEY_SLOTS_AFTER]).is_equal(26)
 	assert_int(cost[SlotExpansionCostTable.KEY_COMMON]).is_equal(18)
 	assert_int(cost[SlotExpansionCostTable.KEY_UNCOMMON]).is_equal(4)
 	assert_int(cost[SlotExpansionCostTable.KEY_RARE]).is_equal(0)
@@ -47,7 +47,7 @@ func test_cost_table_tier_2_matches_gdd_exactly() -> void:
 
 func test_cost_table_tier_3_matches_gdd_exactly() -> void:
 	var cost: Dictionary = SlotExpansionCostTable.get_cost_for_tier(3)
-	assert_int(cost[SlotExpansionCostTable.KEY_SLOTS_AFTER]).is_equal(28)
+	assert_int(cost[SlotExpansionCostTable.KEY_SLOTS_AFTER]).is_equal(32)
 	assert_int(cost[SlotExpansionCostTable.KEY_COMMON]).is_equal(28)
 	assert_int(cost[SlotExpansionCostTable.KEY_UNCOMMON]).is_equal(10)
 	assert_int(cost[SlotExpansionCostTable.KEY_RARE]).is_equal(0)
@@ -55,7 +55,7 @@ func test_cost_table_tier_3_matches_gdd_exactly() -> void:
 
 func test_cost_table_tier_4_matches_gdd_exactly() -> void:
 	var cost: Dictionary = SlotExpansionCostTable.get_cost_for_tier(4)
-	assert_int(cost[SlotExpansionCostTable.KEY_SLOTS_AFTER]).is_equal(34)
+	assert_int(cost[SlotExpansionCostTable.KEY_SLOTS_AFTER]).is_equal(38)
 	assert_int(cost[SlotExpansionCostTable.KEY_COMMON]).is_equal(36)
 	assert_int(cost[SlotExpansionCostTable.KEY_UNCOMMON]).is_equal(18)
 	assert_int(cost[SlotExpansionCostTable.KEY_RARE]).is_equal(5)
@@ -63,7 +63,7 @@ func test_cost_table_tier_4_matches_gdd_exactly() -> void:
 
 func test_cost_table_tier_5_matches_gdd_exactly() -> void:
 	var cost: Dictionary = SlotExpansionCostTable.get_cost_for_tier(5)
-	assert_int(cost[SlotExpansionCostTable.KEY_SLOTS_AFTER]).is_equal(40)
+	assert_int(cost[SlotExpansionCostTable.KEY_SLOTS_AFTER]).is_equal(44)
 	assert_int(cost[SlotExpansionCostTable.KEY_COMMON]).is_equal(45)
 	assert_int(cost[SlotExpansionCostTable.KEY_UNCOMMON]).is_equal(28)
 	assert_int(cost[SlotExpansionCostTable.KEY_RARE]).is_equal(12)
@@ -123,16 +123,16 @@ func test_rare_first_appears_at_tier_4_not_tier_3() -> void:
 
 
 # ---------------------------------------------------------------------------
-# AC-8: tier progression sequence 10->16->22->28->34->40, no tier skipping
+# AC-8: tier progression sequence 14->20->26->32->38->44, no tier skipping
 # ---------------------------------------------------------------------------
 
-func test_fresh_inventory_starts_at_tier_zero_with_ten_slots() -> void:
+func test_fresh_inventory_starts_at_tier_zero_with_fourteen_slots() -> void:
 	assert_int(_inventory.get_current_slot_tier()).is_equal(0)
-	assert_int(_inventory.get_slot_count()).is_equal(10)
+	assert_int(_inventory.get_slot_count()).is_equal(14)
 
 
 func test_full_tier_progression_sequence_matches_gdd_exactly() -> void:
-	var expected_capacities: Array[int] = [16, 22, 28, 34, 40]
+	var expected_capacities: Array[int] = [20, 26, 32, 38, 44]
 	for i: int in range(expected_capacities.size()):
 		var available: Dictionary[StringName, int] = {
 			SlotExpansionCostTable.KEY_COMMON: 999,
@@ -156,7 +156,7 @@ func test_expansion_never_skips_a_tier_even_with_excess_materials() -> void:
 	}
 	_inventory.attempt_expand_slots(available)
 	assert_int(_inventory.get_current_slot_tier()).is_equal(1)
-	assert_int(_inventory.get_slot_count()).is_equal(16)
+	assert_int(_inventory.get_slot_count()).is_equal(20)
 
 
 func test_expansion_growing_slots_preserves_existing_slot_contents_and_indices() -> void:
@@ -182,7 +182,7 @@ func test_expansion_unaffordable_returns_false_with_no_side_effects() -> void:
 
 	assert_bool(expanded).is_false()
 	assert_int(_inventory.get_current_slot_tier()).is_equal(0)
-	assert_int(_inventory.get_slot_count()).is_equal(10)
+	assert_int(_inventory.get_slot_count()).is_equal(14)
 
 
 func test_expansion_missing_rarity_key_entirely_treated_as_zero_available() -> void:
@@ -230,7 +230,7 @@ func test_can_expand_slots_true_before_max_tier() -> void:
 func test_can_expand_slots_false_at_max_tier_checkable_before_attempting() -> void:
 	_max_out_inventory_tier()
 	assert_int(_inventory.get_current_slot_tier()).is_equal(5)
-	assert_int(_inventory.get_slot_count()).is_equal(40)
+	assert_int(_inventory.get_slot_count()).is_equal(44)
 
 	# The eligibility query itself must report false — reachable independent of
 	# any attempt_expand_slots() call (AC-16: "checkable BEFORE attempting
@@ -256,7 +256,7 @@ func test_attempt_expand_at_max_tier_blocked_with_no_deduction_and_no_growth() -
 
 	assert_bool(expanded).is_false()
 	assert_int(_inventory.get_current_slot_tier()).is_equal(5)
-	assert_int(_inventory.get_slot_count()).is_equal(40)
+	assert_int(_inventory.get_slot_count()).is_equal(44)
 	# The caller's availability Dictionary is untouched — attempt_expand_slots()
 	# never mutates it (this story's scoping: caller owns real spending).
 	assert_int(available[SlotExpansionCostTable.KEY_COMMON]).is_equal(999)
@@ -283,13 +283,13 @@ func test_save_restore_round_trip_preserves_slot_tier_and_expanded_capacity() ->
 
 	assert_bool(ok).is_true()
 	assert_int(restored.get_current_slot_tier()).is_equal(2)
-	assert_int(restored.get_slot_count()).is_equal(22)
+	assert_int(restored.get_slot_count()).is_equal(26)
 	restored.free()
 
 
 func test_restore_save_data_rejects_slot_count_mismatched_with_claimed_tier() -> void:
 	var data: Dictionary = _inventory.get_save_data()
-	data["slot_tier"] = 2  # claims tier 2 (22 slots) but "slots" array is still 10 entries
+	data["slot_tier"] = 2  # claims tier 2 (26 slots) but "slots" array is still 14 entries
 
 	var ok: bool = _inventory.restore_save_data(data)
 
@@ -322,4 +322,4 @@ func test_reset_to_defaults_resets_slot_tier_to_zero() -> void:
 	_inventory.reset_to_defaults()
 
 	assert_int(_inventory.get_current_slot_tier()).is_equal(0)
-	assert_int(_inventory.get_slot_count()).is_equal(10)
+	assert_int(_inventory.get_slot_count()).is_equal(14)

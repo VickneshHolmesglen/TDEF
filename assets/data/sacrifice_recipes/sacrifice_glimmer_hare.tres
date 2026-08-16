@@ -6,7 +6,7 @@
 script = ExtResource("1_sacrifice")
 sacrifice_recipe_id = &"sacrifice_glimmer_hare"
 required_species = &"glimmer_hare"
-output_slot = "trinket"
+output_slot = "neck"
 output_base_item_id = &"lucky_charm_trinket"
 rune_id = &"rune_menagerie_glimmer_hare"
 stat_delta = {&"additive_bonus_total": 0.02}
