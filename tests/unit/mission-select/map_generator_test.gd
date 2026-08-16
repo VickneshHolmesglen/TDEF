@@ -170,3 +170,50 @@ func test_interior_cells_off_the_path_are_placeable() -> void:
 			assert_int(type) \
 					.override_failure_message("interior non-PATH cell %s should be PLACEABLE, got %d" % [cell, type]) \
 					.is_equal(Grid.CellType.PLACEABLE)
+
+
+## TD-map-001 regression test (2026-08-16, player-reported): painted PATH
+## cells must exactly equal PathfindingSystem's real computed route — a
+## corridor that winds back adjacent to itself lets AStar2D (which connects
+## every grid-adjacent walkable pair, not just cells consecutive in the
+## walk) cut a shortcut across that adjacency, stranding a chunk of painted
+## PATH tiles the monster never actually walks. This is the real machinery
+## (Grid + PathfindingSystem), not the plain-BFS helper the other tests in
+## this file use, because the bug is specifically an AStar2D-vs-corridor
+## divergence a BFS-over-cell-types check cannot see.
+func test_path_cells_exactly_match_the_computed_route() -> void:
+	for seed_value: int in range(30):
+		var config: GridConfig = MapGenerator.generate(COLS, ROWS, CELL_SIZE, _seeded_rng(2000 + seed_value))
+		var grid := Grid.new()
+		add_child(grid)
+		grid.initialize(config)
+		var event_bus := EventBus.new()
+		add_child(event_bus)
+		var pathfinding := PathfindingSystem.new()
+		pathfinding._inject(grid, event_bus)
+		add_child(pathfinding)
+		pathfinding._on_mission_phase_changed("", "SCOUT", 0.0)
+
+		var path_cells: Array[Vector2i] = []
+		for cell: Vector2i in config.cells:
+			if (config.cells[cell] as int) == Grid.CellType.PATH:
+				path_cells.append(cell)
+
+		var spawn_cell: Vector2i = grid.get_spawn_cells()[0]
+		var route: Array[Vector2i] = pathfinding.find_path(spawn_cell, 0)
+		var route_set: Dictionary[Vector2i, bool] = {}
+		for cell: Vector2i in route:
+			route_set[cell] = true
+
+		var orphaned: Array[Vector2i] = []
+		for cell: Vector2i in path_cells:
+			if not route_set.has(cell):
+				orphaned.append(cell)
+
+		assert_array(orphaned) \
+				.override_failure_message("seed %d: %d PATH cell(s) painted but never walked by the real route: %s" % [2000 + seed_value, orphaned.size(), orphaned]) \
+				.is_empty()
+
+		pathfinding.queue_free()
+		grid.queue_free()
+		event_bus.queue_free()

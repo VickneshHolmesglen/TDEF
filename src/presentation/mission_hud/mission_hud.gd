@@ -55,10 +55,25 @@ var _ultimate_focus_ring: Panel = null
 @onready var _gold_label: Label = $CombatCluster/Chrome/GoldRow/GoldLabel
 @onready var _materials_label: Label = $CombatCluster/Chrome/MaterialsLabel
 @onready var _skill_cooldown_host: HBoxContainer = $CombatCluster/Chrome/SkillCooldownHost
-## Populated in _ready() from _skill_cooldown_host's children — avoids the
-## documented Array[Label] literal-assignment gotcha (see wave_manager.gd's
-## own comment on the same class of typed-array-from-untyped-literal error).
-var _skill_cooldown_labels: Array[Label] = []
+## Player-reported 2026-08-16: replaced the original "Skill N: Ready" /
+## "Skill N: 3.2s" text-Label placeholder with real icon buttons matching
+## design/ux/interaction-patterns.md Pattern 12 (Skill Cooldown Button) --
+## dim + top-to-bottom dark fill + numeric countdown while on cooldown, full
+## opacity/no overlay when ready. Built procedurally in _ready() (mirrors
+## planning_cluster.gd's _build_tower_list() precedent) rather than hand-
+## authored 4x in the .tscn, since the 4 slots are structurally identical.
+## No per-skill icon art exists yet (design/gdd/mission-hud.md's own Open
+## Question #4 -- the Hero Skill Build GDD that would define real icons
+## doesn't exist yet either) -- each tile shows its slot number as a
+## placeholder face, the same "content can lag code" tolerance grid_
+## visual.gd's own class doc comment documents elsewhere.
+const SKILL_SLOT_COUNT: int = 4
+const SKILL_TILE_SIZE: Vector2 = Vector2(40, 40)
+const SKILL_READY_COLOR: Color = Color(0.24, 0.30, 0.42, 1.0)
+const SKILL_COOLDOWN_FILL_COLOR: Color = Color(0.0, 0.0, 0.0, 0.7)
+var _skill_slot_icons: Array[ColorRect] = []
+var _skill_slot_fills: Array[ColorRect] = []
+var _skill_slot_countdowns: Array[Label] = []
 @onready var _tower_hp_bars_host: VBoxContainer = $CombatCluster/Chrome/TowerHpBarsHost
 @onready var _damage_number_host: Control = $CombatCluster/DamageNumberHost
 @onready var _toast_host: VBoxContainer = $CombatCluster/ToastHost
@@ -180,8 +195,7 @@ func _ready() -> void:
 	GEventBus.item_removed.connect(_on_item_removed)
 	GEventBus.item_pickup_rejected.connect(_on_item_pickup_rejected)
 	GEventBus.skill_unlocked.connect(_on_skill_unlocked)
-	for child: Node in _skill_cooldown_host.get_children():
-		_skill_cooldown_labels.append(child as Label)
+	_build_skill_slots()
 	_retry_button.pressed.connect(_on_retry_pressed)
 	_build_retry_focus_ring()
 	_retry_button.focus_entered.connect(_update_retry_focus_ring)
@@ -629,15 +643,85 @@ func _on_hero_health_changed(current_health: float, max_health: float) -> void:
 	_hero_hp_label.text = "Hero HP: %d/%d" % [roundi(current_health), roundi(max_health)]
 
 
+## Builds the 4 skill-slot icon tiles (Pattern 12): a base ColorRect face
+## (icon placeholder, see the field doc comment above for why), a numbered
+## Label on top of it, a CooldownFill ColorRect anchored to grow top-to-
+## bottom, and a CountdownLabel for the numeric seconds-remaining readout.
+## Layer order (draw order = child order): Icon, SlotLabel, CooldownFill,
+## CountdownLabel — the fill and countdown must render above the slot
+## number so the cooldown state is always the top-most read.
+func _build_skill_slots() -> void:
+	for slot: int in range(SKILL_SLOT_COUNT):
+		var tile := Panel.new()
+		tile.name = "Slot%d" % slot
+		tile.custom_minimum_size = SKILL_TILE_SIZE
+		_skill_cooldown_host.add_child(tile)
+
+		var icon := ColorRect.new()
+		icon.name = "Icon"
+		icon.color = SKILL_READY_COLOR
+		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		icon.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		tile.add_child(icon)
+		_skill_slot_icons.append(icon)
+
+		var slot_label := Label.new()
+		slot_label.text = str(slot + 1)
+		slot_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		slot_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		slot_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		slot_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		tile.add_child(slot_label)
+
+		# Grows from the top (anchor_top pinned at 0) down to anchor_bottom ==
+		# cooldown_remaining / cooldown_max — Pattern 12's "top to bottom" fill.
+		var fill := ColorRect.new()
+		fill.name = "CooldownFill"
+		fill.color = SKILL_COOLDOWN_FILL_COLOR
+		fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		fill.anchor_left = 0.0
+		fill.anchor_right = 1.0
+		fill.anchor_top = 0.0
+		fill.anchor_bottom = 0.0
+		fill.visible = false
+		tile.add_child(fill)
+		_skill_slot_fills.append(fill)
+
+		var countdown := Label.new()
+		countdown.name = "CountdownLabel"
+		countdown.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		countdown.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		countdown.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		countdown.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		tile.add_child(countdown)
+		_skill_slot_countdowns.append(countdown)
+
+
 ## AC-58: slots 0-3 only — slot 4 (Ultimate) is Story 009's own handler,
 ## connected separately to the same signal (two independent connections to
 ## the same EventBus signal, matching this file's established multi-consumer
 ## pattern rather than merging unrelated concerns into one function).
-func _on_skill_cooldown_display_updated(skill_slot: int, cooldown_remaining: float, _cooldown_max: float) -> void:
-	if skill_slot == Hero.ULTIMATE_SLOT_INDEX or skill_slot < 0 or skill_slot >= _skill_cooldown_labels.size():
+##
+## Player-reported 2026-08-16: replaced the "Skill N: Ready"/"Skill N: 3.2s"
+## text readout with Pattern 12's real states — 50% icon opacity + a dark
+## fill draining top-to-bottom + numeric countdown while on cooldown; full
+## opacity, no fill, no countdown when ready.
+func _on_skill_cooldown_display_updated(skill_slot: int, cooldown_remaining: float, cooldown_max: float) -> void:
+	if skill_slot == Hero.ULTIMATE_SLOT_INDEX or skill_slot < 0 or skill_slot >= _skill_slot_icons.size():
 		return
-	var label: Label = _skill_cooldown_labels[skill_slot]
-	label.text = "Skill %d: Ready" % (skill_slot + 1) if cooldown_remaining <= 0.0 else "Skill %d: %.1fs" % [skill_slot + 1, cooldown_remaining]
+	var icon: ColorRect = _skill_slot_icons[skill_slot]
+	var fill: ColorRect = _skill_slot_fills[skill_slot]
+	var countdown: Label = _skill_slot_countdowns[skill_slot]
+	var on_cooldown: bool = cooldown_remaining > 0.0
+	icon.modulate.a = 0.5 if on_cooldown else 1.0
+	fill.visible = on_cooldown
+	if on_cooldown:
+		var fraction: float = clampf(cooldown_remaining / cooldown_max, 0.0, 1.0) if cooldown_max > 0.0 else 0.0
+		fill.anchor_bottom = fraction
+		countdown.text = "%ds" % ceili(cooldown_remaining)
+	else:
+		fill.anchor_bottom = 0.0
+		countdown.text = ""
 
 
 func _render_boss_bar() -> void:

@@ -107,22 +107,7 @@ text = ""
 
 [node name="SkillCooldownHost" type="HBoxContainer" parent="HUD/CombatCluster/Chrome"]
 layout_mode = 2
-
-[node name="Slot0" type="Label" parent="HUD/CombatCluster/Chrome/SkillCooldownHost"]
-layout_mode = 2
-text = "Skill 1: Ready"
-
-[node name="Slot1" type="Label" parent="HUD/CombatCluster/Chrome/SkillCooldownHost"]
-layout_mode = 2
-text = "Skill 2: Ready"
-
-[node name="Slot2" type="Label" parent="HUD/CombatCluster/Chrome/SkillCooldownHost"]
-layout_mode = 2
-text = "Skill 3: Ready"
-
-[node name="Slot3" type="Label" parent="HUD/CombatCluster/Chrome/SkillCooldownHost"]
-layout_mode = 2
-text = "Skill 4: Ready"
+theme_override_constants/separation = 6
 
 [node name="TowerHpBarsHost" type="VBoxContainer" parent="HUD/CombatCluster/Chrome"]
 layout_mode = 2

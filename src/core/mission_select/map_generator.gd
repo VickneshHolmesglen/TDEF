@@ -119,6 +119,18 @@ static func _walk(from: Vector2i, to: Vector2i, cols: int, rows: int, rng: Rando
 	return path
 
 
+## TD-map-001 fix (2026-08-16, player-reported): PathfindingSystem connects
+## every grid-adjacent walkable cell pair at equal cost (see its own class doc
+## comment), not just cells consecutive in this walk's corridor. Without the
+## _touches_carved_elsewhere() guard below, the walk could carve a corridor
+## that winds back adjacent to itself (a U-turn passing beside an earlier
+## segment) — A* then cuts across that adjacency, so the real monster route
+## (PathfindingSystem.find_path()) skips a chunk of painted PATH cells
+## entirely. Live-verified via the Godot MCP bridge before this fix: a
+## generated map had 6 PATH cells absent from the actual computed route.
+## Standard "no self-touching corridor" constraint from growing-tree maze
+## generation closes this — a candidate is only valid if `cell` (the cell
+## being stepped FROM) is its only already-carved neighbor.
 static func _neighbor_candidates(cell: Vector2i, cols: int, rows: int, visited: Dictionary[Vector2i, bool]) -> Array[Vector2i]:
 	var candidates: Array[Vector2i] = []
 	for offset: Vector2i in [Vector2i.UP, Vector2i.DOWN, Vector2i.LEFT, Vector2i.RIGHT]:
@@ -127,8 +139,24 @@ static func _neighbor_candidates(cell: Vector2i, cols: int, rows: int, visited: 
 			continue
 		if visited.has(next):
 			continue
+		if _touches_carved_elsewhere(next, cell, cols, rows, visited):
+			continue
 		candidates.append(next)
 	return candidates
+
+
+## True if `next` is grid-adjacent to any already-carved cell other than
+## `from` (the cell the walk is stepping from). Rejecting such candidates is
+## what keeps the corridor exactly one cell wide and self-avoiding, so the
+## painted PATH cells and the AStar2D-computed route are always identical.
+static func _touches_carved_elsewhere(next: Vector2i, from: Vector2i, cols: int, rows: int, visited: Dictionary[Vector2i, bool]) -> bool:
+	for offset: Vector2i in [Vector2i.UP, Vector2i.DOWN, Vector2i.LEFT, Vector2i.RIGHT]:
+		var neighbor: Vector2i = next + offset
+		if neighbor == from:
+			continue
+		if visited.has(neighbor):
+			return true
+	return false
 
 
 ## Weighted pick: candidates that reduce Manhattan distance to `to` are 3x

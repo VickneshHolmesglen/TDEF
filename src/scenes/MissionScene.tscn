@@ -12,9 +12,21 @@
 [ext_resource type="Script" path="res://src/ui/input_mode_tracker.gd" id="10_imt"]
 [ext_resource type="Texture2D" path="res://assets/art/ui/gold_coin.png" id="11_gold_icon"]
 [ext_resource type="Script" path="res://src/core/resource_economy/resource_economy.gd" id="12_re"]
+[ext_resource type="Texture2D" path="res://assets/art/terrain/blocked.png" id="13_bg_tile"]
 
 [node name="MissionScene" type="Node2D"]
 script = ExtResource("1_ctrl")
+
+[node name="BackgroundLayer" type="CanvasLayer" parent="."]
+layer = -10
+
+[node name="Fill" type="TextureRect" parent="BackgroundLayer"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+texture = ExtResource("13_bg_tile")
+stretch_mode = 1
 
 [node name="MissionSelectLayer" type="CanvasLayer" parent="."]
 
@@ -124,22 +136,7 @@ text = ""
 
 [node name="SkillCooldownHost" type="HBoxContainer" parent="GameplayRoot/HUD/CombatCluster/Chrome"]
 layout_mode = 2
-
-[node name="Slot0" type="Label" parent="GameplayRoot/HUD/CombatCluster/Chrome/SkillCooldownHost"]
-layout_mode = 2
-text = "Skill 1: Ready"
-
-[node name="Slot1" type="Label" parent="GameplayRoot/HUD/CombatCluster/Chrome/SkillCooldownHost"]
-layout_mode = 2
-text = "Skill 2: Ready"
-
-[node name="Slot2" type="Label" parent="GameplayRoot/HUD/CombatCluster/Chrome/SkillCooldownHost"]
-layout_mode = 2
-text = "Skill 3: Ready"
-
-[node name="Slot3" type="Label" parent="GameplayRoot/HUD/CombatCluster/Chrome/SkillCooldownHost"]
-layout_mode = 2
-text = "Skill 4: Ready"
+theme_override_constants/separation = 6
 
 [node name="TowerHpBarsHost" type="VBoxContainer" parent="GameplayRoot/HUD/CombatCluster/Chrome"]
 layout_mode = 2

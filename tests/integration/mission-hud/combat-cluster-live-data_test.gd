@@ -60,24 +60,38 @@ func test_hero_health_changed_updates_label() -> void:
 # AC-58: skill cooldown fills, slots 0-3, discard slot 4
 # ---------------------------------------------------------------------------
 
-func test_skill_slot_cooldown_updates_its_own_label() -> void:
+## Player-reported 2026-08-16: the text-Label cooldown readout ("Skill N:
+## Ready"/"Skill N: 3.2s") was replaced with Pattern 12's icon-tile states
+## (design/ux/interaction-patterns.md) -- dim opacity + a top-to-bottom dark
+## fill (anchor_bottom == cooldown_remaining / cooldown_max) + a numeric
+## countdown Label while on cooldown, full opacity/no fill/no countdown when
+## ready. These 3 tests were updated to assert the new state surface instead
+## of Label.text.
+func test_skill_slot_cooldown_updates_its_own_fill_and_countdown() -> void:
 	GEventBus.hero_skill_cooldown_updated.emit(1, 2.5, 5.0)
 
-	assert_str(_hud._skill_cooldown_labels[1].text).is_equal("Skill 2: 2.5s")
+	assert_bool(_hud._skill_slot_fills[1].visible).is_true()
+	assert_float(_hud._skill_slot_fills[1].anchor_bottom).is_equal_approx(0.5, 0.001)
+	assert_str(_hud._skill_slot_countdowns[1].text).is_equal("3s")
+	assert_float(_hud._skill_slot_icons[1].modulate.a).is_equal_approx(0.5, 0.001)
 
 
 func test_skill_slot_ready_at_zero_cooldown() -> void:
 	GEventBus.hero_skill_cooldown_updated.emit(1, 0.0, 5.0)
 
-	assert_str(_hud._skill_cooldown_labels[1].text).is_equal("Skill 2: Ready")
+	assert_bool(_hud._skill_slot_fills[1].visible).is_false()
+	assert_str(_hud._skill_slot_countdowns[1].text).is_equal("")
+	assert_float(_hud._skill_slot_icons[1].modulate.a).is_equal_approx(1.0, 0.001)
 
 
-func test_ultimate_slot_does_not_touch_skill_cooldown_labels() -> void:
-	var original: String = _hud._skill_cooldown_labels[3].text
+func test_ultimate_slot_does_not_touch_skill_cooldown_slots() -> void:
+	var original_text: String = _hud._skill_slot_countdowns[3].text
+	var original_fill_visible: bool = _hud._skill_slot_fills[3].visible
 
 	GEventBus.hero_skill_cooldown_updated.emit(Hero.ULTIMATE_SLOT_INDEX, 3.0, 5.0)
 
-	assert_str(_hud._skill_cooldown_labels[3].text).is_equal(original)
+	assert_str(_hud._skill_slot_countdowns[3].text).is_equal(original_text)
+	assert_bool(_hud._skill_slot_fills[3].visible).is_equal(original_fill_visible)
 
 
 # ---------------------------------------------------------------------------
