@@ -464,6 +464,15 @@ func _build_tower_list() -> void:
 			button.icon = icon
 			button.expand_icon = true
 			button.add_theme_constant_override("icon_max_width", int(TILE_SIZE.x - TILE_ICON_MARGIN))
+		# Player-reported 2026-08-16: icons were reading off-center inside the
+		# tile face. Button's default alignment is LEFT (a leftover from the
+		# now-removed text-row layout, see this loop's own icon-only-redesign
+		# comment above) -- with an empty button.text, that pushes the icon
+		# toward the tile's left edge instead of centering it in the square
+		# face. Explicit center alignment on all 3 axes Button exposes.
+		button.alignment = HORIZONTAL_ALIGNMENT_CENTER
+		button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		button.vertical_icon_alignment = VERTICAL_ALIGNMENT_CENTER
 		button.focus_mode = Control.FOCUS_ALL
 		button.toggle_mode = true
 		button.button_group = _build_button_group

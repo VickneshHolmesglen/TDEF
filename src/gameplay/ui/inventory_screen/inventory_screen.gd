@@ -87,6 +87,12 @@ const RECIPE_CATEGORY_LABEL_KEYS: Dictionary[String, String] = {
 
 @onready var _input_mode_tracker: InputModeTracker = $InputModeTracker
 @onready var _tab_strip: HBoxContainer = $MainLayout/LeftPanel/TabStrip
+## Player-requested 2026-08-16 (equipment_paperdoll.gd's own class doc
+## comment has the full rationale/scope). Player decision: shown ALONGSIDE
+## _slot_grid on the Equipment tab, not instead of it — visible only while
+## _active_tab == &"Equipment", toggled in _on_tab_pressed() next to
+## _refresh_slot_visibility()'s own filtering.
+@onready var _equipment_paperdoll: Control = $MainLayout/LeftPanel/EquipmentPaperdoll
 @onready var _slot_grid: GridContainer = $MainLayout/LeftPanel/SlotGrid
 ## Crafting is deliberately NOT an Autoload (ADR-0023: "Scene-instanced,
 ## Sanctuary-only") — unlike Inventory, there is no GCrafting global to fall
@@ -133,6 +139,7 @@ func _ready() -> void:
 	_build_slot_grid()
 	_wire_focus_neighbors()
 	_refresh_slot_visibility()
+	_equipment_paperdoll.visible = _active_tab == &"Equipment"
 	_build_crafting_panel()
 
 	GEventBus.recipe_discovered.connect(_on_recipe_discovered)
@@ -188,6 +195,7 @@ func _build_tab_strip() -> void:
 func _on_tab_pressed(tab: StringName) -> void:
 	_active_tab = tab
 	_refresh_slot_visibility()
+	_equipment_paperdoll.visible = tab == &"Equipment"
 
 
 ## Rule 3: tabs filter ONE shared slot pool by item_type, not four separate

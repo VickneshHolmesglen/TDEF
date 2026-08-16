@@ -101,9 +101,9 @@ layout_mode = 2
 size_flags_vertical = 4
 text = "0"
 
-[node name="MaterialsLabel" type="Label" parent="HUD/CombatCluster/Chrome"]
+[node name="MaterialsRow" type="HBoxContainer" parent="HUD/CombatCluster/Chrome"]
 layout_mode = 2
-text = ""
+theme_override_constants/separation = 10
 
 [node name="SkillCooldownHost" type="HBoxContainer" parent="HUD/CombatCluster/Chrome"]
 layout_mode = 2

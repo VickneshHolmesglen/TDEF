@@ -1,7 +1,8 @@
-[gd_scene load_steps=3 format=3 uid="uid://inventoryscreenscene"]
+[gd_scene load_steps=4 format=3 uid="uid://inventoryscreenscene"]
 
 [ext_resource type="Script" path="res://src/gameplay/ui/inventory_screen/inventory_screen.gd" id="1_ctrl"]
 [ext_resource type="Script" path="res://src/ui/input_mode_tracker.gd" id="2_tracker"]
+[ext_resource type="Script" path="res://src/gameplay/ui/inventory_screen/equipment_paperdoll.gd" id="3_paperdoll"]
 
 [node name="InventoryScreen" type="Control"]
 anchors_preset = 15
@@ -29,6 +30,11 @@ size_flags_stretch_ratio = 2.0
 
 [node name="TabStrip" type="HBoxContainer" parent="MainLayout/LeftPanel"]
 layout_mode = 2
+
+[node name="EquipmentPaperdoll" type="Control" parent="MainLayout/LeftPanel"]
+layout_mode = 2
+size_flags_horizontal = 4
+script = ExtResource("3_paperdoll")
 
 [node name="SlotGrid" type="GridContainer" parent="MainLayout/LeftPanel"]
 layout_mode = 2

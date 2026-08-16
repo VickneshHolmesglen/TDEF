@@ -53,7 +53,12 @@ var _ultimate_focus_ring: Panel = null
 @onready var _breach_counter_label: Label = $CombatCluster/Chrome/BreachCounterLabel
 @onready var _boss_bar_label: Label = $CombatCluster/Chrome/BossBarLabel
 @onready var _gold_label: Label = $CombatCluster/Chrome/GoldRow/GoldLabel
-@onready var _materials_label: Label = $CombatCluster/Chrome/MaterialsLabel
+## Player-reported 2026-08-16: replaced the "wood: 5 | stone: 3" text tally
+## with "[icon] xN" chips, one per material type, mirroring inventory_
+## screen.gd's established icon-with-text-fallback pattern (ItemDefinition
+## Resource.icon == null falls back to plain text, same "content can lag
+## code" tolerance -- see that file's _apply_slot_visual() doc comment).
+@onready var _materials_row: HBoxContainer = $CombatCluster/Chrome/MaterialsRow
 @onready var _skill_cooldown_host: HBoxContainer = $CombatCluster/Chrome/SkillCooldownHost
 ## Player-reported 2026-08-16: replaced the original "Skill N: Ready" /
 ## "Skill N: 3.2s" text-Label placeholder with real icon buttons matching
@@ -384,7 +389,7 @@ func _reset_local_state() -> void:
 	_boss_telegraph_cell = Vector2i(-1, -1)
 	_terminal = false
 	_materials_tally.clear()
-	_materials_label.text = ""
+	_rebuild_materials_row()
 	_combat_cluster.visible = true  # AC-68/70: undo DEFEAT's own hide, on this same or a retried mission
 	_retry_button.visible = false
 	# _last_known_routes is deliberately NOT cleared here: the boot-race
@@ -878,10 +883,50 @@ func _on_materials_earned(material_type: String, quantity: int, _source: String)
 	if _terminal:
 		return
 	_materials_tally[material_type] = _materials_tally.get(material_type, 0) + quantity
-	var parts: Array[String] = []
+	_rebuild_materials_row()
+
+
+## Rebuilds the whole chip row from _materials_tally on every change -- the
+## tally is at most a handful of distinct material types per mission, so a
+## full clear-and-rebuild (matching this file's own established
+## render_composition_preview()-class precedent elsewhere) costs nothing
+## real and keeps this immune to the same stale-child-state bug class
+## PlanningCluster's render_route() doc comment documents for the
+## equivalent partial-update alternative.
+func _rebuild_materials_row() -> void:
+	for child: Node in _materials_row.get_children():
+		_materials_row.remove_child(child)
+		child.queue_free()
 	for mat_type: String in _materials_tally:
-		parts.append("%s: %d" % [mat_type, _materials_tally[mat_type]])
-	_materials_label.text = " | ".join(parts)
+		_materials_row.add_child(_build_material_chip(mat_type, _materials_tally[mat_type]))
+
+
+## "[icon] xN" per inventory_screen.gd's established icon-with-text-fallback
+## convention: a real icon on the item's ItemDefinitionResource wins; a
+## material with no icon authored yet (most of them, until Phase 3 art
+## lands) falls back to "material_id xN" plain text -- zero regression from
+## the prior text-only tally, just per-chip instead of one joined string.
+func _build_material_chip(mat_type: String, quantity: int) -> HBoxContainer:
+	var chip := HBoxContainer.new()
+	chip.name = "Chip_%s" % mat_type
+	chip.add_theme_constant_override("separation", 4)
+
+	var definition: ItemDefinitionResource = GGameDataRegistry.get_item_definition(StringName(mat_type))
+	var quantity_label := Label.new()
+
+	if definition != null and definition.icon != null:
+		var icon := TextureRect.new()
+		icon.texture = definition.icon
+		icon.custom_minimum_size = Vector2(20, 20)
+		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		chip.add_child(icon)
+		quantity_label.text = "x%d" % quantity
+	else:
+		quantity_label.text = "%s x%d" % [mat_type, quantity]
+
+	chip.add_child(quantity_label)
+	return chip
 
 
 ## Real bug found and fixed 2026-08-10 (player-reported: "the calculation

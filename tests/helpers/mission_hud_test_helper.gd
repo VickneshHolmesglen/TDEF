@@ -36,10 +36,18 @@ static func build_hud() -> MissionHud:
 	var chrome := VBoxContainer.new()
 	chrome.name = "Chrome"
 	combat_cluster.add_child(chrome)
-	for label_name: String in ["PhaseLabel", "WaveLabel", "PhaseTimerLabel", "HeroHpLabel", "BreachCounterLabel", "BossBarLabel", "MaterialsLabel"]:
+	for label_name: String in ["PhaseLabel", "WaveLabel", "PhaseTimerLabel", "HeroHpLabel", "BreachCounterLabel", "BossBarLabel"]:
 		var chrome_label := Label.new()
 		chrome_label.name = label_name
 		chrome.add_child(chrome_label)
+
+	# 2026-08-16: MaterialsLabel (plain text) replaced with MaterialsRow
+	# (HBoxContainer of icon+quantity chips) -- matched here so
+	# $CombatCluster/Chrome/MaterialsRow resolves the same way in both the
+	# fixture and the real MissionScene.tscn/the_gap.tscn.
+	var materials_row := HBoxContainer.new()
+	materials_row.name = "MaterialsRow"
+	chrome.add_child(materials_row)
 
 	# 2026-08-06: GoldLabel moved under a GoldRow wrapper (GoldIcon + GoldLabel)
 	# in the real scene (design/quick-specs/gold-currency-icon-2026-08-06.md) —
@@ -52,13 +60,13 @@ static func build_hud() -> MissionHud:
 	gold_label.name = "GoldLabel"
 	gold_row.add_child(gold_label)
 
+	# 2026-08-16: the 4 skill-slot icon tiles are now built procedurally by
+	# MissionHud._build_skill_slots() in _ready() (matching planning_cluster.
+	# gd's established BuildList precedent) -- SkillCooldownHost starts empty
+	# here, same as in the real .tscn.
 	var skill_cooldown_host := HBoxContainer.new()
 	skill_cooldown_host.name = "SkillCooldownHost"
 	chrome.add_child(skill_cooldown_host)
-	for i: int in range(4):
-		var slot_label := Label.new()
-		slot_label.name = "Slot%d" % i
-		skill_cooldown_host.add_child(slot_label)
 
 	var tower_hp_bars_host := VBoxContainer.new()
 	tower_hp_bars_host.name = "TowerHpBarsHost"

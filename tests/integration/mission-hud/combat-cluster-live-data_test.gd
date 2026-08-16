@@ -253,11 +253,19 @@ func test_resources_changed_shows_the_real_accumulated_balance_not_the_raw_delta
 	assert_str(_hud._gold_label.text).is_equal("40")
 
 
+## Player-reported 2026-08-16: the "wood: 8" text tally was replaced with
+## "[icon] xN" chips (icon-with-text-fallback, see _materials_row's own doc
+## comment) -- "wood" has no ItemDefinitionResource.icon authored yet, so
+## it still falls back to plain text, just per-chip instead of one joined
+## string.
 func test_materials_earned_accumulates_a_running_tally() -> void:
 	GEventBus.materials_earned.emit("wood", 5, "monster_drop")
 	GEventBus.materials_earned.emit("wood", 3, "monster_drop")
 
-	assert_str(_hud._materials_label.text).is_equal("wood: 8")
+	assert_int(_hud._materials_row.get_child_count()).is_equal(1)
+	var chip: HBoxContainer = _hud._materials_row.get_child(0)
+	var quantity_label: Label = chip.get_child(chip.get_child_count() - 1)
+	assert_str(quantity_label.text).is_equal("wood x8")
 
 
 # ---------------------------------------------------------------------------
@@ -364,7 +372,7 @@ func test_terminal_latch_suppresses_hero_boss_materials_gold_handlers() -> void:
 	var hero_hp_before: String = _hud._hero_hp_label.text
 	var boss_bar_before: String = _hud._boss_bar_label.text
 	var gold_before: String = _hud._gold_label.text
-	var materials_before: String = _hud._materials_label.text
+	var materials_before: int = _hud._materials_row.get_child_count()
 
 	_hud._on_mission_phase_changed("SCOUT", "PRE_WAVE", 0.0)
 	_hud._on_mission_phase_changed("PRE_WAVE", "WAVE_ACTIVE", 0.0)
@@ -378,4 +386,4 @@ func test_terminal_latch_suppresses_hero_boss_materials_gold_handlers() -> void:
 	assert_str(_hud._hero_hp_label.text).is_equal(hero_hp_before)
 	assert_str(_hud._boss_bar_label.text).is_equal(boss_bar_before)
 	assert_str(_hud._gold_label.text).is_equal(gold_before)
-	assert_str(_hud._materials_label.text).is_equal(materials_before)
+	assert_int(_hud._materials_row.get_child_count()).is_equal(materials_before)
