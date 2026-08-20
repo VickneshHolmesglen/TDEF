@@ -199,3 +199,15 @@ N/A — Crafting has no existing implementation to migrate from. This is a green
 - ADR-0022 (Constellation Pattern-Detection Data Structure) — source of the Discovery Ledger pattern this ADR mirrors
 - ADR-0020 (Direct-Autoload-call exception pattern) — governs why Crafting's Inventory calls are direct, not EventBus
 - `design/gdd/crafting.md` — source GDD for all requirements this ADR addresses
+
+## Amendment (2026-08-17) — Third `inputs` cost axis (`item_id`) + `source_blueprint_tower_id`
+
+**Context**: Tower Assembly's blueprint-copy component recipes (`crafting.md` Rule 1a, player-requested, part of the broader Tower Components blueprint-sourcing feature) need a recipe to gate on a *specific* material (e.g. exactly `foundation_surplus`) rather than any item sharing its `item_type` or `rarity`. Neither of `inputs`'s two existing keying vocabularies could express this — `item_type` sums every `Material`-tab item together (`Inventory.has_items()`), and `rarity` sums every item sharing a tier together (`Inventory.has_items_by_rarity()`, added by an earlier TD-craft-001 resolution for the identical class of problem, one axis narrower).
+
+**Decision**: Extended, not replaced, following the exact same shape as the earlier rarity-axis addition:
+- `Inventory.has_items_by_material_id(cost: Dictionary) -> bool` / `consume_by_material_id(item_id: StringName, quantity: int, emit_events: bool = true) -> int` — sums by `slot.item_id` directly (no `GameDataRegistry` lookup needed, unlike the rarity axis, since the item_id itself IS the bucket).
+- `RecipeResource.validate()`'s `inputs` key check now accepts a valid `item_type`, a valid rarity string, **or** a known `item_id` (cross-referenced via `GGameDataRegistry.get_item_definition()`).
+- `Crafting._has_recipe_inputs()`/`_consume_recipe_inputs()` route each `inputs` key to the matching axis: `item_type` checked first (small fixed enum), then rarity, then item_id (any remaining key — `RecipeResource.validate()` already guarantees this classification is exhaustive at load time).
+- New `RecipeResource.source_blueprint_tower_id: StringName` field (default `""`) — non-empty only on a blueprint-copy recipe, cross-referenced against `GGameDataRegistry.get_all_tower_blueprints()` at validate-time. Purely descriptive/validating metadata, never consulted by `Crafting.resolve_craft()` at craft time — the actual stat match between a blueprint-copy recipe's output and the source blueprint's embedded component is enforced by construction (the recipe author copies exact values into a new standalone `.tres`) and verified by a dedicated regression test, not by any runtime code path.
+
+**No new ADR** — this is an additive extension of an already-Accepted data model along an already-established pattern (the rarity axis), not a new architectural decision.

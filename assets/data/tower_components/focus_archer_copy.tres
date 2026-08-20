@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="FocusComponent" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/core/tower/focus_component.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+component_id = "focus_archer_t1"
+targeting_mode = "CLOSEST_TO_GOAL"
+attack_range_cells = 3
+cone_half_angle = 180.0
+facing_direction = "N"
+damaged = false

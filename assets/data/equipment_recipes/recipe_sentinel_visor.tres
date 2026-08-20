@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="EquipmentRecipeResource" format=3]
+
+[ext_resource type="Script" path="res://src/core/equipment_forge/equipment_recipe_resource.gd" id="1_recipe"]
+
+[resource]
+script = ExtResource("1_recipe")
+recipe_id = &"recipe_sentinel_visor"
+recipe_category = "hero_equipment"
+output_slot = "helmet"
+inputs = {
+&"rift_shard": 19,
+&"Uncommon": 10
+}
+tech_prerequisite = &""
+output_item_id = &"sentinel_visor"
+quality_tier = 3
+rune_slot_count = 2

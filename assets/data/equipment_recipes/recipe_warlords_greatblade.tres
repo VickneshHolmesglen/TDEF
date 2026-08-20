@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="EquipmentRecipeResource" format=3]
+
+[ext_resource type="Script" path="res://src/core/equipment_forge/equipment_recipe_resource.gd" id="1_recipe"]
+
+[resource]
+script = ExtResource("1_recipe")
+recipe_id = &"recipe_warlords_greatblade"
+recipe_category = "hero_equipment"
+output_slot = "weapon"
+inputs = {
+&"warlord_iron": 32,
+&"Uncommon": 16,
+&"warlord_emblem": 8
+}
+tech_prerequisite = &""
+output_item_id = &"warlords_greatblade"
+quality_tier = 4
+rune_slot_count = 2

@@ -4,6 +4,18 @@ Reference log of prompts used with external image generators for game art,
 kept so a prompt can be reused, tweaked, or regenerated later without
 reconstructing the art-bible constraints from scratch each time.
 
+> **Batch request, awaiting generation (0/9, 2026-08-17)**: `assets/art-generation-requests-2026-08-17-tower-components.md`
+> is a standalone, upload-ready prompt batch that splits the 6 existing tower
+> sprites into 3 independently-croppable layers (1 shared Base pedestal, 2
+> Shaft variants [Solid / Open-frame], 6 Top variants — one per tower's
+> distinguishing feature/element) so Tower Assembly's mix-and-match
+> Foundation/Weapon/Focus/Power components can render as an actually-mixed
+> tower instead of always falling back to one fixed archetype sprite. Flags
+> an open technical risk (layer-to-layer anchor/canvas alignment) not solved
+> by the prompts themselves — recommended to generate and test-composite just
+> the Physical set first before running the full batch. Outcome notes get
+> folded back into this file as pieces land, same as every other batch.
+
 > **Batch request, awaiting generation (0/1, 2026-08-17)**: `assets/art-generation-requests-2026-08-17-goblin-runner-walk.md`
 > is a standalone, upload-ready prompt for the project's **first sprite-sheet
 > (multi-frame) generation request** — a 4-frame walk cycle for `goblin_runner`,

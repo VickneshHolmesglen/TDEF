@@ -92,6 +92,37 @@ const PHASE_SCOUT: String = "SCOUT"
 const SCOUT_STARTING_GOLD: int = 50
 const SCOUT_GRANT_SOURCE: StringName = &"mission_start_grant"
 
+## Formula 6 (design/gdd/resource-economy.md, Rule 11) — Mission-End Building
+## Material Surplus Grant, 2026-08-17 (Tower Components, player-requested).
+## WaveManager._phase_name() emits Phase.keys()[phase] — "MISSION_COMPLETE"
+## is that enum key's literal string form, matching PHASE_SCOUT's own
+## precedent above. DEFEAT deliberately does NOT grant surplus — only a
+## completed mission does, matching Formula 5's own completion-only framing.
+const PHASE_MISSION_COMPLETE: String = "MISSION_COMPLETE"
+const SURPLUS_GRANT_SOURCE: StringName = &"mission_end_surplus_grant"
+## Every basic tower has exactly one of each of the 4 component slots, so
+## the grant is unconditional per standing tower — no per-slot lookup table
+## needed. quantity = BASE_SURPLUS_PER_SLOT × foundation.tier, mirroring
+## Formula 2's existing scale-by-a-tier/scalar pattern.
+const BASE_SURPLUS_PER_SLOT: int = 1
+const SURPLUS_FOUNDATION_MATERIAL: StringName = &"foundation_surplus"
+const SURPLUS_WEAPON_MATERIAL: StringName = &"weapon_surplus"
+const SURPLUS_FOCUS_MATERIAL: StringName = &"focus_surplus"
+const SURPLUS_POWER_MATERIAL: StringName = &"power_surplus"
+## Small flat bonus of an EXISTING drop material, keyed by the tower's own
+## foundation.archetype (FoundationComponent.archetype, one of "physical" /
+## "elemental" / "ranged" / "support" across the 6 real blueprints) — this is
+## the "mixture of existing drop materials and new per-type material" the
+## grant was scoped as, not surplus materials alone. A tuning/flavor mapping,
+## not load-bearing game logic — safe to re-map later without touching code.
+const ARCHETYPE_BONUS_QUANTITY: int = 2
+const ARCHETYPE_BONUS_MATERIAL_MAP: Dictionary[String, StringName] = {
+	"physical": &"iron_plating",
+	"elemental": &"rift_shard",
+	"ranged": &"goblin_hide",
+	"support": &"spore_dust",
+}
+
 ## Formula 5 (design/gdd/resource-economy.md, Rule 10) — Wave-Completion Gold
 ## Grant. Fully specified in the GDD since 2026-07-14 but never implemented;
 ## Story 013 only ever covered the Scout starting grant (AC-09/AC-10), never
@@ -170,6 +201,43 @@ func _on_monsters_died_batch(payloads: Array[MonsterDiedEvent]) -> void:
 func _on_mission_phase_changed(_previous_phase: String, new_phase: String, _timestamp: float) -> void:
 	if new_phase == PHASE_SCOUT:
 		GEventBus.resources_changed.emit(SCOUT_STARTING_GOLD, SCOUT_GRANT_SOURCE)
+	elif new_phase == PHASE_MISSION_COMPLETE:
+		_grant_mission_end_surplus()
+
+
+## Formula 6 (Rule 11): for every tower still standing right now (see
+## TowerSystem.get_placed_tower_slot_tally()'s own doc comment for the
+## still-standing-only rationale), grants BASE_SURPLUS_PER_SLOT ×
+## foundation.tier of each of the 4 slot-surplus materials, plus
+## ARCHETYPE_BONUS_QUANTITY of the existing drop material matching the
+## tower's foundation.archetype. Rides entirely on the existing
+## materials_earned signal — no new EventBus signal introduced. TowerSystem
+## is scene-instanced with no existing reference from this Autoload-adjacent
+## node, so it's discovered via its GROUP_NAME the same way crafting.gd/
+## tower_assembly.gd already discover each other in the reverse direction.
+func _grant_mission_end_surplus() -> void:
+	var tower_system: Node = get_tree().get_first_node_in_group(&"tower_system")
+	if tower_system == null:
+		return
+	for state: TowerMissionState in tower_system.get_placed_tower_slot_tally():
+		var quantity: int = _compute_surplus_quantity(state.foundation.tier)
+		GEventBus.materials_earned.emit(String(SURPLUS_FOUNDATION_MATERIAL), quantity, SURPLUS_GRANT_SOURCE)
+		GEventBus.materials_earned.emit(String(SURPLUS_WEAPON_MATERIAL), quantity, SURPLUS_GRANT_SOURCE)
+		GEventBus.materials_earned.emit(String(SURPLUS_FOCUS_MATERIAL), quantity, SURPLUS_GRANT_SOURCE)
+		GEventBus.materials_earned.emit(String(SURPLUS_POWER_MATERIAL), quantity, SURPLUS_GRANT_SOURCE)
+		var archetype_material: StringName = ARCHETYPE_BONUS_MATERIAL_MAP.get(state.foundation.archetype, &"")
+		if archetype_material != &"":
+			GEventBus.materials_earned.emit(String(archetype_material), ARCHETYPE_BONUS_QUANTITY, SURPLUS_GRANT_SOURCE)
+
+
+## Formula 6's per-slot quantity term: quantity = BASE_SURPLUS_PER_SLOT ×
+## foundation.tier. Pure, static — no RNG, unlike Formula 1/2.
+##
+## Usage:
+##   ResourceEconomy._compute_surplus_quantity(1)  # -> 1
+##   ResourceEconomy._compute_surplus_quantity(4)  # -> 4
+static func _compute_surplus_quantity(foundation_tier: int) -> int:
+	return BASE_SURPLUS_PER_SLOT * foundation_tier
 
 
 ## Caches the just-started wave's reward scalar for _on_wave_completed()

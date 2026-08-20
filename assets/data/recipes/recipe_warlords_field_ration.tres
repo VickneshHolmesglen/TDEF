@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="RecipeResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/core/crafting/recipe_resource.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+recipe_id = &"recipe_warlords_field_ration"
+recipe_category = "crafted_good"
+component_slot = ""
+inputs = {
+&"warlord_iron": 6,
+&"iron_plating": 3
+}
+tech_prerequisite = &""
+output_item_id = &"warlords_field_ration"
+output_quantity = 3
+quality_tier = 0

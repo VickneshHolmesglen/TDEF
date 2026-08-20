@@ -285,6 +285,60 @@ corrected 2026-08-11 — see that ADR's dated amendment), so nothing carries cro
 never places towers takes full unmitigated damage from every monster and loses well before the grants
 could compound into anything exploitable. No countermeasure is needed.
 
+### Formula 6 — Mission-End Building Material Surplus Grant
+
+*(Added 2026-08-17, player-requested — Tower Assembly's blueprint-copy component recipes
+(`crafting.md` Rule 1a) need a funding source distinct from monster drops; this is that source.)*
+
+```
+surplus_quantity(t) = base_surplus_per_slot × foundation.tier(t)
+```
+
+| Variable | Symbol | Type | Range | Description |
+|----------|--------|------|-------|-------------|
+| Tower | `t` | — | — | One tower from the still-standing set at `mission_phase_changed(new_phase == MISSION_COMPLETE)` |
+| Base surplus per slot | `base_surplus_per_slot` | int | fixed | Tuning knob; default 1 |
+| Foundation tier | `foundation.tier(t)` | int | 1–4 | `t`'s own `FoundationComponent.tier` |
+| Surplus quantity | `surplus_quantity` | int | 1–4 | Granted once per slot (Foundation/Weapon/Focus/Power — every tower has exactly one of each, so this is unconditional per standing tower) |
+
+11. **Rule — still-standing tally basis.** The tally is taken from
+    `TowerSystem.get_placed_tower_slot_tally()` at the moment
+    `MISSION_COMPLETE` fires — towers **still placed at that instant**, not
+    every tower ever placed during the mission. A tower that was sold or
+    destroyed earlier in the mission already cost its placement gold and its
+    4 source components; granting surplus for it too would double-reward.
+    This is a **design decision**, not an inference from existing rules —
+    flagged explicitly since Formula 5 (wave-completion gold) has no
+    equivalent "which towers" ambiguity to resolve. **DEFEAT does not grant
+    surplus** — only a completed mission does, matching Formula 5's own
+    completion-framing (the Sanctuary's progress is protected on defeat per
+    Core Rule 11 of `save-persistence.md`, but this specific bonus is not).
+
+12. **Rule — grant composition.** For each standing tower: `surplus_quantity`
+    of each of 4 new materials (`foundation_surplus`/`weapon_surplus`/
+    `focus_surplus`/`power_surplus`, one per component slot — not one per
+    basic tower type; the tower-specificity of what gets crafted from them
+    lives on the *recipe*, not the material), plus a flat
+    `archetype_bonus_quantity` (default 2) of one **existing** drop material
+    keyed by the tower's own `FoundationComponent.archetype`
+    (`physical`→`iron_plating`, `elemental`→`rift_shard`,
+    `ranged`→`goblin_hide`, `support`→`spore_dust` — a tuning/flavor mapping,
+    freely re-tunable without touching the mechanism). Both halves emit via
+    the existing `materials_earned` signal — no new EventBus signal was
+    introduced for this grant.
+
+**Worked example**: 2 towers standing at MISSION_COMPLETE — a Tier 1 Archer
+(`physical`) and a Tier 2 Frostbolt Turret (`elemental`). Grant: 1 each of
+`foundation_surplus`/`weapon_surplus`/`focus_surplus`/`power_surplus` (Tier 1
+tower) + 2 each of the same 4 (Tier 2 tower) = 3 of each surplus material,
+plus 2 `iron_plating` + 2 `rift_shard`.
+
+**Degenerate-strategy check — stockpiling:** identical shape to Formula 5's
+own check (no yield/interest, no cross-mission carry beyond the materials
+themselves sitting in Inventory, which has its own slot-cap pressure) —
+placing towers costs gold and components up front, so there is no way to
+farm this grant without first spending real resources per standing tower.
+
 ## Edge Cases
 
 - **If `drop_table_id` is empty/null on a dying monster**: no drop resolution occurs at all — treated
@@ -326,7 +380,7 @@ could compound into anything exploitable. No countermeasure is needed.
 | **Save & Persistence** | Hard dependency | Gold balance and any mission-scoped economy state must be included in save/restore ordering (see Open Questions — exact owner still unassigned) |
 | **Monster System** | Hard dependency (upstream) | `monster_died` payload (`drop_table_id`, `menagerie_attraction_drop_chance`, `kill_source`) is the sole trigger for drop resolution |
 | **Wave Manager** | Hard dependency (upstream) | `wave_reward_scalar` and `mission_phase_changed` are required inputs to Formulas 2/3 and Rule 8; `wave_completed` is a required input to Formula 5/Rule 10 (**added during `/design-system` 2026-07-14**) |
-| **Tower System** | Hard dependency (downstream) | Tower reads gold via `resources_changed` to validate placement affordability; Resource Economy has no opinion on Tower's cost formulas |
+| **Tower System** | Hard dependency (downstream); also a **new read dependency (upstream)** added 2026-08-17 for Formula 6 | Tower reads gold via `resources_changed` to validate placement affordability; Resource Economy has no opinion on Tower's cost formulas. **New**: at `MISSION_COMPLETE`, Resource Economy queries `TowerSystem.get_placed_tower_slot_tally()` directly (a pull-based method call via `&"tower_system"` group discovery, not an EventBus signal — Resource Economy previously never read Tower System state at all) |
 | **Inventory System** | Hard dependency (downstream) | Inventory is sole storage owner for all materials this system calculates; `materials_earned`/`materials_spent` is the interface |
 | **Menagerie System** (undesigned) | Soft dependency (bidirectional, anticipated) | Menagerie feeds `menagerie_quality_bonus` inputs; Resource Economy hands off `menagerie_lure` material via the standard material interface |
 | **Crafting / Equipment Forge / Defense Building** (undesigned) | Soft dependency (indirect) | These systems consume materials via Inventory queries, not directly from Resource Economy — no direct interface exists or is needed |
@@ -341,6 +395,8 @@ could compound into anything exploitable. No countermeasure is needed.
 | `guaranteed_min_quantity` | 1 | 1 (fixed) | N/A — this is a floor, not a scaling lever | A zero-yield successful drop contradicts "Fuel Not Trophy" — never lower |
 | `quality_probability_ceiling` | 0.80 | 0.60–0.90 | Near-guaranteed high-quality drops trivialize rarity | Rarity feels unreachable even at max wave escalation |
 | `base_quality_probability` (per tier, per DropEntry) | 0.05–0.15 | 0.02–0.20 | Combined-ERI validation (Formula 4) fails content review | Rare tiers effectively never appear before quality_probability_ceiling matters |
+| `base_surplus_per_slot` (Formula 6) | 1 | 1–2 | Blueprint-copy recipes become trivially affordable, undercutting the raw-material Crafting path | Surplus materials never accumulate fast enough to fund even one blueprint-copy recipe |
+| `archetype_bonus_quantity` (Formula 6) | 2 | 1–4 | Existing drop materials become abundant purely from tower survival, bypassing monster-kill scarcity | Bonus feels negligible, tower survival reads as unrewarded |
 | `scout_starting_gold` | 50 *(lowered from 150, 2026-08-11 — see below)* | 30–80 | Player can nearly max out the mission budget before Wave 1, undermining wave-to-wave earning tension | Player can't field a viable opening build during Scout Phase |
 | `base_wave_gold` *(added during `/design-system` 2026-07-14)* | 20 | 15–25 | Combined with wave_reward_scalar, later-wave grants (up to 95) let players rebuild an entire lane in one Intermission, undermining the sunk-cost weight of earlier placements | Later-wave grants too small to afford even a Tier 1 replacement tower, making boss-lane rebuilds after tower loss effectively impossible |
 | `menagerie_quality_bonus` ceiling | 1.5× | 1.0–2.0× | Replaces crafting skill (matches game-concept.md's existing knob) | Menagerie investment feels pointless |

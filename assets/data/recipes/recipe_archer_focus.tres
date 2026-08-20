@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="RecipeResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/core/crafting/recipe_resource.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+recipe_id = &"recipe_archer_focus"
+recipe_category = "tower_component"
+component_slot = "focus"
+inputs = {
+&"focus_surplus": 3
+}
+tech_prerequisite = &""
+output_item_id = &"archer_focus_component"
+output_quantity = 1
+quality_tier = 1
+source_blueprint_tower_id = &"archer"

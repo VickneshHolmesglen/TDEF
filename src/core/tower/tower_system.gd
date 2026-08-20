@@ -20,6 +20,14 @@ extends Node
 
 enum Phase { UNKNOWN, SCOUT, INTERMISSION, WAVE_ACTIVE, MISSION_COMPLETE, DEFEAT }
 
+## 2026-08-17 (Tower Components mission-end surplus grant): ResourceEconomy
+## (an Autoload, with no existing reference to the scene-instanced
+## TowerSystem) discovers the one real per-mission instance via this group at
+## MISSION_COMPLETE, matching the discovery pattern crafting.gd/
+## tower_assembly.gd already use for the reverse direction (a scene-instanced
+## system finding another shell-owned instance).
+const GROUP_NAME: StringName = &"tower_system"
+
 # ---------------------------------------------------------------------------
 # Public state — readable by tests and other mission-scene systems
 # ---------------------------------------------------------------------------
@@ -57,6 +65,7 @@ var _pathfinding = null
 # ---------------------------------------------------------------------------
 
 func _ready() -> void:
+	add_to_group(GROUP_NAME)
 	_grid = GGrid
 	_pathfinding = GPathfindingSystem
 	if _tower_table.is_empty():
@@ -219,6 +228,22 @@ func sell_tower(tower_id: int) -> bool:
 	GEventBus.tower_removed.emit(tower_id, state.grid_position,
 			String(state.foundation.archetype), state.power.constellation_eligibility_tag)
 	return true
+
+
+## Mission-End Building Material Surplus Grant (2026-08-17, Tower Components,
+## resource-economy.md Formula 6): pure read of the towers still standing
+## right now, for ResourceEconomy to tally at MISSION_COMPLETE. Deliberately
+## excludes anything already sold/destroyed (erased from placed_towers by
+## sell_tower()/the tower_destroyed path) — a tower that didn't survive to
+## the end of the mission has already cost its placement gold and its 4
+## source components; granting surplus for it too would double-reward, per
+## this same convention as every other Resource Economy grant (rewards
+## outcomes survived, not actions taken).
+func get_placed_tower_slot_tally() -> Array[TowerMissionState]:
+	var snapshot: Array[TowerMissionState] = []
+	for id: int in placed_towers:
+		snapshot.append(placed_towers[id] as TowerMissionState)
+	return snapshot
 
 # ---------------------------------------------------------------------------
 # Combat formulas (AC-9 to AC-17)

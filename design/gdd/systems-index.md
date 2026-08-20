@@ -2,7 +2,7 @@
 
 > **Status**: Draft
 > **Created**: 2026-04-21
-> **Last Updated**: 2026-08-01 (Monster System's `monster.md` gained AC-28/AC-40 live performance-evidence pointers; Save & Persistence's `save-persistence.md` gained "Backend implemented" notes on EC-3/EC-5 — neither is a design/review status change; Monster System stays Approved, Save & Persistence stays Needs Revision)
+> **Last Updated**: 2026-08-17 (added row 27, Tower Assembly System — an already-shipped, already-tested system that had zero footprint in this index until now, found while extending it with blueprint-sourced components. Prior update, 2026-08-01: Monster System's `monster.md` gained AC-28/AC-40 live performance-evidence pointers; Save & Persistence's `save-persistence.md` gained "Backend implemented" notes on EC-3/EC-5 — neither was a design/review status change; Monster System stays Approved, Save & Persistence stays Needs Revision)
 > **Source Concept**: design/gdd/game-concept.md
 
 ---
@@ -11,7 +11,7 @@
 
 Sanctuary Defenders is a hybrid RPG Tower Defense built on nine explicitly named gameplay systems
 (Hero, Tower, Monster, Constellation, Tarot, Crafting, Menagerie, Defense Building, Inventory) plus
-sixteen additional systems inferred from the design — infrastructure, cross-cutting logic, and
+seventeen additional systems inferred from the design — infrastructure, cross-cutting logic, and
 presentation. All gameplay systems communicate exclusively through a central EventBus; no system
 has a direct reference to another. The game operates across two primary contexts: the Mission
 (Scout → Wave → Intermission → Outcome) and the Sanctuary (meta-progression hub). Some systems
@@ -50,6 +50,7 @@ then core gameplay, then cross-system features, then presentation.
 | 24 | Sanctuary UI (inferred) | Presentation | Alpha | Approved (2026-07-24 — 6-pass history: MAJOR REVISION → re-architected → Core Rule 10 froze after a fix cascade → deliberately redesigned as a genuine 6th tab-strip entry → a fresh full `/design-review` found and closed one convergent defect plus smaller findings → independently re-verified clean) | design/gdd/sanctuary-ui.md | Crafting, Menagerie, Defense Building, Inventory, Equipment Forge, Save & Persistence, SceneManager, Mission Select, Resource Economy, Tarot Deck UI |
 | 25 | Tarot Deck UI (inferred) | Presentation | Alpha | Approved — caveat resolved, its entry point (Core Rule 3) now depends on Sanctuary UI's Approved Core Rule 10 | design/gdd/tarot-deck-ui.md | Tarot, Hero Skill Build, Save & Persistence, Sanctuary UI |
 | 26 | Building Upgrade System (inferred) | Sanctuary | Alpha | **Complete** — `/design-review` run 2026-08-12 (6 specialists + creative-director synthesis), verdict NEEDS REVISION, all 5 blocking items addressed same-session (per-requirement legibility, PURCHASABLE-transition/purchase feedback, stale AC-6 replaced, prerequisite-cycle guard + chain cap, Player Fantasy overclaim softened). Epic 14 created and all 5 stories Complete same day. Recipe-style upgrades for already-built Defense Building structures, gated on a combination of 1-4 requirement categories (another built structure, a specific crafted Equipment item, a specific unlocked Tarot card, a specific owned Menagerie creature species) — all named requirements must be simultaneously true, none are consumed. All 4 requirement categories resolved, including `"tarot"` (Tarot converted to a real Autoload via ADR-0035, closing the independent Tarot save-data-loss bug found during review — `production/qa/bugs/BUG-0001.md`, now Closed). | design/gdd/building-upgrade.md | Defense Building, Inventory, Tarot, Menagerie, Equipment Forge, Resource Economy, EventBus, Save & Persistence |
+| 27 | Tower Assembly System (inferred) | Sanctuary | Alpha | **Shipped, undocumented at GDD level** — implemented and tested (`src/core/tower_assembly/tower_assembly.gd`, 15+ unit/integration tests, live "Assemble Towers" Forge tab) but authored only as a quick-spec, never promoted to a full 8-section GDD or added to this index until this row (2026-08-17 — closed as a real tracking gap found while extending the system with blueprint-sourced components, below). Lets the player combine one owned Foundation/Weapon/Focus/Power component into a brand-new, permanently placeable `TowerBlueprintData`. **2026-08-17 extension** (player-requested): components can now also be crafted as exact copies of a pre-authored basic tower's own embedded component (e.g. "Craft Archer Foundation"), funded by a new Mission-End Building Material Surplus grant (`resource-economy.md` Formula 6) — alongside, not replacing, the original raw-material Crafting recipes. | design/quick-specs/tower-assembly-2026-08-11.md | Inventory, Crafting, EventBus, Save & Persistence, Resource Economy |
 
 ---
 
@@ -155,6 +156,7 @@ Systems in this order — independent systems at the same layer can be designed 
 | 24 | Sanctuary UI | Alpha | Presentation | L |
 | 25 | Tarot Deck UI | Alpha | Presentation | M |
 | 26 | Audio System | Full Vision | Presentation | M |
+| 27 | Tower Assembly System | Alpha | Advanced | M |
 
 *Effort: S = 1 session · M = 2–3 sessions · L = 4+ sessions. A session = one focused design conversation producing a complete GDD.*
 

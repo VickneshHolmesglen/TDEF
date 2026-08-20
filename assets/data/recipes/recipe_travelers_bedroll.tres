@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="RecipeResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/core/crafting/recipe_resource.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+recipe_id = &"recipe_travelers_bedroll"
+recipe_category = "crafted_good"
+component_slot = ""
+inputs = {
+&"troll_hide": 7,
+&"common_scrap": 3
+}
+tech_prerequisite = &""
+output_item_id = &"travelers_bedroll"
+output_quantity = 1
+quality_tier = 0

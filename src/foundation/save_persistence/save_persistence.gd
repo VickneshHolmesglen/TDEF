@@ -92,12 +92,12 @@ func _ready() -> void:
 	_cleanup_tmp_files()
 	_setup_autosave_timer()
 	GEventBus.mission_launched.connect(_on_mission_launched)
-	GEventBus.mission_phase_changed.connect(_on_mission_phase_changed)
+	GEventBus.scene_transition_completed.connect(_on_scene_transition_completed)
 
 
 func _exit_tree() -> void:
 	GEventBus.mission_launched.disconnect(_on_mission_launched)
-	GEventBus.mission_phase_changed.disconnect(_on_mission_phase_changed)
+	GEventBus.scene_transition_completed.disconnect(_on_scene_transition_completed)
 
 
 ## restore_order registry (TD-hero-004, fixed 2026-07-08) — every system that
@@ -466,11 +466,21 @@ func _on_mission_launched(_mission_id: String, _modifiers: PackedStringArray, _d
 	save_checkpoint(_active_slot)
 
 
-func _on_mission_phase_changed(_previous_phase: String, new_phase: String, _timestamp: float) -> void:
-	if new_phase == "SANCTUARY":
+## Fix (2026-08-17): this was previously gated on
+## GEventBus.mission_phase_changed's new_phase == "SANCTUARY" — a value
+## WaveManager's own Phase enum (IDLE/SCOUT/PRE_WAVE/WAVE_ACTIVE/
+## INTERMISSION/MISSION_COMPLETE/DEFEAT) never actually emits. That made the
+## autosave-on-return-to-Sanctuary path dead code since Story-008 first wrote
+## it. scene_transition_completed(target_context) is SceneManager's own
+## post-_ready() signal for a completed SANCTUARY/MISSION scene swap — the
+## same signal sanctuary_ui.gd/tarot.gd/defense_building.gd/
+## hero_skill_build.gd already key off of for identical Sanctuary-vs-Mission
+## branching.
+func _on_scene_transition_completed(target_context: String, _mission_id: String) -> void:
+	if target_context == "SANCTUARY":
 		_autosave_timer.paused = false
 		save_slot(_active_slot)
-	else:
+	elif target_context == "MISSION":
 		_autosave_timer.paused = true
 
 

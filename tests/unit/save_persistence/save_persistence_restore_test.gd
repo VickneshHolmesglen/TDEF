@@ -194,6 +194,51 @@ func test_mission_launched_signal_wired_after_ready_triggers_checkpoint() -> voi
 	DirAccess.remove_absolute(checkpoint_path)
 
 
+## Regression test for the 2026-08-17 fix: the SANCTUARY autosave trigger was
+## previously gated on GEventBus.mission_phase_changed's new_phase ==
+## "SANCTUARY", a value WaveManager's own Phase enum never actually emits —
+## making this path permanently dead. Now driven by
+## GEventBus.scene_transition_completed(target_context="SANCTUARY"), the same
+## signal sanctuary_ui.gd/tarot.gd already key off of.
+func test_scene_transition_completed_sanctuary_saves_slot_and_unpauses_autosave() -> void:
+	# Arrange: add to scene tree so _ready() fires and EventBus connections are made.
+	var sp := SavePersistence.new()
+	sp._ensure_save_dir()
+	sp.set_active_slot(95)
+	add_child(sp)
+	await get_tree().process_frame
+	sp._autosave_timer.paused = true  # simulate having been paused during a mission
+	var save_path: String = "user://saves/save_slot_95.dat"
+	# Act
+	GEventBus.scene_transition_completed.emit("SANCTUARY", "")
+	await get_tree().process_frame
+	# Assert
+	assert_bool(FileAccess.file_exists(save_path)).is_true()
+	assert_bool(sp._autosave_timer.paused).is_false()
+	# Cleanup
+	remove_child(sp)
+	sp.free()
+	DirAccess.remove_absolute(save_path)
+
+
+## Companion regression test: entering a mission must pause the autosave timer
+## (previously piggybacked on the same dead "SANCTUARY" branch above).
+func test_scene_transition_completed_mission_pauses_autosave() -> void:
+	var sp := SavePersistence.new()
+	sp._ensure_save_dir()
+	add_child(sp)
+	await get_tree().process_frame
+	sp._autosave_timer.paused = false  # simulate having been unpaused at Sanctuary
+	# Act
+	GEventBus.scene_transition_completed.emit("MISSION", "the_gap")
+	await get_tree().process_frame
+	# Assert
+	assert_bool(sp._autosave_timer.paused).is_true()
+	# Cleanup
+	remove_child(sp)
+	sp.free()
+
+
 # ---------------------------------------------------------------------------
 # ADR-0003 (2026-07-18 revision): mid-session-restore for late registration.
 # A SaveRestorer that calls register() AFTER load_slot() has already run

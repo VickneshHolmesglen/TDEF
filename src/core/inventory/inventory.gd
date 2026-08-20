@@ -521,6 +521,37 @@ func has_items_by_rarity(cost: Dictionary) -> bool:
 	return true
 
 
+## Tower Assembly blueprint-sourced recipes (2026-08-17): a third cost-check
+## axis alongside item_type (has_items()) and rarity (has_items_by_rarity()).
+## Neither existing axis can express "N of this SPECIFIC material" — item_type
+## sums every Material-tab item together, and rarity sums every item sharing
+## a tier together. A recipe gating on a specific surplus material (e.g.
+## "2 foundation_surplus") needs to require that exact item_id, not "2 of any
+## Material" or "2 of any Uncommon item" — those would be satisfied by
+## unrelated drop materials that happen to share a type/rarity. Sums by
+## slot.item_id directly, same unlocked+stackable filtering as the other two.
+##
+## Usage:
+##   var cost: Dictionary = {&"foundation_surplus": 2}
+##   if inventory.has_items_by_material_id(cost):
+##       ...
+func has_items_by_material_id(cost: Dictionary) -> bool:
+	if cost.is_empty():
+		return true
+
+	var totals_by_item_id: Dictionary[StringName, int] = {}
+	for slot: InventorySlot in _slots:
+		if slot == null or slot.instance_id != -1 or slot.locked:
+			continue
+		totals_by_item_id[slot.item_id] = totals_by_item_id.get(slot.item_id, 0) + slot.quantity
+
+	for item_id: Variant in cost:
+		var required: int = cost[item_id] as int
+		if totals_by_item_id.get(StringName(item_id), 0) < required:
+			return false
+	return true
+
+
 # ---------------------------------------------------------------------------
 # Mutation API
 # ---------------------------------------------------------------------------
@@ -928,6 +959,32 @@ func consume_by_rarity(rarity: String, quantity: int, emit_events: bool = true) 
 		slot.quantity -= take
 		remaining -= take
 		if emit_events:
+			GEventBus.item_removed.emit(String(slot.item_id), String(definition.item_type), take)
+		if slot.quantity == 0:
+			_slots[i] = null
+	return quantity - remaining
+
+
+## Material-id-keyed counterpart to consume_by_type()/consume_by_rarity() —
+## see has_items_by_material_id()'s doc comment for why this third axis
+## exists. Consumes ONLY the exact given item_id (never a sibling sharing its
+## item_type or rarity), same unlocked+stackable filtering and slot-clearing-
+## at-zero behavior as the other two consume variants.
+func consume_by_material_id(item_id: StringName, quantity: int, emit_events: bool = true) -> int:
+	if quantity <= 0:
+		return 0
+	var remaining: int = quantity
+	for i: int in range(_slots.size()):
+		if remaining <= 0:
+			break
+		var slot: InventorySlot = _slots[i]
+		if slot == null or slot.instance_id != -1 or slot.locked or slot.item_id != item_id:
+			continue
+		var definition: ItemDefinitionResource = GGameDataRegistry.get_item_definition(slot.item_id)
+		var take: int = mini(slot.quantity, remaining)
+		slot.quantity -= take
+		remaining -= take
+		if emit_events and definition != null:
 			GEventBus.item_removed.emit(String(slot.item_id), String(definition.item_type), take)
 		if slot.quantity == 0:
 			_slots[i] = null

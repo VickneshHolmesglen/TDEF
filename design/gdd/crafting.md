@@ -41,6 +41,67 @@ The Crafting System is the sanctuary's production layer: it converts raw Materia
    | `output_item_id` | StringName | The crafted item's definition id |
    | `output_quantity` | int | Always `1` for `tower_component`; `1`–`5` for `crafted_good` |
    | `quality_tier` | int | `1`–`4` for `tower_component` (see Rule 6); fixed `0` for `crafted_good` (no tier concept applies) |
+   | `source_blueprint_tower_id` | StringName | *(2026-08-17, Tower Assembly extension)* Non-empty only on a **blueprint-copy** `tower_component` recipe — see Rule 1a below. `""` for every generic recipe. |
+
+   **`inputs` keying, corrected 2026-08-17**: the table above says
+   `material_id → quantity`, but the real, shipped contract (matching
+   `Inventory.has_items()`) sums by **`item_type`** (`Equipment` /
+   `TowerComponent` / `Material` / `CraftedGood`), not by a specific
+   material. A second axis, **rarity** (`Common`/`Uncommon`/`Rare`, via
+   `Inventory.has_items_by_rarity()`), was added earlier to express
+   Formula 1–3's "N of rarity tier X" costs. A **third axis, specific
+   `item_id`** (via `Inventory.has_items_by_material_id()`), was added
+   2026-08-17 for the blueprint-copy recipes below, which need to gate on
+   one exact material (e.g. `foundation_surplus`) rather than any item
+   sharing its `item_type` or `rarity` — `inputs` may now mix all three
+   vocabularies freely in the same Dictionary, and `RecipeResource.validate()`
+   accepts a key that is a valid `item_type`, a valid rarity string, or a
+   known `item_id`.
+
+1a. **Blueprint-copy `tower_component` recipes** (2026-08-17, Tower Assembly
+    extension, player-requested): a recipe with `source_blueprint_tower_id`
+    set (e.g. `&"archer"`) produces a standalone component item whose stats
+    are an **exact copy** of that pre-authored basic tower's own embedded
+    Foundation/Weapon/Focus/Power sub-resource — not a new design, a
+    reproduction of an existing one. This is a second way to obtain the raw
+    material Tower Assembly's `assemble_tower()` consumes, alongside (not
+    replacing) the generic raw-material recipes above; both output types
+    flow into the same Assemble Towers tab identically. Funded by
+    `resource-economy.md` Formula 6's new per-slot surplus materials
+    (`foundation_surplus`/`weapon_surplus`/`focus_surplus`/`power_surplus`),
+    granted automatically at mission end for every tower still standing.
+    `source_blueprint_tower_id` is validated at load time (must reference a
+    real registered `TowerBlueprintData`) but is **not** consulted by
+    `Crafting.resolve_craft()` at craft time — the stat match is enforced by
+    construction (the recipe author copies the exact values from the source
+    blueprint into a new standalone `.tres`), verified by a dedicated
+    regression test (`tests/integration/crafting/blueprint_component_copy_recipe_test.gd`)
+    asserting the two files stay in sync. First content pass: all 4 slots
+    for the Archer blueprint only — the remaining 5 basic towers are a pure
+    data-authoring backlog, no further code needed.
+
+    **Known, disclosed limitation (found and worked around, not fully
+    closed, 2026-08-17)**: the 4 surplus materials are authored with
+    `item_type = &"Material"` (so they display correctly in Inventory's
+    existing Materials tab, alongside the other 13). This makes them
+    vulnerable to `Inventory.consume_by_type("Material", N)` — used by
+    every *generic* `tower_component`/`crafted_good` recipe's plain
+    `Material` cost — which sweeps any unlocked `item_type == "Material"`
+    slot indiscriminately, with no way to exclude a specific material_id.
+    A real bug from this was caught during this feature's own testing
+    (crafting `recipe_archer_foundation` with a mixed `{foundation_surplus:
+    2, Material: 3}` cost silently drained an unrelated `weapon_surplus`
+    stack) and worked around by keeping every blueprint-copy recipe's
+    `inputs` keyed **only** by its own specific surplus material — never
+    mixed with a generic `Material` entry. This closes the collision for
+    Tower Assembly's own recipes, but the underlying risk is not
+    architecturally closed: any **other**, unrelated recipe with a generic
+    `Material` cost (e.g. `recipe_iron_foundation`) can still silently
+    consume a player's surplus material stock if it happens to be drawn
+    from Inventory's slot-iteration order before other Material items are.
+    A real fix would need a way to exempt specific materials from the
+    generic sweep (e.g. a new `ItemDefinitionResource` flag), which is a
+    separate, not-yet-scoped follow-up.
 
    **Assumption flagged**: this is the deliberately simple option — one
    recipe, one fixed output, no rolled variance. Tower Components produced by

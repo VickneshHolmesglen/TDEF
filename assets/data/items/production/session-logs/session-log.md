@@ -518,3 +518,62 @@ tests/unit/save_persistence/save_persistence_restore_test.gd
 tests/unit/save_persistence/save_persistence_write_test.gd
 ---
 
+## Session End: 20260820_074619
+### Uncommitted Changes
+design/art/asset-generation-prompts.md
+design/gdd/crafting.md
+design/gdd/event-bus.md
+design/gdd/resource-economy.md
+design/gdd/systems-index.md
+design/gdd/tower.md
+docs/architecture/adr-0023-crafting-recipe-data-model.md
+production/session-state/active.md
+src/core/crafting/crafting.gd
+src/core/crafting/recipe_resource.gd
+src/core/inventory/inventory.gd
+src/core/resource_economy/resource_economy.gd
+src/core/tower/tower_system.gd
+src/foundation/save_persistence/save_persistence.gd
+tests/unit/save_persistence/save_persistence_restore_test.gd
+---
+
+## Session End: 20260820_094449
+### Uncommitted Changes
+assets/data/items/production/session-logs/session-log.md
+design/art/asset-generation-prompts.md
+design/gdd/crafting.md
+design/gdd/event-bus.md
+design/gdd/resource-economy.md
+design/gdd/systems-index.md
+design/gdd/tower.md
+docs/architecture/adr-0023-crafting-recipe-data-model.md
+production/session-state/active.md
+src/core/crafting/crafting.gd
+src/core/crafting/recipe_resource.gd
+src/core/inventory/inventory.gd
+src/core/resource_economy/resource_economy.gd
+src/core/tower/tower_system.gd
+src/foundation/save_persistence/save_persistence.gd
+tests/unit/save_persistence/save_persistence_restore_test.gd
+---
+
+## Session End: 20260820_095710
+### Uncommitted Changes
+assets/data/items/production/session-logs/session-log.md
+design/art/asset-generation-prompts.md
+design/gdd/crafting.md
+design/gdd/event-bus.md
+design/gdd/resource-economy.md
+design/gdd/systems-index.md
+design/gdd/tower.md
+docs/architecture/adr-0023-crafting-recipe-data-model.md
+production/session-state/active.md
+src/core/crafting/crafting.gd
+src/core/crafting/recipe_resource.gd
+src/core/inventory/inventory.gd
+src/core/resource_economy/resource_economy.gd
+src/core/tower/tower_system.gd
+src/foundation/save_persistence/save_persistence.gd
+tests/unit/save_persistence/save_persistence_restore_test.gd
+---
+

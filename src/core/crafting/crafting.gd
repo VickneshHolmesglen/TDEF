@@ -90,35 +90,45 @@ func is_craftable(recipe_id: StringName) -> bool:
 
 
 ## TD-craft-001 RESOLVED (Sprint 6, S6-06b): `RecipeResource.validate()`
-## accepts BOTH item_type keys (Equipment/TowerComponent/Material/
-## CraftedGood) and rarity keys (Common/Uncommon/Rare — content-accurate to
-## Formula 1-3, e.g. `recipe_tier4_component`) in `inputs`, per
-## recipe_resource.gd's VALID_RARITIES doc comment. `has_items()`/
-## `consume_by_type()` only understand item_type; a rarity-keyed recipe
-## would previously always fail affordability, identical to the bug this
-## same Sprint 6 pass fixed for repair's Common-material cost. This split
-## routes each key to the matching Inventory query, so a recipe may mix both
-## vocabularies in one `inputs` Dictionary.
+## accepts item_type keys (Equipment/TowerComponent/Material/CraftedGood),
+## rarity keys (Common/Uncommon/Rare — content-accurate to Formula 1-3, e.g.
+## `recipe_tier4_component`), AND (2026-08-17, blueprint-sourced recipes)
+## specific item_id keys (e.g. `foundation_surplus`) in `inputs`, per
+## recipe_resource.gd's own validate(). `has_items()`/`consume_by_type()`
+## only understand item_type; a rarity- or item_id-keyed recipe would
+## otherwise always fail affordability, identical to the bug this same
+## Sprint 6 pass fixed for repair's Common-material cost. This split routes
+## each key to the matching Inventory query, so a recipe may mix all three
+## vocabularies in one `inputs` Dictionary. Item_type is checked first since
+## it's a small fixed enum (ItemDefinitionResource.VALID_ITEM_TYPES) — any
+## key that ISN'T a recognized item_type or rarity string is assumed to be a
+## specific item_id (recipe_resource.gd's validate() already guarantees this
+## at load time, so no further cross-reference is needed here).
 func _has_recipe_inputs(inputs: Dictionary) -> bool:
 	var by_item_type: Dictionary = {}
 	var by_rarity: Dictionary = {}
+	var by_material_id: Dictionary = {}
 	for key: Variant in inputs:
-		if RecipeResource.VALID_RARITIES.has(key):
+		if ItemDefinitionResource.VALID_ITEM_TYPES.has(key):
+			by_item_type[key] = inputs[key]
+		elif RecipeResource.VALID_RARITIES.has(key):
 			by_rarity[key] = inputs[key]
 		else:
-			by_item_type[key] = inputs[key]
-	return GInventory.has_items(by_item_type) and GInventory.has_items_by_rarity(by_rarity)
+			by_material_id[key] = inputs[key]
+	return GInventory.has_items(by_item_type) and GInventory.has_items_by_rarity(by_rarity) and GInventory.has_items_by_material_id(by_material_id)
 
 
-## Consumes a mixed item_type/rarity-keyed `inputs` Dictionary — see
+## Consumes a mixed item_type/rarity/item_id-keyed `inputs` Dictionary — see
 ## _has_recipe_inputs()'s doc comment for the split rationale. Must only be
 ## called after _has_recipe_inputs() has already confirmed affordability.
 func _consume_recipe_inputs(inputs: Dictionary) -> void:
 	for key: StringName in inputs:
-		if RecipeResource.VALID_RARITIES.has(key):
+		if ItemDefinitionResource.VALID_ITEM_TYPES.has(key):
+			GInventory.consume_by_type(String(key), inputs[key])
+		elif RecipeResource.VALID_RARITIES.has(key):
 			GInventory.consume_by_rarity(String(key), inputs[key])
 		else:
-			GInventory.consume_by_type(String(key), inputs[key])
+			GInventory.consume_by_material_id(key, inputs[key])
 
 
 ## Crafting Resolution (Story 004, ADR-0023 Rule 8 / GDD Rule 8): synchronous,
