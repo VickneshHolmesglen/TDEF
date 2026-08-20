@@ -45,10 +45,113 @@ layout_mode = 2
 size_flags_horizontal = 3
 size_flags_stretch_ratio = 1.0
 
-[node name="RecipeScroll" type="ScrollContainer" parent="MainLayout/RightPanel"]
+[node name="RightPanelContent" type="VBoxContainer" parent="MainLayout/RightPanel"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="CraftingTabStrip" type="HBoxContainer" parent="MainLayout/RightPanel/RightPanelContent"]
 layout_mode = 2
 
-[node name="RecipeListHost" type="VBoxContainer" parent="MainLayout/RightPanel/RecipeScroll"]
+[node name="RecipesTabButton" type="Button" parent="MainLayout/RightPanel/RightPanelContent/CraftingTabStrip"]
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+button_pressed = true
+text = "Recipes"
+
+[node name="AssembleTabButton" type="Button" parent="MainLayout/RightPanel/RightPanelContent/CraftingTabStrip"]
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+text = "Assemble Towers"
+
+[node name="RecipeScroll" type="ScrollContainer" parent="MainLayout/RightPanel/RightPanelContent"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="RecipeListHost" type="VBoxContainer" parent="MainLayout/RightPanel/RightPanelContent/RecipeScroll"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 12
+
+[node name="AssembleView" type="VBoxContainer" parent="MainLayout/RightPanel/RightPanelContent"]
+visible = false
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+
+[node name="SlotColumns" type="HBoxContainer" parent="MainLayout/RightPanel/RightPanelContent/AssembleView"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 16
+
+[node name="FoundationColumn" type="VBoxContainer" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/SlotColumns"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="FoundationLabel" type="Label" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/SlotColumns/FoundationColumn"]
+layout_mode = 2
+text = "Foundation"
+
+[node name="FoundationList" type="VBoxContainer" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/SlotColumns/FoundationColumn"]
+layout_mode = 2
+
+[node name="WeaponColumn" type="VBoxContainer" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/SlotColumns"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="WeaponLabel" type="Label" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/SlotColumns/WeaponColumn"]
+layout_mode = 2
+text = "Weapon"
+
+[node name="WeaponList" type="VBoxContainer" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/SlotColumns/WeaponColumn"]
+layout_mode = 2
+
+[node name="FocusColumn" type="VBoxContainer" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/SlotColumns"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="FocusLabel" type="Label" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/SlotColumns/FocusColumn"]
+layout_mode = 2
+text = "Focus"
+
+[node name="FocusList" type="VBoxContainer" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/SlotColumns/FocusColumn"]
+layout_mode = 2
+
+[node name="PowerColumn" type="VBoxContainer" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/SlotColumns"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="PowerLabel" type="Label" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/SlotColumns/PowerColumn"]
+layout_mode = 2
+text = "Power"
+
+[node name="PowerList" type="VBoxContainer" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/SlotColumns/PowerColumn"]
+layout_mode = 2
+
+[node name="AssembledColumn" type="VBoxContainer" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/SlotColumns"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="AssembledLabel" type="Label" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/SlotColumns/AssembledColumn"]
+layout_mode = 2
+text = "Assembled Towers"
+
+[node name="AssembledList" type="VBoxContainer" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/SlotColumns/AssembledColumn"]
+layout_mode = 2
+
+[node name="AssembleFooter" type="HBoxContainer" parent="MainLayout/RightPanel/RightPanelContent/AssembleView"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="AssembleNameEdit" type="LineEdit" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/AssembleFooter"]
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "Tower Name"
+
+[node name="AssembleButton" type="Button" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/AssembleFooter"]
+layout_mode = 2
+text = "Assemble Tower"
+
+[node name="AssembleConfirmDialog" type="ConfirmationDialog" parent="."]
+title = "Confirm Assembly"

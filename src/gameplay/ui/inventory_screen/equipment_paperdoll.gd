@@ -56,8 +56,14 @@ const PORTRAIT_SIZE: Vector2 = Vector2(160, 320)
 ## Left column top-to-bottom, right column top-to-bottom -- player-specified
 ## exact arrangement (2026-08-16 follow-up). Mirrors Inventory.EQUIPMENT_
 ## SLOT_NAMES' own 10 names exactly; never hardcodes a name not present there.
+##
+## Row-aligned (2026-08-21, player-requested): right column carries two ""
+## spacer rows in place of Pants/Boots so its 6 rows share the exact same
+## row grid as the left column -- Neck/Ring 1/Ring 2 land on Helmet/Chest/
+## Gloves' rows, and Offhand lands on Main Hand's row. _build_column() below
+## renders "" as an invisible, un-tracked spacer instead of a slot frame.
 const LEFT_COLUMN_SLOTS: Array[String] = ["helmet", "chest", "gloves", "pants", "boots", "main_hand"]
-const RIGHT_COLUMN_SLOTS: Array[String] = ["neck", "ring_1", "ring_2", "offhand"]
+const RIGHT_COLUMN_SLOTS: Array[String] = ["neck", "ring_1", "ring_2", "", "", "offhand"]
 
 ## Human-readable placeholder text for an empty slot -- shown until the slot
 ## has a real occupant with a display_name (or, for slots with no icon
@@ -132,11 +138,33 @@ func _build_column(slot_names: Array[String], is_left: bool) -> void:
 	column.add_theme_constant_override("separation", int(COLUMN_SEPARATION))
 	column.set_anchors_preset(Control.PRESET_CENTER_LEFT if is_left else Control.PRESET_CENTER_RIGHT)
 	var x_offset: float = 12.0 if is_left else -12.0 - SLOT_SIZE.x
-	var column_height: float = float(slot_names.size()) * SLOT_SIZE.y + float(slot_names.size() - 1) * COLUMN_SEPARATION
+	# Row-aligned (2026-08-21): always centers against LEFT_COLUMN_SLOTS' row
+	# count, never slot_names.size() -- both columns now carry the same
+	# number of rows (real slots + "" spacers), so sharing one height/center
+	# reference is what actually keeps their rows aligned. Computing each
+	# column's own height independently (the pre-2026-08-21 approach) is
+	# exactly what caused the two columns to center on different points.
+	var row_count: int = LEFT_COLUMN_SLOTS.size()
+	var column_height: float = float(row_count) * SLOT_SIZE.y + float(row_count - 1) * COLUMN_SEPARATION
 	column.position = Vector2(x_offset, -column_height / 2.0)
 	add_child(column)
 	for slot_name: String in slot_names:
-		column.add_child(_build_slot_frame(slot_name, SLOT_SIZE))
+		if slot_name == "":
+			column.add_child(_build_spacer(SLOT_SIZE))
+		else:
+			column.add_child(_build_slot_frame(slot_name, SLOT_SIZE))
+
+
+## Invisible row-height placeholder -- occupies exactly one row in the
+## shared VBoxContainer grid without rendering a frame or being tracked in
+## _slot_frames/_slot_icons/_slot_labels (it has no slot_name, nothing ever
+## refreshes it). See RIGHT_COLUMN_SLOTS' own doc comment for why this exists.
+func _build_spacer(tile_size: Vector2) -> Control:
+	var spacer := Control.new()
+	spacer.name = "RowSpacer"
+	spacer.custom_minimum_size = tile_size
+	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return spacer
 
 
 ## Panel, not Button -- this slot frame is read-only (see class doc comment

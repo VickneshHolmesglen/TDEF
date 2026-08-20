@@ -40,14 +40,30 @@ extends Control
 ## never torn down on a room switch.
 
 ## Fixed, hand-authored positions (GDD Core Rule 1's own requirement) --
-## chosen to roughly match design/ux/sanctuary-ui.md's own ASCII wireframe
-## layout (Watchtower left, Habitat right, both mid-frame).
+## medieval-town composition (2026-08-21, player-requested): Castle sits
+## back-center as the town's landmark anchor, with Watchtower and Habitat
+## flanking it lower/left-right, forming a simple triangle. "Lower on screen
+## = closer to the viewer" matches this diorama's own existing Y-ordering
+## convention (structures further "back" render smaller/higher).
 const STRUCTURE_POSITIONS: Dictionary[String, Vector2] = {
-	"watchtower": Vector2(120, 90),
-	"habitat_expansion": Vector2(320, 160),
+	"castle": Vector2(220, 80),
+	"watchtower": Vector2(120, 150),
+	"habitat_expansion": Vector2(320, 150),
 }
 
 const STRUCTURE_SIZE: Vector2 = Vector2(64, 64)
+
+## Castle (2026-08-21, player-requested): the town's decorative centerpiece
+## landmark -- explicitly NOT a real gameplay structure (no StructureResource,
+## no tech-tree entry, no tier/upgrade path, never fires sanctuary_structure_
+## built). No art has been generated for it, so it renders as a plain bordered
+## placeholder shape, same "no art exists yet, be honest about it" convention
+## this file used for watchtower/habitat_expansion before their real art
+## arrived (see this file's own header comment). Sized larger than the other
+## two structures -- a town's castle should read as the biggest, most central
+## building, not a same-size peer.
+const CASTLE_SIZE: Vector2 = Vector2(80, 96)
+const CASTLE_LABEL: String = "Castle"
 
 ## Real watchtower_tier_1 art (2026-07-31). Source: user-provided reference
 ## image, color-keyed from a flat opaque background to real transparency
@@ -129,6 +145,7 @@ var _habitat_tier: int = 0
 func _ready() -> void:
 	if menagerie == null:
 		menagerie = GMenagerie
+	_render_castle()
 	GEventBus.sanctuary_structure_built.connect(_on_sanctuary_structure_built)
 	GEventBus.creature_acquired.connect(_on_habitat_composition_changed)
 	GEventBus.creature_happiness_changed.connect(_on_creature_happiness_changed)
@@ -215,6 +232,38 @@ func _build_shadow_for(structure_center: Vector2, sprite_display_size: Vector2, 
 	)
 	shadow.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return shadow
+
+
+## Renders the Castle placeholder once, unconditionally, at _ready() -- unlike
+## every other structure here, it never waits for sanctuary_structure_built
+## (it isn't a real structure, see CASTLE_SIZE's own doc comment) and is
+## always present as soon as the diorama mounts, matching a town's landmark
+## always being "just there" rather than something the player unlocks.
+func _render_castle() -> void:
+	var visual: Panel = _build_castle_placeholder()
+	_world.add_child(_build_shadow_for(STRUCTURE_POSITIONS["castle"], CASTLE_SIZE, "castle"))  # underneath, same convention as the other structures
+	_world.add_child(visual)
+
+
+## Plain bordered placeholder + centered label -- see CASTLE_SIZE's own doc
+## comment for why there is no real art to render here yet.
+func _build_castle_placeholder() -> Panel:
+	var panel := Panel.new()
+	panel.name = "Structure_castle"
+	panel.size = CASTLE_SIZE
+	panel.position = STRUCTURE_POSITIONS["castle"] - CASTLE_SIZE / 2.0
+	panel.add_theme_stylebox_override("panel", ShellChromeStyle.chrome_button_stylebox(false))
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE  # see _build_watchtower_sprite()'s identical note -- no click handler exists for diorama structures yet
+
+	var label := Label.new()
+	label.text = CASTLE_LABEL
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_KEEP_SIZE, 4)
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_child(label)
+
+	return panel
 
 
 ## Real art path (2026-07-31) -- see WATCHTOWER_TEXTURE's own doc comment.

@@ -64,7 +64,7 @@ func _seed_material(quantity: int) -> void:
 
 
 func _recipe_row(recipe_id: StringName) -> Control:
-	var host: VBoxContainer = _screen.get_node("MainLayout/RightPanel/RecipeScroll/RecipeListHost") as VBoxContainer
+	var host: VBoxContainer = _screen.get_node("MainLayout/RightPanel/RightPanelContent/RecipeScroll/RecipeListHost") as VBoxContainer
 	return host.get_node_or_null("Recipe_%s" % String(recipe_id)) as Control
 
 
@@ -103,7 +103,7 @@ func test_no_crafting_instance_leaves_recipe_list_empty_not_crashed() -> void:
 	@warning_ignore("unsafe_method_access")
 	bare_screen.call("_refresh_crafting_panel")
 
-	var host: VBoxContainer = bare_screen.get_node("MainLayout/RightPanel/RecipeScroll/RecipeListHost") as VBoxContainer
+	var host: VBoxContainer = bare_screen.get_node("MainLayout/RightPanel/RightPanelContent/RecipeScroll/RecipeListHost") as VBoxContainer
 	assert_int(host.get_child_count()).is_equal(0)
 
 

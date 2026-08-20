@@ -49,6 +49,23 @@ extends Control
 ## animation, and full gamepad D-pad spatial-adjacency crossing between the
 ## recipe list and this grid (mouse/keyboard-tab navigation works via each
 ## recipe row's own focusable Craft button).
+##
+## Assemble Towers tab, RELOCATED HERE (2026-08-21, player-requested): moved
+## out of Equipment Forge (equipment_forge_screen.gd) — TowerAssembly.
+## assemble_tower() consumes 4 owned Tower Component items (Foundation/
+## Weapon/Focus/Power), which Crafting's own recipes produce, not anything
+## Forge-specific (equipment/runes/sacrifices). Its prior placement in Forge
+## had no stated architectural reason (design/quick-specs/tower-assembly-
+## 2026-08-11.md never gives one — it just says "Forge tab"), and moving it
+## here is the actual system it's downstream of. TowerAssembly itself
+## (src/core/tower_assembly/tower_assembly.gd) needed zero code changes to
+## move — it was already a standalone, group-discovered system with its own
+## SaveRestorer, exactly like Crafting's own discovery pattern. The Crafting
+## right-hand panel gains a 2-way sub-tab strip (Recipes / Assemble Towers)
+## for this — AC-13's "never tabbed" requirement governs the LEFT-vs-RIGHT
+## panel relationship (both remain simultaneously visible), not sub-content
+## within the right panel, which already had precedent in LeftPanel's own
+## category TabStrip.
 
 const GRID_COLUMNS: int = 5
 const SLOT_SIZE: Vector2 = Vector2(64, 64)
@@ -71,6 +88,13 @@ const RECIPE_CATEGORY_LABEL_KEYS: Dictionary[String, String] = {
 	"tower_component": "CRAFTING_CATEGORY_TOWER_COMPONENT",
 	"crafted_good": "CRAFTING_CATEGORY_CRAFTED_GOOD",
 }
+
+## Assemble Towers tab — slot key -> component script's global class_name,
+## used to classify an owned TowerComponent item into its assembly column
+## purely from its resolved Resource's runtime type. Ported unchanged from
+## equipment_forge_screen.gd (see this file's own "Assemble Towers tab,
+## RELOCATED HERE" note).
+const SLOT_KEYS: Array[String] = ["foundation", "weapon", "focus", "power"]
 
 ## Injectable for tests (a caller may still supply an isolated Inventory
 ## instance). In real use, defaults to the real GInventory Autoload (ADR-0016,
@@ -107,7 +131,25 @@ const RECIPE_CATEGORY_LABEL_KEYS: Dictionary[String, String] = {
 ## a Crafting instance living there would silently wipe its discovery
 ## ledger every time the player left and returned to this tab.
 @export var crafting: Crafting
-@onready var _recipe_list_host: VBoxContainer = $MainLayout/RightPanel/RecipeScroll/RecipeListHost
+## TowerAssembly is likewise scene-instanced, not an Autoload — discovered
+## via the "tower_assembly" group, matching Crafting's own pattern exactly
+## (see this file's "Assemble Towers tab, RELOCATED HERE" note above).
+@export var tower_assembly: TowerAssembly
+@onready var _recipes_tab_button: Button = $MainLayout/RightPanel/RightPanelContent/CraftingTabStrip/RecipesTabButton
+@onready var _assemble_tab_button: Button = $MainLayout/RightPanel/RightPanelContent/CraftingTabStrip/AssembleTabButton
+@onready var _recipe_scroll: ScrollContainer = $MainLayout/RightPanel/RightPanelContent/RecipeScroll
+@onready var _recipe_list_host: VBoxContainer = $MainLayout/RightPanel/RightPanelContent/RecipeScroll/RecipeListHost
+@onready var _assemble_view: Control = $MainLayout/RightPanel/RightPanelContent/AssembleView
+@onready var _assemble_slot_lists: Dictionary[String, VBoxContainer] = {
+	"foundation": $MainLayout/RightPanel/RightPanelContent/AssembleView/SlotColumns/FoundationColumn/FoundationList,
+	"weapon": $MainLayout/RightPanel/RightPanelContent/AssembleView/SlotColumns/WeaponColumn/WeaponList,
+	"focus": $MainLayout/RightPanel/RightPanelContent/AssembleView/SlotColumns/FocusColumn/FocusList,
+	"power": $MainLayout/RightPanel/RightPanelContent/AssembleView/SlotColumns/PowerColumn/PowerList,
+}
+@onready var _assembled_list: VBoxContainer = $MainLayout/RightPanel/RightPanelContent/AssembleView/SlotColumns/AssembledColumn/AssembledList
+@onready var _assemble_name_edit: LineEdit = $MainLayout/RightPanel/RightPanelContent/AssembleView/AssembleFooter/AssembleNameEdit
+@onready var _assemble_button: Button = $MainLayout/RightPanel/RightPanelContent/AssembleView/AssembleFooter/AssembleButton
+@onready var _assemble_confirm_dialog: ConfirmationDialog = $AssembleConfirmDialog
 
 var _slot_buttons: Array[Button] = []
 var _slot_focus_rings: Array[Panel] = []
@@ -128,12 +170,24 @@ var _tab_buttons: Dictionary[StringName, Button] = {}
 var _tab_button_group := ButtonGroup.new()
 var _active_tab: StringName = Inventory.TAB_ORDER[0]
 
+## Assemble Towers tab state — ported unchanged from equipment_forge_screen.gd.
+var _assemble_component_buttons: Dictionary[String, Dictionary] = {}  ## slot -> {instance_id: Button}
+## slot ("foundation"/"weapon"/"focus"/"power") -> selected instance_id, or
+## -1 if that slot has no selection yet. Reset on every successful assembly
+## and on tab-away-and-back is deliberately NOT done -- a player switching
+## tabs mid-selection (e.g. to check Recipes) should not lose their picks.
+var _assemble_selection: Dictionary[String, int] = {"foundation": -1, "weapon": -1, "focus": -1, "power": -1}
+## true = Assemble Towers sub-tab showing, false = Recipes sub-tab showing.
+var _showing_assemble: bool = false
+
 
 func _ready() -> void:
 	if inventory == null:
 		inventory = GInventory
 	if crafting == null:
 		crafting = get_tree().get_first_node_in_group(&"crafting") as Crafting
+	if tower_assembly == null:
+		tower_assembly = get_tree().get_first_node_in_group(&"tower_assembly") as TowerAssembly
 
 	_build_tab_strip()
 	_build_slot_grid()
@@ -142,10 +196,17 @@ func _ready() -> void:
 	_equipment_paperdoll.visible = _active_tab == &"Equipment"
 	_build_crafting_panel()
 
+	_recipes_tab_button.pressed.connect(_on_crafting_tab_pressed.bind(false))
+	_assemble_tab_button.pressed.connect(_on_crafting_tab_pressed.bind(true))
+	_assemble_button.pressed.connect(_on_assemble_button_pressed)
+	_assemble_confirm_dialog.confirmed.connect(_on_assemble_confirmed)
+	_rebuild_assemble_lists()
+
 	GEventBus.recipe_discovered.connect(_on_recipe_discovered)
 	GEventBus.item_added.connect(_on_inventory_item_changed)
 	GEventBus.item_removed.connect(_on_inventory_item_changed)
 	GEventBus.component_crafted.connect(_on_component_crafted)
+	GEventBus.tower_assembled.connect(_on_tower_assembled)
 
 	# Single connection for the whole grid — Signal.connect() dedups by
 	# (target object, method) and does NOT treat differing .bind() arguments
@@ -172,6 +233,8 @@ func disconnect_own_subscriptions() -> void:
 		GEventBus.item_removed.disconnect(_on_inventory_item_changed)
 	if GEventBus.component_crafted.is_connected(_on_component_crafted):
 		GEventBus.component_crafted.disconnect(_on_component_crafted)
+	if GEventBus.tower_assembled.is_connected(_on_tower_assembled):
+		GEventBus.tower_assembled.disconnect(_on_tower_assembled)
 
 
 # ---------------------------------------------------------------------------
@@ -503,10 +566,15 @@ func _on_recipe_discovered(_recipe_id: String, _recipe_category: String) -> void
 func _on_inventory_item_changed(_item_id: String, _item_type: String, _quantity: int) -> void:
 	_refresh_crafting_panel()
 	_refresh_all_slot_visuals()
+	_rebuild_assemble_lists()  ## owned Tower Components change with every Inventory mutation, same reasoning as _refresh_crafting_panel()'s own comment
 
 
 func _on_component_crafted(_component_id: String, _component_type: String, _quality_tier: int) -> void:
 	_refresh_crafting_panel()
+
+
+func _on_tower_assembled(_tower_id: String, _display_name: String) -> void:
+	_rebuild_assemble_lists()
 
 
 func _refresh_all_slot_visuals() -> void:
@@ -716,3 +784,157 @@ func _slots_matching_cost(cost: Dictionary) -> Array[int]:
 				matches.append(i)
 				break
 	return matches
+
+
+# ---------------------------------------------------------------------------
+# Right panel — Assemble Towers tab, RELOCATED FROM equipment_forge_screen.gd
+# (2026-08-21) — combines 4 owned crafted tower components into a new
+# placeable TowerBlueprintData. See design/quick-specs/tower-assembly-
+# 2026-08-11.md and TowerAssembly.assemble_tower()'s own doc comment. Logic
+# below is otherwise unchanged from its prior Forge implementation.
+# ---------------------------------------------------------------------------
+
+func _on_crafting_tab_pressed(show_assemble: bool) -> void:
+	_showing_assemble = show_assemble
+	_recipes_tab_button.button_pressed = not show_assemble
+	_assemble_tab_button.button_pressed = show_assemble
+	_recipe_scroll.visible = not show_assemble
+	_assemble_view.visible = show_assemble
+
+
+func is_showing_assemble() -> bool:
+	return _showing_assemble
+
+
+func _rebuild_assemble_lists() -> void:
+	for slot: String in SLOT_KEYS:
+		var list: VBoxContainer = _assemble_slot_lists[slot]
+		for child: Node in list.get_children():
+			child.queue_free()
+		_assemble_component_buttons[slot] = {}
+
+	for i: int in range(inventory.get_slot_count()):
+		var contents: Dictionary = inventory.get_slot_contents(i)
+		if contents.is_empty():
+			continue
+		if (contents.get("quantity", 0) as int) <= 0 or contents.get("damaged", false):
+			continue
+		var item_id: StringName = StringName(contents["item_id"] as String)
+		var slot: String = _classify_component_slot(item_id)
+		if slot == "":
+			continue
+		var instance_id: int = contents["instance_id"] as int
+		var definition: ItemDefinitionResource = GGameDataRegistry.get_item_definition(item_id)
+		var button: Button = _create_assemble_component_button(slot, instance_id, definition)
+		_assemble_slot_lists[slot].add_child(button)
+		_assemble_component_buttons[slot][instance_id] = button
+
+	_rebuild_assembled_list()
+
+
+## Classifies an owned TowerComponent item into its assembly column by
+## loading its component_resource_path and checking the resolved Resource's
+## runtime type -- matches TowerAssembly._resolve_component_resource()'s own
+## cross-check discipline (never trusts a naming convention). Returns "" for
+## any non-TowerComponent item or an item with no valid component link.
+func _classify_component_slot(item_id: StringName) -> String:
+	var definition: ItemDefinitionResource = GGameDataRegistry.get_item_definition(item_id)
+	if definition == null or definition.item_type != &"TowerComponent" or definition.component_resource_path == "":
+		return ""
+	var component: Resource = ResourceLoader.load(definition.component_resource_path)
+	if component is FoundationComponent:
+		return "foundation"
+	if component is WeaponComponent:
+		return "weapon"
+	if component is FocusComponent:
+		return "focus"
+	if component is PowerComponent:
+		return "power"
+	return ""
+
+
+func _create_assemble_component_button(slot: String, instance_id: int, definition: ItemDefinitionResource) -> Button:
+	var button := Button.new()
+	button.name = "Component_%d" % instance_id
+	button.focus_mode = Control.FOCUS_ALL
+	button.clip_text = true
+	var display_name: String = definition.display_name if definition != null else str(instance_id)
+	var selected: bool = _assemble_selection.get(slot, -1) == instance_id
+	button.text = "%s [SELECTED]" % display_name if selected else display_name
+	button.pressed.connect(_on_assemble_component_pressed.bind(slot, instance_id))
+	return button
+
+
+## Pressing an already-selected component in its own slot deselects it --
+## every slot always has a way back to "none selected" without a modal.
+func _on_assemble_component_pressed(slot: String, instance_id: int) -> void:
+	_assemble_selection[slot] = -1 if _assemble_selection.get(slot, -1) == instance_id else instance_id
+	_rebuild_assemble_lists()
+
+
+func _rebuild_assembled_list() -> void:
+	for child: Node in _assembled_list.get_children():
+		child.queue_free()
+	if tower_assembly == null:
+		return
+	var tower_ids: Array[StringName] = tower_assembly.get_all_assembled_tower_ids()
+	tower_ids.sort()
+	for tower_id: StringName in tower_ids:
+		var blueprint: TowerBlueprintData = tower_assembly.get_assembled_blueprint(tower_id)
+		if blueprint == null:
+			continue
+		var label := Label.new()
+		label.name = "Assembled_%s" % String(tower_id)
+		label.text = blueprint.display_name
+		_assembled_list.add_child(label)
+
+
+## Single press arms the confirmation modal -- assembly consumes 4 real
+## crafted items, a hard-to-reverse action. A no-op with any slot unselected
+## or an empty name, matching this screen's existing "safe no-op on an
+## ineligible target" convention (_on_craft_button_pressed's own sibling
+## resolve_craft() no-op behavior).
+func _on_assemble_button_pressed() -> void:
+	if not _all_slots_selected() or _assemble_name_edit.text.strip_edges() == "":
+		return
+	_assemble_confirm_dialog.dialog_text = tr("FORGE_ASSEMBLE_CONFIRM_TEXT")
+	_assemble_confirm_dialog.popup_centered()
+
+
+func _all_slots_selected() -> bool:
+	for slot: String in SLOT_KEYS:
+		if _assemble_selection.get(slot, -1) == -1:
+			return false
+	return true
+
+
+func _on_assemble_confirmed() -> void:
+	if tower_assembly == null or not _all_slots_selected():
+		return
+	var display_name: String = _assemble_name_edit.text.strip_edges()
+	tower_assembly.assemble_tower(
+			_assemble_selection["foundation"], _assemble_selection["weapon"],
+			_assemble_selection["focus"], _assemble_selection["power"], display_name)
+	# Reset regardless of the call's own success/rejection -- a rejected
+	# assembly (e.g. a selected component was consumed elsewhere between
+	# selection and confirm) leaves nothing meaningful to keep selected; the
+	# rebuild below re-lists whatever the player still actually owns.
+	_assemble_selection = {"foundation": -1, "weapon": -1, "focus": -1, "power": -1}
+	_assemble_name_edit.text = ""
+	_rebuild_assemble_lists()
+
+
+# ---------------------------------------------------------------------------
+# Assemble tab test/inspection accessors
+# ---------------------------------------------------------------------------
+
+func get_assemble_component_button(slot: String, instance_id: int) -> Button:
+	return (_assemble_component_buttons.get(slot, {}) as Dictionary).get(instance_id)
+
+
+func get_assemble_selection(slot: String) -> int:
+	return _assemble_selection.get(slot, -1)
+
+
+func get_assembled_list() -> VBoxContainer:
+	return _assembled_list
