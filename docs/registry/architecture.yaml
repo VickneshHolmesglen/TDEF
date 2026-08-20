@@ -921,6 +921,17 @@ api_decisions:
     added: 2026-07-19
     revised: ""
 
+  - purpose: resource_asset_reference_fields
+    status: active
+    api: "Typed asset-reference export (e.g. `@export var mesh_scene: PackedScene`, matching the existing `ItemDefinitionResource.icon: Texture2D` precedent) for any Resource field that points at another engine asset."
+    not: "A raw String resource path field (e.g. `mesh_scene_path: String`) for the same purpose — considered and rejected during ADR-0037 authoring, flagged by godot-specialist review."
+    adr: docs/architecture/adr-0037-visual-presentation-3d-companion-layer.md
+    reason: "A typed export gets Godot's automatic UID-based dependency tracking in the editor — renaming or moving the referenced asset auto-repathes the reference. A plain string path gets no such assistance and silently breaks on a file move with no editor warning. Confirms and formalizes a pattern this project's data already followed inconsistently (ItemDefinitionResource.icon) without it being a registered decision until now."
+    referenced_by:
+      - docs/architecture/adr-0037-visual-presentation-3d-companion-layer.md
+    added: 2026-08-20
+    revised: ""
+
 # Example:
 #
 # api_decisions:
@@ -1085,6 +1096,13 @@ forbidden_patterns:
     why: "Keeping content alive-but-hidden keeps its EventBus subscriptions live for the shell's entire lifetime regardless of visibility, multiplying the subscription-leak surface by the number of hosted content types — the exact defect class both sanctuary-ui.md's and tarot-deck-ui.md's own multi-pass design-review histories found and fixed repeatedly. It also lets nested in-content state (e.g. a breeding-pen flow) persist across switches, contradicting both GDDs' explicit 'always resumes at root' requirement."
     adr: docs/architecture/adr-0032-presentation-shell-hosting-pattern.md
     added: 2026-07-24
+
+  - pattern: per_entity_3d_visual_sync_override
+    status: active
+    description: "A gameplay entity's Node3D visual-companion child (its 3D mesh representation, added for the 2D-sim/3D-render pivot) must not sync its position via a new per-node _process/_physics_process override on that entity's own scene script. The sync (map_to_3d(sim_position) -> VisualCompanion3D.position) must run as one additional line inside whichever centralized update pass already owns that entity type's per-frame logic (MonsterManager's pass per per_monster_physics_process, ProjectileManager's pass per per_projectile_physics_process; Hero/TowerInstance may sync inside their own already-existing single update method, since neither introduces a new callback by doing so)."
+    why: "Identical reasoning to per_monster_physics_process and per_projectile_physics_process: engine per-node process-callback execution order is not guaranteed stable across sibling nodes, so a new per-entity override for the 3D sync step would reintroduce exactly the nondeterminism those two existing forbidden patterns were created to close, this time for a presentation-layer feature instead of gameplay logic. Centralizing keeps the sync trivially deterministic and free of a second ordering-invariant class to reason about."
+    adr: docs/architecture/adr-0037-visual-presentation-3d-companion-layer.md
+    added: 2026-08-20
 
 # Example:
 #

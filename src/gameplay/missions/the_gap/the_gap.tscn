@@ -35,6 +35,10 @@ script = ExtResource("11_re")
 [node name="Camera2D" type="Camera2D" parent="."]
 enabled = true
 
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.573576, -0.819152, 0, 0.819152, 0.573576, 512, 650, 840)
+current = false
+
 [node name="HUD" type="CanvasLayer" parent="."]
 script = ExtResource("8_hud")
 

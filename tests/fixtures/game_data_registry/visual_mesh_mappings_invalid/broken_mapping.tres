@@ -1,0 +1,7 @@
+[gd_resource type="Resource" script_class="VisualMeshMappingResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/core/visual_presentation/visual_mesh_mapping_resource.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+entity_or_component_id = &"broken_mapping"

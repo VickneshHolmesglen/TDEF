@@ -118,6 +118,17 @@ var _selected_blueprint_id: StringName = &""
 
 
 func _ready() -> void:
+	# Epic 15 Story 003 (ADR-0037): Godot auto-promotes a lone Camera3D to
+	# current=true on _enter_tree(), overriding the .tscn's stored
+	# current=false, because it has no way to know Camera2D is meant to stay
+	# authoritative during this phased 2D-sim/3D-render migration — confirmed
+	# live via Godot MCP (Camera3D.current reads false right after
+	# instantiate(), but true once added to the tree). Re-asserting here
+	# (after _enter_tree() has already fired for all children, before this
+	# frame renders) is what actually keeps Camera2D the active view; the
+	# .tscn's stored false is necessary documentation of intent but not
+	# sufficient on its own.
+	$Camera3D.current = false
 	_monsters_container = Node2D.new()
 	_monsters_container.name = "MonstersContainer"
 	add_child(_monsters_container)

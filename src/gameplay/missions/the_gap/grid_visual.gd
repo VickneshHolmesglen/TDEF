@@ -41,6 +41,31 @@ var rows: int = 0
 var cell_size: float = 64.0
 var cells: Dictionary = {}  # Vector2i -> Grid.CellType (int)
 
+## Epic 15 Story 002 (ADR-0037, Visual Presentation 3D Companion Layer): the
+## entity_or_component_id every grid tile resolves its 3D mesh through, via
+## GGameDataRegistry.get_visual_mesh_mapping(). A single shared id for every
+## cell regardless of Grid.CellType — the story's own QA Test Cases describe
+## this as "the tile type" (singular): this story proves the pipeline with one
+## uniform ground-plane mesh per cell, not a per-CellType mesh set (a future
+## content-authoring concern, out of this story's scope).
+const TILE_MESH_ENTITY_ID: StringName = &"tile_straight"
+
+## Y-height for ground/tile visuals per ADR-0037's layer_height table
+## ("ground/tile = 0" — the ground plane itself, never read by gameplay logic).
+const TILE_LAYER_HEIGHT: float = 0.0
+
+## Node3D visual-companion subtree (ADR-0037's Visual Companion pattern)
+## holding one MeshInstance3D per grid tile. Built once by
+## _build_visual_companion(), called from configure() — grid tiles are static
+## once placed (Story 002's Implementation Notes: "tiles are static... never
+## touch it again per-frame"), so unlike moving-entity companions (Stories
+## 003-006) this needs no per-frame sync step. A Node3D child of this Node2D
+## does NOT inherit this node's 2D transform (Node2D/Node3D are separate
+## transform hierarchies in Godot — ADR-0037's "Important engine
+## clarification"); VisualMath.map_to_3d()'s output is assigned directly as
+## each tile's absolute world position, never offset against anything.
+var _visual_companion: Node3D = null
+
 ## Real terrain art (2026-08-08, design/art/asset-generation-prompts.md's
 ## terrain batch) — replaces the original flat-solid-color placeholder fill.
 ## Fallback set: used for SPAWN/GOAL always (universal landmarks, not
@@ -151,6 +176,7 @@ func configure(p_cols: int, p_rows: int, p_cell_size: float, p_cells: Dictionary
 		p_rng.randomize()
 	_texture = _build_grid_texture(p_mission_id, p_rng)
 	queue_redraw()
+	_build_visual_companion()
 
 
 ## Renders the full grid into a single Image once (TD-render-001's own
@@ -218,3 +244,58 @@ func _build_grid_texture(mission_id: String, rng: RandomNumberGenerator) -> Imag
 func _draw() -> void:
 	if _texture != null:
 		draw_texture(_texture, Vector2.ZERO)
+
+
+# ---------------------------------------------------------------------------
+# Epic 15 Story 002 (ADR-0037): 3D visual-companion tile subtree.
+# Purely additive — everything above this point (the 2D grid data/texture
+# rendering this script already had) is unchanged, per ADR-0037's core
+# constraint of zero simulation-code changes.
+# ---------------------------------------------------------------------------
+
+## Builds (or rebuilds) the Node3D visual-companion subtree: one MeshInstance3D
+## per grid cell, resolved via GGameDataRegistry.get_visual_mesh_mapping()
+## (data-driven per ADR-0037's Constraints — never a hardcoded scene
+## reference), positioned via VisualMath.map_to_3d() against that cell's
+## existing 2D center position (matches grid.gd's cell_to_world() convention:
+## col * cell_size + cell_size * 0.5) at TILE_LAYER_HEIGHT (the ground plane).
+##
+## A missing/invalid mapping fails loudly (push_error) rather than silently
+## rendering no tiles, per ADR-0037's Risks section policy ("rather than
+## silently falling back to invisible").
+##
+## Called once per configure() call. If configure() is ever called again on
+## an already-configured GridVisual (not this project's current the_gap.gd
+## usage, but this method makes no single-call assumption), the previous
+## companion subtree is freed and rebuilt from scratch rather than leaking or
+## duplicating tile instances.
+func _build_visual_companion() -> void:
+	# Synchronous remove_child() BEFORE queue_free(), not queue_free() alone —
+	# same fix as ADR-0031's Planning Cluster lifecycle bug (registered in
+	# docs/registry/architecture.yaml as mission_hud_planning_cluster_lifecycle).
+	# queue_free() defers removal to end-of-frame, so an immediately-following
+	# add_child() of a new node with the SAME name ("VisualCompanion3D") while
+	# the old one is still technically in the tree causes Godot to
+	# auto-uniquify the new node's name — after the deferred free runs, zero
+	# nodes are left with the expected name.
+	if _visual_companion != null and is_instance_valid(_visual_companion):
+		remove_child(_visual_companion)
+		_visual_companion.queue_free()
+	_visual_companion = Node3D.new()
+	_visual_companion.name = "VisualCompanion3D"
+	add_child(_visual_companion)
+
+	var mapping: VisualMeshMappingResource = GGameDataRegistry.get_visual_mesh_mapping(TILE_MESH_ENTITY_ID)
+	if mapping == null or mapping.mesh_scene == null:
+		push_error("[GridVisual] No valid VisualMeshMappingResource for '%s' — grid tiles will have no 3D visual companion." % TILE_MESH_ENTITY_ID)
+		return
+
+	for cell: Vector2i in cells:
+		var tile_node: Node = mapping.mesh_scene.instantiate()
+		if not (tile_node is Node3D):
+			push_error("[GridVisual] mesh_scene for '%s' did not instantiate as a Node3D — skipping tile at %s." % [TILE_MESH_ENTITY_ID, cell])
+			tile_node.free()
+			continue
+		_visual_companion.add_child(tile_node)
+		var cell_center_2d := Vector2(cell.x * cell_size + cell_size * 0.5, cell.y * cell_size + cell_size * 0.5)
+		(tile_node as Node3D).position = VisualMath.map_to_3d(cell_center_2d, TILE_LAYER_HEIGHT)

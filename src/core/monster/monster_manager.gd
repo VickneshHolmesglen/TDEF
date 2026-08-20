@@ -4,7 +4,8 @@ extends Node
 ## Scene-instanced manager for all active monster entities.
 ##
 ## GDD source: design/gdd/monster.md
-## ADR-0006: centralized _physics_process (amended 2026-08-13 — 5th pass added):
+## ADR-0006: centralized _physics_process (amended 2026-08-13 — 5th pass added;
+## amended 2026-08-20 — Epic 15 Story 004 visual-companion sync pass added):
 ##   Pass 1  — damage drain       (sets DEAD before Pass 3 checks breach)
 ##   Pass 1b — status effects     (burn/poison DoT ticks + slow duration decay —
 ##                                 ADR-0006 amendment; see damage-status.md
@@ -13,6 +14,14 @@ extends Node
 ##   Pass 3  — movement           (advance ACTIVE entities via effective speed —
 ##                                 scaled_speed x active slow multipliers;
 ##                                 detect breach; filter list)
+##   Pass 3c — visual companion sync  (Epic 15 Story 004, ADR-0037: syncs each
+##                                     still-ACTIVE entity's 3D visual-companion
+##                                     mesh to its just-finalized 2D position via
+##                                     VisualMath.map_to_3d() — one line per
+##                                     monster inside THIS existing centralized
+##                                     pass, never a new per-node _physics_process()
+##                                     override on MonsterInstance/MonsterEntity;
+##                                     see _pass3c_visual_sync()'s own doc comment)
 ##   Pass 4  — death & absorbed flush  (ADR-0033: monster_died or one monsters_died_batch
 ##                                      depending on frame death count; then monster_hp_absorbed)
 ##
@@ -138,6 +147,7 @@ func _physics_process(delta: float) -> void:
 	_pass1b_status_effects(delta)
 	_pass2_boss_logic(delta)
 	_pass3_movement(delta)
+	_pass3c_visual_sync()
 	_pass4_death_and_absorbed_flush()
 
 # ---------------------------------------------------------------------------
@@ -414,6 +424,49 @@ func _advance_entity(entity: MonsterEntity, delta: float) -> void:
 			var dir: Vector2 = entity.global_position.direction_to(target_world)
 			entity.global_position += dir * budget
 			budget = 0.0
+
+# ---------------------------------------------------------------------------
+# Pass 3c — Visual Companion Sync (Epic 15 Story 004, ADR-0037)
+# ---------------------------------------------------------------------------
+
+## Syncs each still-ACTIVE monster's 3D visual-companion mesh position to its
+## just-finalized 2D simulation position, via VisualMath.map_to_3d(). Runs
+## immediately after Pass 3 (Movement) — chosen over "run after all 4 passes"
+## (ADR-0037's/this story's other documented option) because Pass 3 is the
+## ONLY pass that ever writes entity.global_position; placing the sync
+## directly after it keeps the sync conceptually adjacent to the pass that
+## produces the value it reads, with zero positional difference either way
+## since Pass 4 never touches position.
+##
+## Iterates active_monsters AFTER Pass 3's own swap-buffer rebuild has
+## already dropped BREACHED/no-longer-ACTIVE entities from it — a monster
+## that breached or was set DEAD earlier this frame is skipped for free, with
+## no extra lifecycle_state check needed here (its MonsterInstance/companion
+## will be freed for free once its already-queue_free()'d MonsterEntity
+## leaves the tree at end of frame, per ADR-0037's stated lifecycle-is-free
+## consequence — no separate cleanup path).
+##
+## SPAWNING entities are intentionally NOT synced here: a SPAWNING entity has
+## no path yet and its global_position never changes until it transitions to
+## ACTIVE (Pass 3's own contract) — its companion was already seeded with
+## the correct position by MonsterInstance._build_visual_companion() at spawn
+## time (see that method's own doc comment), so a redundant per-frame sync
+## would be wasted work, not a correctness fix.
+##
+## THIS IS NOT A NEW PER-NODE _physics_process()/_process() OVERRIDE — it is
+## one additional method called from inside MonsterManager's own existing
+## centralized _physics_process(), which is the single most important
+## constraint of this story (ADR-0006's registered forbidden pattern,
+## per_monster_physics_process — see this file's class doc comment above).
+## No MonsterInstance/MonsterEntity scene script gains any new callback.
+## Zero-allocation: map_to_3d() returns a value-type Vector3, and this loop
+## reuses the existing active_monsters array (no new Array allocated).
+func _pass3c_visual_sync() -> void:
+	for entity: MonsterEntity in active_monsters:
+		if entity.monster_instance == null:
+			continue
+		entity.monster_instance.sync_visual_companion_position(
+				VisualMath.map_to_3d(entity.global_position, MonsterInstance.MONSTER_LAYER_HEIGHT))
 
 # ---------------------------------------------------------------------------
 # Pass 4 — Death & Absorbed flush

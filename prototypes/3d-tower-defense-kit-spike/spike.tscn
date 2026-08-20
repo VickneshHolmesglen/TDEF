@@ -1,0 +1,79 @@
+[gd_scene load_steps=13 format=3]
+
+[ext_resource type="PackedScene" path="res://assets/Tower Defense Models/GLB format/tile-straight.glb" id="1"]
+[ext_resource type="PackedScene" path="res://assets/Tower Defense Models/GLB format/tile-crossing.glb" id="2"]
+[ext_resource type="PackedScene" path="res://assets/Tower Defense Models/GLB format/tower-round-base.glb" id="3"]
+[ext_resource type="PackedScene" path="res://assets/Tower Defense Models/GLB format/tower-round-bottom-a.glb" id="4"]
+[ext_resource type="PackedScene" path="res://assets/Tower Defense Models/GLB format/tower-round-middle-a.glb" id="5"]
+[ext_resource type="PackedScene" path="res://assets/Tower Defense Models/GLB format/tower-round-top-a.glb" id="6"]
+[ext_resource type="PackedScene" path="res://assets/Tower Defense Models/GLB format/tower-round-roof-a.glb" id="7"]
+[ext_resource type="PackedScene" path="res://assets/Tower Defense Models/GLB format/detail-tree.glb" id="8"]
+[ext_resource type="PackedScene" path="res://assets/Tower Defense Models/GLB format/detail-rocks.glb" id="9"]
+[ext_resource type="PackedScene" path="res://assets/Tower Defense Models/GLB format/detail-crystal.glb" id="10"]
+[ext_resource type="PackedScene" path="res://assets/Tower Defense Models/GLB format/spawn-round.glb" id="11"]
+
+[sub_resource type="Environment" id="Environment_1"]
+background_mode = 1
+background_color = Color(0.53, 0.72, 0.86, 1)
+ambient_light_source = 2
+ambient_light_color = Color(1, 1, 1, 1)
+ambient_light_energy = 0.6
+
+[node name="Spike" type="Node3D"]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_1")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.8, -0.4, 0.4, 0, 0.7071, 0.7071, -0.6, -0.5657, 0.5657, 0, 4, 0)
+shadow_enabled = true
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.848, 0.53, 0, -0.53, 0.848, 0, 4.5, 7)
+current = true
+
+[node name="Ground" type="Node3D" parent="."]
+
+[node name="Tile1" parent="Ground" instance=ExtResource("1")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 0, 0)
+
+[node name="Tile2" parent="Ground" instance=ExtResource("1")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1, 0, 0)
+
+[node name="Tile3" parent="Ground" instance=ExtResource("2")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+
+[node name="Tile4" parent="Ground" instance=ExtResource("1")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, 0)
+
+[node name="Tile5" parent="Ground" instance=ExtResource("1")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 0, 0)
+
+[node name="Tower" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -1.6)
+
+[node name="Base" parent="Tower" instance=ExtResource("3")]
+
+[node name="Bottom" parent="Tower" instance=ExtResource("4")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.21, 0)
+
+[node name="Middle" parent="Tower" instance=ExtResource("5")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.81, 0)
+
+[node name="Top" parent="Tower" instance=ExtResource("6")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.41, 0)
+
+[node name="Roof" parent="Tower" instance=ExtResource("7")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.91, 0)
+
+[node name="Tree" parent="." instance=ExtResource("8")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.5, 0, 1)
+
+[node name="Rocks" parent="." instance=ExtResource("9")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.5, 0, 1)
+
+[node name="Crystal" parent="." instance=ExtResource("10")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.7, 0, -1.6)
+
+[node name="Spawn" parent="." instance=ExtResource("11")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 0, 0)

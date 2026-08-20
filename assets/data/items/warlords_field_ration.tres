@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="ItemDefinitionResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/core/inventory/item_definition_resource.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+item_id = &"warlords_field_ration"
+item_type = &"CraftedGood"
+display_name = "Warlord's Field Ration"
+is_unique_instance = false
+base_stats = {}

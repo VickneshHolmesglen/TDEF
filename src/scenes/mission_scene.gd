@@ -76,6 +76,7 @@ const PLACEMENT_CONFIRM_DURATION: float = 0.3  ## seconds, per the GDD's own "~0
 @onready var _grid_visual: Node2D = $GameplayRoot/GridVisual
 @onready var _hero: Hero = $GameplayRoot/Hero
 @onready var _camera: Camera2D = $GameplayRoot/Camera2D
+@onready var _camera_3d: Camera3D = $GameplayRoot/Camera3D
 @onready var _monsters_container: Node2D = $GameplayRoot/MonstersContainer
 ## Real gap found during /code-review (2026-08-13, closing Epic 10's own
 ## deferred gate): these two were re-resolved via $GameplayRoot/... on
@@ -106,6 +107,16 @@ var _tower_visuals: Dictionary = {}  # tower_id(int) -> TowerInstance
 
 
 func _ready() -> void:
+	# Epic 15 Story 003 (ADR-0037): Godot auto-promotes a lone Camera3D to
+	# current=true on _enter_tree(), overriding the .tscn's stored
+	# current=false — confirmed live via Godot MCP. Re-asserting here is what
+	# actually keeps Camera2D the active view during this phased migration;
+	# see the_gap.gd's _ready() for the identical fix and full rationale.
+	# Cached as _camera_3d (not a bare $-lookup) matching this file's own
+	# established node-reference convention — see the code-review note on
+	# the @onready block above (a real regression this file was fixed for
+	# once already, during Epic 10).
+	_camera_3d.current = false
 	_gameplay_root.visible = false
 	_gameplay_root.set_process(false)
 	_gameplay_root.set_physics_process(false)

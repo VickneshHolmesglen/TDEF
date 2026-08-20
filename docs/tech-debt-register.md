@@ -2053,3 +2053,27 @@ Wire `foundation_component.gd`'s `pre_placement_perk` field through to a real ef
 ### Resolution
 - [ ] Not yet started.
 
+
+## TD-visualpres-001 — the_gap.tscn missing BreachFlashOverlay nodes mission_hud.gd unconditionally expects
+
+### Gap
+`mission_hud.gd`'s `@implicit_ready` (lines ~126-129) calls `get_node()` for `BreachFlashOverlay/TopEdge`, `BottomEdge`, `LeftEdge`, `RightEdge` unconditionally. `MissionScene.tscn` has these nodes; `the_gap.tscn` does not — confirmed live via Godot MCP (loading `the_gap.tscn` and adding it to the tree logs 4 "Node not found" errors from `mission_hud.gd`, reproducible from plain scene instantiation, unrelated to any camera/3D work). Found during Epic 15 Story 003 (3D Visual Presentation Layer) live-verification, not caused by it — `the_gap.tscn` and `MissionScene.tscn` appear to be parallel scene structures that have drifted out of sync on this specific HUD subtree.
+
+### Recommended fix
+Either add the missing `BreachFlashOverlay/{TopEdge,BottomEdge,LeftEdge,RightEdge}` `ColorRect` nodes to `the_gap.tscn` (matching `MissionScene.tscn`'s existing structure exactly), or make `mission_hud.gd`'s `@implicit_ready` tolerate their absence (`get_node_or_null()` + guard) if the breach-flash effect is intentionally not wanted on `the_gap.tscn`'s host scene. Needs a design call on which scene is authoritative before actioning — not a pure mechanical fix.
+
+### Resolution
+- [ ] Not yet started.
+
+## TD-tower-005 — ADR-0019 (Projectile Pooling Strategy) was never implemented; TR-tower-007 still open
+
+### Gap
+ADR-0019 ("Projectile Pooling Strategy," Status: Accepted) describes a 192-slot pooled `Projectile`/`ProjectileManager` system — plain `Node2D` instances warmed up once at mission start, released/reused via `visible=false`+`process_mode=PROCESS_MODE_DISABLED` toggling, driven by a single centralized `ProjectileManager._physics_process()` pass, with a real flight-time delay before `tower_attacked` fires (HOMING re-acquisition throttled at `MAX_REACQUISITIONS_PER_FRAME = 8`). **Confirmed during Epic 15 Story 006 (2026-08-20) that none of this exists in the codebase.** Grep for `class_name ProjectileManager`, `POOL_SIZE`, `_free_indices` returns zero matches anywhere in `src/` or `tests/`. `TowerSystem._try_attack()` (`src/core/tower/tower_system.gd`) still emits `GEventBus.tower_attacked.emit.call_deferred(...)` immediately and unconditionally for every weapon type — no flight delay, no pool, no branching on `projectile_type`. The only real projectile-related code is `ProjectileVisual` (`src/scenes/projectile_visual.gd`), a purely cosmetic, non-pooled `Node2D` instantiated fresh per shot by `mission_scene.gd`'s `_on_tower_attacked()` handler and `queue_free()`'d at end-of-flight. ADR-0019's own Migration Plan already stated "Greenfield — no existing Projectile/ProjectileManager code to migrate" at authoring time; that remains true today. `TR-tower-007` (the requirement ADR-0019 exists to close) is still open.
+
+**Why this matters beyond the missing pool itself**: gameplay currently has damage land *instantly* on attack (no flight-time delay) rather than the delayed-arrival model ADR-0019's Decision assumes downstream systems (Mission HUD combat feedback timing, Encyclopedia/audio cue timing, balance around DPS-vs-travel-time) may already assume is real. Epic 15 Story 006 needed to build a 3D visual companion for "the pooled Projectile system" per its own story text and explicitly could not, since the target doesn't exist — it was redirected to attach the companion to the real `ProjectileVisual` create/destroy lifecycle instead (see that story's Completion Notes and `production/qa/evidence/projectile-visual-companion-evidence.md`'s "ADR-0019 Gap Finding" section for the full resolution).
+
+### Recommended fix
+This is a real implementation gap, not a documentation error — either (a) implement ADR-0019 as originally decided (a genuine gameplay-timing change: introduces real projectile flight delay before damage lands, touches `TowerSystem`'s fire path, closes `TR-tower-007`), or (b) formally supersede/revise ADR-0019 to match the instant-damage model that's actually shipped, if the delayed-arrival design is no longer wanted. Either way this is a design/architecture decision for game-designer/technical-director, not a mechanical fix — explicitly out of scope for Epic 15 (a visual-presentation-only epic that holds zero-gameplay-logic-changes as a hard boundary).
+
+### Resolution
+- [ ] Not yet started.

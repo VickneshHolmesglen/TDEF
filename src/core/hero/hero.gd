@@ -67,6 +67,28 @@ const HERO_COLLISION_RADIUS: float = 16.0
 const COLLISION_LAYER_ENVIRONMENT: int = 1
 const COLLISION_LAYER_HERO: int = 2
 
+## Epic 15 Story 005 (ADR-0037, Visual Presentation 3D Companion Layer): the
+## entity_or_component_id Hero resolves its 3D visual through, via
+## GGameDataRegistry.get_visual_mesh_mapping(). Hero is a single mission-wide
+## instance (unlike Monster/Tower, this is the only mesh id this file will
+## ever need). No character/hero model exists in the "Tower Defense Models"
+## Kenney pack (it ships terrain, towers, UFO-enemy, and siege-weapon pieces
+## only — confirmed by an asset-directory survey during this story) — the
+## placeholder mapping below points at detail-crystal.glb, a small, visually
+## distinct standalone piece not already claimed by TowerInstance
+## (tower_round.tres) or MonsterInstance (enemy_ufo_a.tres). Same "one shared
+## placeholder proves the pipeline, not final art" judgment call already
+## established by those two stories — real hero art is a future
+## content-authoring pass (ADR-0037's Phase 6), not this story's concern.
+const HERO_MESH_ENTITY_ID: StringName = &"hero"
+
+## Y-height for the hero's visual companion per ADR-0037's layer_height table
+## ("monster/tower visual anchors = 0" — same reasoning as
+## TowerInstance.TOWER_LAYER_HEIGHT / MonsterInstance.MONSTER_LAYER_HEIGHT:
+## the spike's live-queried AABB data shows these Kenney meshes already have
+## their origin at their own base).
+const HERO_LAYER_HEIGHT: float = 0.0
+
 ## Story-003 (S4-05) auto-attack cadence. Fixed cadence — Rule 3: CDR does NOT affect
 ## auto-attack rate, and no "attack_speed" stat exists in the story-001 stat set yet.
 ## TODO: migrate into HeroResource / TuningKnobs once that data model lands (same TODO
@@ -256,6 +278,17 @@ const RESTORE_ORDER: int = 30
 var _current_hp: float = 0.0
 var _max_hp: float = 0.0
 
+## Epic 15 Story 005 (ADR-0037): Node3D visual-companion subtree, holding
+## Hero's MeshInstance3D-bearing mesh instance. Built once in _ready() (Hero
+## has no configure()-style build-time method the way TowerInstance/
+## MonsterInstance do — it is a single scene-resident instance, not spawned
+## through a factory call) — see _build_visual_companion()'s own doc comment.
+## Per-frame position sync happens from inside Hero's EXISTING
+## _physics_process() (see _sync_visual_companion_position(), called from
+## there) — no new _process()/_physics_process() callback is added anywhere
+## in this file.
+var _visual_companion: Node3D = null
+
 ## Resolves a hero stat's effective value per ADR-0010 Formula 1:
 ##   effective = max(0, max(0, base + flat) x clamp(1 + additive, 0.25, 4.0))
 ##
@@ -413,6 +446,12 @@ func _ready() -> void:
 	reset_to_defaults()
 	GSavePersistence.register(self, RESTORE_ORDER)
 
+	# Epic 15 Story 005 (ADR-0037): build the 3D visual-companion subtree once
+	# at _ready() — Hero has no separate build-time entry point, unlike
+	# TowerInstance/MonsterInstance's configure(). See
+	# _build_visual_companion()'s own doc comment.
+	_build_visual_companion()
+
 
 ## Story-003 (S4-05) / Story-005 / Story-006 / Story-008: mandatory disconnect
 ## (ADR-0001 Rule 6 — every subscriber must disconnect in _exit_tree()).
@@ -449,6 +488,11 @@ func _physics_process(delta: float) -> void:
 	_handle_movement()
 	_update_position_tracking()
 	_update_class_proximity(delta)
+	# Epic 15 Story 005 (ADR-0037): the one line this story adds to Hero's
+	# EXISTING _physics_process() — no new callback. Runs last so the
+	# companion syncs against this frame's fully-resolved global_position
+	# (move_and_slide() inside _handle_movement() has already finalized it).
+	_sync_visual_companion_position()
 
 
 ## Rule 26: omnidirectional movement, instantaneous velocity (no acceleration curve
@@ -998,3 +1042,90 @@ func reset_to_defaults() -> void:
 	_class_locked = false
 	_skill_slots = [&"", &"", &"", &""]
 	_phase = HeroPhase.IDLE_SANCTUARY
+
+
+# ---------------------------------------------------------------------------
+# Epic 15 Story 005 (ADR-0037): 3D visual-companion subtree.
+# Purely additive -- everything above this point (Hero's existing 2D
+# movement/combat/skill/lifecycle logic) is unchanged, per ADR-0037's core
+# constraint of zero simulation-code changes. No NEW _process()/
+# _physics_process() is declared anywhere in this file -- the sync call is
+# one added line inside the _physics_process() that already existed before
+# this story (see that method, above). Mirrors TowerInstance's/
+# MonsterInstance's identical _build_visual_companion() precedent
+# (src/core/tower/tower_instance.gd, src/core/monster/monster_instance.gd),
+# with the sync step also self-contained on this script (unlike Monster,
+# which is driven externally by MonsterManager's centralized pass) since
+# Hero is not a centrally-managed, many-instance entity type (ADR-0037's
+# Decision: "TowerInstance/Hero ... sync in their own existing _process/
+# _physics_process").
+# ---------------------------------------------------------------------------
+
+## Builds (or rebuilds) the Node3D visual-companion subtree holding Hero's
+## MeshInstance3D-bearing mesh instance, resolved via
+## GGameDataRegistry.get_visual_mesh_mapping() (data-driven per ADR-0037's
+## Constraints -- never a hardcoded scene reference). Seeds the companion's
+## initial position from this node's own global_position so Hero has a
+## correctly-placed companion from the first visible frame, with no
+## one-frame lag before _physics_process()'s first sync call.
+##
+## A missing/invalid mapping fails loudly (push_error) rather than silently
+## rendering no visual, per ADR-0037's Risks section policy -- same policy
+## TowerInstance/MonsterInstance/GridVisual already established.
+##
+## Called once from _ready() (see that method, above) -- Hero has no
+## configure()-style re-entrant build method the way TowerInstance/
+## MonsterInstance do. If this is ever called again on an already-built
+## Hero, the previous companion subtree is freed and rebuilt from scratch
+## rather than leaking or duplicating mesh instances.
+func _build_visual_companion() -> void:
+	# Synchronous remove_child() BEFORE queue_free(), not queue_free() alone
+	# -- same gotcha TowerInstance's/MonsterInstance's/GridVisual's
+	# _build_visual_companion() already fixed (docs/registry/architecture.yaml's
+	# mission_hud_planning_cluster_lifecycle entry): queue_free() defers
+	# removal to end-of-frame, so an immediately-following add_child() of a
+	# new node with the SAME name ("VisualCompanion3D") while the old one is
+	# still technically in the tree causes Godot to auto-uniquify the new
+	# node's name -- after the deferred free runs, zero nodes are left with
+	# the expected name.
+	if _visual_companion != null and is_instance_valid(_visual_companion):
+		remove_child(_visual_companion)
+		_visual_companion.queue_free()
+	_visual_companion = Node3D.new()
+	_visual_companion.name = "VisualCompanion3D"
+	add_child(_visual_companion)
+
+	var mapping: VisualMeshMappingResource = GGameDataRegistry.get_visual_mesh_mapping(HERO_MESH_ENTITY_ID)
+	if mapping == null or mapping.mesh_scene == null:
+		push_error("[Hero] No valid VisualMeshMappingResource for '%s' -- hero will have no 3D visual companion." % HERO_MESH_ENTITY_ID)
+		return
+
+	var mesh_node: Node = mapping.mesh_scene.instantiate()
+	if not (mesh_node is Node3D):
+		push_error("[Hero] mesh_scene for '%s' did not instantiate as a Node3D -- no 3D visual companion." % HERO_MESH_ENTITY_ID)
+		mesh_node.free()
+		return
+	_visual_companion.add_child(mesh_node)
+	# ABSOLUTE assignment only, never additive/relative to this
+	# CharacterBody2D's own transform -- a Node3D child of a Node2D-family
+	# (CharacterBody2D extends Node2D) parent does not inherit the parent's
+	# 2D transform (ADR-0037's "Important engine clarification").
+	(mesh_node as Node3D).position = VisualMath.map_to_3d(global_position, HERO_LAYER_HEIGHT)
+
+
+## Per-frame sync entry point -- called from _physics_process() (above),
+## which already existed before this story; this is the one added line, not
+## a new callback. world_position is computed fresh here (not passed in,
+## unlike MonsterInstance's externally-driven sync_visual_companion_position())
+## since Hero owns its own _physics_process() and is not centrally managed.
+## ABSOLUTE position assignment -- never offset against this CharacterBody2D's
+## own transform (ADR-0037's "Important engine clarification"). No-op if Hero
+## has no companion mesh (e.g. the mapping was missing/invalid at build time
+## -- see _build_visual_companion()'s own doc comment).
+func _sync_visual_companion_position() -> void:
+	if _visual_companion == null or not is_instance_valid(_visual_companion):
+		return
+	if _visual_companion.get_child_count() == 0:
+		return
+	var world_position: Vector3 = VisualMath.map_to_3d(global_position, HERO_LAYER_HEIGHT)
+	(_visual_companion.get_child(0) as Node3D).position = world_position

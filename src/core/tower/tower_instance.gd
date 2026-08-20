@@ -167,6 +167,22 @@ const HIT_FLASH_DURATION: float = 0.18  ## seconds, matches this file's other fl
 ## lookup that may no longer be valid.
 var element: String = ""
 
+## Epic 15 Story 003 (ADR-0037, Visual Presentation 3D Companion Layer): the
+## entity_or_component_id every TowerInstance resolves its 3D visual through,
+## via GGameDataRegistry.get_visual_mesh_mapping(). A single shared id for
+## every archetype/element combination — this story proves the companion
+## pipeline for "at least one tower type" (ADR-0037's Migration Plan scope),
+## reusing Story 001's existing assets/data/visual_meshes/tower_round.tres
+## mapping rather than authoring a per-archetype mesh set (a future
+## content-authoring pass, not this story's architecture change — mirrors
+## grid_visual.gd's identical TILE_MESH_ENTITY_ID judgment call).
+const TOWER_MESH_ENTITY_ID: StringName = &"tower_round"
+
+## Y-height for tower visuals per ADR-0037's layer_height table ("tower visual
+## anchors = 0" — confirmed by the spike's live-queried AABB data that these
+## Kenney meshes already have their origin at their own base).
+const TOWER_LAYER_HEIGHT: float = 0.0
+
 var _base_sprite_scale: Vector2 = Vector2.ONE
 var _weapon_glow_alpha: float = 0.0
 var _weapon_glow_color: Color = Color.WHITE
@@ -178,6 +194,15 @@ var _glow_offset_tween: Tween = null
 var _glow_tween: Tween = null
 var _punch_tween: Tween = null
 var _has_perk_badge: bool = false
+## Node3D visual-companion subtree (ADR-0037's Visual Companion pattern),
+## holding the tower's MeshInstance3D-bearing mesh instance. Built and synced
+## once from configure() — see _build_visual_companion()'s own doc comment
+## for why this project's real usage (position set once at placement,
+## verified in mission_scene.gd/the_gap.gd's _on_tower_placed, and never
+## touched again) makes configure() the correct "existing update method" for
+## this story's one-line sync call, not a new _process()/_physics_process()
+## override.
+var _visual_companion: Node3D = null
 ## Per-instance ShaderMaterial wrapping the shared HIT_FLASH_SHADER resource
 ## (compiled once, cached by the rendering server via preload() — only the
 ## lightweight parameter-holding ShaderMaterial itself is per-instance, which
@@ -216,6 +241,12 @@ func configure(archetype: String, element: String = "") -> void:
 	var uniform_scale: float = TARGET_DISPLAY_HEIGHT / float(texture.get_height())
 	_sprite.scale = Vector2(uniform_scale, uniform_scale)
 	_base_sprite_scale = _sprite.scale
+	# Epic 15 Story 003 (ADR-0037): the one line this story adds to
+	# TowerInstance's existing update method — no new _process()/
+	# _physics_process() callback. See _build_visual_companion()'s doc
+	# comment for why configure() (not a new per-frame override) is correct
+	# here.
+	_build_visual_companion()
 
 
 ## element: WeaponComponent.element. Starts a continuous low-intensity idle
@@ -366,3 +397,77 @@ func _draw() -> void:
 		var badge_pos := Vector2(TARGET_DISPLAY_HEIGHT * 0.35, -TARGET_DISPLAY_HEIGHT * 0.45)
 		draw_circle(badge_pos, PERK_BADGE_RADIUS, PERK_BADGE_COLOR)
 		draw_arc(badge_pos, PERK_BADGE_RADIUS, 0.0, TAU, 24, Color(0.95, 0.95, 0.9), 1.5, true)
+
+
+# ---------------------------------------------------------------------------
+# Epic 15 Story 003 (ADR-0037): 3D visual-companion subtree.
+# Purely additive — everything above this point (this file's existing 2D
+# sprite/particle/tween presentation) is unchanged, per ADR-0037's core
+# constraint of zero simulation-code changes.
+# ---------------------------------------------------------------------------
+
+## Builds (or rebuilds) the Node3D visual-companion subtree holding this
+## tower's MeshInstance3D-bearing mesh instance, resolved via
+## GGameDataRegistry.get_visual_mesh_mapping() (data-driven per ADR-0037's
+## Constraints — never a hardcoded scene reference), and syncs its position
+## via VisualMath.map_to_3d() against this tower's own 2D `position`.
+##
+## Deviation from ADR-0037's literal "TowerInstance already has one [update
+## callback], this adds one line" framing: TowerInstance has ZERO existing
+## _process()/_physics_process() overrides (verified — grep found none prior
+## to this story). A real TowerInstance's `position` is set exactly once, by
+## its owning mission scene (mission_scene.gd/the_gap.gd's _on_tower_placed),
+## BEFORE configure() is called and never touched again afterward — towers do
+## not reposition after placement in this codebase. configure() is therefore
+## the correct "existing update method" per the story's actual intent (sync
+## on every relevant position-affecting event, add no new callback): it is
+## the one method that already runs once per tower and already runs strictly
+## after `position` is final, matching the QA Test Cases' own "if applicable"
+## hedge on the repositioning case. This mirrors grid_visual.gd's identical
+## precedent (build once from configure(), since the underlying entity's 2D
+## position is static after that call) rather than grid_visual.gd's *other*
+## precedent for genuinely-moving entities (Stories 004-006's centralized
+## per-frame managers), which does not apply here.
+##
+## A missing/invalid mapping fails loudly (push_error) rather than silently
+## rendering no visual, per ADR-0037's Risks section policy ("rather than
+## silently falling back to invisible") — same policy grid_visual.gd already
+## established.
+##
+## Called once per configure() call. If configure() is ever called again on
+## an already-configured TowerInstance (not this project's current call
+## sites, but this method makes no single-call assumption, matching
+## grid_visual.gd's own defensive rebuild), the previous companion subtree is
+## freed and rebuilt from scratch rather than leaking or duplicating mesh
+## instances.
+func _build_visual_companion() -> void:
+	# Synchronous remove_child() BEFORE queue_free(), not queue_free() alone —
+	# same gotcha grid_visual.gd's _build_visual_companion() already fixed
+	# (docs/registry/architecture.yaml's mission_hud_planning_cluster_lifecycle
+	# entry): queue_free() defers removal to end-of-frame, so an
+	# immediately-following add_child() of a new node with the SAME name
+	# ("VisualCompanion3D") while the old one is still technically in the tree
+	# causes Godot to auto-uniquify the new node's name — after the deferred
+	# free runs, zero nodes are left with the expected name.
+	if _visual_companion != null and is_instance_valid(_visual_companion):
+		remove_child(_visual_companion)
+		_visual_companion.queue_free()
+	_visual_companion = Node3D.new()
+	_visual_companion.name = "VisualCompanion3D"
+	add_child(_visual_companion)
+
+	var mapping: VisualMeshMappingResource = GGameDataRegistry.get_visual_mesh_mapping(TOWER_MESH_ENTITY_ID)
+	if mapping == null or mapping.mesh_scene == null:
+		push_error("[TowerInstance] No valid VisualMeshMappingResource for '%s' — tower will have no 3D visual companion." % TOWER_MESH_ENTITY_ID)
+		return
+
+	var mesh_node: Node = mapping.mesh_scene.instantiate()
+	if not (mesh_node is Node3D):
+		push_error("[TowerInstance] mesh_scene for '%s' did not instantiate as a Node3D — no 3D visual companion." % TOWER_MESH_ENTITY_ID)
+		mesh_node.free()
+		return
+	_visual_companion.add_child(mesh_node)
+	# ABSOLUTE assignment only, never additive/relative to this Node2D's own
+	# transform — a Node3D child of a Node2D parent does not inherit the
+	# parent's 2D transform (ADR-0037's "Important engine clarification").
+	(mesh_node as Node3D).position = VisualMath.map_to_3d(position, TOWER_LAYER_HEIGHT)

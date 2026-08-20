@@ -86,6 +86,26 @@ const ELEMENT_TRAIL_CONFIGS: Dictionary[String, Dictionary] = {
 const AoeRingVisualScene: PackedScene = preload("res://src/scenes/AoeRingVisual.tscn")
 const ArmoredHitSparkVFXScene: PackedScene = preload("res://src/scenes/ArmoredHitSparkVFX.tscn")
 
+## Epic 15 Story 006 (ADR-0037): shared mesh-mapping id for every
+## ProjectileVisual instance, regardless of archetype/element/projectile_type
+## — mirrors MonsterInstance.MONSTER_MESH_ENTITY_ID's "one shared id proves
+## the pattern" judgment call (only one projectile type needs conversion to
+## satisfy this story's Acceptance Criteria, matching the scope discipline
+## Stories 003-005 already established). Resolves to
+## assets/data/visual_meshes/projectile_bolt.tres (weapon-ammo-bullet.glb,
+## Kenney-style Phase 1 placeholder art, per this epic's own scope note that
+## replacing placeholder art is a separate future Phase 6).
+const PROJECTILE_MESH_ENTITY_ID: StringName = &"projectile_bolt"
+
+## World units, small positive offset (not 0.0 like the ground-anchored
+## Tower/Monster/Hero/Tile companions) — ADR-0037's Decision: "VFX/floating
+## elements get a small positive offset." A flying projectile is the first
+## airborne (not ground-anchored) companion in this epic; this exact value is
+## an unverified Phase 1 placeholder tuning choice, not derived from any
+## live-queried AABB data or GDD requirement (out of scope here per the
+## story's own "Out of Scope" section — VFX/impact visual work is Phase 3).
+const PROJECTILE_LAYER_HEIGHT: float = 20.0
+
 var _projectile_type: String = "BALLISTIC"
 var _target_entity: Node2D = null   ## weak by convention — validity checked every frame, never assumed
 var _target_last_known: Vector2 = Vector2.ZERO
@@ -99,6 +119,13 @@ var _is_armored: bool = false  ## design/gdd/monster.md "Armored Hit Effect" —
 
 @onready var _line: Line2D = $Line2D
 @onready var _trail_particles: CPUParticles2D = $TrailParticles2D
+
+## Epic 15 Story 006 (ADR-0037): this instance's Node3D visual-companion
+## subtree, built once by _build_visual_companion() (see that method's own
+## doc comment for why "once" is correct here, unlike a rebuild-guarded
+## precedent). Null until configure() runs; may remain null afterward if the
+## mesh mapping was missing/invalid (see _build_visual_companion()).
+var _visual_companion: Node3D = null
 
 
 ## archetype: FoundationComponent.archetype ("physical"/"ranged"/"elemental").
@@ -140,6 +167,15 @@ func configure(archetype: String, projectile_type: String, start_pos: Vector2, t
 		if ELEMENT_TRAIL_CONFIGS.has(element):
 			_start_trail_particles(ELEMENT_TRAIL_CONFIGS[element] as Dictionary)
 
+	# Epic 15 Story 006 (ADR-0037): builds the 3D visual companion, seeded at
+	# _start_position, so a projectile fired this frame has a correctly-placed
+	# companion on its very first visible frame — no one-frame lag before
+	# _process()'s first sync call. See _build_visual_companion()'s own doc
+	# comment for why this project's real per-shot create/destroy lifecycle
+	# (not a reused pool — see that method's doc comment for the ADR-0019 gap
+	# this deviates from) makes "build once, here" the correct call site.
+	_build_visual_companion()
+
 
 ## Continuous emission (not one-shot like the AoE ring's burst) — particles
 ## stream from the projectile's current position every frame it's in flight.
@@ -178,6 +214,13 @@ func _process(delta: float) -> void:
 			_update_homing()
 		_:
 			_update_ballistic()
+	# Epic 15 Story 006 (ADR-0037): the one line this story adds to
+	# ProjectileVisual's EXISTING _process() (pre-existing before this story —
+	# not a new callback; see _sync_visual_companion_position()'s own doc
+	# comment). Runs after the match block above so the companion syncs
+	# against this frame's fully-resolved global_position (each
+	# _update_*() branch has already finalized it for this frame).
+	_sync_visual_companion_position()
 	if _elapsed >= _flight_duration:
 		if _projectile_type == "BALLISTIC" and _aoe_radius > 0.0:
 			_spawn_aoe_ring()
@@ -274,3 +317,139 @@ func _update_homing() -> void:
 	var tail_bulge: float = sin(tail_t * PI) * HOMING_ARC_HEIGHT
 	var tail_pos: Vector2 = to_local(_start_position.lerp(_target_last_known, tail_t) + perp * tail_bulge)
 	_line.points = _tail_points(tail_pos, Vector2.ZERO)
+
+
+# ---------------------------------------------------------------------------
+# Epic 15 Story 006 (ADR-0037): 3D visual-companion subtree.
+# Purely additive -- everything above this point (this file's existing 2D
+# Line2D/CPUParticles2D flight-path presentation) is unchanged, per
+# ADR-0037's core constraint of zero simulation-code changes.
+#
+# IMPORTANT DEVIATION FROM THE STORY'S OWN PREMISE, CALLED OUT EXPLICITLY
+# (per this session's user-confirmed decision, logged here and in this
+# story's own evidence doc):
+#
+# Story 006 and ADR-0019 ("Projectile Pooling Strategy," Accepted) describe a
+# 192-slot POOLED `Projectile`/`ProjectileManager` system -- reused node
+# instances toggled visible/process_mode on release/reuse, synced from one
+# centralized ProjectileManager._physics_process() pass. That system was
+# NEVER IMPLEMENTED in this codebase. ADR-0019 itself says under its own
+# Migration Plan: "Greenfield -- no existing Projectile/ProjectileManager
+# code to migrate" -- and, verified during this story's implementation
+# (2026-08-20), that is STILL true: no ProjectileManager class, no pooled
+# Projectile class, and no test file for either exists anywhere in src/ or
+# tests/. TowerSystem._try_attack() (src/core/tower/tower_system.gd) still
+# emits tower_attacked immediately and unconditionally for every weapon
+# type -- there is no flight-time delay, no pool, no branching on
+# projectile_type. TR-tower-007 (the requirement ADR-0019 exists to close)
+# remains open.
+#
+# The ONLY real projectile-related code in this project is THIS file --
+# ProjectileVisual, a purely cosmetic Node2D, freshly instantiate()'d per
+# shot by mission_scene.gd's _on_tower_attacked() handler and queue_free()'d
+# once its flight completes (see _process()'s own arrival check, below the
+# sync call this story adds). That is a create-per-shot/destroy-per-shot
+# lifecycle -- the opposite of a reused pool.
+#
+# Building ADR-0019's real pooling system first was explicitly considered
+# and REJECTED for this story's scope: it would be a substantive gameplay
+# TIMING change (introducing a real flight delay before damage lands, where
+# today damage is instant) -- not a visual-presentation change, and directly
+# against this epic's own non-negotiable "zero changes to gameplay
+# simulation logic" boundary (ADR-0037's Constraints, upheld by every prior
+# story in this epic). That decision is out of this story's authority and is
+# logged as a separate, still-open item outside this epic's scope (see the
+# evidence doc).
+#
+# Consequence for this story's scope: the companion below is built ONCE per
+# ProjectileVisual instance (in configure(), mirroring TowerInstance's/
+# grid_visual.gd's "build once from configure(), since the underlying
+# position is fixed for this instance's lifetime after that call" precedent
+# -- NOT MonsterManager's per-frame-centralized-pass precedent, which exists
+# specifically to handle a many-instance REUSED pool this codebase does not
+# have for projectiles), synced every frame from ProjectileVisual's own
+# EXISTING _process() (pre-existing before this story, not a new callback),
+# and freed automatically when ProjectileVisual itself is queue_free()'d at
+# end of flight -- the same "lifecycle is free" consequence ADR-0037's
+# Decision documents for every other entity type in this epic. There is no
+# release/reuse toggle here because there is no reuse: every ProjectileVisual
+# instance lives exactly one shot's flight, same as its companion.
+# ---------------------------------------------------------------------------
+
+## Builds this instance's Node3D visual-companion subtree holding a
+## MeshInstance3D-bearing mesh instance, resolved via
+## GGameDataRegistry.get_visual_mesh_mapping() (data-driven per ADR-0037's
+## Constraints -- never a hardcoded scene reference). Seeds the companion's
+## initial position from _start_position (this instance's fire-time origin)
+## so a projectile fired this frame has a correctly-placed companion on its
+## very first visible frame, with no one-frame lag before _process()'s first
+## sync call.
+##
+## A missing/invalid mapping fails loudly (push_error) rather than silently
+## rendering no visual, per ADR-0037's Risks section policy -- same policy
+## TowerInstance/MonsterInstance/Hero/GridVisual already established.
+##
+## Called once from configure() (see that method, above). Every
+## ProjectileVisual instance in this codebase's real per-shot
+## create/destroy lifecycle (see this file's class-level Story 006 doc
+## comment, above) is configure()'d exactly once, so "once" is correct here
+## -- unlike the rebuild-guarded precedent Monster/Tower/Hero establish for
+## their own potentially-re-configured instances, this method still includes
+## the identical defensive remove_child()-before-queue_free() guard so a
+## hypothetical future re-configure() call (not this project's current call
+## sites) cannot leak or duplicate mesh instances.
+func _build_visual_companion() -> void:
+	# Synchronous remove_child() BEFORE queue_free(), not queue_free() alone
+	# -- same gotcha TowerInstance's/MonsterInstance's/Hero's/GridVisual's
+	# _build_visual_companion() already fixed (docs/registry/architecture.yaml's
+	# mission_hud_planning_cluster_lifecycle entry): queue_free() defers
+	# removal to end-of-frame, so an immediately-following add_child() of a
+	# new node with the SAME name ("VisualCompanion3D") while the old one is
+	# still technically in the tree causes Godot to auto-uniquify the new
+	# node's name -- after the deferred free runs, zero nodes are left with
+	# the expected name.
+	if _visual_companion != null and is_instance_valid(_visual_companion):
+		remove_child(_visual_companion)
+		_visual_companion.queue_free()
+	_visual_companion = Node3D.new()
+	_visual_companion.name = "VisualCompanion3D"
+	add_child(_visual_companion)
+
+	var mapping: VisualMeshMappingResource = GGameDataRegistry.get_visual_mesh_mapping(PROJECTILE_MESH_ENTITY_ID)
+	if mapping == null or mapping.mesh_scene == null:
+		push_error("[ProjectileVisual] No valid VisualMeshMappingResource for '%s' -- projectile will have no 3D visual companion." % PROJECTILE_MESH_ENTITY_ID)
+		return
+
+	var mesh_node: Node = mapping.mesh_scene.instantiate()
+	if not (mesh_node is Node3D):
+		push_error("[ProjectileVisual] mesh_scene for '%s' did not instantiate as a Node3D -- no 3D visual companion." % PROJECTILE_MESH_ENTITY_ID)
+		mesh_node.free()
+		return
+	_visual_companion.add_child(mesh_node)
+	# ABSOLUTE assignment only, never additive/relative to this Node2D's own
+	# transform -- a Node3D child of a Node2D parent does not inherit the
+	# parent's 2D transform (ADR-0037's "Important engine clarification").
+	(mesh_node as Node3D).position = VisualMath.map_to_3d(_start_position, PROJECTILE_LAYER_HEIGHT)
+
+
+## Per-frame sync entry point -- called from _process() (above), which
+## already existed before this story; this is the one added line, not a new
+## callback (see this file's class-level Story 006 doc comment for the "no
+## new callback" constraint's exact wording, since _process() is pre-existing
+## and out of this story's control to remove). Computes world_position fresh
+## from this instance's own global_position every call -- each
+## _update_beam()/_update_ballistic()/_update_homing() branch has already
+## finalized global_position for this frame by the time _process() reaches
+## the call site, so no lag/desync between the 2D flight path and the 3D
+## companion is possible.
+##
+## ABSOLUTE position assignment -- never offset against this Node2D's own
+## transform (ADR-0037's "Important engine clarification"). No-op if this
+## instance has no companion mesh (e.g. the mapping was missing/invalid at
+## build time -- see _build_visual_companion()'s own doc comment).
+func _sync_visual_companion_position() -> void:
+	if _visual_companion == null or not is_instance_valid(_visual_companion):
+		return
+	if _visual_companion.get_child_count() == 0:
+		return
+	(_visual_companion.get_child(0) as Node3D).position = VisualMath.map_to_3d(global_position, PROJECTILE_LAYER_HEIGHT)
