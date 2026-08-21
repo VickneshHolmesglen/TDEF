@@ -494,6 +494,8 @@ Shape-first, color-second, per Sec 4.5 discipline (color pairs must always have 
 
 ## UI Requirements
 
+> **Relocation, 2026-08-21**: the right-hand Crafting panel (`InventoryScreen.tscn`'s `RightPanel`) now has its own 2-entry sub-tab strip — **Recipes** (this section's layout, default) and **Assemble Towers** (relocated here from the Forge screen's former 4th tab, player-requested; see `design/quick-specs/tower-assembly-2026-08-11.md`). The two sub-tabs share the same right-hand panel real estate, toggled via `RecipeScroll`/`AssembleView` visibility — Recipes' layout below is unaffected by the relocation, it just now sits alongside a sibling sub-tab instead of being the panel's only content.
+
 **Recipe list layout and filtering**
 
 - Recipes list vertically in the right-hand panel, grouped by output category (mirrors the left panel's fixed tabs where applicable — e.g., recipes that output Tower Components group separately from those outputting Crafted Goods) — reinforces the two-panel-as-one-screen relationship rather than introducing an unrelated recipe taxonomy.

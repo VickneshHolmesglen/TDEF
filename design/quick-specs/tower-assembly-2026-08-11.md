@@ -1,9 +1,10 @@
-# Quick Design Spec: Tower Assembly (Forge tab — "Create New Towers")
+# Quick Design Spec: Tower Assembly ("Create New Towers")
 
 **Type**: New mechanic
 **System**: Tower (`design/gdd/tower.md`), Crafting (`design/gdd/crafting.md`), Equipment Forge (`design/gdd/equipment-forge.md`)
 **GDD Reference**: `tower.md`'s Foundation/Weapon/Focus/Power schema, ADR-0008 (4-gate placement, `duplicate_deep()` component isolation)
 **Date**: 2026-08-11
+**Relocated, 2026-08-21**: originally shipped as the Forge screen's 4th tab (as described below). Player-requested move: it now lives as the **Assemble Towers** sub-tab of the Crafting panel inside `InventoryScreen.tscn` (Inventory & Crafting room), alongside a new **Recipes** sub-tab holding Crafting's existing recipe list. Rationale: `TowerAssembly.assemble_tower()` consumes items Crafting itself produces, not anything Forge-specific — the Forge tab placement was a UI-placement accident, not an architectural requirement. `TowerAssembly` itself (the scene-instanced system described below, discovered via the `"tower_assembly"` group) is unchanged — only which screen hosts its UI moved. The Forge screen (`EquipmentForgeScreen.tscn`/`.gd`) no longer has an Assemble tab; `FORGE_TAB_ASSEMBLE`/`FORGE_ASSEMBLE_*` in `equipment_forge_screen.gd` were removed. The body below describes the original Forge-tab design — read "Forge tab" as historical context; the current UI lives in `InventoryScreen.tscn`'s `AssembleView` node (see `tests/integration/inventory-screen/assemble-towers-tab_test.gd`).
 
 ## Change Summary
 

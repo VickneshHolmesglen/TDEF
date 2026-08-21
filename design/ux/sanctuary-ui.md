@@ -161,14 +161,14 @@ This is a deliberately thin, static two-strip chrome frame (left + top) around a
 │    │ 🪙 Gold: 340        Materials: Wood 12 · Iron 4 · Silk 2      │
 │ ▣1 ├──────────────────────────────────────────────────────────────┤
 │ ov │                                                                │
-│    │        [Watchtower]      [Habitat: Menagerie]                 │
-│ □2 │            ▲                    ▲                             │
-│ inv│                                                                │
-│    │                    [Sanctuary keep]                           │
-│ □3 │                        ▲                                      │
+│    │  [Watchtower]           ▓▓▓▓▓▓▓            [Habitat: Menagerie]│
+│ □2 │       ▲                 ▓CASTLE▓                 (n/a)         │
+│ inv│                         ▓▓▓▓▓▓▓                                │
+│    │                     (decorative, not clickable)                │
+│ □3 │                                                                │
 │ men│                                                                │
-│    │   [Forge structure]           [Tech spire]                    │
-│ □4 │        ▲                          ▲                           │
+│    │                                                                │
+│ □4 │                                                                │
 │ def│                                                                │
 │    │                                                                │
 │ □5 │                                            ┌─────────────────┐│
@@ -180,6 +180,8 @@ This is a deliberately thin, static two-strip chrome frame (left + top) around a
 ```
 
 Legend: `▣1` = active tab (Overview), `□2`–`□6` = inactive tabs (icon shown, label hidden — labels shown here for wireframe clarity only), `▲` = clickable structure/habitat (secondary entry path), `ldt` = Loadout (updated 2026-07-24 — the tab strip's own height grows to fit this 6th entry per Core Rule 2's `VBoxContainer`-of-fixed-width-entries architecture; entry width is unchanged), diorama rendered at full content-zone size. Note Loadout selection never mounts room content in this content zone — it triggers a hand-off to Tarot Deck UI instead (see Entry & Exit Points).
+
+**Updated 2026-08-21 (player-requested medieval-town layout)**: the diorama now renders a fixed **Castle** placeholder (`Diorama.CASTLE_LABEL`/`CASTLE_SIZE`, `diorama.gd`'s `_render_castle()`) at a centered position (`STRUCTURE_POSITIONS["castle"] = Vector2(220, 80)`), permanent decoration rendered unconditionally in `_ready()` — never gated on `sanctuary_structure_built`, and not a `▲` clickable entry (no room maps to it; it is purely the town-layout centerpiece named by the Player Fantasy request). Watchtower and the Menagerie habitat repositioned around it (`Vector2(120, 150)`/`Vector2(320, 150)`) rather than the prior scattered 4-structure sketch above, which predates this session and was never fully built (Forge/Tech-spire structures shown in the original sketch do not exist in the shipped diorama — only Watchtower, Menagerie's habitat, and the new Castle render today). Leveling up a built structure swaps its displayed sprite/frame at the same fixed position (no re-layout) — position is stable per structure, only the visual changes.
 
 #### Tab strip detail, showing a Connection Badge
 
