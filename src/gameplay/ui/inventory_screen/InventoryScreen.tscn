@@ -36,6 +36,10 @@ layout_mode = 2
 size_flags_horizontal = 4
 script = ExtResource("3_paperdoll")
 
+[node name="TowerBasesPanel" type="VBoxContainer" parent="MainLayout/LeftPanel"]
+visible = false
+layout_mode = 2
+
 [node name="SlotGrid" type="GridContainer" parent="MainLayout/LeftPanel"]
 layout_mode = 2
 columns = 5

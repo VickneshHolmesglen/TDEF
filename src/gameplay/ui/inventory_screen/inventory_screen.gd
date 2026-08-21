@@ -96,6 +96,34 @@ const RECIPE_CATEGORY_LABEL_KEYS: Dictionary[String, String] = {
 ## RELOCATED HERE" note).
 const SLOT_KEYS: Array[String] = ["foundation", "weapon", "focus", "power"]
 
+## Tower Component tab — "Bases" subpanel (2026-08-21, player-requested): a
+## visual reference gallery of every tower-base pedestal shape currently
+## authored in assets/art/towers/ (see that folder's own commit history --
+## "Slice tower base sheet into 9 alpha-cut pedestal pieces", 2026-08-17 --
+## and design/art/asset-generation-prompts.md's own note: "Usage (shared vs.
+## per-tier vs. per-archetype) is not yet decided, so these are named by
+## shape rather than wired into any tower-components pipeline code"). This
+## is deliberately a pure asset-preview gallery, NOT an inventory/ownership
+## list like the rest of this screen -- these 9 shapes have no
+## ItemDefinitionResource, no FoundationComponent link, and are not
+## craftable/ownable in any way yet, so there is no "owned" state to filter
+## on. Shown alongside SlotGrid on the TowerComponent tab only, mirroring
+## EquipmentPaperdoll's own "extra panel on one specific tab" precedent
+## above.
+const TOWER_BASE_SHAPES: Array[String] = [
+	"round", "square", "octagon", "hexplank", "triangle",
+	"tiered", "scalloped", "stump", "stonemound",
+]
+const TOWER_BASE_ART_PATH_FORMAT: String = "res://assets/art/towers/tower_base_%s.png"
+## 20% smaller than the original 96.0 (player-requested, 2026-08-21).
+const TOWER_BASE_DISPLAY_HEIGHT: float = 76.8
+const TOWER_BASE_GRID_COLUMNS: int = 3
+## Spacing readjusted alongside the 20% size reduction -- tighter gaps read
+## correctly at the smaller scale instead of leaving the same absolute gap
+## proportionally larger than before.
+const TOWER_BASE_GRID_SEPARATION: int = 6
+const TOWER_BASE_ENTRY_SEPARATION: int = 2
+
 ## Injectable for tests (a caller may still supply an isolated Inventory
 ## instance). In real use, defaults to the real GInventory Autoload (ADR-0016,
 ## Story 019 — Inventory is Autoload #9) rather than instancing a fresh,
@@ -117,6 +145,12 @@ const SLOT_KEYS: Array[String] = ["foundation", "weapon", "focus", "power"]
 ## _active_tab == &"Equipment", toggled in _on_tab_pressed() next to
 ## _refresh_slot_visibility()'s own filtering.
 @onready var _equipment_paperdoll: Control = $MainLayout/LeftPanel/EquipmentPaperdoll
+## "Bases" subpanel (see TOWER_BASE_SHAPES' own doc comment) -- built
+## entirely in code in _build_tower_bases_panel(), same reason
+## EquipmentPaperdoll builds itself in code (equipment_paperdoll.gd's own
+## header comment): purely static content, no .tscn structure needed beyond
+## this one placeholder Control for it to attach to.
+@onready var _tower_bases_panel: Control = $MainLayout/LeftPanel/TowerBasesPanel
 @onready var _slot_grid: GridContainer = $MainLayout/LeftPanel/SlotGrid
 ## Crafting is deliberately NOT an Autoload (ADR-0023: "Scene-instanced,
 ## Sanctuary-only") — unlike Inventory, there is no GCrafting global to fall
@@ -194,6 +228,8 @@ func _ready() -> void:
 	_wire_focus_neighbors()
 	_refresh_slot_visibility()
 	_equipment_paperdoll.visible = _active_tab == &"Equipment"
+	_build_tower_bases_panel()
+	_tower_bases_panel.visible = _active_tab == &"TowerComponent"
 	_build_crafting_panel()
 
 	_recipes_tab_button.pressed.connect(_on_crafting_tab_pressed.bind(false))
@@ -259,6 +295,7 @@ func _on_tab_pressed(tab: StringName) -> void:
 	_active_tab = tab
 	_refresh_slot_visibility()
 	_equipment_paperdoll.visible = tab == &"Equipment"
+	_tower_bases_panel.visible = tab == &"TowerComponent"
 
 
 ## Rule 3: tabs filter ONE shared slot pool by item_type, not four separate
@@ -303,6 +340,66 @@ func _refresh_slot_visibility() -> void:
 			var definition: ItemDefinitionResource = GGameDataRegistry.get_item_definition(StringName(item_id))
 			visible_on_tab = definition != null and definition.item_type == _active_tab
 		_slot_buttons[i].visible = visible_on_tab
+
+
+# ---------------------------------------------------------------------------
+# Left panel — Tower Component tab's "Bases" subpanel (see TOWER_BASE_SHAPES'
+# own doc comment). Pure static asset gallery, built once at _ready() -- no
+# refresh trigger needed, unlike every other panel in this screen, since
+# there is no owned/live game state behind these 9 images to go stale.
+# ---------------------------------------------------------------------------
+
+func _build_tower_bases_panel() -> void:
+	var header := Label.new()
+	header.name = "BasesHeader"
+	header.text = tr("INVENTORY_TOWER_BASES_HEADER")
+	header.add_theme_color_override("font_color", ShellChromeStyle.UI_PARCHMENT)
+	_tower_bases_panel.add_child(header)
+
+	var grid := GridContainer.new()
+	grid.name = "BasesGrid"
+	grid.columns = TOWER_BASE_GRID_COLUMNS
+	grid.add_theme_constant_override("h_separation", TOWER_BASE_GRID_SEPARATION)
+	grid.add_theme_constant_override("v_separation", TOWER_BASE_GRID_SEPARATION)
+	_tower_bases_panel.add_child(grid)
+
+	for shape: String in TOWER_BASE_SHAPES:
+		grid.add_child(_create_tower_base_entry(shape))
+
+
+## One base entry: the alpha-cut pedestal art plus its shape name underneath
+## (e.g. "Round", "Hexplank") -- these have no display_name anywhere (no
+## ItemDefinitionResource exists for them, see TOWER_BASE_SHAPES' own doc
+## comment), so the shape id itself, title-cased, is the only name available.
+func _create_tower_base_entry(shape: String) -> Control:
+	var entry := VBoxContainer.new()
+	entry.name = "Base_%s" % shape
+	entry.add_theme_constant_override("separation", TOWER_BASE_ENTRY_SEPARATION)
+
+	var texture: Texture2D = load(TOWER_BASE_ART_PATH_FORMAT % shape) as Texture2D
+	var icon := TextureRect.new()
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	# EXPAND_IGNORE_SIZE: the default expand_mode (EXPAND_KEEP_SIZE) reports a
+	# TextureRect's own native texture size as its minimum size, silently
+	# clamping a manually-set `.size` right back to native pixel dimensions --
+	# a real bug this project already found and fixed twice this session
+	# (diorama.gd's watchtower/habitat sprites, both ~450px source art
+	# rendering at full native resolution instead of the intended display
+	# size until this fix landed). Applying it here proactively rather than
+	# rediscovering the same bug a third time.
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.texture = texture
+	if texture != null:
+		var aspect: float = float(texture.get_width()) / float(texture.get_height())
+		icon.custom_minimum_size = Vector2(TOWER_BASE_DISPLAY_HEIGHT * aspect, TOWER_BASE_DISPLAY_HEIGHT)
+	entry.add_child(icon)
+
+	var label := Label.new()
+	label.text = shape.capitalize()
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	entry.add_child(label)
+
+	return entry
 
 
 # ---------------------------------------------------------------------------
