@@ -175,6 +175,21 @@ func test_mission_launched_handler_saves_checkpoint_for_active_slot() -> void:
 ## AC-12 (part 2): after _ready() connects to GEventBus, emitting
 ## GEventBus.mission_launched routes to _on_mission_launched() and creates
 ## the checkpoint — verifying the full signal-wiring chain end-to-end.
+##
+## No post-emit await: .emit() invokes connected handlers synchronously, so
+## save_checkpoint() has already run by the time emit() returns — asserting
+## immediately captures that. A trailing await here is actively wrong: the
+## real WaveManager Autoload is also live in this test's tree and reacts to
+## the same mission_launched emission. Given "forest_01" has no real
+## WaveConfig content in this suite's environment, WaveManager fails its own
+## load, hits 0 spawn cells, and short-circuits straight to MISSION_COMPLETE
+## — which SceneManager turns into a scene_transition_completed("SANCTUARY")
+## within 1-2 frames. sp is independently subscribed to that same signal and
+## correctly (per its own documented Rule 5 "normal flow" behavior) deletes
+## its own just-written checkpoint in response. A post-emit await gave that
+## real, unrelated cascade enough time to race the assertion and delete the
+## very file this test exists to confirm — confirmed via direct Godot MCP
+## tracing (checkpoint present immediately after emit, gone by frame 1).
 func test_mission_launched_signal_wired_after_ready_triggers_checkpoint() -> void:
 	# Arrange: add to scene tree so _ready() fires and EventBus connections are made.
 	var sp := SavePersistence.new()
@@ -184,14 +199,15 @@ func test_mission_launched_signal_wired_after_ready_triggers_checkpoint() -> voi
 	await get_tree().process_frame  # allow _ready() to complete
 	# Act: emit via GEventBus — should route to _on_mission_launched → save_checkpoint
 	GEventBus.mission_launched.emit("forest_01", PackedStringArray([]), 1)
-	await get_tree().process_frame  # allow any deferred processing
-	# Assert
+	# Assert — immediately, before any other Autoload's reaction to this same
+	# signal can race back around and delete the checkpoint (see doc comment).
 	var checkpoint_path: String = "user://saves/save_slot_96_checkpoint.dat"
 	assert_bool(FileAccess.file_exists(checkpoint_path)).is_true()
 	# Cleanup: remove_child disconnects _exit_tree (which removes EventBus connections)
 	remove_child(sp)
 	sp.free()
-	DirAccess.remove_absolute(checkpoint_path)
+	if FileAccess.file_exists(checkpoint_path):
+		DirAccess.remove_absolute(checkpoint_path)
 
 
 ## Regression test for the 2026-08-17 fix: the SANCTUARY autosave trigger was
@@ -209,9 +225,10 @@ func test_scene_transition_completed_sanctuary_saves_slot_and_unpauses_autosave(
 	await get_tree().process_frame
 	sp._autosave_timer.paused = true  # simulate having been paused during a mission
 	var save_path: String = "user://saves/save_slot_95.dat"
-	# Act
+	# Act — no post-emit await needed: .emit() invokes connected handlers
+	# synchronously (see the sibling mission_launched test's doc comment for
+	# the race this avoids elsewhere in this file).
 	GEventBus.scene_transition_completed.emit("SANCTUARY", "")
-	await get_tree().process_frame
 	# Assert
 	assert_bool(FileAccess.file_exists(save_path)).is_true()
 	assert_bool(sp._autosave_timer.paused).is_false()

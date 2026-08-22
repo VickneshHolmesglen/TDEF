@@ -5,6 +5,24 @@ Items are resolved by creating a follow-up story and linking it here.
 
 ---
 
+## TD-save-003 — `test_mission_launched_signal_wired_after_ready_triggers_checkpoint` deleted its own checkpoint mid-test (fixed)
+
+**Logged**: 2026-08-23 (Sprint 8, S8-02 — carried forward from Sprint 7's own smoke check/QA cycle, where it was flagged but not yet root-caused)
+**Fixed**: 2026-08-23 (same session)
+**Severity**: Low — test-only defect, no production code was ever wrong; confirmed via full 2256-test regression before and after
+**Area**: `tests/unit/save_persistence/save_persistence_restore_test.gd:178` (test only — `src/foundation/save_persistence/save_persistence.gd` and `src/core/scene_manager.gd` both confirmed correct as-is)
+
+### Gap
+
+`test_mission_launched_signal_wired_after_ready_triggers_checkpoint` asserted a checkpoint file exists after emitting `GEventBus.mission_launched`, but the assertion ran after an extra `await get_tree().process_frame` following the emit. Root-caused via direct Godot MCP tracing (`run_script`, not guessing): the checkpoint **is** written synchronously and correctly by `SavePersistence._on_mission_launched()` as part of the `.emit()` call — confirmed present immediately after emit. The real `WaveManager` Autoload is also live in the test's tree and reacts to the same signal; since the test's `"forest_01"` mission id has no real `WaveConfig` content in this suite's environment, `WaveManager` fails its load, hits 0 spawn cells, and short-circuits straight to `MISSION_COMPLETE` (`wave_manager.gd:815`). `SceneManager._on_mission_phase_changed()` turns that into `transition_to_sanctuary()`, which emits `scene_transition_completed("SANCTUARY", "")` within 1-2 frames. The test's own `sp` instance is independently subscribed to that same signal and correctly deletes its own just-written checkpoint in response (`SavePersistence`'s documented Rule 5 "normal flow" cleanup — this is correct, intended production behavior, not a bug). The extra post-emit `await` gave that real, unrelated cascade enough time to race the assertion and delete the very file the test exists to confirm.
+
+### Resolution
+- [x] Root cause confirmed via live Godot MCP `run_script` tracing (not assumed): checkpoint present immediately after `.emit()`, gone by frame 1 — isolated by removing the post-emit await and re-testing, confirming the file persists when asserted immediately.
+- [x] Fixed 2026-08-23 — removed the unneeded post-emit `await get_tree().process_frame` from the test (signal `.emit()` already invokes connected handlers synchronously, so no await was ever needed for `_on_mission_launched()` to have run). Added a doc comment explaining the race for future readers. Made the test's own cleanup (`DirAccess.remove_absolute`) defensive against the file already being gone, matching the now-understood cascade.
+- [x] Re-verified: `save_persistence_restore_test.gd` 14/14 passing in isolation, 0 errors, 0 orphans. Full project regression: 2256/2256, 0 failures.
+
+---
+
 ## TD-menag-006 — `test_lure_creature_success_full_flow` fails in isolation (AC-2 placement state) (fixed)
 
 **Logged**: 2026-07-18 (Sprint 6, S6-08 — found running the full suite for the first time this session, unrelated to any S6-08 change)

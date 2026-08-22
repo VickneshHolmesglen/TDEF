@@ -3,7 +3,7 @@
 > **Layer**: Presentation
 > **GDD**: design/gdd/sanctuary-ui.md
 > **Architecture Module**: Sanctuary UI (tab/panel navigation shell — architecture.md's own Presentation-layer module list, line 305)
-> **Status**: Ready
+> **Status**: Nearly Complete — 13/14 stories Complete; Story 014 (Experiential Playtest) is the epic's only item outside autonomous reach, blocked on a real human playtester (corrected 2026-08-23 — this header was stale; Story 013's diorama-content gap was fully closed 2026-08-13, per its own Update note below)
 > **Stories**: 14 stories created (2026-07-24) — see table below
 
 ## Stories
