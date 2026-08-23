@@ -1,3 +1,7 @@
+## Session Extract — 10th hero skill (Storm), tied to Storm Turret, 2026-08-23
+
+- Added `elem_storm.tres` — an elemental-category skill mastery-linked to Storm Turret (this session's own T2 tower), matching `elem_frostbolt.tres`'s exact format/precedent. Category balance after this: physical=3, elemental=3, ranged=2, support=2.
+
 ## Session Extract — Power slot fully completed (T2 + T3, closing the biggest tier gap), 2026-08-23
 
 - Added Reinforced Power (T2, `effect_type="slow"`) and Masterwork Power (T3, `effect_type="poison"`) — both real Damage & Status-recognized effect types, giving Power actual mechanical distinction across tiers rather than 2 more no-effect components. Power now has all 4 tiers (T1/T2/T3/T4), matching Foundation/Focus/Weapon's now-complete T1-T3 spread (T4 boss-lane content stays Foundation-exclusive per `tower.md`'s own design, not something Weapon/Focus/Power need).
