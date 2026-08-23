@@ -84,12 +84,17 @@ pre_delay = 1.0
 
 [sub_resource type="Resource" id="Resource_narrows_w4_e3"]
 script = ExtResource("3_entry")
+monster_id = &"iron_colossus_elite"
+pre_delay = 1.5
+
+[sub_resource type="Resource" id="Resource_narrows_w4_e4"]
+script = ExtResource("3_entry")
 monster_id = &"rift_sentinel_boss"
 pre_delay = 5.0
 
 [sub_resource type="Resource" id="Resource_narrows_wave_4"]
 script = ExtResource("2_script")
-entries = Array[ExtResource("3_entry")]([SubResource("Resource_narrows_w4_e1"), SubResource("Resource_narrows_w4_e2"), SubResource("Resource_narrows_w4_e3")])
+entries = Array[ExtResource("3_entry")]([SubResource("Resource_narrows_w4_e1"), SubResource("Resource_narrows_w4_e2"), SubResource("Resource_narrows_w4_e3"), SubResource("Resource_narrows_w4_e4")])
 
 [resource]
 script = ExtResource("1_config")

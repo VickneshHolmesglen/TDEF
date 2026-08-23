@@ -1,3 +1,8 @@
+## Session Extract — Iron Colossus wired into a 2nd mission (The Narrows), 2026-08-23
+
+- Iron Colossus (this session's ELITE monster) was only reachable in The Hollow. Added it to The Narrows' final boss wave too (purely additive, same pattern as before — new entry alongside the existing boss, boss's own `pre_delay`/fields untouched).
+- Noticed while doing this: The Narrows' boss entry (`rift_sentinel_boss`) has no `spawn_cell_index` set at all, unlike The Hollow's boss entry (`spawn_cell_index=0`) — `wave-manager.md`'s Rule 6 says the final wave's BOSS entry needs an explicit one for the boss-spawn telegraph to resolve correctly. Did not touch it — this is existing content's own field, not something to silently edit; worth a look if boss telegraphing turns out wrong in The Narrows specifically, but not logged as a formal TD entry since it wasn't independently confirmed as actually broken (could have a safe default).
+
 ## Session Extract — 12th hero skill (Arcane Surge), keeps tower-to-skill coverage complete, 2026-08-23
 
 - Added `elem_arcane.tres`, mastery-linked to Arcane Lance (just added). Every real tower now has exactly one associated skill again, matching the state after the Venom/Firestorm pass — Arcane Lance would otherwise have reopened the gap that pass just closed.
