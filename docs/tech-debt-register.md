@@ -5,6 +5,23 @@ Items are resolved by creating a follow-up story and linking it here.
 
 ---
 
+## TD-craft-002 — `recipe_tier4_component` was ungated, bypassing the entire production tech tree (fixed)
+
+**Logged**: 2026-08-23 (found and fixed same session)
+**Fixed**: 2026-08-23 (same session)
+**Severity**: Medium — an economy/progression bug, not a crash: the top-tier (T4) tower-component recipe was fully craftable from the very start of a save file with zero tech investment, while `tech_production_4` (a real, purchasable, 150-gold + 45/24/12-material tech node) gated nothing at all and was a complete dead end.
+**Area**: `assets/data/recipes/recipe_tier4_component.tres` (content only — `src/core/crafting/crafting.gd`'s gating logic itself was already correct: `tech_prerequisite == "" or GDefenseBuilding.is_tech_unlocked(...)`, so an empty `tech_prerequisite` is *intentionally* valid schema for "ungated," this was purely a wrong value on one recipe, not a code defect)
+
+### Gap
+
+Found by cross-referencing every recipe's `quality_tier` against its `tech_prerequisite`: quality_tier 2 recipes uniformly gate on `tech_production_2`, quality_tier 3 recipes uniformly gate on `tech_production_3` — a clean, consistent 1:1 pattern across 6 recipes. The one quality_tier=4 recipe (`recipe_tier4_component`, output `tier4_power_component`) had `tech_prerequisite = &""` instead of the expected `tech_production_4`, breaking the pattern. Confirmed as a real bug, not an intentional exception, by reading `tech_production_4.tres`'s own `gates` field (content-authoring documentation only, never read at runtime): `"Crafting quality_tier=4"` — the tech node's own author-facing description explicitly claims to gate this exact recipe.
+
+### Resolution
+- [x] Fixed 2026-08-23 — set `tech_prerequisite = &"tech_production_4"` on `recipe_tier4_component.tres`, closing the pattern and giving `tech_production_4` a real purpose.
+- [ ] Not re-verified via the test suite this session, per the standing "no unrequested testing" instruction. Worth a save-compatibility check if any existing save already discovered this recipe pre-fix — `is_discovered()` records are one-way/permanent per Crafting's own discovery-ledger convention (mirrors Tarot's rune ledger), so a save that discovered it under the old ungated rule would keep it discovered even after this fix (not retroactively re-gated) — this is the existing, established discovery-ledger behavior working as designed, not a new gap this fix introduces.
+
+---
+
 ## TD-hero-skill-001 — `elem_firestorm` skill looks orphaned/unwired, not investigated further
 
 **Logged**: 2026-08-23
