@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="BuildingUpgradeResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/core/building_upgrade/building_upgrade_resource.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+upgrade_id = &"upgrade_habitat_expansion_boundless"
+target_structure_id = &"habitat_expansion_tier_4"
+prerequisite_upgrade_id = &""
+requirements = {
+&"creature": &"emberwing_moth",
+&"tarot": &"apex_predator",
+&"equipment": &"brutes_bulwark_plate"
+}
+gold_cost = 60
+material_cost = {
+&"Common": 12
+}
+effect_description = "A moth that thrives at the habitat's furthest edge, the instincts of an apex predator, and armor plate forged from a brute that never learned to fear anything -- proof the sanctuary's furthest expansion is ready for whatever it draws in. Root upgrade for the sanctuary's highest habitat tier (upgrade_tier=1, Formula 1: 60 gold, 12 Common) -- the last of the 4 fixed Habitat Expansion tiers to receive its own upgrade chain. Mechanical effect not yet wired (see design/gdd/building-upgrade.md Rule 6/7), same disclosed scaffolding-only status as every other upgrade in the catalogue."
