@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="BuildingUpgradeResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/core/building_upgrade/building_upgrade_resource.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+upgrade_id = &"upgrade_habitat_expansion_bountiful"
+target_structure_id = &"habitat_expansion_tier_2"
+prerequisite_upgrade_id = &""
+requirements = {
+&"equipment": &"iron_greaves",
+&"creature": &"mossback_toad"
+}
+gold_cost = 60
+material_cost = {
+&"Common": 12
+}
+effect_description = "Draws on a well-armored sanctuary and a bonded toad's patient husbandry to make the habitat more bountiful. Mechanical effect not yet wired (see design/gdd/building-upgrade.md Rule 7) — Menagerie is the intended consumer of structure_upgraded for this structure, matching the existing Watchtower upgrade's own disclosed scaffolding-only status."
