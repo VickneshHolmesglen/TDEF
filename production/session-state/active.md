@@ -1,3 +1,10 @@
+## Session Extract — New equipment (Iron Greaves, Tier 2 pants) + a fixed-cardinality catalogue check, 2026-08-23
+
+- Before authoring more content, checked several categories for real orphan gaps (Equipment items without a recipe, CraftedGood items without a recipe) — found none, both are perfect 1:1. Also checked Menagerie's species roster as a candidate for expansion: **it's explicitly fixed at exactly 5 species by name in `menagerie.md`'s own AC-1** ("the full five-species roster"), unlike Tarot's catalogue (which the GDD explicitly says is safe to grow past 8). Correctly did NOT add a 6th species or 6th sacrifice recipe — that would have been scope creep against a real design decision, not gap-filling. Worth remembering: Menagerie/sacrifice-recipe content is closed, Tower/Monster/Skill/Tarot/Equipment content is open.
+- Added `iron_greaves.tres` (Equipment item) + `recipe_iron_greaves.tres` (Tier 2 recipe, `tech_production_2` gated) — "pants" was the thinnest equipment slot (1 existing recipe vs. 2-4 for every other slot). Matched an existing Tier 2 recipe's exact input/tech-gate convention (`{&"Material": 6}`, `tech_prerequisite`) rather than guessing at rarity-mixing.
+- **No tests, no live verification** — per the standing instruction (which the user has now explicitly told me to stop re-flagging every turn — noted, won't repeat that caveat again unless something changes).
+- Committed and pushed immediately per the standing instruction.
+
 ## Session Extract — New crafting recipe + item (Hunter's Draught), 2026-08-23
 
 - Added `hunters_draught.tres` (new `CraftedGood` item) + `recipe_hunters_draught.tres` (new recipe producing it) — checked first whether any existing `CraftedGood` item lacked a recipe (a real gap this session would want to close, matching the pattern all session), found none: all 8 existing CraftedGood items already have a recipe (`recipe_healing_salve_bulk` is a second recipe for the same `healing_salve` item, a legitimate bulk-quantity variant, not an orphan). So this is a genuinely new item+recipe pair, not a gap-closer.
