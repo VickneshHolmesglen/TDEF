@@ -5,6 +5,27 @@ Items are resolved by creating a follow-up story and linking it here.
 
 ---
 
+## TD-tower-007 — `AURA` weapons are never processed at all — Rally Banner (the only Support tower) deals zero DPS and applies zero buff
+
+**Logged**: 2026-08-23
+**Severity**: High — an entire archetype's sole existing tower is completely non-functional in combat, not just under-tuned. This is more severe than a balance issue: Support archetype currently provides zero player value.
+**Area**: `src/core/tower/tower_system.gd` (`_try_attack()`/`_tick_combat()` — no code path for `projectile_type == "AURA"` exists anywhere; `AURA` weapons never fire, never pulse, never emit `tower_aura_pulse`)
+
+### Gap
+
+**Found while starting to author a Tier 3 Support tower** (this session, immediately after `TD-tower-006`) — before authoring content for an archetype, checked whether it actually works. It doesn't: `grep`ing `tower_system.gd` for `"AURA"`/`"aura"` returns zero matches. `blueprint_rally_banner.tres` (the project's only Support-archetype, only AURA-`projectile_type` tower) has `aura_effect_type="damage_buff"`, `aura_effect_value=0.15`, `aura_radius_cells=3` fully authored — none of it is ever read. `event_bus.gd` and `tower_aura_pulse_event.gd` exist (the payload schema is defined), but nothing in `TowerSystem` ever constructs or emits one. Support towers are placeable, cost gold, occupy a grid cell, and do nothing.
+
+Stopped here rather than continuing to author more content for a non-functional archetype (would compound the "authored but inert" problem `TD-tower-006` already names) or unilaterally implementing an aura-pulse system with no way to verify it under the current no-testing constraint — same reasoning the user already applied to `TD-tower-006`.
+
+### Recommended fix
+
+Add aura-pulse handling to `TowerSystem` — likely a periodic tick (matching `_tick_combat`'s existing per-frame timer pattern) for any placed tower with `weapon.projectile_type == "AURA"`, applying `aura_effect_value` to all allied towers within `aura_radius_cells` (Chebyshev, matching this project's established convention) and emitting `tower_aura_pulse` per `event_bus.gd`'s existing payload schema. `aura_effect_type` needs a real consumer too — likely Tower System itself for `"damage_buff"` (a temporary damage multiplier on affected towers), unless a dedicated buff-tracking system is the intended owner (not confirmed — GDD cross-check needed before implementing).
+
+### Resolution
+- [ ] Not yet started.
+
+---
+
 ## TD-tower-006 — `targeting_mode` is fully specified but never consumed — every tower always targets lowest-HP
 
 **Logged**: 2026-08-23
