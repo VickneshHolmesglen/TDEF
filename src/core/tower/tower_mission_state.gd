@@ -25,3 +25,9 @@ var current_hp: float = 0.0
 var max_hp: float = 0.0
 var attack_timer_remaining: float = 0.0 # Seconds until next attack (0 = fire immediately)
 var damaged: bool = false
+
+## SCATTER targeting mode (tower.md Rule 15) -- deterministic round-robin
+## state, reset to these defaults at placement AND on wave_started. Only
+## meaningful when focus.targeting_mode == "SCATTER"; unused otherwise.
+var scatter_index: int = 0
+var last_scatter_target_id: int = -1

@@ -29,6 +29,7 @@ Read `hero-skill-build.md`/`tower-mastery.md` for whether `elem_firestorm` was e
 **Logged**: 2026-08-23
 **Severity**: High — an entire archetype's sole existing tower is completely non-functional in combat, not just under-tuned. This is more severe than a balance issue: Support archetype currently provides zero player value.
 **Area**: `src/core/tower/tower_system.gd` (`_try_attack()`/`_tick_combat()` — no code path for `projectile_type == "AURA"` exists anywhere; `AURA` weapons never fire, never pulse, never emit `tower_aura_pulse`)
+**Fixed (partial)**: 2026-08-23 — see Resolution below; the buff-application half of this gap is now split out as `TD-tower-008`.
 
 ### Gap
 
@@ -39,6 +40,26 @@ Stopped here rather than continuing to author more content for a non-functional 
 ### Recommended fix
 
 Add aura-pulse handling to `TowerSystem` — likely a periodic tick (matching `_tick_combat`'s existing per-frame timer pattern) for any placed tower with `weapon.projectile_type == "AURA"`, applying `aura_effect_value` to all allied towers within `aura_radius_cells` (Chebyshev, matching this project's established convention) and emitting `tower_aura_pulse` per `event_bus.gd`'s existing payload schema. `aura_effect_type` needs a real consumer too — likely Tower System itself for `"damage_buff"` (a temporary damage multiplier on affected towers), unless a dedicated buff-tracking system is the intended owner (not confirmed — GDD cross-check needed before implementing).
+
+### Resolution
+- [x] Fixed 2026-08-23 — `_try_attack()` now branches on `state.weapon.projectile_type == "AURA"` before any targeting/damage logic runs: per tower.md's "Support archetype state exceptions" table (Rule 5a) and the two BLOCKING ACs at lines 1036/1068, it unconditionally emits `tower_aura_pulse` (no monster target found or required) carrying `tower_id`/`aura_effect_type`/`aura_effect_value`/`aura_radius_cells` straight from the weapon component, then returns — never falls through to `_find_target()`/`tower_attacked`. This closes the emission-side half of the bug: Rally Banner's aura pulse now fires every attack cycle (confirmed by re-reading `mission_scene.gd`'s existing `_on_tower_aura_pulse` VFX subscriber, which was already correctly wired and waiting for an emission that never came).
+- [ ] **Not fixed — split out as `TD-tower-008`**: `tower_aura_pulse`'s own doc comment names "Damage & Status (apply effect to entities in radius)" as a key subscriber, but `damage_status.gd` has no such handler and no mechanism exists anywhere (`TowerMissionState` has no buff/debuff fields) for an aura pulse to actually modify an allied tower's combat stats. The pulse now fires and is visually confirmed, but `aura_effect_type`/`aura_effect_value` are inert past the VFX layer — Rally Banner is visible and "active" but still grants no real mechanical buff. Not fixed here: this needs a buff-state design decision (duration-based? re-applied every pulse? stacking rules?) beyond this fix's scope of "make the documented emission happen."
+
+---
+
+## TD-tower-008 — `tower_aura_pulse` fires (per `TD-tower-007`'s fix) but nothing consumes it to apply a real buff to allied towers
+
+**Logged**: 2026-08-23 (split out of `TD-tower-007` during that entry's fix — see its Resolution section)
+**Severity**: Medium — Support archetype is no longer *invisible* (VFX pulse now fires, `tower_wave_summary.aura_applications_this_wave` would count real pulses once that summary system itself is wired), but it still provides zero actual combat value. Downgraded from `TD-tower-007`'s own High because the more severe "completely inert, not even visible" half of the original bug is now fixed.
+**Area**: `src/core/damage_status/damage_status.gd` (no `tower_aura_pulse` subscriber exists), `src/core/tower/tower_mission_state.gd` (no buff/debuff state fields to receive an aura effect)
+
+### Gap
+
+`weapon_component.gd`'s `aura_effect_type`/`aura_effect_value` are free-form strings/floats with no defined effect vocabulary anywhere in code (tower.md itself says "D&S System owns the valid range per effect_id" — i.e. by design, D&S is meant to interpret them, not Tower System). Building this requires a genuine design decision this session did not make: does an aura buff re-apply fresh on every pulse (simplest — no duration tracking needed) or use a duration+stacking model matching `damage_status.gd`'s existing burn/poison/slow DoT pattern? Does it modify `weapon_damage`, `attack_speed`, or something else on the buffed tower's `TowerMissionState`? None of this is specified in tower.md beyond the field's own one-line doc comment.
+
+### Recommended fix
+
+Design the aura effect vocabulary and application model first (likely a `/quick-design` or GDD amendment to tower.md, not a silent code decision), then add a `tower_aura_pulse` subscriber to `damage_status.gd` that looks up allied towers within `aura_radius_cells` (via a new TowerSystem query method, mirroring `_candidates_in_range()`'s pattern) and applies the resolved effect.
 
 ### Resolution
 - [ ] Not yet started.
@@ -64,7 +85,8 @@ Add aura-pulse handling to `TowerSystem` — likely a periodic tick (matching `_
 Implement a `_find_target(state: TowerMissionState) -> int` dispatcher in `tower_system.gd` replacing `_find_lowest_hp_target()`, branching on `state.focus.targeting_mode` per Rule 15's exact specification (candidate filter unchanged — Formula 2 range/cone check — then mode-specific sort, then the universal tiebreaker chain: highest `path_step_index` → lowest `current_hp` → lowest `entity_id`). SCATTER needs 2 new per-`TowerMissionState` fields (`_scatter_index: int`, `_last_scatter_target_id: int`) reset on `wave_started`, plus the repeat-guard logic already fully specified in Rule 15. `TowerSystem._get_best_target(tower_id, targeting_mode)` must also be added and wired into HOMING re-acquisition (currently re-acquisition logic — see Rule 19 area — likely has its own gap here too, not independently audited this pass). Existing blueprints' authored `targeting_mode` values (`archer`=CLOSEST_TO_GOAL, `longshot_sniper`=HIGHEST_HP, `rally_banner`=CLOSEST_TO_GOAL) can stay as-authored once this lands — they were already correct, just inert.
 
 ### Resolution
-- [ ] Not yet started.
+- [x] Fixed 2026-08-23 (user reversed the earlier defer decision: "lets deal wit hthe combat log bugs"). Added a `_find_target(state) -> int` dispatcher plus 4 new mode-specific helpers (`_find_highest_hp_target`, `_find_closest_to_goal_target`, `_find_spawn_order_target`, `_find_scatter_target`) implementing all 5 documented `targeting_mode` values per Rule 15, including its universal tiebreaker chain and SCATTER's stateful round-robin (`scatter_index`/`last_scatter_target_id`, new fields on `TowerMissionState`, reset on `wave_started`). `_try_attack()` now calls `_find_target()` instead of the hardcoded `_find_lowest_hp_target()` (which itself remains, unchanged in signature, since `tower_combat_test.gd` calls it directly). Also added `TowerSystem._get_best_target(tower_id, targeting_mode)` as the system-level dispatch surface Rule 19 names for future HOMING re-acquisition (not itself implemented — that's `TD-tower-005`, unchanged, still open). `path_step_index` is now tracked live in `_monster_cache` (previously discarded in `_on_monster_cell_entered`) and cleared on `monster_breached` (new EventBus subscription — closes a named Edge Case where a breached monster could otherwise remain a stale, unreachable-but-cached target for CLOSEST_TO_GOAL/SPAWN_ORDER).
+- [ ] Not yet re-verified via the test suite — `tower_combat_test.gd` was not run this session per the standing "no unrequested testing" instruction. `blueprint_siege_cannon.tres`'s `targeting_mode` (authored as `LOWEST_HP` to "match reality" per the original defer decision) is now stale relative to its own thematic intent (`HIGHEST_HP`) and was NOT re-touched here — that would be new content-authoring scope, not this bug fix.
 
 ---
 

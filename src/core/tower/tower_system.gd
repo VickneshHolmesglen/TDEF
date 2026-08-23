@@ -80,6 +80,8 @@ func _ready() -> void:
 	GEventBus.monster_spawned.connect(_on_monster_spawned)
 	GEventBus.monster_cell_entered.connect(_on_monster_cell_entered)
 	GEventBus.monster_died.connect(_on_monster_died)
+	GEventBus.monster_breached.connect(_on_monster_breached)
+	GEventBus.wave_started.connect(_on_wave_started)
 	GEventBus.boss_tower_attack_attempted.connect(_on_boss_tower_attack_attempted)
 	GEventBus.tower_sell_requested.connect(_on_tower_sell_requested)
 
@@ -89,6 +91,8 @@ func _exit_tree() -> void:
 	GEventBus.monster_spawned.disconnect(_on_monster_spawned)
 	GEventBus.monster_cell_entered.disconnect(_on_monster_cell_entered)
 	GEventBus.monster_died.disconnect(_on_monster_died)
+	GEventBus.monster_breached.disconnect(_on_monster_breached)
+	GEventBus.wave_started.disconnect(_on_wave_started)
 	GEventBus.boss_tower_attack_attempted.disconnect(_on_boss_tower_attack_attempted)
 	GEventBus.tower_sell_requested.disconnect(_on_tower_sell_requested)
 
@@ -292,7 +296,23 @@ func _get_effective_range(focus: FocusComponent) -> int:
 ## proc roll forwards effect_type as "" (Power effect not applied this hit),
 ## same convention as "no Power equipped at all."
 func _try_attack(state: TowerMissionState) -> void:
-	var target_id: int = _find_lowest_hp_target(state)
+	# tower.md Rule 5a / Support archetype state exceptions table: on
+	# attack-timer expiry a Support/AURA tower transitions straight to
+	# ATTACKING and emits tower_aura_pulse unconditionally -- no monster
+	# target is found or required, and no tower_attacked/projectile path
+	# runs at all. Previously this branch didn't exist, so AURA weapons fell
+	# through to the standard targeting path below and (since Support towers
+	# ship with no meaningful weapon_damage) silently dealt 0 DPS forever
+	# (TD-tower-007).
+	if state.weapon.projectile_type == "AURA":
+		var pulse := TowerAuraPulseEvent.new()
+		pulse.tower_id = state.tower_id
+		pulse.aura_effect_type = state.weapon.aura_effect_type
+		pulse.aura_effect_value = state.weapon.aura_effect_value
+		pulse.aura_radius_cells = state.weapon.aura_radius_cells
+		GEventBus.tower_aura_pulse.emit(pulse)
+		return
+	var target_id: int = _find_target(state)
 	if target_id == -1:
 		return
 	if not _monster_cache.has(target_id):
@@ -372,19 +392,140 @@ func _resolve_element_resistance(element: String, monster_cache_entry: Dictionar
 
 
 ## Returns the entity_id of the lowest-HP monster in range, or -1 if none.
+## Tiebreak (tower.md Rule 15): HP-primary modes skip straight to lowest
+## entity_id on a tie (tiebreaker 2, "lowest current_hp," is redundant when
+## HP is already the primary sort).
 func _find_lowest_hp_target(state: TowerMissionState) -> int:
 	var best_id: int = -1
 	var best_hp: float = INF
-	for entity_id: int in _monster_cache:
-		var entry: Dictionary = _monster_cache[entity_id] as Dictionary
-		var cell: Vector2i = entry["cell"] as Vector2i
-		if not is_in_range(state.grid_position, cell, state.focus):
-			continue
-		var hp: float = entry["hp"] as float
-		if hp < best_hp:
+	for entity_id: int in _candidates_in_range(state):
+		var hp: float = (_monster_cache[entity_id] as Dictionary)["hp"] as float
+		if hp < best_hp or (hp == best_hp and entity_id < best_id):
 			best_hp = hp
 			best_id = entity_id
 	return best_id
+
+
+## tower.md Rule 15 — HIGHEST_HP: same shape as _find_lowest_hp_target, HP
+## comparison inverted. Same tiebreak rule (HP-primary modes skip straight
+## to lowest entity_id).
+func _find_highest_hp_target(state: TowerMissionState) -> int:
+	var best_id: int = -1
+	var best_hp: float = -INF
+	for entity_id: int in _candidates_in_range(state):
+		var hp: float = (_monster_cache[entity_id] as Dictionary)["hp"] as float
+		if hp > best_hp or (hp == best_hp and entity_id < best_id):
+			best_hp = hp
+			best_id = entity_id
+	return best_id
+
+
+## tower.md Rule 15 — CLOSEST_TO_GOAL: highest path_step_index (furthest
+## along path) wins. Also this system's default/fallback for any
+## unrecognized targeting_mode ("default if no Focus"). Universal tiebreaker
+## on a path_step_index tie: lowest current_hp, then lowest entity_id.
+func _find_closest_to_goal_target(state: TowerMissionState) -> int:
+	var best_id: int = -1
+	var best_step: int = -1
+	var best_hp: float = INF
+	for entity_id: int in _candidates_in_range(state):
+		var entry: Dictionary = _monster_cache[entity_id] as Dictionary
+		var step: int = entry.get("path_step_index", 0) as int
+		var hp: float = entry["hp"] as float
+		var better: bool = step > best_step \
+				or (step == best_step and hp < best_hp) \
+				or (step == best_step and hp == best_hp and entity_id < best_id)
+		if better:
+			best_step = step
+			best_hp = hp
+			best_id = entity_id
+	return best_id
+
+
+## tower.md Rule 15 — SPAWN_ORDER: lowest entity_id among valid candidates.
+## Fully deterministic on its own; entity_id is a total order, so no
+## separate tiebreaker chain is needed (Rule 15's own wording).
+func _find_spawn_order_target(state: TowerMissionState) -> int:
+	var best_id: int = -1
+	for entity_id: int in _candidates_in_range(state):
+		if best_id == -1 or entity_id < best_id:
+			best_id = entity_id
+	return best_id
+
+
+## tower.md Rule 15 — SCATTER: deterministic round-robin cycle through the
+## candidate pool (sorted ascending by entity_id, same ordering as
+## SPAWN_ORDER), advancing state.scatter_index by exactly 1 per firing
+## cycle. Repeat-guard: if the naive pick would re-select
+## last_scatter_target_id and 2+ candidates remain, picks the next
+## candidate in the sorted list instead. A single remaining candidate is
+## always re-targeted (no guard — no different target exists to skip to).
+## Skips all tiebreakers (index-driven, not ranking-driven) per Rule 15.
+func _find_scatter_target(state: TowerMissionState) -> int:
+	var candidates: Array[int] = _candidates_in_range(state)
+	if candidates.is_empty():
+		return -1
+	candidates.sort()
+	var index: int = state.scatter_index % candidates.size()
+	var picked: int = candidates[index]
+	if picked == state.last_scatter_target_id and candidates.size() >= 2:
+		index = (index + 1) % candidates.size()
+		picked = candidates[index]
+	state.scatter_index += 1
+	state.last_scatter_target_id = picked
+	return picked
+
+
+## Candidate monsters within this tower's effective range/cone (Formula 2),
+## shared by every targeting mode below.
+func _candidates_in_range(state: TowerMissionState) -> Array[int]:
+	var result: Array[int] = []
+	for entity_id: int in _monster_cache:
+		var cell: Vector2i = (_monster_cache[entity_id] as Dictionary)["cell"] as Vector2i
+		if is_in_range(state.grid_position, cell, state.focus):
+			result.append(entity_id)
+	return result
+
+
+## tower.md Rule 15 — dispatches to the tower's own Focus.targeting_mode.
+## Also exposed as _get_best_target() below for HOMING re-acquisition
+## (currently unused — see that method's own doc comment).
+func _find_target(state: TowerMissionState) -> int:
+	match state.focus.targeting_mode:
+		"LOWEST_HP":
+			return _find_lowest_hp_target(state)
+		"HIGHEST_HP":
+			return _find_highest_hp_target(state)
+		"SPAWN_ORDER":
+			return _find_spawn_order_target(state)
+		"SCATTER":
+			return _find_scatter_target(state)
+		_:  # CLOSEST_TO_GOAL, and the documented default for any other/empty value
+			return _find_closest_to_goal_target(state)
+
+
+## tower.md Rule 19 (Re-acquisition architecture note): the system-level
+## method a HOMING projectile is meant to call when its original target
+## dies before impact, since _monster_cache is TowerSystem-owned state a
+## per-projectile object can't hold. NOT YET WIRED to any real caller —
+## HOMING re-acquisition-on-death itself does not exist anywhere in this
+## project yet (ProjectileVisual's own doc comment explicitly defers it,
+## tracked separately as TD-tower-005/TD-tower-006's own remediation notes
+## do not claim to close it). This method exists so the dispatch surface
+## Rule 19 requires is real and ready for whenever re-acquisition itself is
+## built — it does not, on its own, make re-acquisition happen.
+func _get_best_target(tower_id: int, targeting_mode: String) -> int:
+	if not placed_towers.has(tower_id):
+		return -1
+	var state: TowerMissionState = placed_towers[tower_id] as TowerMissionState
+	# Evaluate the requested mode directly rather than trusting state.focus.
+	# targeting_mode to already equal it -- callers pass targeting_mode
+	# explicitly per Rule 19's own signature, so honor what they asked for.
+	var original_mode: String = state.focus.targeting_mode
+	state.focus.targeting_mode = targeting_mode
+	var result: int = _find_target(state)
+	state.focus.targeting_mode = original_mode
+	return result
 
 # ---------------------------------------------------------------------------
 # Boss damage receiver
@@ -441,16 +582,39 @@ func _on_monster_spawned(payload: MonsterSpawnedEvent) -> void:
 		"archetype_tag": resource.archetype_tag if resource != null else &"",
 		"elemental_resistances": elemental_resistances,
 		"is_boss": resource != null and resource.tier == 2,
+		"path_step_index": 0,
 	}
 
 
-func _on_monster_cell_entered(entity_id: int, grid_cell: Vector2i, _step: int) -> void:
+## tower.md Rule 14a: also used by CLOSEST_TO_GOAL/SPAWN_ORDER targeting and
+## the universal tiebreaker chain (Rule 15) — path_step_index is the
+## authoritative "how far along the path" signal for those.
+func _on_monster_cell_entered(entity_id: int, grid_cell: Vector2i, path_step_index: int) -> void:
 	if _monster_cache.has(entity_id):
-		(_monster_cache[entity_id] as Dictionary)["cell"] = grid_cell
+		var entry: Dictionary = _monster_cache[entity_id] as Dictionary
+		entry["cell"] = grid_cell
+		entry["path_step_index"] = path_step_index
 
 
 func _on_monster_died(payload: MonsterDiedEvent) -> void:
 	_monster_cache.erase(payload.entity_id)
+
+
+## tower.md Edge Cases (Targeting): monster_died is not fired for monsters
+## that breach the GOAL (exited the grid) — without this subscription,
+## SPAWN_ORDER and other targeting modes could reference an entity no
+## longer on the grid until wave_completed eventually clears the cache.
+func _on_monster_breached(entity_id: int, _monster_id: StringName, _tier: int) -> void:
+	_monster_cache.erase(entity_id)
+
+
+## tower.md Rule 15 (SCATTER): scatter_index/last_scatter_target_id reset to
+## defaults at the start of every wave, for every currently-placed tower.
+func _on_wave_started(_wave_number: int, _total_waves: int, _wave_difficulty: float) -> void:
+	for id: int in placed_towers:
+		var state: TowerMissionState = placed_towers[id] as TowerMissionState
+		state.scatter_index = 0
+		state.last_scatter_target_id = -1
 
 # ---------------------------------------------------------------------------
 # Phase and resource tracking
