@@ -5,9 +5,9 @@
 > process, this file wins; if it's silent, fall back to `AGENTS.md` (Codex) /
 > `CLAUDE.md` (Claude Code) and `design/art/art-bible.md`.
 >
-> **Status**: Process/coordination doc — written 2026-08-23. The hybrid medium
-> split is locked in §1; the remaining production architecture and category-level
-> style specifications must be completed before mass generation.
+> **Status**: Process/coordination doc — written 2026-08-23, updated 2026-08-24.
+> The hybrid medium split and category-level Art Bible specifications are locked.
+> The cross-medium Godot pilot remains the gate before mass generation.
 
 ---
 
@@ -58,10 +58,12 @@ The Diablo IV screenshots (`production/Hero Unequipped.PNG` and
 structure and presentation only**. Do not use them to infer world art, realism,
 palette, lighting, environmental treatment, or character/creature style.
 
-Section 1 of `design/art/art-bible.md` now carries this approved foundation.
-Sections 2–9 still require a controlled retrofit so their old 2D-diorama
-production rules do not contradict it. Until that architecture/specification
-pass is approved, do not mass-generate final assets.
+`design/art/art-bible.md` Sections 1–9 now carry the approved hybrid direction,
+state lighting, shape and colour systems, character/environment/UI direction,
+technical asset standards, and bounded reference set. Do not mass-generate final
+assets until the representative cross-medium pilot defined in
+`design/art/art-bible.md` §8.7 proves the 3D/2D compositing and swarm-rendering
+approach within the project budgets.
 
 ---
 

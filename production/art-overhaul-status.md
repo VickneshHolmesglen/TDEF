@@ -34,9 +34,9 @@
 
 | Item | Status | Notes |
 |---|---|---|
-| Reconcile Art Bible Sections 2–9 with the new hybrid split | `backlog` | Section 1 is authoritative; remaining sections still contain assumptions from the former hero-only-3D diorama direction. |
-| Define Godot 3D/2D scene, camera, lighting, shadow, and compositing architecture | `backlog` | Required before asset specifications or mass generation. |
-| Cross-medium pilot scene | `backlog` | Validate one 3D environment/tower setup with representative 2D creatures at gameplay zoom and crowd density. |
+| Reconcile Art Bible Sections 2–9 with the new hybrid split | `done` | Completed 2026-08-24. Sections 1–9 now describe one coherent 3D-world/2D-creatures direction. |
+| Define Godot 3D/2D scene, camera, lighting, shadow, and compositing architecture | `backlog` | Art Bible Section 8 defines constraints; the next deliverable is a Qwen-ready Godot architecture/implementation blueprint. |
+| Cross-medium pilot scene | `backlog` | Build only after the implementation blueprint is approved. Validate representative 3D environment/towers with 100+ instanced 2D creatures, contact shadows, depth sorting, VFX, and state lighting. |
 
 ---
 
