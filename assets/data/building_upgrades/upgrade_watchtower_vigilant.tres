@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="BuildingUpgradeResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/core/building_upgrade/building_upgrade_resource.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+upgrade_id = &"upgrade_watchtower_vigilant"
+target_structure_id = &"watchtower_tier_1"
+prerequisite_upgrade_id = &"upgrade_watchtower_reinforced"
+requirements = {
+&"creature": &"duskfang_fox",
+&"tarot": &"grim_resolve",
+&"equipment": &"iron_helm"
+}
+gold_cost = 108
+material_cost = {
+&"Common": 22
+}
+effect_description = "A fox's sharp senses, a grim resolve to watch without flinching, and a helm forged to see the fight coming before it arrives -- the watchtower stops merely standing and starts truly watching. Second upgrade in this structure's chain (upgrade_tier=2, Formula 1: 60 -> 108 gold, 12 -> 22 Common), mirroring upgrade_habitat_expansion_flourishing's own tier-2 shape. Mechanical effect not yet wired (see design/gdd/building-upgrade.md Rule 6/7) -- same disclosed scaffolding-only status as every other upgrade in the catalogue."
