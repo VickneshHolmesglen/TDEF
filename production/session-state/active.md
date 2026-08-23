@@ -1,3 +1,9 @@
+## Session Extract — Arcane Lance (T3 tower), completes both the element roster and the blueprint tier spread, 2026-08-23
+
+- Checked Defense Building's 6 tech nodes for gaps first — found none, it's a clean, deliberately-closed 2-branch×3-tier structure exactly matching Crafting's quality_tier system (which this session's own tower_component work just completed T1-T3 for).
+- Added `blueprint_arcane_lance.tres` — a Tier 3 Elemental tower using "arcane" (the one weapon element, of the 5 documented, never used by any tower until now). Also closes the tower **blueprint** catalog's own tier gap: was T1×6, T2×1 (Storm Turret), T4×1 (Siege Cannon), no T3 at all. All 4 tiers are now pre-authored and playable at the blueprint level, not just at the crafted-component level (which this session's earlier Reinforced/Masterwork additions already completed).
+- BALLISTIC with `aoe_radius_cells=1`, no status effect (no established "arcane-flavored" DoT/effect exists in Damage & Status's real recognized set — burn/poison/slow all map to fire/poison/frost specifically — left it as pure damage rather than force a thematic mismatch, matching the same reasoning already applied to Storm Turret).
+
 ## Session Extract — 11th hero skill (Venom), completes tower-to-skill coverage; flagged a possibly-orphaned existing skill, 2026-08-23
 
 - Checked which real towers had zero mastery-linked skill at all — found exactly 2: Firebolt Turret and Venom Dart Turret. Every other tower (archer, frostbolt, longshot_sniper, rally_banner, storm_turret, siege_cannon) already has one.
