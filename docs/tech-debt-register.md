@@ -5,6 +5,25 @@ Items are resolved by creating a follow-up story and linking it here.
 
 ---
 
+## TD-hero-skill-001 — `elem_firestorm` skill looks orphaned/unwired, not investigated further
+
+**Logged**: 2026-08-23
+**Severity**: Low — cosmetic/content-authoring ambiguity, not a functional defect (an empty `source_build_signature` is explicitly valid per the schema, "unreachable via mastery" is a real allowed state, not necessarily a bug).
+**Area**: `assets/data/skills/definitions/elem_firestorm.tres`
+
+### Gap
+
+Found while closing out the last 2 towers with no mastery-linked skill (Firebolt Turret, Venom Dart Turret — this session). `elem_firestorm.tres` exists with `display_name="Firestorm"`, `category="elemental"`, `passive_slot_count=3` (the maximum), and `source_build_signature=&""` (empty — not reachable via Tower Mastery). The name strongly suggests it was authored for Firebolt Turret (a fire-elemental tower) but never had its `source_build_signature` filled in — possibly an oversight, possibly deliberate (unlocked some other way not investigated here). Did not touch it: editing an existing skill's mastery-reachability is a mechanics/balance change, not additive content, and is out of scope for this session's "add new content" pattern — flagging for a real decision instead. Added `elem_venom.tres` (Venom Dart Turret) as a clean, unambiguous new skill instead, closing that tower's real gap without touching this one.
+
+### Recommended fix
+
+Read `hero-skill-build.md`/`tower-mastery.md` for whether `elem_firestorm` was ever intentionally scoped as mastery-unreachable (e.g. unlocked via a quest, tech node, or other path). If it was simply never finished, set `source_build_signature = &"found_firebolt_t1|weap_firebolt_t1|focus_firebolt_t1|power_firebolt_burn_t1"` to match Firebolt Turret, mirroring every other elemental skill's pattern.
+
+### Resolution
+- [ ] Not yet started.
+
+---
+
 ## TD-tower-007 — `AURA` weapons are never processed at all — Rally Banner (the only Support tower) deals zero DPS and applies zero buff
 
 **Logged**: 2026-08-23

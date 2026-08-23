@@ -1,3 +1,9 @@
+## Session Extract — 11th hero skill (Venom), completes tower-to-skill coverage; flagged a possibly-orphaned existing skill, 2026-08-23
+
+- Checked which real towers had zero mastery-linked skill at all — found exactly 2: Firebolt Turret and Venom Dart Turret. Every other tower (archer, frostbolt, longshot_sniper, rally_banner, storm_turret, siege_cannon) already has one.
+- Found `elem_firestorm.tres` (existing content) — empty `source_build_signature`, name "Firestorm," max `passive_slot_count=3` — strongly suggestive of an unfinished/orphaned Firebolt Turret skill. **Deliberately did not touch it**: an empty build signature is explicitly schema-valid ("unreachable via mastery"), and rewriting an existing skill's reachability is a mechanics/balance decision, not additive content — out of scope for this session's pattern. Logged as `TD-hero-skill-001` with the exact fix if it turns out to be an oversight.
+- Added `elem_venom.tres` instead — a clean, unambiguous new skill for Venom Dart Turret, no existing-content ambiguity. Tower-to-skill coverage is now complete except for the flagged Firestorm/Firebolt question.
+
 ## Session Extract — 10th hero skill (Storm), tied to Storm Turret, 2026-08-23
 
 - Added `elem_storm.tres` — an elemental-category skill mastery-linked to Storm Turret (this session's own T2 tower), matching `elem_frostbolt.tres`'s exact format/precedent. Category balance after this: physical=3, elemental=3, ranged=2, support=2.
