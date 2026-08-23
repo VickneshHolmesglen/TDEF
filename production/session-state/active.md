@@ -1,3 +1,7 @@
+## Session Extract — 12th hero skill (Arcane Surge), keeps tower-to-skill coverage complete, 2026-08-23
+
+- Added `elem_arcane.tres`, mastery-linked to Arcane Lance (just added). Every real tower now has exactly one associated skill again, matching the state after the Venom/Firestorm pass — Arcane Lance would otherwise have reopened the gap that pass just closed.
+
 ## Session Extract — Arcane Lance (T3 tower), completes both the element roster and the blueprint tier spread, 2026-08-23
 
 - Checked Defense Building's 6 tech nodes for gaps first — found none, it's a clean, deliberately-closed 2-branch×3-tier structure exactly matching Crafting's quality_tier system (which this session's own tower_component work just completed T1-T3 for).
