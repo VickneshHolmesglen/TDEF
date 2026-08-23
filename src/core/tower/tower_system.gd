@@ -34,6 +34,29 @@ const GROUP_NAME: StringName = &"tower_system"
 ## distance == aoe_radius_cells.
 const MIN_SPLASH_FALLOFF: float = 0.40
 
+## TD-tower-008 fix — Support/AURA buff duration. A Support tower's pulse
+## refreshes every allied TowerMissionState.damage_buff_remaining in its
+## radius to this many seconds; _tick_combat() decays it toward 0 every
+## frame. Deliberately NOT "reapply forever until a pulse stops reaching
+## you" (that would need no timer, but would also mean a buffed tower that
+## walks out of every Support tower's radius mid-wave keeps its bonus
+## forever with nothing to ever clear it -- there's no monster_died-style
+## terminal event for "this tower stopped being in range"). A flat buffer
+## comfortably longer than any authored Support weapon's own attack
+## interval (Rally Banner: attack_speed=1.0 -> 1.0s between pulses) means a
+## tower still in range never visibly flickers the buff off between pulses,
+## while one that leaves range fades out within one duration window instead
+## of holding the bonus indefinitely.
+const AURA_BUFF_DURATION: float = 2.0
+
+## TD-tower-008 fix — safety clamp on aura_effect_value applied at
+## consumption time, not authoring time (WeaponComponent.validate() leaves
+## this field's upper bound unbounded on purpose -- tower.md's own schema
+## table says "Upper bound is effect-type-dependent; D&S System owns the
+## valid range per effect_id" -- this constant is that owned range for the
+## one effect_id actually implemented so far, "damage_buff").
+const MAX_DAMAGE_BUFF_FRACTION: float = 1.0
+
 # ---------------------------------------------------------------------------
 # Public state — readable by tests and other mission-scene systems
 # ---------------------------------------------------------------------------
@@ -107,6 +130,11 @@ func _tick_combat(delta: float) -> void:
 		if state.attack_timer_remaining <= 0.0:
 			_try_attack(state)
 			state.attack_timer_remaining += 1.0 / state.weapon.attack_speed
+		if state.damage_buff_remaining > 0.0:
+			state.damage_buff_remaining -= delta
+			if state.damage_buff_remaining <= 0.0:
+				state.damage_buff_remaining = 0.0
+				state.damage_buff_fraction = 0.0
 
 
 func _physics_process(delta: float) -> void:
@@ -311,6 +339,7 @@ func _try_attack(state: TowerMissionState) -> void:
 		pulse.aura_effect_value = state.weapon.aura_effect_value
 		pulse.aura_radius_cells = state.weapon.aura_radius_cells
 		GEventBus.tower_aura_pulse.emit(pulse)
+		_apply_aura_pulse(state)
 		return
 	var target_id: int = _find_target(state)
 	if target_id == -1:
@@ -326,7 +355,8 @@ func _try_attack(state: TowerMissionState) -> void:
 	var crit_mult: float = state.weapon.crit_multiplier if is_crit else 1.0
 	var vs_tag_mult: float = _resolve_vs_tag_multiplier(state.foundation, entry)
 	var boss_mult: float = state.foundation.tier_boss_dps_multiplier if entry.get("is_boss", false) else 1.0
-	var damage: float = base_damage * crit_mult * vs_tag_mult * boss_mult
+	var aura_mult: float = 1.0 + state.damage_buff_fraction  # TD-tower-008 fix
+	var damage: float = base_damage * crit_mult * vs_tag_mult * boss_mult * aura_mult
 	var resistance: float = _resolve_element_resistance(state.weapon.element, entry)
 	damage *= 1.0 - resistance
 
@@ -367,6 +397,35 @@ func _apply_splash_damage(state: TowerMissionState, primary_id: int, primary_cel
 		var is_armored: bool = entry["is_armored"] as bool
 		GEventBus.tower_attacked.emit.call_deferred(state.tower_id, entity_id, splash_damage, is_siege,
 				is_armored, "", 0.0, 0.0, state.weapon.armor_penetration, is_crit)
+
+
+## TD-tower-008 fix — the buff-application half of TD-tower-007's original
+## gap: a Support tower's pulse refreshes damage_buff_fraction/
+## damage_buff_remaining on every allied tower (including itself; no
+## self-exclusion is specified anywhere and a Support tower buffing its own
+## HP-only combat presence is harmless -- it never reaches _try_attack's
+## damage path itself) within aura_radius_cells (Chebyshev, same distance
+## metric as every other range check in this file). Only "damage_buff" is
+## implemented -- any other aura_effect_type is a no-op here (tower.md's own
+## schema says "D&S System owns the valid range per effect_id"; this is
+## this system's owned range for the one effect_id any shipped content
+## actually authors today, matching the project's established "unrecognized
+## value = inert, not an error" convention for content-driven string enums).
+func _apply_aura_pulse(source_state: TowerMissionState) -> void:
+	if source_state.weapon.aura_effect_type != "damage_buff":
+		return
+	var fraction: float = clampf(source_state.weapon.aura_effect_value, 0.0, MAX_DAMAGE_BUFF_FRACTION)
+	var radius: int = source_state.weapon.aura_radius_cells
+	for id: int in placed_towers:
+		var ally: TowerMissionState = placed_towers[id] as TowerMissionState
+		var distance: int = maxi(
+			absi(ally.grid_position.x - source_state.grid_position.x),
+			absi(ally.grid_position.y - source_state.grid_position.y)
+		)
+		if distance > radius:
+			continue
+		ally.damage_buff_fraction = maxf(ally.damage_buff_fraction, fraction)
+		ally.damage_buff_remaining = AURA_BUFF_DURATION
 
 
 ## Looks up foundation.bonus_damage_vs_tags against the target's cached

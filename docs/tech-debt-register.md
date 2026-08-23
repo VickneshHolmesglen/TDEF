@@ -52,6 +52,7 @@ Add aura-pulse handling to `TowerSystem` — likely a periodic tick (matching `_
 **Logged**: 2026-08-23 (split out of `TD-tower-007` during that entry's fix — see its Resolution section)
 **Severity**: Medium — Support archetype is no longer *invisible* (VFX pulse now fires, `tower_wave_summary.aura_applications_this_wave` would count real pulses once that summary system itself is wired), but it still provides zero actual combat value. Downgraded from `TD-tower-007`'s own High because the more severe "completely inert, not even visible" half of the original bug is now fixed.
 **Area**: `src/core/damage_status/damage_status.gd` (no `tower_aura_pulse` subscriber exists), `src/core/tower/tower_mission_state.gd` (no buff/debuff state fields to receive an aura effect)
+**Fixed**: 2026-08-23 — see Resolution below. Applied inside `TowerSystem` instead of `damage_status.gd` (deliberate deviation from this entry's own recommended fix — see Resolution for why).
 
 ### Gap
 
@@ -62,7 +63,8 @@ Add aura-pulse handling to `TowerSystem` — likely a periodic tick (matching `_
 Design the aura effect vocabulary and application model first (likely a `/quick-design` or GDD amendment to tower.md, not a silent code decision), then add a `tower_aura_pulse` subscriber to `damage_status.gd` that looks up allied towers within `aura_radius_cells` (via a new TowerSystem query method, mirroring `_candidates_in_range()`'s pattern) and applies the resolved effect.
 
 ### Resolution
-- [ ] Not yet started.
+- [x] Fixed 2026-08-23. Made 2 deliberate design calls not specified anywhere in tower.md (documented in the code, not silently decided): **(1) Ownership** — applied inside `TowerSystem` itself, NOT `damage_status.gd` as the GDD's own `tower_aura_pulse` doc comment names. Reason: buff application mutates `TowerMissionState` (grid position, combat stats), which is `TowerSystem`-private state — `damage_status.gd` has no read/write access to it and would need a new cross-system query surface to get any, whereas `TowerSystem` already owns both the aura tower's position and every candidate ally's position (same data `_apply_splash_damage()` already uses for its own tower-to-monster distance check). D&S stays scoped to what it already does everywhere else: converting attack events into monster-facing damage/status, never touching tower-internal state directly. **(2) Effect model** — re-applied fresh (not stacked) on every pulse, decaying via a flat `AURA_BUFF_DURATION = 2.0`s timer (`TowerMissionState.damage_buff_fraction`/`damage_buff_remaining`, decayed in `_tick_combat()`) rather than a permanent "reapply forever" flag — a buffed tower that later walks out of every Support tower's radius needs *something* to eventually clear its bonus, and there's no terminal event for "this tower left an aura's range" to hook instead. Only `aura_effect_type == "damage_buff"` (the one effect id any shipped content — Rally Banner — actually authors) is implemented; any other value is a documented no-op, matching this project's established "unrecognized content-driven string = inert" convention. `_try_attack()`'s damage formula gained one more independent multiplier: `damage = base_damage × crit_mult × vs_tag_mult × boss_mult × (1.0 + damage_buff_fraction)`.
+- [ ] Not yet re-verified via the test suite — no test run this session, per the standing "no unrequested testing" instruction.
 
 ---
 

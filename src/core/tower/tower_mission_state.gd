@@ -31,3 +31,11 @@ var damaged: bool = false
 ## meaningful when focus.targeting_mode == "SCATTER"; unused otherwise.
 var scatter_index: int = 0
 var last_scatter_target_id: int = -1
+
+## Support/AURA buff state (TD-tower-008 fix) -- refreshed (overwritten, not
+## stacked) whenever a Support tower's aura pulse reaches this tower, decayed
+## by TowerSystem._tick_combat() each frame. 0.0 = no active buff. See
+## TowerSystem.AURA_BUFF_DURATION's own doc comment for why this needs a
+## decay timer at all rather than a simple "reapply forever" flag.
+var damage_buff_fraction: float = 0.0
+var damage_buff_remaining: float = 0.0
