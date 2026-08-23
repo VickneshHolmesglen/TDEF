@@ -1,3 +1,11 @@
+## Session Extract — New crafting recipe + item (Hunter's Draught), 2026-08-23
+
+- Added `hunters_draught.tres` (new `CraftedGood` item) + `recipe_hunters_draught.tres` (new recipe producing it) — checked first whether any existing `CraftedGood` item lacked a recipe (a real gap this session would want to close, matching the pattern all session), found none: all 8 existing CraftedGood items already have a recipe (`recipe_healing_salve_bulk` is a second recipe for the same `healing_salve` item, a legitimate bulk-quantity variant, not an orphan). So this is a genuinely new item+recipe pair, not a gap-closer.
+- Matched `healing_salve`'s exact simple pattern (item_type-based `{&"Material": 4}` input, no rarity-specific gating) rather than inventing new material-sourcing logic. Confirmed via `RecipeResource.validate()` that `output_item_id` must reference a real, already-existing `item_id` — authored both files together in the same pass rather than the item first/recipe later.
+- Both auto-discovered via the same directory-scan pattern as everything else this session — no further wiring needed. Matches `healing_salve`'s own precedent of shipping with empty `base_stats={}` (flavor/sellable content, no mechanical effect) — not a new gap, an existing, already-accepted content pattern.
+- **No tests, no live verification** — per the standing instruction.
+- Committed and pushed immediately per the standing instruction.
+
 ## Session Extract — 13th tarot card (Grinding Gauntlet, dual-edge risk/reward), 2026-08-23
 
 - Added `card_grinding_gauntlet.tres` — a Rare-rarity dual-edge card (`tarot_reward_scalar_mult=1.5` paired with `tarot_difficulty_growth_rate=0.2`, matching the established "Reckless Onslaught" precedent for 2-modifier risk/reward cards). Checked `TarotCardResource.validate()`/`TarotModifierEntry.REGISTERED_MODIFIER_TYPES` first — confirmed all 4 registered modifier types, and that `tarot_wave_config_override` (the 4th, unused by any existing card) requires a more complex per-mission alternate-WaveConfig reference I couldn't confidently author without live-testing, so stuck to the 2 already well-established types instead.
