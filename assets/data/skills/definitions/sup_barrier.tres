@@ -8,5 +8,5 @@ skill_id = &"sup_barrier"
 display_name = "Barrier"
 category = "support"
 passive_slot_count = 2
-source_build_signature = &""
+source_build_signature = &"found_barrier_t2|weap_barrier_t2|focus_barrier_t2|power_none"
 mastery_threshold_seconds = 45.0

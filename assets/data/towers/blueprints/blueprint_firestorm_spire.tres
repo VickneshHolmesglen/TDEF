@@ -1,0 +1,63 @@
+[gd_resource type="Resource" script_class="TowerBlueprintData" load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://src/core/tower/tower_blueprint_data.gd" id="1"]
+[ext_resource type="Script" path="res://src/core/tower/foundation_component.gd" id="2"]
+[ext_resource type="Script" path="res://src/core/tower/weapon_component.gd" id="3"]
+[ext_resource type="Script" path="res://src/core/tower/focus_component.gd" id="4"]
+[ext_resource type="Script" path="res://src/core/tower/power_component.gd" id="5"]
+
+[sub_resource type="Resource" id="Foundation_firestorm"]
+script = ExtResource("2")
+component_id = "found_firestorm_t4"
+archetype = "elemental"
+hp_base = 130.0
+tier = 4
+tier_multiplier = 2.5
+tier_dps_multiplier = 4.0
+tier_cost_factor = 4.0
+tier_boss_dps_multiplier = 2.0
+footprint = Vector2i(1, 1)
+pre_placement_perk = ""
+archetype_cost_factor = 1.0
+damaged = false
+
+[sub_resource type="Resource" id="Weapon_firestorm"]
+script = ExtResource("3")
+component_id = "weap_firestorm_t4"
+weapon_damage = 45.0
+attack_speed = 0.6
+projectile_type = "BALLISTIC"
+element = "fire"
+aura_effect_type = ""
+aura_effect_value = 0.0
+aura_radius_cells = 0
+aoe_radius_cells = 3
+damaged = false
+
+[sub_resource type="Resource" id="Focus_firestorm"]
+script = ExtResource("4")
+component_id = "focus_firestorm_t4"
+targeting_mode = "CLOSEST_TO_GOAL"
+attack_range_cells = 4
+cone_half_angle = 90.0
+facing_direction = "N"
+damaged = false
+
+[sub_resource type="Resource" id="Power_firestorm"]
+script = ExtResource("5")
+component_id = "power_firestorm_burn_t4"
+effect_type = "burn"
+effect_value = 0.15
+effect_duration = 4.0
+constellation_eligibility_tag = "elemental_fire"
+damaged = false
+
+[resource]
+script = ExtResource("1")
+tower_id = &"firestorm_spire"
+display_name = "Firestorm Spire"
+placement_cost = 30
+foundation = SubResource("Foundation_firestorm")
+weapon = SubResource("Weapon_firestorm")
+focus = SubResource("Focus_firestorm")
+power = SubResource("Power_firestorm")

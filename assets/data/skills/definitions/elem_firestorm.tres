@@ -8,5 +8,5 @@ skill_id = &"elem_firestorm"
 display_name = "Firestorm"
 category = "elemental"
 passive_slot_count = 3
-source_build_signature = &""
+source_build_signature = &"found_firestorm_t4|weap_firestorm_t4|focus_firestorm_t4|power_firestorm_burn_t4"
 mastery_threshold_seconds = 45.0

@@ -20,7 +20,7 @@ Found while closing out the last 2 towers with no mastery-linked skill (Firebolt
 Read `hero-skill-build.md`/`tower-mastery.md` for whether `elem_firestorm` was ever intentionally scoped as mastery-unreachable (e.g. unlocked via a quest, tech node, or other path). If it was simply never finished, set `source_build_signature = &"found_firebolt_t1|weap_firebolt_t1|focus_firebolt_t1|power_firebolt_burn_t1"` to match Firebolt Turret, mirroring every other elemental skill's pattern.
 
 ### Resolution
-- [ ] Not yet started.
+- [x] Fixed 2026-08-23 — superseded by events, not by the originally-recommended fix. `found_firebolt_t1|...` was no longer available to reuse: this session later gave Firebolt Turret its own dedicated skill (`elem_firebolt.tres`, closing the tower-to-skill coverage gap directly). Instead, `elem_firestorm` (name, `passive_slot_count=3` maximum) turned out to match a *different* real gap found in the same audit pass: the Elemental archetype had T1×3/T2/T3 towers but no T4. Added `blueprint_firestorm_spire.tres` (T4 Elemental, `element="fire"`, large `aoe_radius_cells=3` matching the "storm" scale the name implies) and linked `elem_firestorm`'s `source_build_signature` to it — same resolution shape as the fix, different actual tower.
 
 ---
 

@@ -8,5 +8,5 @@ skill_id = &"phys_bulwark"
 display_name = "Bulwark"
 category = "physical"
 passive_slot_count = 2
-source_build_signature = &""
+source_build_signature = &"found_bulwark_t2|weap_bulwark_t2|focus_bulwark_t2|power_none"
 mastery_threshold_seconds = 45.0
