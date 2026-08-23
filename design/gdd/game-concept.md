@@ -155,19 +155,19 @@ materials_per_wave = base_drop_rate × monster_count × wave_reward_scalar × me
 
 ## Visual/Audio Requirements
 
-**Visual Identity Anchor** (added 2026-07-10, closing the gap flagged at the
-`systems-design-2026-07-10-revalidation.md` gate check): full visual direction lives in
-`design/art/art-bible.md`, Section 1 (Visual Identity Statement). The anchoring rule:
+**Visual Identity Anchor** (replaced 2026-08-23 for the full art overhaul): full
+visual direction lives in `design/art/art-bible.md`, Section 1. The anchoring rule:
 
-> "If it could sit inside a wizard's cabinet as a hand-carved diorama, it belongs in this
-> game. If it looks like a flat tilemap or a web browser game, it is wrong."
+> "Sanctuary Defenders presents a tactile, dimensional world built and commanded by the
+> player, while its invading creatures appear as expressive 2D illustrations brought to
+> life within that world."
 
-Supporting principles (art-bible.md Section 1 in full): every object reads as a physical,
-weighted presence via stacked-sprite layering with cast shadows (never flat decals); scale
-reads as precious/hand-crafted-miniature, not epic/heroic — camera and asset design always
-serve the standard oblique play angle over a cinematic one; the Hero is the deliberate sole
-3D-model exception to an otherwise 2D-diorama world (see art-bible.md's own rationale for
-the hybrid rendering split).
+The approved hybrid split makes the player's persistent domain 3D: hero, towers,
+buildings, terrain, paths, Sanctuary architecture, large props, lighting, and shadows.
+Monsters and creatures remain expressive 2D assets built for readability in 100+ enemy
+waves. Cards, icons, portraits, UI ornamentation, and selected VFX also remain 2D. The
+Diablo IV screenshots in `production/` reference Player Inventory UI only and do not
+define the world's art style.
 
 Audio direction is not yet authored — no `design/audio/` bible exists at time of writing.
 

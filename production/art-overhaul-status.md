@@ -24,11 +24,19 @@
 
 ---
 
-## Direction lock-in (blocking — see codex-art-overhaul.md §1)
+## Direction lock-in (complete — see codex-art-overhaul.md §1)
 
 | Item | Status | Notes |
 |---|---|---|
-| Pilot batch: candidate visual directions | `backlog` | Not started. Per the coordination doc, full production should not begin until the user picks a direction from a small pilot batch. |
+| 3D-world / 2D-creatures visual foundation | `done` | Locked by user 2026-08-23. Diablo IV screenshots are Player Inventory UI references only. |
+
+## Production architecture (blocking)
+
+| Item | Status | Notes |
+|---|---|---|
+| Reconcile Art Bible Sections 2–9 with the new hybrid split | `backlog` | Section 1 is authoritative; remaining sections still contain assumptions from the former hero-only-3D diorama direction. |
+| Define Godot 3D/2D scene, camera, lighting, shadow, and compositing architecture | `backlog` | Required before asset specifications or mass generation. |
+| Cross-medium pilot scene | `backlog` | Validate one 3D environment/tower setup with representative 2D creatures at gameplay zoom and crowd density. |
 
 ---
 

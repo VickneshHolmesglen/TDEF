@@ -5,9 +5,9 @@
 > process, this file wins; if it's silent, fall back to `AGENTS.md` (Codex) /
 > `CLAUDE.md` (Claude Code) and `design/art/art-bible.md`.
 >
-> **Status**: Process/coordination doc — written 2026-08-23. Visual *direction*
-> is explicitly **not decided yet** (see §1). Do not mass-generate final art
-> against this document until §1 is resolved.
+> **Status**: Process/coordination doc — written 2026-08-23. The hybrid medium
+> split is locked in §1; the remaining production architecture and category-level
+> style specifications must be completed before mass generation.
 
 ---
 
@@ -31,46 +31,37 @@ neither duplicates or overwrites the other's in-flight work.
 
 ---
 
-## 1. Open decision — visual direction is not locked
+## 1. Locked visual foundation — 3D world, 2D creatures
 
-**The user's own words**: *"I'm changing everything, I'll determine the art
-style direction later."*
+The user locked the replacement foundation on 2026-08-23:
 
-The project's existing `design/art/art-bible.md` (9 sections, ~2,500 lines)
-describes the **current, pre-overhaul** visual identity: a warm, painterly,
-hand-carved "cabinet diorama" register — miniature scale, restrained color
-semantics, one real-time 3D Hero composited into an otherwise fully-2D-sprite
-world. That document is **not confirmed as the overhaul's target** — it's the
-baseline being reconsidered. Two reference images the user provided
-(`production/Hero Unequipped.PNG`, `production/Hero 2H equipped.PNG` — Diablo
-IV equipment-inspection screenshots) show a much darker, higher-fidelity,
-more-realistic register than the current art bible describes. The user has
-not yet said whether the new direction goes that far, stays partially in the
-current register, or lands somewhere else — that decision is deliberately
-still open.
+> **Sanctuary Defenders presents a tactile, dimensional world built and
+> commanded by the player, while its invading creatures appear as expressive
+> 2D illustrations brought to life within that world.**
 
-**What this means in practice:**
+Asset ownership is explicit:
 
-- **Do not treat `art-bible.md`'s palette/mood/shape-language sections (1–7)
-  as binding requirements for new art.** Read them for context on *why* the
-  current game looks the way it does, not as a spec to satisfy.
-- **Section 8 (Asset Standards) and Section 9 (Reference Direction) are
-  mostly engine/technique constraints, not style** — file formats, texture
-  budgets, poly budgets, LOD philosophy, alpha-channel/export rules. Those
-  stay useful regardless of which visual direction gets chosen (see §5 below,
-  which reproduces the load-bearing parts).
-- **Before either agent mass-generates final, ship-intended art**, the visual
-  direction needs an explicit lock-in pass: a small batch of pilot/test
-  generations across the candidate direction(s), reviewed by the user, with a
-  decision recorded back into `art-bible.md` (or a new document superseding
-  it) before full production starts. Until that happens, treat any generation
-  work as **exploratory/pilot**, not final — log it as such in
-  `production/art-overhaul-status.md` (§4) so nothing gets wired into the game
-  as "done" prematurely.
-- If the user gives either agent a direct style instruction mid-session
-  (before a formal lock-in), follow it for that specific asset, but flag in
-  the status file that the broader direction is still open — don't infer a
-  project-wide decision from one asset's instruction.
+- **3D:** hero, towers, major buildings, terrain, paths, Sanctuary architecture,
+  large props, world lighting, and world shadows.
+- **2D:** monsters and creatures, card illustrations, inventory/equipment and
+  skill icons, portraits, UI ornamentation, and selected VFX.
+- **Mixed effects:** 3D projectiles and world lighting may combine with 2D
+  particles, decals, and impact frames.
+
+This split follows player ownership: the player builds and commands a persistent
+physical world; illustrated creatures enter it as threats. Shared silhouettes,
+values, grounding shadows, outlines, and semantic accent colours must make the
+two media feel intentionally composed.
+
+The Diablo IV screenshots (`production/Hero Unequipped.PNG` and
+`production/Hero 2H equipped.PNG`) are references for **Player Inventory UI
+structure and presentation only**. Do not use them to infer world art, realism,
+palette, lighting, environmental treatment, or character/creature style.
+
+Section 1 of `design/art/art-bible.md` now carries this approved foundation.
+Sections 2–9 still require a controlled retrofit so their old 2D-diorama
+production rules do not contradict it. Until that architecture/specification
+pass is approved, do not mass-generate final assets.
 
 ---
 
@@ -302,10 +293,9 @@ decisions from scratch.
 
 ## 6. What NOT to do
 
-- Don't mass-generate final, ship-bound art before §1's style lock-in — pilot
-  generations only until the user confirms a direction.
-- Don't silently pick a direction from the Diablo reference images and run
-  with it project-wide — those are references, not a confirmed target.
+- Don't mass-generate final, ship-bound art before the category-level 3D/2D
+  architecture and remaining Art Bible sections are reconciled with §1.
+- Don't apply the Diablo screenshots outside Player Inventory UI.
 - Don't re-evaluate the animation plugin question (§5.7) without new evidence.
 - Don't skip the status-file claim step "because it's just one small asset" —
   the coordination protocol only works if both agents follow it every time.
@@ -318,17 +308,12 @@ decisions from scratch.
 
 ## 7. Recommended first steps
 
-1. Read `design/art/art-bible.md` Sections 1–4 for context on the current
-   register (not as a spec — see §1), and Section 8 in full (this document's
-   §5.6 only excerpts the highlights).
+1. Treat `design/art/art-bible.md` Section 1 as locked and audit Sections 2–9
+   for assumptions inherited from the former hero-only-3D diorama direction.
 2. Read `design/art/asset-generation-prompts.md` for the project's prompt
    voice/patterns and full outcome history — reuse successful phrasing, don't
    reinvent it.
-3. Propose 2–3 candidate pilot directions (could include a "push toward the
-   Diablo reference" option, a "refined version of the current diorama style"
-   option, and a middle-ground option) as small test-batch prompts — present
-   to the user for a decision before either agent commits to full production.
-4. Once a direction is locked, initialize `production/art-overhaul-status.md`
-   with a real backlog (towers → monsters → hero → environment → UI → VFX, or
-   whatever order the user prefers) and begin the claim/generate/process loop
-   in §3.
+3. Define the Godot scene/rendering architecture and category-level production
+   standards for the locked 3D-world/2D-creatures split.
+4. After that specification is approved, initialize the backlog and run a small
+   cross-medium pilot scene before full production begins.

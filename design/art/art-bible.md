@@ -2,7 +2,7 @@
 
 > **Status**: All 9 Sections Complete
 > **Author**: Vicknesh + Art Director
-> **Last Updated**: 2026-07-06
+> **Last Updated**: 2026-08-23
 > **AD-ART-BIBLE Sign-Off**: Skipped — Lean mode (director gate deferred to Full review)
 
 ---
@@ -27,83 +27,74 @@
 
 ### One-Line Visual Rule
 
-> **If it could sit inside a wizard's cabinet as a hand-carved diorama, it belongs in this game. If it looks like a flat tilemap or a web browser game, it is wrong.**
+> **Sanctuary Defenders presents a tactile, dimensional world built and commanded by the player, while its invading creatures appear as expressive 2D illustrations brought to life within that world.**
 
 ---
 
 ### Supporting Visual Principles
 
-#### Principle 1 — Everything Has Weight and Depth
-*Pillar: The Living Sanctuary*
+#### Principle 1 — The Player's Domain Has Weight
+*Pillar: The Architect-General / Strategic Mastery*
 
-No object in this game exists as a flat decal on a surface. Every sprite —
-whether a tower, a monster, a tree, or a wall tile — must read as a physical
-object occupying space. Depth is achieved through stacked sprite layers with
-cast shadow sprites between them, not through outline tricks or shading alone.
-The viewer's eye must believe that objects sit *on* the ground plane, not *in
-front of* it.
+The hero, towers, buildings, terrain, paths, Sanctuary architecture, large
+props, lighting, and shadows use 3D form to make construction, placement,
+upgrading, and spatial control feel physical and consequential.
 
-**Design test:** When an environment prop feels flat or ambiguous, choose stacked
-layering with a shadow sprite beneath it over a single sprite with a drop-shadow
-effect. If removing the shadow sprite makes the object look pasted onto the
-ground, the layering is insufficient — add an intermediate layer.
+**Design test:** Can the player understand buildable space, tower function,
+upgrade state, and battlefield structure from silhouette, elevation, and
+lighting before reading UI text?
 
 ---
 
-#### Principle 2 — Scale Reads as Precious, Not Epic
-*Pillar: Combinatorial Discovery*
+#### Principle 2 — The Enemy Horde Reads as a Living Bestiary
+*Pillars: Short, Readable Tower-Defense Missions / Combinatorial Discovery*
 
-This is a miniature world viewed from a slightly elevated oblique angle. The
-correct aesthetic register is "hand-crafted cabinet diorama," not "heroic
-fantasy panorama." Objects should feel small and knowable — the kind of world
-a player wants to examine closely, not one that overwhelms. Rich surface detail
-(wood grain, stone weathering, fabric texture) reinforces the sense that someone
-*made* these objects by hand. Camera angles and field-of-view choices must always
-reinforce miniature scale, never undermine it.
+Monsters and other creatures use authored 2D artwork with strong silhouettes,
+restrained internal detail, and animation designed to remain legible during
+waves of 100 or more enemies. Dimensional contrast separates threats from the
+3D structures the player controls.
 
-**Design test:** When choosing between a wide sweeping camera angle and a tighter
-oblique angle, choose the tighter oblique angle. If an asset looks impressive from
-a cinematic low angle but loses character at the standard play angle, it is wrong
-— design for the play angle first and only the play angle.
+**Design test:** At normal gameplay zoom and maximum crowd density, can players
+quickly distinguish enemy families, priority threats, resistances, and relevant
+tower interactions?
 
 ---
 
-#### Principle 3 — Color Carries Information Before It Carries Mood
-*Pillar: Strategic Mastery*
+#### Principle 3 — The Sanctuary Grows from Refuge into Legacy
+*Pillars: The Living Sanctuary / Combinatorial Discovery*
 
-Every color decision in this game is a communication decision first. The player
-must be able to read the battlefield at a glance: which towers are active, which
-enemies are dangerous, where the hero is, what resource state the player is in.
-Color may also serve mood, but only after its informational role is fully
-discharged. Purely decorative color choices that add visual noise without
-communicating game state are rejected regardless of aesthetic quality.
+The Sanctuary's 3D architecture visibly accumulates history through
+construction, repair, upgrades, inhabited details, and changing light.
+Portraits, cards, icons, and illustrated ornament provide the human and mythic
+layer that records discoveries and relationships.
 
-**Design test:** When choosing between two color options for a VFX or UI element,
-choose the option that is unambiguous in context over the option that is more
-visually interesting in isolation. Test every color decision in a populated scene,
-not on a white canvas.
+**Design test:** Does each meaningful progression step create a visible change
+in the 3D Sanctuary or its supporting 2D visual language, without relying solely
+on menus or numbers?
 
 ---
 
-### Note on the Hybrid Rendering Technique
+### Hybrid Rendering Ownership
 
-Sanctuary Defenders uses a deliberate split: the hero is a real-time 3D model
-composited into a scene built entirely from layered 2D sprites. This is not a
-technical compromise — it is the correct expression of the game's identity. The
-hero is the one thing in the world that is *not* a miniature. The hero is the
-player's singular point of presence in an otherwise crafted, arranged world. A
-3D model carries weight, casts light realistically, and reads differently from
-every other object on screen; that difference is intentional. It communicates at
-a glance that this is the entity the player *inhabits*, not the entities the
-player *commands*.
+The dimensional split follows the game's central conflict: the player shapes a
+persistent physical world, while illustrated forces emerge into it as threats,
+knowledge, and possibility.
 
-The diorama metaphor holds: in a cabinet diorama, there is often one hand-painted
-centrepiece figure surrounded by crafted scenery — the centrepiece reads as real
-because everything around it reads as constructed. The hero functions as that
-centrepiece. Every rendering choice in the 2D world (warm painterly textures,
-depth-of-field softening at the edges, cast shadows between sprite layers) is
-calibrated to make the diorama feel real enough that the 3D hero belongs inside
-it rather than floating above it.
+- **3D:** hero, towers, major buildings, terrain, paths, Sanctuary architecture,
+  large props, world lighting, and world shadows.
+- **2D:** monsters and creatures, card illustrations, inventory and equipment
+  icons, skill icons, portraits, UI ornamentation, and selected VFX.
+- **Mixed effects:** 3D projectile motion and world lighting may combine with
+  2D particles, decals, and impact frames when this improves feedback.
+
+Consistency comes from shared silhouette language, coordinated value ranges,
+controlled outlines, grounding shadows, and common semantic accent colours—not
+from forcing every asset into the same medium.
+
+**Reference boundary:** `production/Hero Unequipped.PNG` and
+`production/Hero 2H equipped.PNG` are references for Player Inventory UI
+structure and presentation only. They do not define world art, realism,
+palette, lighting, environmental treatment, or character and creature style.
 
 ---
 
