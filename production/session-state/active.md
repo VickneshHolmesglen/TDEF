@@ -1,3 +1,8 @@
+## Session Extract — Reinforced Foundation (mirrors the Focus tier-gap fix), 2026-08-23
+
+- Same gap, other slot: Foundation was also stuck at Tier 1 only for generic (non-blueprint-copy) crafting. Added the matching 3-file chain (`recipe_reinforced_foundation.tres` → `reinforced_foundation_component.tres` → `foundation_reinforced.tres`), Tier 2, matching `tower.md`'s exact Tier 2 cross-field table (`tier_multiplier=1.5`, `tier_dps_multiplier=1.6`, `tier_cost_factor=1.5`, `tier_boss_dps_multiplier=1.0`) and the same `tech_production_2`/`{Material:4}` recipe convention as Reinforced Focus. Both Foundation and Focus now have a real T1→T2 path through Tower Assembly; Weapon and Power already did.
+- Committed and pushed immediately, no confirmation pause.
+
 ## Session Extract — Reinforced Focus (2nd generic tower_component recipe closing a real tier gap), 2026-08-23
 
 - User instruction escalated once more: "keep going automatically, dont ask me" — stop pausing for a mini-report/confirmation between each item within a turn; chain items and only surface a consolidated summary. Noted in `feedback_commit_push_no_confirm`.
