@@ -1,3 +1,11 @@
+## Session Extract — Reinforced Focus (2nd generic tower_component recipe closing a real tier gap), 2026-08-23
+
+- User instruction escalated once more: "keep going automatically, dont ask me" — stop pausing for a mini-report/confirmation between each item within a turn; chain items and only surface a consolidated summary. Noted in `feedback_commit_push_no_confirm`.
+- Found a real, genuine tier gap while checking tower_component recipes: of the 8 `tower_component` recipes, 4 are Archer-blueprint-copy variants (a separate mechanism) and the other 4 are the actual generic, freely-craftable components — exactly **1 per slot**. Foundation and Focus only ever had a Tier 1 option; only Weapon (T1+T2) and Power (T1+T4) had any tier progression at all. A player using Tower Assembly could never build a T2+ Foundation or Focus component from scratch.
+- Added the 3-file chain (`recipe_reinforced_focus.tres` → `reinforced_focus_component.tres` item → `focus_reinforced.tres` standalone `FocusComponent`) for a Tier 2 Focus option, matching `recipe_advanced_component.tres`'s exact Tier 2 convention (`{&"Material": 4}`ish, `tech_prerequisite=&"tech_production_2"`, `quality_tier=2`) rather than inventing new scaling. `targeting_mode="LOWEST_HP"` chosen for honesty about real current behavior (see `TD-tower-006`), not the value that would be thematically "correct" if the bug were fixed.
+- Verified `ItemDefinitionResource.validate()`'s exact `TowerComponent` cross-field rule (`component_resource_path` required, matches `basic_focus_component`'s own precedent for an omitted/default `rarity`).
+- Committed and pushed immediately, no confirmation pause.
+
 ## Session Extract — 2nd Building Upgrade (Habitat Expansion), 2026-08-23
 
 - Checked Building Upgrade content: only 1 `BuildingUpgradeResource` existed (`upgrade_watchtower_reinforced`) despite the system explicitly supporting multiple structures/chains (Watchtower is deliberately single-tier by GDD design — confirmed before touching it — but Habitat Expansion has 4 real tiers and zero authored upgrades, a genuine gap).
