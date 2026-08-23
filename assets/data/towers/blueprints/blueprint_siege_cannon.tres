@@ -1,0 +1,63 @@
+[gd_resource type="Resource" script_class="TowerBlueprintData" load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://src/core/tower/tower_blueprint_data.gd" id="1"]
+[ext_resource type="Script" path="res://src/core/tower/foundation_component.gd" id="2"]
+[ext_resource type="Script" path="res://src/core/tower/weapon_component.gd" id="3"]
+[ext_resource type="Script" path="res://src/core/tower/focus_component.gd" id="4"]
+[ext_resource type="Script" path="res://src/core/tower/power_component.gd" id="5"]
+
+[sub_resource type="Resource" id="Foundation_siege"]
+script = ExtResource("2")
+component_id = "found_siege_t4"
+archetype = "physical"
+hp_base = 140.0
+tier = 4
+tier_multiplier = 2.5
+tier_dps_multiplier = 4.0
+tier_cost_factor = 4.0
+tier_boss_dps_multiplier = 2.0
+footprint = Vector2i(1, 1)
+pre_placement_perk = ""
+archetype_cost_factor = 1.0
+damaged = false
+
+[sub_resource type="Resource" id="Weapon_siege"]
+script = ExtResource("3")
+component_id = "weap_siege_t4"
+weapon_damage = 100.0
+attack_speed = 0.5
+projectile_type = "HOMING"
+element = ""
+aura_effect_type = ""
+aura_effect_value = 0.0
+aura_radius_cells = 0
+aoe_radius_cells = 0
+damaged = false
+
+[sub_resource type="Resource" id="Focus_siege"]
+script = ExtResource("4")
+component_id = "focus_siege_t4"
+targeting_mode = "LOWEST_HP"
+attack_range_cells = 5
+cone_half_angle = 45.0
+facing_direction = "N"
+damaged = false
+
+[sub_resource type="Resource" id="Power_siege"]
+script = ExtResource("5")
+component_id = "power_none"
+effect_type = ""
+effect_value = 0.0
+effect_duration = 0.0
+constellation_eligibility_tag = "physical_siege"
+damaged = false
+
+[resource]
+script = ExtResource("1")
+tower_id = &"siege_cannon"
+display_name = "Siege Cannon"
+placement_cost = 28
+foundation = SubResource("Foundation_siege")
+weapon = SubResource("Weapon_siege")
+focus = SubResource("Focus_siege")
+power = SubResource("Power_siege")

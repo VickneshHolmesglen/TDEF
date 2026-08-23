@@ -5,6 +5,29 @@ Items are resolved by creating a follow-up story and linking it here.
 
 ---
 
+## TD-tower-006 — `targeting_mode` is fully specified but never consumed — every tower always targets lowest-HP
+
+**Logged**: 2026-08-23
+**Severity**: Medium — a real, silent gameplay bug, not just an unbuilt feature. 3 of 6 (now 8) shipped tower blueprints author a `targeting_mode` other than the one mode that actually works, so their authored identity doesn't match their real behavior: `blueprint_longshot_sniper.tres` says `HIGHEST_HP` (a sniper meant to snipe the toughest target) but behaves identically to every other tower (lowest-HP); `blueprint_archer.tres`/`blueprint_rally_banner.tres` say `CLOSEST_TO_GOAL` with the same silent mismatch.
+**Area**: `src/core/tower/tower_system.gd` (`_try_attack()` calls the hardcoded `_find_lowest_hp_target()`, never reads `state.focus.targeting_mode`), `src/core/tower/focus_component.gd` (schema field, correctly documented as unused-by-code nowhere)
+
+### Gap
+
+`design/gdd/tower.md` fully specifies 5 targeting modes (`CLOSEST_TO_GOAL`/`SPAWN_ORDER`/`LOWEST_HP`/`HIGHEST_HP`/`SCATTER`, Rule 15) with a universal tiebreaker chain, a stateful deterministic SCATTER round-robin cycle (with a documented repeat-guard bug already found and fixed once in the spec itself), a `TowerSystem._get_best_target(tower_id, targeting_mode)` method HOMING projectiles are supposed to call on re-acquisition, and at least 8 BLOCKING acceptance criteria covering all of this. None of it is implemented — `tower_system.gd` has exactly one target-selection function, `_find_lowest_hp_target()`, called unconditionally regardless of what any tower's Focus component actually says.
+
+**Found while authoring a new Tier 4 tower** (`blueprint_siege_cannon.tres`, this session) — its intended "targets the boss/toughest enemy" identity would have required `HIGHEST_HP`, which surfaced this gap. Shipped as `LOWEST_HP` instead (accurately reflecting current behavior) rather than authoring inert/misleading data.
+
+**User decision (2026-08-23)**: presented as a real found bug with 3 remediation options (full 5-mode fix, 4-mode fix skipping SCATTER, or defer). User chose to defer — flag it, don't touch core targeting logic this pass. This entry is that flag.
+
+### Recommended fix
+
+Implement a `_find_target(state: TowerMissionState) -> int` dispatcher in `tower_system.gd` replacing `_find_lowest_hp_target()`, branching on `state.focus.targeting_mode` per Rule 15's exact specification (candidate filter unchanged — Formula 2 range/cone check — then mode-specific sort, then the universal tiebreaker chain: highest `path_step_index` → lowest `current_hp` → lowest `entity_id`). SCATTER needs 2 new per-`TowerMissionState` fields (`_scatter_index: int`, `_last_scatter_target_id: int`) reset on `wave_started`, plus the repeat-guard logic already fully specified in Rule 15. `TowerSystem._get_best_target(tower_id, targeting_mode)` must also be added and wired into HOMING re-acquisition (currently re-acquisition logic — see Rule 19 area — likely has its own gap here too, not independently audited this pass). Existing blueprints' authored `targeting_mode` values (`archer`=CLOSEST_TO_GOAL, `longshot_sniper`=HIGHEST_HP, `rally_banner`=CLOSEST_TO_GOAL) can stay as-authored once this lands — they were already correct, just inert.
+
+### Resolution
+- [ ] Not yet started.
+
+---
+
 ## TD-save-003 — `test_mission_launched_signal_wired_after_ready_triggers_checkpoint` deleted its own checkpoint mid-test (fixed)
 
 **Logged**: 2026-08-23 (Sprint 8, S8-02 — carried forward from Sprint 7's own smoke check/QA cycle, where it was flagged but not yet root-caused)
