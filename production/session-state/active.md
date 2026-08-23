@@ -1,3 +1,9 @@
+## Session Extract — Masterwork Weapon (Tier 3), full audit of all recipe slot/tier coverage, 2026-08-23
+
+- Did a full audit of all 8 `tower_component` recipes' slot/tier combos (including the "archer_*" ones, which turned out to also be real T1 generic-equivalent content, not purely blueprint-copy-only as first assumed) before continuing. Actual picture: foundation T1/T1/T2, weapon T1/T2, focus T1/T1/T2, **power T1/T4 only — missing T2 AND T3 entirely**, the biggest real gap.
+- Added `recipe_masterwork_weapon.tres` (Tier 3 Weapon, 3-file chain) to round out Weapon's T1→T2→T3 progression. Corrected the input cost mid-authoring: initially guessed `{Common:8, Uncommon:4}`, then found `tower.md` Formula 3's own documented fresh-craft cost table already specifies the exact real T3 figure (`19 Common + 10 Uncommon`) and matched that precisely instead of guessing, cross-checked against `recipe_tier4_component.tres`'s own T4 inputs exactly matching that same table's T4 row.
+- **Next**: Power slot's T2/T3 gap is now the clearest remaining target (only T1/T4 exist).
+
 ## Session Extract — Reinforced Foundation (mirrors the Focus tier-gap fix), 2026-08-23
 
 - Same gap, other slot: Foundation was also stuck at Tier 1 only for generic (non-blueprint-copy) crafting. Added the matching 3-file chain (`recipe_reinforced_foundation.tres` → `reinforced_foundation_component.tres` → `foundation_reinforced.tres`), Tier 2, matching `tower.md`'s exact Tier 2 cross-field table (`tier_multiplier=1.5`, `tier_dps_multiplier=1.6`, `tier_cost_factor=1.5`, `tier_boss_dps_multiplier=1.0`) and the same `tech_production_2`/`{Material:4}` recipe convention as Reinforced Focus. Both Foundation and Focus now have a real T1→T2 path through Tower Assembly; Weapon and Power already did.

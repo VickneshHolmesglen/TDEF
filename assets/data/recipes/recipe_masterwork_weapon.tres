@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="RecipeResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/core/crafting/recipe_resource.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+recipe_id = &"recipe_masterwork_weapon"
+recipe_category = "tower_component"
+component_slot = "weapon"
+inputs = {
+&"Common": 19,
+&"Uncommon": 10
+}
+tech_prerequisite = &"tech_production_3"
+output_item_id = &"masterwork_weapon_component"
+output_quantity = 1
+quality_tier = 3
