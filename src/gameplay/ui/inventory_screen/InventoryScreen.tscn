@@ -69,6 +69,12 @@ size_flags_horizontal = 3
 toggle_mode = true
 text = "Assemble Towers"
 
+[node name="RepairTabButton" type="Button" parent="MainLayout/RightPanel/RightPanelContent/CraftingTabStrip"]
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+text = "Repair"
+
 [node name="RecipeScroll" type="ScrollContainer" parent="MainLayout/RightPanel/RightPanelContent"]
 layout_mode = 2
 size_flags_vertical = 3
@@ -77,6 +83,20 @@ size_flags_vertical = 3
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 12
+
+[node name="RepairView" type="ScrollContainer" parent="MainLayout/RightPanel/RightPanelContent"]
+visible = false
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="RepairListHost" type="VBoxContainer" parent="MainLayout/RightPanel/RightPanelContent/RepairView"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 12
+
+[node name="RepairEmptyLabel" type="Label" parent="MainLayout/RightPanel/RightPanelContent/RepairView/RepairListHost"]
+layout_mode = 2
+text = "No damaged components."
 
 [node name="AssembleView" type="VBoxContainer" parent="MainLayout/RightPanel/RightPanelContent"]
 visible = false

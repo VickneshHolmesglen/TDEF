@@ -55,10 +55,16 @@ extends Control
 ## silently, or slot 0 with an Overwrite Confirmation modal if all 3 are
 ## full. **Load Game** shows a 3-row slot list (Occupied/Empty only — no
 ## timestamp/summary, since no such metadata is stored anywhere yet);
-## occupied rows are clickable, empty rows are disabled. EC-3/EC-5 UI
-## (crash-recovery dialog, corrupt-save warning badge) are NOT built —
-## their own backend doesn't exist, so building the UI for them would
-## present functionality that doesn't actually work.
+## occupied rows are clickable, empty rows are disabled.
+##
+## EC-3/EC-5/AC-11 UI (2026-08-23): closed. The backend (`has_pending_
+## checkpoint()`, `restore_from_checkpoint()`, `LoadResult`) was built
+## 2026-08-01 but never wired to any UI until now — Continue and every Load
+## Game slot click route through `_load_or_offer_recovery()` /
+## `_perform_load()`, which check for a pending checkpoint first (EC-3's
+## Load-Save-vs-Restore-Checkpoint choice, `RecoveryChoicePanel`) and surface
+## `CORRUPT_RECOVERED`/`VERSION_TOO_NEW` as a player-facing message
+## (`SaveWarningPanel`) instead of silently succeeding or silently refusing.
 ##
 ## Gamepad focus rings (2026-08-01, ADR-0011 — UI Dual-Focus Handling):
 ## own InputModeTracker child (matching InventoryScreen's identical
@@ -68,15 +74,18 @@ extends Control
 ## is_focus_ring_visible() — same rule InventoryScreen and Mission HUD
 ## already use, never merged into hover state.
 ##
-## Tab-focus containment (2026-08-01): every modal panel (Settings, Load
-## Game, Overwrite Confirm) disables the 5 top-level nav buttons
-## (Continue/New Game/Load Game/Settings/Quit) for the duration it's open
-## and restores them on close — Godot's automatic Tab/Shift+Tab traversal
-## has no concept of "modal," so without this, Tab could cycle focus back
-## onto buttons that are visually covered but not focus-excluded. Exactly
-## one modal can be open at a time (each modal's own open path only
-## reachable through a nav button, which is itself disabled while any
-## other modal is open), so a single shared disable/restore pair is safe.
+## Tab-focus containment (2026-08-01; extended 2026-08-23 for the 2 new EC-3/
+## EC-5/AC-11 panels): every modal panel (Settings, Load Game, Overwrite
+## Confirm, Recovery Choice, Save Warning) disables the 5 top-level nav
+## buttons (Continue/New Game/Load Game/Settings/Quit) for the duration it's
+## open and restores them on close — Godot's automatic Tab/Shift+Tab
+## traversal has no concept of "modal," so without this, Tab could cycle
+## focus back onto buttons that are visually covered but not focus-excluded.
+## Exactly one modal is visible at a time: Recovery Choice and Save Warning
+## can both open from a Load Game slot click, so `_load_or_offer_recovery()`
+## explicitly hides the Load Game panel first rather than relying solely on
+## "reachable only through a disabled nav button" (that guard alone would
+## have let Load Game stay visible underneath a slot-triggered panel).
 ##
 ## Display resolution + fullscreen (2026-08-05, `design/quick-specs/
 ## display-resolution-setting-2026-08-05.md`): 2 new Settings panel
@@ -133,6 +142,8 @@ const UI_SCALE_DEFAULT: float = 100.0
 @onready var _settings_panel: Control = $SettingsPanel
 @onready var _load_game_panel: Control = $LoadGamePanel
 @onready var _overwrite_confirm_panel: Control = $OverwriteConfirmPanel
+@onready var _recovery_choice_panel: Control = $RecoveryChoicePanel
+@onready var _save_warning_panel: Control = $SaveWarningPanel
 @onready var _input_mode_tracker: InputModeTracker = $InputModeTracker
 
 var _continue_button: TextureButton
@@ -145,6 +156,21 @@ var _load_game_back_button: Button
 var _overwrite_message_label: Label
 var _overwrite_yes_button: Button
 var _overwrite_cancel_button: Button
+var _recovery_load_save_button: Button
+var _recovery_restore_checkpoint_button: Button
+var _save_warning_message_label: Label
+var _save_warning_ok_button: Button
+
+## Slot EC-3's recovery choice panel is currently open for — set by
+## _on_continue_pressed()/_on_slot_button_pressed() before showing the
+## panel, read by both of the panel's own button handlers.
+var _pending_recovery_slot: int = -1
+
+## True when the save-warning panel's OK button should proceed to Sanctuary
+## (EC-5 CORRUPT_RECOVERED — the load actually succeeded, just with reset
+## defaults) vs. just dismiss back to the menu (AC-11 VERSION_TOO_NEW — the
+## load was aborted, file left untouched, nothing to proceed into).
+var _save_warning_should_proceed: bool = false
 
 ## Index matches slot number (0-2).
 var _slot_buttons: Array[Button] = []
@@ -189,6 +215,10 @@ func _ready() -> void:
 	_overwrite_message_label = $OverwriteConfirmPanel/OverwriteContent/MessageLabel
 	_overwrite_yes_button = $OverwriteConfirmPanel/OverwriteContent/ConfirmButtons/YesButton
 	_overwrite_cancel_button = $OverwriteConfirmPanel/OverwriteContent/ConfirmButtons/CancelButton
+	_recovery_load_save_button = $RecoveryChoicePanel/RecoveryContent/ChoiceButtons/LoadSaveButton
+	_recovery_restore_checkpoint_button = $RecoveryChoicePanel/RecoveryContent/ChoiceButtons/RestoreCheckpointButton
+	_save_warning_message_label = $SaveWarningPanel/SaveWarningContent/MessageLabel
+	_save_warning_ok_button = $SaveWarningPanel/SaveWarningContent/OkButton
 	_resolution_option = $SettingsPanel/SettingsContent/DisplaySettings/ResolutionRow/OptionButton
 	_fullscreen_check = $SettingsPanel/SettingsContent/DisplaySettings/FullscreenRow/CheckButton
 	_ui_scale_slider = $SettingsPanel/SettingsContent/DisplaySettings/UiScaleRow/Slider
@@ -212,6 +242,8 @@ func _ready() -> void:
 		$SettingsPanel/SettingsContent,
 		$LoadGamePanel/LoadGameContent,
 		$OverwriteConfirmPanel/OverwriteContent,
+		$RecoveryChoicePanel/RecoveryContent,
+		$SaveWarningPanel/SaveWarningContent,
 	]
 
 	# Loaded and applied first so the real window already reflects the
@@ -227,12 +259,17 @@ func _ready() -> void:
 	_load_game_back_button.pressed.connect(_on_load_game_back_pressed)
 	_overwrite_yes_button.pressed.connect(_on_overwrite_yes_pressed)
 	_overwrite_cancel_button.pressed.connect(_on_overwrite_cancel_pressed)
+	_recovery_load_save_button.pressed.connect(_on_recovery_load_save_pressed)
+	_recovery_restore_checkpoint_button.pressed.connect(_on_recovery_restore_checkpoint_pressed)
+	_save_warning_ok_button.pressed.connect(_on_save_warning_ok_pressed)
 	for slot: int in range(SAVE_SLOT_COUNT):
 		_slot_buttons[slot].pressed.connect(_on_slot_button_pressed.bind(slot))
 
 	_settings_panel.visible = false
 	_load_game_panel.visible = false
 	_overwrite_confirm_panel.visible = false
+	_recovery_choice_panel.visible = false
+	_save_warning_panel.visible = false
 
 	_build_focus_ring(_continue_button)
 	_build_focus_ring(_new_game_button)
@@ -243,6 +280,9 @@ func _ready() -> void:
 	_build_focus_ring(_load_game_back_button)
 	_build_focus_ring(_overwrite_yes_button)
 	_build_focus_ring(_overwrite_cancel_button)
+	_build_focus_ring(_recovery_load_save_button)
+	_build_focus_ring(_recovery_restore_checkpoint_button)
+	_build_focus_ring(_save_warning_ok_button)
 	_build_focus_ring(_resolution_option)
 	_build_focus_ring(_fullscreen_check)
 	_build_focus_ring(_ui_scale_slider)
@@ -282,6 +322,10 @@ func _input(event: InputEvent) -> void:
 		_on_load_game_back_pressed()
 	elif _overwrite_confirm_panel.visible:
 		_on_overwrite_cancel_pressed()
+	elif _recovery_choice_panel.visible:
+		_on_recovery_cancel_pressed()
+	elif _save_warning_panel.visible:
+		_on_save_warning_ok_pressed()
 	else:
 		_on_settings_pressed()
 	get_viewport().set_input_as_handled()
@@ -349,8 +393,7 @@ func _on_continue_pressed() -> void:
 	var slot: int = _most_recent_occupied_slot()
 	if slot == -1:
 		return  # unreachable in practice -- button is only visible/focusable when a save exists
-	GSavePersistence.load_slot(slot)
-	GSceneManager.transition_to_sanctuary()
+	_load_or_offer_recovery(slot)
 
 
 func _on_new_game_pressed() -> void:
@@ -401,14 +444,108 @@ func _refresh_load_game_slots() -> void:
 
 
 func _on_slot_button_pressed(slot: int) -> void:
-	GSavePersistence.load_slot(slot)
-	GSceneManager.transition_to_sanctuary()
+	_load_or_offer_recovery(slot)
 
 
 func _on_load_game_back_pressed() -> void:
 	_load_game_panel.visible = false
 	_set_nav_buttons_focusable(true)
 	_load_game_button.grab_focus()
+
+
+# ---------------------------------------------------------------------------
+# EC-3 (crash recovery) / EC-5 (corrupt save) / AC-11 (version mismatch)
+# design/gdd/save-persistence.md -- TD-save-002, backend built 2026-08-01,
+# UI closed here 2026-08-23.
+# ---------------------------------------------------------------------------
+
+## Entry point for both Continue and a Load Game slot click. Hides the Load
+## Game panel first (it may still be open if this came from a slot click) so
+## only one modal is ever visible at a time, matching this screen's existing
+## invariant. EC-3: if a checkpoint is pending for this slot, the player
+## chooses Load Save vs. Restore Checkpoint before anything loads. Otherwise
+## goes straight to _perform_load().
+func _load_or_offer_recovery(slot: int) -> void:
+	_load_game_panel.visible = false
+	if GSavePersistence.has_pending_checkpoint(slot):
+		_pending_recovery_slot = slot
+		_recovery_choice_panel.visible = true
+		_set_nav_buttons_focusable(false)
+		_recovery_load_save_button.grab_focus()
+	else:
+		_perform_load(slot)
+
+
+## The actual load_slot() call, with its LoadResult routed to the right
+## player-facing outcome -- SUCCESS proceeds silently (the pre-existing
+## behavior), CORRUPT_RECOVERED and VERSION_TOO_NEW now surface EC-5/AC-11's
+## required player-facing message instead of loading (or refusing to load)
+## silently.
+func _perform_load(slot: int) -> void:
+	var result: SavePersistence.LoadResult = GSavePersistence.load_slot(slot)
+	match result:
+		SavePersistence.LoadResult.SUCCESS:
+			GSceneManager.transition_to_sanctuary()
+		SavePersistence.LoadResult.CORRUPT_RECOVERED:
+			# EC-5: the load DID succeed (every system reset to defaults,
+			# sanctuary_state_restored already fired) -- proceed on OK.
+			_show_save_warning("Your save could not be loaded and the game has started fresh.", true)
+		SavePersistence.LoadResult.VERSION_TOO_NEW:
+			# AC-11: load was aborted, file left untouched -- stay at the menu on OK.
+			_show_save_warning("This save was made with a newer version of the game and cannot be loaded.", false)
+		_:
+			pass  # NOT_FOUND unreachable here -- every caller already confirmed the slot exists
+
+
+func _on_recovery_load_save_pressed() -> void:
+	_recovery_choice_panel.visible = false
+	_perform_load(_pending_recovery_slot)
+
+
+func _on_recovery_restore_checkpoint_pressed() -> void:
+	_recovery_choice_panel.visible = false
+	var slot: int = _pending_recovery_slot
+	var result: SavePersistence.LoadResult = GSavePersistence.restore_from_checkpoint(slot)
+	match result:
+		SavePersistence.LoadResult.SUCCESS:
+			GSceneManager.transition_to_sanctuary()
+		SavePersistence.LoadResult.CHECKPOINT_CORRUPT:
+			# EC-3's own spec: a corrupt checkpoint does NOT trigger EC-5's
+			# reset-to-defaults -- it's discarded and we fall back to
+			# load_slot(), since a good .dat likely still exists.
+			_perform_load(slot)
+		_:
+			pass
+
+
+func _on_recovery_cancel_pressed() -> void:
+	_recovery_choice_panel.visible = false
+	_pending_recovery_slot = -1
+	_set_nav_buttons_focusable(true)
+	if _continue_button.visible:
+		_continue_button.grab_focus()
+	else:
+		_new_game_button.grab_focus()
+
+
+func _show_save_warning(message: String, should_proceed_on_ok: bool) -> void:
+	_save_warning_message_label.text = message
+	_save_warning_should_proceed = should_proceed_on_ok
+	_save_warning_panel.visible = true
+	_set_nav_buttons_focusable(false)
+	_save_warning_ok_button.grab_focus()
+
+
+func _on_save_warning_ok_pressed() -> void:
+	_save_warning_panel.visible = false
+	if _save_warning_should_proceed:
+		GSceneManager.transition_to_sanctuary()
+		return
+	_set_nav_buttons_focusable(true)
+	if _continue_button.visible:
+		_continue_button.grab_focus()
+	else:
+		_new_game_button.grab_focus()
 
 
 func _on_settings_pressed() -> void:

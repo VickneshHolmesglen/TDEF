@@ -24,6 +24,7 @@ extends Node
 const DEFAULT_MISSION_SCENE_PATH: String = "res://src/scenes/MissionScene.tscn"
 const DEFAULT_SANCTUARY_SCENE_PATH: String = "res://src/scenes/SanctuaryScene.tscn"
 const DEFAULT_TAROT_DECK_SCENE_PATH: String = "res://src/scenes/TarotDeckUIScene.tscn"
+const DEFAULT_MAIN_MENU_SCENE_PATH: String = "res://src/scenes/MainMenu.tscn"
 
 # Test injection seam — override via _inject() before add_child() triggers _ready().
 # SanctuaryScene.tscn was created 2026-07-20 (src/scenes/sanctuary_scene.gd) as a
@@ -47,6 +48,16 @@ var _sanctuary_scene_path: String = DEFAULT_SANCTUARY_SCENE_PATH
 ## (Tarot Deck UI Story 003) — this closes the missing other direction.
 var _tarot_deck_scene_path: String = DEFAULT_TAROT_DECK_SCENE_PATH
 
+## Added 2026-08-23, closing Pause Menu's "Quit to Main Menu" gap (deferred
+## 2026-07-08 pending Settings/Objective/a real Main Menu scene existing —
+## all 3 now do). Same real, not-yet-formally-classified expansion beyond
+## ADR-0002's original 2-context ("SANCTUARY and MISSION") enumeration that
+## `_tarot_deck_scene_path` already flagged above — a 4th lateral context,
+## MAIN_MENU, this time leaving the play session entirely rather than moving
+## between in-session contexts. Flagged here rather than silently treated as
+## already covered.
+var _main_menu_scene_path: String = DEFAULT_MAIN_MENU_SCENE_PATH
+
 var _transition_in_progress: bool = false
 
 
@@ -66,10 +77,11 @@ func _exit_tree() -> void:
 ## second instance (see tests/unit/scene_manager/scene_manager_test.gd header
 ## comment for why). GDScript has no real access modifiers to enforce
 ## "tests only" — this is convention, matching game_data_registry.gd.
-func _inject(mission_scene_path: String, sanctuary_scene_path: String, tarot_deck_scene_path: String = DEFAULT_TAROT_DECK_SCENE_PATH) -> void:
+func _inject(mission_scene_path: String, sanctuary_scene_path: String, tarot_deck_scene_path: String = DEFAULT_TAROT_DECK_SCENE_PATH, main_menu_scene_path: String = DEFAULT_MAIN_MENU_SCENE_PATH) -> void:
 	_mission_scene_path = mission_scene_path
 	_sanctuary_scene_path = sanctuary_scene_path
 	_tarot_deck_scene_path = tarot_deck_scene_path
+	_main_menu_scene_path = main_menu_scene_path
 
 # =============================================================================
 # Public API (ADR-0002 SceneManager Responsibilities)
@@ -94,6 +106,14 @@ func transition_to_sanctuary() -> void:
 ## not a separate method here.
 func transition_to_tarot_deck_ui() -> void:
 	_do_transition("TAROT_DECK", "", _tarot_deck_scene_path)
+
+
+## Transition from MISSION (via Pause Menu's "Quit to Main Menu") straight to
+## the Main Menu scene, leaving the play session entirely rather than
+## returning to Sanctuary. Idempotent no-op if a transition is already in
+## flight — see _do_transition's guard.
+func transition_to_main_menu() -> void:
+	_do_transition("MAIN_MENU", "", _main_menu_scene_path)
 
 # =============================================================================
 # Transition sequencing

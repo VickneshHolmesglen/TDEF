@@ -28,6 +28,12 @@ enum Phase { UNKNOWN, SCOUT, INTERMISSION, WAVE_ACTIVE, MISSION_COMPLETE, DEFEAT
 ## system finding another shell-owned instance).
 const GROUP_NAME: StringName = &"tower_system"
 
+## Formula 1c (design/gdd/tower.md) — splash damage fraction at the outer edge
+## of a BALLISTIC weapon's aoe_radius_cells. 1.0 at distance 0 (the primary
+## target, handled separately) linearly interpolates down to this value at
+## distance == aoe_radius_cells.
+const MIN_SPLASH_FALLOFF: float = 0.40
+
 # ---------------------------------------------------------------------------
 # Public state — readable by tests and other mission-scene systems
 # ---------------------------------------------------------------------------
@@ -312,6 +318,35 @@ func _try_attack(state: TowerMissionState) -> void:
 
 	GEventBus.tower_attacked.emit.call_deferred(state.tower_id, target_id, damage, is_siege, is_armored,
 			effect_type, effect_value, effect_duration, state.weapon.armor_penetration, is_crit)
+
+	if state.weapon.projectile_type == "BALLISTIC" and state.weapon.aoe_radius_cells > 0:
+		_apply_splash_damage(state, target_id, entry["cell"] as Vector2i, damage, is_siege, is_crit)
+
+
+## Formula 1c (design/gdd/tower.md) — every other monster within
+## weapon.aoe_radius_cells (Chebyshev) of the primary target's cell takes a
+## falloff-scaled fraction of the primary's already-resolved damage. Crit/
+## vs-tag/boss/resistance are NOT re-rolled per splash target — every hit
+## monster shares the same resolved `damage` number, just scaled down by
+## distance. Status effects deliberately do not splash (effect_type always
+## forwarded as "" here) — see Formula 1c's own doc comment for why.
+func _apply_splash_damage(state: TowerMissionState, primary_id: int, primary_cell: Vector2i,
+		damage: float, is_siege: bool, is_crit: bool) -> void:
+	var radius: int = state.weapon.aoe_radius_cells
+	for entity_id: int in _monster_cache:
+		if entity_id == primary_id:
+			continue
+		var entry: Dictionary = _monster_cache[entity_id] as Dictionary
+		var cell: Vector2i = entry["cell"] as Vector2i
+		var distance: int = maxi(absi(cell.x - primary_cell.x), absi(cell.y - primary_cell.y))
+		if distance < 1 or distance > radius:
+			continue
+		var falloff_fraction: float = float(distance) / float(radius)
+		var splash_multiplier: float = lerpf(1.0, MIN_SPLASH_FALLOFF, falloff_fraction)
+		var splash_damage: float = damage * splash_multiplier
+		var is_armored: bool = entry["is_armored"] as bool
+		GEventBus.tower_attacked.emit.call_deferred(state.tower_id, entity_id, splash_damage, is_siege,
+				is_armored, "", 0.0, 0.0, state.weapon.armor_penetration, is_crit)
 
 
 ## Looks up foundation.bonus_damage_vs_tags against the target's cached

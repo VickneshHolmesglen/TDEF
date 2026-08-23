@@ -40,6 +40,7 @@ const RUN_MODIFIER_STEPS: Dictionary[StringName, Array] = {
 @onready var _input_mode_tracker: InputModeTracker = $InputModeTracker
 @onready var _mission_list: VBoxContainer = $MainLayout/TopRow/MissionListPanel/MissionList
 @onready var _config_panel: Control = $MainLayout/TopRow/ConfigPanel
+@onready var _objective_label: Label = $MainLayout/TopRow/ConfigPanel/ObjectiveLabel
 @onready var _tier_row: HBoxContainer = $MainLayout/TopRow/ConfigPanel/TierRow
 @onready var _modifier_row: VBoxContainer = $MainLayout/TopRow/ConfigPanel/ModifierRow
 @onready var _back_button: Button = $MainLayout/TopRow/ConfigPanel/BackButton
@@ -181,8 +182,21 @@ func _refresh_config_panel() -> void:
 	_config_panel.visible = configuring
 	if not configuring:
 		return
+	_refresh_objective_label()
 	_refresh_tier_button_labels()
 	_refresh_modifier_button_labels()
+
+
+## TD-mission-001: MissionResource.objective_text had no display path
+## anywhere in the project despite the loader/schema being fully built and
+## tested — this closes that gap. Falls back to an empty string (label
+## renders blank, not an error) for a mission_id with no authored
+## MissionResource, matching get_mission_resource()'s own documented
+## does-not-abort-at-boot policy for missing/invalid content.
+func _refresh_objective_label() -> void:
+	var mission_id: StringName = StringName(mission_select.get_current_mission_id())
+	var resource: MissionResource = GGameDataRegistry.get_mission_resource(mission_id)
+	_objective_label.text = resource.objective_text if resource != null else ""
 
 
 func _create_tier_button(tier: int) -> Button:

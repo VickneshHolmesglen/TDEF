@@ -21,9 +21,9 @@ anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
 offset_left = -100.0
-offset_top = -40.0
+offset_top = -100.0
 offset_right = 100.0
-offset_bottom = 40.0
+offset_bottom = 100.0
 grow_horizontal = 2
 grow_vertical = 2
 alignment = 1
@@ -32,6 +32,210 @@ alignment = 1
 layout_mode = 2
 text = "Resume"
 
+[node name="SettingsButton" type="Button" parent="ButtonStack"]
+layout_mode = 2
+text = "Settings"
+
+[node name="ObjectiveButton" type="Button" parent="ButtonStack"]
+layout_mode = 2
+text = "Objective"
+
 [node name="QuitToSanctuaryButton" type="Button" parent="ButtonStack"]
 layout_mode = 2
 text = "Quit to Sanctuary"
+
+[node name="QuitToMainMenuButton" type="Button" parent="ButtonStack"]
+layout_mode = 2
+text = "Quit to Main Menu"
+
+[node name="SettingsPanel" type="ColorRect" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.9)
+visible = false
+
+[node name="SettingsContent" type="Control" parent="SettingsPanel"]
+
+[node name="TitleLabel" type="Label" parent="SettingsPanel/SettingsContent"]
+layout_mode = 0
+offset_left = 480.0
+offset_top = 140.0
+offset_right = 800.0
+offset_bottom = 180.0
+theme_override_font_sizes/font_size = 28
+text = "Settings"
+
+[node name="VolumeSliders" type="VBoxContainer" parent="SettingsPanel/SettingsContent"]
+layout_mode = 0
+offset_left = 480.0
+offset_top = 200.0
+offset_right = 800.0
+offset_bottom = 400.0
+theme_override_constants/separation = 16
+
+[node name="MusicRow" type="HBoxContainer" parent="SettingsPanel/SettingsContent/VolumeSliders"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="SettingsPanel/SettingsContent/VolumeSliders/MusicRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(80, 0)
+text = "Music"
+
+[node name="Slider" type="HSlider" parent="SettingsPanel/SettingsContent/VolumeSliders/MusicRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 0.0
+max_value = 100.0
+step = 1.0
+
+[node name="ValueLabel" type="Label" parent="SettingsPanel/SettingsContent/VolumeSliders/MusicRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(50, 0)
+text = "80%"
+
+[node name="SfxRow" type="HBoxContainer" parent="SettingsPanel/SettingsContent/VolumeSliders"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="SettingsPanel/SettingsContent/VolumeSliders/SfxRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(80, 0)
+text = "SFX"
+
+[node name="Slider" type="HSlider" parent="SettingsPanel/SettingsContent/VolumeSliders/SfxRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 0.0
+max_value = 100.0
+step = 1.0
+
+[node name="ValueLabel" type="Label" parent="SettingsPanel/SettingsContent/VolumeSliders/SfxRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(50, 0)
+text = "80%"
+
+[node name="VoiceRow" type="HBoxContainer" parent="SettingsPanel/SettingsContent/VolumeSliders"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="SettingsPanel/SettingsContent/VolumeSliders/VoiceRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(80, 0)
+text = "Voice"
+
+[node name="Slider" type="HSlider" parent="SettingsPanel/SettingsContent/VolumeSliders/VoiceRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 0.0
+max_value = 100.0
+step = 1.0
+
+[node name="ValueLabel" type="Label" parent="SettingsPanel/SettingsContent/VolumeSliders/VoiceRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(50, 0)
+text = "80%"
+
+[node name="UiRow" type="HBoxContainer" parent="SettingsPanel/SettingsContent/VolumeSliders"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="SettingsPanel/SettingsContent/VolumeSliders/UiRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(80, 0)
+text = "UI"
+
+[node name="Slider" type="HSlider" parent="SettingsPanel/SettingsContent/VolumeSliders/UiRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 0.0
+max_value = 100.0
+step = 1.0
+
+[node name="ValueLabel" type="Label" parent="SettingsPanel/SettingsContent/VolumeSliders/UiRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(50, 0)
+text = "80%"
+
+[node name="BackButton" type="Button" parent="SettingsPanel/SettingsContent"]
+layout_mode = 0
+offset_left = 480.0
+offset_top = 420.0
+offset_right = 600.0
+offset_bottom = 460.0
+text = "Back"
+
+[node name="ObjectivePanel" type="ColorRect" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.9)
+visible = false
+
+[node name="ObjectiveContent" type="Control" parent="ObjectivePanel"]
+
+[node name="TitleLabel" type="Label" parent="ObjectivePanel/ObjectiveContent"]
+layout_mode = 0
+offset_left = 380.0
+offset_top = 200.0
+offset_right = 900.0
+offset_bottom = 240.0
+theme_override_font_sizes/font_size = 28
+text = "Objective"
+
+[node name="ObjectiveTextLabel" type="Label" parent="ObjectivePanel/ObjectiveContent"]
+layout_mode = 0
+offset_left = 380.0
+offset_top = 250.0
+offset_right = 900.0
+offset_bottom = 380.0
+theme_override_font_sizes/font_size = 22
+autowrap_mode = 3
+
+[node name="BackButton" type="Button" parent="ObjectivePanel/ObjectiveContent"]
+layout_mode = 0
+offset_left = 380.0
+offset_top = 400.0
+offset_right = 500.0
+offset_bottom = 440.0
+text = "Back"
+
+[node name="QuitToMainMenuConfirmPanel" type="ColorRect" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.96)
+visible = false
+
+[node name="ConfirmContent" type="Control" parent="QuitToMainMenuConfirmPanel"]
+
+[node name="MessageLabel" type="Label" parent="QuitToMainMenuConfirmPanel/ConfirmContent"]
+layout_mode = 0
+offset_left = 380.0
+offset_top = 260.0
+offset_right = 900.0
+offset_bottom = 340.0
+theme_override_font_sizes/font_size = 26
+text = "You'll lose progress in this attempt. Continue?"
+autowrap_mode = 3
+
+[node name="ConfirmButtons" type="HBoxContainer" parent="QuitToMainMenuConfirmPanel/ConfirmContent"]
+layout_mode = 0
+offset_left = 380.0
+offset_top = 360.0
+offset_right = 620.0
+offset_bottom = 420.0
+theme_override_constants/separation = 20
+
+[node name="YesButton" type="Button" parent="QuitToMainMenuConfirmPanel/ConfirmContent/ConfirmButtons"]
+custom_minimum_size = Vector2(160, 54)
+layout_mode = 2
+text = "Yes"
+
+[node name="CancelButton" type="Button" parent="QuitToMainMenuConfirmPanel/ConfirmContent/ConfirmButtons"]
+custom_minimum_size = Vector2(160, 54)
+layout_mode = 2
+text = "Cancel"

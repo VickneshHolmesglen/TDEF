@@ -4,7 +4,7 @@
 > **Author**: Vicknesh + Claude Sonnet
 > **Last Updated**: 2026-07-16
 > **Implements Pillar**: Everything Connects · The Sanctuary Is Your Statement
-> **Known gaps**: 3 new cross-system interfaces this GDD depends on don't exist yet — `Inventory.has_room_for()`, `Inventory.clear_damaged_flag()`, and a proposed `component_repaired` EventBus event not yet in `event-bus.md`'s frozen catalogue. See Open Questions.
+> **Known gaps — CLOSED (2026-08-23)**: the 3 cross-system interfaces this GDD depends on (`Inventory.has_room_for()`, `Inventory.clear_damaged_flag()`, `component_repaired` EventBus event) were all implemented and tested well before this correction — this note simply was never revisited after. The one real remaining gap (no UI anywhere called `Crafting.resolve_repair()`) closed the same day: `inventory_screen.gd`'s new Repair sub-tab.
 
 ## Overview
 

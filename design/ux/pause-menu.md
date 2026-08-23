@@ -3,6 +3,7 @@
 > **Status**: In Design
 > **Author**: Vicknesh + ux-designer
 > **Last Updated**: 2026-07-07
+> **Implementation note (2026-08-23)**: `src/gameplay/ui/pause_menu/pause_menu.gd`/`.tscn` now implement the full button set this spec describes (Resume, Settings, Objective, Quit to Sanctuary, Quit to Main Menu) — the original 2026-07-08 reduced-scope build (Resume + Quit to Sanctuary only) deferred Settings/Objective/Quit to Main Menu specifically because Settings, Objective (`MissionResource.objective_text`, TD-mission-001), and a real Main Menu scene didn't exist as systems yet. All 3 now do. One intentional deviation from this spec, not silently applied: Quit to Sanctuary still has no confirmation dialog (its already-shipped 2026-07-08 behavior, left unchanged); Quit to Main Menu got the confirmation this spec's Interaction Map describes. This status line itself is unchanged (`In Design`) — this note records implementation state, not a formal `/design-review` sign-off.
 > **Journey Phase(s)**: Mid-mission / any active gameplay phase (no formal `design/player-journey.md` exists yet — placeholder pending a journey mapping session)
 > **Template**: UX Spec
 

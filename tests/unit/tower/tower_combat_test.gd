@@ -343,3 +343,96 @@ func test_monster_died_removes_cache_entry() -> void:
 	_ts._on_monster_died(died_payload)
 
 	assert_bool(_ts._monster_cache.has(7)).is_false()
+
+# ---------------------------------------------------------------------------
+# Formula 1c: Splash damage (Phase 2 — Splash, 2026-08-23)
+# ---------------------------------------------------------------------------
+
+## Extracts {target_monster_id: damage_amount} from every tower_attacked
+## emission this test case's tick produced.
+func _collect_damage_by_target() -> Dictionary:
+	var result: Dictionary = {}
+	var emissions: Array = _spy.emissions.get("tower_attacked", []) as Array
+	for emission: Array in emissions:
+		result[emission[1] as int] = emission[2] as float
+	return result
+
+
+func test_splash_damage_falls_off_by_chebyshev_distance() -> void:
+	var data: TowerBlueprintData = _make_data(100.0, 1.0, 1.0)
+	data.weapon.aoe_radius_cells = 3
+	_place(_ts, data, Vector2i(8, 6))
+
+	_ts._monster_cache[1] = {"cell": Vector2i(10, 6), "hp": 50.0, "is_armored": false}    # primary (lowest HP)
+	_ts._monster_cache[2] = {"cell": Vector2i(11, 6), "hp": 9999.0, "is_armored": false}  # distance 1
+	_ts._monster_cache[3] = {"cell": Vector2i(13, 6), "hp": 9999.0, "is_armored": false}  # distance 3 (edge)
+	_ts._monster_cache[4] = {"cell": Vector2i(15, 6), "hp": 9999.0, "is_armored": false}  # distance 5 (outside)
+	_ts._current_phase = TowerSystem.Phase.WAVE_ACTIVE
+
+	_ts._tick_combat(DELTA)
+	await get_tree().process_frame
+
+	var damage_by_target: Dictionary = _collect_damage_by_target()
+	assert_int(damage_by_target.size()).is_equal(3)  # primary + 2 in-radius splash, id 4 excluded
+	assert_float(damage_by_target[1] as float).is_equal_approx(100.0, 0.001)  # primary: full damage
+	assert_float(damage_by_target[2] as float).is_equal_approx(80.0, 0.001)   # distance 1: lerp(1.0, 0.4, 1/3)
+	assert_float(damage_by_target[3] as float).is_equal_approx(40.0, 0.001)   # distance 3: lerp(1.0, 0.4, 3/3) = MIN_SPLASH_FALLOFF
+	assert_bool(damage_by_target.has(4)).is_false()
+
+
+func test_splash_effects_do_not_apply_to_secondary_targets() -> void:
+	var data: TowerBlueprintData = _make_data(100.0, 1.0, 1.0)
+	data.weapon.aoe_radius_cells = 3
+	data.weapon.status_proc_chance = 1.0
+	data.power.effect_type = "burn"
+	data.power.effect_value = 5.0
+	data.power.effect_duration = 3.0
+	_place(_ts, data, Vector2i(8, 6))
+
+	_ts._monster_cache[1] = {"cell": Vector2i(10, 6), "hp": 50.0, "is_armored": false}
+	_ts._monster_cache[2] = {"cell": Vector2i(11, 6), "hp": 9999.0, "is_armored": false}
+	_ts._current_phase = TowerSystem.Phase.WAVE_ACTIVE
+
+	_ts._tick_combat(DELTA)
+	await get_tree().process_frame
+
+	var effect_type_by_target: Dictionary = {}
+	var emissions: Array = _spy.emissions.get("tower_attacked", []) as Array
+	for emission: Array in emissions:
+		effect_type_by_target[emission[1] as int] = emission[5] as String
+	assert_str(effect_type_by_target[1] as String).is_equal("burn")   # primary: effect applies
+	assert_str(effect_type_by_target[2] as String).is_equal("")       # splash: no effect, regardless of primary's roll
+
+
+func test_splash_disabled_for_non_ballistic_weapon() -> void:
+	var data: TowerBlueprintData = _make_data(100.0, 1.0, 1.0)
+	data.weapon.aoe_radius_cells = 3
+	data.weapon.projectile_type = "HOMING"
+	_place(_ts, data, Vector2i(8, 6))
+
+	_ts._monster_cache[1] = {"cell": Vector2i(10, 6), "hp": 50.0, "is_armored": false}
+	_ts._monster_cache[2] = {"cell": Vector2i(11, 6), "hp": 9999.0, "is_armored": false}  # would be distance 1 if BALLISTIC
+	_ts._current_phase = TowerSystem.Phase.WAVE_ACTIVE
+
+	_ts._tick_combat(DELTA)
+	await get_tree().process_frame
+
+	var damage_by_target: Dictionary = _collect_damage_by_target()
+	assert_int(damage_by_target.size()).is_equal(1)  # primary only — no splash for a non-BALLISTIC weapon
+	assert_bool(damage_by_target.has(1)).is_true()
+
+
+func test_zero_aoe_radius_produces_no_splash() -> void:
+	var data: TowerBlueprintData = _make_data(100.0, 1.0, 1.0)
+	# data.weapon.aoe_radius_cells left at its default (0.0)
+	_place(_ts, data, Vector2i(8, 6))
+
+	_ts._monster_cache[1] = {"cell": Vector2i(10, 6), "hp": 50.0, "is_armored": false}
+	_ts._monster_cache[2] = {"cell": Vector2i(11, 6), "hp": 9999.0, "is_armored": false}
+	_ts._current_phase = TowerSystem.Phase.WAVE_ACTIVE
+
+	_ts._tick_combat(DELTA)
+	await get_tree().process_frame
+
+	var damage_by_target: Dictionary = _collect_damage_by_target()
+	assert_int(damage_by_target.size()).is_equal(1)

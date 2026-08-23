@@ -171,8 +171,12 @@ const TOWER_BASE_ENTRY_SEPARATION: int = 2
 @export var tower_assembly: TowerAssembly
 @onready var _recipes_tab_button: Button = $MainLayout/RightPanel/RightPanelContent/CraftingTabStrip/RecipesTabButton
 @onready var _assemble_tab_button: Button = $MainLayout/RightPanel/RightPanelContent/CraftingTabStrip/AssembleTabButton
+@onready var _repair_tab_button: Button = $MainLayout/RightPanel/RightPanelContent/CraftingTabStrip/RepairTabButton
 @onready var _recipe_scroll: ScrollContainer = $MainLayout/RightPanel/RightPanelContent/RecipeScroll
 @onready var _recipe_list_host: VBoxContainer = $MainLayout/RightPanel/RightPanelContent/RecipeScroll/RecipeListHost
+@onready var _repair_view: ScrollContainer = $MainLayout/RightPanel/RightPanelContent/RepairView
+@onready var _repair_list_host: VBoxContainer = $MainLayout/RightPanel/RightPanelContent/RepairView/RepairListHost
+@onready var _repair_empty_label: Label = $MainLayout/RightPanel/RightPanelContent/RepairView/RepairListHost/RepairEmptyLabel
 @onready var _assemble_view: Control = $MainLayout/RightPanel/RightPanelContent/AssembleView
 @onready var _assemble_slot_lists: Dictionary[String, VBoxContainer] = {
 	"foundation": $MainLayout/RightPanel/RightPanelContent/AssembleView/SlotColumns/FoundationColumn/FoundationList,
@@ -211,8 +215,18 @@ var _assemble_component_buttons: Dictionary[String, Dictionary] = {}  ## slot ->
 ## and on tab-away-and-back is deliberately NOT done -- a player switching
 ## tabs mid-selection (e.g. to check Recipes) should not lose their picks.
 var _assemble_selection: Dictionary[String, int] = {"foundation": -1, "weapon": -1, "focus": -1, "power": -1}
-## true = Assemble Towers sub-tab showing, false = Recipes sub-tab showing.
+## true = Assemble Towers sub-tab showing, false = Recipes or Repair sub-tab
+## showing. Kept exactly as-is (not widened to a 3-way enum) so existing
+## callers of is_showing_assemble() keep their current true-only-for-Assemble
+## contract -- _showing_repair (below) is a separate, orthogonal flag.
 var _showing_assemble: bool = false
+
+## true = Repair sub-tab showing (2026-08-23, closes crafting.md Rule 6's
+## missing UI half -- Crafting.resolve_repair()/Inventory.clear_damaged_flag()
+## were already fully implemented and tested, nothing anywhere ever called
+## them). Independent of _showing_assemble by design -- see that var's own
+## comment.
+var _showing_repair: bool = false
 
 
 func _ready() -> void:
@@ -234,15 +248,18 @@ func _ready() -> void:
 
 	_recipes_tab_button.pressed.connect(_on_crafting_tab_pressed.bind(false))
 	_assemble_tab_button.pressed.connect(_on_crafting_tab_pressed.bind(true))
+	_repair_tab_button.pressed.connect(_on_repair_tab_pressed)
 	_assemble_button.pressed.connect(_on_assemble_button_pressed)
 	_assemble_confirm_dialog.confirmed.connect(_on_assemble_confirmed)
 	_rebuild_assemble_lists()
+	_rebuild_repair_list()
 
 	GEventBus.recipe_discovered.connect(_on_recipe_discovered)
 	GEventBus.item_added.connect(_on_inventory_item_changed)
 	GEventBus.item_removed.connect(_on_inventory_item_changed)
 	GEventBus.component_crafted.connect(_on_component_crafted)
 	GEventBus.tower_assembled.connect(_on_tower_assembled)
+	GEventBus.component_repaired.connect(_on_component_repaired)
 
 	# Single connection for the whole grid — Signal.connect() dedups by
 	# (target object, method) and does NOT treat differing .bind() arguments
@@ -271,6 +288,8 @@ func disconnect_own_subscriptions() -> void:
 		GEventBus.component_crafted.disconnect(_on_component_crafted)
 	if GEventBus.tower_assembled.is_connected(_on_tower_assembled):
 		GEventBus.tower_assembled.disconnect(_on_tower_assembled)
+	if GEventBus.component_repaired.is_connected(_on_component_repaired):
+		GEventBus.component_repaired.disconnect(_on_component_repaired)
 
 
 # ---------------------------------------------------------------------------
@@ -674,6 +693,17 @@ func _on_tower_assembled(_tower_id: String, _display_name: String) -> void:
 	_rebuild_assemble_lists()
 
 
+## resolve_repair() deliberately does not fire item_added/item_removed for
+## its Common-material cost payment (AC-6, crafting.gd's own doc comment) --
+## component_repaired is the only signal marking a successful repair, so this
+## screen must listen for it directly rather than relying on the existing
+## item_added/item_removed refresh path.
+func _on_component_repaired(_item_id: String, _component_type: String) -> void:
+	_refresh_crafting_panel()  ## Common material count changed
+	_refresh_all_slot_visuals()  ## the repaired item's damaged state changed
+	_rebuild_repair_list()
+
+
 func _refresh_all_slot_visuals() -> void:
 	for i: int in range(_slot_buttons.size()):
 		_apply_slot_visual(_slot_buttons[i], _crafting_rarity_frames[i], _crafting_item_icons[i], _crafting_quantity_labels[i], i)
@@ -893,14 +923,124 @@ func _slots_matching_cost(cost: Dictionary) -> Array[int]:
 
 func _on_crafting_tab_pressed(show_assemble: bool) -> void:
 	_showing_assemble = show_assemble
+	_showing_repair = false
 	_recipes_tab_button.button_pressed = not show_assemble
 	_assemble_tab_button.button_pressed = show_assemble
+	_repair_tab_button.button_pressed = false
 	_recipe_scroll.visible = not show_assemble
 	_assemble_view.visible = show_assemble
+	_repair_view.visible = false
 
 
 func is_showing_assemble() -> bool:
 	return _showing_assemble
+
+
+# ---------------------------------------------------------------------------
+# Right panel — Repair tab (2026-08-23, closes crafting.md Rule 6's missing
+# UI half). Crafting.resolve_repair()/Inventory.clear_damaged_flag()/
+# component_repaired were already fully implemented and tested (Story 005) --
+# no production logic added here, purely the display + button wiring that
+# never existed for any of it.
+# ---------------------------------------------------------------------------
+
+func _on_repair_tab_pressed() -> void:
+	_showing_assemble = false
+	_showing_repair = true
+	_recipes_tab_button.button_pressed = false
+	_assemble_tab_button.button_pressed = false
+	_repair_tab_button.button_pressed = true
+	_recipe_scroll.visible = false
+	_assemble_view.visible = false
+	_repair_view.visible = true
+	_rebuild_repair_list()
+
+
+func is_showing_repair() -> bool:
+	return _showing_repair
+
+
+## Lists every damaged Inventory slot (locked items excluded -- a damaged
+## component can never be equipped/locked simultaneously per crafting.md's
+## own documented Edge Case, but the filter is defensive, matching
+## _compute_owned_totals()'s identical locked-exclusion convention).
+func _rebuild_repair_list() -> void:
+	for child: Node in _repair_list_host.get_children():
+		if child == _repair_empty_label:
+			continue
+		_repair_list_host.remove_child(child)
+		child.queue_free()
+
+	if crafting == null:
+		_repair_empty_label.visible = true
+		return
+
+	var by_rarity: Dictionary = _compute_owned_totals()["by_rarity"]
+	var owned_common: int = by_rarity.get(&"Common", 0)
+	var any_damaged: bool = false
+	for i: int in range(inventory.get_slot_count()):
+		var contents: Dictionary = inventory.get_slot_contents(i)
+		if contents.is_empty() or contents.get("locked", false):
+			continue
+		if not (contents.get("damaged", false) as bool):
+			continue
+		var stat_overrides: Dictionary = contents.get("stat_overrides", {})
+		if not stat_overrides.has(&"quality_tier"):
+			continue
+		var quality_tier: int = int(stat_overrides[&"quality_tier"])
+		if quality_tier < 1 or quality_tier > 4:
+			continue
+		any_damaged = true
+		_repair_list_host.add_child(_create_repair_row(contents, quality_tier, owned_common))
+
+	_repair_empty_label.visible = not any_damaged
+
+
+func _create_repair_row(contents: Dictionary, quality_tier: int, owned_common: int) -> Control:
+	var instance_id: int = contents["instance_id"] as int
+	var item_id: String = contents["item_id"] as String
+	var definition: ItemDefinitionResource = GGameDataRegistry.get_item_definition(StringName(item_id))
+	var cost: int = Crafting.repair_common_cost(quality_tier)
+	var sufficient: bool = owned_common >= cost
+
+	var row := PanelContainer.new()
+	row.name = "Repair_%d" % instance_id
+	row.add_theme_stylebox_override("panel", ShellChromeStyle.chrome_panel_stylebox())
+
+	var content := VBoxContainer.new()
+	row.add_child(content)
+
+	var title_row := HBoxContainer.new()
+	content.add_child(title_row)
+
+	var name_label := Label.new()
+	name_label.text = definition.display_name if definition != null else item_id
+	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	name_label.add_theme_color_override("font_color", ShellChromeStyle.UI_PARCHMENT)
+	title_row.add_child(name_label)
+
+	var repair_button := Button.new()
+	repair_button.text = "Repair"
+	repair_button.disabled = not sufficient
+	repair_button.focus_mode = Control.FOCUS_ALL
+	repair_button.add_theme_stylebox_override("normal", ShellChromeStyle.chrome_button_stylebox(sufficient))
+	repair_button.pressed.connect(_on_repair_button_pressed.bind(instance_id))
+	title_row.add_child(repair_button)
+
+	var cost_label := Label.new()
+	cost_label.text = "Common %d/%d" % [owned_common, cost]
+	cost_label.add_theme_color_override("font_color", ShellChromeStyle.UI_PARCHMENT if sufficient else ShellChromeStyle.UI_WARNING_ORANGE)
+	content.add_child(cost_label)
+
+	return row
+
+
+func _on_repair_button_pressed(instance_id: int) -> void:
+	# No direct refresh call needed here: resolve_repair() emits
+	# component_repaired on success (already subscribed above, see
+	# _on_component_repaired), and a rejected/no-op attempt changes nothing
+	# to refresh.
+	crafting.resolve_repair(instance_id)
 
 
 func _rebuild_assemble_lists() -> void:

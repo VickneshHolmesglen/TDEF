@@ -146,6 +146,8 @@ func test_all_modal_panels_are_hidden_at_fresh_mount() -> void:
 	assert_bool((_menu.get_node("SettingsPanel") as Control).visible).is_false()
 	assert_bool((_menu.get_node("LoadGamePanel") as Control).visible).is_false()
 	assert_bool((_menu.get_node("OverwriteConfirmPanel") as Control).visible).is_false()
+	assert_bool((_menu.get_node("RecoveryChoicePanel") as Control).visible).is_false()
+	assert_bool((_menu.get_node("SaveWarningPanel") as Control).visible).is_false()
 
 
 # ---------------------------------------------------------------------------
@@ -507,8 +509,9 @@ func test_ui_scale_applies_to_exactly_one_wrapper_per_panel_not_each_inner_block
 	for control: Control in scalable:
 		scalable_names.append(control.name)
 
-	assert_array(scalable_names).contains(["TitleLabel", "Buttons", "SettingsContent", "LoadGameContent", "OverwriteContent"])
-	assert_int(scalable_names.size()).is_equal(5)
+	assert_array(scalable_names).contains(["TitleLabel", "Buttons", "SettingsContent", "LoadGameContent",
+			"OverwriteContent", "RecoveryContent", "SaveWarningContent"])
+	assert_int(scalable_names.size()).is_equal(7)
 
 func test_focused_button_shows_a_ring_in_keyboard_gamepad_mode() -> void:
 	var primary: TextureButton = _menu.get_node("Buttons/ContinueButton") if _any_save_exists() \
@@ -633,3 +636,198 @@ func test_ui_cancel_while_overwrite_confirm_open_closes_it_like_cancel_button() 
 	var panel: Control = _menu.get_node("OverwriteConfirmPanel") as Control
 	assert_bool(panel.visible).is_false()
 	assert_bool((_menu.get_node("Buttons/NewGameButton") as TextureButton).has_focus()).is_true()
+
+
+# ---------------------------------------------------------------------------
+# EC-3 (crash recovery) / EC-5 (corrupt save) / AC-11 (version mismatch)
+# design/gdd/save-persistence.md -- TD-save-002, backend built 2026-08-01,
+# UI closed here 2026-08-23.
+#
+# Uses a dedicated high slot number (98), never a real 0-2 production slot,
+# matching save_persistence_restore_test.gd's own established "high slot to
+# avoid collision with real saves" convention -- lets these tests seed real
+# .dat/checkpoint files without any adaptive-to-machine-state fragility.
+# ---------------------------------------------------------------------------
+
+const TEST_SLOT: int = 98
+
+
+func _seed_test_save(slot: int) -> void:
+	GSavePersistence._ensure_save_dir()
+	GSavePersistence.start_new_game(slot)
+	GSavePersistence.save_slot(slot)
+
+
+func _seed_test_checkpoint(slot: int) -> void:
+	GSavePersistence._ensure_save_dir()
+	GSavePersistence.save_checkpoint(slot)
+
+
+func _cleanup_test_slot(slot: int) -> void:
+	var dat: String = SavePersistence.SAVE_PATH % slot
+	var checkpoint: String = SavePersistence.CHECKPOINT_PATH % slot
+	if FileAccess.file_exists(dat):
+		DirAccess.remove_absolute(dat)
+	if FileAccess.file_exists(checkpoint):
+		DirAccess.remove_absolute(checkpoint)
+
+
+func test_load_or_offer_recovery_shows_the_panel_when_a_checkpoint_is_pending() -> void:
+	_seed_test_save(TEST_SLOT)
+	_seed_test_checkpoint(TEST_SLOT)  # written after save_slot() so it isn't auto-deleted
+
+	_menu.call("_load_or_offer_recovery", TEST_SLOT)
+
+	assert_bool((_menu.get_node("RecoveryChoicePanel") as Control).visible).is_true()
+	assert_int(_menu.get("_pending_recovery_slot") as int).is_equal(TEST_SLOT)
+	assert_bool((_menu.get_node("Buttons/ContinueButton") as TextureButton).focus_mode == Control.FOCUS_NONE).is_true()
+	_cleanup_test_slot(TEST_SLOT)
+
+
+func test_load_or_offer_recovery_loads_directly_when_no_checkpoint_is_pending() -> void:
+	_seed_test_save(TEST_SLOT)  # no checkpoint written
+
+	var received: Array = []
+	var handler := func(target: String, mission_id: String) -> void:
+		received.append([target, mission_id])
+	GEventBus.scene_transition_completed.connect(handler)
+
+	_menu.call("_load_or_offer_recovery", TEST_SLOT)
+	await GEventBus.scene_transition_completed
+
+	assert_array(received).contains([["SANCTUARY", ""]])
+	assert_bool((_menu.get_node("RecoveryChoicePanel") as Control).visible).is_false()
+	GEventBus.scene_transition_completed.disconnect(handler)
+	_cleanup_test_slot(TEST_SLOT)
+
+
+func test_recovery_load_save_button_loads_the_dat_not_the_checkpoint() -> void:
+	_seed_test_save(TEST_SLOT)
+	_seed_test_checkpoint(TEST_SLOT)
+	_menu.set("_pending_recovery_slot", TEST_SLOT)
+
+	var received: Array = []
+	var handler := func(target: String, mission_id: String) -> void:
+		received.append([target, mission_id])
+	GEventBus.scene_transition_completed.connect(handler)
+
+	_menu.get_node("RecoveryChoicePanel/RecoveryContent/ChoiceButtons/LoadSaveButton").pressed.emit()
+	await GEventBus.scene_transition_completed
+
+	assert_array(received).contains([["SANCTUARY", ""]])
+	assert_int(GSavePersistence._active_slot).is_equal(TEST_SLOT)
+	# EC-3: "the checkpoint is deleted after either choice."
+	assert_bool(FileAccess.file_exists(SavePersistence.CHECKPOINT_PATH % TEST_SLOT)).is_false()
+	GEventBus.scene_transition_completed.disconnect(handler)
+	_cleanup_test_slot(TEST_SLOT)
+
+
+func test_recovery_restore_checkpoint_button_loads_the_checkpoint_and_deletes_it() -> void:
+	_seed_test_save(TEST_SLOT)
+	_seed_test_checkpoint(TEST_SLOT)
+	_menu.set("_pending_recovery_slot", TEST_SLOT)
+
+	var received: Array = []
+	var handler := func(target: String, mission_id: String) -> void:
+		received.append([target, mission_id])
+	GEventBus.scene_transition_completed.connect(handler)
+
+	_menu.get_node("RecoveryChoicePanel/RecoveryContent/ChoiceButtons/RestoreCheckpointButton").pressed.emit()
+	await GEventBus.scene_transition_completed
+
+	assert_array(received).contains([["SANCTUARY", ""]])
+	assert_bool(FileAccess.file_exists(SavePersistence.CHECKPOINT_PATH % TEST_SLOT)).is_false()
+	GEventBus.scene_transition_completed.disconnect(handler)
+	_cleanup_test_slot(TEST_SLOT)
+
+
+func test_recovery_cancel_hides_the_panel_and_returns_focus_without_loading() -> void:
+	_seed_test_save(TEST_SLOT)
+	_seed_test_checkpoint(TEST_SLOT)
+	_menu.call("_load_or_offer_recovery", TEST_SLOT)
+
+	_menu.call("_on_recovery_cancel_pressed")
+
+	assert_bool((_menu.get_node("RecoveryChoicePanel") as Control).visible).is_false()
+	assert_int(_menu.get("_pending_recovery_slot") as int).is_equal(-1)
+	# The checkpoint is untouched by cancelling -- neither choice was made.
+	assert_bool(FileAccess.file_exists(SavePersistence.CHECKPOINT_PATH % TEST_SLOT)).is_true()
+	_cleanup_test_slot(TEST_SLOT)
+
+
+func test_ui_cancel_while_recovery_choice_open_closes_it() -> void:
+	_seed_test_save(TEST_SLOT)
+	_seed_test_checkpoint(TEST_SLOT)
+	_menu.call("_load_or_offer_recovery", TEST_SLOT)
+
+	_press_ui_cancel()
+
+	assert_bool((_menu.get_node("RecoveryChoicePanel") as Control).visible).is_false()
+	_cleanup_test_slot(TEST_SLOT)
+
+
+## EC-5: the load DID succeed (defaults applied, sanctuary_state_restored
+## already fired) -- OK proceeds to Sanctuary.
+func test_save_warning_ok_proceeds_to_sanctuary_when_corrupt_recovered() -> void:
+	var received: Array = []
+	var handler := func(target: String, mission_id: String) -> void:
+		received.append([target, mission_id])
+	GEventBus.scene_transition_completed.connect(handler)
+
+	_menu.call("_show_save_warning", "Your save could not be loaded and the game has started fresh.", true)
+	assert_bool((_menu.get_node("SaveWarningPanel") as Control).visible).is_true()
+	assert_str((_menu.get_node("SaveWarningPanel/SaveWarningContent/MessageLabel") as Label).text) \
+			.is_equal("Your save could not be loaded and the game has started fresh.")
+
+	_menu.get_node("SaveWarningPanel/SaveWarningContent/OkButton").pressed.emit()
+	await GEventBus.scene_transition_completed
+
+	assert_array(received).contains([["SANCTUARY", ""]])
+	GEventBus.scene_transition_completed.disconnect(handler)
+
+
+## AC-11: the load was aborted, file left untouched -- OK just dismisses
+## back to the menu, no transition.
+func test_save_warning_ok_stays_at_menu_when_version_too_new() -> void:
+	var received: Array = []
+	var handler := func(target: String, mission_id: String) -> void:
+		received.append([target, mission_id])
+	GEventBus.scene_transition_completed.connect(handler)
+
+	_menu.call("_show_save_warning", "This save was made with a newer version of the game and cannot be loaded.", false)
+
+	_menu.get_node("SaveWarningPanel/SaveWarningContent/OkButton").pressed.emit()
+	await get_tree().process_frame
+
+	assert_array(received).is_empty()
+	assert_bool((_menu.get_node("SaveWarningPanel") as Control).visible).is_false()
+	assert_int((_menu.get_node("Buttons/ContinueButton") as TextureButton).focus_mode) \
+			.is_equal(Control.FOCUS_ALL if _any_save_exists() else Control.FOCUS_NONE)
+	GEventBus.scene_transition_completed.disconnect(handler)
+
+
+func test_ui_cancel_while_save_warning_open_acts_like_ok() -> void:
+	_menu.call("_show_save_warning", "Test message.", false)
+
+	_press_ui_cancel()
+
+	assert_bool((_menu.get_node("SaveWarningPanel") as Control).visible).is_false()
+
+
+func test_nav_buttons_are_not_focusable_while_recovery_choice_is_open() -> void:
+	_seed_test_save(TEST_SLOT)
+	_seed_test_checkpoint(TEST_SLOT)
+	_menu.call("_load_or_offer_recovery", TEST_SLOT)
+
+	for path in ["ContinueButton", "NewGameButton", "LoadGameButton", "SettingsButton", "QuitButton"]:
+		var button: Control = _menu.get_node("Buttons/%s" % path)
+		assert_int(button.focus_mode).is_equal(Control.FOCUS_NONE)
+	_cleanup_test_slot(TEST_SLOT)
+
+
+func test_nav_buttons_are_not_focusable_while_save_warning_is_open() -> void:
+	_menu.call("_show_save_warning", "Test message.", false)
+
+	for path in ["ContinueButton", "NewGameButton", "LoadGameButton", "SettingsButton", "QuitButton"]:
+		var button: Control = _menu.get_node("Buttons/%s" % path)
+		assert_int(button.focus_mode).is_equal(Control.FOCUS_NONE)

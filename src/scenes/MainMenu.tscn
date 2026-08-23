@@ -369,3 +369,74 @@ custom_minimum_size = Vector2(160, 54)
 layout_mode = 2
 theme_override_font_sizes/font_size = 26
 text = "Cancel"
+
+[node name="RecoveryChoicePanel" type="ColorRect" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.96)
+visible = false
+
+[node name="RecoveryContent" type="Control" parent="RecoveryChoicePanel"]
+
+[node name="MessageLabel" type="Label" parent="RecoveryChoicePanel/RecoveryContent"]
+layout_mode = 0
+offset_left = 96.0
+offset_top = 240.0
+offset_right = 1100.0
+offset_bottom = 340.0
+theme_override_font_sizes/font_size = 28
+text = "A checkpoint from an interrupted mission was found. Load your last Sanctuary save, or restore from the checkpoint?"
+autowrap_mode = 3
+
+[node name="ChoiceButtons" type="HBoxContainer" parent="RecoveryChoicePanel/RecoveryContent"]
+layout_mode = 0
+offset_left = 96.0
+offset_top = 360.0
+offset_right = 700.0
+offset_bottom = 420.0
+theme_override_constants/separation = 20
+
+[node name="LoadSaveButton" type="Button" parent="RecoveryChoicePanel/RecoveryContent/ChoiceButtons"]
+custom_minimum_size = Vector2(280, 54)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "Load Last Sanctuary Save"
+
+[node name="RestoreCheckpointButton" type="Button" parent="RecoveryChoicePanel/RecoveryContent/ChoiceButtons"]
+custom_minimum_size = Vector2(240, 54)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "Restore From Checkpoint"
+
+[node name="SaveWarningPanel" type="ColorRect" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.96)
+visible = false
+
+[node name="SaveWarningContent" type="Control" parent="SaveWarningPanel"]
+
+[node name="MessageLabel" type="Label" parent="SaveWarningPanel/SaveWarningContent"]
+layout_mode = 0
+offset_left = 96.0
+offset_top = 260.0
+offset_right = 1100.0
+offset_bottom = 340.0
+theme_override_font_sizes/font_size = 28
+text = "Your save could not be loaded and the game has started fresh."
+autowrap_mode = 3
+
+[node name="OkButton" type="Button" parent="SaveWarningPanel/SaveWarningContent"]
+layout_mode = 0
+offset_left = 96.0
+offset_top = 360.0
+offset_right = 256.0
+offset_bottom = 414.0
+theme_override_font_sizes/font_size = 26
+text = "OK"

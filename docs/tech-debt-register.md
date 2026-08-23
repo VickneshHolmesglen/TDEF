@@ -1969,19 +1969,20 @@ The `.new()`/`after_test()` pattern is this project's own correct, idiomatic con
 - [x] Root-caused and documented (2026-08-01) — no code change made, by design (see "Why not fixed" above).
 - [x] This entry closed as informational — nothing further to do unless the count changes unexpectedly in a future run (which would then warrant fresh investigation, not assumption that it's still this same cause).
 
-## TD-save-002 — EC-3/EC-5 UI (crash-recovery dialog, corrupt-save warning) not yet built
+## TD-save-002 — EC-3/EC-5 UI (crash-recovery dialog, corrupt-save warning) not yet built (fixed)
 
 **Logged**: 2026-08-01
+**Fixed**: 2026-08-23
 **Story**: Follow-up from `design/ux/main-menu.md`'s Continue/New Game/Load Game implementation — discovered EC-3 (crash recovery)/EC-5 (corrupt-save) were documented in `save-persistence.md` but never actually implemented in code, at all, at any layer.
 **Severity**: Low — no known reachable defect (both scenarios are real but rare: a mid-mission crash, or a corrupted save file), and the backend now degrades safely even with no UI on top (`load_slot()` on a corrupt file still recovers to a real, playable fresh Sanctuary rather than getting stuck; a stray checkpoint is silently cleaned up over time as normal saves occur).
-**Area**: `src/scenes/main_menu.gd` (or wherever Mission Select's own boot-time checks eventually live)
+**Area**: `src/scenes/main_menu.gd`
 
 ### Gap
 
-The backend half of EC-3/EC-5 was implemented 2026-08-01 (`SavePersistence.load_slot()` now returns a `LoadResult` enum distinguishing `SUCCESS`/`NOT_FOUND`/`VERSION_TOO_NEW`/`CORRUPT_RECOVERED`; `has_pending_checkpoint()`/`restore_from_checkpoint()` exist for EC-3) — see `save-persistence.md`'s own EC-3/EC-5 text for the full contract, and `tests/unit/save_persistence/save_persistence_ec3_ec5_test.gd` for behavioral proof. No UI consumes any of this yet:
+The backend half of EC-3/EC-5 was implemented 2026-08-01 (`SavePersistence.load_slot()` now returns a `LoadResult` enum distinguishing `SUCCESS`/`NOT_FOUND`/`VERSION_TOO_NEW`/`CORRUPT_RECOVERED`; `has_pending_checkpoint()`/`restore_from_checkpoint()` exist for EC-3) — see `save-persistence.md`'s own EC-3/EC-5 text for the full contract. No UI consumed any of this:
 
-- Main Menu's own `_on_continue_pressed()`/`_on_slot_button_pressed()` call `GSavePersistence.load_slot(slot)` and ignore the returned `LoadResult` entirely — a corrupt save silently recovers with no player-facing message at all (contradicts EC-5's own "warn the player that their save could not be loaded" requirement).
-- Nothing checks `has_pending_checkpoint()` on boot, so EC-3's own recovery-choice dialog ("Load last Sanctuary save" vs. "Restore from checkpoint") is never presented — a post-crash player's checkpoint just sits there until the next normal save silently cleans it up (Rule 5), with no chance to explicitly choose to restore from it first.
+- Main Menu's own `_on_continue_pressed()`/`_on_slot_button_pressed()` called `GSavePersistence.load_slot(slot)` and ignored the returned `LoadResult` entirely — a corrupt save silently recovered with no player-facing message at all (contradicted EC-5's own "warn the player that their save could not be loaded" requirement).
+- Nothing checked `has_pending_checkpoint()` before loading, so EC-3's own recovery-choice dialog ("Load last Sanctuary save" vs. "Restore from checkpoint") was never presented — a post-crash player's checkpoint just sat there until the next normal save silently cleaned it up (Rule 5), with no chance to explicitly choose to restore from it first.
 
 ### Recommended fix
 
@@ -1989,7 +1990,8 @@ The backend half of EC-3/EC-5 was implemented 2026-08-01 (`SavePersistence.load_
 - After any `load_slot()` call, check the returned `LoadResult`; on `CORRUPT_RECOVERED`, show a non-blocking warning ("Your save could not be loaded and the game has started fresh — the original file has been preserved as `save_slot_N.corrupt` for debugging.").
 
 ### Resolution
-- [ ] Not yet started.
+- [x] Fixed 2026-08-23 — `_load_or_offer_recovery(slot)` is now the entry point for both Continue and every Load Game slot click: checks `has_pending_checkpoint()` first and shows a new `RecoveryChoicePanel` (Load Last Sanctuary Save / Restore From Checkpoint) before anything loads. `_perform_load(slot)` routes `load_slot()`'s `LoadResult` to a new `SaveWarningPanel` on `CORRUPT_RECOVERED` (proceeds to Sanctuary on OK, since the load did succeed with defaults) and `VERSION_TOO_NEW` (stays at the menu on OK, per AC-11 — load was aborted, file untouched). One deliberate deviation from the recommended-fix note above: the panel DOES respond to `ui_cancel`/Escape (dismisses without loading), matching this screen's own established modal convention (every other panel does the same) — not a spec violation, since EC-3's actual text only names the two choices, it doesn't forbid a third dismissal path.
+- [x] 15 new tests in `tests/integration/main-menu/main_menu_test.gd` (recovery panel open/skip logic, both button choices, cancel, both warning-panel branches, ui_cancel on both new panels, Tab-focus containment) — all passing, plus 1 pre-existing test updated for the 2 new scalable-control entries. Full suite: 48/48, 0 errors, 0 orphans. Live-verified end-to-end via Godot MCP (seeded a real checkpoint, clicked through the recovery dialog, confirmed the panel renders and both choices work).
 
 ---
 
@@ -2033,12 +2035,13 @@ Design and build a real Crafting UI screen (likely following the same pattern De
 
 ---
 
-## TD-mission-001 — MissionResource (objective text) has no display path anywhere
+## TD-mission-001 — MissionResource (objective text) has no display path anywhere (fixed)
 
 **Logged**: 2026-08-07
+**Fixed**: 2026-08-23
 **Story**: Found during the same orphaned-content-data audit that logged `TD-tower-003`/`TD-craft-002` — same class of gap (valid content/mechanism with no consumer), this time the objective-text mechanism rather than a missing screen entirely.
 **Severity**: Low — no correctness defect; `the_gap.tres` (the one authored `MissionResource`) loads cleanly and passes `validate()`. Unlike the other two entries in this class, the screen this content would appear on (`mission_select_screen.gd`) already exists and is fully built — it just never grew a label for this specific field.
-**Area**: `src/core/mission_resource.gd`, `assets/data/missions/the_gap.tres` (the only one authored), `src/gameplay/ui/mission_select_screen/mission_select_screen.gd` (no objective/description `Label` node exists at all — only `display_name` via `MissionEntry` and `RecapLabel`'s modifier/difficulty summary)
+**Area**: `src/core/mission_resource.gd`, `assets/data/missions/*.tres`, `src/gameplay/ui/mission_select_screen/mission_select_screen.gd`/`.tscn`
 
 ### Gap
 
@@ -2049,7 +2052,8 @@ Design and build a real Crafting UI screen (likely following the same pattern De
 Add an objective/description `Label` to `mission_select_screen.gd` (or wherever the UX spec eventually places it) that reads `GameDataRegistry.get_mission_resource(mission_id).objective_text` for the currently-selected mission, then author the missing 3 `MissionResource` files to match. Smaller than `TD-tower-003`/`TD-craft-002` (a label addition to an existing screen, not a new screen), but still a design/UI decision (where it goes, how it's styled) rather than a pure content fix — logged here rather than actioned immediately.
 
 ### Resolution
-- [ ] Not yet started.
+- [x] Fixed 2026-08-23 — added `ObjectiveLabel` to `MissionSelectScreen.tscn`'s `ConfigPanel` (above the difficulty tier row, autowrap on), wired via a new `_refresh_objective_label()` called from the existing `_refresh_config_panel()` refresh path (fires whenever the selected mission changes, same trigger as the tier/modifier button label refreshes). Falls back to an empty string for a mission with no authored `MissionResource`, matching `get_mission_resource()`'s own does-not-abort policy — never an error state.
+- [x] Authored the 3 missing `MissionResource` files (`the_foothills.tres`, `the_hollow.tres`, `the_narrows.tres`) matching `the_gap.tres`'s established format, each with real flavor text reflecting that mission's actual layout/difficulty (Foothills: open Tier-1 intro; Narrows: tight Tier-2 chokepoint; Hollow: long Tier-3/Brutal grind). All 4 missions in the catalogue now have real objective text.
 
 ---
 

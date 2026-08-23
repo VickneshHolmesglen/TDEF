@@ -48,6 +48,10 @@ layout_mode = 2
 size_flags_horizontal = 3
 size_flags_stretch_ratio = 1.0
 
+[node name="ObjectiveLabel" type="Label" parent="MainLayout/TopRow/ConfigPanel"]
+layout_mode = 2
+autowrap_mode = 3
+
 [node name="TierRow" type="HBoxContainer" parent="MainLayout/TopRow/ConfigPanel"]
 layout_mode = 2
 
