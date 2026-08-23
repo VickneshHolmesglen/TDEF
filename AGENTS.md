@@ -16,7 +16,7 @@ Each agent owns a specific domain, enforcing separation of concerns and quality.
 
 ## Project Structure
 
-@.Codex/docs/directory-structure.md
+@.claude/docs/directory-structure.md
 
 ## Engine Version Reference
 
@@ -24,11 +24,11 @@ Each agent owns a specific domain, enforcing separation of concerns and quality.
 
 ## Technical Preferences
 
-@.Codex/docs/technical-preferences.md
+@.claude/docs/technical-preferences.md
 
 ## Coordination Rules
 
-See `.Codex/docs/coordination-rules.md` — read when coordinating agents, assigning model tiers, or running parallel tasks.
+See `.claude/docs/coordination-rules.md` — read when coordinating agents, assigning model tiers, or running parallel tasks.
 
 ## Collaboration Protocol
 
@@ -62,26 +62,26 @@ explicitly asks Codex to do so.
 
 ## Coding Standards
 
-See `.Codex/docs/coding-standards.md` — read when writing code, authoring GDDs, or setting up tests.
+See `.claude/docs/coding-standards.md` — read when writing code, authoring GDDs, or setting up tests.
 
 ## Context Management
 
-See `.Codex/docs/context-management.md` — read when managing long sessions, compacting, or recovering from a crash.
+See `.claude/docs/context-management.md` — read when managing long sessions, compacting, or recovering from a crash.
 
 ## Asset Generation
-Local ComfyUI generation is not used for this project (removed — hard CUDA/ZLUDA
-driver failure, never resolved). All asset generation is manual via ChatGPT:
 
-1. Codex drafts the generation prompt(s) — log them in
-   `design/art/asset-generation-prompts.md` with the reasoning/constraint mapping,
-   matching the art bible.
-2. User runs the prompt through ChatGPT and downloads the resulting image(s).
-3. User drops the raw sheet into `assets/source/<category>/` (snake_case filename).
-4. Codex slices/alpha-cuts/processes it into `assets/art/<category>/` and wires
-   it into the project. See `design/art/asset-generation-prompts.md` for the
-   established alpha-cut technique (color-distance threshold for high-contrast
-   sheets, connected-component flood-fill from the canvas border for low-contrast/
-   dark-material sheets).
+**Active art overhaul (2026-08-23 onward)**: read
+`design/art/codex-art-overhaul.md` first — it is written directly for you and
+is authoritative for how art generation now works. Short version: Codex
+generates (drafts prompts, runs image generation, drops raw output into
+`assets/source/<category>/`), Claude Code processes (alpha-cut/slice/import/
+wire into the engine). Both agents read and update
+`production/art-overhaul-status.md` before/after every item so work never
+collides. **Visual direction is not locked yet** — do not mass-generate final
+art before that document's §1 is resolved.
+
+Local ComfyUI generation is not used for this project (removed — hard CUDA/ZLUDA
+driver failure, never resolved).
 
 `assets/source/` holds raw generated sheets only — nothing loads these directly.
 `assets/art/` is the only engine-referenced asset tree.

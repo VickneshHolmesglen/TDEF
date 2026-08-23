@@ -69,19 +69,24 @@ See `.claude/docs/coding-standards.md` — read when writing code, authoring GDD
 See `.claude/docs/context-management.md` — read when managing long sessions, compacting, or recovering from a crash.
 
 ## Asset Generation
-Local ComfyUI generation is not used for this project (removed — hard CUDA/ZLUDA
-driver failure, never resolved). All asset generation is manual via ChatGPT:
 
-1. Claude drafts the generation prompt(s) — log them in
-   `design/art/asset-generation-prompts.md` with the reasoning/constraint mapping,
-   matching the art bible.
-2. User runs the prompt through ChatGPT and downloads the resulting image(s).
-3. User drops the raw sheet into `assets/source/<category>/` (snake_case filename).
-4. Claude slices/alpha-cuts/processes it into `assets/art/<category>/` and wires
-   it into the project. See `design/art/asset-generation-prompts.md` for the
-   established alpha-cut technique (color-distance threshold for high-contrast
-   sheets, connected-component flood-fill from the canvas border for low-contrast/
-   dark-material sheets).
+**Active art overhaul (2026-08-23 onward)**: read
+`design/art/codex-art-overhaul.md` — it's written for Codex but Claude Code is
+equally bound by it. Short version: Codex now generates art (drafts prompts,
+runs image generation, drops raw output into `assets/source/<category>/`);
+Claude Code processes it (alpha-cut/slice/import/wire into the engine, per the
+existing technique below). Both agents read and update
+`production/art-overhaul-status.md` before/after every item so work never
+collides — check it before picking up any art task. **Visual direction is not
+locked yet** (see that document's §1) — do not treat any generated art as
+final/ship-ready until the user confirms a direction.
+
+Local ComfyUI generation is not used for this project (removed — hard CUDA/ZLUDA
+driver failure, never resolved). Alpha-cut technique: color-distance threshold
+for high-contrast sheets, connected-component flood-fill from the canvas
+border for low-contrast/dark-material sheets — full detail and hard-won
+gotchas in `design/art/codex-art-overhaul.md` §5.2 and
+`design/art/asset-generation-prompts.md`.
 
 `assets/source/` holds raw generated sheets only — nothing loads these directly.
 `assets/art/` is the only engine-referenced asset tree.
