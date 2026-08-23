@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="SkillDefinitionResource" format=3]
+
+[ext_resource type="Script" path="res://src/core/skill_definition_resource.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+skill_id = &"elem_firebolt"
+display_name = "Firebolt"
+category = "elemental"
+passive_slot_count = 1
+source_build_signature = &"found_firebolt_t1|weap_firebolt_t1|focus_firebolt_t1|power_firebolt_burn_t1"
+mastery_threshold_seconds = 45.0
