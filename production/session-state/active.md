@@ -1,3 +1,12 @@
+## Session Extract — 13th tarot card (Grinding Gauntlet, dual-edge risk/reward), 2026-08-23
+
+- Added `card_grinding_gauntlet.tres` — a Rare-rarity dual-edge card (`tarot_reward_scalar_mult=1.5` paired with `tarot_difficulty_growth_rate=0.2`, matching the established "Reckless Onslaught" precedent for 2-modifier risk/reward cards). Checked `TarotCardResource.validate()`/`TarotModifierEntry.REGISTERED_MODIFIER_TYPES` first — confirmed all 4 registered modifier types, and that `tarot_wave_config_override` (the 4th, unused by any existing card) requires a more complex per-mission alternate-WaveConfig reference I couldn't confidently author without live-testing, so stuck to the 2 already well-established types instead.
+- Gated behind `tech_structural_2` — previously unused by any card (only `tech_structural_3` had a card gating on it), giving that tech node its first real payoff.
+- Tarot cards are pure player-equippable content (no wave-config or mission-wiring dependency, unlike monsters) — self-contained, no follow-up wiring needed.
+- **No tests, no live verification** — per the standing instruction. Verified via `TarotCardResource.validate()`'s exact constraints (rarity enum, 1-2 modifier count, registered modifier_type membership, rune_bonus_flat range — left at its 0.05 default, not overridden).
+- Committed and pushed immediately per the standing instruction.
+- **Next recommended**: same as before — either more content (crafting recipes are the next thinnest confirmed-safe area) or a live verification pass, given 9 real content/feature items have now landed this session with zero in-engine confirmation.
+
 ## Session Extract — New monster (Iron Colossus, ELITE armored) wired into a real wave, 2026-08-23
 
 - Added `iron_colossus_elite.tres` — a Tier 1 (ELITE) `archetype_tag="armored"` monster, the first ELITE-tier armored variant (previously "armored" only existed on 1 Tier-0/STANDARD monster, `armored_brute`). Reused `brute_drops` as its loot table rather than authoring new materials — deliberately scoped to avoid also having to invent new `ItemDefinitionResource` content and risk a rarity/item_type mismatch with Crafting's recipes, which I couldn't verify under the no-testing constraint.
