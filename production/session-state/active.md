@@ -1,3 +1,85 @@
+## Session Extract — 5th Building Upgrade, gives the last un-upgraded fixed structure (Habitat Expansion Tier 4) its own root chain, 2026-08-23
+
+- `upgrade_habitat_expansion_boundless.tres` — a new root upgrade (`prerequisite_upgrade_id=""`, `upgrade_tier=1`) targeting `habitat_expansion_tier_4`, the last of the 4 fixed Habitat Expansion tiers with zero upgrades (tiers 1 and 3 still have none — legitimate remaining open space, not touched).
+- Uses the last previously-unused species (`emberwing_moth` — all 5 species are now referenced across the Building Upgrade catalogue) plus `apex_predator` (tarot) and `brutes_bulwark_plate` (equipment), both verified before referencing.
+- Cost: `gold_cost=60`, `material_cost.Common=12` — Formula 1's tier-1 baseline, matching every other chain's root upgrade.
+
+## Session Extract — 4th Building Upgrade, gives Watchtower a 2-deep chain matching Habitat Expansion's, 2026-08-23
+
+- `upgrade_watchtower_vigilant.tres` chains onto `upgrade_watchtower_reinforced` (`prerequisite_upgrade_id`, same `target_structure_id`) at `upgrade_tier=2` — mirrors `upgrade_habitat_expansion_flourishing`'s exact shape/cost (`gold_cost=108`, `material_cost.Common=22`, Formula 1 tier-2 values). Watchtower previously had only a single root upgrade while Habitat Expansion already had a 2-deep chain; this closes that asymmetry.
+- Requirements use previously-unused ids: `creature=duskfang_fox`, `tarot=grim_resolve`, `equipment=iron_helm` — all verified to exist before referencing.
+- Both `target_structure_id` families (`habitat_expansion_tier_2`, `watchtower_tier_1`) now have a 2-deep upgrade chain; each of the other 3 fixed structures (`habitat_expansion_tier_1/3/4`) still has zero upgrades — legitimate open space for a future pass, not touched here.
+
+## Session Extract — Fixed TD-craft-003: 13 of 23 Equipment Forge recipes were ungated, 2026-08-23
+
+- Ran `TD-craft-002`'s same `quality_tier` vs `tech_prerequisite` cross-reference against Equipment Forge's 23 recipes (a separate `EquipmentRecipeResource` catalogue, distinct from Crafting's `RecipeResource`, but `equipment-forge.md` Rule 5 explicitly says `quality_tier` "reuses Crafting's own authoritative definition" and its own Dependencies table warns the two must stay in lockstep). Found a much bigger version of the same bug: only 2 of 23 recipes (`iron_greaves`, `reinforced_plate`) were tech-gated at all; all 6 quality_tier=4 recipes, all 6 quality_tier=3 recipes, and 1 stray quality_tier=2 recipe (`steel_greatsword`) were fully ungated.
+- Fixed all 13: quality_tier=3 → `tech_production_3`, quality_tier=4 → `tech_production_4`, the stray T2 → `tech_production_2`. Quality_tier=1 recipes (10 of them) correctly left ungated, matching Crafting's own T1 convention.
+- Logged as `TD-craft-003` (fixed same session).
+
+## Session Extract — Fixed TD-craft-002: T4 crafting recipe was completely ungated, 2026-08-23
+
+- Cross-referenced every recipe's `quality_tier` against its `tech_prerequisite`, looking for the same kind of "authored but not wired" pattern that just paid off 4 times in a row on the skills side. Found it: quality_tier 2/3 recipes uniformly gate on `tech_production_2`/`tech_production_3` (6 recipes, clean pattern) but the one quality_tier=4 recipe (`recipe_tier4_component`) had `tech_prerequisite = ""` — completely ungated, discoverable from turn one with zero tech investment.
+- Confirmed as a real bug (not an intentional design exception) by reading `tech_production_4.tres`'s own `gates` documentation field: `"Crafting quality_tier=4"` — the tech node's own author-facing text explicitly claims to gate this recipe. Before this fix, `tech_production_4` (150 gold + 45/24/12 materials) was a complete dead end that unlocked nothing.
+- Fixed: `recipe_tier4_component.tres`'s `tech_prerequisite` set to `&"tech_production_4"`.
+- Logged as `TD-craft-002` (fixed same session). Noted: existing saves that already discovered this recipe under the old ungated rule keep it discovered — Crafting's discovery ledger is one-way/permanent by design (same convention as Tarot's rune ledger), not a new gap this fix introduces.
+
+## Session Extract — 3 more towers (Bulwark, Barrier Ward, Firestorm Spire), closes every remaining orphan skill and every remaining archetype/tier gap, 2026-08-23
+
+- Following the exact pattern the Volley Crossbow find revealed: checked the 3 other still-orphaned skills (`phys_bulwark`, `sup_barrier`, `elem_firestorm` — all empty `source_build_signature`) against the archetype × tier gap map. All 3 matched a real gap: Physical had T1/T4 but no T2/T3; Support had only T1; Elemental had T1×3/T2/T3 but no T4. `TD-hero-skill-001` (flagged earlier this session for `elem_firestorm` specifically) is now resolved this way rather than its originally-recommended fix (reusing Firebolt Turret's signature) — that signature was claimed by `elem_firebolt.tres` later the same session, so Firestorm got its own real tower instead.
+- `blueprint_bulwark.tres` — T2 Physical, `targeting_mode=SPAWN_ORDER` (first attacker gets met by the wall), high `hp_base=160.0` fitting the name. Links `phys_bulwark`.
+- `blueprint_barrier_ward.tres` — T2 Support (2nd Support tower, joining Rally Banner), `AURA`/`damage_buff` at a stronger value/radius than Rally Banner (0.20/4 cells vs 0.15/3 cells) — reuses `TD-tower-008`'s just-fixed buff mechanic rather than inventing a new unimplemented `aura_effect_type`, deliberately avoiding repeating that same bug shape. Links `sup_barrier`.
+- `blueprint_firestorm_spire.tres` — T4 Elemental (`tier_boss_dps_multiplier=2.0`, matching the T4 cross-field table), `element="fire"`, `aoe_radius_cells=3` (the largest splash radius of any tower so far), `effect_type="burn"`. Links `elem_firestorm`.
+- Every tower blueprint in the catalogue (now 12) has exactly one linked skill, and every hero skill with a non-empty category has a real source tower. No orphans remain in either direction.
+- `placement_cost` values authored directly per the established per-tier pattern (Formula 4 is authoring guidance only — confirmed no runtime formula/field enforces it; `placement_cost` is a freely-authored int on `TowerBlueprintData`), not computed through a `base_cost` field (no such field exists on `FoundationComponent`).
+
+## Session Extract — Volley Crossbow (T2 Ranged tower), fills the Ranged archetype's tier gap and closes a 2nd orphan skill, 2026-08-23
+
+- Audited all 9 tower blueprints by archetype × tier: Physical (T1 Archer, T4 Siege Cannon), Elemental (T1 Firebolt/Frostbolt/Venomdart, T2 Storm, T3 Arcane Lance), Support (T1 Rally Banner only) — but Ranged only had T1 Longshot Sniper, no tier spread at all. Same gap-shape as the Storm Turret/Siege Cannon/Arcane Lance additions earlier this session.
+- Found `rng_volley.tres` was the 2nd orphan skill (empty `source_build_signature`, `category="ranged"`, `passive_slot_count=2`) — its name ("Volley") reads as a design placeholder for exactly this gap, not a coincidence. Linked it to the new tower instead of leaving it dangling or authoring a redundant 2nd ranged skill.
+- Added `blueprint_volley_crossbow.tres`: T2 Ranged (`tier_multiplier=1.5`, `tier_dps_multiplier=1.6`, `tier_cost_factor=1.5` — matches the tier cross-field consistency table exactly, same values as `storm_turret`), `placement_cost=23` (`round(15 × 1.0 × 1.5) = 23` per Formula 4). `targeting_mode = SCATTER` — a real, deliberate choice to exercise this session's own `TD-tower-006` fix (previously inert; now the first tower in the catalogue to actually use round-robin targeting).
+- Checked first whether new towers need companion Crafting recipes/items (like the other tier-gap towers added this session) — confirmed `storm_turret`/`arcane_lance`/`siege_cannon` have zero recipe/item footprint each (`grep` returned nothing); blueprints are placement-ready data with no crafting unlock step in this project. No recipe scaffolding needed here either.
+- `TD-hero-skill-001` (`elem_firestorm.tres`, the other still-orphaned skill) remains untouched — not part of this gap, no matching unbuilt tower to link it to.
+
+## Session Extract — Fixed TD-tower-008 (aura buffs now mechanically apply), 2026-08-23
+
+- User chose this over further content sweeps or stopping (`AskUserQuestion`). Rally Banner's aura pulse (fixed to fire this session as `TD-tower-007`) now actually buffs allied towers, not just VFX.
+- 2 design calls made and documented in-code (not specified anywhere in tower.md, so not silently invented): **ownership** lives in `TowerSystem` itself rather than `damage_status.gd` (the GDD's own doc comment names D&S, but D&S has no access to tower grid positions/combat stats — `TowerSystem` already owns both, same data `_apply_splash_damage()` already uses); **effect model** is re-apply-fresh-per-pulse with a flat 2.0s decay timer (`TowerMissionState.damage_buff_fraction`/`damage_buff_remaining`), not permanent, since a tower that later leaves every aura's radius needs something to eventually clear its bonus.
+- Only `aura_effect_type == "damage_buff"` is implemented (the one effect id any shipped content — Rally Banner — actually authors); any other value is a documented no-op.
+- `_try_attack()`'s damage formula gained a 5th independent multiplier: `× (1.0 + damage_buff_fraction)`.
+- Not re-verified via the test suite this session, per the standing "no unrequested testing" instruction.
+- This closes out all 3 combat bugs found while content-authoring earlier this session (`TD-tower-006`, `TD-tower-007`, `TD-tower-008`) — none remain open.
+
+## Session Extract — 3rd Building Upgrade, first real chain (tier 2 stacked on the existing Habitat Expansion Bountiful upgrade), 2026-08-23
+
+- Checked `building-upgrade.md` first: unlike Defense Building's own tech-node/structure tables (fully fixed/enumerated), `BuildingUpgradeResource`'s catalogue has no total-count cap — only a per-chain depth cap of 3 (`upgrade_tier` 1-3, enforced by `validate_chain()`'s cycle/depth walk). Legitimate open content space, same as Tarot/Crafting/Hero Skills.
+- Added `upgrade_habitat_expansion_flourishing.tres`: `target_structure_id = habitat_expansion_tier_2` (same as the existing `upgrade_habitat_expansion_bountiful`), `prerequisite_upgrade_id = upgrade_habitat_expansion_bountiful` — this project's first actual 2-deep upgrade chain, not just a second independent root upgrade. Cost computed from Formula 1 at `upgrade_tier=2` exactly: `gold_cost = round(60 × 1.8) = 108`, `material_qty(Common, 2) = round(12 × 1.8) = 22` (matches the GDD's own worked example precisely).
+- Requirements picked from previously-unused ids to keep the catalogue varied: `creature=aurora_stag` (species roster is fixed at 5; the other 4 are now covered across the 2 existing upgrades + this one), `tarot=bountiful_harvest`, `equipment=warding_band` — all verified to exist via grep before referencing (`validate()` would reject an unknown id at load).
+- Mechanical effect intentionally left as disclosed scaffolding (`effect_description` states so explicitly), matching both existing upgrades and Habitat Expansion's own base-structure precedent — `structure_upgraded`'s real consumer is still unbuilt project-wide, not something to fake here.
+
+## Session Extract — 13th hero skill (Firebolt), closes tower-to-skill coverage completely (all 9 real towers), 2026-08-23
+
+- Audited every skill file's `source_build_signature` against every real tower blueprint's component ids (not assumed from a stale earlier session note) — found `blueprint_firebolt_turret.tres` (a Tier 1 tower that's existed since early in the session) was the one real tower with no matching skill at all. The 4 skills with empty `source_build_signature` (`elem_firestorm` — already flagged `TD-hero-skill-001`, `phys_bulwark`, `rng_volley`, `sup_barrier`) are pre-existing and intentionally unlockable-via-other-means, not touched.
+- Added `elem_firebolt.tres`, mastery-linked to `found_firebolt_t1|weap_firebolt_t1|focus_firebolt_t1|power_firebolt_burn_t1` — same schema/shape as `elem_frostbolt.tres` (the structurally closest sibling: also a Tier 1 elemental tower with a real Power-slot status effect).
+- Every real tower now has exactly one associated skill. This gap existed independently of the earlier Storm/Venom/Siegebreaker/Arcane Surge additions — Firebolt Turret was one of the very first towers in the catalogue and had simply never been given one.
+
+## Session Extract — Art Overhaul kickoff: Codex/Claude Code coordination doc prepared, session paused here, 2026-08-23
+
+- User is starting a complete art/visual asset overhaul, executed in tandem with Codex (generates art) alongside Claude Code (processes/wires it). Prepared the coordination infrastructure per their request:
+  - `design/art/codex-art-overhaul.md` — written directly for Codex, covers division of labor, the coordination protocol, this project's full alpha-cut technique + every hard-won gotcha, engine budgets, and explicitly flags that **visual direction is NOT locked yet** (per the user's own words: "I'm changing everything, I'll determine the art style direction later"). Documents `art-bible.md` as the pre-overhaul baseline, not a confirmed target, and the 2 Diablo IV reference screenshots (`production/Hero Unequipped.PNG`, `production/Hero 2H equipped.PNG`) as references only.
+  - `production/art-overhaul-status.md` — new git-tracked (not gitignored) shared claim/update tracker both agents use, seeded with the direction-lock-in placeholder and the known UI layout gaps below.
+  - Updated `AGENTS.md` and `CLAUDE.md`'s Asset Generation sections to point at the new doc. Also fixed `AGENTS.md`'s broken `@.Codex/docs/...` path references (should have been `.claude/docs/...`) — a leftover from a mechanical Claude→Codex rename that had silently zeroed out most of that file's `@`-imports.
+- Known UI layout gaps folded into the overhaul as in-scope (confirmed by user, not stale): skill-ready row text overflow/clipping in Mission HUD, dead window/viewport-edge space, empty stone-frame margins around the mission grid. Source: user-annotated `production/Issues.PNG` / `UI Changes.PNG`.
+- **User is pausing here** — will pick art direction later. Committed and pushed (`cbed497`). Next real step whenever resumed: a small pilot batch across 2–3 candidate visual directions for the user to choose from before any full-scale generation begins (see the coordination doc's own §7).
+
+## Session Extract — Fixed TD-tower-006 (targeting_mode) and TD-tower-007 (AURA weapons), both previously-deferred combat bugs, 2026-08-23
+
+- User reversed the earlier "defer, don't touch core targeting logic" decision on `TD-tower-006` with "lets deal wit hthe combat log bugs" — asked to fix both logged combat bugs for real this time.
+- `TD-tower-006`: `tower_system.gd` now has a real `_find_target(state)` dispatcher covering all 5 documented `targeting_mode` values (Rule 15) — `LOWEST_HP` (pre-existing, kept for the test that calls it directly), plus new `HIGHEST_HP`, `CLOSEST_TO_GOAL` (also the default/fallback), `SPAWN_ORDER`, and `SCATTER` (stateful round-robin with a repeat-guard, new `scatter_index`/`last_scatter_target_id` fields on `TowerMissionState`, reset on `wave_started`). `path_step_index` is now tracked live (was previously discarded) and the cache is cleared on `monster_breached`, not just `monster_died`. Added `TowerSystem._get_best_target(tower_id, targeting_mode)` per Rule 19's dispatch-surface requirement for future HOMING re-acquisition — not wired to a caller yet (`TD-tower-005`, unchanged, still open).
+- `TD-tower-007`: `_try_attack()` now branches on `weapon.projectile_type == "AURA"` and emits `tower_aura_pulse` unconditionally (no monster target needed, per Rule 5a), instead of silently falling through the normal attack path. Rally Banner's aura VFX ring (already correctly built in `mission_scene.gd`, just never triggered) now actually fires.
+- Found while fixing `TD-tower-007` that `tower_aura_pulse`'s buff still doesn't mechanically apply to allied towers — no `damage_status.gd` subscriber exists, and `TowerMissionState` has no buff/debuff fields to receive one. Split this out as new entry **`TD-tower-008`** rather than silently leaving it bundled under `007`'s "fixed" checkbox — it needs its own design pass (effect vocabulary, duration/stacking model), not a code fix.
+- Per the standing "no unrequested testing" instruction, `tower_combat_test.gd` was NOT run this session to verify either fix — both are logged as fixed-but-not-test-verified in the tech debt register.
+- Committed and pushed (`9c317d9`).
+
 ## Session Extract — Iron Colossus wired into a 3rd mission (The Foothills); confirmed tarot_wave_config_override is a real code-level gap, not a content one, 2026-08-23
 
 - Iron Colossus (this session's ELITE monster) was only reachable in The Hollow. Added it to The Narrows' final boss wave too (purely additive, same pattern as before — new entry alongside the existing boss, boss's own `pre_delay`/fields untouched).
