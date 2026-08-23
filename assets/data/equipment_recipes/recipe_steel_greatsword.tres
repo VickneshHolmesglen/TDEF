@@ -11,7 +11,7 @@ inputs = {
 &"Common": 13,
 &"Uncommon": 6
 }
-tech_prerequisite = &""
+tech_prerequisite = &"tech_production_2"
 output_item_id = &"steel_greatsword"
 quality_tier = 2
 rune_slot_count = 2

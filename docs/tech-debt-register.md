@@ -22,6 +22,23 @@ Found by cross-referencing every recipe's `quality_tier` against its `tech_prere
 
 ---
 
+## TD-craft-003 — 13 of 23 Equipment Forge recipes were ungated, bypassing the tech tree far more broadly than `TD-craft-002` (fixed)
+
+**Logged**: 2026-08-23 (found and fixed same session, immediately after `TD-craft-002`)
+**Fixed**: 2026-08-23 (same session)
+**Severity**: Medium-High — same bug shape as `TD-craft-002` but 13x the scope: over half the entire Equipment Forge recipe catalogue (every quality_tier 3/4 recipe, plus one quality_tier 2 outlier) was fully craftable with zero tech investment.
+**Area**: `assets/data/equipment_recipes/*.tres` (content only — `equipment_forge.gd`'s gating logic mirrors `crafting.gd`'s and was already correct)
+
+### Gap
+
+Ran the same `quality_tier` vs `tech_prerequisite` cross-reference that found `TD-craft-002`, this time against Equipment Forge's 23 recipes. `equipment-forge.md` Rule 5 explicitly states `quality_tier` "reuses Crafting's own authoritative definition" — the GDD's own Dependencies table even warns this must stay in lockstep with Crafting's tier convention "or Equipment Forge's recipes silently diverge." Found exactly that divergence: only 2 recipes (`recipe_iron_greaves`, `recipe_reinforced_plate` — both quality_tier=2) were gated on `tech_production_2`, matching Crafting's pattern. The other 21 were all `tech_prerequisite=""`, including all 6 quality_tier=4 recipes, all 6 quality_tier=3 recipes, and one stray quality_tier=2 recipe (`recipe_steel_greatsword`) that should have matched its 2 quality_tier=2 siblings but didn't.
+
+### Resolution
+- [x] Fixed 2026-08-23 — set `tech_prerequisite` on all 13 affected recipes to match Crafting's exact tier convention: quality_tier=3 → `tech_production_3` (6 recipes: `brute_gauntlets`, `goblin_signet`, `lurker_fang_blade`, `sentinel_visor`, `troll_hide_mantle`, `warlords_greaves`), quality_tier=4 → `tech_production_4` (6 recipes: `bogpearl_amulet`, `brutes_bulwark_plate`, `goblin_fang_circlet`, `sentinels_aegis`, `trollmarrow_band`, `warlords_greatblade`), quality_tier=2 → `tech_production_2` (1 recipe: `steel_greatsword`). Quality_tier=1 recipes (10 of them) left ungated — matches Crafting's own T1 convention exactly (every T1 `tower_component`/`crafted_good` recipe is also ungated by design).
+- [ ] Not re-verified via the test suite this session, per the standing "no unrequested testing" instruction. Same save-compatibility note as `TD-craft-002`: any existing save that already discovered one of these 13 recipes under the old ungated rule keeps it discovered (one-way ledger, by design, not a new gap).
+
+---
+
 ## TD-hero-skill-001 — `elem_firestorm` skill looks orphaned/unwired, not investigated further
 
 **Logged**: 2026-08-23

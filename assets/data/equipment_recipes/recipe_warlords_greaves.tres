@@ -11,7 +11,7 @@ inputs = {
 &"warlord_iron": 19,
 &"Uncommon": 10
 }
-tech_prerequisite = &""
+tech_prerequisite = &"tech_production_3"
 output_item_id = &"warlords_greaves"
 quality_tier = 3
 rune_slot_count = 2

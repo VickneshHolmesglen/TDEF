@@ -12,7 +12,7 @@ inputs = {
 &"Uncommon": 16,
 &"troll_marrow": 8
 }
-tech_prerequisite = &""
+tech_prerequisite = &"tech_production_4"
 output_item_id = &"trollmarrow_band"
 quality_tier = 4
 rune_slot_count = 1

@@ -11,7 +11,7 @@ inputs = {
 &"iron_plating": 19,
 &"Uncommon": 10
 }
-tech_prerequisite = &""
+tech_prerequisite = &"tech_production_3"
 output_item_id = &"brute_gauntlets"
 quality_tier = 3
 rune_slot_count = 2
