@@ -8,5 +8,5 @@ skill_id = &"rng_volley"
 display_name = "Volley"
 category = "ranged"
 passive_slot_count = 2
-source_build_signature = &""
+source_build_signature = &"found_volley_t2|weap_volley_t2|focus_volley_t2|power_none"
 mastery_threshold_seconds = 45.0
