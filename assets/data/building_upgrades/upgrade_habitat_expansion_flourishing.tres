@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="BuildingUpgradeResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/core/building_upgrade/building_upgrade_resource.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+upgrade_id = &"upgrade_habitat_expansion_flourishing"
+target_structure_id = &"habitat_expansion_tier_2"
+prerequisite_upgrade_id = &"upgrade_habitat_expansion_bountiful"
+requirements = {
+&"creature": &"aurora_stag",
+&"tarot": &"bountiful_harvest",
+&"equipment": &"warding_band"
+}
+gold_cost = 108
+material_cost = {
+&"Common": 22
+}
+effect_description = "A well-warded sanctuary, a good harvest, and a stag that has learned to trust the place enough to stay -- three unrelated proofs the habitat is thriving, not just built. Second upgrade in this structure's chain (upgrade_tier=2, Formula 1: 60 -> 108 gold, 12 -> 22 Common). Mechanical effect not yet wired (see design/gdd/building-upgrade.md Rule 6/7) -- same disclosed scaffolding-only status as upgrade_habitat_expansion_bountiful and upgrade_watchtower_reinforced."
