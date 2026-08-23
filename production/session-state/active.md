@@ -1,7 +1,10 @@
-## Session Extract — Iron Colossus wired into a 2nd mission (The Narrows), 2026-08-23
+## Session Extract — Iron Colossus wired into a 3rd mission (The Foothills); confirmed tarot_wave_config_override is a real code-level gap, not a content one, 2026-08-23
 
 - Iron Colossus (this session's ELITE monster) was only reachable in The Hollow. Added it to The Narrows' final boss wave too (purely additive, same pattern as before — new entry alongside the existing boss, boss's own `pre_delay`/fields untouched).
 - Noticed while doing this: The Narrows' boss entry (`rift_sentinel_boss`) has no `spawn_cell_index` set at all, unlike The Hollow's boss entry (`spawn_cell_index=0`) — `wave-manager.md`'s Rule 6 says the final wave's BOSS entry needs an explicit one for the boss-spawn telegraph to resolve correctly. Did not touch it — this is existing content's own field, not something to silently edit; worth a look if boss telegraphing turns out wrong in The Narrows specifically, but not logged as a formal TD entry since it wasn't independently confirmed as actually broken (could have a safe default).
+- Also wired Iron Colossus into The Foothills' final wave (same additive pattern; that mission's boss entry already has a correct `spawn_cell_index=0`, unlike The Narrows). Skipped `the_gap`'s own wave file — it predates the other 3 missions' human-readable `Resource_X_wY_eZ` naming convention (uses raw Godot-generated IDs instead), meaningfully higher risk to hand-edit correctly, not worth it for a single monster placement.
+- Re-checked `tarot_wave_config_override` (the 4th, still-unused Tarot modifier type) directly in `wave_manager.gd`'s own handler: confirmed via the code's own comment that this is a **real, acknowledged, code-level data-model gap** — `TarotModifierEntry` has no string/path field to encode a target `WaveConfig`, only a float value, so "every event of this type is... unresolvable by construction today," always hitting the documented graceful-degradation warning. Confirms my earlier decision to avoid authoring a card using this type was correct — it's not content-authorable at all right now, would need a schema change first.
+- Iron Colossus is now reachable in 3 of the 4 missions (The Hollow, The Narrows, The Foothills).
 
 ## Session Extract — 12th hero skill (Arcane Surge), keeps tower-to-skill coverage complete, 2026-08-23
 
