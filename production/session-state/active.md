@@ -1,3 +1,10 @@
+## Session Extract — Power slot fully completed (T2 + T3, closing the biggest tier gap), 2026-08-23
+
+- Added Reinforced Power (T2, `effect_type="slow"`) and Masterwork Power (T3, `effect_type="poison"`) — both real Damage & Status-recognized effect types, giving Power actual mechanical distinction across tiers rather than 2 more no-effect components. Power now has all 4 tiers (T1/T2/T3/T4), matching Foundation/Focus/Weapon's now-complete T1-T3 spread (T4 boss-lane content stays Foundation-exclusive per `tower.md`'s own design, not something Weapon/Focus/Power need).
+- **Caught and fixed a naming inconsistency mid-authoring**: initially named the T3 Power item/component "Advanced Power" (`advanced_power_component`), then realized "Advanced" already means Tier 2 in this project's established naming (`recipe_advanced_component.tres` → `advanced_weapon_component`, itself Tier 2) — using it for a Tier 3 item would have been confusing, inconsistent content. Deleted and renamed to "Masterwork Power" (`masterwork_power_component`), matching the `Masterwork Weapon` naming this same session already established for Tier 3. Tier-tier naming convention across this session's additions is now consistent: T2="Reinforced", T3="Masterwork".
+- `recipe_masterwork_power.tres` matches Formula 1's documented T3 fresh-craft cost exactly (`19 Common + 10 Uncommon`), same figure used for Masterwork Weapon.
+- All 4 slots (Foundation/Weapon/Focus/Power) now have a real T1→T2→T3 crafting path through Tower Assembly — this closes the tier-gap content audit started with Reinforced Focus.
+
 ## Session Extract — Masterwork Weapon (Tier 3), full audit of all recipe slot/tier coverage, 2026-08-23
 
 - Did a full audit of all 8 `tower_component` recipes' slot/tier combos (including the "archer_*" ones, which turned out to also be real T1 generic-equivalent content, not purely blueprint-copy-only as first assumed) before continuing. Actual picture: foundation T1/T1/T2, weapon T1/T2, focus T1/T1/T2, **power T1/T4 only — missing T2 AND T3 entirely**, the biggest real gap.
