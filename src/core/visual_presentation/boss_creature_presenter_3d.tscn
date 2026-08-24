@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://bosscreaturepresenter3d0"]
+
+[ext_resource type="Script" path="res://src/core/visual_presentation/boss_creature_presenter_3d.gd" id="1_script"]
+
+[node name="BossCreaturePresenter3D" type="Node3D"]
+script = ExtResource("1_script")

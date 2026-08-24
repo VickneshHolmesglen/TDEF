@@ -22,6 +22,7 @@ extends Node3D
 
 @onready var _standard_body_batches: Node3D = $StandardBodyBatches
 @onready var _contact_shadow_batches: Node3D = $ContactShadowBatches
+@onready var _boss_presenter: BossCreaturePresenter3D = $ExceptionalPresenters/BossCreaturePresenter3D
 
 const BODY_SHADER: Shader = preload("res://src/shaders/creature_swarm_body.gdshader")
 const SHADOW_SHADER: Shader = preload("res://src/shaders/creature_contact_shadow.gdshader")
@@ -82,6 +83,31 @@ func unregister_creature(handle: MonsterPresentationHandle) -> bool:
 		return false
 	var batch: MonsterSwarmBatch = _batches[handle.batch_key]
 	return batch.remove(handle)
+
+
+# ---------------------------------------------------------------------------
+# Exceptional (BOSS/approved-elite) presentation — pass-through to the one
+# ExceptionalPresenters/BossCreaturePresenter3D pool (ADR-0038 §"Bosses,
+# elites, and Menagerie"). Kept as pass-through methods here, not a second
+# renderer reference MonsterManager has to inject separately — "exactly one
+# renderer instance is scene-owned per mission" stays true for MonsterManager's
+# own DI surface even though the pool is a distinct internal object.
+# ---------------------------------------------------------------------------
+
+func register_boss(entity_id: int, monster_id: StringName, world_transform: Transform3D) -> MonsterPresentationHandle:
+	return _boss_presenter.register_boss(entity_id, monster_id, world_transform)
+
+
+func update_boss(handle: MonsterPresentationHandle, world_transform: Transform3D, attack_telegraphed: bool) -> bool:
+	return _boss_presenter.update_boss(handle, world_transform, attack_telegraphed)
+
+
+func unregister_boss(handle: MonsterPresentationHandle) -> bool:
+	return _boss_presenter.unregister_boss(handle)
+
+
+func get_boss_live_count() -> int:
+	return _boss_presenter.get_live_count()
 
 
 # ---------------------------------------------------------------------------

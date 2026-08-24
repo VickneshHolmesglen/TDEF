@@ -246,6 +246,9 @@ func _emit_death(entity: MonsterEntity, kill_source: StringName) -> void:
 	if entity.swarm_handle != null and _swarm_renderer != null:
 		_swarm_renderer.unregister_creature(entity.swarm_handle)
 		entity.swarm_handle = null
+	if entity.boss_presenter_handle != null and _swarm_renderer != null:
+		_swarm_renderer.unregister_boss(entity.boss_presenter_handle)
+		entity.boss_presenter_handle = null
 	entity.queue_free()
 
 
@@ -461,6 +464,9 @@ func _advance_entity(entity: MonsterEntity, delta: float) -> void:
 					if entity.swarm_handle != null and _swarm_renderer != null:
 						_swarm_renderer.unregister_creature(entity.swarm_handle)
 						entity.swarm_handle = null
+					if entity.boss_presenter_handle != null and _swarm_renderer != null:
+						_swarm_renderer.unregister_boss(entity.boss_presenter_handle)
+						entity.boss_presenter_handle = null
 					entity.queue_free()
 				return
 		else:
@@ -542,6 +548,17 @@ func _pass3c_visual_sync(delta: float) -> void:
 						Transform3D(Basis(), VisualMath.map_to_3d(entity.global_position, MonsterInstance.MONSTER_LAYER_HEIGHT)),
 						0.0, flash, 1.0 if has_status else 0.0, 1.0 if entity.facing_left else 0.0)
 				_swarm_renderer.update_creature(entity.swarm_handle, snapshot)
+			continue
+		if entity.boss_presenter_handle != null:
+			if _swarm_renderer != null:
+				var world_transform := Transform3D(Basis(), VisualMath.map_to_3d(entity.global_position, MonsterInstance.MONSTER_LAYER_HEIGHT))
+				# ADR-0038, Epic 16 Story 9: the overlay layer is visible for
+				# the full attack-telegraph window (boss_attack_prepare_remaining
+				# counting down to 0), matching design/gdd/monster.md's
+				# "attack_prepare... the player's only warning before
+				# boss_tower_attack_attempted emits" — Pass 2 (_pass2_boss_logic())
+				# already owns this countdown; this pass only reads it.
+				_swarm_renderer.update_boss(entity.boss_presenter_handle, world_transform, entity.boss_attack_prepare_remaining > 0)
 			continue
 		if entity.monster_instance == null:
 			continue
@@ -641,27 +658,38 @@ func _spawn_entity(res: MonsterResource, spawn_cell: Vector2i, wave_index: int,
 	# visible sprite is still a fully correct simulation entity.
 	var instance := MONSTER_INSTANCE_SCENE.instantiate() as MonsterInstance
 	entity.add_child(instance)
-	# ADR-0038, Epic 16 Story 7: only BOSS (tier 2) keeps the legacy
-	# ADR-0037 3D mesh companion — STANDARD/ELITE register with
-	# MonsterSwarmRenderer3D instead, below.
-	instance.configure(res.monster_id, res.tier, res.display_name, res.tier == 2)
+	# ADR-0038, Epic 16 Story 9: the legacy ADR-0037 3D mesh companion is now
+	# retired for EVERY tier — BOSS moved to its own capped
+	# BossCreaturePresenter3D pool below, completing the migration Story 7
+	# started for STANDARD/ELITE. build_legacy_3d_companion is always false
+	# from this call site now; the parameter itself (and
+	# _build_visual_companion()) stays in monster_instance.gd until Story 10
+	# formally removes the dead code path (blueprint's own "remove the
+	# temporary migration switch" step).
+	instance.configure(res.monster_id, res.tier, res.display_name, false)
 	entity.monster_instance = instance
 
-	# ADR-0038, Epic 16 Story 7: register STANDARD/ELITE monsters with the
-	# swarm renderer at spawn time, mirroring the legacy companion's own
-	# "seed the correct position immediately, no one-frame lag" contract.
-	# Non-fatal on failure (unmapped creature_id, exceptional-class
-	# monster_id, or no renderer injected in this context, e.g. a unit
-	# test) — swarm_handle simply stays null, matching monster_instance's
-	# own established "presentation absence is non-fatal to simulation"
-	# policy. Atlas frame/hit-flash/status-mask/facing are all 0.0 here —
-	# real per-instance channel wiring is Story 8's scope, not this one.
-	if res.tier != 2 and _swarm_renderer != null:
-		var spawn_snapshot := MonsterPresentationSnapshot.new(
-				entity.entity_id, res.monster_id,
-				Transform3D(Basis(), VisualMath.map_to_3d(entity.global_position, MonsterInstance.MONSTER_LAYER_HEIGHT)),
-				0.0, 0.0, 0.0, 0.0)
-		entity.swarm_handle = _swarm_renderer.register_creature(spawn_snapshot)
+	# ADR-0038, Epic 16 Stories 7 & 9: register with the swarm renderer
+	# (STANDARD/ELITE) or the boss presenter pool (BOSS) at spawn time,
+	# mirroring the legacy companion's own "seed the correct position
+	# immediately, no one-frame lag" contract. Mutually exclusive — an
+	# entity gets AT MOST ONE of swarm_handle/boss_presenter_handle. Both
+	# non-fatal on failure (unmapped creature_id, exceptional-class
+	# monster_id passed to register_creature(), pool at capacity, or no
+	# renderer injected in this context, e.g. a unit test) — the relevant
+	# handle simply stays null, matching monster_instance's own established
+	# "presentation absence is non-fatal to simulation" policy.
+	if _swarm_renderer != null:
+		var initial_transform := Transform3D(Basis(), VisualMath.map_to_3d(entity.global_position, MonsterInstance.MONSTER_LAYER_HEIGHT))
+		if res.tier == 2:
+			entity.boss_presenter_handle = _swarm_renderer.register_boss(entity.entity_id, res.monster_id, initial_transform)
+		else:
+			# Atlas frame/hit-flash/status-mask/facing are all 0.0 at spawn —
+			# real per-instance channel wiring happens in _pass3c_visual_sync()
+			# every frame afterward (Story 8), not at this one-time spawn call.
+			var spawn_snapshot := MonsterPresentationSnapshot.new(
+					entity.entity_id, res.monster_id, initial_transform, 0.0, 0.0, 0.0, 0.0)
+			entity.swarm_handle = _swarm_renderer.register_creature(spawn_snapshot)
 
 	var path: Array[Vector2i] = _pathfinding.find_path(spawn_cell, res.tier)
 	if path.is_empty():
@@ -743,12 +771,18 @@ func _on_wave_completed(_wave_number: int, _enemies_remaining: int, _was_boss_br
 		if entity.swarm_handle != null and _swarm_renderer != null:
 			_swarm_renderer.unregister_creature(entity.swarm_handle)
 			entity.swarm_handle = null
+		if entity.boss_presenter_handle != null and _swarm_renderer != null:
+			_swarm_renderer.unregister_boss(entity.boss_presenter_handle)
+			entity.boss_presenter_handle = null
 		entity.queue_free()
 	active_monsters.clear()
 	for entity in spawning_entities:
 		if entity.swarm_handle != null and _swarm_renderer != null:
 			_swarm_renderer.unregister_creature(entity.swarm_handle)
 			entity.swarm_handle = null
+		if entity.boss_presenter_handle != null and _swarm_renderer != null:
+			_swarm_renderer.unregister_boss(entity.boss_presenter_handle)
+			entity.boss_presenter_handle = null
 		entity.queue_free()
 	spawning_entities.clear()
 	_entity_lookup.clear()

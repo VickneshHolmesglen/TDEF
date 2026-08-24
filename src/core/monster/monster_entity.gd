@@ -66,6 +66,16 @@ var monster_instance: MonsterInstance = null
 ## separate clear step needed, matching monster_instance's own lifecycle).
 var swarm_handle: MonsterPresentationHandle = null
 
+## ADR-0038, Epic 16 Story 9: this BOSS entity's handle into
+## MonsterSwarmRenderer3D's capped BossCreaturePresenter3D pool. Mutually
+## exclusive with swarm_handle above — a given entity is registered with
+## AT MOST ONE of the two presentation systems (BOSS tier uses this field
+## exclusively; STANDARD/ELITE use swarm_handle exclusively; see
+## MonsterManager._spawn_entity()). Null if unregistered, registration
+## failed (pool at capacity, unmapped monster_id), or this entity isn't
+## BOSS tier.
+var boss_presenter_handle: MonsterPresentationHandle = null
+
 ## ADR-0038, Epic 16 Story 8: seconds remaining in this entity's swarm
 ## hit-flash decay, counting down from MonsterInstance.HIT_FLASH_DURATION to
 ## 0.0 (manager-owned, per-frame decrement in

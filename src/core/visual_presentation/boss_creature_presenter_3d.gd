@@ -1,0 +1,154 @@
+class_name BossCreaturePresenter3D
+extends Node3D
+
+## Capped individual-presenter pool for BOSS-tier (and any future
+## approved-exceptional) creatures (ADR-0038 §"Bosses, elites, and
+## Menagerie"; blueprint "boss_creature_presenter_3d.gd"). Reproduces
+## design/gdd/monster.md's "BOSS Scene Structure — Two-Layer AnimatedSprite2D"
+## spec in 3D: two stacked Sprite3D layers per slot — a base layer (always
+## visible while registered) and an overlay layer (visible only during the
+## attack-telegraph window, `boss_attack_prepare_remaining > 0`), mirroring
+## the GDD's "walk continues uninterrupted on the base layer, attack_prepare
+## plays on the overlay layer" design without `AnimationTree`.
+##
+## Real content gap, flagged not hidden: neither layer has distinct
+## walk/attack_prepare/attack ANIMATION content yet — no multi-frame sprite
+## sheet exists for any monster in this project, only single static
+## textures (`MonsterInstance.MONSTER_TEXTURES`). Both layers show the same
+## static per-monster_id texture; the overlay's role in this story is
+## proven entirely through its VISIBILITY toggle (on during the
+## attack-telegraph window, off otherwise), not through distinct animated
+## frames. Real animated boss art is a future content-authoring pass, not
+## fabricated here.
+##
+## No independent process callback (ADR-0038: "Exceptional presenters have
+## no independent process callback. MonsterManager publishes the same
+## snapshots to their pool.") — `MonsterManager` calls `update_boss()` from
+## its own existing centralized `_pass3c_visual_sync()`, exactly like the
+## swarm path.
+##
+## Fixed capacity, content-capped per ADR-0038's "anticipated concurrency is
+## content-capped and verified" — CAPACITY below is a reasonable assumed
+## default (BOSS, tier 2, is the rarest spawn category by this project's
+## own design), not empirically verified against real wave data; flagged
+## here for a future playtest to confirm or raise.
+##
+## Uses a free-list slot allocator, not the swarm batch's dense
+## swap-remove — a Node-based presenter has no `visible_instance_count`
+## constraint to satisfy (each slot is a real Node3D that can simply hide
+## itself), so there is no correctness reason to port the dense-packing
+## complexity here.
+
+const CAPACITY: int = 2
+
+## Distinguishes this pool's handles from any real MonsterSwarmBatch's
+## BatchKey string — a handle from one must never validate against the
+## other.
+const POOL_BATCH_KEY: String = "__boss_presenter_pool__"
+
+var _free_slots: Array[int] = []
+var _entity_to_slot: Dictionary = {}       # entity_id(int) -> slot_index(int)
+var _entity_to_generation: Dictionary = {} # entity_id(int) -> generation(int)
+
+var _slots: Array[Node3D] = []
+var _base_layers: Array[Sprite3D] = []
+var _overlay_layers: Array[Sprite3D] = []
+
+
+func _ready() -> void:
+	for i in range(CAPACITY):
+		_free_slots.append(i)
+
+		var slot := Node3D.new()
+		slot.name = "Slot_%d" % i
+		slot.visible = false
+		add_child(slot)
+		_slots.append(slot)
+
+		var base := Sprite3D.new()
+		base.name = "BaseLayer"
+		base.billboard = BaseMaterial3D.BILLBOARD_FIXED_Y
+		base.alpha_cut = SpriteBase3D.ALPHA_CUT_DISCARD
+		slot.add_child(base)
+		_base_layers.append(base)
+
+		var overlay := Sprite3D.new()
+		overlay.name = "OverlayLayer"
+		overlay.billboard = BaseMaterial3D.BILLBOARD_FIXED_Y
+		overlay.alpha_cut = SpriteBase3D.ALPHA_CUT_DISCARD
+		overlay.visible = false
+		slot.add_child(overlay)
+		_overlay_layers.append(overlay)
+
+
+## Registers a new boss entity into a free slot. Returns a
+## MonsterPresentationHandle on success, or null if the pool is at capacity
+## (content-capped, never grown at runtime — ADR-0038's "no runtime
+## instance_count resizing" spirit applies here too, even though this pool
+## isn't a MultiMesh), a duplicate entity_id, or no art exists for
+## monster_id.
+func register_boss(entity_id: int, monster_id: StringName, world_transform: Transform3D) -> MonsterPresentationHandle:
+	if _entity_to_slot.has(entity_id):
+		push_warning("[BossCreaturePresenter3D] register_boss: entity_id %d already registered -- duplicate rejected" % entity_id)
+		return null
+	if _free_slots.is_empty():
+		push_warning("[BossCreaturePresenter3D] register_boss: pool at capacity (%d) -- registration dropped, not resized" % CAPACITY)
+		return null
+
+	var texture: Texture2D = MonsterInstance.MONSTER_TEXTURES.get(monster_id, null) as Texture2D
+	if texture == null:
+		push_error("[BossCreaturePresenter3D] register_boss: no art authored for monster_id '%s' -- no boss presenter." % monster_id)
+		return null
+
+	var slot: int = _free_slots.pop_back()
+	var generation: int = (_entity_to_generation.get(entity_id, 0) as int) + 1
+	_entity_to_slot[entity_id] = slot
+	_entity_to_generation[entity_id] = generation
+
+	_base_layers[slot].texture = texture
+	_overlay_layers[slot].texture = texture
+	_overlay_layers[slot].visible = false
+	_slots[slot].visible = true
+	_slots[slot].global_transform = world_transform
+
+	return MonsterPresentationHandle.new(entity_id, POOL_BATCH_KEY, slot, generation)
+
+
+## Updates a registered boss's position and attack-telegraph overlay
+## visibility. Returns false (no mutation) for a stale/foreign handle —
+## never mutates whatever entity now occupies that slot.
+func update_boss(handle: MonsterPresentationHandle, world_transform: Transform3D, attack_telegraphed: bool) -> bool:
+	var slot: int = _resolve_valid_slot(handle)
+	if slot == -1:
+		return false
+	_slots[slot].global_transform = world_transform
+	_overlay_layers[slot].visible = attack_telegraphed
+	return true
+
+
+## Frees a registered boss's slot, hiding both layers. Returns false for a
+## stale/foreign handle.
+func unregister_boss(handle: MonsterPresentationHandle) -> bool:
+	var slot: int = _resolve_valid_slot(handle)
+	if slot == -1:
+		return false
+	_slots[slot].visible = false
+	_overlay_layers[slot].visible = false
+	_entity_to_slot.erase(handle.entity_id)
+	_free_slots.append(slot)
+	return true
+
+
+## Number of currently-registered bosses (0..CAPACITY).
+func get_live_count() -> int:
+	return CAPACITY - _free_slots.size()
+
+
+func _resolve_valid_slot(handle: MonsterPresentationHandle) -> int:
+	if handle == null or handle.batch_key != POOL_BATCH_KEY:
+		return -1
+	if not _entity_to_slot.has(handle.entity_id):
+		return -1
+	if (_entity_to_generation.get(handle.entity_id, -1) as int) != handle.generation:
+		return -1
+	return _entity_to_slot[handle.entity_id]

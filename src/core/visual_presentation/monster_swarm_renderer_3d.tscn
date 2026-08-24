@@ -1,6 +1,7 @@
-[gd_scene load_steps=2 format=3 uid="uid://monsterswarmrenderer3d0"]
+[gd_scene load_steps=3 format=3 uid="uid://monsterswarmrenderer3d0"]
 
 [ext_resource type="Script" path="res://src/core/visual_presentation/monster_swarm_renderer_3d.gd" id="1_script"]
+[ext_resource type="PackedScene" path="res://src/core/visual_presentation/boss_creature_presenter_3d.tscn" id="2_boss"]
 
 [node name="MonsterSwarmRenderer3D" type="Node3D"]
 script = ExtResource("1_script")
@@ -10,3 +11,5 @@ script = ExtResource("1_script")
 [node name="ContactShadowBatches" type="Node3D" parent="."]
 
 [node name="ExceptionalPresenters" type="Node3D" parent="."]
+
+[node name="BossCreaturePresenter3D" parent="ExceptionalPresenters" instance=ExtResource("2_boss")]
