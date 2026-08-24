@@ -139,7 +139,16 @@ func play_hit_flash() -> void:
 ## Sets the displayed texture for the given monster_id and scales it to fit
 ## the grid (see TARGET_LONG_EDGE_BY_TIER). Logs a warning and leaves the
 ## sprite empty if no art exists for that id yet.
-func configure(monster_id: StringName, tier: int = 0, display_name: String = "") -> void:
+## build_legacy_3d_companion (ADR-0038, Epic 16 Story 7): whether to build
+## the old ADR-0037 shared-placeholder-mesh 3D companion (see
+## _build_visual_companion()'s own doc comment). MonsterManager now passes
+## `false` for STANDARD/ELITE monsters (tier 0/1) — those register with
+## MonsterSwarmRenderer3D instead (ADR-0038 supersedes ADR-0037 specifically
+## for monster/creature mesh companions). BOSS (tier 2) keeps the legacy
+## companion until Story 9 builds its capped BossCreaturePresenter3D.
+## Defaults to true so every pre-existing call site (tests, other callers)
+## keeps its original behavior unless it explicitly opts out.
+func configure(monster_id: StringName, tier: int = 0, display_name: String = "", build_legacy_3d_companion: bool = true) -> void:
 	_tier = tier
 	var texture: Texture2D = MONSTER_TEXTURES.get(monster_id, null)
 	if texture == null:
@@ -176,7 +185,11 @@ func configure(monster_id: StringName, tier: int = 0, display_name: String = "")
 	# comment for why configure() (not a new per-frame override) is the
 	# correct place to BUILD the companion; per-frame POSITION sync is a
 	# separate, externally-driven step (sync_visual_companion_position()).
-	_build_visual_companion()
+	# ADR-0038, Epic 16 Story 7: STANDARD/ELITE monsters no longer build this
+	# legacy 3D mesh companion at all — MonsterManager registers them with
+	# MonsterSwarmRenderer3D instead. See this method's own param doc comment.
+	if build_legacy_3d_companion:
+		_build_visual_companion()
 
 
 func _draw() -> void:

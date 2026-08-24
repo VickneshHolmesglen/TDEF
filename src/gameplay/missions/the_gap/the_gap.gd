@@ -86,6 +86,7 @@ const GOAL_CELL: Vector2i = Vector2i(15, 6)
 ## generic "Nonexistent function" console error.
 @onready var _grid_visual: Node2D = $GridVisual
 @onready var _monster_manager: MonsterManager = $MonsterManager
+@onready var _monster_swarm_renderer: MonsterSwarmRenderer3D = $PresentationRoot3D/MonsterSwarmRenderer3D
 @onready var _tower_system: TowerSystem = $TowerSystem
 @onready var _hero: Hero = $Hero
 @onready var _camera: Camera2D = $Camera2D
@@ -129,6 +130,10 @@ func _ready() -> void:
 	# .tscn's stored false is necessary documentation of intent but not
 	# sufficient on its own.
 	$PresentationRoot3D/Camera3D.current = false
+	# ADR-0038, Epic 16 Story 7: dependency-injected, not a service-locator
+	# lookup from inside MonsterManager (src/CLAUDE.md's "prefer DI over
+	# singletons") — mirrors mission_scene.gd's identical injection.
+	_monster_manager.set_swarm_renderer(_monster_swarm_renderer)
 	_monsters_container = Node2D.new()
 	_monsters_container.name = "MonstersContainer"
 	add_child(_monsters_container)

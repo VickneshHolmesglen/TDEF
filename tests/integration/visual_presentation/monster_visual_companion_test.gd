@@ -75,11 +75,19 @@ const LONG_PATH: Array[Vector2i] = [
 ]
 
 
+## ADR-0038, Epic 16 Story 7: STANDARD/ELITE (tier 0/1) monsters no longer
+## build the legacy ADR-0037 3D mesh companion this whole suite exercises —
+## they register with MonsterSwarmRenderer3D instead (see
+## monster_swarm_renderer_3d_test.gd for that coverage). Only BOSS (tier 2)
+## still uses this legacy path, until Story 9 builds its capped
+## BossCreaturePresenter3D — so this suite's fixture resource is tier 2 now,
+## preserving real regression coverage for the path that's still live rather
+## than silently testing dead code.
 func _make_resource(speed: float = 1.0) -> MonsterResource:
 	var res := MonsterResource.new()
-	res.monster_id = &"goblin_runner"
-	res.display_name = "Goblin Runner"
-	res.tier = 0
+	res.monster_id = &"goblin_warlord_boss"
+	res.display_name = "Goblin Warlord"
+	res.tier = 2
 	res.base_hp = 100.0
 	res.base_speed = speed
 	res.drop_table_id = &"drops"

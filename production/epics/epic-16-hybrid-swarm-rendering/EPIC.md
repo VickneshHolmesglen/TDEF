@@ -3,7 +3,7 @@
 > **Layer**: Presentation (data layer first, then MonsterManager/renderer integration)
 > **GDD**: None — infrastructure epic, not GDD-driven. Same rationale as Epic 15 (ADR-0037): ADR-0038's own "GDD Requirements Addressed" is N/A, this is a presentation-layer technology change the user requested via the art overhaul.
 > **Architecture Module**: New — `src/core/visual_presentation/` (extends the Epic 15 module), `src/shaders/creature_swarm_body.gdshader` + `creature_contact_shadow.gdshader`, plus a bounded, late-story change to `src/core/monster/monster_manager.gd` and `monster_instance.gd`. See ADR-0038's Architecture Diagram.
-> **Status**: In Progress — Stories 5 and 6 written (code + tests), not yet live-verified against the pinned Godot binary this session. Stories 1-4 were proven in `prototypes/hybrid-swarm-pilot/` (prototype code, not tracked as production stories per `.claude/rules/prototype-code.md` — findings feed this epic, the prototype itself is not migrated).
+> **Status**: In Progress — Stories 5, 6, and 7 written (code + tests), not yet live-verified against the pinned Godot binary this session. Stories 1-4 were proven in `prototypes/hybrid-swarm-pilot/` (prototype code, not tracked as production stories per `.claude/rules/prototype-code.md` — findings feed this epic, the prototype itself is not migrated).
 > **Stories**: 6 production stories planned (5-10, per the blueprint's numbering — 1-4 were pilot-only)
 
 ## Stories
@@ -12,7 +12,7 @@
 |---|-------|------|--------|-----|
 | 005 | [Data Registry Integration](story-005-data-registry-integration.md) | Logic | In Review | ADR-0038 |
 | 006 | [Mission Renderer Scene Integration](story-006-mission-renderer-scene-integration.md) | Integration | In Review | ADR-0038 |
-| 007 | MonsterManager Standard Swarm Migration | Integration | Not Started | ADR-0038, ADR-0006 |
+| 007 | [MonsterManager Standard Swarm Migration](story-007-monster-manager-standard-swarm-migration.md) | Integration | In Review | ADR-0038, ADR-0006 |
 | 008 | Hit/Status/Death Presentation Migration | Integration | Not Started | ADR-0038 |
 | 009 | Boss/Elite Exceptional Path | Integration | Not Started | ADR-0038 |
 | 010 | Cleanup and Production Gate | Integration | Not Started | ADR-0038 |

@@ -77,6 +77,7 @@ const PLACEMENT_CONFIRM_DURATION: float = 0.3  ## seconds, per the GDD's own "~0
 @onready var _hero: Hero = $GameplayRoot/Hero
 @onready var _camera: Camera2D = $GameplayRoot/Camera2D
 @onready var _camera_3d: Camera3D = $PresentationRoot3D/Camera3D
+@onready var _monster_swarm_renderer: MonsterSwarmRenderer3D = $PresentationRoot3D/MonsterSwarmRenderer3D
 @onready var _monsters_container: Node2D = $GameplayRoot/MonstersContainer
 ## Real gap found during /code-review (2026-08-13, closing Epic 10's own
 ## deferred gate): these two were re-resolved via $GameplayRoot/... on
@@ -117,6 +118,12 @@ func _ready() -> void:
 	# the @onready block above (a real regression this file was fixed for
 	# once already, during Epic 10).
 	_camera_3d.current = false
+	# ADR-0038, Epic 16 Story 7: dependency-injected, not a service-locator
+	# lookup from inside MonsterManager (src/CLAUDE.md's "prefer DI over
+	# singletons"). Safe to inject before gameplay starts — the renderer has
+	# no _process()/_physics_process() and nothing calls into it until a
+	# monster actually spawns.
+	_monster_manager.set_swarm_renderer(_monster_swarm_renderer)
 	_gameplay_root.visible = false
 	_gameplay_root.set_process(false)
 	_gameplay_root.set_physics_process(false)

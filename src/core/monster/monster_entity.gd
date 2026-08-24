@@ -55,6 +55,17 @@ var wave_index: int = -1
 ## per MonsterInstance's own "non-fatal to spawning" doc comment.
 var monster_instance: MonsterInstance = null
 
+## ADR-0038, Epic 16 Story 7: this entity's handle into
+## MonsterSwarmRenderer3D's dense batch, or null if this entity was never
+## registered (BOSS tier — still uses the legacy monster_instance 3D
+## companion until Story 9 — or registration failed, e.g. an unmapped
+## monster_id; either way, presentation absence is non-fatal to simulation,
+## same policy as monster_instance itself). Set by
+## MonsterManager._spawn_entity(), cleared implicitly on death/breach (the
+## entity itself is queue_free()'d, so this field simply goes with it — no
+## separate clear step needed, matching monster_instance's own lifecycle).
+var swarm_handle: MonsterPresentationHandle = null
+
 # ---- BOSS-only runtime fields (safe to leave at defaults for STANDARD/ELITE) ----
 
 ## Frames remaining before next tower scan. Initialized to 0 so BOSS scans on its first frame.
