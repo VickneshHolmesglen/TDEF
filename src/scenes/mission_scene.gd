@@ -128,7 +128,7 @@ func _ready() -> void:
 	GEventBus.tower_placed.connect(_on_tower_placed)
 	GEventBus.tower_removed.connect(_on_tower_removed)
 	GEventBus.tower_destroyed.connect(_on_tower_destroyed)
-	GEventBus.tower_attacked.connect(_on_tower_attacked)
+	GEventBus.tower_projectile_fired.connect(_on_tower_projectile_fired)
 	GEventBus.tower_damaged.connect(_on_tower_damaged)
 	GEventBus.tower_aura_pulse.connect(_on_tower_aura_pulse)
 	GEventBus.pre_placement_perk_activated.connect(_on_pre_placement_perk_activated)
@@ -144,7 +144,7 @@ func _exit_tree() -> void:
 	GEventBus.tower_placed.disconnect(_on_tower_placed)
 	GEventBus.tower_removed.disconnect(_on_tower_removed)
 	GEventBus.tower_destroyed.disconnect(_on_tower_destroyed)
-	GEventBus.tower_attacked.disconnect(_on_tower_attacked)
+	GEventBus.tower_projectile_fired.disconnect(_on_tower_projectile_fired)
 	GEventBus.tower_damaged.disconnect(_on_tower_damaged)
 	GEventBus.tower_aura_pulse.disconnect(_on_tower_aura_pulse)
 	GEventBus.pre_placement_perk_activated.disconnect(_on_pre_placement_perk_activated)
@@ -319,13 +319,18 @@ func _on_tower_destroyed(tower_id: int, _grid_position: Vector2i, archetype: Str
 ## nonzero aoe_radius_cells also get a ground-plane detonation ring on
 ## arrival ("AoE Detonation" section) — ProjectileVisual spawns that itself
 ## once the flight completes.
-## armor_penetration/is_crit (Tower Stats System Phase 1, 2026-08-16):
-## not yet consumed here — accepted only because GDScript requires exact
-## signal arity match. A crit-hit visual hook is a plausible future use of
-## is_crit but is not required for Phase 1 correctness.
-func _on_tower_attacked(tower_id: int, target_monster_id: int, _damage_amount: float,
-		_is_siege: bool, is_armored: bool, _effect_type: String, _effect_value: float,
-		_effect_duration: float, _armor_penetration: float, _is_crit: bool) -> void:
+##
+## ADR-0019 fix (2026-08-24): moved here from _on_tower_attacked(), which
+## used to carry both this fire-time cosmetic work AND the damage-arrival
+## signal in one event fired at the same (unconditionally immediate) moment.
+## Now that HOMING/BALLISTIC weapons have a real flight delay, those two
+## concerns need two different events — this one still fires the instant the
+## shot leaves the tower (so the tower's own recoil/punch animation and the
+## cosmetic projectile sprite are never delayed by the logical flight time),
+## while tower_attacked now fires at real arrival. See event_bus.gd's doc
+## comments on both signals for the full split rationale. _on_tower_attacked
+## itself is gone from this file — nothing else in it needed the signal.
+func _on_tower_projectile_fired(tower_id: int, target_monster_id: int, is_armored: bool) -> void:
 	var tower_vis: TowerInstance = _tower_visuals.get(tower_id) as TowerInstance
 	if tower_vis == null:
 		return

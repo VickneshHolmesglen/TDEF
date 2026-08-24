@@ -89,6 +89,11 @@ var _monster_cache: Dictionary = {}
 var _grid = null
 var _pathfinding = null
 
+## ADR-0019 fix — child node, TowerSystem's own owned domain (not a
+## cross-system reference). Test harnesses may inject a stub here before
+## add_child() triggers _ready(), same DI pattern as _grid/_pathfinding.
+var _projectile_manager: ProjectileManager = null
+
 # ---------------------------------------------------------------------------
 # Lifecycle
 # ---------------------------------------------------------------------------
@@ -99,6 +104,12 @@ func _ready() -> void:
 	_pathfinding = GPathfindingSystem
 	if _tower_table.is_empty():
 		_tower_table = GGameDataRegistry.get_all_tower_blueprints()
+	if _projectile_manager == null:
+		_projectile_manager = ProjectileManager.new()
+		_projectile_manager.name = "ProjectileManager"
+	_projectile_manager._tower_system = self
+	if not _projectile_manager.is_inside_tree():
+		add_child(_projectile_manager)
 	GEventBus.mission_phase_changed.connect(_on_mission_phase_changed)
 	GEventBus.monster_spawned.connect(_on_monster_spawned)
 	GEventBus.monster_cell_entered.connect(_on_monster_cell_entered)
@@ -402,11 +413,39 @@ func _try_attack(state: TowerMissionState) -> void:
 	if effect_type != "" and randf() >= state.weapon.status_proc_chance:
 		effect_type = ""  # proc roll failed — no status effect on this hit
 
+	# ADR-0019 fix (2026-08-24): tower_projectile_fired always fires now, at
+	# this instant (fire time) -- drives the tower's own recoil/punch
+	# animation and spawns the cosmetic ProjectileVisual, decoupled from
+	# when tower_attacked fires (see event_bus.gd's doc comments on both
+	# signals for why this split exists).
+	GEventBus.tower_projectile_fired.emit.call_deferred(state.tower_id, target_id, is_armored)
+
+	if state.weapon.projectile_type == "HOMING" or state.weapon.projectile_type == "BALLISTIC":
+		# Pooled, flight-time-delayed path: tower_attacked fires later, on
+		# arrival (on_projectile_arrived()), not here. Splash also moves to
+		# arrival -- see on_projectile_arrived()'s own doc comment.
+		var payload: Dictionary = {
+			"damage": damage,
+			"is_siege": is_siege,
+			"effect_type": effect_type,
+			"effect_value": effect_value,
+			"effect_duration": effect_duration,
+			"armor_penetration": state.weapon.armor_penetration,
+			"is_crit": is_crit,
+			"aoe_radius_cells": state.weapon.aoe_radius_cells,
+		}
+		var origin_world: Vector2 = _grid.cell_to_world(state.grid_position)
+		var target_world: Vector2 = _grid.cell_to_world(entry["cell"] as Vector2i)
+		var fired: bool = _projectile_manager.fire(state.tower_id, StringName(state.weapon.projectile_type),
+				origin_world, target_id, target_world, payload)
+		if not fired:
+			return  # pool exhausted -- shot silently dropped, per ADR-0019's graceful-degradation contract
+		return
+
+	# BEAM (the only remaining projectile_type here) — unchanged: immediate,
+	# no pool involvement, no flight delay.
 	GEventBus.tower_attacked.emit.call_deferred(state.tower_id, target_id, damage, is_siege, is_armored,
 			effect_type, effect_value, effect_duration, state.weapon.armor_penetration, is_crit)
-
-	if state.weapon.projectile_type == "BALLISTIC" and state.weapon.aoe_radius_cells > 0:
-		_apply_splash_damage(state, target_id, entry["cell"] as Vector2i, damage, is_siege, is_crit)
 
 
 ## Formula 1c (design/gdd/tower.md) — every other monster within
@@ -621,6 +660,84 @@ func _get_best_target(tower_id: int, targeting_mode: String) -> int:
 	var result: int = _find_target(state)
 	state.focus.targeting_mode = original_mode
 	return result
+
+# ---------------------------------------------------------------------------
+# ProjectileManager-facing accessors (ADR-0019 fix, 2026-08-24)
+# ---------------------------------------------------------------------------
+#
+# ProjectileManager is TowerSystem's own owned child (not a cross-system
+# reference, per ADR-0019's Ownership section) -- these are the read-only
+# accessors it needs into TowerSystem's private state (_monster_cache,
+# _grid, placed_towers) rather than reaching into those fields directly,
+# keeping the actual private state genuinely private to this file.
+
+## Returns the monster's live world position if still cached, or null if it
+## has died/breached since the projectile tracking it last checked. HOMING
+## in-flight tracking reads this every frame for its currently-tracked target.
+func get_cached_monster_world_position(entity_id: int) -> Variant:
+	if not _monster_cache.has(entity_id):
+		return null
+	return _grid.cell_to_world((_monster_cache[entity_id] as Dictionary)["cell"] as Vector2i)
+
+
+## HOMING re-acquisition (tower.md Rule 19): delegates to _get_best_target(),
+## bounded by the firing tower's own range/cone via its own placed position
+## and Focus component -- never a global search, matching Rule 19's own
+## "the projectile does not extend its search area" edge case. Uses the
+## tower's own configured targeting_mode (Rule 19 doesn't specify a
+## different mode for re-acquisition than normal targeting).
+func reacquire_target(tower_id: int) -> int:
+	if not placed_towers.has(tower_id):
+		return -1
+	var state: TowerMissionState = placed_towers[tower_id] as TowerMissionState
+	return _get_best_target(tower_id, state.focus.targeting_mode)
+
+
+## Thin delegation to _grid.world_to_cell() -- ProjectileManager needs this
+## once, at arrival, to resolve the cell splash damage should originate from.
+func world_to_cell(world_position: Vector2) -> Vector2i:
+	return _grid.world_to_cell(world_position)
+
+
+## ADR-0019 fix — called by ProjectileManager exactly once per pooled
+## projectile, at real flight arrival (never at fire time). Re-resolves
+## is_armored fresh from _monster_cache rather than trusting fire-time data,
+## which could be up to base_flight_time_sec stale by now. damage/effect_
+## type/effect_value/effect_duration/armor_penetration/is_crit were already
+## resolved at fire time (tower.md: the logical arrival event only changes
+## WHEN tower_attacked fires, never how the damage number itself was
+## computed) and travel through unchanged in damage_payload.
+##
+## If target_entity_id is no longer cached (died/breached during flight and,
+## for HOMING, ProjectileManager's own re-acquisition already exhausted its
+## options before reaching here), this is the "target position empty on
+## arrival" case tower.md's Requirements describe: no primary tower_attacked
+## fires, but an AoE-tagged BALLISTIC weapon still detonates against the
+## empty arrival cell (passing primary_id=-1, an id no real entity can ever
+## match, to _apply_splash_damage() so nothing gets excluded from the blast).
+func on_projectile_arrived(tower_id: int, target_entity_id: int, arrival_cell: Vector2i,
+		damage_payload: Dictionary) -> void:
+	if not placed_towers.has(tower_id):
+		return  # tower sold/destroyed mid-flight
+	var state: TowerMissionState = placed_towers[tower_id] as TowerMissionState
+	var damage: float = damage_payload["damage"] as float
+	var is_siege: bool = damage_payload["is_siege"] as bool
+	var effect_type: String = damage_payload["effect_type"] as String
+	var effect_value: float = damage_payload["effect_value"] as float
+	var effect_duration: float = damage_payload["effect_duration"] as float
+	var armor_penetration: float = damage_payload["armor_penetration"] as float
+	var is_crit: bool = damage_payload["is_crit"] as bool
+	var aoe_radius_cells: int = damage_payload["aoe_radius_cells"] as int
+
+	if _monster_cache.has(target_entity_id):
+		var entry: Dictionary = _monster_cache[target_entity_id] as Dictionary
+		var is_armored: bool = entry["is_armored"] as bool
+		GEventBus.tower_attacked.emit.call_deferred(tower_id, target_entity_id, damage, is_siege, is_armored,
+				effect_type, effect_value, effect_duration, armor_penetration, is_crit)
+		if aoe_radius_cells > 0:
+			_apply_splash_damage(state, target_entity_id, entry["cell"] as Vector2i, damage, is_siege, is_crit)
+	elif aoe_radius_cells > 0:
+		_apply_splash_damage(state, -1, arrival_cell, damage, is_siege, is_crit)
 
 # ---------------------------------------------------------------------------
 # Boss damage receiver

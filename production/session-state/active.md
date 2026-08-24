@@ -1,3 +1,13 @@
+## Session Extract — Implemented ADR-0019 (Projectile Pooling Strategy), fixes TD-tower-005, 2026-08-24
+
+- User's explicit choice over superseding the ADR or leaving it: "Implement ADR-0019 as originally decided." A real architecture-level gameplay-timing change — towers no longer deal instant damage on HOMING/BALLISTIC attacks.
+- New `src/core/tower/projectile.gd` (pooled logical entity, no visual) + `src/core/tower/projectile_manager.gd` (192-slot pool, child of `TowerSystem`, centralized `_physics_process`, `MAX_REACQUISITIONS_PER_FRAME=8` throttle, HOMING re-acquisition via the previously-unwired `_get_best_target()`).
+- `TowerSystem._try_attack()` now branches by `projectile_type`: `BEAM` unchanged; `HOMING`/`BALLISTIC` route through the pool, with `tower_attacked` (+ AoE splash) now firing at real flight arrival instead of fire time.
+- New EventBus signal `tower_projectile_fired` (fire-time only, drives tower recoil/punch animation + spawns the existing cosmetic `ProjectileVisual`) — added because `tower_attacked`'s timing shift would otherwise have delayed the tower's own firing animation to match its target's arrival, which is visually wrong. `mission_scene.gd` updated accordingly. `event-bus.md` catalogue updated (79→80).
+- Deliberate deviation from the ADR's own code sample, documented: didn't rebuild a pooled visual child from scratch — reused the existing, richer `ProjectileVisual` (already has a 3D companion per Epic 15) via the new fire-time event instead.
+- Known follow-up, not fixed: `ProjectileVisual`'s own cosmetic flight duration isn't synced to the pool's fixed 0.5s arrival — can visually desync at long range. ADR-0019 itself scopes this as implementation/art-review polish, not ADR-gated.
+- **Tests not run or updated** per the standing no-unrequested-testing instruction — `tower_combat_test.gd` almost certainly needs updates for the new deferred-arrival timing, and `event-bus.md`'s event-count assertions may need a 79→80 bump. ADR-0019's own 8-item Validation Criteria checklist remains unverified. Flagged explicitly in `TD-tower-005`'s resolution, not silently claimed as test-confirmed.
+
 ## Session Extract — Fixed TD-tower-004: Pre-Placement Perk mechanism now has a real gameplay effect, 2026-08-24
 
 - `FoundationComponent` gained `perk_power: float`, load-time-validated against tower.md's exact per-type range table (DAMAGE_BOOST/SPEED_BOOST [0.05,0.25], RANGE_BOOST [0.0625,0.25], AURA_EXTEND [0.10,0.25] — the two non-0.05 floors exist specifically to prevent a `round()`-to-zero dead zone).

@@ -263,9 +263,30 @@ signal tower_component_equipped(payload: TowerComponentEquippedEvent)
 ##   armored-mitigation multiplier above.
 ## is_crit: (Phase 1) whether this hit rolled a critical hit -- damage_amount already
 ##   has crit_multiplier applied; this is carried separately for VFX/audio/HUD hooks.
+## ADR-0019 (Projectile Pooling Strategy) fix, 2026-08-24: fires at the
+## moment a weapon actually discharges -- BEFORE any HOMING/BALLISTIC flight
+## delay -- carrying only what fire-time-appropriate cosmetic reactions need
+## (the tower's own recoil/punch animation, the flying projectile sprite).
+## Decoupled from tower_attacked (below) specifically so a pooled projectile's
+## real flight time no longer also delays the tower's firing animation, which
+## must play the instant the shot leaves the tower, not when it lands.
+## Fires for every non-AURA weapon type (BEAM included, even though BEAM's
+## tower_attacked still fires at the same instant -- keeps one consistent
+## "shot fired" signal regardless of projectile_type, rather than only
+## emitting it for the two delayed types).
+## Key subscribers: Mission Scene (tower punch/targeting animation, spawns
+## the cosmetic ProjectileVisual).
+signal tower_projectile_fired(tower_id: int, target_monster_id: int, is_armored: bool)
+
 ## Key subscribers: Damage & Status, Monster System (direct-hit AND status-tick
 ## subscriptions), Audio, Mission Scene
 ## (2026-08-13 — spawns a purely cosmetic projectile visual, does not gate damage).
+## ADR-0019 fix, 2026-08-24: for HOMING/BALLISTIC weapons this now fires at
+## real projectile ARRIVAL (after ProjectileManager's flight-time delay), not
+## at fire time -- damage/status/audio/armored-spark timing all shift to
+## match logical impact. BEAM/AURA-adjacent instant weapons are unchanged
+## (still fire immediately). See tower_projectile_fired above for the
+## fire-time-only cosmetic signal this split introduces.
 signal tower_attacked(
 	tower_id: int,
 	target_monster_id: int,
