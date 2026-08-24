@@ -57,20 +57,6 @@ const BOSS_BADGE_COLOR: Color = Color(0.9, 0.75, 0.2)  ## gold crown
 ## nameplate Label uses the default font rather than a fabricated one.
 const NAMEPLATE_Y_OFFSET: float = 10.0  ## world units above the sprite's own top edge
 
-## Epic 15 Story 004 (ADR-0037, Visual Presentation 3D Companion Layer): the
-## entity_or_component_id every MonsterInstance resolves its 3D visual
-## through, via GGameDataRegistry.get_visual_mesh_mapping(). A single shared
-## id for every monster_id/tier — this story proves the companion pipeline
-## for "at least one monster type" (ADR-0037's Migration Plan scope) by
-## reusing one placeholder Kenney "Tower Defense Models" mesh
-## (enemy-ufo-a.glb, thematically a placeholder — this epic proves the
-## pipeline, not final art) rather than authoring a per-monster-type mesh set
-## (a future content-authoring pass, not this story's architecture change).
-## Mirrors tower_instance.gd's TOWER_MESH_ENTITY_ID / grid_visual.gd's
-## TILE_MESH_ENTITY_ID — the same "one shared id proves the pattern" judgment
-## call already established for those two entity types.
-const MONSTER_MESH_ENTITY_ID: StringName = &"enemy_ufo_a"
-
 ## Y-height for monster visuals per ADR-0037's layer_height table ("monster
 ## visual anchors = 0" — same reasoning as TowerInstance.TOWER_LAYER_HEIGHT
 ## and GridVisual.TILE_LAYER_HEIGHT: the spike's live-queried AABB data shows
@@ -94,19 +80,6 @@ const HIT_FLASH_SHADER: Shader = preload("res://src/shaders/hit_flash.gdshader")
 const HIT_FLASH_DURATION: float = 0.18
 var _hit_flash_material: ShaderMaterial = null
 var _hit_flash_tween: Tween = null
-
-## Node3D visual-companion subtree (ADR-0037's Visual Companion pattern),
-## holding this monster's MeshInstance3D-bearing mesh instance. Built once
-## from configure() (mirrors TowerInstance's/GridVisual's build-once
-## pattern). Unlike TowerInstance's static-after-placement case, a monster's
-## position changes every frame — but that per-frame sync is driven from
-## OUTSIDE this script, by MonsterManager's existing centralized
-## _physics_process pass calling sync_visual_companion_position() (below),
-## never by a new _process()/_physics_process() override declared here.
-## ADR-0006's registered forbidden pattern, per_monster_physics_process, is
-## the single most important constraint this file must not violate — see
-## monster_manager.gd's class doc comment and its _pass3c_visual_sync().
-var _visual_companion: Node3D = null
 
 @onready var _sprite: Sprite2D = $Sprite2D
 @onready var _nameplate: Label = $Nameplate
@@ -139,16 +112,7 @@ func play_hit_flash() -> void:
 ## Sets the displayed texture for the given monster_id and scales it to fit
 ## the grid (see TARGET_LONG_EDGE_BY_TIER). Logs a warning and leaves the
 ## sprite empty if no art exists for that id yet.
-## build_legacy_3d_companion (ADR-0038, Epic 16 Story 7): whether to build
-## the old ADR-0037 shared-placeholder-mesh 3D companion (see
-## _build_visual_companion()'s own doc comment). MonsterManager now passes
-## `false` for STANDARD/ELITE monsters (tier 0/1) — those register with
-## MonsterSwarmRenderer3D instead (ADR-0038 supersedes ADR-0037 specifically
-## for monster/creature mesh companions). BOSS (tier 2) keeps the legacy
-## companion until Story 9 builds its capped BossCreaturePresenter3D.
-## Defaults to true so every pre-existing call site (tests, other callers)
-## keeps its original behavior unless it explicitly opts out.
-func configure(monster_id: StringName, tier: int = 0, display_name: String = "", build_legacy_3d_companion: bool = true) -> void:
+func configure(monster_id: StringName, tier: int = 0, display_name: String = "") -> void:
 	_tier = tier
 	var texture: Texture2D = MONSTER_TEXTURES.get(monster_id, null)
 	if texture == null:
@@ -179,17 +143,6 @@ func configure(monster_id: StringName, tier: int = 0, display_name: String = "",
 		_nameplate.visible = false
 
 	queue_redraw()
-	# Epic 15 Story 004 (ADR-0037): the one build-time call this story adds to
-	# MonsterInstance's existing configure() — no new _process()/
-	# _physics_process() callback. See _build_visual_companion()'s doc
-	# comment for why configure() (not a new per-frame override) is the
-	# correct place to BUILD the companion; per-frame POSITION sync is a
-	# separate, externally-driven step (sync_visual_companion_position()).
-	# ADR-0038, Epic 16 Story 7: STANDARD/ELITE monsters no longer build this
-	# legacy 3D mesh companion at all — MonsterManager registers them with
-	# MonsterSwarmRenderer3D instead. See this method's own param doc comment.
-	if build_legacy_3d_companion:
-		_build_visual_companion()
 
 
 func _draw() -> void:
@@ -232,88 +185,11 @@ func _draw_boss_badge() -> void:
 		draw_colored_polygon(points, BOSS_BADGE_COLOR)
 
 # ---------------------------------------------------------------------------
-# Epic 15 Story 004 (ADR-0037): 3D visual-companion subtree.
-# Purely additive -- everything above this point (this file's existing 2D
-# sprite/badge/nameplate/hit-flash presentation) is unchanged, per ADR-0037's
-# core constraint of zero simulation-code changes. No _process()/
-# _physics_process() is declared anywhere in this file -- position sync is
-# driven externally, once per frame, by MonsterManager._physics_process's
-# existing centralized pass (ADR-0006's per_monster_physics_process
-# forbidden pattern is the single most important constraint of this story).
+# ADR-0038, Epic 16 Story 10: the legacy ADR-0037 3D mesh companion
+# (_build_visual_companion()/sync_visual_companion_position(), formerly
+# here) was removed in this cleanup pass — Story 9 retired its last live
+# caller (BOSS; STANDARD/ELITE were already retired in Story 7). Every
+# monster tier now presents via MonsterSwarmRenderer3D (STANDARD/ELITE) or
+# BossCreaturePresenter3D (BOSS) instead. See git history for the removed
+# implementation if ever needed for reference.
 # ---------------------------------------------------------------------------
-
-## Builds (or rebuilds) the Node3D visual-companion subtree holding this
-## monster's MeshInstance3D-bearing mesh instance, resolved via
-## GGameDataRegistry.get_visual_mesh_mapping() (data-driven per ADR-0037's
-## Constraints -- never a hardcoded scene reference). Seeds the companion's
-## initial position from this node's own global_position (equal to the
-## owning MonsterEntity's global_position -- MonsterInstance is a plain
-## Node2D child at local (0,0) that rides its parent's global_position for
-## free, per this file's own class doc comment) so a monster spawned this
-## frame has a correctly-placed companion on its very first visible frame,
-## with no one-frame lag before MonsterManager's first per-frame sync call.
-##
-## A missing/invalid mapping fails loudly (push_error) rather than silently
-## rendering no visual, per ADR-0037's Risks section policy -- same policy
-## TowerInstance/GridVisual already established.
-##
-## Called once per configure() call (mirrors TowerInstance's identical
-## precedent -- see tower_instance.gd's _build_visual_companion() doc
-## comment). If configure() is ever called again on an already-configured
-## MonsterInstance (not this project's current call sites), the previous
-## companion subtree is freed and rebuilt from scratch rather than leaking
-## or duplicating mesh instances.
-func _build_visual_companion() -> void:
-	# Synchronous remove_child() BEFORE queue_free(), not queue_free() alone
-	# -- same gotcha TowerInstance's/GridVisual's _build_visual_companion()
-	# already fixed (docs/registry/architecture.yaml's
-	# mission_hud_planning_cluster_lifecycle entry): queue_free() defers
-	# removal to end-of-frame, so an immediately-following add_child() of a
-	# new node with the SAME name ("VisualCompanion3D") while the old one is
-	# still technically in the tree causes Godot to auto-uniquify the new
-	# node's name -- after the deferred free runs, zero nodes are left with
-	# the expected name.
-	if _visual_companion != null and is_instance_valid(_visual_companion):
-		remove_child(_visual_companion)
-		_visual_companion.queue_free()
-	_visual_companion = Node3D.new()
-	_visual_companion.name = "VisualCompanion3D"
-	add_child(_visual_companion)
-
-	var mapping: VisualMeshMappingResource = GGameDataRegistry.get_visual_mesh_mapping(MONSTER_MESH_ENTITY_ID)
-	if mapping == null or mapping.mesh_scene == null:
-		push_error("[MonsterInstance] No valid VisualMeshMappingResource for '%s' -- monster will have no 3D visual companion." % MONSTER_MESH_ENTITY_ID)
-		return
-
-	var mesh_node: Node = mapping.mesh_scene.instantiate()
-	if not (mesh_node is Node3D):
-		push_error("[MonsterInstance] mesh_scene for '%s' did not instantiate as a Node3D -- no 3D visual companion." % MONSTER_MESH_ENTITY_ID)
-		mesh_node.free()
-		return
-	_visual_companion.add_child(mesh_node)
-	# ABSOLUTE assignment only, never additive/relative to this Node2D's own
-	# transform -- a Node3D child of a Node2D parent does not inherit the
-	# parent's 2D transform (ADR-0037's "Important engine clarification").
-	(mesh_node as Node3D).position = VisualMath.map_to_3d(global_position, MONSTER_LAYER_HEIGHT)
-
-
-## Public per-frame sync entry point -- called every frame by
-## MonsterManager's existing centralized _physics_process pass (never by a
-## new per-node override on this script or on MonsterEntity, per ADR-0006's
-## per_monster_physics_process forbidden pattern). world_position is an
-## ABSOLUTE Node3D position, already computed via VisualMath.map_to_3d() by
-## the caller -- never offset against this Node2D's own transform (a Node3D
-## child does not inherit its Node2D parent's 2D transform, ADR-0037's
-## "Important engine clarification"). No-op if this instance has no
-## companion mesh (e.g. the mapping was missing/invalid at build time -- see
-## _build_visual_companion()'s own doc comment).
-##
-## Usage (from MonsterManager._pass3c_visual_sync()):
-##   entity.monster_instance.sync_visual_companion_position(
-##       VisualMath.map_to_3d(entity.global_position, MonsterInstance.MONSTER_LAYER_HEIGHT))
-func sync_visual_companion_position(world_position: Vector3) -> void:
-	if _visual_companion == null or not is_instance_valid(_visual_companion):
-		return
-	if _visual_companion.get_child_count() == 0:
-		return
-	(_visual_companion.get_child(0) as Node3D).position = world_position

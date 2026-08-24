@@ -560,10 +560,12 @@ func _pass3c_visual_sync(delta: float) -> void:
 				# already owns this countdown; this pass only reads it.
 				_swarm_renderer.update_boss(entity.boss_presenter_handle, world_transform, entity.boss_attack_prepare_remaining > 0)
 			continue
-		if entity.monster_instance == null:
-			continue
-		entity.monster_instance.sync_visual_companion_position(
-				VisualMath.map_to_3d(entity.global_position, MonsterInstance.MONSTER_LAYER_HEIGHT))
+		# ADR-0038, Epic 16 Story 10: neither handle set means presentation
+		# registration failed or was never attempted (no renderer injected,
+		# e.g. a unit test with no scene context) — nothing to sync. The
+		# legacy ADR-0037 monster_instance fallback that used to live here
+		# was removed along with _build_visual_companion()/
+		# sync_visual_companion_position() themselves (see monster_instance.gd).
 
 # ---------------------------------------------------------------------------
 # Pass 4 — Death & Absorbed flush
@@ -658,15 +660,13 @@ func _spawn_entity(res: MonsterResource, spawn_cell: Vector2i, wave_index: int,
 	# visible sprite is still a fully correct simulation entity.
 	var instance := MONSTER_INSTANCE_SCENE.instantiate() as MonsterInstance
 	entity.add_child(instance)
-	# ADR-0038, Epic 16 Story 9: the legacy ADR-0037 3D mesh companion is now
-	# retired for EVERY tier — BOSS moved to its own capped
-	# BossCreaturePresenter3D pool below, completing the migration Story 7
-	# started for STANDARD/ELITE. build_legacy_3d_companion is always false
-	# from this call site now; the parameter itself (and
-	# _build_visual_companion()) stays in monster_instance.gd until Story 10
-	# formally removes the dead code path (blueprint's own "remove the
-	# temporary migration switch" step).
-	instance.configure(res.monster_id, res.tier, res.display_name, false)
+	# ADR-0038, Epic 16 Stories 7/9/10: the legacy ADR-0037 3D mesh companion
+	# is fully retired for every tier — BOSS uses BossCreaturePresenter3D,
+	# STANDARD/ELITE use MonsterSwarmRenderer3D, registered below. Story 10
+	# removed configure()'s now-permanently-false build_legacy_3d_companion
+	# parameter entirely, along with _build_visual_companion()/
+	# sync_visual_companion_position() themselves.
+	instance.configure(res.monster_id, res.tier, res.display_name)
 	entity.monster_instance = instance
 
 	# ADR-0038, Epic 16 Stories 7 & 9: register with the swarm renderer

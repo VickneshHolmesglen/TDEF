@@ -12,11 +12,13 @@ extends GdUnitTestSuite
 ## This file previously asserted the legacy companion WAS built (first for
 ## all tiers, then — after Story 7 — for BOSS only, as a deliberate interim
 ## fix keeping real coverage on the path that was still live). Story 9
-## retired that path for BOSS too, so this suite's job flips: prove the
-## legacy path stays dead for every tier, a real regression guard against
-## an accidental future reintroduction (e.g. someone flips
-## build_legacy_3d_companion back to true "to fix a bug" without realizing
-## the swarm/boss-presenter paths are now authoritative).
+## retired that path for BOSS too, and Story 10 formally deleted the dead
+## code (_build_visual_companion()/sync_visual_companion_position()/
+## MONSTER_MESH_ENTITY_ID/the build_legacy_3d_companion parameter, plus the
+## retired assets/data/visual_meshes/enemy_ufo_a.tres mapping) — so this
+## suite's remaining job is a plain regression guard: no companion node is
+## ever built, for any tier, using the node-presence check alone (there is
+## no longer a code path or a parameter that could reintroduce it).
 ##
 ## Real per-tier presentation coverage now lives in:
 ##   - tests/integration/visual_presentation/monster_swarm_migration_test.gd
