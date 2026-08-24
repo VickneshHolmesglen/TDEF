@@ -39,7 +39,7 @@ Ran the same `quality_tier` vs `tech_prerequisite` cross-reference that found `T
 
 ---
 
-## TD-hero-skill-001 — `elem_firestorm` skill looks orphaned/unwired, not investigated further
+## TD-hero-skill-001 — `elem_firestorm` skill looks orphaned/unwired, not investigated further (fixed)
 
 **Logged**: 2026-08-23
 **Severity**: Low — cosmetic/content-authoring ambiguity, not a functional defect (an empty `source_build_signature` is explicitly valid per the schema, "unreachable via mastery" is a real allowed state, not necessarily a bug).
@@ -58,7 +58,7 @@ Read `hero-skill-build.md`/`tower-mastery.md` for whether `elem_firestorm` was e
 
 ---
 
-## TD-tower-007 — `AURA` weapons are never processed at all — Rally Banner (the only Support tower) deals zero DPS and applies zero buff
+## TD-tower-007 — `AURA` weapons are never processed at all — Rally Banner (the only Support tower) deals zero DPS and applies zero buff (fixed)
 
 **Logged**: 2026-08-23
 **Severity**: High — an entire archetype's sole existing tower is completely non-functional in combat, not just under-tuned. This is more severe than a balance issue: Support archetype currently provides zero player value.
@@ -81,7 +81,7 @@ Add aura-pulse handling to `TowerSystem` — likely a periodic tick (matching `_
 
 ---
 
-## TD-tower-008 — `tower_aura_pulse` fires (per `TD-tower-007`'s fix) but nothing consumes it to apply a real buff to allied towers
+## TD-tower-008 — `tower_aura_pulse` fires (per `TD-tower-007`'s fix) but nothing consumes it to apply a real buff to allied towers (fixed)
 
 **Logged**: 2026-08-23 (split out of `TD-tower-007` during that entry's fix — see its Resolution section)
 **Severity**: Medium — Support archetype is no longer *invisible* (VFX pulse now fires, `tower_wave_summary.aura_applications_this_wave` would count real pulses once that summary system itself is wired), but it still provides zero actual combat value. Downgraded from `TD-tower-007`'s own High because the more severe "completely inert, not even visible" half of the original bug is now fixed.
@@ -102,7 +102,7 @@ Design the aura effect vocabulary and application model first (likely a `/quick-
 
 ---
 
-## TD-tower-006 — `targeting_mode` is fully specified but never consumed — every tower always targets lowest-HP
+## TD-tower-006 — `targeting_mode` is fully specified but never consumed — every tower always targets lowest-HP (fixed)
 
 **Logged**: 2026-08-23
 **Severity**: Medium — a real, silent gameplay bug, not just an unbuilt feature. 3 of 6 (now 8) shipped tower blueprints author a `targeting_mode` other than the one mode that actually works, so their authored identity doesn't match their real behavior: `blueprint_longshot_sniper.tres` says `HIGHEST_HP` (a sniper meant to snipe the toughest target) but behaves identically to every other tower (lowest-HP); `blueprint_archer.tres`/`blueprint_rally_banner.tres` say `CLOSEST_TO_GOAL` with the same silent mismatch.
