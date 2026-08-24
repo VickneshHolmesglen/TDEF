@@ -3,6 +3,16 @@
 ## Status
 Accepted
 
+> **Scope amendment — 2026-08-24:** ADR-0038 supersedes this ADR only for
+> monster and creature presentation. Monsters no longer receive per-entity 3D
+> mesh companions; mission swarms use the centralized illustrated-quad renderer
+> defined by ADR-0038, and Boss/Menagerie exceptions remain 2D-in-3D. This ADR
+> remains authoritative for the 2D-simulation/3D-presentation boundary,
+> `VisualMath.map_to_3d()`, fixed `Camera3D`, and 3D companions for the Hero,
+> towers, terrain, buildings, props, and projectiles. Any unqualified reference
+> below to "every entity" or monster `MeshInstance3D` companions must be read
+> through this amendment.
+
 ## Date
 2026-08-20
 
@@ -22,7 +32,7 @@ Accepted
 | Field | Value |
 |-------|-------|
 | **Depends On** | None — purely additive to the existing 2D-simulation architecture. |
-| **Enables** | The full 2D→3D visual pivot roadmap discussed with the user: Phase 1 (gameplay scene conversion — Hero/Monster/TowerInstance/TheGap/MissionScene gain visual-companion subtrees), Phase 2 (3D interaction/picking), Phase 3 (VFX/shaders → `spatial`), Phase 4 (rendering polish), Phase 5 (3D art pipeline), Phase 6 (content re-authoring). This ADR is Phase 0 only. |
+| **Enables** | The 3D player-domain roadmap: Hero, TowerInstance, terrain, buildings, props, projectiles, TheGap, and MissionScene gain visual-companion or native 3D presentation. Monster/creature presentation is governed separately by ADR-0038. |
 | **Blocks** | Phase 1 implementation stories cannot start until this ADR is Accepted. |
 | **Ordering Note** | Must be read alongside ADR-0004, ADR-0006, ADR-0015, ADR-0019 — this ADR does not modify any of them; it explicitly constrains the new visual layer to operate *inside* their existing rules (see Decision, Constraint 2 and 3 below), not alongside or in place of them. |
 

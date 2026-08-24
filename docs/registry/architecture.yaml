@@ -356,6 +356,18 @@ state_ownership:
     added: 2026-08-12
     revised: ""
 
+  - state: monster_presentation_state
+    status: active
+    owner_system: monster-swarm-renderer-3d
+    adr: docs/architecture/adr-0038-hybrid-creature-swarm-rendering.md
+    interface: "Presentation-only dense batch state keyed by atlas/family + mesh layout + material/shader variant + render mode. Stores entity_id-to-dense-slot handles, per-slot Transform3D, fixed INSTANCE_CUSTOM values, optional instance color, and contact-shadow transforms. MonsterManager remains sole owner of gameplay state; the renderer cannot write MonsterEntity or simulation data."
+    write_access: monster-swarm-renderer-3d-only
+    referenced_by:
+      - docs/architecture/adr-0038-hybrid-creature-swarm-rendering.md
+      - docs/architecture/hybrid-swarm-rendering-implementation-blueprint.md
+    added: 2026-08-24
+    revised: ""
+
 # Example:
 #
 # state_ownership:
@@ -640,6 +652,20 @@ interfaces:
       - docs/architecture/adr-0032-presentation-shell-hosting-pattern.md
       - docs/architecture/adr-0031-mission-hud-architecture.md   # direct precedent this pattern generalizes
     added: 2026-07-24
+    revised: ""
+
+  - contract: monster_presentation_publication
+    status: active
+    pattern: direct_call
+    producer: monster-manager
+    consumers:
+      - monster-swarm-renderer-3d
+    adr: docs/architecture/adr-0038-hybrid-creature-swarm-rendering.md
+    signal_signature: "After ADR-0006 Pass 3 movement/lifecycle resolution, MonsterManager directly publishes spawn/update/despawn presentation records to the mission-local MonsterSwarmRenderer3D. No EventBus traffic and no per-monster process callback are permitted on this hot path. Renderer output is presentation-only and never writes back to MonsterEntity."
+    referenced_by:
+      - docs/architecture/adr-0006-monster-movement.md
+      - docs/architecture/adr-0038-hybrid-creature-swarm-rendering.md
+    added: 2026-08-24
     revised: ""
 
 # Example:
@@ -932,6 +958,19 @@ api_decisions:
     added: 2026-08-20
     revised: ""
 
+  - purpose: world_space_monster_swarm_rendering
+    status: active
+    api: "Mission-local MonsterSwarmRenderer3D using preallocated dense MultiMeshInstance3D batches for Standard monsters; Sprite3D presenters only for capped Boss-tier exceptions. Atlas frame and compact per-instance feedback use INSTANCE_CUSTOM read in vertex() and forwarded to fragment() through a flat varying. Contact shadows use a separate flat batched quad/decal stream."
+    not: "Per-Standard-monster Sprite3D/AnimatedSprite3D nodes; per-monster 3D MeshInstance3D companions; CanvasItem batching for world-space monsters; per-instance material duplication; per-creature dynamic shadow lights; EventBus or per-node callbacks for frame publication; RenderingDevice-first custom renderer before profiling proves MultiMesh insufficient."
+    adr: docs/architecture/adr-0038-hybrid-creature-swarm-rendering.md
+    reason: "Live Godot 4.6.2 verification confirmed MultiMesh custom data and atlas selection. Centralized instancing preserves ADR-0006 ordering and the Art Bible's 100+ illustrated-creature requirement within the <=150 normal / <=180 stress / <=200 hard draw-call targets."
+    referenced_by:
+      - docs/architecture/adr-0013-draw-call-batching.md
+      - docs/architecture/adr-0037-visual-presentation-3d-companion-layer.md
+      - docs/architecture/investigation-2026-08-24-hybrid-swarm-rendering.md
+    added: 2026-08-24
+    revised: ""
+
 # Example:
 #
 # api_decisions:
@@ -1103,6 +1142,20 @@ forbidden_patterns:
     why: "Identical reasoning to per_monster_physics_process and per_projectile_physics_process: engine per-node process-callback execution order is not guaranteed stable across sibling nodes, so a new per-entity override for the 3D sync step would reintroduce exactly the nondeterminism those two existing forbidden patterns were created to close, this time for a presentation-layer feature instead of gameplay logic. Centralizing keeps the sync trivially deterministic and free of a second ordering-invariant class to reason about."
     adr: docs/architecture/adr-0037-visual-presentation-3d-companion-layer.md
     added: 2026-08-20
+
+  - pattern: per_standard_monster_render_node
+    status: active
+    description: "Standard mission monsters must not own Sprite3D, AnimatedSprite3D, MeshInstance3D, unique material, or new _process/_physics_process presentation callbacks. Their world-space illustrated body, atlas animation, feedback, and contact shadow are rendered through centralized preallocated batches."
+    why: "One node/material/update callback per Standard monster defeats the 100+ swarm batching model, conflicts with ADR-0006 centralization, and risks the 200 draw-call ceiling. Boss-tier and Menagerie showcase presenters are explicit capped exceptions governed by ADR-0038."
+    adr: docs/architecture/adr-0038-hybrid-creature-swarm-rendering.md
+    added: 2026-08-24
+
+  - pattern: creature_3d_mesh_companion
+    status: active
+    description: "Monsters and Menagerie creatures must not use real 3D mesh companions as their final visual representation. They remain expressive 2D illustrations composited into the 3D world; ADR-0037's mesh-companion rule is superseded for these categories only."
+    why: "The locked Art Bible assigns physical 3D form to the player-built domain and expressive 2D form to creatures. Retaining shipped placeholder monster meshes would directly contradict that identity."
+    adr: docs/architecture/adr-0038-hybrid-creature-swarm-rendering.md
+    added: 2026-08-24
 
 # Example:
 #
