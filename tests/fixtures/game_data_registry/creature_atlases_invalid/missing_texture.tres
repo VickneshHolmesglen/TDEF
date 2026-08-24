@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="CreatureAtlasMappingResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/core/visual_presentation/creature_atlas_mapping_resource.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+creature_id = &"missing_texture_creature"
+family_atlas_id = &"missing_texture_family"
+atlas_texture = null
+atlas_columns = 1
+atlas_rows = 1
+frame_count = 1
+animation_clips = []
+world_width = 1.0
+world_height = 1.0
+foot_anchor_offset = Vector2(0.0, 0.0)
+mesh_layout_id = &"quad_billboard"
+shader_variant_id = &"creature_swarm_body"
+render_mode_id = &"alpha_scissor"
+presentation_class = &"standard"
+approved_presenter_class = &""
+batch_capacity_requirement = 200
+status_mask_schema_version = 1

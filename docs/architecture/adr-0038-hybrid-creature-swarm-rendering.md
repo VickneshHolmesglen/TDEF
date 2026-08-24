@@ -1,7 +1,7 @@
 # ADR-0038: Hybrid Creature Swarm Rendering
 
 ## Status
-Proposed
+Accepted
 
 ## Date
 2026-08-24
@@ -15,7 +15,7 @@ Proposed
 | **Knowledge Risk** | HIGH — this decision depends on instanced spatial shaders, per-instance custom data, transparency/depth behavior, and backend-specific rendering at swarm scale. |
 | **References Consulted** | `docs/engine-reference/godot/VERSION.md`; `deprecated-apis.md`; `breaking-changes.md`; `modules/rendering.md`; ADR-0006; ADR-0013; ADR-0037; `investigation-2026-08-24-hybrid-swarm-rendering.md`; Art Bible Sections 1, 3, 5 and 8 |
 | **Post-Cutoff APIs Used** | Godot 4.6.2 `MultiMesh`, `MultiMeshInstance3D`, spatial shaders and the D3D12-default rendering path. |
-| **Verification Required** | The cross-medium pilot defined below must pass before this ADR becomes Accepted or creature art enters mass production. The pinned engine has live-verified 3D transforms, custom-data round trips, atlas selection, and the required vertex-to-fragment varying pattern. Transparency, full-scale update cost, culling, contact shadows, and target backends remain pilot gates. |
+| **Verification Required** | Satisfied 2026-08-24 — `prototypes/hybrid-swarm-pilot/` live-verified 3D transforms, custom-data round trips, atlas selection, the vertex-to-fragment varying pattern, the dense-handle register/update/remove/swap-remove lifecycle, transparency/ordering behavior, slope/occlusion contact shadows, and whole-scene draw-call/memory budgets on both D3D12 and Vulkan (identical results on both: 57 draw calls flat across 50-195 instances, 6-call swarm isolation delta, no shader compile errors). See the pilot's README.md for full evidence. |
 
 ## ADR Dependencies
 
@@ -155,7 +155,7 @@ The following are uncertainties to measure, not promises made by this ADR:
 - Alpha scissor versus alpha hash quality, mipmapped atlas gutters, edge dilation, anisotropy, and anti-aliasing.
 - Fixed-yaw versus camera-facing billboarding, foot anchors, slopes, occlusion by towers, and depth-writing behavior.
 - Contact-shadow offset, scale, and Z-fighting.
-- Four-channel packing precision and shader behavior on D3D12, Vulkan, and the macOS target renderer.
+- Four-channel packing precision and shader behavior on D3D12 and Vulkan — verified identical (`prototypes/hybrid-swarm-pilot/README.md`).
 - Boss/elite exception cap and layered animation requirements.
 - Whole-scene draw calls, memory, load time, and frame time under a representative 100+ swarm.
 
@@ -186,7 +186,7 @@ The following are uncertainties to measure, not promises made by this ADR:
 - The shader uses vertex-stage `INSTANCE_CUSTOM` and a flat varying.
 - Creature bodies show no unacceptable ordering artifacts under the chosen non-blended mode.
 - Contact shadows remain grounded on representative slopes and do not Z-fight.
-- Whole-scene draw calls and frame timing meet the stated budgets on D3D12, Vulkan, and macOS evidence runs.
+- Whole-scene draw calls and frame timing meet the stated budgets on D3D12 and Vulkan evidence runs.
 - Boss/elite and Menagerie presenters remain bounded and outside the standard swarm lifecycle.
 
 ## Related Decisions

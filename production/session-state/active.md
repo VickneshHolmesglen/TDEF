@@ -3422,3 +3422,10 @@ Spawned `engine-programmer`, which proposed a clean 2-line guard (`if payload.ki
 - Closes the D3D12/Vulkan half of ADR-0038's Validation Criteria item 10 (backend evidence). macOS still open (no hardware).
 - New gotcha: attach_project bridge injection is unreliable against a manually-launched Godot process (3 ordering attempts all failed) — use the [rendering] project-setting + run_project route instead for future backend pilots.
 - Next recommended: none required immediately — the pilot's remaining gap is macOS hardware, genuinely out of reach. ADR-0038 status change (Proposed->Accepted) not yet actioned, would need explicit user/Codex sign-off first.
+
+## Session Extract — ADR-0038 Accepted + Epic 16 Story 5 started 2026-08-24
+- Verdict: IN PROGRESS
+- ADR-0038 status flipped Proposed -> Accepted per user decision (no macOS caveat, dropped from tracked gates entirely).
+- Started production Epic 16 (Hybrid Creature Swarm Rendering), Story 5 (Data Registry Integration): CreatureAtlasMappingResource + CreatureAnimationClip (src/core/visual_presentation/), GameDataRegistry loader/lookup wiring (18th loader in that file, same convention as the other 17), 2 real fixture .tres (goblin_runner standard, goblin_warlord_boss exceptional), full unit test suite written.
+- NOT YET live-verified against the pinned Godot binary this session (no test run requested this turn, per standing no-unrequested-testing instruction). Story file explicitly flags this in its own Completion Notes.
+- Next recommended: run tests/unit/visual_presentation/creature_atlas_mapping_resource_test.gd when the user next requests verification, then close Story 5 via /story-done, then move to Story 6 (mission renderer scene integration -- MissionScene.tscn/the_gap.tscn PresentationRoot3D reparenting, per the blueprint file/module ownership section which already documents the exact live-file state to verify against before implementing).
