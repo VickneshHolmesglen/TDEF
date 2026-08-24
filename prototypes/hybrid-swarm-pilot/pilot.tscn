@@ -11,6 +11,12 @@
 [ext_resource type="PackedScene" path="res://assets/Tower Defense Models/GLB format/detail-tree.glb" id="9_tree"]
 [ext_resource type="PackedScene" path="res://assets/Tower Defense Models/GLB format/detail-rocks.glb" id="10_rocks"]
 
+[sub_resource type="BoxMesh" id="RampMesh"]
+size = Vector3(2.5, 0.3, 5.0)
+
+[sub_resource type="StandardMaterial3D" id="RampMat"]
+albedo_color = Color(0.55, 0.5, 0.42, 1)
+
 [sub_resource type="Environment" id="Environment_1"]
 background_mode = 1
 background_color = Color(0.45, 0.55, 0.65, 1)
@@ -79,3 +85,8 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 0, 3)
 
 [node name="Rocks" parent="Backdrop" instance=ExtResource("10_rocks")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 0, 3)
+
+[node name="Ramp" type="MeshInstance3D" parent="Backdrop"]
+transform = Transform3D(1, 0, 0, 0, 0.927184, 0.374607, 0, -0.374607, 0.927184, -9, 0.4, -7.25)
+mesh = SubResource("RampMesh")
+surface_material_override/0 = SubResource("RampMat")

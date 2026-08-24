@@ -4,10 +4,10 @@
 <!-- Question: See §Core Questions below -->
 <!-- Date: 2026-08-24 -->
 
-**Status**: In progress
+**Status**: Story 1-4 core complete (multi-backend comparison and the real dense-handle lifecycle remain — see Findings)
 **Risk**: HIGH — gates ADR-0038's move from Proposed to Accepted, and gates all mass creature-art production for the art overhaul.
 **Engine**: Godot 4.6.2 / GDScript
-**Timebox**: 1 session (Story 1 scaffold + Story 2 batch core + Story 3 shaders; Story 4's full 50/100/150/200-instance multi-backend stress matrix is out of scope for this pass — see Findings)
+**Timebox**: 2 sessions (Story 1 scaffold + Story 2 batch core + Story 3 shaders, then Story 4 stress matrix + slope/occlusion cases)
 
 ---
 
@@ -72,4 +72,29 @@ No autoloads or production scene dependencies are required — this prototype is
 - `render_mode alpha_scissor_threshold(0.5)` is **invalid syntax** on this Godot 4.6.2.stable build — fails shader compilation with `Invalid render mode: 'alpha_scissor_threshold'`. The correct form is a fragment-stage output assignment: `ALPHA_SCISSOR_THRESHOLD = 0.5;` inside `fragment()`, exactly like `ALBEDO`/`ALPHA`. Not previously documented anywhere in this project — worth folding into the production shader (`src/shaders/creature_swarm_body.gdshader` once Story 5+ lands) so this isn't rediscovered.
 - The `INSTANCE_CUSTOM`-must-be-captured-via-vertex-then-varying pattern (already found in `investigation-2026-08-24-hybrid-swarm-rendering.md`) was re-confirmed working here with zero issues on the second attempt — no new findings on that front.
 
-**Not attempted this pass (explicitly out of scope, see README's own Scope section):** multi-backend comparison, the real dense-handle/swap-remove lifecycle, boss/elite `Sprite3D` path, real creature art, and the full 50/100/150/200-instance stress matrix. Recommend Story 4 as the next pilot increment before ADR-0038 can move past Proposed — this pass answers "does the mechanism work," not "does it hold at scale," which is ADR-0038's own actual Acceptance Criteria bar.
+---
+
+## Story 4 — Stress Matrix, Slope, and Occlusion (2026-08-24, second pass)
+
+**Setup change from Story 1-3**: capacity is now fixed at 200 instances (`MAX_INSTANCE_COUNT`), matching ADR-0038's own "preallocate once, never resize `instance_count` at runtime" rule. `set_active_count(n)` varies `MultiMesh.visible_instance_count` instead — the exact "dense live prefix" mechanism ADR-0038 names — rather than reallocating. 195 of the 200 slots are the random-scatter stress population; the last 5 are hand-placed slope/occlusion test cases, always excluded from the stress count so they don't skew the numbers (toggle via `show_special_test_instances(true)`).
+
+**Q4, corrected — real measured data, not a design-level assumption.** Ran `set_active_count()` at 50/100/150/200(clamped to 195) and sampled `Performance` monitors after a 10-frame settle window each time, via live Godot MCP `run_script` — not estimated:
+
+| Active instances | Total scene draw calls | FPS | Static memory (MB) |
+|---|---|---|---|
+| 50 | 57 | 60 | 56.42 |
+| 100 | 57 | 60 | 56.42 |
+| 150 | 57 | 60 | 56.42 |
+| 195 (200 clamped) | 57 | 60 | 56.42 |
+
+**Draw calls and memory are both completely flat across the entire range** — confirms the core `MultiMesh` claim empirically: active instance count has zero effect on either, because capacity is preallocated once and the GPU handles per-instance work internally. This is the single most important number this pilot produces.
+
+**Correction to the Story 1-3 Findings above**: that pass claimed "2 draw calls total for the swarm" as a design-level assumption (one `MultiMeshInstance3D` = one draw call). **This was wrong, found and corrected this pass.** Isolated the swarm's real contribution by toggling `BodyBatch`/`ShadowBatch` node visibility off entirely (not just `visible_instance_count = 0` — see the next finding for why that distinction matters) and re-measuring: scene draw calls dropped from 57 to 51, a real delta of **6**, not 2. Forward+ almost certainly issues more than one pass per opaque batch (depth pre-pass, shadow pass, color pass), so 2 batches × ~3 passes ≈ 6 is the plausible explanation — not confirmed via a renderer-internals trace, but the measured number itself is real and now the one to cite, not the earlier assumption.
+
+**Gotcha: `visible_instance_count = 0` does NOT reduce draw calls.** Tested directly — setting both batches' `visible_instance_count` to 0 left `draw_calls` at 57, identical to any nonzero count. Only setting the `MultiMeshInstance3D` node's own `.visible = false` actually dropped the count (to 51). A batch with zero live members still costs its full per-pass draw-call overhead as long as the node itself is visible — worth knowing for a future family with zero live members mid-wave (e.g. no Elites currently spawned): the batch node would need to be hidden outright to actually save the cost, not just driven to zero visible instances.
+
+**Q3, re-confirmed at higher density and with dedicated slope cases.** At 150 active + 5 special instances shown, shadow blobs are visibly present under the swarm in this pass's screenshot (denser scene, easier to see than Story 1-3's sparser 60-instance shot). 2 dedicated slope-test instances were hand-placed on a new `Ramp` backdrop object (a tilted `BoxMesh`, ~22°incline) at two different heights — visually confirmed sitting on/near the ramp surface in the screenshot. The shadow batch's flat, non-terrain-conforming Y-offset (each shadow's height derived from its own body's Y position, not a raycast to the actual ground/ramp surface underneath) is confirmed still simplistic exactly as expected — a real production implementation would need either a raycast-derived ground height per instance or acceptance that shadows only look correct on flat ground, not documented as solved here, just visually confirmed to behave as designed (not raycast-aware).
+
+**Occlusion — visually consistent with correct depth-testing, not independently instrumented.** 3 instances were placed directly behind the `Tower` backdrop object from the fixed camera's viewpoint; none are visibly poking through the tower mesh in the screenshot, consistent with standard depth-test occlusion working correctly for a `MultiMesh` batch mixed with regular opaque `MeshInstance3D` content in the same scene — expected engine behavior, not something this specific pairing needed to prove, but worth having actually looked rather than assumed.
+
+**Not attempted this pass (explicitly out of scope, see README's own Scope section):** multi-backend comparison (this machine only has one target: Vulkan Forward+ on Windows/AMD — no D3D12 or macOS hardware available to this session, flagged honestly rather than guessed at), the real dense-handle/swap-remove register-update-remove lifecycle (`BatchKey`/`PresentationHandle` from ADR-0038 — this pilot only ever grows a fixed scatter, never removes/swaps an instance mid-run), boss/elite `Sprite3D` exceptional path, real creature art. `process_time_ms` hovered ~17.1-17.5ms across all runs in this headless/background MCP session — close to the 16.67ms/frame budget, but this number reflects the whole background-mode Godot process (MCP bridge polling included), not an isolated measurement of just this scene's cost, so it is reported here for completeness, not cited as a real production frame-budget data point.
