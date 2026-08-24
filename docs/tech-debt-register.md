@@ -2116,7 +2116,7 @@ The backend half of EC-3/EC-5 was implemented 2026-08-01 (`SavePersistence.load_
 
 ---
 
-## TD-tower-003 — 3 of 4 tower blueprints are unreachable — no Tower Placement selection UI exists
+## TD-tower-003 — 3 of 4 tower blueprints are unreachable — no Tower Placement selection UI exists (stale, resolved)
 
 **Logged**: 2026-08-07
 **Story**: Found opportunistically during a content-audit pass checking `assets/data/` for orphaned entries (same pass that closed the equipment-forge accessory/sacrifice-recipe gaps and the mission-catalogue gap).
@@ -2132,11 +2132,11 @@ Grepped every `.gd` file in `src/` and `tests/` for each blueprint's `tower_id`.
 Design and build a real Tower Placement selection UI (likely part of Mission HUD's own scope — `mission-hud.md` doesn't yet specify this) that lists all `GameDataRegistry`-loaded tower blueprints and lets the player choose which to place, replacing the hardcoded `&"archer"` debug call sites. A meaningfully bigger scope item than a content-authoring fix — logged here rather than actioned immediately.
 
 ### Resolution
-- [ ] Not yet started.
+- [x] **Stale, closed 2026-08-24** — resolved by later work that was never marked here. `src/presentation/mission_hud/planning_cluster.gd` (Zone E) now builds one placement tile per `GGameDataRegistry.get_all_tower_blueprints()` entry (line 488), with its own doc comment (line 60) explicitly confirming it replaces the old hardcoded single-blueprint debug click. All 12 tower blueprints (up from 4 at logging time) are reachable in-game via this UI.
 
 ---
 
-## TD-craft-002 — All 5 Crafting recipes are unreachable — no Crafting UI screen exists
+## TD-craft-000 — All 5 Crafting recipes were unreachable — no Crafting UI screen existed (stale, resolved; renumbered from a duplicate TD-craft-002 to fix an ID collision with the unrelated, later `recipe_tier4_component` tech-gate entry)
 
 **Logged**: 2026-08-07
 **Story**: Found during the same orphaned-content-data audit that logged `TD-tower-003` — same class of gap (a real, valid, `GameDataRegistry`-loaded catalogue with no UI path to reach it), this time for the Crafting System rather than Tower Placement.
@@ -2152,7 +2152,7 @@ Design and build a real Tower Placement selection UI (likely part of Mission HUD
 Design and build a real Crafting UI screen (likely following the same pattern Defense Building/Equipment Forge/Menagerie already established: a dedicated `*_screen.gd`/`.tscn` wired into `sanctuary_ui.gd`'s `ROOM_SCENES`) that lists `GameDataRegistry.get_all_recipes()` and lets the player craft against the Discovery Ledger/Craftability rules `crafting.gd` already implements. A UI build, not a content fix — logged here rather than actioned immediately, matching `TD-tower-003`'s own disposition.
 
 ### Resolution
-- [ ] Not yet started.
+- [x] **Stale, closed 2026-08-24** — resolved by the "Forge→Crafting relocation" work (session extract 2026-08-21) that was never marked here. `src/gameplay/ui/inventory_screen/inventory_screen.gd` now has a fully built Crafting panel directly inside `InventoryScreen` (recipe list/tab strip, craft-preview rings, `recipe_discovered`/`component_crafted` EventBus wiring) rather than a separate dedicated screen — a different UI shape than this entry's own recommended fix assumed, but the same underlying gap (reachability) is genuinely closed. `ROOM_INVENTORY_CRAFTING` correctly still maps to `InventoryScreen.tscn`, which is now accurate rather than stale.
 
 ---
 
@@ -2197,7 +2197,7 @@ Wire `foundation_component.gd`'s `pre_placement_perk` field through to a real ef
 - [ ] Not yet started.
 
 
-## TD-visualpres-001 — the_gap.tscn missing BreachFlashOverlay nodes mission_hud.gd unconditionally expects
+## TD-visualpres-001 — the_gap.tscn missing BreachFlashOverlay nodes mission_hud.gd unconditionally expects (fixed)
 
 ### Gap
 `mission_hud.gd`'s `@implicit_ready` (lines ~126-129) calls `get_node()` for `BreachFlashOverlay/TopEdge`, `BottomEdge`, `LeftEdge`, `RightEdge` unconditionally. `MissionScene.tscn` has these nodes; `the_gap.tscn` does not — confirmed live via Godot MCP (loading `the_gap.tscn` and adding it to the tree logs 4 "Node not found" errors from `mission_hud.gd`, reproducible from plain scene instantiation, unrelated to any camera/3D work). Found during Epic 15 Story 003 (3D Visual Presentation Layer) live-verification, not caused by it — `the_gap.tscn` and `MissionScene.tscn` appear to be parallel scene structures that have drifted out of sync on this specific HUD subtree.
@@ -2206,7 +2206,7 @@ Wire `foundation_component.gd`'s `pre_placement_perk` field through to a real ef
 Either add the missing `BreachFlashOverlay/{TopEdge,BottomEdge,LeftEdge,RightEdge}` `ColorRect` nodes to `the_gap.tscn` (matching `MissionScene.tscn`'s existing structure exactly), or make `mission_hud.gd`'s `@implicit_ready` tolerate their absence (`get_node_or_null()` + guard) if the breach-flash effect is intentionally not wanted on `the_gap.tscn`'s host scene. Needs a design call on which scene is authoritative before actioning — not a pure mechanical fix.
 
 ### Resolution
-- [ ] Not yet started.
+- [x] Fixed 2026-08-24 — went with the first option (add the missing nodes) rather than making `mission_hud.gd` tolerant, since `MissionScene.tscn` already treats the breach-flash effect as a real, wanted feature and there was no indication `the_gap.tscn` should be an intentional exception. Added `BreachFlashOverlay/{TopEdge,BottomEdge,LeftEdge,RightEdge}` `ColorRect` nodes directly under `the_gap.tscn`'s `HUD` node (confirmed via grep that `mission_hud.gd` is attached to that exact node in both scenes, so the `$BreachFlashOverlay/...` relative paths resolve identically), copied property-for-property from `MissionScene.tscn`'s existing structure — same anchors, `mouse_filter = 2`, and initial `Color(1, 0, 0, 0)` (fully transparent red, matching the flash-on-demand pattern). Not re-verified via live Godot MCP this session per the standing "no unrequested testing" instruction.
 
 ## TD-tower-005 — ADR-0019 (Projectile Pooling Strategy) was never implemented; TR-tower-007 still open
 
