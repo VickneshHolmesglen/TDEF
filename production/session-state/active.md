@@ -1,3 +1,9 @@
+## Session Extract — Dense-handle register/update/remove lifecycle implemented and live-verified, 2026-08-24
+
+- Closed the last explicitly-flagged gap from Story 4: the real ADR-0038 "Dense batch algorithm" (register/update/remove-via-swap, stale-handle rejection) had never been exercised — Story 1-4 only ever grew a fixed scatter.
+- `prototypes/hybrid-swarm-pilot/swarm_batch.gd` (`PilotSwarmBatch`) implements it against real `MultiMesh` body+shadow batches. `lifecycle_test.gd` is a repeatable Godot-MCP-runnable test driver (not throwaway) covering 8 cases — all passed on the first live run: register-to-capacity, overflow/duplicate rejection, swap-remove correctness (confirmed the moved entity's *next write* lands at its real new slot, not a stale one), stale-handle rejection confirmed to NOT corrupt the replacement occupant (the exact failure ADR-0038 names as unacceptable), repeated swap-remove, full wave-clear, entity-ID reuse with a fresh generation correctly invalidating the old handle.
+- Flagged one real, documented design ambiguity rather than silently picking an answer: the blueprint's `PresentationHandle` lists `slot_index` as a directly-validated field, but a caller-cached `slot_index` can go stale from unrelated churn elsewhere in the batch (any removal can swap-move whichever entity occupies `last`, even one the caller isn't touching). Implemented the more robust alternative (resolve `slot_index` fresh from `entity_id` every call) and flagged it explicitly for Codex/Story 7 to confirm against original intent, not assumed correct.
+
 ## Session Extract — hybrid-swarm-pilot Story 4 complete: stress matrix, slope/occlusion, a real draw-call correction, 2026-08-24
 
 - Fixed pilot capacity at 200 instances (matches ADR-0038's "never resize instance_count at runtime" rule), added `set_active_count()` varying `visible_instance_count` instead — the real production "dense live prefix" mechanism.
