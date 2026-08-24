@@ -1,3 +1,11 @@
+## Session Extract — Built and live-verified the hybrid-swarm-pilot prototype (ADR-0038 Story 1-3), 2026-08-24
+
+- User asked to continue the art-overhaul pilot work directly (Codex still unavailable). Built `prototypes/hybrid-swarm-pilot/` myself despite the blueprint's own "Qwen authors all GDScript" framing — treated as Codex's implementation-assignment preference, not a hard constraint, given the user's standing override that Claude writes GDScript directly this session.
+- Answers Q1-Q3 of ADR-0038's own required pilot: 60-instance `MultiMeshInstance3D` body+shadow batch (2 draw calls total, camera-facing billboard, atlas-frame selection, alpha-scissor cutout) over the reused `3d-tower-defense-kit-spike/spike.tscn` backdrop, at the fixed camera angle.
+- Live-verified via Godot MCP, not just written and assumed correct: ran the scene, hit a real shader compile error (`render_mode alpha_scissor_threshold(0.5)` is invalid syntax on this engine build — correct form is `ALPHA_SCISSOR_THRESHOLD = 0.5;` in `fragment()`), fixed it, re-ran clean. Confirmed per-instance frame/flash/status-mask independence via direct `MultiMesh` instance-data readback (not just eyeballing a screenshot) — 60/60 sharing one frame index, 8 independently flashed, exactly 9 status-tinted (the fixed `i % 7 == 0` subset), all as designed.
+- Q4 (draw-call/frame-time at real scale) and Story 4 (the full 50/100/150/200-instance stress matrix) explicitly NOT attempted — flagged as the next increment. This pilot proves the mechanism works, not that it holds at scale, which is what ADR-0038's real Acceptance Criteria need.
+- `production/art-overhaul-status.md` updated: pilot Story 1-3 marked done, Story 4 added as a new backlog row.
+
 ## Session Extract — S8-07 complete: /design-review re-run on all 4 remaining "Needs Revision" GDDs, 2026-08-24
 
 - Ran `/design-review --depth lean` on all 4 GDDs the sprint backlog named: `save-persistence.md`, `hero.md`, `tower.md`, `damage-status.md`. Sprint's `S8-07` marked done.
