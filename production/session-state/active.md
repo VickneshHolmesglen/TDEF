@@ -1,3 +1,11 @@
+## Session Extract — S8-05 (Constellation AC-30 perf methodology) resolved + 2 more stale-doc fixes, 2026-08-24
+
+- Worked through the remaining sprint backlog (`production/sprint-status.yaml`) after tech debt cleared out — S8-03/S8-04 need a human playtester (can't do), S8-06 needs an audio pipeline decision (can't do alone), S8-05 was fully actionable.
+- Resolved `constellation.md`'s OQ-7: defined the AC-30 performance-measurement methodology it was missing (`Time.get_ticks_usec()` bracketing the recheck call only, 30 samples/scene with 5 discarded as warm-up, ±20% tolerance evaluated as a mean-vs-mean band, headless Godot MCP execution to avoid editor profiler overhead). A methodology definition, not an actual live perf run — no testing performed.
+- While in the doc, found and fixed a second, much older stale claim: OQ-4 (and the doc's own header "Known blocker") still described `constellation_eligibility_tag` as unresolved/blocking, but it was actually shipped 2026-07-18 (Sprint 6 S6-08) — confirmed live in `event_bus.gd`, all 3 tower lifecycle events carry the field. Marked resolved with the real fix description.
+- Checked TD-inv-003's remaining items (rarity resolution + expansion-completion event) — found their original blockers (no rarity vocabulary, no Inventory EventBus emission) are now both cleared by later work, but deliberately did NOT force the actual `attempt_expand_slots()` signature change: zero production callers exist for it today, and its test file has 13+ call sites built entirely around the old caller-supplied-dict design that would need an unverified rewrite to real `add_stackable()` calls. Documented the blocker-clearing accurately without pretending the fix is now trivial-and-done.
+- Reviewed `docs/tech-debt-register.md` once more end-to-end: appended `(fixed)` to 4 entry titles whose Resolution checkboxes were already `[x]` from earlier this session but whose titles were never updated to match (cosmetic only).
+
 ## Session Extract — Implemented ADR-0019 (Projectile Pooling Strategy), fixes TD-tower-005, 2026-08-24
 
 - User's explicit choice over superseding the ADR or leaving it: "Implement ADR-0019 as originally decided." A real architecture-level gameplay-timing change — towers no longer deal instant damage on HOMING/BALLISTIC attacks.

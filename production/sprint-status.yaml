@@ -14,7 +14,7 @@ goal: "Close out TD-menag-006 and the pre-existing save_persistence_restore_test
 start: "2026-08-23"
 end: "2026-09-06"
 generated: "2026-08-23"
-updated: "2026-08-23"
+updated: "2026-08-24"
 
 stories:
   # S8-01 (TD-menag-006 fix) removed — verified already fixed 2026-07-25
@@ -53,11 +53,11 @@ stories:
     name: "Resolve Constellation Story 005 AC-30 perf methodology (OQ-7)"
     file: "design/gdd/constellation.md"
     priority: should-have
-    status: backlog
+    status: done
     owner: ""
     estimate_days: 0.5
     blocker: ""
-    completed: ""
+    completed: "2026-08-24"
 
   - id: "S8-06"
     name: "Author real audio stinger content for Tower Mastery"
