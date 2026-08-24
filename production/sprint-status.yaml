@@ -73,8 +73,8 @@ stories:
     name: "/design-review re-run on 4 Needs Revision GDDs (Save & Persistence, Hero, Tower, Damage & Status)"
     file: "design/gdd/systems-index.md"
     priority: nice-to-have
-    status: backlog
+    status: done
     owner: ""
     estimate_days: 0
     blocker: ""
-    completed: ""
+    completed: "2026-08-24"

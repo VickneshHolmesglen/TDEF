@@ -1,3 +1,14 @@
+## Session Extract — S8-07 complete: /design-review re-run on all 4 remaining "Needs Revision" GDDs, 2026-08-24
+
+- Ran `/design-review --depth lean` on all 4 GDDs the sprint backlog named: `save-persistence.md`, `hero.md`, `tower.md`, `damage-status.md`. Sprint's `S8-07` marked done.
+- Found the same underlying pattern across all 4: real fixes/resolutions had landed in later-authored sibling GDDs or shipped code, but the reviewed doc's own Open-Questions/Dependencies/Status text was never updated to reflect it. Every finding was verified against the real resolving source (grep for shipped code, read the actual sibling GDD) before being marked resolved — nothing accepted on faith.
+- `save-persistence.md`: system count drifted stale again (12→15) — Crafting/Building Upgrade/Tower Assembly were real registrants missing from the Downstream Dependents table; also documented 3 real shipped interface surfaces (`get_save_key()`, `unregister()`, late-registration restore) never mentioned at all.
+- `hero.md`: 4 Open Questions (Ultimate lookup, Grid proximity radius, separate accumulators, EventBus catalogue) all genuinely resolved by `hero-skill-build.md`/`tower-mastery.md` landing later, never marked resolved here.
+- `tower.md` (24 revisions, the project's most-revised GDD): 2 stale OQs fixed (power_component_id question answered differently than proposed; Resource Economy's resource type is gold, not "build points" — also fixed all 8 remaining "build point(s)" references in the doc's own body text).
+- `damage-status.md`: found a real *internal* self-contradiction (not cross-doc) — its own Dependencies table said "Follow-up required" for 3 items its own Bidirectionality notes section had already confirmed resolved. Also found this doc's own Status header still said "pending re-review" despite `systems-index.md` already recording it Approved since 2026-07-17.
+- All 4 `design/gdd/reviews/*.md` logs updated, `systems-index.md` rows updated, each committed/pushed separately (4 commits total for S8-07).
+- Remaining sprint backlog: S8-03/S8-04 need a human playtester, S8-06 needs an audio pipeline decision — none actionable without the user.
+
 ## Session Extract — S8-05 (Constellation AC-30 perf methodology) resolved + 2 more stale-doc fixes, 2026-08-24
 
 - Worked through the remaining sprint backlog (`production/sprint-status.yaml`) after tech debt cleared out — S8-03/S8-04 need a human playtester (can't do), S8-06 needs an audio pipeline decision (can't do alone), S8-05 was fully actionable.
