@@ -36,8 +36,8 @@ This is the no-ambiguity implementation handoff for ADR-0038. **Qwen authors all
 |------|-----------------------|
 | `src/core/monster/monster_manager.gd` | Inject/cache renderer; queue/register spawn presentation; add deterministic post-Pass-3 sync; unregister resolved entities; remove only the shipped per-monster mesh sync call. Do not reorder or reinterpret gameplay passes. |
 | `src/core/monster/monster_instance.gd` | Remove/disable monster `_build_visual_companion()`, mesh mapping lookup, companion field, and companion sync API after migration tests exist. Retain simulation, collision, and any data needed to form presentation snapshots. Replace material-uniform hit-flash ownership with manager-readable presentation state; no per-node tween callback in the final standard path. |
-| `src/scenes/MissionScene.tscn` | Add one renderer instance beneath the existing 3D presentation root and wire its reference. Do not restructure the simulation root or HUD. |
-| `src/gameplay/missions/the_gap/the_gap.tscn` | Same renderer integration only if The Gap owns its mission presentation subtree separately; do not duplicate two active renderers in one running mission. |
+| `src/scenes/MissionScene.tscn` | **No `PresentationRoot3D` node exists yet** — verified against the live file: `Camera3D` (line 59) is currently a direct child of `GameplayRoot` (the `Node2D` simulation root), not of any `Node3D` wrapper. Create `PresentationRoot3D (Node3D)` as a sibling of `GameplayRoot`, reparent the existing `Camera3D` under it (per ADR-0037's own clarification, a `Node3D` anywhere under a `Node2D` ancestor does not inherit that ancestor's 2D transform regardless of nesting depth, so this reparent does not change `Camera3D`'s behavior), and add `MonsterSwarmRenderer3D` as its sibling. This is new scene structure, not an addition beneath something already there — do not skip verifying this against the live `.tscn` before implementing. Do not restructure the simulation root or HUD otherwise. |
+| `src/gameplay/missions/the_gap/the_gap.tscn` | Same situation — verified: `Camera3D` (line 38) is currently a direct child of the scene root, no `PresentationRoot3D` exists. Same fix as `MissionScene.tscn` above, only if The Gap owns its mission presentation subtree separately; do not duplicate two active renderers in one running mission. |
 | `src/core/game_data_registry.gd` | Load and validate creature-atlas mapping Resources following current registry conventions. Preserve visual-mesh mappings for non-creatures. |
 
 ### Data and migration ownership
@@ -173,7 +173,30 @@ Do not insert presentation work inside damage/status/boss rules. Required order:
 5. `PRESENTATION SYNC`: drain pending registrations; snapshot/update surviving ACTIVE entities at their final same-frame position; unregister DEAD/BREACHED or wave-cleared entities using swap-remove; optionally spawn capped presentation-only death effects.
 6. Pass 4 absorbed flush.
 
-If current code filters/removes entities before the sync can identify resolved IDs, Qwen must capture a compact resolved-ID list during Pass 3. Do not retain dead gameplay nodes just for visuals and do not change DEAD-before-BREACHED behavior.
+**Confirmed against the live file, not hypothetical**: `monster_manager.gd`'s
+`_pass3_movement()` (lines 380-397) already rebuilds `active_monsters` at the
+end of Pass 3 to include only `lifecycle_state == ACTIVE` entities — DEAD and
+BREACHED entities are already gone from that array before any later step,
+including the existing Pass 3c visual sync, ever sees them. The existing Pass
+3c doc comment (lines 441-447) confirms this is deliberate: a resolved entity
+is "skipped for free" today only because its old `VisualCompanion3D` child
+gets freed for free when its already-`queue_free()`'d `MonsterEntity` leaves
+the tree — a mechanism a dense `MultiMesh` slot has no equivalent for, since
+there is no node to free. **Reuse the existing precedent for this**:
+`_pending_deaths` (line 86, doc comment: "ADR-0033 — frame-scoped, flushed
+each frame in Pass 4") already captures resolved entity data before this same
+swap-buffer rebuild discards it, for consumption later in the same frame —
+the presentation-sync unregister list should follow this same pattern
+(captured during/before Pass 3's rebuild, consumed by the sync step), not be
+independently re-derived. Separately, `_advance_entity()` (line 419) already
+emits `GEventBus.monster_breached` at the exact moment of breach, before the
+rebuild — a valid data source for capturing the resolved ID even though the
+"no EventBus on the recurring hot path" rule (correctly) rules out using it
+as the *position-sync* mechanism itself; death/breach is a once-per-entity
+event, not a recurring one, so consuming the signal's payload (or mirroring
+its data into a pending list the way `_pending_deaths` already does) does not
+conflict with that rule. Do not retain dead gameplay nodes just for visuals
+and do not change DEAD-before-BREACHED behavior.
 
 ## Boss and elite policy
 

@@ -114,6 +114,13 @@ fact with the `_pending_deaths` precedent named explicitly, so Qwen isn't
 re-deriving something already verifiable by reading the file the blueprint
 itself names as a change target.
 
+**Status: Applied 2026-08-24** — Codex was unavailable when this became
+actionable; applied directly to
+`hybrid-swarm-rendering-implementation-blueprint.md`'s "MonsterManager frame
+ordering" section per the exact change recommended above, since this
+correction was already fully verified against the live code during this
+review (no new judgment call was needed to apply it).
+
 ---
 
 ## §3. Scene-tree structure claim doesn't match the actual files (blocking, fix before implementation)
@@ -161,6 +168,13 @@ and must be created, reparenting the existing `Camera3D` node under it, or
 and instead have `MonsterSwarmRenderer3D` sit as a sibling to the existing
 directly-parented `Camera3D` — whichever the actual implementer prefers, but
 the current wording should not describe a node as "existing" when it isn't.
+
+**Status: Applied 2026-08-24** — went with option (a) (keeps ADR-0038's own
+Architecture Diagram accurate as the target end-state rather than revising
+the Decision itself, which would need Codex's sign-off, not a documentation
+correction). Applied directly to
+`hybrid-swarm-rendering-implementation-blueprint.md`'s File Ownership table
+rows for both `.tscn` files, citing the exact current line numbers.
 
 ---
 
@@ -251,12 +265,10 @@ reasoning already recorded in the codebase.
 
 - **Do not accept yet** — correctly gated on the pilot per the ADR's own
   stated criterion, which has not run.
-- **Before implementation starts** (not blocking Proposed status, but should
-  land before Story 1 begins so Qwen isn't re-deriving already-known facts or
-  acting on an inaccurate current-state description): fix §2 (reword the
-  conditional to a confirmed fact, name the `_pending_deaths` precedent) and
-  §3 (correct the `PresentationRoot3D` "existing" claim against the real
-  `.tscn` files).
+- **§2 and §3 applied 2026-08-24** — Codex was unavailable; both corrections
+  were already fully verified against the live code during this review, so
+  they were applied directly to the blueprint rather than left pending. No
+  new judgment calls were made beyond what's documented in each section above.
 - **Nice-to-have, non-blocking**: §4 (Menagerie phrasing precision), §5
   (rename `PRESENTATION SYNC` to `Pass 3c` for continuity).
 - Everything else in both documents checked out accurate against the live
