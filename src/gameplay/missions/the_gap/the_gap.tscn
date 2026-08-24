@@ -1,4 +1,4 @@
-[gd_scene load_steps=9 format=3 uid="uid://thegap0missionscene"]
+[gd_scene load_steps=10 format=3 uid="uid://thegap0missionscene"]
 
 [ext_resource type="Script" path="res://src/gameplay/missions/the_gap/the_gap.gd" id="1_ctrl"]
 [ext_resource type="Script" path="res://src/gameplay/missions/the_gap/grid_visual.gd" id="2_grid"]
@@ -11,6 +11,7 @@
 [ext_resource type="Script" path="res://src/presentation/mission_hud/mission_hud.gd" id="8_hud"]
 [ext_resource type="Script" path="res://src/ui/input_mode_tracker.gd" id="9_imt"]
 [ext_resource type="Texture2D" path="res://assets/art/ui/gold_coin.png" id="10_gold_icon"]
+[ext_resource type="PackedScene" path="res://src/core/visual_presentation/monster_swarm_renderer_3d.tscn" id="12_swarm"]
 
 [node name="TheGap" type="Node2D"]
 script = ExtResource("1_ctrl")
@@ -35,9 +36,13 @@ script = ExtResource("11_re")
 [node name="Camera2D" type="Camera2D" parent="."]
 enabled = true
 
-[node name="Camera3D" type="Camera3D" parent="."]
+[node name="PresentationRoot3D" type="Node3D" parent="."]
+
+[node name="Camera3D" type="Camera3D" parent="PresentationRoot3D"]
 transform = Transform3D(1, 0, 0, 0, 0.573576, -0.819152, 0, 0.819152, 0.573576, 512, 650, 840)
 current = false
+
+[node name="MonsterSwarmRenderer3D" parent="PresentationRoot3D" instance=ExtResource("12_swarm")]
 
 [node name="HUD" type="CanvasLayer" parent="."]
 script = ExtResource("8_hud")

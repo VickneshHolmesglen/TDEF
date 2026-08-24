@@ -1,0 +1,12 @@
+[gd_scene load_steps=2 format=3 uid="uid://monsterswarmrenderer3d0"]
+
+[ext_resource type="Script" path="res://src/core/visual_presentation/monster_swarm_renderer_3d.gd" id="1_script"]
+
+[node name="MonsterSwarmRenderer3D" type="Node3D"]
+script = ExtResource("1_script")
+
+[node name="StandardBodyBatches" type="Node3D" parent="."]
+
+[node name="ContactShadowBatches" type="Node3D" parent="."]
+
+[node name="ExceptionalPresenters" type="Node3D" parent="."]

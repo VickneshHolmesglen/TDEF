@@ -152,7 +152,7 @@ func test_the_gap_scene_has_camera2d_and_camera3d_siblings() -> void:
 	add_child(scene)
 
 	var camera_2d: Camera2D = scene.get_node(NodePath("Camera2D")) as Camera2D
-	var camera_3d: Camera3D = scene.get_node(NodePath("Camera3D")) as Camera3D
+	var camera_3d: Camera3D = scene.get_node(NodePath("PresentationRoot3D/Camera3D")) as Camera3D
 	assert_object(camera_2d).is_not_null()
 	assert_object(camera_3d).is_not_null()
 
@@ -166,7 +166,7 @@ func test_the_gap_scene_camera3d_is_fixed_angle_and_not_current_by_default() -> 
 	var scene: Node2D = packed.instantiate() as Node2D
 	add_child(scene)
 
-	var camera_3d: Camera3D = scene.get_node(NodePath("Camera3D")) as Camera3D
+	var camera_3d: Camera3D = scene.get_node(NodePath("PresentationRoot3D/Camera3D")) as Camera3D
 	# "Fixed-angle, non-rotating" per ADR-0037's Decision — no per-frame
 	# rotation logic exists (this is a plain scene node, not driven by any
 	# script), and Camera2D remains the active view until a later story
@@ -193,7 +193,7 @@ func test_toggling_current_between_camera2d_and_camera3d_does_not_error() -> voi
 	add_child(scene)
 
 	var camera_2d: Camera2D = scene.get_node(NodePath("Camera2D")) as Camera2D
-	var camera_3d: Camera3D = scene.get_node(NodePath("Camera3D")) as Camera3D
+	var camera_3d: Camera3D = scene.get_node(NodePath("PresentationRoot3D/Camera3D")) as Camera3D
 
 	camera_2d.enabled = false
 	camera_3d.current = true
@@ -216,7 +216,7 @@ func test_both_cameras_current_simultaneously_does_not_crash() -> void:
 	add_child(scene)
 
 	var camera_2d: Camera2D = scene.get_node(NodePath("Camera2D")) as Camera2D
-	var camera_3d: Camera3D = scene.get_node(NodePath("Camera3D")) as Camera3D
+	var camera_3d: Camera3D = scene.get_node(NodePath("PresentationRoot3D/Camera3D")) as Camera3D
 
 	camera_2d.enabled = true
 	camera_3d.current = true
@@ -236,7 +236,7 @@ func test_neither_camera_current_does_not_crash() -> void:
 	add_child(scene)
 
 	var camera_2d: Camera2D = scene.get_node(NodePath("Camera2D")) as Camera2D
-	var camera_3d: Camera3D = scene.get_node(NodePath("Camera3D")) as Camera3D
+	var camera_3d: Camera3D = scene.get_node(NodePath("PresentationRoot3D/Camera3D")) as Camera3D
 
 	camera_2d.enabled = false
 	camera_3d.current = false
@@ -256,7 +256,7 @@ func test_mission_scene_has_camera2d_and_camera3d_siblings() -> void:
 	var scene: Node2D = runner.scene() as Node2D
 
 	var camera_2d: Camera2D = scene.get_node(NodePath("GameplayRoot/Camera2D")) as Camera2D
-	var camera_3d: Camera3D = scene.get_node(NodePath("GameplayRoot/Camera3D")) as Camera3D
+	var camera_3d: Camera3D = scene.get_node(NodePath("PresentationRoot3D/Camera3D")) as Camera3D
 	assert_object(camera_2d).is_not_null()
 	assert_object(camera_3d).is_not_null()
 
@@ -265,8 +265,8 @@ func test_mission_scene_has_camera2d_and_camera3d_siblings() -> void:
 	# real gameplay path, not just the secondary/test scene — did not, an
 	# asymmetric coverage gap for AC-3/AC-4. Closing it here: this is also
 	# the regression guard for mission_scene.gd's own copy of the Camera3D
-	# auto-promotion fix (_gameplay_root.get_node("Camera3D").current = false
-	# in _ready()).
+	# auto-promotion fix (_camera_3d.current = false in _ready(), now cached
+	# from $PresentationRoot3D/Camera3D after Epic 16 Story 6's reparent).
 	assert_bool(camera_3d.current).is_false()
 	assert_bool(camera_3d.position != Vector3.ZERO).is_true()
 	assert_bool(camera_3d.rotation_degrees != Vector3.ZERO).is_true()

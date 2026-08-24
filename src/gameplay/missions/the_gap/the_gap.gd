@@ -128,7 +128,7 @@ func _ready() -> void:
 	# frame renders) is what actually keeps Camera2D the active view; the
 	# .tscn's stored false is necessary documentation of intent but not
 	# sufficient on its own.
-	$Camera3D.current = false
+	$PresentationRoot3D/Camera3D.current = false
 	_monsters_container = Node2D.new()
 	_monsters_container.name = "MonstersContainer"
 	add_child(_monsters_container)
