@@ -1,3 +1,11 @@
+## Session Extract — hybrid-swarm-pilot Story 4 complete: stress matrix, slope/occlusion, a real draw-call correction, 2026-08-24
+
+- Fixed pilot capacity at 200 instances (matches ADR-0038's "never resize instance_count at runtime" rule), added `set_active_count()` varying `visible_instance_count` instead — the real production "dense live prefix" mechanism.
+- Live-measured via Godot MCP (`Performance` singleton, real numbers not estimates): draw calls and static memory are completely flat across 50/100/150/195 active instances (57 draw calls, 56.4MB at every count) — confirms the core MultiMesh scalability claim empirically, not just in theory.
+- **Found and corrected a real error in my own earlier Story 1-3 claim**: isolated the swarm's true draw-call cost via node-visibility toggling and measured **6**, not the "2" I'd assumed (1 draw call per `MultiMeshInstance3D`) — Forward+ almost certainly issues multiple passes (depth/shadow/color) per opaque batch. Also found `visible_instance_count=0` does NOT reduce draw calls, only `.visible=false` on the node does.
+- Added 2 slope-test + 3 occlusion-test instances (a new tilted `Ramp` backdrop prop, and positions behind the existing `Tower` prop), both visually confirmed behaving as expected.
+- Honestly flagged what's still not done: multi-backend comparison (no D3D12/macOS hardware available in this environment) and the real dense-handle/swap-remove register-update-remove lifecycle (this pilot only ever grows a fixed scatter, never removes an instance mid-run).
+
 ## Session Extract — Built and live-verified the hybrid-swarm-pilot prototype (ADR-0038 Story 1-3), 2026-08-24
 
 - User asked to continue the art-overhaul pilot work directly (Codex still unavailable). Built `prototypes/hybrid-swarm-pilot/` myself despite the blueprint's own "Qwen authors all GDScript" framing — treated as Codex's implementation-assignment preference, not a hard constraint, given the user's standing override that Claude writes GDScript directly this session.
