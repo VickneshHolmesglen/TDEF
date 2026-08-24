@@ -3414,3 +3414,11 @@ Spawned `engine-programmer`, which proposed a clean 2-line guard (`if payload.ki
 - Regression check: 39/39 visual_presentation, 70/70 tower, mission-scene integration all clean
 - EPIC 15 (3D Visual Presentation Layer, Phase 1) IS NOW FULLY COMPLETE: all 6 stories Complete, 63 new tests passing, zero regression across 314 pre-existing tests re-run this epic. EPIC.md's Definition of Done updated with full verified-vs-deferred breakdown. Two other tech debt items also surfaced this epic: TD-visualpres-001 (the_gap.tscn missing BreachFlashOverlay nodes) and a permanent engine-knowledge finding (# comments unsafe inside .tscn node blocks, now in docs/engine-reference/godot/VERSION.md).
 - Next recommended: none planned — Phase 1 of the user's 2D->3D pivot roadmap is done. Phases 2-6 remain future, unscoped work per the user's own "eventually" framing. Recommend a live Godot MCP session actually rendering all 5 companion types together before starting further phases.
+
+## Session Extract — D3D12/Vulkan backend comparison 2026-08-24
+- Verdict: COMPLETE
+- Used the `[rendering] rendering_device/driver.windows="d3d12"` project setting (temporary, reverted after) instead of the unreachable `attach_project` CLI-flag path, so `run_project` (the proven MCP tool) could drive it directly.
+- Result: no shader compile errors under D3D12, screenshot matches Vulkan baseline, draw calls flat at 57 across 50/100/150/195 active instances on both backends, node-visibility isolation delta is 6 on both backends.
+- Closes the D3D12/Vulkan half of ADR-0038's Validation Criteria item 10 (backend evidence). macOS still open (no hardware).
+- New gotcha: attach_project bridge injection is unreliable against a manually-launched Godot process (3 ordering attempts all failed) — use the [rendering] project-setting + run_project route instead for future backend pilots.
+- Next recommended: none required immediately — the pilot's remaining gap is macOS hardware, genuinely out of reach. ADR-0038 status change (Proposed->Accepted) not yet actioned, would need explicit user/Codex sign-off first.

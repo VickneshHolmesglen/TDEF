@@ -4,7 +4,7 @@
 <!-- Question: See §Core Questions below -->
 <!-- Date: 2026-08-24 -->
 
-**Status**: Story 1-4 core complete (multi-backend comparison and the real dense-handle lifecycle remain — see Findings)
+**Status**: Story 1-4 core complete, dense-handle lifecycle verified, D3D12/Vulkan comparison complete on this machine (macOS remains out of reach — no hardware — see Findings)
 **Risk**: HIGH — gates ADR-0038's move from Proposed to Accepted, and gates all mass creature-art production for the art overhaul.
 **Engine**: Godot 4.6.2 / GDScript
 **Timebox**: 2 sessions (Story 1 scaffold + Story 2 batch core + Story 3 shaders, then Story 4 stress matrix + slope/occlusion cases)
@@ -118,4 +118,54 @@ Implements and live-tests ADR-0038/the blueprint's actual "Dense batch algorithm
 
 **Not tested here**: performance of the register/update/remove path at the 100+ scale Story 4 already stress-tested for static rendering (this lifecycle test uses a small capacity-10 batch specifically to keep the test cases easy to reason about and verify by hand) — a future pass could combine both (dynamic churn at 100+ concurrent live entities) for a fuller picture, not attempted this session.
 
-**Not attempted this pass (explicitly out of scope, see README's own Scope section):** multi-backend comparison (this machine only has one target: Vulkan Forward+ on Windows/AMD — no D3D12 or macOS hardware available to this session, flagged honestly rather than guessed at), the real dense-handle/swap-remove register-update-remove lifecycle (`BatchKey`/`PresentationHandle` from ADR-0038 — this pilot only ever grows a fixed scatter, never removes/swaps an instance mid-run), boss/elite `Sprite3D` exceptional path, real creature art. `process_time_ms` hovered ~17.1-17.5ms across all runs in this headless/background MCP session — close to the 16.67ms/frame budget, but this number reflects the whole background-mode Godot process (MCP bridge polling included), not an isolated measurement of just this scene's cost, so it is reported here for completeness, not cited as a real production frame-budget data point.
+**Not attempted this pass (explicitly out of scope, see README's own Scope section):** macOS backend comparison — still genuinely out of reach, no macOS hardware available to this session. Boss/elite `Sprite3D` exceptional path, real creature art. `process_time_ms` hovered ~17.1-17.5ms across all runs in this headless/background MCP session — close to the 16.67ms/frame budget, but this number reflects the whole background-mode Godot process (MCP bridge polling included), not an isolated measurement of just this scene's cost, so it is reported here for completeness, not cited as a real production frame-budget data point.
+
+### D3D12 vs Vulkan comparison — DONE 2026-08-24
+
+Godot exposes the render driver via `rendering/rendering_device/driver.windows` in
+`project.godot` (in addition to the `--rendering-driver` CLI flag `run_project`
+doesn't expose) — this made it possible to reuse the exact same `run_project`
+MCP path proven for every other measurement in this pilot, instead of fighting
+`attach_project`'s bridge-injection race against a manually-launched process
+(tried first; documented as a real gotcha below).
+
+**Method**: temporarily set `[rendering] rendering_device/driver.windows="d3d12"`
+in `project.godot`, ran the pilot scene via `run_project` (background mode),
+pulled the same `get_perf_snapshot()` stress-matrix data (50/100/150/195 active
+instances) and the same node-visibility draw-call isolation used in Story 4,
+took a screenshot, checked `get_debug_output` for shader errors, then reverted
+the project setting (git diff on `project.godot` confirms clean revert).
+
+**Result — D3D12 (`D3D12 12_0 - Forward+`, AMD Radeon RX 6800 XT)**:
+- No shader compile errors in `get_debug_output` — `creature_swarm_body.gdshader`'s
+  `INSTANCE_CUSTOM`-via-varying pattern and `ALPHA_SCISSOR_THRESHOLD` fragment
+  assignment both compile and render correctly under D3D12's HLSL
+  cross-compilation path, not just Vulkan's SPIR-V path.
+- Screenshot visually matches the Vulkan baseline: atlas-frame color quadrants,
+  billboards facing camera, shadow blobs underneath, no artifacts.
+- Draw calls flat at **57** across 50/100/150/195 active instances — identical
+  to the Vulkan Story 4 number, confirming the `MultiMesh` scalability claim
+  holds cross-backend, not just on one API.
+- Node-visibility draw-call isolation: 57 → 51 when both `MultiMeshInstance3D`
+  nodes are hidden, a delta of **6** — the exact same number found on Vulkan
+  in Story 4's correction. Same real cost, same backend-independent result.
+- `static_memory_mb` ~57.2MB (Vulkan baseline was 56.4MB) — close enough to be
+  noise from the differing project-setting state at measurement time, not a
+  meaningful backend difference.
+
+**Conclusion**: the pilot's shaders, `MultiMesh` batching, and draw-call profile
+are confirmed backend-independent between D3D12 and Vulkan on this machine.
+Closes the D3D12/Vulkan half of ADR-0038's Validation Criteria item 10
+("Backend evidence exists for D3D12, Vulkan, and macOS"). macOS remains open —
+no hardware available to this session.
+
+**New gotcha found**: `attach_project` (used to drive a manually-`--rendering-driver`-launched
+Godot process) is fragile in practice — its bridge injection writes `mcp_bridge.gd`
+and an `McpBridge` autoload entry into `project.godot`, but a manually-launched
+process only reads autoloads once at its own startup. Getting the inject-then-launch
+ordering right proved unreliable across three attempts (sequential launch-then-attach,
+parallel launch+attach, attach-alone-then-launch all failed to connect — the process
+ran fine but the bridge never became reachable). The `[rendering]` project-setting
+route bypasses this entirely by staying on the proven `run_project` path, and is the
+recommended approach for any future backend-specific pilot work in this project
+rather than fighting `attach_project` again.
