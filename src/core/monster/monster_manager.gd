@@ -168,7 +168,7 @@ func _physics_process(delta: float) -> void:
 	_pass1b_status_effects(delta)
 	_pass2_boss_logic(delta)
 	_pass3_movement(delta)
-	_pass3c_visual_sync()
+	_pass3c_visual_sync(delta)
 	_pass4_death_and_absorbed_flush()
 
 # ---------------------------------------------------------------------------
@@ -196,6 +196,20 @@ func _pass1_damage() -> void:
 		# closest existing call site to "a monster just took a hit."
 		if entity.monster_instance != null:
 			entity.monster_instance.play_hit_flash()
+		# ADR-0038, Epic 16 Story 8: swarm-registered entities ALSO get a
+		# manager-owned decay timer feeding the swarm's own hit_flash
+		# channel (INSTANCE_CUSTOM.y), decremented in _pass3c_visual_sync().
+		# Deliberately NOT unified with play_hit_flash()'s Tween above —
+		# the 2D sprite (still the actually-visible presentation today,
+		# Camera2D remains current per Epic 15's "no premature cutover"
+		# convention) and the swarm's 3D billboard (currently invisible,
+		# Camera3D not current) are two different rendered elements, not
+		# one duplicated flash on the same pixel; unifying them is a
+		# judgment call for whenever a future story cuts the camera over,
+		# not this one. See MonsterEntity.hit_flash_remaining_seconds's own
+		# doc comment.
+		if entity.swarm_handle != null:
+			entity.hit_flash_remaining_seconds = MonsterInstance.HIT_FLASH_DURATION
 		if entity.current_hp <= 0.0:
 			entity.current_hp = 0.0
 			entity.lifecycle_state = MonsterEntity.State.DEAD
@@ -429,6 +443,8 @@ func _advance_entity(entity: MonsterEntity, delta: float) -> void:
 	while budget > 0.0 and entity.path_step_index < entity.current_path.size():
 		var target_world: Vector2 = _grid.cell_to_world(entity.current_path[entity.path_step_index])
 		var dist: float = entity.global_position.distance_to(target_world)
+		if dist > 0.0:
+			entity.facing_left = entity.global_position.direction_to(target_world).x < 0.0
 		if dist <= PATH_ARRIVAL_THRESHOLD or budget >= dist:
 			# Arrived at this step
 			entity.global_position = target_world
@@ -500,14 +516,31 @@ func _advance_entity(entity: MonsterEntity, delta: float) -> void:
 ## entity per frame (a small RefCounted, not a heap array) — map_to_3d()
 ## itself returns a value-type Vector3, and this loop reuses the existing
 ## active_monsters array (no new Array allocated).
-func _pass3c_visual_sync() -> void:
+##
+## ADR-0038, Epic 16 Story 8: swarm entities' hit_flash/status_mask/
+## facing_variant channels are now real, not hardcoded 0.0 (Story 7's
+## placeholder). hit_flash decays here (the manager-owned timer
+## _pass1_damage() sets on hit — see MonsterEntity.hit_flash_remaining_
+## seconds's own doc comment for why this is deliberately separate from
+## monster_instance's own Tween). status_mask bit 0 is set whenever the
+## entity has any active DoT or slow effect — a single "has a status"
+## signal, matching the pilot's own documented placeholder bit allocation
+## (ADR-0038: "full bit allocation is a later, versioned decision").
+## facing_variant reads MonsterEntity.facing_left, updated by
+## _advance_entity() during movement. atlas_frame stays 0.0 — real
+## animation frame-cycling is not covered by any of this epic's 10 stories
+## yet, a genuine gap flagged in this story's own Out of Scope section.
+func _pass3c_visual_sync(delta: float) -> void:
 	for entity: MonsterEntity in active_monsters:
 		if entity.swarm_handle != null:
+			entity.hit_flash_remaining_seconds = maxf(0.0, entity.hit_flash_remaining_seconds - delta)
 			if _swarm_renderer != null:
+				var flash: float = entity.hit_flash_remaining_seconds / MonsterInstance.HIT_FLASH_DURATION
+				var has_status: bool = not entity.active_status_effects.is_empty() or not entity.active_slow_effects.is_empty()
 				var snapshot := MonsterPresentationSnapshot.new(
 						entity.entity_id, entity.resource.monster_id,
 						Transform3D(Basis(), VisualMath.map_to_3d(entity.global_position, MonsterInstance.MONSTER_LAYER_HEIGHT)),
-						0.0, 0.0, 0.0, 0.0)
+						0.0, flash, 1.0 if has_status else 0.0, 1.0 if entity.facing_left else 0.0)
 				_swarm_renderer.update_creature(entity.swarm_handle, snapshot)
 			continue
 		if entity.monster_instance == null:

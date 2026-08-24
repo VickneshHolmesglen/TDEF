@@ -66,6 +66,27 @@ var monster_instance: MonsterInstance = null
 ## separate clear step needed, matching monster_instance's own lifecycle).
 var swarm_handle: MonsterPresentationHandle = null
 
+## ADR-0038, Epic 16 Story 8: seconds remaining in this entity's swarm
+## hit-flash decay, counting down from MonsterInstance.HIT_FLASH_DURATION to
+## 0.0 (manager-owned, per-frame decrement in
+## MonsterManager._pass3c_visual_sync() — never a Tween). Feeds
+## MonsterPresentationSnapshot.hit_flash (INSTANCE_CUSTOM.y) for
+## swarm-registered (STANDARD/ELITE) entities only; BOSS's legacy
+## companion keeps its own independent, unchanged
+## MonsterInstance.play_hit_flash() Tween (see monster_manager.gd's
+## _pass1_damage() doc comment for why these two are deliberately NOT
+## unified in this story).
+var hit_flash_remaining_seconds: float = 0.0
+
+## ADR-0038, Epic 16 Story 8: true when this entity's most recent movement
+## step had a negative X direction. Feeds
+## MonsterPresentationSnapshot.facing_variant (INSTANCE_CUSTOM.w) for
+## swarm-registered entities — updated every frame movement actually occurs
+## in MonsterManager._advance_entity(), read (never written) by
+## _pass3c_visual_sync(). Has no effect on the legacy 2D sprite or 3D
+## companion (neither implements a facing flip).
+var facing_left: bool = false
+
 # ---- BOSS-only runtime fields (safe to leave at defaults for STANDARD/ELITE) ----
 
 ## Frames remaining before next tower scan. Initialized to 0 so BOSS scans on its first frame.
