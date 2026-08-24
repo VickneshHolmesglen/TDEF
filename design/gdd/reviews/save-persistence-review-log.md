@@ -4,6 +4,13 @@
 
 ---
 
+## Review — 2026-08-24 (S8-07, `/design-review --depth lean` re-review) — Verdict: NEEDS REVISION → fixed in-session
+Scope signal: S (documentation-drift correction only, no new design surface)
+Specialists: None (lean mode)
+Blocking items: 1 (fixed in-session) | Recommended: 0
+Summary: The "12 systems" figure asserted throughout the doc (Rule 2, AC-2, AC-10, Overview, Downstream Dependents table) had drifted stale again since the 2026-07-17 pass — Crafting (restore_order 25, added 2026-07-18), Building Upgrade (33, added 2026-08-11), and Tower Assembly (36, added 2026-08-11) had all been added to Formula 4's restore_order table on their own dates but never propagated to the Downstream Dependents table or any of the count assertions. Confirmed all three are real, shipped registrants (grepped `GSavePersistence.register()` call sites) before fixing, not assumed. Also found 3 real, shipped interface surfaces never documented anywhere in this GDD: `get_save_key()` (called internally by `register()`), `unregister()` (needed by scene-instanced dependents like Tower Assembly), and late-registration's immediate individual-restore behavior (`if _has_loaded_data: _restore_one(...)`). Fixed same-session: count corrected 12→15 everywhere, 3 missing rows added to the Downstream Dependents table, Rule 2/Rule 3 extended with the 3 previously-undocumented interface surfaces. No blockers beyond the drift itself — OQ-1 (serialization format ADR) remains the sole real gate before implementation, unchanged from prior passes.
+Prior verdict resolved: Partially — the 2026-07-17 pass's own fixes held with zero regression; this pass found a *new* instance of the same class of drift (count/table falling out of sync with Formula 4), not a recurrence of the same specific issue.
+
 ## Cross-Doc Correction — 2026-07-15 — DEFEAT-Save Ordering + DEFEAT-Transition Model Conflict
 `/review-all-gdds` (2026-07-15) flagged two blocking issues, both fixed same-day.
 
