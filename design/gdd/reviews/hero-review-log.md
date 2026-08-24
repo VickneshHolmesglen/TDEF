@@ -2,6 +2,15 @@
 
 ---
 
+## Review — 2026-08-24 (S8-07, `/design-review --depth lean` re-review) — Verdict: NEEDS REVISION → fixed in-session
+Scope signal: S (documentation-drift correction only)
+Specialists: None (lean mode)
+Blocking items: 4 (fixed in-session) | Recommended: 0
+Summary: 4 of 9 Open Questions (items 3, 4, 6, 7) had all genuinely been resolved by later-authored GDDs (`hero-skill-build.md`, `tower-mastery.md`) or shipped code (`hero_class_unlocked` is catalogued in `event-bus.md`), but none were ever marked resolved in this document. Verified each against the actual resolving source before fixing, not assumed: item 3 (Ultimate lookup table) against `hero-skill-build.md`'s independently-re-derived 19-Ultimate-ID math; items 6/7 (Grid proximity radius, separate accumulators) against `tower-mastery.md`'s own explicit "CLOSES hero.md OQ6/OQ7" citations; item 4 (EventBus catalogue) against the real `event_bus.gd` signal — found the event IS catalogued now, but with a stale signature mismatch (`event-bus.md` still lists `class_id: String`, shipped code carries `archetype: StringName, is_deep: bool`) — flagged for `event-bus.md`'s own future pass, not fixed here. Items 1 (class catalogue) and 2 (base stats TBD) remain genuinely open; item 9 (Tower Affinity/T1-spam tension) remains the user's own confirmed deferred-to-playtest-data decision from 2026-07-15, untouched.
+Prior verdict resolved: N/A — no items from a prior verdict were being re-checked; this pass found new staleness in items that were never previously reviewed as blockers.
+
+---
+
 ## Cross-Doc Correction — 2026-07-15 (same day, second pass) — Stale ACs/Tuning Knobs + New OQ-9
 `/review-all-gdds` re-run found the earlier same-day Formula 4/5/6 fixes (below) hadn't propagated to their own document's ACs and Tuning Knobs table. **AC-06 still used the exact pre-fix lifesteal basis** (`hp_recovered = min(270 × 0.20, 50) = 50`, using raw damage as the basis) that Formula 6's own revision note explicitly called out as the bug being fixed — the old AC's numbers coincidentally landed at the overheal clamp ceiling, which is likely why this had never been caught in review: the wrong formula produced a number that happened to look plausible. Fixed with a worked overkill example matching Formula 6's corrected basis. **Tuning Knobs table still said `effective_lifesteal`** instead of the renamed `hero_lifesteal_fraction`/`hero_lifesteal_cap` — fixed. **AC-05 was missing the `max(1, floor(...))` guard** added to Formula 5 — fixed (no change to the AC's numeric result, since the guard doesn't bind at the tested values).
 
