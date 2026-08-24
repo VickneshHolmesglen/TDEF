@@ -2,6 +2,15 @@
 
 ---
 
+## Review — 2026-08-24 (S8-07, `/design-review --depth lean` re-review) — Verdict: NEEDS REVISION → fixed in-session
+Scope signal: S (documentation-drift correction only)
+Specialists: None (lean mode)
+Blocking items: 2 (fixed in-session) | Recommended: 0
+Summary: Given this is the most heavily-revised GDD in the project (24 revisions), the review focused on the Open Questions table rather than a full line-by-line re-derivation. Found 2 stale entries: OQ-3 (whether `tower_attacked` needs a `power_component_id` field) was answered differently than proposed — verified against `damage-status.md`'s own Interactions table/Formula D5 that `effect_type`/`effect_value`/`effect_duration` are forwarded directly on the payload instead, no registry lookup ever needed. OQ-5 (Resource Economy resource type — is it "build points" or something else) was resolved back on 2026-07-14 (`resource-economy.md` defines the resource as **gold**), but this GDD's own body text was never updated to match — found and fixed 8 remaining "build point(s)" references across Rules, Formulas, UI Requirements, and Acceptance Criteria (all safe, unambiguous terminology swaps, verified by reading each instance in context before replacing). OQ-4/OQ-6/OQ-7 checked and confirmed genuinely still open (content-catalogue completeness, 2×2-footprint tower usage — none of the 12 shipped blueprints use one — and level-design confirmation, none of which are factual-staleness questions this pass could resolve unilaterally).
+Prior verdict resolved: N/A — no items from Revision 23's own fixes were found to have regressed; this pass found new staleness in OQ rows that were never previously reviewed as blockers.
+
+---
+
 ## Revision — 2026-07-15 (Revision 20→21) — Design-Theory Reconciliation Notes
 User asked to work through the remaining T4/T1-T2 pillar-tension warnings from the game-design-holism pass in `gdd-cross-review-2026-07-15c.md`. Both resolved via documentation-only reconciliation, not mechanical redesign:
 
