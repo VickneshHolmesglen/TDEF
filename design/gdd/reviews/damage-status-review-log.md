@@ -1,5 +1,14 @@
 # Review Log: Damage & Status System
 
+## Review — 2026-08-24 (S8-07, `/design-review --depth lean` re-review) — Verdict: NEEDS REVISION → fixed in-session
+Scope signal: S (documentation-drift correction only)
+Specialists: None (lean mode)
+Blocking items: 1 (fixed in-session) | Recommended: 0
+Summary: Found a real internal self-contradiction rather than a cross-doc drift this time — the "Systems this GDD depends on" table's EventBus/Hero/Monster rows all still said "Follow-up required" for 3 specific items, while the Bidirectionality notes section directly below (same document) had already confirmed all 3 RESOLVED on 2026-07-15, each verified against its real target GDD at the time. The upstream table rows were simply never updated to match once the Bidirectionality section closed them out. Fixed all 3, cross-referencing the Bidirectionality section rather than re-verifying independently (already verified once in this same document, re-verification would be redundant). All 4 Open Questions independently re-checked and confirmed still accurately marked Resolved — no drift found there. This is the cleanest of the 4 GDDs reviewed this pass (S8-07) — one internal-consistency nit, nothing cross-doc.
+Prior verdict resolved: N/A — this specific contradiction was never previously flagged as a blocker.
+
+---
+
 ## Cross-Doc Correction — 2026-07-15 (same day, second pass) — Leftover `is_siege` References + Lifesteal-on-Kill Structural Bug
 `/review-all-gdds` re-run found 2 issues the same-day earlier pass (below) missed.
 
