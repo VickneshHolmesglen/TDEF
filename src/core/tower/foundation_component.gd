@@ -26,6 +26,13 @@ extends Resource
 @export var tier_boss_dps_multiplier: float = 1.0    # {1.0, 2.0} — T1-T3=1.0, T4=2.0
 @export var footprint: Vector2i = Vector2i(1, 1)     # (1,1) or (2,2)
 @export var pre_placement_perk: String = ""          # any perk id, or ""
+## Perk magnitude (tower.md Rule 12a). Ignored when pre_placement_perk == "".
+## Per-type valid range: DAMAGE_BOOST/SPEED_BOOST [0.05, 0.25]; RANGE_BOOST
+## [0.0625, 0.25]; AURA_EXTEND [0.10, 0.25] -- the two non-0.05 floors exist
+## to guarantee at least 1 cell of benefit (round(perk_power * 8)/round(perk_power
+## * 6) would otherwise silently yield 0 cells below that floor -- a "dead
+## zone" this range exists to eliminate, not an arbitrary number).
+@export var perk_power: float = 0.0
 @export var archetype_cost_factor: float = 1.0       # [0.5, 2.0]
 ## Tower Stats System Phase 1 (player-requested 2026-08-16): StringName tag
 ## (matching MonsterResource.archetype_tag, e.g. &"armored") -> float damage
@@ -77,6 +84,15 @@ func validate() -> bool:
 	if archetype_cost_factor < 0.5 or archetype_cost_factor > 2.0:
 		push_error("[FoundationComponent] archetype_cost_factor %.2f outside [0.5, 2.0]" % archetype_cost_factor)
 		valid = false
+	if pre_placement_perk != "":
+		var floor_value: float = 0.05
+		if pre_placement_perk == "RANGE_BOOST":
+			floor_value = 0.0625
+		elif pre_placement_perk == "AURA_EXTEND":
+			floor_value = 0.10
+		if perk_power < floor_value or perk_power > 0.25:
+			push_error("[FoundationComponent] perk_power %.4f outside [%.4f, 0.25] for pre_placement_perk '%s'" % [perk_power, floor_value, pre_placement_perk])
+			valid = false
 	for tag: Variant in bonus_damage_vs_tags:
 		var multiplier: float = bonus_damage_vs_tags[tag] as float
 		if multiplier <= 0.0:

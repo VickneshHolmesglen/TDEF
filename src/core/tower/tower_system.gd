@@ -213,8 +213,44 @@ func place_tower(blueprint_id: StringName, top_left: Vector2i) -> bool:
 	# visibly wrong behavior yet -- it would have the moment content authors
 	# added a real perk.
 	if placed_in_scout and state.foundation.pre_placement_perk != "":
+		_apply_pre_placement_perk(state)
 		GEventBus.pre_placement_perk_activated.emit(tower_id, state.foundation.pre_placement_perk)
 	return true
+
+
+## TD-tower-004 fix — tower.md Rule 12/12a: applies the Foundation's
+## pre_placement_perk to this tower's own already-duplicated (ADR-0008
+## isolated, mission-instance-only) component copies, exactly once, at the
+## moment of Scout-Phase placement. Mutating state.weapon/state.focus
+## directly (rather than a separate multiplier field, unlike TD-tower-008's
+## decaying aura buff) matches the GDD's own framing: "The perk enters an
+## active/buffed state at placement and remains active for the tower's
+## lifetime on that mission" -- a permanent, one-time, non-decaying change,
+## so there's nothing to track or decay, only to apply once and forget.
+## Silently no-ops if the tower's archetype isn't in the perk's
+## archetype_restrictions -- a content-authoring contract, not a runtime
+## error path (equip-time cross-component validation for SPEED_BOOST/
+## AURA_EXTEND's "wasted benefit" warnings is intentionally NOT implemented
+## here -- it needs Tower Assembly's cross-component view, not TowerSystem's
+## single-instance one; flagged as still-open in TD-tower-004's own entry).
+func _apply_pre_placement_perk(state: TowerMissionState) -> void:
+	var registry: TowerPerkRegistry = GGameDataRegistry.get_perk_registry()
+	if registry == null or not registry.entries.has(state.foundation.pre_placement_perk):
+		return
+	var entry: Dictionary = registry.entries[state.foundation.pre_placement_perk] as Dictionary
+	var restrictions: Array = entry.get("archetype_restrictions", []) as Array
+	if not restrictions.has(state.foundation.archetype.capitalize()):
+		return
+	var power: float = state.foundation.perk_power
+	match state.foundation.pre_placement_perk:
+		"DAMAGE_BOOST":
+			state.weapon.weapon_damage *= (1.0 + power)
+		"SPEED_BOOST":
+			state.weapon.attack_speed = minf(4.0, state.weapon.attack_speed * (1.0 + power))
+		"RANGE_BOOST":
+			state.focus.attack_range_cells = mini(8, state.focus.attack_range_cells + roundi(power * 8.0))
+		"AURA_EXTEND":
+			state.weapon.aura_radius_cells = mini(6, state.weapon.aura_radius_cells + roundi(power * 6.0))
 
 
 ## Returns a preview result for hover display.

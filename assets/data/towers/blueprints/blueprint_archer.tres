@@ -17,7 +17,8 @@ tier_dps_multiplier = 1.0
 tier_cost_factor = 1.0
 tier_boss_dps_multiplier = 1.0
 footprint = Vector2i(1, 1)
-pre_placement_perk = ""
+pre_placement_perk = "RANGE_BOOST"
+perk_power = 0.125
 archetype_cost_factor = 1.0
 damaged = false
 

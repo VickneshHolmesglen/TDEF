@@ -2178,7 +2178,7 @@ Add an objective/description `Label` to `mission_select_screen.gd` (or wherever 
 
 ---
 
-## TD-tower-004 — Pre-Placement Perk mechanism has no gameplay effect, only an event/audio cue
+## TD-tower-004 — Pre-Placement Perk mechanism has no gameplay effect, only an event/audio cue (fixed)
 
 **Logged**: 2026-08-07
 **Story**: Found during a continued orphaned-content-data audit (same family as `TD-tower-003`/`TD-craft-002`/`TD-mission-001`) — this time `GameDataRegistry.get_perk_registry()`.
@@ -2194,7 +2194,8 @@ Add an objective/description `Label` to `mission_select_screen.gd` (or wherever 
 Wire `foundation_component.gd`'s `pre_placement_perk` field through to a real effect application at the moment `pre_placement_perk_activated` fires — read the perk_id, look it up via `GameDataRegistry.get_perk_registry()`, and apply its described stat modification to the placed tower (respecting `archetype_restrictions`). Then author real `pre_placement_perk` values onto at least one blueprint per eligible archetype so the mechanism has something to exercise. A design/implementation decision (what "perk_power" values are, where the stat mutation lives), not a pure content-authoring fix — logged here rather than actioned immediately, matching this family's own disposition.
 
 ### Resolution
-- [ ] Not yet started.
+- [x] Fixed 2026-08-24. Added `perk_power: float` to `FoundationComponent` (tower.md's own per-type range table: DAMAGE_BOOST/SPEED_BOOST [0.05,0.25], RANGE_BOOST [0.0625,0.25], AURA_EXTEND [0.10,0.25]), enforced at load time in `validate()`. Added `TowerSystem._apply_pre_placement_perk(state)`, called once at Scout-Phase placement right before `pre_placement_perk_activated` fires — mutates the tower's own already-`duplicate_deep()`'d component copies directly (matching ADR-0008 isolation, same pattern as `damaged`), checking `archetype_restrictions` (case-normalized via `.capitalize()` against the registry's capitalized archetype strings) before applying: `DAMAGE_BOOST` → `weapon_damage *= (1.0+power)`, `SPEED_BOOST` → `attack_speed = min(4.0, attack_speed*(1.0+power))`, `RANGE_BOOST` → `attack_range_cells = min(8, attack_range_cells + round(power*8))`, `AURA_EXTEND` → `aura_radius_cells = min(6, aura_radius_cells + round(power*6))`. Authored real, non-wasteful `pre_placement_perk`/`perk_power` values onto one blueprint per eligible archetype: Archer (Physical, `RANGE_BOOST` 0.125), Longshot Sniper (Ranged, `DAMAGE_BOOST` 0.20), Storm Turret (Elemental, `SPEED_BOOST` 0.15), Barrier Ward (Support, `AURA_EXTEND` 0.15) — checked each against its own clamp ceiling by hand to confirm no wasted benefit.
+- [ ] **Not implemented, still genuinely open**: the equip-time cross-component "wasted benefit" WARNING validation tower.md describes for `SPEED_BOOST`/`AURA_EXTEND`/`RANGE_BOOST` (fires when a Foundation's perk is paired with a Weapon/Focus whose stat would exceed the cap) — this needs Tower Assembly's cross-component view at equip time, not `FoundationComponent.validate()`'s single-resource view or `TowerSystem`'s single-instance view, and is a separate deliverable. Not re-verified via the test suite this session, per the standing "no unrequested testing" instruction.
 
 
 ## TD-visualpres-001 — the_gap.tscn missing BreachFlashOverlay nodes mission_hud.gd unconditionally expects (fixed)

@@ -1,3 +1,10 @@
+## Session Extract — Fixed TD-tower-004: Pre-Placement Perk mechanism now has a real gameplay effect, 2026-08-24
+
+- `FoundationComponent` gained `perk_power: float`, load-time-validated against tower.md's exact per-type range table (DAMAGE_BOOST/SPEED_BOOST [0.05,0.25], RANGE_BOOST [0.0625,0.25], AURA_EXTEND [0.10,0.25] — the two non-0.05 floors exist specifically to prevent a `round()`-to-zero dead zone).
+- `TowerSystem._apply_pre_placement_perk()` applies the real stat mutation once, at Scout-Phase placement, directly on the tower's own isolated `duplicate_deep()`'d components (same pattern as the `damaged` flag) — previously the mechanism only fired an event/audio cue with zero mechanical effect.
+- Authored real perk values onto one blueprint per eligible archetype (previously all 12 blueprints had `pre_placement_perk=""`): Archer (RANGE_BOOST), Longshot Sniper (DAMAGE_BOOST), Storm Turret (SPEED_BOOST), Barrier Ward (AURA_EXTEND) — each hand-checked against its own clamp ceiling to confirm no wasted benefit.
+- Left genuinely open: the equip-time cross-component "wasted benefit" warning tower.md separately describes needs Tower Assembly's cross-component view, not this fix's scope — flagged, not silently dropped.
+
 ## Session Extract — Tech debt register cleanup + TD-visualpres-001 fixed, 2026-08-24
 
 - With Codex down and general development resumed, swept the tech debt register's still-open items for staleness before picking new work. Found 2 stale entries from 2026-08-07, both resolved by much later work but never marked: `TD-tower-003` (claimed no Tower Placement UI existed — closed, `planning_cluster.gd` Zone E has fully built this since, all 12 towers reachable) and the old `TD-craft-002` (claimed no Crafting UI existed — closed, `InventoryScreen` grew a full Crafting panel directly per the 2026-08-21 "Forge→Crafting relocation" pass). The old `TD-craft-002` also collided with an unrelated same-ID entry from this session (`recipe_tier4_component` tech-gate fix) — renumbered the stale one to `TD-craft-000` to resolve the collision rather than leaving two different bugs sharing one ID.
