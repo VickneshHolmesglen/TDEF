@@ -140,10 +140,12 @@ func can_purchase(upgrade_id: StringName) -> bool:
 ## must pass, or the action is rejected in full — zero ledger mutation, zero
 ## gold-debit emission, zero structure_upgraded emission.
 ##
-## Material CONSUMPTION is deliberately NOT performed here — mirrors
-## DefenseBuilding.resolve_tech_unlock()'s own identical, already-documented
-## deferral (TD-defbuild-002) rather than inventing a Building-Upgrade-local
-## resolution to a project-wide open question. Gold IS debited (the existing
+## Material CONSUMPTION now runs too (TD-defbuild-002, fully resolved
+## 2026-08-25): a loop over material_cost calling Inventory.consume_by_rarity()
+## per entry, mirroring DefenseBuilding.resolve_tech_unlock()'s identical fix
+## and Crafting's own _consume_recipe_inputs() — the same established
+## project-wide pattern for "spend a rarity-keyed cost," not a
+## Building-Upgrade-local invention. Gold IS also debited (the existing
 ## self-debit convention every gold-spending system in this project uses).
 ##
 ## Guarded by `_action_resolving` (mirrors DefenseBuilding's shared-flag
@@ -166,6 +168,8 @@ func resolve_upgrade(upgrade_id: StringName) -> bool:
 		_action_resolving = false
 		return false
 	GEventBus.resources_changed.emit(-upgrade.gold_cost, &"structure_upgrade")
+	for rarity: StringName in upgrade.material_cost:
+		GInventory.consume_by_rarity(String(rarity), upgrade.material_cost[rarity])
 	_purchased_ledger[upgrade_id] = true
 	_purchasable_state[upgrade_id] = false  ## keeps the edge-detection cursor in sync; can_purchase() now always false (PURCHASED)
 	GEventBus.structure_upgraded.emit(String(upgrade.target_structure_id), String(upgrade_id))

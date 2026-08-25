@@ -6,9 +6,10 @@
 ##
 ## Exercises the real, authored res://assets/data/defense_building/ content
 ## via the GGameDataRegistry Autoload, same rationale as every other
-## defense_building test. TD-defbuild-002 RESOLVED (Sprint 6, S6-06b): real
-## material_costs are rarity-keyed, checked via
-## Inventory.has_items_by_rarity() — see currency_dual_gate_test.gd's class
+## defense_building test. TD-defbuild-002 FULLY RESOLVED (vocabulary: Sprint
+## 6 S6-06b; consumption: 2026-08-25): real material_costs are rarity-keyed,
+## checked via Inventory.has_items_by_rarity() and now genuinely spent via
+## consume_by_rarity() on success — see currency_dual_gate_test.gd's class
 ## doc comment for the full explanation, including why
 ## _make_rarity_definition() must return a genuinely REGISTERED item_id
 ## (has_items_by_rarity() resolves rarity via

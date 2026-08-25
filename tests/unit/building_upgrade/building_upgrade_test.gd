@@ -194,6 +194,21 @@ func test_resolve_upgrade_is_permanent_and_rejects_a_second_purchase() -> void:
 	assert_bool(_building_upgrade.resolve_upgrade(UPGRADE_ID)).is_false()  # already purchased
 
 
+## TD-defbuild-002 (fully resolved 2026-08-25): unlike requirements (Rule 5,
+## never consumed — see the test above), material_cost IS actually spent on
+## a successful resolve.
+func test_resolve_upgrade_consumes_the_real_material_cost() -> void:
+	_build_watchtower()
+	_satisfy_building_requirement()
+	_satisfy_creature_requirement()
+	_seed_material_cost()  # exactly 12 Common, the real .tres cost
+
+	var resolved: bool = _building_upgrade.resolve_upgrade(UPGRADE_ID)
+
+	assert_bool(resolved).is_true()
+	assert_bool(GInventory.has_items_by_rarity({&"Common": 1})).is_false()  # all 12 consumed, none left
+
+
 # ---------------------------------------------------------------------------
 # SaveRestorer round-trip
 # ---------------------------------------------------------------------------

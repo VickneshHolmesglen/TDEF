@@ -12,13 +12,12 @@ extends Node
 ## resolve_structure_build() — the dual-gate check (eligibility + materials
 ## sufficiency) plus the gold-debit emission only. Story 023 (TR-defbuild-001,
 ## resolution-ordering half) completes both resolve methods with
-## tech_unlocked/sanctuary_structure_built event emission, bringing 5 of
-## ADR-0024 Rule 9's 6 sub-steps to a single synchronous call. Material
-## CONSUMPTION (step d) remains STILL deferred — a genuine, GDD-flagged
-## open design question (material-rarity vs. item_type vocabulary mismatch),
-## not a coding gap either story could resolve unilaterally — see
-## resolve_tech_unlock()'s doc comment for the full rationale; tracked as
-## TD-defbuild-002. Story 024 (TR-defbuild-003) adds the Sanctuary-only
+## tech_unlocked/sanctuary_structure_built event emission, bringing all 6 of
+## ADR-0024 Rule 9's sub-steps to a single synchronous call (TD-defbuild-002,
+## fully resolved 2026-08-25 — material CONSUMPTION, step d, now runs via
+## Inventory.consume_by_rarity(), same pattern as the materials-sufficiency
+## check's has_items_by_rarity() — see resolve_tech_unlock()'s doc comment
+## for the full detail). Story 024 (TR-defbuild-003) adds the Sanctuary-only
 ## phase lock (is_locked(), gating both resolve methods) and full
 ## SaveRestorer persistence at restore_order=21. Story 026 (TR-defbuild-001,
 ## edge-case half) adds the shared `_action_resolving` guard — one flag
@@ -147,18 +146,19 @@ func can_build_structure(structure_id: StringName) -> bool:
 ## Resolves a tech node unlock (Story 022/023, TR-defbuild-001 currency +
 ## resolution-ordering halves; ADR-0024 Rule 9). Dual-gated: both the
 ## prerequisite-chain eligibility (can_unlock_tech(), AC-4/AC-5/AC-6/AC-26)
-## AND materials sufficiency (Inventory.has_items(material_costs), AC-18)
+## AND materials sufficiency (Inventory.has_items_by_rarity(material_costs), AC-18)
 ## must pass, or the action is rejected in full — zero ledger mutation, zero
 ## gold-debit emission, zero tech_unlocked emission; gold alone is never
 ## sufficient on its own (AC-18's literal wording).
 ##
-## Executes 5 of ADR-0024 Rule 9's 6 sub-steps synchronously, in fixed order,
+## Executes all 6 of ADR-0024 Rule 9's sub-steps synchronously, in fixed order,
 ## within this single call (AC-24) — no `await`, no `call_deferred`, so the
 ## caller observes the terminal state immediately upon return (AC-25), not on
 ## a later frame:
 ##   (a) eligibility re-validate (can_unlock_tech())
-##   (b) materials re-validate (Inventory.has_items())
+##   (b) materials re-validate (Inventory.has_items_by_rarity())
 ##   (c) gold debit (resources_changed, Story 022)
+##   (d) material consumption (Inventory.consume_by_rarity() per material_costs entry, TD-defbuild-002)
 ##   (e) ledger write (_tech_ledger[tech_id] = true)
 ##   (f) domain event emission (tech_unlocked, Story 023)
 ##
@@ -169,18 +169,20 @@ func can_build_structure(structure_id: StringName) -> bool:
 ## other gold-spending system in this project already uses, rather than
 ## inventing a Defense-Building-local resolution.
 ##
-## TD-defbuild-002 RESOLVED (Sprint 6, S6-06b): the rarity-keyed check below
-## now uses Inventory.has_items_by_rarity() — a genuine aggregation axis
-## (ItemDefinitionResource.rarity) separate from has_items()'s item_type sum
-## — so this check is real, not merely content-correct-but-unpayable.
-##
-## Step (d), material CONSUMPTION, is STILL deliberately NOT performed —
-## this is a separate, still-open scope decision (whether/how Defense
-## Building should synchronously consume materials on tech-unlock/structure-
-## build, and whether that belongs here or in a dedicated resolution step),
-## not a vocabulary gap — the vocabulary gap the rarity fix above resolves.
-## AC-24's "six sub-steps" wording is therefore satisfied for 5 of 6 steps
-## here; step (d) remains open, same treatment as AC-19's gold-balance gap.
+## TD-defbuild-002 RESOLVED (Sprint 6 S6-06b vocabulary half; 2026-08-25 full
+## resolution): the rarity-keyed check below uses Inventory.has_items_by_rarity()
+## — a genuine aggregation axis (ItemDefinitionResource.rarity) separate from
+## has_items()'s item_type sum. Step (d), material CONSUMPTION, now runs too:
+## a loop over material_costs calling Inventory.consume_by_rarity() per entry,
+## mirroring Crafting's own _consume_recipe_inputs() and Inventory's own
+## attempt_expand_slots() (TD-inv-003) — the same established pattern for
+## "spend a rarity-keyed cost," not a new one invented here. Which specific
+## item_id gets debited when a rarity spans multiple owned materials is
+## consume_by_rarity()'s own already-documented, already-shipped answer
+## ("any N items of this rarity," slot order, deliberately unspecified which
+## specific item_type within that rarity) — not a fresh design question this
+## fix had to resolve. AC-24's "six sub-steps" wording is now satisfied for
+## all 6 steps here.
 ##
 ## Guarded by the shared `_action_resolving` flag (Story 026, AC-37/AC-38):
 ## set immediately before step (a) once the lock/reentrancy checks pass,
@@ -207,6 +209,8 @@ func resolve_tech_unlock(tech_id: StringName) -> bool:
 		_action_resolving = false
 		return false
 	GEventBus.resources_changed.emit(-tech_node.gold_cost, &"tech_unlock")
+	for rarity: StringName in tech_node.material_costs:
+		GInventory.consume_by_rarity(String(rarity), tech_node.material_costs[rarity])
 	_tech_ledger[tech_id] = true
 	GEventBus.tech_unlocked.emit(String(tech_id), tech_node.tech_category)
 	_action_resolving = false
@@ -216,10 +220,11 @@ func resolve_tech_unlock(tech_id: StringName) -> bool:
 ## Resolves a Sanctuary structure build (Story 022/023, TR-defbuild-001
 ## currency + resolution-ordering halves; ADR-0024 Rule 9). Mirrors
 ## resolve_tech_unlock()'s shape exactly — same dual-gate contract, same
-## 5-of-6-steps synchronous execution, same gold-balance-ownership and
-## material-consumption deferrals (see resolve_tech_unlock()'s doc comment
-## for both rationales in full — not re-stated here to avoid drift between
-## two copies of the same reasoning).
+## 6-of-6-steps synchronous execution (TD-defbuild-002, fully resolved
+## 2026-08-25 — material consumption included), same gold-balance-ownership
+## deferral (see resolve_tech_unlock()'s doc comment for that rationale in
+## full — not re-stated here to avoid drift between two copies of the same
+## reasoning).
 ##
 ## Shares the SAME `_action_resolving` flag as resolve_tech_unlock() — not a
 ## separate per-ledger guard (ADR-0024 Decision, Story 026 AC-38) — so a
@@ -247,6 +252,8 @@ func resolve_structure_build(structure_id: StringName) -> bool:
 		_action_resolving = false
 		return false
 	GEventBus.resources_changed.emit(-structure.gold_cost, &"structure_built")
+	for rarity: StringName in structure.material_costs:
+		GInventory.consume_by_rarity(String(rarity), structure.material_costs[rarity])
 	_structure_ledger[structure_id] = true
 	GEventBus.sanctuary_structure_built.emit(String(structure_id), structure.structure_type)
 	_action_resolving = false

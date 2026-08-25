@@ -8,14 +8,14 @@
 ## as every other defense_building test.
 ##
 ## AC-24 scope note: resolve_tech_unlock()/resolve_structure_build() execute
-## 5 of ADR-0024 Rule 9's 6 sub-steps synchronously — (a) eligibility,
-## (b) materials-check, (c) gold debit, (e) ledger write, (f) domain event
-## emission. Step (d), material consumption, remains deliberately deferred
-## (see defense_building.gd's class doc comment and resolve_tech_unlock()'s
-## own doc comment for the full rationale — a genuine GDD-level open design
-## question, not something this story invents a resolution for). These tests
-## verify the 5 implemented steps happen synchronously in one call; they do
-## not assert anything about step (d), consistent with that deferral.
+## all 6 of ADR-0024 Rule 9's sub-steps synchronously — (a) eligibility,
+## (b) materials-check, (c) gold debit, (d) material consumption
+## (TD-defbuild-002, fully resolved 2026-08-25 — see defense_building.gd's
+## class doc comment), (e) ledger write, (f) domain event emission. These
+## tests verify the (a)/(b)/(c)/(e)/(f) steps' observable effects happen
+## synchronously in one call; step (d)'s own real-consumption behavior is
+## covered separately in currency_dual_gate_test.gd / a dedicated
+## material-consumption test, not re-asserted here to avoid drift.
 ##
 ## AC-25 interpretation note: these tests assert the terminal state is
 ## already readable immediately upon the resolve call's return — a stronger

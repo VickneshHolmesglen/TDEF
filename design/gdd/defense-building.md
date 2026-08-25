@@ -202,7 +202,7 @@ The Defense Building System is the sanctuary's foundation layer: it is where the
    timer mechanic anywhere in the game and would contradict that framing.
    On confirm, in order: (a) re-validate prerequisite (tech chain position
    or structure tier sequence) and tech-gate (for structures), (b)
-   re-validate gold balance and `has_items(material_costs)` (defends
+   re-validate gold balance and `has_items_by_rarity(material_costs)` (defends
    against stale UI, same pattern as `crafting.md` Rule 8 step (a)), (c)
    debit gold via `resources_changed(-cost, ...)`, (d) consume materials via
    Inventory's batch-consume, (e) mark the node `UNLOCKED` / structure
@@ -254,7 +254,7 @@ themselves (matching Crafting's own "screen access vs. underlying state" split).
 | **Tarot** (resolved 2026-08-12) | Defense Building → Tarot | `is_tech_unlocked(tech_id)` — read-only, called live by `Tarot.is_card_unlocked()` against each `TarotCardResource.unlock_tech_id` (`tarot.md` Rule 1) — Tarot never writes to Defense Building's tech ledger. Same pull-based pattern Crafting uses for recipe tech-gates |
 | **Encyclopedia / Mission HUD** | Defense Building → these | Subscribe to both `tech_unlocked` and `sanctuary_structure_built` per `event-bus.md`'s existing subscriber list |
 | **Audio** | Defense Building → Audio | Subscribes to `sanctuary_structure_built` per `event-bus.md`'s existing subscriber list |
-| **Inventory** | ← Defense Building (query/consume) | `has_items(material_costs) -> bool` and batch-consume on confirmed unlock/build (Rule 9 step (d)), same convention Crafting/Menagerie already use |
+| **Inventory** | ← Defense Building (query/consume) | `has_items_by_rarity(material_costs) -> bool` and batch-consume on confirmed unlock/build (Rule 9 step (d)), same convention Crafting/Menagerie already use |
 | **Resource Economy** | ← Defense Building (gold read/debit) | Reads current gold balance for the Rule 9 step (b) affordability check; emits its own debit via `resources_changed` (Rule 7) — no other system validates this debit, per the project-wide open gap noted in Rule 7 |
 | **Save & Persistence** | Defense Building implements `SaveRestorer` | `restore_order = 21` (per `save-persistence.md`), independent within the Feature layer; save payload is the full set of `UNLOCKED` `tech_id`s and `BUILT` `structure_id`s (Formula/Edge Cases detail below) |
 
@@ -354,7 +354,7 @@ Common material and 70 gold, and requires `tech_structural_1` already
 - **If gold or materials are insufficient at confirm-time** (stale UI — e.g.
   gold was spent by Tower System or another Defense Building action between
   the button rendering and the click): Rule 9 step (b) re-validates both the
-  gold balance and `has_items(material_costs)`; if either is false, the
+  gold balance and `has_items_by_rarity(material_costs)`; if either is false, the
   action is rejected in full — no gold debited, no materials consumed, no
   ledger write, no event fires, beyond a UI "insufficient" state refresh.
   Same pattern as `crafting.md`'s Rule 8 step (a).
@@ -420,7 +420,7 @@ Common material and 70 gold, and requires `tech_structural_1` already
 | System | Direction | Nature | Interface |
 |---|---|---|---|
 | **EventBus** | Depends on (hard) | Emits `tech_unlocked(tech_id, tech_category)`, `sanctuary_structure_built(structure_id, structure_type)` (both frozen); emits `resources_changed(-cost, "tech_unlock"\|"structure_built")` |
-| **Inventory** | Depends on (hard) | `has_items(material_costs) -> bool`, batch-consume on confirmed unlock/build (Rule 9 step (d)) — existing query/consume convention, no new interface required |
+| **Inventory** | Depends on (hard) | `has_items_by_rarity(material_costs) -> bool`, batch-consume on confirmed unlock/build (Rule 9 step (d)) — existing query/consume convention, no new interface required |
 | **Resource Economy** | Depends on (hard) | Reads current gold balance for affordability (Rule 9 step (b)); emits its own debit via the existing `resources_changed` signal — no new interface required, though gold-balance *ownership* remains an unresolved project-wide question (Core Rule 7) shared with Tower System |
 | **Crafting** | Depended on by (hard, downstream) | `crafting.md` Rule 3/4 reads `tech_unlocked` to gate `quality_tier` 2–4 recipes — Defense Building must not change `tech_id` naming for `production_tech` nodes without a coordinated update to Crafting's recipe catalogue |
 | **Menagerie** | Depended on by (hard, downstream) | `menagerie.md` Rule 4 reads `sanctuary_structure_built` for `structure_type="habitat_expansion"` to raise HABITAT capacity by +2 slots per tier, max 4 tiers (2026-08-03: was 3) — this GDD's Core Rule 5 table is the exact contract Menagerie already expects |

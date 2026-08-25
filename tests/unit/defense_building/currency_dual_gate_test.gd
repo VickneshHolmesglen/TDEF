@@ -9,11 +9,16 @@
 ## assertions read the live authored value dynamically (not a hardcoded 0),
 ## so they remain correct either way.
 ##
-## TD-defbuild-002 RESOLVED (Sprint 6, S6-06b): real material_costs are keyed
-## by RARITY ("Common"/"Uncommon"/"Rare"), and DefenseBuilding now checks
-## them via Inventory.has_items_by_rarity() — a genuine aggregation axis on
-## ItemDefinitionResource.rarity, separate from has_items()'s item_type sum.
-## has_items_by_rarity() resolves each slot's rarity via
+## TD-defbuild-002 FULLY RESOLVED (vocabulary: Sprint 6 S6-06b; consumption:
+## 2026-08-25): real material_costs are keyed by RARITY ("Common"/"Uncommon"/
+## "Rare"), and DefenseBuilding checks them via Inventory.has_items_by_rarity()
+## — a genuine aggregation axis on ItemDefinitionResource.rarity, separate
+## from has_items()'s item_type sum — AND now actually consumes them via
+## Inventory.consume_by_rarity() on a successful resolve (step d of ADR-0024
+## Rule 9, previously the one deliberately-deferred sub-step). See
+## test_resolve_tech_unlock_consumes_real_materials_from_inventory below for
+## the direct proof. has_items_by_rarity()/consume_by_rarity() both resolve
+## each slot's rarity via
 ## GGameDataRegistry.get_item_definition(slot.item_id) — NOT from the
 ## ItemDefinitionResource object passed to add_stackable() — so seeding must
 ## use a genuinely REGISTERED item_id (found live-MCP-verifying this fix; a
@@ -168,3 +173,38 @@ func test_resolve_structure_build_rejected_by_insufficient_materials() -> void:
 	assert_bool(result).is_false()
 	assert_bool(_spy.was_emitted("resources_changed")).is_false()
 	assert_bool(_defense_building.can_build_structure(HABITAT_TIER_1)).is_true()  # still eligible, never built
+
+
+# ---------------------------------------------------------------------------
+# TD-defbuild-002 step (d): a successful resolve actually spends the real
+# materials, not just checks them.
+# ---------------------------------------------------------------------------
+
+func test_resolve_tech_unlock_consumes_real_materials_from_inventory() -> void:
+	# before_test() seeded 100 Common; tech_production_2 costs 15 Common.
+	var result: bool = _defense_building.resolve_tech_unlock(TECH_PRODUCTION_2)
+
+	assert_bool(result).is_true()
+	# 85 remain (100 - 15) -- enough for 85 but not 86.
+	assert_bool(GInventory.has_items_by_rarity({&"Common": 86})).is_false()
+	assert_bool(GInventory.has_items_by_rarity({&"Common": 85})).is_true()
+
+
+func test_resolve_structure_build_consumes_real_materials_from_inventory() -> void:
+	# before_test() seeded 100 Common; habitat_expansion_tier_1 costs 20 Common.
+	var result: bool = _defense_building.resolve_structure_build(HABITAT_TIER_1)
+
+	assert_bool(result).is_true()
+	assert_bool(GInventory.has_items_by_rarity({&"Common": 81})).is_false()
+	assert_bool(GInventory.has_items_by_rarity({&"Common": 80})).is_true()
+
+
+func test_resolve_tech_unlock_rejection_consumes_nothing() -> void:
+	GInventory.reset_to_defaults()  # insufficient materials, guaranteed rejection
+	var result: bool = _defense_building.resolve_tech_unlock(TECH_PRODUCTION_2)
+
+	assert_bool(result).is_false()
+	# has_items_by_rarity()'s own materials-check gate returns false BEFORE
+	# consume_by_rarity() is ever reached -- an empty inventory stays exactly
+	# that empty, not partially/incorrectly drained.
+	assert_int(GInventory.get_slot_count()).is_equal(Inventory.STARTING_SLOT_COUNT)

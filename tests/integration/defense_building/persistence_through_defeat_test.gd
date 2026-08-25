@@ -17,11 +17,16 @@
 ## local instances, matching inventory tests' established convention
 ## (slot_stack_model_test.gd) — no live GSavePersistence file I/O involved.
 ##
-## TD-defbuild-002 RESOLVED (Sprint 6, S6-06b): see currency_dual_gate_test.gd's
-## class doc comment for the full explanation — real material_costs are
-## rarity-keyed, and DefenseBuilding now checks them via
-## Inventory.has_items_by_rarity() (ItemDefinitionResource.rarity, a genuine
-## aggregation axis separate from item_type). GInventory (the real Autoload)
+## TD-defbuild-002 FULLY RESOLVED (vocabulary: Sprint 6 S6-06b; consumption:
+## 2026-08-25): see currency_dual_gate_test.gd's class doc comment for the
+## full explanation — real material_costs are rarity-keyed, and
+## DefenseBuilding both checks (has_items_by_rarity()) and now spends
+## (consume_by_rarity()) them for real. This file's own before_test() seeds
+## 100 Common, well above tech_production_2 (15) + habitat_expansion_tier_1
+## (20) combined (35) — the two resolve calls sharing one seed in the same
+## test (e.g. test_defeat_transition_does_not_revert_already_unlocked_or_built_state)
+## remain affordable even with real consumption now happening between them.
+## GInventory (the real Autoload)
 ## is seeded with real, schema-valid Material items whose `rarity` field is
 ## properly set; reset in before_test()/after_test() to avoid leaking into
 ## other test files.
