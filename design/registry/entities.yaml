@@ -795,9 +795,12 @@ constants:
       Tuning knob safe range: 1.25–2.00. Below 1.25: hero advantage over tower damage is
       imperceptible; above 2.00: hero trivially one-shots ELITE targets. Tower damage is NOT
       affected by this multiplier — hero-source-only. Tarot GDD and any future modifier system
-      must not define a separate hero damage bonus multiplier without cross-referencing this entry."
+      must not define a separate hero damage bonus multiplier without cross-referencing this entry.
+      2026-08-25: now also shared by Formula D7 (Hero Skill Damage Resolution, damage-status.md
+      Rule IX) — one constant across both hero damage pipelines (auto-attack and skills), not a
+      second constant introduced for skills."
     added: 2026-04-23
-    revised: "2026-07-15"
+    revised: "2026-08-25"
 
   - name: tower_placement_budget_target
     status: active

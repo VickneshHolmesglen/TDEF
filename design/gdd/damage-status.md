@@ -2,7 +2,8 @@
 
 > **Status**: Approved (`/design-review --depth lean` re-review 2026-07-17 — this doc's own header was never updated to say so; confirmed via `systems-index.md`'s authoritative record, corrected here 2026-08-24). **2026-08-24 (`/design-review --depth lean` re-review, S8-07)**: found and fixed a real internal self-contradiction — the "Systems this GDD depends on" table (EventBus/Hero/Monster rows) still said "Follow-up required" for 3 items the Bidirectionality notes section directly below it had already confirmed RESOLVED back on 2026-07-15. Also corrected the Equipment Forge dependency row: `equipment-forge.md` has existed and been Approved since 2026-07-17 (the "Not yet designed" text was stale), but it still never mentions the `crit_multiplier_bonus ≤ 1.50` cap this doc expects it to respect — the underlying advisory finding from 2026-07-17 remains genuinely open, just for a different reason (doc exists but doesn't address the cap, not "doesn't exist"). All 4 Open Questions independently re-checked and confirmed still accurately marked Resolved.
 > **Author**: Vicknesh + Claude Sonnet
-> **Last Updated**: 2026-08-24
+> **Last Updated**: 2026-08-25
+> **Amendment (2026-08-25)**: New Rule IX (Skill Damage Pipeline, event `hero_skill_attacked`) and Formula D7 close `TD-hero-001`'s open half — the hero's Skill Power stat (`hero.md` Row 7) previously had zero consumers anywhere in the codebase (no active skill dealt damage at all). Retrofitted in `damage-status.md` rather than as a new system because `event-bus.md` already declared this doc as `hero_skill_activated`'s consumer, never implemented — see `production/session-state/active.md` for the full scoping discussion. Sixth event subscription added (Rule I.2: five→six). New `skill_power_coefficient` field required on skill `effect_data` (owned by `hero-skill-build.md`, still deferred content there — flagged as a cross-GDD follow-up in Dependencies, not applied here). Lifesteal-on-skill-damage explicitly scoped OUT (new OQ-5) — `HeroSkillAttackEvent` carries no `hero_lifesteal_fraction`. Reviewed by `systems-designer` (formula validation + boundary-case check) before writing, per this project's `full`-risk-section specialist-consultation rule.
 > **Amendment (2026-08-13)**: Rule I.3's "status effects... out of scope for MVP" is narrowed — burn and poison are now in scope (content already existed unconsumed on `firebolt_turret`/`venomdart_turret`'s Power components; `frostbolt_turret`'s "slow" remains out of scope, unchanged). New Formula D5 (Status Effect DoT Tick Damage), Rule I.1's exception list gains a second named exception (alongside BOSS→Tower), new Edge Cases EC-14/EC-15, new Tuning Knob `status_tick_interval`, new ACs. **Ownership note**: tick damage is resolved directly by Monster System (ADR-0006's 4-pass architecture amended to 5 passes — see that ADR's own Amendment section), not routed through D&S — Power component effects have no armored mitigation, crit, or tier-bonus multiplier to apply, so there is no multiplier logic for D&S to own, and D&S's Rule I.4 "nearly stateless" design principle would be broken by per-monster multi-second timer state. This is architecturally identical in shape to the existing BOSS→Tower named exception (Rule I.1).
 > **Amendment (2026-08-13, same day, follow-up)**: `frostbolt_turret`'s "slow" is now also in scope — Rule I.3 no longer names it as the sole remaining excluded effect. New Formula D6 (Slow Effect Speed Multiplier), new Edge Cases EC-16/EC-17, new Tuning Knob `speed_multiplier_floor`, new ACs. Same ownership note as burn/poison: Monster System resolves it directly, not D&S. **Mechanically distinct from D5**: slow has no ticks — it's a continuous multiplier on `MonsterEntity.scaled_speed` (read fresh every movement-pass frame via a new `_effective_speed()` helper, never applied by mutating `scaled_speed` itself, which stays immutable after spawn per ADR-0006). Multiple simultaneous slow instances on one monster combine **multiplicatively** (a user design decision, made explicitly before implementation): two 15% slows yield `0.85 × 0.85 = 72.25%` of original speed, not a summed 30% reduction — this structurally prevents effective speed from ever reaching zero or negative regardless of stack count, with no separate clamp needed at the combination site.
 > **Amendment (2026-08-16, Tower Stats System Phase 1, player-requested)**: Formula D1 extended with `armor_penetration: float` (new `tower_attacked` payload field) — reduces `armored_mitigation_multiplier` itself rather than replacing it; see D1's own updated worked examples. `raw_damage` (D1's own `damage_amount` input) now already reflects Tower System's own crit/vs-tag/boss-multiplier/elemental-resistance resolution before D&S ever sees it — that math is intentionally owned by Tower System, not D&S (see `tower.md` Formula 1b), keeping D&S's own "pure math, no registry dependency" shape unchanged; `element` itself never crosses the `tower_attacked` signal. `is_crit: bool` also added to the payload — D&S now forwards a real value into `MonsterDamageTaken.is_crit` for tower hits instead of the previous hardcoded `false`. **Semantic change to `effect_type`**: it can now arrive `""` for two independent reasons — no Power component equipped (pre-existing), or a new `status_proc_chance` roll on the firing weapon failed this hit (new) — D&S's own handler still ignores `effect_type` either way (Rule I.2, unchanged), but Monster System's D5/D6 exception-note readers should not assume `effect_type==""` means "no Power equipped." **Formula D5's recognized-DoT set gains `"bleed"`** (authored as a physical effect, reuses the DoT machinery verbatim) — note this tick-damage path does not read elemental resistance at all (neither does burn/poison), so "bleed is unresisted while poison isn't" is not yet a real distinction; deferred to a later phase as a named open decision (should Burn/Poison ticks become resistance-aware too?).
@@ -34,7 +35,7 @@ Sometimes the plan doesn't hold. The pack is already past your chokepoint, the t
 **I. System Scope**
 
 1. The Damage & Status System is the single authoritative pipeline for all damage applied to **monsters and the hero**. It does not own damage applied to towers — BOSS→Tower direct damage is routed through the Tower System and is a named exception to this scope (see Tower System GDD Rule 18 and Monster GDD Rule 18). **Second named exception (added 2026-08-13):** burn/poison status-effect DoT tick damage AND slow status-effect speed reduction are both resolved directly by Monster System, not routed through D&S — see Formulas D5/D6 and this Rule's Amendment notes above for why. (Slow is not "damage" at all, so it is arguably outside D&S's scope by definition rather than a true exception to it — grouped here anyway since it shares the same `tower_attacked`-sourced, D&S-bypassing mechanism as burn/poison.)
-2. At MVP this system owns **five** event subscriptions and two active pipelines: (a) outgoing damage from towers and the hero to monsters, and (b) incoming damage to the hero with armor applied. Incoming hero damage is scaffolded but has no active sources at MVP. The third subscription (`monster_hp_absorbed`) drives lifesteal resolution only — it is not a damage pipeline. The fourth subscription (`wave_completed`) drives `_lifesteal_pending` cleanup — see Rule VII. The fifth subscription (`hero_died`, added 2026-07-15d) drives an earlier, narrower `_lifesteal_pending` cleanup for the hero's own death — see Rule VIII. D&S's own five subscriptions are unchanged by the 2026-08-13 status-effect amendment — Monster System subscribes to `tower_attacked` independently for the status-tick pass (see Formula D5); D&S still ignores the payload's `effect_type`/`effect_value`/`effect_duration` fields entirely.
+2. At MVP this system owns **six** event subscriptions and three active pipelines: (a) outgoing damage from towers, the hero's auto-attack, and the hero's active skills to monsters, and (b) incoming damage to the hero with armor applied. Incoming hero damage is scaffolded but has no active sources at MVP. **The third subscription is `hero_skill_attacked`** (added 2026-08-25 — see Rule IX), a distinct event from `hero_skill_activated` (which Hero System already emits on skill activation for Audio/Mission HUD/cooldown UI, unconsumed by D&S): `hero_skill_activated` marks "a skill was cast," `hero_skill_attacked` marks "this cast hit this specific target," one emission per target struck. The fourth subscription (`monster_hp_absorbed`) drives lifesteal resolution only — it is not a damage pipeline. The fifth subscription (`wave_completed`) drives `_lifesteal_pending` cleanup — see Rule VII. The sixth subscription (`hero_died`, added 2026-07-15d) drives an earlier, narrower `_lifesteal_pending` cleanup for the hero's own death — see Rule VIII. D&S's subscriptions are otherwise unchanged by the 2026-08-13 status-effect amendment — Monster System subscribes to `tower_attacked` independently for the status-tick pass (see Formula D5); D&S still ignores the payload's `effect_type`/`effect_value`/`effect_duration` fields entirely.
 3. Status effects: **burn, poison, and slow are all in scope** (burn/poison amended 2026-08-13 — Formula D5; slow amended the same day, follow-up — Formula D6). No status effect remains out of scope for MVP as of this amendment.
 4. The system is nearly stateless. The only cross-event state is `_lifesteal_pending: Dictionary[int, float]` — a map from `target_id` to `hero_lifesteal_fraction`, populated when D&S emits a hero-hit `monster_damage_taken` for a hero with `hero_lifesteal_fraction > 0`, and cleared when the corresponding `monster_hp_absorbed` arrives. All other processing is fully event-independent. Pending `await get_tree().process_frame` coroutines are transient — they exist only within the one-frame deferral window and carry no cross-event state. If the D&S node is freed mid-wave (which must not happen during WAVE_ACTIVE), pending coroutines will attempt to resume on `SceneTree.process_frame` — which outlives the node — and will error. This is prevented by the lifecycle invariant, not by silent cancellation. Add `is_instance_valid(self)` as the first guard after every `await` in the implementation. Pending deferred `monster_damage_taken` events that arrive after `wave_completed` are safely absorbed — the Monster System is idle in that phase and discards them.
 
@@ -110,6 +111,22 @@ Note: At MVP, the hero attacks once per animation cycle. If a future mechanic in
 
 6. **Timing dependency this rule's correctness relies on** *(documented 2026-07-15d — `/review-all-gdds` 5th pass, cross-system scenario walkthrough)*: Rule VIII only reliably wins the race against a pending lifesteal heal because Monster System's `monster_hp_absorbed` flush is pinned to `_physics_process` (monster.md Rule 21e's accumulator pattern) while D&S's own dispatch defer uses `await get_tree().process_frame` (an idle-step callback, not `call_deferred` — see Rule IV.1's note on why that distinction matters). Godot's frame loop always runs pending physics ticks before the idle step in the same frame, so any `monster_hp_absorbed` not yet flushed by the time `hero_died`'s idle-step callback runs cannot be flushed until a later physics tick — after Rule VIII's synchronous clear has already landed. **This guarantee is structural, not incidental, but it depends on both of the specific mechanisms named above staying as they are.** If Monster System's absorbed-flush is ever moved off `_physics_process`, or D&S's dispatch defer is ever changed to `call_deferred` or another mechanism with different timing semantics, this ordering guarantee must be re-verified — it is not independently enforced by any test or assertion. Hero System's `hero_healed` handler carries a defensive `state == DEAD` guard (`hero.md`, Formula 6) as a second layer in case this dependency is ever silently broken.
 
+**IX. Skill Damage Pipeline** (event: `hero_skill_attacked`) *(added 2026-08-25, closes `TD-hero-001`'s Skill Power consumer gap)*
+
+1. Read `skill_id: StringName`, `target_id: int`, `skill_power: float`, `skill_power_coefficient: float`, `is_crit: bool`, `crit_multiplier_effective: float`, and `hero_bonus_tier: int` from the `HeroSkillAttackEvent` Resource payload. `skill_power` is Hero System's `effective_skill_power_final` (`hero.md` Formula 1) at cast time — this already includes `tower_affinity_bonus` baked in upstream; D&S never reads `tower_affinity_bonus` directly, exactly as Rule III never reads Hero's raw `damage` stat directly, only the pre-resolved `base_damage`. `skill_power_coefficient` is a per-skill scalar defined on that skill's own `effect_data` (mirrors `tier_dps_multiplier`'s role in Tower's Formula 1b — a per-source multiplier applied before the shared crit/tier pipeline runs).
+2. **Base step**: `base_skill_damage = skill_power × skill_power_coefficient`.
+3. **Tier step** (target vulnerability — identical shape to Rule III.2/Formula D2):
+   - If `hero_bonus_tier > 0` (ELITE or BOSS): `tier_damage = base_skill_damage × hero_damage_bonus_multiplier`
+   - Else: `tier_damage = base_skill_damage`
+4. **Crit step** (identical shape to Rule III.3/Formula D2):
+   - If `is_crit == true`: `crit_damage = tier_damage × crit_multiplier_effective`
+   - Else: `crit_damage = tier_damage`
+5. `resolved_damage = crit_damage`. Floor to integer: `final_damage = floor(resolved_damage)`.
+6. **Suppression guard**: if `final_damage <= 0`, do not emit `monster_damage_taken` and do not register any lifesteal-pending entry. Unlike Rule III.5's guard (defensive only, given Hero System's valid auto-attack input ranges), `skill_power = 0` is a *legitimately reachable* state here (e.g. an unresolved or mistimed cast) — this guard is a real, expected code path, not just a sanity check.
+7. Defer one frame via `await get_tree().process_frame`, same `is_instance_valid(self)` guard as every other pipeline. Emit `monster_damage_taken` with `entity_id = target_id`, `amount = final_damage`, `source_type = 1` (hero), `is_crit` forwarded, `hero_bonus_tier` forwarded — no new fields on `monster_damage_taken` itself; skill hits are indistinguishable from auto-attack hits at the Monster System/downstream-feedback level except via whatever `skill_id` attribution a future HUD/Audio consumer chooses to read directly off `hero_skill_attacked` itself (D&S does not forward `skill_id` onto `monster_damage_taken`).
+8. **One event per target hit**: a multi-target or AoE skill (e.g. `rng_volley`'s spread, `elem_firestorm`'s AoE) causes Hero System to emit one independent `hero_skill_attacked` per struck target, each carrying its own `is_crit` roll — no shared roll and no array payload. This is a deliberate deviation from Tower's Formula 1b splash rule (which reuses one resolved roll across all splash targets), flagged here as a real design choice a future skill design must respect, not an oversight.
+9. **Lifesteal is explicitly NOT wired for skill damage.** `HeroSkillAttackEvent` carries no `hero_lifesteal_fraction` field, and Rule IX never populates `_lifesteal_pending`. This is a deliberate scoping decision for this retrofit, not an omission — see Open Questions OQ-5.
+
 ---
 
 ### States and Transitions
@@ -139,6 +156,7 @@ Per-subscriber cost estimates are TBD from profiling — document in `production
 | EventBus | constraint | Cascade budget rule | `monster_damage_taken` must always defer one frame; `hero_healed` fires at cascade depth 1 from `monster_hp_absorbed` (permitted — within 2-level chain rule) |
 | Wave Manager | ← upstream | `wave_completed` (no payload fields consumed) | D&S clears `_lifesteal_pending` on receipt — see Rule VII |
 | Hero System | ← upstream | `hero_died` (no payload fields consumed) | D&S clears `_lifesteal_pending` synchronously on receipt — see Rule VIII (added 2026-07-15d) |
+| Hero System | ← upstream | `HeroSkillAttackEvent` payload: `skill_id`, `target_id`, `skill_power`, `skill_power_coefficient`, `is_crit`, `crit_multiplier_effective`, `hero_bonus_tier` | Hero System resolves which target(s) a skill cast struck and emits one `hero_skill_attacked` per target — see Rule IX (added 2026-08-25) |
 
 **Multiplier summary by source × target:**
 
@@ -152,6 +170,8 @@ Per-subscriber cost estimates are TBD from profiling — document in `production
 | Hero crit | ELITE / BOSS | 2.625× |
 
 > `is_armored` affects tower hits only — hero damage is never reduced by the armored tag. Hero crit multipliers in this table assume `crit_multiplier_effective = 1.75` (base, no bonus) and `hero_damage_bonus_multiplier = 1.50` (default). Maximum `crit_multiplier_effective = 3.25` yields 3.25× vs STANDARD and 4.875× vs ELITE/BOSS. `hero_bonus_tier` in `monster_damage_taken` distinguishes ELITE (1) and BOSS (2) for downstream feedback systems. See Formula D2 for full range.
+>
+> **Skill damage (Formula D7) is deliberately not added as rows to this table** — unlike Tower and Hero auto-attack, skill damage has a per-skill `skill_power_coefficient` with no single fixed value, so a table row would misleadingly imply one canonical multiplier. The tier/crit *stacking ratios* are identical to Hero auto-attack's rows above (e.g. crit+ELITE = 2.625× the skill's own non-crit/STANDARD baseline) — only the base term differs.
 
 ## Formulas
 
@@ -336,6 +356,58 @@ effective_speed  = scaled_speed × Π(speed_multiplier for each active instance 
 
 **Stacking (design decision, matching D5's philosophy):** a monster hit by slow while another slow instance is already active gets a **second, independent** instance with its own `remaining_duration`. Instances do not merge, refresh each other's duration, or cap in count — see the Amendment note above for why multiplicative combination was chosen specifically to make this safe regardless of stack count.
 
+#### D7 — Hero Skill Damage Resolution *(added 2026-08-25; closes `TD-hero-001` — Skill Power previously had zero consumers anywhere in the codebase)*
+
+| Variable | Type | Range | Description |
+|----------|------|-------|-------------|
+| `skill_power` | float | ≥ 0 | Hero's `effective_skill_power_final` (`hero.md` Formula 1) at cast time — already includes `tower_affinity_bonus` (0.00–2.00 clamped) baked in upstream. Read from `HeroSkillAttackEvent` payload. |
+| `skill_power_coefficient` | float | > 0 (per-skill; typically 0.5–3.0) | Defined on the skill's own `effect_data` Resource. Scales this specific skill's damage independent of the hero's raw stat — mirrors `tier_dps_multiplier`'s role in Tower Formula 1b. **Not yet a real field anywhere** — `hero-skill-build.md`'s `effect_data` format is still deferred content (see that GDD's Group 1 Rule 2); this formula names the field this retrofit requires, but does not itself add it there (see Dependencies follow-up). |
+| `base_skill_damage` | float | ≥ 0 | `skill_power × skill_power_coefficient` |
+| `hero_bonus_tier` | int | 0–2 | Target tier from `HeroSkillAttackEvent` payload — identical semantics to Formula D2. |
+| `is_crit` | bool | — | Rolled by Hero System before emitting, identical to D2. |
+| `crit_multiplier_effective` | float | 1.75–3.25 | Pre-computed by Hero System, identical field/source-of-truth as D2 — D&S never rolls or reads `crit_multiplier_bonus` separately. Same cap discipline as EC-5 applies here (see EC-19). |
+| `final_damage` | int | ≥ 0 | Resolved skill damage applied via `monster_damage_taken` |
+
+**Expression** (structurally identical to D2 from `tier_damage` onward — only the input term changes):
+```
+base_skill_damage = skill_power × skill_power_coefficient
+tier_damage        = base_skill_damage × (hero_damage_bonus_multiplier if hero_bonus_tier > 0 else 1.0)
+crit_damage        = tier_damage × (crit_multiplier_effective if is_crit else 1.0)
+final_damage       = floor(crit_damage)
+```
+
+> `hero_damage_bonus_multiplier` is the same registered constant Formula D2 uses (default `1.50`) — no second constant is introduced for skills. **Suppression, not a `max(1, ...)` floor**: if `final_damage <= 0`, `monster_damage_taken` is not emitted at all — see Rule IX.6 for why this differs from D1/D2's defensive-only zero guards.
+
+**Worked examples:**
+
+*(a) Non-crit hit on a STANDARD target* — `skill_power=200`, `skill_power_coefficient=1.20`, `hero_bonus_tier=0`, `is_crit=false`:
+```
+base_skill_damage = 200 × 1.20 = 240
+tier_damage        = 240 × 1.0  = 240   (no tier bonus)
+crit_damage        = 240 × 1.0  = 240   (not a crit)
+final_damage       = floor(240) = 240
+```
+
+*(b) Crit hit on an ELITE target — both multipliers stacking* — `skill_power=200`, `skill_power_coefficient=1.20`, `hero_bonus_tier=1`, `is_crit=true`, `crit_multiplier_effective=1.75`:
+```
+base_skill_damage = 200 × 1.20 = 240
+tier_damage        = 240 × 1.50 = 360   (ELITE tier bonus)
+crit_damage        = 360 × 1.75 = 630
+final_damage       = floor(630) = 630
+```
+Combined multiplier vs. the non-crit/STANDARD baseline: `1.50 × 1.75 = 2.625×` — identical stacking ratio to Formula D2's own ELITE-crit case (100 × 1.50 × 1.75 = 262), confirming parity between the two pipelines.
+
+*(c) Boundary — `skill_power = 0`* — `skill_power_coefficient=1.20`, `hero_bonus_tier=1`, `is_crit=true`, `crit_multiplier_effective=3.25`:
+```
+base_skill_damage = 0 × 1.20 = 0
+tier_damage        = 0 × 1.50 = 0
+crit_damage        = 0 × 3.25 = 0
+final_damage       = floor(0)  = 0   → suppression guard fires; monster_damage_taken is NOT emitted
+```
+No divide-by-zero, no negative, no NaN. Unlike D4's `max(1, ...)` floor (a hit must always deal at least 1 damage), a 0-power skill hit is a legitimate non-event, not a hit that must be forced to deal damage.
+
+*(c′) Boundary — `tower_affinity_bonus` at its 200% cap* — resolved entirely upstream by Hero System into `skill_power`; D7 performs no clamping of its own and needs none. Base skill-power stat `= 100`, `tower_affinity_bonus = 2.00` (max) → `skill_power = 100 × (1 + 2.00) = 300` arrives at D7 already-clamped. With `skill_power_coefficient=1.0`, `hero_bonus_tier=0`, `is_crit=false`: `final_damage = floor(300 × 1.0) = 300` — scales linearly, no overflow, no re-clamping. D7 trusts Hero System's pre-clamped value exactly as D2 trusts `crit_multiplier_effective` (EC-5's precedent).
+
 #### Event Payload: `monster_damage_taken` (resolves Monster GDD OQ-4)
 
 ```
@@ -403,6 +475,15 @@ A monster carries an active `ActiveSlowEffect` with `remaining_duration=1.5` whe
 **EC-17: A monster is simultaneously slowed and burning/poisoned** *(amended 2026-08-13, same day, follow-up)*
 A single `tower_attacked` event can carry only one `effect_type` (Firebolt Turret's Power component is either burn OR slow OR poison — never more than one per weapon in current content), but two *different* towers can independently apply a DoT and a slow to the same monster in the same or different frames. `active_status_effects` (DoT) and `active_slow_effects` (slow) are two entirely separate arrays on `MonsterEntity`, processed by two separate helper functions (`_tick_dot_instances`/`_decay_slow_instances`) within the same Pass 1b — a monster can be burning AND slowed at once with no interaction between the two formulas. The only shared state is `current_hp`, which only the DoT path touches.
 
+**EC-18: Skill damage — `skill_power = 0` suppresses the event entirely** *(added 2026-08-25)*
+A `HeroSkillAttackEvent` arrives with `skill_power=0` (e.g. Hero System resolved a cast before Skill Power was ever set, or a content-authoring skill has `skill_power_coefficient` intentionally near-zero for a non-damage-primary skill routed through this pipeline anyway). Formula D7 resolves `final_damage=0` regardless of tier/crit inputs. Rule IX.6's suppression guard fires: no `monster_damage_taken` is emitted, and no `_lifesteal_pending` entry is registered (moot anyway, since Rule IX.9 never populates it). This is a legitimate, expected outcome — not an error path — see Formula D7's worked example (c).
+
+**EC-19: Skill damage — `crit_multiplier_effective` cap applies identically to D2** *(added 2026-08-25)*
+Formula D7 does not independently clamp `crit_multiplier_effective` — same trust-upstream policy as EC-5 (Formula D2). Equipment Forge GDD's `crit_multiplier_bonus ≤ 1.50` cap (producing a maximum `crit_multiplier_effective = 3.25`) applies to every crit-eligible hit the hero lands, auto-attack or skill alike — it is a Hero-System-wide stat cap, not a per-pipeline one. D&S does not re-verify this for skill hits any more than it does for auto-attack hits.
+
+**EC-20: A multi-target skill hits several monsters in one cast** *(added 2026-08-25)*
+`elem_firestorm` (a delayed AoE, per `hero-skill-build.md`'s Alpha catalogue) resolves as N independent `hero_skill_attacked` events, one per monster caught in the effect radius, each with its own `target_id` and its own `is_crit` roll (Rule IX.8). D&S has no batching or shared-roll logic for this — each event is processed through Formula D7 exactly as if it were an unrelated single-target hit. If N exceeds `eventbus_batch_threshold` (20) in one frame, the same obligation named in EC-8 falls on Hero System (the emitting system), not D&S — D&S remains event-stateless across skill hits exactly as it is across tower hits.
+
 ## Dependencies
 
 #### Systems this GDD depends on
@@ -410,7 +491,7 @@ A single `tower_attacked` event can carry only one `effect_type` (Firebolt Turre
 | System | GDD | What D&S requires |
 |--------|-----|-------------------|
 | EventBus System | `design/gdd/event-bus.md` | All inter-system communication. D&S subscribes to `tower_attacked`, `hero_auto_attacked`, `monster_hp_absorbed`, and `wave_completed`; emits `monster_damage_taken` (deferred) and `hero_healed` (synchronous from `monster_hp_absorbed` handler). Cascade budget rule: `monster_damage_taken` must defer one frame. `hero_healed` is a permitted synchronous emission at cascade depth 1 from `monster_hp_absorbed` (within the 2-level chain rule — no exemption needed). **All 3 follow-ups RESOLVED** (verified 2026-07-15, see Bidirectionality notes below — this row's own text was never updated to match): `is_armored: bool` confirmed in the `tower_attacked` payload; `monster_hp_absorbed` confirmed in the event catalogue (`entity_id: int`, `absorbed: int`); `HeroAutoAttackEvent` confirmed using `hero_bonus_tier: int`, no trace of the old `hero_damage_bonus_eligible: bool`. *(Found stale 2026-08-24, `/design-review --depth lean` re-review, S8-07.)* |
-| Hero System | `design/gdd/hero.md` | Emits `HeroAutoAttackEvent` Resource carrying `base_damage`, `is_crit`, `target_id`, `crit_multiplier_effective` (pre-computed), `hero_lifesteal_fraction` (pre-clamped to `hero_lifesteal_cap`), and `hero_bonus_tier` (read from target archetype tier at attack-roll time: 0=STANDARD, 1=ELITE, 2=BOSS). Owns the crit roll and target-tier check — D&S never rolls RNG or reads monster state. Receives `hero_healed` and owns overheal clamping behavior. **Follow-up RESOLVED** (verified 2026-07-15, see Bidirectionality notes below): `hero.md`'s Dependencies table credits D&S with damage resolution and `hero_healed`/`hero_damage_taken`; `HeroAutoAttackEvent` uses `hero_bonus_tier: int` throughout, no trace of `hero_damage_bonus_eligible`. *(Found stale 2026-08-24, `/design-review --depth lean` re-review, S8-07.)* |
+| Hero System | `design/gdd/hero.md` | Emits `HeroAutoAttackEvent` Resource carrying `base_damage`, `is_crit`, `target_id`, `crit_multiplier_effective` (pre-computed), `hero_lifesteal_fraction` (pre-clamped to `hero_lifesteal_cap`), and `hero_bonus_tier` (read from target archetype tier at attack-roll time: 0=STANDARD, 1=ELITE, 2=BOSS). Owns the crit roll and target-tier check — D&S never rolls RNG or reads monster state. Receives `hero_healed` and owns overheal clamping behavior. **Follow-up RESOLVED** (verified 2026-07-15, see Bidirectionality notes below): `hero.md`'s Dependencies table credits D&S with damage resolution and `hero_healed`/`hero_damage_taken`; `HeroAutoAttackEvent` uses `hero_bonus_tier: int` throughout, no trace of `hero_damage_bonus_eligible`. *(Found stale 2026-08-24, `/design-review --depth lean` re-review, S8-07.)* **New 2026-08-25**: also emits `HeroSkillAttackEvent` (one per struck target) carrying `skill_id`, `target_id`, `skill_power` (= `effective_skill_power_final`, `hero.md` Formula 1), `skill_power_coefficient` (read from the cast skill's `effect_data` — see follow-up below), `is_crit`, `crit_multiplier_effective`, `hero_bonus_tier` — see Rule IX/Formula D7. **Follow-up NOT YET RESOLVED**: `hero.md`/`hero-skill-build.md` do not yet document `HeroSkillAttackEvent`'s existence or the resolution step (Hero System must, on every skill hit, translate its own effect resolution into one or more `hero_skill_attacked` emissions) — this is new surface this retrofit requires but does not itself add to either GDD. |
 | Tower System | `design/gdd/tower.md` | Emits `tower_attacked` with `damage_amount`, `target_monster_id`, and `is_armored`. Tower System reads the target's `MonsterResource.archetype_tag` at fire time and pre-resolves `is_armored` — D&S never reads monster state directly. **Resolved (2026-05-11, confirmed still current 2026-07-15):** tower.md Rule 20a documents the `archetype_tag` read and `is_armored` field. *(`is_siege` removed 2026-07-15 — the T4 Siege mechanic was struck from tower.md; see `tower.md`'s T4 Boss-Lane Identity section and `event-bus.md`'s `tower_attacked` catalogue row.)* **Payload grown 2026-08-13:** `tower_attacked` also carries `effect_type`/`effect_value`/`effect_duration` (the firing tower's own `PowerComponent` fields) — D&S's own handler ignores all three (Rule I.2); they exist for Monster System's independent status-effect subscription (Formulas D5/D6). **Payload grown again 2026-08-16 (Tower Stats System Phase 1):** `armor_penetration: float` and `is_crit: bool` added — both consumed by D&S's own Formula D1 (see this doc's top-of-file Amendment note); `damage_amount` itself now already reflects Tower System's crit/vs-tag/boss/resistance resolution. |
 | Monster System | `design/gdd/monster.md` | Receives `monster_damage_taken` (deferred) and applies `amount` to target HP. Owns dead-monster guard (ignores events for entities with `hp <= 0`). **Emits `monster_hp_absorbed`** (deferred one frame from receiving `monster_damage_taken`) with `entity_id: int` and `absorbed: int` — the actual HP removed, capped at pre-hit HP. D&S subscribes to this event for lifesteal resolution. When Monster System discards a `monster_damage_taken` event (dead entity), it must NOT emit `monster_hp_absorbed` for that entity_id. **Follow-up RESOLVED** (verified 2026-07-15, see Bidirectionality notes below): `monster.md`'s own OQ-4 is marked Resolved, citing this exact schema; Rules 20-21 document `monster_hp_absorbed` emission (and non-emission on dead-entity discard). *(Found stale 2026-08-24, `/design-review --depth lean` re-review, S8-07.)* **Amended 2026-08-13:** Monster System also independently subscribes to `tower_attacked` (not routed through D&S — see Rule I.1's second named exception) to apply Formula D5's burn/poison DoT ticks and Formula D6's slow speed multiplier via its own 5th `_physics_process` pass (ADR-0006 amendment). |
 
@@ -436,7 +517,7 @@ A single `tower_attacked` event can carry only one `effect_type` (Firebolt Turre
 - ~~Tower System GDD must be updated to document the `archetype_tag` read and `is_armored` forwarding.~~ **RESOLVED** — tower.md Rule 20a, marked Resolved 2026-05-11.
 - ~~Wave Manager GDD must note that D&S subscribes to `wave_completed` for `_lifesteal_pending` cleanup.~~ **RESOLVED** — wave-manager.md's Interactions table lists "Damage & Status System — `wave_completed` for end-of-wave state cleanup (D&S cross-GDD follow-up from D&S pass 6)".
 
-No outstanding cross-GDD follow-ups remain from this list.
+**New follow-up, not yet resolved (added 2026-08-25)**: `hero-skill-build.md`'s `effect_data` Resource format is still deferred content-authoring work (that GDD's own Group 1 Rule 2). Formula D7 requires a `skill_power_coefficient: float` field to exist within it once that format is finally authored — flagged here as the concrete requirement that future content pass must satisfy, not resolved by this retrofit. `event-bus.md` must also be updated to catalogue `hero_skill_attacked`/`HeroSkillAttackEvent` (it currently only catalogues `hero_skill_activated`, a different event — see Rule I.2's clarification).
 
 ## Tuning Knobs
 
@@ -444,7 +525,7 @@ All knobs must be data-driven (no hardcoded values in GDScript). Safe ranges ind
 
 | Knob | Owner | Default | Safe Range | Gameplay Effect |
 |------|-------|---------|-----------|-----------------|
-| `hero_damage_bonus_multiplier` | D&S (this GDD) | 1.50 | 1.25–2.00 | Multiplies hero damage against ELITE and BOSS targets. Below 1.25: the hero advantage over tower damage becomes imperceptible, undermining "you were the one closing this gap." Above 2.00: hero one-shots ELITE targets consistently — the decision to engage feels trivial rather than calculated. |
+| `hero_damage_bonus_multiplier` | D&S (this GDD) | 1.50 | 1.25–2.00 | Multiplies hero damage against ELITE and BOSS targets — **shared by both Formula D2 (auto-attack) and Formula D7 (skill damage, added 2026-08-25)**, not a separate constant per pipeline. Below 1.25: the hero advantage over tower damage becomes imperceptible, undermining "you were the one closing this gap." Above 2.00: hero one-shots ELITE targets consistently — the decision to engage feels trivial rather than calculated. |
 | `armored_mitigation_multiplier` | D&S (this GDD) | 0.50 | 0.25–0.75 | Fraction of tower damage that reaches armored targets. Below 0.25: tower damage vs armored is negligible — towers become irrelevant against armored waves. Above 0.75: armored tag provides no meaningful strategic signal — towers and heroes are interchangeable against armored targets. |
 | `hero_crit_multiplier_base` | Hero GDD | 1.75 | 1.50–2.50 | Base damage multiplier on crit. Tuned in Hero GDD; D&S reads it. A higher base makes individual crits more decisive; too high and non-crit builds feel broken. |
 | `hero_lifesteal_cap` | Hero GDD | 0.40 | 0.25–0.60 | Maximum fraction of absorbed damage returned as HP. Tuned in Hero GDD; D&S reads it. Below 0.25: lifesteal becomes a rounding error — irrelevant in real combat. Above 0.60: lifesteal trivialises sustain; hero can outlast any encounter without positioning skill. |
@@ -730,6 +811,72 @@ WHEN Pass 1b runs with `delta=1.0` then again with `delta=1.0`
 THEN after the first call, `remaining_duration=0.5` and the instance is still present
 AND after the second call, `remaining_duration` would be `-0.5`, so the instance is removed from `active_slow_effects` entirely — `effective_speed` returns to `scaled_speed × 1.0` (no other instances) immediately, not gradually
 
+**AC-36: Skill damage pipeline — non-crit vs STANDARD** *(added 2026-08-25)*
+GIVEN a `HeroSkillAttackEvent` with `skill_id=&"test_skill"`, `target_id=99`, `skill_power=200.0`, `skill_power_coefficient=1.20`, `is_crit=false`, `crit_multiplier_effective=1.75`, `hero_bonus_tier=0`
+WHEN D&S processes it
+THEN `monster_damage_taken` is emitted with `entity_id=99`, `amount=240`, `source_type=1`, `is_crit=false`, `hero_bonus_tier=0`
+NOTE: Formula D7 worked example (a). Mirrors AC-4's shape for the auto-attack pipeline.
+
+**AC-37: Skill damage pipeline — non-crit vs ELITE (isolates the tier step)**
+GIVEN a `HeroSkillAttackEvent` with `skill_id=&"test_skill"`, `target_id=99`, `skill_power=200.0`, `skill_power_coefficient=1.20`, `is_crit=false`, `crit_multiplier_effective=1.75`, `hero_bonus_tier=1`
+WHEN D&S processes it
+THEN `monster_damage_taken` is emitted with `entity_id=99`, `amount=360` (`floor(200×1.20×1.50)=360`), `source_type=1`, `is_crit=false`, `hero_bonus_tier=1`
+NOTE: `crit_multiplier_effective=1.75` is present on the payload but must not be applied since `is_crit=false`. Fills a coverage gap the worked examples alone don't reach — (a) and (b) never exercise the tier multiplier applying in isolation from the crit multiplier.
+
+**AC-38: Skill damage pipeline — crit vs STANDARD (isolates the crit step)**
+GIVEN a `HeroSkillAttackEvent` with `skill_id=&"test_skill"`, `target_id=99`, `skill_power=200.0`, `skill_power_coefficient=1.20`, `is_crit=true`, `crit_multiplier_effective=1.75`, `hero_bonus_tier=0`
+WHEN D&S processes it
+THEN `monster_damage_taken` is emitted with `entity_id=99`, `amount=420` (`floor(200×1.20×1.75)=420`), `source_type=1`, `is_crit=true`, `hero_bonus_tier=0`
+NOTE: Isolates the crit step from the tier step — mirrors AC-7's role for the auto-attack pipeline.
+
+**AC-39: Skill damage pipeline — crit vs ELITE (both multipliers stacking)**
+GIVEN a `HeroSkillAttackEvent` with `skill_id=&"test_skill"`, `target_id=99`, `skill_power=200.0`, `skill_power_coefficient=1.20`, `is_crit=true`, `crit_multiplier_effective=1.75`, `hero_bonus_tier=1`
+WHEN D&S processes it
+THEN `monster_damage_taken` is emitted with `entity_id=99`, `amount=630` (`floor(200×1.20×1.50×1.75)=630`), `source_type=1`, `is_crit=true`, `hero_bonus_tier=1`
+NOTE: Formula D7 worked example (b). Mirrors AC-6's shape for the auto-attack pipeline.
+
+**AC-40: Skill damage pipeline — `hero_bonus_tier` forwarded correctly — BOSS hit**
+GIVEN a `HeroSkillAttackEvent` with `skill_id=&"test_skill"`, `target_id=99`, `skill_power=100.0`, `skill_power_coefficient=1.0`, `is_crit=false`, `crit_multiplier_effective=1.75`, `hero_bonus_tier=2`
+WHEN D&S processes it
+THEN `monster_damage_taken.hero_bonus_tier = 2`
+AND `monster_damage_taken.amount = 150` (same 1.50× multiplier as ELITE — BOSS and ELITE share the multiplier but are distinguished in the payload, mirrors AC-18d)
+
+**AC-41: Skill damage — `skill_power = 0` suppresses the event entirely (EC-18)**
+GIVEN a `HeroSkillAttackEvent` with `skill_id=&"test_skill"`, `target_id=99`, `skill_power=0.0`, `skill_power_coefficient=1.20`, `is_crit=true`, `crit_multiplier_effective=3.25`, `hero_bonus_tier=1`
+WHEN D&S processes it
+THEN no `monster_damage_taken` event is emitted
+AND no `_lifesteal_pending` entry is registered for `target_id=99`
+NOTE: EC-18 / Formula D7 worked example (c). `hero_bonus_tier=1` and `crit_multiplier_effective=3.25` are both nonzero/maximal — confirms the suppression guard checks `final_damage`, not any single upstream input term.
+
+**AC-42: Skill damage — multi-target/AoE independence (EC-20)**
+GIVEN two `HeroSkillAttackEvent`s from the same cast:
+Event A — `skill_id=&"elem_firestorm"`, `target_id=10`, `skill_power=200.0`, `skill_power_coefficient=1.20`, `is_crit=false`, `crit_multiplier_effective=1.75`, `hero_bonus_tier=0`
+Event B — `skill_id=&"elem_firestorm"`, `target_id=11`, `skill_power=200.0`, `skill_power_coefficient=1.20`, `is_crit=true`, `crit_multiplier_effective=1.75`, `hero_bonus_tier=1`
+WHEN D&S processes both events (in either arrival order)
+THEN two independent `monster_damage_taken` events are emitted: one with `entity_id=10`, `amount=240`, `is_crit=false`, `hero_bonus_tier=0`, and one with `entity_id=11`, `amount=630`, `is_crit=true`, `hero_bonus_tier=1`
+AND Event A's resolved `amount`/`is_crit`/`hero_bonus_tier` are unaffected by Event B's values and vice versa — no shared roll, no array payload, no cross-target state (Rule IX.8)
+NOTE: EC-20. Confirms D&S applies Formula D7 per-event with zero shared state between two hits from the same cast.
+
+**AC-43: Skill damage — lifesteal is never triggered (Rule IX.9)**
+GIVEN a `HeroSkillAttackEvent` with `skill_id=&"test_skill"`, `target_id=99`, `skill_power=200.0`, `skill_power_coefficient=1.20`, `is_crit=false`, `crit_multiplier_effective=1.75`, `hero_bonus_tier=0` (the `HeroSkillAttackEvent` Resource has no `hero_lifesteal_fraction` field at all — Rule IX.9)
+WHEN D&S processes it
+THEN `monster_damage_taken` is emitted with `amount=240`
+AND no entry is added to `_lifesteal_pending` for `target_id=99`
+AND `hero_healed` is never emitted as a result of this event, at any point
+NOTE: Mirrors AC-17's suppression-check shape, but for skill damage there is no fraction field to check on the payload at all — confirms Rule IX.9 is a real structural scoping decision, not merely an unenforced doc statement.
+
+**AC-44: Skill damage — `skill_id` is not forwarded onto `monster_damage_taken`**
+GIVEN a `HeroSkillAttackEvent` with `skill_id=&"rng_volley"`, `target_id=99`, `skill_power=200.0`, `skill_power_coefficient=1.20`, `is_crit=false`, `crit_multiplier_effective=1.75`, `hero_bonus_tier=0`
+WHEN D&S processes it
+THEN `monster_damage_taken` is emitted with no `skill_id` field present on the payload
+NOTE: Rule IX.7 — skill hits are indistinguishable from auto-attack hits at the `monster_damage_taken` level. Nothing downstream currently reads `skill_id`, which makes a future accidental forward easy to introduce and hard to notice without an explicit negative assertion.
+
+**AC-45: Skill damage pipeline — max crit path**
+GIVEN a `HeroSkillAttackEvent` with `skill_id=&"test_skill"`, `target_id=99`, `skill_power=200.0`, `skill_power_coefficient=1.20`, `is_crit=true`, `crit_multiplier_effective=3.25` (maximum: 1.75 base + 1.50 max bonus), `hero_bonus_tier=1`
+WHEN D&S processes it
+THEN `monster_damage_taken.amount = 1170` (`floor(200×1.20×1.50×3.25) = floor(1170.0) = 1170`), `is_crit=true`, `hero_bonus_tier=1`
+NOTE: Mirrors AC-16. Exercises EC-19's "no independent clamp" claim at the actual cap boundary Hero System is permitted to produce, rather than only at worked example (b)'s mid-range 1.75 value.
+
 ## Open Questions
 
 **OQ-1: RESOLVED** — `hero_auto_attacked` payload extended to `HeroAutoAttackEvent` Resource subclass (6 fields: `base_damage`, `is_crit`, `target_id`, `crit_multiplier_effective`, `hero_lifesteal_fraction`, `hero_bonus_tier`). `hero_bonus_tier` replaces the former `hero_damage_bonus_eligible: bool` — Hero System reads target archetype tier at attack-roll time and passes 0/1/2 (STANDARD/ELITE/BOSS). D&S has no direct read dependency on Hero System state — all inputs arrive via the event payload. `event-bus.md` and `hero.md` must be updated to reflect the updated payload (tracked in Dependencies follow-up notes).
@@ -739,3 +886,5 @@ AND after the second call, `remaining_duration` would be `-0.5`, so the instance
 **OQ-3: RESOLVED** — Lifesteal overkill now uses `absorbed` (actual HP removed, from `monster_hp_absorbed`) rather than `final_damage`. A killing blow on a near-dead monster heals the hero for HP actually taken from that monster, not the full resolved damage. This preserves the "quiet arithmetic" Player Fantasy at the moment of a killing hit. The round-trip adds one frame of heal latency (N+2 instead of immediate), accepted as a reasonable trade-off. Monster System is responsible for emitting `monster_hp_absorbed` after every `monster_damage_taken` it processes (except discarded events for dead entities).
 
 **OQ-4: RESOLVED** — `monster_damage_taken` payload defined in Formula section of this document.
+
+**OQ-5: OPEN** *(added 2026-08-25)* — Should skill damage also trigger the lifesteal pipeline (Formula D3)? This retrofit deliberately scoped it OUT (Rule IX.9) rather than deciding unilaterally — `HeroSkillAttackEvent` carries no `hero_lifesteal_fraction` field. If a future design wants skill lifesteal, that field must be added to the payload and Rule IX wired into D3 the same way Rule III is. Two related follow-ups, also unresolved: (1) `hero-skill-build.md`'s `effect_data` Resource format must eventually add a `skill_power_coefficient: float` field for Formula D7 to have real content to read (see Dependencies' new follow-up note); (2) `event-bus.md` must catalogue `hero_skill_attacked`/`HeroSkillAttackEvent` (currently only catalogues the distinct `hero_skill_activated` event). Owner: whoever picks up real skill-effect content authoring next.

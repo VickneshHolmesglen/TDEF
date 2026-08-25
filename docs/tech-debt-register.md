@@ -1024,13 +1024,14 @@ AC-04 text to match.
 
 ---
 
-## TD-hero-001 — Tower Affinity bonus not yet applied to Damage/Skill Power (Damage half fixed)
+## TD-hero-001 — Tower Affinity bonus not yet applied to Damage/Skill Power (Damage half fixed; Skill Power half now designed, not yet implemented)
 
 **Logged**: 2026-07-04
 **Damage half fixed**: 2026-07-08
+**Skill Power half — design specification complete**: 2026-08-25 (GDScript implementation still not started — see Resolution)
 **Story**: S4-12 Hero Tower Affinity (`production/epics/epic-02-core-combat/story-005-hero-tower-affinity.md`)
 **Severity**: Advisory
-**Area**: `src/core/hero/hero.gd` (`_apply_tower_affinity_bonus`, `_on_attack_timer_timeout`)
+**Area**: `src/core/hero/hero.gd` (`_apply_tower_affinity_bonus`, `_on_attack_timer_timeout`); design spec now also lives in `design/gdd/damage-status.md` Rule IX / Formula D7
 
 ### Gap
 
@@ -1056,9 +1057,10 @@ wherever it is first consumed.
 
 ### Resolution
 - [x] Damage path updated to fold in tower_affinity (2026-07-08): `hero.gd:561`'s `_on_attack_timer_timeout()` now sets `payload.base_damage = get_effective_stat(&"damage") * (1.0 + get_effective_stat(&"tower_affinity"))`, matching GDD Formula 2 exactly.
-- [ ] Skill Power path updated to fold in tower_affinity — **still blocked**: grep-confirmed `skill_power` (`src/core/hero/hero.gd`, `the_gap.gd`) has zero consumers anywhere in the codebase; it is only ever set as a stat default, never read. Nothing exists yet to fold this bonus into. Remains open until a future system (Skill data pipeline, `TD-hero-002`) gives Skill Power a real consumer.
 - [x] Regression test added covering the combined effect (2026-07-08): `tests/unit/hero/hero_auto_attack_test.gd` — `test_attack_timeout_folds_tower_affinity_bonus_into_base_damage` (4 qualifying towers, 100 damage → 150 with the bonus applied) and `test_attack_timeout_zero_tower_affinity_leaves_base_damage_unchanged` (no towers → unchanged). Full hero suite 57/57 passing, 0 orphans; `tests/integration/hero` + `tests/unit/damage_status` re-run clean (1 pre-existing unrelated failure, `hero_lifecycle_test.gd` AC-13, `TD-hero-005` — confirmed unaffected by this change).
-- [ ] This entry closed — narrowed to the Skill Power half only; re-close once that half has a real consumer to wire into.
+- [x] **Skill Power path — design specification complete 2026-08-25**: `design/gdd/damage-status.md` retrofitted with a new Rule IX ("Skill Damage Pipeline") and Formula D7 ("Hero Skill Damage Resolution") — `skill_power = effective_skill_power_final` (already includes `tower_affinity_bonus`, folded upstream by Hero System exactly paralleling the already-shipped Damage path) is multiplied by a new per-skill `skill_power_coefficient` field, then the same tier/crit steps Formula D2 already uses. `systems-designer` (formula validation) and `qa-lead` (acceptance-criteria validation) both consulted before writing, per this project's specialist-consultation rule for high-risk GDD sections. This closes the "no consumer is even specified" half of the original gap — Tower Affinity's Skill Power bonus now has a real, fully-specified formula to fold into.
+- [ ] **GDScript implementation — NOT YET STARTED, genuinely open**: nothing in `src/` emits `HeroSkillAttackEvent`/`hero_skill_attacked`, and `damage-status.gd`'s runtime code has no Rule IX/Formula D7 implementation. This entry stays open until: (a) `hero-skill-build.md`'s `effect_data` Resource format gains the `skill_power_coefficient` field the design now requires (still deferred content per that GDD's own Group 1 Rule 2 — unaffected by this fix), (b) `event-bus.md` catalogues the new event, and (c) both Hero System and the D&S runtime code are actually written. See `damage-status.md`'s new Open Question OQ-5 for the one remaining real design question (skill lifesteal) left unresolved on purpose.
+- [ ] This entry closed — the design-vs-implementation split is now explicit; re-close only once the GDScript half above is actually built and tested.
 
 ---
 
