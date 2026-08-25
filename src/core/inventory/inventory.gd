@@ -709,54 +709,75 @@ func add_stackable(definition: ItemDefinitionResource, quantity: int) -> int:
 	return remaining
 
 
+## TD-inv-003 items 1/2 resolution (2026-08-25): SlotExpansionCostTable's
+## rarity keys (KEY_COMMON/KEY_UNCOMMON/KEY_RARE — lowercase StringName,
+## Story 003) and ItemDefinitionResource.rarity's values ("Common"/"Uncommon"/
+## "Rare" — capitalized String, TD-craft-001/TD-defbuild-002) are two
+## independently-evolved vocabularies for the same three tiers. This map
+## reconciles them at the one boundary that needs both, rather than
+## threading a second key space through the rest of this file.
+const _RARITY_KEY_TO_NAME: Dictionary[StringName, String] = {
+	SlotExpansionCostTable.KEY_COMMON: "Common",
+	SlotExpansionCostTable.KEY_UNCOMMON: "Uncommon",
+	SlotExpansionCostTable.KEY_RARE: "Rare",
+}
+
+
 ## Attempts to complete the NEXT slot-expansion tier (Story 003, AC-8/AC-9/AC-10/
-## AC-16). `rarity_quantities_available` is an explicit, caller-supplied
-## Dictionary[StringName, int] keyed by SlotExpansionCostTable's rarity keys
-## (KEY_COMMON/KEY_UNCOMMON/KEY_RARE) — e.g. {&"common": 40, &"uncommon": 5}. This
-## story deliberately does NOT resolve real Materials-tab contents by rarity
-## internally: ItemDefinitionResource has no `rarity` field yet (no
-## material-rarity vocabulary exists anywhere in the project — GDD
-## design/gdd/inventory.md, Formulas section), so "how much Common/Uncommon/Rare
-## material does the player actually own" is unanswerable from real Inventory
-## slots today. The caller resolves and owns that real-spend accounting; this
-## method only checks the supplied quantities and, on success, deducts NOTHING
-## from `rarity_quantities_available` itself (it is a read-only affordability
-## input, not a ledger this method mutates).
+## AC-16). Resolves affordability and spend against REAL Materials-tab
+## Inventory contents internally, via has_items_by_rarity()/consume_by_rarity()
+## — TD-inv-003's original blockers (no ItemDefinitionResource.rarity field,
+## no Inventory signal emission) are both long since cleared by
+## TD-craft-001/TD-defbuild-002 and later inventory work; this closes the gap
+## that was left open behind them. No caller-supplied availability Dictionary
+## anymore — the signature dropped that parameter entirely.
 ##
 ## Order of checks (AC-16 — the max-tier block happens BEFORE any affordability
 ## check, with zero side effects either way):
 ##   1. Not eligible (already at max tier) -> return false, no side effects.
-##   2. Eligible but unaffordable (any required rarity's available qty is short)
-##      -> return false, no side effects.
-##   3. Eligible and affordable -> grow _slots (append-only, never disturbs
-##      existing indices/contents — Story 001's index-stability invariant),
-##      advance _slot_tier by exactly one, return true.
-##
-## No EventBus signal is emitted here. The GDD's Visual/Audio Requirements
-## section implies slot-expansion completion should eventually be player-visible
-## (a "Herald Gold flash" milestone moment), but Inventory does not emit any
-## signals yet (Story 001's deliberate scope) and no such signal exists in
-## event-bus.md's catalogue today — flagged as a gap for a future story, not
-## silently added here.
+##   2. Eligible but unaffordable (real inventory short on any required
+##      rarity) -> return false, no side effects (has_items_by_rarity() is a
+##      pure check, consume_by_rarity() is never reached).
+##   3. Eligible and affordable -> consume the real materials, grow _slots
+##      (append-only, never disturbs existing indices/contents — Story 001's
+##      index-stability invariant), advance _slot_tier by exactly one, emit
+##      slot_expansion_completed, return true.
 ##
 ## Usage:
 ##   if inventory.can_expand_slots():
-##       var cost := inventory.get_next_expansion_cost()
-##       var available: Dictionary[StringName, int] = {&"common": 50, &"uncommon": 10}
-##       var expanded := inventory.attempt_expand_slots(available)
-func attempt_expand_slots(rarity_quantities_available: Dictionary[StringName, int]) -> bool:
+##       var expanded := inventory.attempt_expand_slots()
+func attempt_expand_slots() -> bool:
 	if not can_expand_slots():
 		return false
 
 	var cost: Dictionary = SlotExpansionCostTable.get_cost_for_tier(_slot_tier + 1)
-	if not _can_afford_expansion(cost, rarity_quantities_available):
+	var rarity_cost: Dictionary = _resolve_rarity_cost(cost)
+	if not has_items_by_rarity(rarity_cost):
 		return false
+
+	for rarity_name: String in rarity_cost:
+		consume_by_rarity(rarity_name, rarity_cost[rarity_name] as int)
 
 	var new_slot_count: int = cost[SlotExpansionCostTable.KEY_SLOTS_AFTER] as int
 	while _slots.size() < new_slot_count:
 		_slots.append(null)
 	_slot_tier += 1
+	GEventBus.slot_expansion_completed.emit(_slot_tier, new_slot_count)
 	return true
+
+
+## Converts a SlotExpansionCostTable row into a has_items_by_rarity()/
+## consume_by_rarity()-shaped Dictionary — only rarities with a positive
+## requirement are included (matches _can_afford_expansion()'s old
+## "cost 0 is never checked" behavior, now via has_items_by_rarity()'s own
+## identical "cost.is_empty() means nothing required" / per-key iteration).
+func _resolve_rarity_cost(cost: Dictionary) -> Dictionary:
+	var rarity_cost: Dictionary = {}
+	for key: StringName in _RARITY_KEY_TO_NAME:
+		var required: int = cost.get(key, 0) as int
+		if required > 0:
+			rarity_cost[_RARITY_KEY_TO_NAME[key]] = required
+	return rarity_cost
 
 
 ## Removes the item occupying `slot_index` entirely (Story 004, AC-11). Rejected
@@ -1064,19 +1085,6 @@ func set_slot_locked(slot_index: int, locked: bool) -> bool:
 # Internal helpers
 # ---------------------------------------------------------------------------
 
-
-## True if every rarity the cost row requires (value > 0) is met or exceeded by
-## `available`. A rarity with cost 0 (not yet gated at this tier, GDD's "—" cells)
-## is never checked, regardless of what `available` contains for it.
-func _can_afford_expansion(cost: Dictionary, available: Dictionary[StringName, int]) -> bool:
-	for key: StringName in [SlotExpansionCostTable.KEY_COMMON, SlotExpansionCostTable.KEY_UNCOMMON, SlotExpansionCostTable.KEY_RARE]:
-		var required: int = cost.get(key, 0) as int
-		if required <= 0:
-			continue
-		var have: int = available.get(key, 0)
-		if have < required:
-			return false
-	return true
 
 ## Adds up to `amount` units to `slot`, never exceeding `cap`. Returns the amount
 ## actually added (0 if the slot is already at/over cap — rejected, not silently

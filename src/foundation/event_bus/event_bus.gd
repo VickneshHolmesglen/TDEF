@@ -618,6 +618,15 @@ signal item_pickup_rejected(item_id: String, item_type: String, quantity: int, r
 ## Key subscribers: Hero System (stat recalc), Damage & Status, Mission HUD.
 signal equipment_slot_changed(slot: String, new_item_id: String, previous_item_id: String)
 
+## Slot expansion tier completed (Story 003, TD-inv-003 item 2). Fires after
+## Inventory.attempt_expand_slots() succeeds — materials already consumed,
+## _slots already grown. new_tier is the tier just reached (1-5);
+## new_slot_count matches SlotExpansionCostTable's slots_after for that tier.
+## Key subscribers: Mission HUD / Inventory Screen (GDD's "Herald Gold flash"
+## milestone moment — not yet wired to a visual, this signal existing is the
+## prerequisite for that future work).
+signal slot_expansion_completed(new_tier: int, new_slot_count: int)
+
 # =============================================================================
 # Resource Economy System
 # =============================================================================

@@ -1,15 +1,31 @@
-## Unit tests for Inventory's slot expansion & cost table (Story 003, ADR-0016).
-## Covers AC-8 (tier-progression sequence, no-skip-a-tier), AC-9 (exact cost table
-## values + out-of-range tier failure), AC-10 (Tier 4 rarity gate, Tier 1-3 never
-## require Rare), AC-16 (max-tier block, checkable eligibility query, no side
-## effects on an ineligible/unaffordable attempt).
+## Unit tests for Inventory's slot expansion & cost table (Story 003, ADR-0016;
+## TD-inv-003 resolution, 2026-08-25). Covers AC-8 (tier-progression sequence,
+## no-skip-a-tier), AC-9 (exact cost table values + out-of-range tier failure),
+## AC-10 (Tier 4 rarity gate, Tier 1-3 never require Rare), AC-16 (max-tier
+## block, checkable eligibility query, no side effects on an
+## ineligible/unaffordable attempt), and TD-inv-003 items 1/2 (real Inventory
+## rarity resolution + consumption, slot_expansion_completed signal).
 ##
-## SlotExpansionCostTable is tested directly and statically (no Inventory instance
-## needed) for AC-9/AC-10, mirroring tab_categorization_test.gd's static-function
-## testing style. Inventory-instance tests (AC-8/AC-16) follow
-## slot_stack_model_test.gd's before_test()/after_test() direct-instantiation
-## convention. No random seeds, no time dependence, no external I/O.
+## SlotExpansionCostTable is tested directly and statically (no Inventory
+## instance needed) for AC-9/AC-10, mirroring tab_categorization_test.gd's
+## static-function testing style. Inventory-instance tests (AC-8/AC-16/TD-inv-003)
+## follow slot_stack_model_test.gd's before_test()/after_test() direct-
+## instantiation convention. No random seeds, no time dependence, no external I/O.
+##
+## TD-inv-003 resolution note: attempt_expand_slots() no longer takes a
+## caller-supplied availability Dictionary — it resolves affordability and
+## spend against REAL Inventory contents via has_items_by_rarity()/
+## consume_by_rarity(), exactly like has_items_by_rarity_test.gd's own
+## convention: seeded with real, already-registered GGameDataRegistry content
+## (common_scrap [rarity=Common], iron_ore [rarity=Uncommon], goblin_fang
+## [rarity=Rare]), not synthetic unregistered fixtures — has_items_by_rarity()/
+## consume_by_rarity() both resolve rarity via GGameDataRegistry.get_item_definition(),
+## so an unregistered item_id would silently fail to count at all.
 extends GdUnitTestSuite
+
+const COMMON_SCRAP: StringName = &"common_scrap"
+const IRON_ORE: StringName = &"iron_ore"
+const GOBLIN_FANG: StringName = &"goblin_fang"
 
 var _inventory: Inventory
 
@@ -23,6 +39,30 @@ func after_test() -> void:
 	if _inventory != null and is_instance_valid(_inventory):
 		_inventory.free()
 	_inventory = null
+
+
+func _make_stackable_definition(item_id: StringName) -> ItemDefinitionResource:
+	var def := ItemDefinitionResource.new()
+	def.item_id = item_id
+	def.item_type = &"Material"
+	def.display_name = String(item_id)
+	def.is_unique_instance = false
+	return def
+
+
+## Seeds real Inventory slots with real, GGameDataRegistry-registered
+## rarity-tagged materials. Generous default cumulative totals (150/70/20)
+## cover EVERY tier's cost, summed across all 5 tiers (Common 137, Uncommon
+## 60, Rare 17 total) — enough for a test that walks the full progression,
+## with room to spare; a 0 argument skips seeding that rarity entirely (for
+## tests that specifically want a rarity absent).
+func _seed_materials(common: int = 150, uncommon: int = 70, rare: int = 20) -> void:
+	if common > 0:
+		_inventory.add_stackable(_make_stackable_definition(COMMON_SCRAP), common)
+	if uncommon > 0:
+		_inventory.add_stackable(_make_stackable_definition(IRON_ORE), uncommon)
+	if rare > 0:
+		_inventory.add_stackable(_make_stackable_definition(GOBLIN_FANG), rare)
 
 
 # ---------------------------------------------------------------------------
@@ -123,7 +163,7 @@ func test_rare_first_appears_at_tier_4_not_tier_3() -> void:
 
 
 # ---------------------------------------------------------------------------
-# AC-8: tier progression sequence 18->24->30->36->42->48, no tier skipping
+# AC-8: tier progression sequence 24->30->36->42->48, no tier skipping
 # ---------------------------------------------------------------------------
 
 func test_fresh_inventory_starts_at_tier_zero_with_eighteen_slots() -> void:
@@ -132,14 +172,10 @@ func test_fresh_inventory_starts_at_tier_zero_with_eighteen_slots() -> void:
 
 
 func test_full_tier_progression_sequence_matches_gdd_exactly() -> void:
+	_seed_materials()
 	var expected_capacities: Array[int] = [24, 30, 36, 42, 48]
 	for i: int in range(expected_capacities.size()):
-		var available: Dictionary[StringName, int] = {
-			SlotExpansionCostTable.KEY_COMMON: 999,
-			SlotExpansionCostTable.KEY_UNCOMMON: 999,
-			SlotExpansionCostTable.KEY_RARE: 999,
-		}
-		var expanded: bool = _inventory.attempt_expand_slots(available)
+		var expanded: bool = _inventory.attempt_expand_slots()
 		assert_bool(expanded).is_true()
 		assert_int(_inventory.get_slot_count()).is_equal(expected_capacities[i])
 		assert_int(_inventory.get_current_slot_tier()).is_equal(i + 1)
@@ -147,14 +183,10 @@ func test_full_tier_progression_sequence_matches_gdd_exactly() -> void:
 
 ## AC-8 edge case: skipping a tier via any code path must be impossible —
 ## attempt_expand_slots() only ever advances _slot_tier by exactly one per
-## successful call, regardless of how much material is supplied.
+## successful call, regardless of how much material is available.
 func test_expansion_never_skips_a_tier_even_with_excess_materials() -> void:
-	var available: Dictionary[StringName, int] = {
-		SlotExpansionCostTable.KEY_COMMON: 100000,
-		SlotExpansionCostTable.KEY_UNCOMMON: 100000,
-		SlotExpansionCostTable.KEY_RARE: 100000,
-	}
-	_inventory.attempt_expand_slots(available)
+	_seed_materials()
+	_inventory.attempt_expand_slots()
 	assert_int(_inventory.get_current_slot_tier()).is_equal(1)
 	assert_int(_inventory.get_slot_count()).is_equal(24)
 
@@ -165,10 +197,10 @@ func test_expansion_growing_slots_preserves_existing_slot_contents_and_indices()
 	def.item_type = &"Material"
 	def.display_name = "Frost Silk"
 	def.is_unique_instance = false
-	_inventory.add_stackable(def, 7)
+	_inventory.add_stackable(def, 7)  # occupies slot 0; unrated (rarity="") so never touched by consume_by_rarity()
 
-	var available: Dictionary[StringName, int] = {SlotExpansionCostTable.KEY_COMMON: 10}
-	_inventory.attempt_expand_slots(available)
+	_seed_materials(10, 0, 0)  # exactly Tier 1's Common cost, lands in slot 1
+	_inventory.attempt_expand_slots()
 
 	var contents: Dictionary = _inventory.get_slot_contents(0)
 	assert_that(contents["item_id"]).is_equal("frost_silk")
@@ -176,36 +208,94 @@ func test_expansion_growing_slots_preserves_existing_slot_contents_and_indices()
 
 
 func test_expansion_unaffordable_returns_false_with_no_side_effects() -> void:
-	var available: Dictionary[StringName, int] = {SlotExpansionCostTable.KEY_COMMON: 5}  # tier 1 needs 10
+	_seed_materials(5, 0, 0)  # tier 1 needs 10 Common
 
-	var expanded: bool = _inventory.attempt_expand_slots(available)
+	var expanded: bool = _inventory.attempt_expand_slots()
 
 	assert_bool(expanded).is_false()
 	assert_int(_inventory.get_current_slot_tier()).is_equal(0)
 	assert_int(_inventory.get_slot_count()).is_equal(18)
 
 
-func test_expansion_missing_rarity_key_entirely_treated_as_zero_available() -> void:
-	var available: Dictionary[StringName, int] = {}  # no "common" key at all
-
-	var expanded: bool = _inventory.attempt_expand_slots(available)
-
-	assert_bool(expanded).is_false()
-	assert_int(_inventory.get_current_slot_tier()).is_equal(0)
-
-
-## TD-inv-003 item 3: an explicit {key: 0} must reject identically to the
-## missing-key case above — previously only guaranteed by code inspection of
-## _can_afford_expansion()'s `.get(key, 0)` default, not by a test.
-func test_expansion_explicit_zero_rarity_key_treated_identically_to_missing_key() -> void:
-	var available: Dictionary[StringName, int] = {
-		SlotExpansionCostTable.KEY_COMMON: 0,  # explicitly present, but zero
-	}
-
-	var expanded: bool = _inventory.attempt_expand_slots(available)
+## TD-inv-003 resolution note: the pre-fix version of this suite had two
+## separate tests here ("missing rarity key entirely" vs. "explicit {key: 0}")
+## because the old caller-supplied-Dictionary design could distinguish those
+## two input shapes. Real Inventory contents cannot: owning zero of a
+## material IS the only representable "zero" state. Both collapse into this
+## one test now — the distinction they used to guard
+## (`_can_afford_expansion()`'s `.get(key, 0)` default) no longer exists as
+## a code path; has_items_by_rarity()'s own equivalent behavior already has
+## direct coverage in has_items_by_rarity_test.gd.
+func test_expansion_with_zero_common_material_owned_rejects() -> void:
+	# _seed_materials() intentionally not called — inventory owns none of any
+	# rarity-tagged material at all.
+	var expanded: bool = _inventory.attempt_expand_slots()
 
 	assert_bool(expanded).is_false()
 	assert_int(_inventory.get_current_slot_tier()).is_equal(0)
+
+
+# ---------------------------------------------------------------------------
+# TD-inv-003 items 1/2: real Inventory rarity resolution/consumption,
+# slot_expansion_completed signal
+# ---------------------------------------------------------------------------
+
+func test_expansion_consumes_exactly_the_required_materials_from_real_inventory() -> void:
+	_seed_materials(10, 0, 0)  # exactly Tier 1's Common cost, nothing more
+
+	var expanded: bool = _inventory.attempt_expand_slots()
+
+	assert_bool(expanded).is_true()
+	# All 10 Common consumed -- none left, not even 1.
+	assert_bool(_inventory.has_items_by_rarity({&"Common": 1})).is_false()
+
+
+func test_expansion_at_tier_4_consumes_all_three_rarities() -> void:
+	# Walk to tier 3 first (tiers 1-3 don't need Uncommon/Rare in the
+	# quantities tier 4 does), then confirm tier 4 itself draws from all three.
+	_seed_materials()
+	_inventory.attempt_expand_slots()  # tier 1
+	_inventory.attempt_expand_slots()  # tier 2
+	_inventory.attempt_expand_slots()  # tier 3
+	# Remaining after tiers 1-3 (10+18+28=56 Common, 0+4+10=14 Uncommon, 0 Rare
+	# consumed so far) out of the 150/70/20 seeded: 94 Common, 56 Uncommon, 20 Rare.
+	var tier_4_cost: Dictionary = SlotExpansionCostTable.get_cost_for_tier(4)
+
+	var expanded: bool = _inventory.attempt_expand_slots()
+
+	assert_bool(expanded).is_true()
+	assert_int(_inventory.get_current_slot_tier()).is_equal(4)
+	# Confirm real consumption happened for all three rarities: exactly
+	# tier_4_cost[KEY_RARE] (5) of the 20 seeded Rare are gone, 15 remain.
+	assert_bool(_inventory.has_items_by_rarity({&"Rare": 16})).is_false()
+	assert_bool(_inventory.has_items_by_rarity({&"Rare": 15})).is_true()
+	assert_int(tier_4_cost[SlotExpansionCostTable.KEY_RARE]).is_equal(5)
+
+
+func test_expansion_success_emits_slot_expansion_completed_with_correct_args() -> void:
+	_seed_materials(10, 0, 0)
+
+	var captured: Array = []
+	var on_completed := func(new_tier: int, new_slot_count: int) -> void:
+		captured.append([new_tier, new_slot_count])
+	GEventBus.slot_expansion_completed.connect(on_completed)
+
+	_inventory.attempt_expand_slots()
+
+	GEventBus.slot_expansion_completed.disconnect(on_completed)
+	assert_array(captured).contains_exactly([[1, 24]])
+
+
+func test_expansion_failure_does_not_emit_slot_expansion_completed() -> void:
+	# No materials seeded -- guaranteed unaffordable.
+	var fired: bool = false
+	var on_completed := func(_a, _b) -> void: fired = true
+	GEventBus.slot_expansion_completed.connect(on_completed)
+
+	_inventory.attempt_expand_slots()
+
+	GEventBus.slot_expansion_completed.disconnect(on_completed)
+	assert_bool(fired).is_false()
 
 
 # ---------------------------------------------------------------------------
@@ -214,13 +304,9 @@ func test_expansion_explicit_zero_rarity_key_treated_identically_to_missing_key(
 # ---------------------------------------------------------------------------
 
 func _max_out_inventory_tier() -> void:
-	var available: Dictionary[StringName, int] = {
-		SlotExpansionCostTable.KEY_COMMON: 999,
-		SlotExpansionCostTable.KEY_UNCOMMON: 999,
-		SlotExpansionCostTable.KEY_RARE: 999,
-	}
+	_seed_materials()
 	for i: int in range(SlotExpansionCostTable.MAX_TIER):
-		_inventory.attempt_expand_slots(available)
+		_inventory.attempt_expand_slots()
 
 
 func test_can_expand_slots_true_before_max_tier() -> void:
@@ -246,20 +332,18 @@ func test_get_next_expansion_cost_fails_explicitly_at_max_tier() -> void:
 
 func test_attempt_expand_at_max_tier_blocked_with_no_deduction_and_no_growth() -> void:
 	_max_out_inventory_tier()
-	var available: Dictionary[StringName, int] = {
-		SlotExpansionCostTable.KEY_COMMON: 999,
-		SlotExpansionCostTable.KEY_UNCOMMON: 999,
-		SlotExpansionCostTable.KEY_RARE: 999,
-	}
+	# Seed extra material AFTER maxing out, so any (incorrect) deduction on a
+	# blocked attempt would be observable.
+	_seed_materials(50, 0, 0)
 
-	var expanded: bool = _inventory.attempt_expand_slots(available)
+	var expanded: bool = _inventory.attempt_expand_slots()
 
 	assert_bool(expanded).is_false()
 	assert_int(_inventory.get_current_slot_tier()).is_equal(5)
 	assert_int(_inventory.get_slot_count()).is_equal(48)
-	# The caller's availability Dictionary is untouched — attempt_expand_slots()
-	# never mutates it (this story's scoping: caller owns real spending).
-	assert_int(available[SlotExpansionCostTable.KEY_COMMON]).is_equal(999)
+	# The just-seeded 50 Common are still fully present -- a blocked (max-tier)
+	# attempt never reaches has_items_by_rarity()/consume_by_rarity() at all.
+	assert_bool(_inventory.has_items_by_rarity({&"Common": 50})).is_true()
 
 
 # ---------------------------------------------------------------------------
@@ -268,13 +352,9 @@ func test_attempt_expand_at_max_tier_blocked_with_no_deduction_and_no_growth() -
 # ---------------------------------------------------------------------------
 
 func test_save_restore_round_trip_preserves_slot_tier_and_expanded_capacity() -> void:
-	var available: Dictionary[StringName, int] = {
-		SlotExpansionCostTable.KEY_COMMON: 999,
-		SlotExpansionCostTable.KEY_UNCOMMON: 999,
-		SlotExpansionCostTable.KEY_RARE: 999,
-	}
-	_inventory.attempt_expand_slots(available)
-	_inventory.attempt_expand_slots(available)
+	_seed_materials()
+	_inventory.attempt_expand_slots()
+	_inventory.attempt_expand_slots()
 	var data: Dictionary = _inventory.get_save_data()
 	assert_int(data["slot_tier"]).is_equal(2)
 
@@ -315,8 +395,8 @@ func test_restore_save_data_rejects_missing_slot_tier_key() -> void:
 
 
 func test_reset_to_defaults_resets_slot_tier_to_zero() -> void:
-	var available: Dictionary[StringName, int] = {SlotExpansionCostTable.KEY_COMMON: 999}
-	_inventory.attempt_expand_slots(available)
+	_seed_materials(10, 0, 0)
+	_inventory.attempt_expand_slots()
 	assert_int(_inventory.get_current_slot_tier()).is_equal(1)
 
 	_inventory.reset_to_defaults()

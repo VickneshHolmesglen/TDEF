@@ -233,6 +233,7 @@ The complete event catalogue follows, organised by the system that publishes eac
 | `item_removed` | `item_id: String`, `item_type: String`, `quantity: int` | Mission HUD, Crafting | Item consumed or discarded |
 | `equipment_slot_changed` | `slot: String`, `new_item_id: String`, `previous_item_id: String` | Hero System (stat recalc), Damage & Status, Mission HUD | Equipment change at Sanctuary |
 | `item_pickup_rejected` | `item_id: String`, `item_type: String`, `quantity: int`, `reason: String` | Mission HUD (toast/notification) | Fires instead of `item_added` when a mid-mission pickup cannot be stored (inventory full, no room in any stack). Not queued or retried — the pickup is lost. *(Added by `inventory.md`; catalogued 2026-07-13, closes the `event-bus.md` documentation gap flagged by ADR-0016.)* |
+| `slot_expansion_completed` | `new_tier: int`, `new_slot_count: int` | Mission HUD / Inventory Screen (GDD's "Herald Gold flash" milestone moment — visual not yet wired) | Fires after `Inventory.attempt_expand_slots()` succeeds — materials already consumed, `_slots` already grown. *(Added 2026-08-25, closes `TD-inv-003` item 2 — this GDD's own Visual/Audio Requirements section implied this signal should exist; it previously did not.)* |
 
 ---
 

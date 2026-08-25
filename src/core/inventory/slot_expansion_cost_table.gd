@@ -43,8 +43,9 @@ extends RefCounted
 const MIN_TIER: int = 1
 const MAX_TIER: int = 5
 
-## Rarity-quantity keys used both in table rows and in the
-## Inventory.attempt_expand_slots() caller-supplied availability Dictionary.
+## Rarity-quantity keys used in table rows. Inventory.attempt_expand_slots()
+## maps these to ItemDefinitionResource.rarity's capitalized vocabulary
+## ("Common"/"Uncommon"/"Rare") via its own _RARITY_KEY_TO_NAME table.
 const KEY_SLOTS_AFTER: StringName = &"slots_after"
 const KEY_COMMON: StringName = &"common"
 const KEY_UNCOMMON: StringName = &"uncommon"
