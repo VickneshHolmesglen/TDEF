@@ -39,3 +39,19 @@ extends RefCounted
 ##   monster.visual_companion.position = world_pos
 static func map_to_3d(pos2d: Vector2, layer_height: float) -> Vector3:
 	return Vector3(pos2d.x, layer_height, pos2d.y)
+
+
+## Exact inverse of map_to_3d() — projects a 3D visual-companion-plane
+## position back onto the 2D gameplay-simulation plane by dropping the Y
+## (layer height) component. Added for ADR-0039 (3D Interaction and Picking
+## Layer, Epic 15 Phase 2): a ground-plane raycast hit returns a Vector3
+## world position that must be converted back to 2D before it can be handed
+## to Grid.world_to_cell().
+##
+## Pure function, same zero-allocation/no-side-effect contract as map_to_3d().
+##
+## Usage:
+##   var hit_pos2d: Vector2 = VisualMath.map_to_2d(ray_hit.position)
+##   var cell: Vector2i = GGrid.world_to_cell(hit_pos2d)
+static func map_to_2d(pos3d: Vector3) -> Vector2:
+	return Vector2(pos3d.x, pos3d.z)

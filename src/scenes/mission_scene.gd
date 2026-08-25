@@ -71,6 +71,18 @@ const SUPPORT_AURA_COLOR: Color = Color(0.95, 0.75, 0.3)
 const PLACEMENT_CONFIRM_COLOR: Color = Color(0.95, 0.95, 0.9)
 const PLACEMENT_CONFIRM_DURATION: float = 0.3  ## seconds, per the GDD's own "~0.3s" spec
 
+## ADR-0040 (3D Camera Cutover Capability, Epic 15 Phase 4) — consolidates
+## ADR-0039's original separate ENABLE_3D_PICKING into this single toggle, so
+## the camera and the input path it depends on can never independently drift
+## out of sync. Dormant by construction: the Picking3D infrastructure below
+## (ground StaticBody3D, _pick_cell_3d()) and Camera3D itself are both fully
+## built but unreachable/inactive while this is false — the 2D Camera2D/
+## Grid.world_to_cell() path in _unhandled_input() remains the only live
+## tower-placement input path. Flip only after a live-verified Godot MCP
+## session confirms both the 3D render and 3D picking behave correctly — see
+## ADR-0040's Migration Plan.
+const ENABLE_3D_PRESENTATION_MODE: bool = false
+
 @onready var _mission_select_screen: Control = $MissionSelectLayer/MissionSelectScreen
 @onready var _gameplay_root: Node2D = $GameplayRoot
 @onready var _grid_visual: Node2D = $GameplayRoot/GridVisual
@@ -117,7 +129,7 @@ func _ready() -> void:
 	# established node-reference convention — see the code-review note on
 	# the @onready block above (a real regression this file was fixed for
 	# once already, during Epic 10).
-	_camera_3d.current = false
+	_apply_presentation_mode()
 	# ADR-0038, Epic 16 Story 7: dependency-injected, not a service-locator
 	# lookup from inside MonsterManager (src/CLAUDE.md's "prefer DI over
 	# singletons"). Safe to inject before gameplay starts — the renderer has
@@ -141,6 +153,14 @@ func _ready() -> void:
 	GEventBus.pre_placement_perk_activated.connect(_on_pre_placement_perk_activated)
 	GEventBus.monster_died.connect(_on_monster_died)
 	GEventBus.monsters_died_batch.connect(_on_monsters_died_batch)
+
+
+## ADR-0040: the single point that decides whether Camera3D or Camera2D is
+## authoritative. Disables (not just deprioritizes) whichever camera loses,
+## so no half-cutover state is reachable where both render simultaneously.
+func _apply_presentation_mode() -> void:
+	_camera_3d.current = ENABLE_3D_PRESENTATION_MODE
+	_camera.enabled = not ENABLE_3D_PRESENTATION_MODE
 
 
 func _exit_tree() -> void:
@@ -169,6 +189,7 @@ func _exit_tree() -> void:
 ## a camera still at its Node defaults. grid_initialized fires before
 ## mission_launched at every call site, closing the gap structurally.
 func _on_grid_initialized(cols: int, rows: int, cell_size: float) -> void:
+	_build_picking_ground_plane(cols, rows, cell_size)
 	if _grid_visual.has_method(&"configure"):
 		var cells: Dictionary = {}
 		for row: int in range(rows):
@@ -467,12 +488,53 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		if _selected_blueprint_id == &"":
 			return
-		var cell: Vector2i = GGrid.world_to_cell(get_global_mouse_position())
+		# ADR-0040: ENABLE_3D_PRESENTATION_MODE is false by default (see its own
+		# doc comment on the const declaration) — this branch is provably
+		# unreachable until a future, live-verified cutover flips it. The 2D
+		# path below remains the only live path today.
+		# NOTE: Picking3D.pick_ray() expects viewport (screen-space) coordinates,
+		# NOT get_global_mouse_position()'s Camera2D-world coordinates — these are
+		# two different coordinate spaces that happen to share a type (Vector2).
+		var cell: Vector2i = _pick_cell_3d(get_viewport().get_mouse_position()) if ENABLE_3D_PRESENTATION_MODE else GGrid.world_to_cell(get_global_mouse_position())
 		_attempt_placement_at(cell)
 	elif event is InputEventMouseMotion:
 		_update_placement_preview()
 	elif event is InputEventKey and event.pressed and event.keycode == KEY_SPACE:
 		GEventBus.player_ready.emit()
+
+
+## Builds the invisible, process-free ground StaticBody3D that
+## Picking3D.pick_ground_cell() raycasts against (ADR-0039). Sized to the
+## mission's actual grid bounds — cols/rows/cell_size are only known once
+## GGrid.initialize() fires grid_initialized, so this is called from
+## _on_grid_initialized() rather than _ready(). No visual mesh, no
+## _process()/_physics_process() — a static collision shape has zero
+## per-frame cost while ENABLE_3D_PRESENTATION_MODE is false (nothing ever raycasts
+## against it) and while true (a raycast is only cast on click, not per
+## frame).
+func _build_picking_ground_plane(cols: int, rows: int, cell_size: float) -> void:
+	var body := StaticBody3D.new()
+	body.name = "PickingGroundPlane"
+	body.collision_layer = Picking3D.PICKING_LAYER_GROUND
+	body.collision_mask = 0
+	var shape := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	# Grid origin is (0,0) in world space (Grid.cell_to_world()'s own
+	# convention) — center the plane on the grid's own extent, one cell_size
+	# thick so a straight-down ray from Camera3D always intersects it.
+	box.size = Vector3(cols * cell_size, cell_size, rows * cell_size)
+	shape.shape = box
+	body.add_child(shape)
+	$PresentationRoot3D.add_child(body)
+	body.position = Vector3(cols * cell_size * 0.5, -cell_size * 0.5, rows * cell_size * 0.5)
+
+
+## Resolves a screen-space mouse position to a grid cell via Picking3D's
+## ground-plane raycast (ADR-0039). Only ever called from the
+## ENABLE_3D_PRESENTATION_MODE-gated branch above — see that branch's own comment.
+func _pick_cell_3d(mouse_pos: Vector2) -> Vector2i:
+	var space_state: PhysicsDirectSpaceState3D = get_world_3d().direct_space_state
+	return Picking3D.pick_ground_cell(_camera_3d, mouse_pos, space_state)
 
 
 ## Attempts to place the currently-selected blueprint at `cell`. Split out

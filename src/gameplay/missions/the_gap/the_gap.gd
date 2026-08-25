@@ -74,6 +74,11 @@ const GOAL_CELL: Vector2i = Vector2i(15, 6)
 ## interactions and are never gated by this flag.
 @export var debug_controls_enabled: bool = false
 
+## ADR-0040 (3D Camera Cutover Capability, Epic 15 Phase 4) — see
+## mission_scene.gd's identical const for the full rationale. Dormant by
+## construction; flip only after a live-verified Godot MCP session.
+const ENABLE_3D_PRESENTATION_MODE: bool = false
+
 ## Typed as Node2D (the real base type), NOT GridVisual — grid_visual.gd
 ## deliberately declares no class_name (see its own class doc comment: a
 ## fresh class_name failed to resolve in a purely headless run during this
@@ -129,7 +134,7 @@ func _ready() -> void:
 	# frame renders) is what actually keeps Camera2D the active view; the
 	# .tscn's stored false is necessary documentation of intent but not
 	# sufficient on its own.
-	$PresentationRoot3D/Camera3D.current = false
+	_apply_presentation_mode()
 	# ADR-0038, Epic 16 Story 7: dependency-injected, not a service-locator
 	# lookup from inside MonsterManager (src/CLAUDE.md's "prefer DI over
 	# singletons") — mirrors mission_scene.gd's identical injection.
@@ -140,6 +145,7 @@ func _ready() -> void:
 
 	var config: GridConfig = _build_grid_config()
 	GGrid.initialize(config)
+	_build_picking_ground_plane()
 	# Dynamic dispatch (see _grid_visual's own doc comment for why it is typed
 	# Node2D rather than a GridVisual class_name). has_method() guard closes
 	# the "unchecked dynamic dispatch" gap flagged in code review: a
@@ -324,7 +330,10 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		if _selected_blueprint_id == &"":
 			return
-		var cell: Vector2i = GGrid.world_to_cell(get_global_mouse_position())
+		# ADR-0040: ENABLE_3D_PRESENTATION_MODE is false by default — see
+		# mission_scene.gd's identical branch for the full rationale. This
+		# scene's 2D path remains the only reachable one today.
+		var cell: Vector2i = _pick_cell_3d(get_viewport().get_mouse_position()) if ENABLE_3D_PRESENTATION_MODE else GGrid.world_to_cell(get_global_mouse_position())
 		_attempt_placement_at(cell)
 	elif event is InputEventMouseMotion:
 		_update_placement_preview()
@@ -333,6 +342,37 @@ func _unhandled_input(event: InputEvent) -> void:
 			GEventBus.player_ready.emit()
 		elif event.keycode == KEY_K and debug_controls_enabled:
 			_debug_kill_hero()
+
+
+## See mission_scene.gd's identical method for the full rationale — this
+## scene knows its grid dimensions as compile-time consts (GRID_COLS/
+## GRID_ROWS/CELL_SIZE) rather than learning them from grid_initialized, so
+## this is called directly from _ready() after GGrid.initialize() instead.
+func _build_picking_ground_plane() -> void:
+	var body := StaticBody3D.new()
+	body.name = "PickingGroundPlane"
+	body.collision_layer = Picking3D.PICKING_LAYER_GROUND
+	body.collision_mask = 0
+	var shape := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = Vector3(GRID_COLS * CELL_SIZE, CELL_SIZE, GRID_ROWS * CELL_SIZE)
+	shape.shape = box
+	body.add_child(shape)
+	$PresentationRoot3D.add_child(body)
+	body.position = Vector3(GRID_COLS * CELL_SIZE * 0.5, -CELL_SIZE * 0.5, GRID_ROWS * CELL_SIZE * 0.5)
+
+
+## See mission_scene.gd's identical method for the full rationale. Only ever
+## called from the ENABLE_3D_PRESENTATION_MODE-gated branch above.
+func _pick_cell_3d(mouse_pos: Vector2) -> Vector2i:
+	var space_state: PhysicsDirectSpaceState3D = get_world_3d().direct_space_state
+	return Picking3D.pick_ground_cell($PresentationRoot3D/Camera3D, mouse_pos, space_state)
+
+
+## ADR-0040 — see mission_scene.gd's identical method for the full rationale.
+func _apply_presentation_mode() -> void:
+	$PresentationRoot3D/Camera3D.current = ENABLE_3D_PRESENTATION_MODE
+	_camera.enabled = not ENABLE_3D_PRESENTATION_MODE
 
 
 ## Attempts to place the currently-selected blueprint at `cell`. Split out
