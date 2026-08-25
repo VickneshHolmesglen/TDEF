@@ -20,6 +20,7 @@ var _lifesteal_pending: Dictionary[int, float] = {}
 func _ready() -> void:
 	GEventBus.tower_attacked.connect(_on_tower_attacked)
 	GEventBus.hero_auto_attacked.connect(_on_hero_auto_attacked)
+	GEventBus.hero_skill_attacked.connect(_on_hero_skill_attacked)
 	GEventBus.monster_hp_absorbed.connect(_on_monster_hp_absorbed)
 	GEventBus.wave_completed.connect(_on_wave_completed)
 
@@ -27,6 +28,7 @@ func _ready() -> void:
 func _exit_tree() -> void:
 	GEventBus.tower_attacked.disconnect(_on_tower_attacked)
 	GEventBus.hero_auto_attacked.disconnect(_on_hero_auto_attacked)
+	GEventBus.hero_skill_attacked.disconnect(_on_hero_skill_attacked)
 	GEventBus.monster_hp_absorbed.disconnect(_on_monster_hp_absorbed)
 	GEventBus.wave_completed.disconnect(_on_wave_completed)
 
@@ -85,6 +87,37 @@ func _on_hero_auto_attacked(event: HeroAutoAttackEvent) -> void:
 		return
 	if event.hero_lifesteal_fraction > 0.0:
 		_lifesteal_pending[event.target_id] = event.hero_lifesteal_fraction
+	await get_tree().process_frame
+	if not is_instance_valid(self):
+		return
+	var ev: MonsterDamageTaken = MonsterDamageTaken.new()
+	ev.entity_id = event.target_id
+	ev.amount = final_damage
+	ev.source_type = 1  # 1 = hero (see MonsterDamageTaken source_type values)
+	ev.is_crit = event.is_crit
+	ev.hero_bonus_tier = event.hero_bonus_tier
+	GEventBus.monster_damage_taken.emit(ev)
+
+
+## D7 formula (Rule IX, added 2026-08-26 — closes TD-hero-001's Skill Power
+## GDScript implementation gap): floor(base × tier_mult × crit_mult),
+## structurally identical to D2/_on_hero_auto_attacked() from the tier step
+## onward — only the base term differs (skill_power × skill_power_coefficient
+## instead of a pre-resolved base_damage). Reuses the same
+## HERO_DAMAGE_BONUS_MULTIPLIER constant as D2 — Rule IX.3 is explicit that
+## no second constant is introduced for skills.
+##
+## Rule IX.9: lifesteal is NOT wired here on purpose — HeroSkillAttackEvent
+## carries no hero_lifesteal_fraction field at all (unlike HeroAutoAttackEvent),
+## so there is no fraction to register into _lifesteal_pending even
+## defensively. See damage-status.md OQ-5 for the open question this leaves.
+func _on_hero_skill_attacked(event: HeroSkillAttackEvent) -> void:
+	var base_skill_damage: float = event.skill_power * event.skill_power_coefficient
+	var tier_dmg: float = base_skill_damage * (HERO_DAMAGE_BONUS_MULTIPLIER if event.hero_bonus_tier > 0 else 1.0)
+	var crit_dmg: float = tier_dmg * (event.crit_multiplier_effective if event.is_crit else 1.0)
+	var final_damage: int = floori(crit_dmg)
+	if final_damage <= 0:
+		return
 	await get_tree().process_frame
 	if not is_instance_valid(self):
 		return

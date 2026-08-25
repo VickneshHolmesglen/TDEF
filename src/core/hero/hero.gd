@@ -802,6 +802,13 @@ func _on_ultimate_skill_changed(ultimate_id: String) -> void:
 ## get_effective_stat(&"cdr") every activation — never cached (control manifest
 ## requirement) — and applied per Rule 12's formula: effective_cooldown =
 ## base_cooldown x (1 - cdr), floored at 0.5s.
+##
+## TD-hero-001 (Skill Power implementation, 2026-08-26): also resolves the
+## cast's damage via _resolve_skill_hit() — see that method's own doc comment.
+## This closes the previous "no consumer of hero_skill_activated" gap
+## (skill_resource.gd's original doc comment, and this method's own prior
+## comment below) — damage-status.md Rule IX/Formula D7 now exists and is
+## wired here as the emitting side.
 func activate_skill(slot_index: int) -> void:
 	var skill_id: StringName = _skill_slots[slot_index]
 	if skill_id == &"":
@@ -816,6 +823,44 @@ func activate_skill(slot_index: int) -> void:
 	# — not "hero_skill_used" (that signal does not exist). String, not
 	# StringName — cast at emit time.
 	GEventBus.hero_skill_activated.emit(String(skill_id), global_position)
+	_resolve_skill_hit(skill_id)
+
+
+## TD-hero-001 (Skill Power implementation, 2026-08-26): resolves the single
+## priority target this MVP skill cast strikes, reusing _select_target()'s
+## exact auto-attack target-priority logic (design/gdd/damage-status.md Rule
+## IX explicitly leaves "which target(s) a skill cast struck" to Hero
+## System's own resolution — not specified further by that GDD). A no-target
+## cast still consumes the skill's cooldown (already started in
+## activate_skill() above) but emits no hero_skill_attacked — the cast
+## simply whiffs, mirroring _on_attack_timer_timeout()'s identical no-target
+## early return. Multi-target/AoE skills (Rule IX.8's elem_firestorm example)
+## are not yet content-authored in assets/data/skills/ (grep-confirmed) —
+## every currently shipped skill resolves as a single hit here; a future
+## multi-target skill would need this method extended to emit one
+## HeroSkillAttackEvent per struck target, per Rule IX.8's explicit
+## requirement.
+func _resolve_skill_hit(skill_id: StringName) -> void:
+	var target_id: int = _select_target()
+	if target_id == -1:
+		return
+	var skill: SkillResource = GGameDataRegistry.get_skill_resource(skill_id)
+	if skill == null:
+		return
+	var entry: Dictionary = _monster_cache[target_id] as Dictionary
+	var payload := HeroSkillAttackEvent.new()
+	payload.skill_id = skill_id
+	payload.target_id = target_id
+	# GDD Formula 2: effective_skill_power_final = effective_skill_power x
+	# (1 + tower_affinity_bonus) — identical shape to
+	# _on_attack_timer_timeout()'s base_damage line, closing the Skill Power
+	# half of TD-hero-001 (the Damage half already applies this formula).
+	payload.skill_power = get_effective_stat(&"skill_power") * (1.0 + get_effective_stat(&"tower_affinity"))
+	payload.skill_power_coefficient = skill.skill_power_coefficient
+	payload.is_crit = randf() < get_effective_stat(&"crit_chance")
+	payload.crit_multiplier_effective = CRIT_MULTIPLIER_BASE + get_effective_stat(&"crit_multiplier")
+	payload.hero_bonus_tier = entry.get("tier", 0) as int
+	GEventBus.hero_skill_attacked.emit(payload)
 
 
 ## Rule 8: starts (restarting if already running) the given slot's dedicated

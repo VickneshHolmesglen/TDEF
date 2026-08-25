@@ -6,3 +6,4 @@
 script = ExtResource("1")
 skill_id = &"chain_lightning"
 base_cooldown = 3.0
+skill_power_coefficient = 0.8

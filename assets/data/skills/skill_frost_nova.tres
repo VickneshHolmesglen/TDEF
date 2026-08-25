@@ -6,3 +6,4 @@
 script = ExtResource("1")
 skill_id = &"frost_nova"
 base_cooldown = 6.0
+skill_power_coefficient = 1.0

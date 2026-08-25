@@ -6,3 +6,4 @@
 script = ExtResource("1")
 skill_id = &"earth_slam"
 base_cooldown = 8.0
+skill_power_coefficient = 1.5

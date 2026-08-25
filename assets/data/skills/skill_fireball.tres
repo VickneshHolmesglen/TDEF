@@ -6,3 +6,4 @@
 script = ExtResource("1")
 skill_id = &"fireball"
 base_cooldown = 4.0
+skill_power_coefficient = 1.2

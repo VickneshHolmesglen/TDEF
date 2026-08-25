@@ -148,9 +148,20 @@ signal hero_position_changed(grid_position: Vector2i)
 ## Key subscribers: Damage & Status, Mission HUD.
 signal hero_equipment_changed(slot: String, item_id: String)
 
-## Player activates an active skill.
-## Key subscribers: Damage & Status, Audio, Mission HUD.
+## Player activates an active skill (a cast happened — not necessarily a hit).
+## Key subscribers: Audio, Mission HUD. **Corrected 2026-08-25/26 (TD-hero-001)**:
+## Damage & Status removed from subscribers — it was never a real consumer of
+## this event. See hero_skill_attacked below for the actual damage-resolution
+## event; design/gdd/damage-status.md Rule I.2 documents the distinction.
 signal hero_skill_activated(skill_id: String, target_position: Vector2)
+
+## A skill cast actually struck a specific target — distinct from
+## hero_skill_activated ("a skill was cast"). One emission per target hit
+## (Resource payload, 7 fields). Hero System pre-computes crit, target tier,
+## and skill_power (already including tower_affinity_bonus) before emitting.
+## Added 2026-08-25/26, closes TD-hero-001's Skill Power consumer gap.
+## Key subscribers: Damage & Status (Rule IX / Formula D7 pipeline trigger).
+signal hero_skill_attacked(payload: HeroSkillAttackEvent)
 
 ## Emitted by Hero System each second while a skill slot is on cooldown.
 ## Key subscribers: Mission HUD (skill button fill-drain display).
