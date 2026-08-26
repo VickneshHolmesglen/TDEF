@@ -1,0 +1,33 @@
+[gd_resource type="Resource" script_class="CreatureAtlasMappingResource" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://src/core/visual_presentation/creature_atlas_mapping_resource.gd" id="1"]
+[ext_resource type="Script" path="res://src/core/visual_presentation/creature_animation_clip.gd" id="2"]
+[ext_resource type="Texture2D" uid="uid://c21og22xar4bj" path="res://assets/art/monsters/rift_sentinel_boss.png" id="3"]
+
+[sub_resource type="Resource" id="Clip_idle"]
+script = ExtResource("2")
+clip_name = &"idle"
+start_frame = 0
+frame_count = 1
+fps = 6.0
+loop = true
+
+[resource]
+script = ExtResource("1")
+creature_id = &"rift_sentinel_boss"
+family_atlas_id = &"rift_sentinel_boss_family"
+atlas_texture = ExtResource("3")
+atlas_columns = 1
+atlas_rows = 1
+frame_count = 1
+animation_clips = [SubResource("Clip_idle")]
+world_width = 2.5
+world_height = 3.0
+foot_anchor_offset = Vector2(0.0, 0.0)
+mesh_layout_id = &"quad_billboard"
+shader_variant_id = &"creature_swarm_body"
+render_mode_id = &"alpha_scissor"
+presentation_class = &"exceptional"
+approved_presenter_class = &"BossCreaturePresenter3D"
+batch_capacity_requirement = 1
+status_mask_schema_version = 1
