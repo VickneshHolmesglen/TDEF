@@ -95,7 +95,11 @@ a trophy or a grind meter.
 6. **Menagerie attraction material** (`menagerie_lure`): rolled independently from
    `monster_died.menagerie_attraction_drop_chance` (a flat 0.0–1.0 chance, per-monster-type data),
    **not** scaled by `wave_reward_scalar` — this is a rare-find mechanic, not part of the
-   wave-escalating economy. Consumed only by the Menagerie System (not yet designed).
+   wave-escalating economy. Consumed only by the Menagerie System (`menagerie.md`, shipped —
+   `Menagerie.attempt_lure()` queries and consumes `menagerie_lure` via the standard
+   `Inventory.has_item_quantity()`/`consume_stackable()` convention; found stale 2026-08-27,
+   this doc's own Rule 6 had never been updated after Menagerie went from "not yet designed"
+   to shipped).
 
 7. **Gold is a separate track from materials.** Resource Economy emits gold deltas via the existing
    shipped signal `resources_changed(gold: int, source: StringName)` — never through
