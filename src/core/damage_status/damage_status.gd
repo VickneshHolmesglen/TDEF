@@ -23,6 +23,7 @@ func _ready() -> void:
 	GEventBus.hero_skill_attacked.connect(_on_hero_skill_attacked)
 	GEventBus.monster_hp_absorbed.connect(_on_monster_hp_absorbed)
 	GEventBus.wave_completed.connect(_on_wave_completed)
+	GEventBus.hero_died.connect(_on_hero_died)
 
 
 func _exit_tree() -> void:
@@ -31,6 +32,7 @@ func _exit_tree() -> void:
 	GEventBus.hero_skill_attacked.disconnect(_on_hero_skill_attacked)
 	GEventBus.monster_hp_absorbed.disconnect(_on_monster_hp_absorbed)
 	GEventBus.wave_completed.disconnect(_on_wave_completed)
+	GEventBus.hero_died.disconnect(_on_hero_died)
 
 
 ## D1 formula: floor(raw_damage × mitigation). is_siege unused at MVP.
@@ -157,4 +159,44 @@ func _on_wave_completed(_wave_number: int, _enemies_remaining: int, _was_boss_br
 	await get_tree().process_frame
 	if not is_instance_valid(self):
 		return
+	_lifesteal_pending.clear()
+
+
+## TD-damage-002 (fixed 2026-08-26): Rule VIII (Hero-Death Cleanup) was
+## documented in damage-status.md since 2026-07-15d as already-shipped
+## behavior but had no actual implementation anywhere in this file — this
+## closes that gap.
+##
+## Rule VIII.2: clears _lifesteal_pending IMMEDIATELY, SYNCHRONOUSLY — no
+## await, unlike _on_wave_completed()'s deferred clear above. Rule VIII.3's
+## rationale (see the GDD, not repeated in full here): a lifesteal hit landed
+## just before the hero's own death defers its heal by one frame
+## (_on_hero_auto_attacked()/_on_hero_skill_attacked() both register into
+## _lifesteal_pending before their own await) before monster_damage_taken/
+## monster_hp_absorbed resolve on the Monster System side. hero_died and that
+## deferred resolution are two unrelated chains with no guaranteed relative
+## order — if monster_hp_absorbed for a pending hit arrives AFTER hero_died
+## has already fired, without this synchronous clear _on_monster_hp_absorbed()
+## would still find the entry present and emit hero_healed on an
+## already-dead hero. Clearing here the instant hero_died fires means any
+## monster_hp_absorbed arriving afterward finds no entry —
+## _on_monster_hp_absorbed()'s existing "if not present: ignore" guard
+## (line ~135 above) suppresses the heal with no new logic needed there.
+##
+## Rule VIII.4/VIII.5: this does NOT wait a frame the way _on_wave_completed()
+## does (that method drains pending heals before clearing, preserving a
+## legitimate end-of-wave killing-blow heal; this method discards
+## immediately, since by definition no heal received after hero_died can be
+## legitimate). wave_completed and hero_died are mutually exclusive triggers
+## within a mission (Wave Manager's own DEFEAT-priority rule) — no
+## double-clear ordering hazard between the two handlers.
+##
+## Rule VIII.6 documents a structural timing dependency this rule's
+## correctness relies on (Monster System's monster_hp_absorbed flush being
+## pinned to _physics_process, resolving before this handler's synchronous
+## clear within the same frame) — that dependency is a property of the
+## surrounding systems, not enforced by this handler itself, and (like the
+## rest of this pass) not live-verified here. See the GDD for the full
+## explanation if that guarantee is ever suspected broken.
+func _on_hero_died() -> void:
 	_lifesteal_pending.clear()
