@@ -93,11 +93,13 @@ func _ready() -> void:
 	_setup_autosave_timer()
 	GEventBus.mission_launched.connect(_on_mission_launched)
 	GEventBus.scene_transition_completed.connect(_on_scene_transition_completed)
+	GEventBus.mission_phase_changed.connect(_on_mission_phase_changed)
 
 
 func _exit_tree() -> void:
 	GEventBus.mission_launched.disconnect(_on_mission_launched)
 	GEventBus.scene_transition_completed.disconnect(_on_scene_transition_completed)
+	GEventBus.mission_phase_changed.disconnect(_on_mission_phase_changed)
 
 
 ## restore_order registry (TD-hero-004, fixed 2026-07-08) — every system that
@@ -464,6 +466,21 @@ func _migrate_step(data: Dictionary, from_version: int) -> Dictionary:
 
 func _on_mission_launched(_mission_id: String, _modifiers: PackedStringArray, _difficulty_tier: int) -> void:
 	save_checkpoint(_active_slot)
+
+
+## TD-save-004 (fixed 2026-08-27): Rule 9's DEFEAT-triggered save had no
+## implementation anywhere — DEFEAT could resolve a same-frame tower-destroyed
+## -> tower_component_returned -> Inventory item_added(damaged: true) cascade
+## (tower.md Rule 24) with nothing ever durably saving it until the player's
+## next Sanctuary autosave/return, so an immediate quit-or-crash after DEFEAT
+## (without first retrying) silently lost that state. Deferred exactly one
+## frame (same `call_deferred` idiom as `sanctuary_state_restored` above) so
+## every synchronous handler for this frame's events — including Inventory's
+## `item_added` from the tower-destruction cascade — has already run before
+## `save_slot()` calls `get_save_data()` on any registered system.
+func _on_mission_phase_changed(_previous_phase: String, new_phase: String, _timestamp: float) -> void:
+	if new_phase == "DEFEAT":
+		save_slot.call_deferred(_active_slot)
 
 
 ## Fix (2026-08-17): this was previously gated on
