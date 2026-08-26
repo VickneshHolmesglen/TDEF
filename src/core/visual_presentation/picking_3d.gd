@@ -37,6 +37,15 @@ static func pick_ray(camera: Camera3D, mouse_pos: Vector2, space_state: PhysicsD
 	var ray_origin: Vector3 = camera.project_ray_origin(mouse_pos)
 	var ray_target: Vector3 = ray_origin + camera.project_ray_normal(mouse_pos) * camera.far
 	var query := PhysicsRayQueryParameters3D.create(ray_origin, ray_target, mask)
+	# Live-caught 2026-08-26: PhysicsRayQueryParameters3D defaults to
+	# collide_with_areas = false. The ground plane (a StaticBody3D) was
+	# picking correctly without this, which masked the fact that
+	# pick_tower()'s target — an Area3D — was invisible to every raycast
+	# until this was set. Confirmed via a live Godot MCP session: an
+	# unmasked raycast at a tower's exact known screen position hit the
+	# ground plane at that same point instead of the tower's Area3D, zero
+	# meters off, until this fix.
+	query.collide_with_areas = true
 	return space_state.intersect_ray(query)
 
 

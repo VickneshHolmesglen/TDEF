@@ -38,7 +38,7 @@ stretch_mode = 1
 [node name="PresentationRoot3D" type="Node3D" parent="."]
 
 [node name="Camera3D" type="Camera3D" parent="PresentationRoot3D"]
-transform = Transform3D(1, 0, 0, 0, 0.573576, -0.819152, 0, 0.819152, 0.573576, 512, 650, 840)
+transform = Transform3D(1, 0, 0, 0, 0.573576, 0.819152, 0, -0.819152, 0.573576, 512, 650, 840)
 current = false
 
 [node name="MonsterSwarmRenderer3D" parent="PresentationRoot3D" instance=ExtResource("14_swarm")]

@@ -19,6 +19,10 @@ Accepted
 | **Post-Cutoff APIs Used** | None |
 | **Verification Required** | **Not yet live-verified** — this ADR and its implementation were authored and built without running the project (explicit user instruction this session: no testing). Everything described here is inert by construction (see Decision's "dormant by default" clause) specifically so that lack of verification cannot break the currently-shipping game. Live verification (a real Godot MCP session, screenshot evidence, actual raycast behavior) remains a required gate before `ENABLE_3D_PICKING` is ever flipped true — tracked as this ADR's own open item, not silently assumed correct. |
 
+## Addendum (2026-08-26, live-verified)
+
+`Picking3D.pick_ray()` had a real bug, live-caught via Godot MCP: `PhysicsRayQueryParameters3D` defaults `collide_with_areas = false`. The ground `StaticBody3D` pick worked fine without it (a `StaticBody3D` is a real `PhysicsBody`, detected by default), which masked the fact that `pick_tower()`'s target — an `Area3D` — was invisible to every raycast. Confirmed live: an unmasked raycast at a tower's exact known screen position hit the ground plane at that same point instead of the tower's `Area3D`. Fixed by setting `query.collide_with_areas = true` in `pick_ray()`. Both `pick_ground_cell()` and `pick_tower()` were then live-verified end-to-end in a real running `MissionScene` (screen-center → grid-center cell; a placed tower's projected screen position → the exact same `TowerInstance` node) — this ADR's Validation Criteria checklist item for live verification is now satisfied for the picking mechanism itself (the camera-cutover half is ADR-0040's own checklist, see that ADR's addendum for a related camera-rotation bug this same session found).
+
 ## Addendum (2026-08-25, same session)
 
 `ENABLE_3D_PICKING` as described below was superseded before this ADR was ever live-verified: ADR-0040 (3D Camera Cutover Capability, Epic 15 Phase 4) consolidated it into a single `ENABLE_3D_PRESENTATION_MODE` constant shared with the camera-cutover toggle, so the two can never independently drift out of sync. The `Picking3D` utility, collision layer table, and dormancy rationale described below are otherwise unchanged and still accurate — only the gating symbol's name changed.
@@ -130,7 +134,7 @@ None while dormant — no new node processes every frame; the ground `StaticBody
 - [x] `VisualMath.map_to_2d()` exists as the exact inverse of `map_to_3d()`.
 - [x] Collision layer table documented and applied to the new ground `StaticBody3D` and per-tower `Area3D`.
 - [x] `ENABLE_3D_PICKING` constant defaults to `false` in both mission scene controllers.
-- [ ] **Live-verified against the real running scene** — explicitly NOT done this session (no-testing constraint). Required before `ENABLE_3D_PICKING` is ever flipped.
+- [x] **Live-verified against the real running scene (2026-08-26)** — Godot MCP session against a real running `MissionScene`/`the_gap` mission: `pick_ground_cell()` correctly resolved screen-center to the grid's exact center cell; `pick_tower()` correctly resolved a placed tower's projected screen position back to that exact `TowerInstance` node. Found and fixed a real bug in the process (`collide_with_areas` missing — see this ADR's 2026-08-26 addendum). `ENABLE_3D_PRESENTATION_MODE` (ADR-0040) itself is still `false` — this verified the picking mechanism works correctly once reachable, not that the const has been flipped.
 
 ## GDD Requirements Addressed
 
