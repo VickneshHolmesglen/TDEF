@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="BuildingUpgradeResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/core/building_upgrade/building_upgrade_resource.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+upgrade_id = &"upgrade_habitat_expansion_thriving"
+target_structure_id = &"habitat_expansion_tier_3"
+prerequisite_upgrade_id = &""
+requirements = {
+&"creature": &"duskfang_fox",
+&"tarot": &"steady_hand"
+}
+gold_cost = 60
+material_cost = {
+&"Common": 12
+}
+effect_description = "A steady hand and a fox that has stopped bolting at every shadow are the first real signs this tier's larger habitat is thriving, not just occupied. Root upgrade in this structure's chain (upgrade_tier=1, Formula 1 baseline: 60 gold, 12 Common). Mechanical effect not yet wired (see design/gdd/building-upgrade.md Rule 6/7) — same disclosed scaffolding-only status as every other Building Upgrade entry so far."

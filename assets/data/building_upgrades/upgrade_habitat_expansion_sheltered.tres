@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="BuildingUpgradeResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/core/building_upgrade/building_upgrade_resource.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+upgrade_id = &"upgrade_habitat_expansion_sheltered"
+target_structure_id = &"habitat_expansion_tier_1"
+prerequisite_upgrade_id = &""
+requirements = {
+&"creature": &"aurora_stag",
+&"equipment": &"leather_leggings"
+}
+gold_cost = 60
+material_cost = {
+&"Common": 12
+}
+effect_description = "Simple windbreaks and a bonded stag's calm presence make the very first habitat tier feel safe enough to actually settle. Root upgrade in this structure's chain (upgrade_tier=1, Formula 1 baseline: 60 gold, 12 Common). Mechanical effect not yet wired (see design/gdd/building-upgrade.md Rule 6/7) — same disclosed scaffolding-only status as every other Building Upgrade entry so far."
