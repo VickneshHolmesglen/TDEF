@@ -118,6 +118,17 @@ var _selected_blueprint_id: StringName = &""
 ## has already moved past.
 var _tower_visuals: Dictionary = {}  # tower_id(int) -> TowerInstance
 
+## ADR-0040 (2D-content-hiding gap, closed 2026-08-26): every dynamically
+## spawned 2D visual (TowerInstance, ProjectileVisual, placement VFX) gets
+## added here instead of directly under _gameplay_root, so
+## _apply_presentation_mode() can hide all of them — present AND future,
+## with zero per-call-site checks — through this one node. Live-caught via
+## Godot MCP: Camera2D.enabled=false does NOT stop CanvasItem content from
+## rendering (Godot composites 2D/3D independently); disabling the camera
+## only changes which pan/zoom transform applies. Actually hiding the 2D
+## layer requires hiding the CanvasItem content itself.
+var _dynamic_visuals_root: Node2D
+
 
 func _ready() -> void:
 	# Epic 15 Story 003 (ADR-0037): Godot auto-promotes a lone Camera3D to
@@ -129,6 +140,9 @@ func _ready() -> void:
 	# established node-reference convention — see the code-review note on
 	# the @onready block above (a real regression this file was fixed for
 	# once already, during Epic 10).
+	_dynamic_visuals_root = Node2D.new()
+	_dynamic_visuals_root.name = "DynamicVisuals"
+	_gameplay_root.add_child(_dynamic_visuals_root)
 	_apply_presentation_mode()
 	# ADR-0038, Epic 16 Story 7: dependency-injected, not a service-locator
 	# lookup from inside MonsterManager (src/CLAUDE.md's "prefer DI over
@@ -158,9 +172,23 @@ func _ready() -> void:
 ## ADR-0040: the single point that decides whether Camera3D or Camera2D is
 ## authoritative. Disables (not just deprioritizes) whichever camera loses,
 ## so no half-cutover state is reachable where both render simultaneously.
+##
+## Also hides (or shows) the 2D world-content CanvasItems specifically —
+## _grid_visual/_hero/_monsters_container/_dynamic_visuals_root — NOT
+## _gameplay_root itself, which also owns the HUD CanvasLayer as a child;
+## hiding _gameplay_root wholesale would take the HUD down with it. This is
+## independent of and composes correctly with _gameplay_root's own
+## mission-launched visibility toggle (multiplicative CanvasItem
+## visibility — a child stays invisible if either it or any ancestor is
+## invisible, regardless of which one this method touches).
 func _apply_presentation_mode() -> void:
 	_camera_3d.current = ENABLE_3D_PRESENTATION_MODE
 	_camera.enabled = not ENABLE_3D_PRESENTATION_MODE
+	var show_2d_content: bool = not ENABLE_3D_PRESENTATION_MODE
+	_grid_visual.visible = show_2d_content
+	_hero.visible = show_2d_content
+	_monsters_container.visible = show_2d_content
+	_dynamic_visuals_root.visible = show_2d_content
 
 
 func _exit_tree() -> void:
@@ -272,7 +300,7 @@ func _on_monster_spawned(payload: MonsterSpawnedEvent) -> void:
 ## identical handler.
 func _on_tower_placed(payload: TowerPlacedEvent) -> void:
 	var vis: TowerInstance = TowerInstanceScene.instantiate()
-	_gameplay_root.add_child(vis)
+	_dynamic_visuals_root.add_child(vis)
 	vis.position = GGrid.cell_to_world(payload.grid_position) + Vector2(payload.footprint - Vector2i.ONE) * CELL_SIZE * 0.5
 	# state.weapon is already populated in _tower_system.placed_towers by the
 	# time tower_placed fires (TowerSystem sets it before emitting) -- same
@@ -299,7 +327,7 @@ func _on_tower_placed(payload: TowerPlacedEvent) -> void:
 ## shorter, configurable duration rather than building a distinct node.
 func _spawn_placement_confirm_ripple(world_position: Vector2, footprint: Vector2i) -> void:
 	var ripple: Node2D = AoeRingVisualScene.instantiate()
-	_gameplay_root.add_child(ripple)
+	_dynamic_visuals_root.add_child(ripple)
 	ripple.global_position = world_position
 	var radius: float = maxf(footprint.x, footprint.y) * CELL_SIZE * 0.6
 	ripple.configure(radius, PLACEMENT_CONFIRM_COLOR, "", PLACEMENT_CONFIRM_DURATION)
@@ -332,7 +360,7 @@ func _on_tower_destroyed(tower_id: int, _grid_position: Vector2i, archetype: Str
 		return
 	_tower_visuals.erase(tower_id)
 	var vfx: Node2D = TowerDestroyVFXScene.instantiate()
-	_gameplay_root.add_child(vfx)
+	_dynamic_visuals_root.add_child(vfx)
 	vfx.global_position = vis.global_position
 	vfx.configure(archetype, vis.element, Vector2(CELL_SIZE, CELL_SIZE))
 	vis.queue_free()
@@ -369,7 +397,7 @@ func _on_tower_projectile_fired(tower_id: int, target_monster_id: int, is_armore
 	if target == null:
 		return
 	var projectile: ProjectileVisual = ProjectileVisualScene.instantiate()
-	_gameplay_root.add_child(projectile)
+	_dynamic_visuals_root.add_child(projectile)
 	var aoe_radius_world: float = state.weapon.aoe_radius_cells * CELL_SIZE
 	projectile.configure(state.foundation.archetype, state.weapon.projectile_type,
 			tower_vis.global_position, target, aoe_radius_world, state.weapon.element, is_armored)
@@ -419,7 +447,7 @@ func _on_tower_aura_pulse(payload: TowerAuraPulseEvent) -> void:
 	if tower_vis == null:
 		return
 	var ring: Node2D = AoeRingVisualScene.instantiate()
-	_gameplay_root.add_child(ring)
+	_dynamic_visuals_root.add_child(ring)
 	ring.global_position = tower_vis.global_position
 	ring.configure(payload.aura_radius_cells * CELL_SIZE, SUPPORT_AURA_COLOR)
 
@@ -457,7 +485,7 @@ func _on_monsters_died_batch(payloads: Array[MonsterDiedEvent]) -> void:
 
 func _spawn_monster_death_vfx(payload: MonsterDiedEvent) -> void:
 	var vfx: Node2D = MonsterDeathVFXScene.instantiate()
-	_gameplay_root.add_child(vfx)
+	_dynamic_visuals_root.add_child(vfx)
 	vfx.global_position = payload.world_position
 	vfx.configure(payload.monster_id, payload.tier)
 	if payload.tier == 2:
@@ -574,7 +602,7 @@ func _spawn_placement_reject_flash(cell: Vector2i, blueprint_id: StringName) -> 
 		return
 	var footprint: Vector2i = data.foundation.footprint
 	var flash: Node2D = PlacementRejectFlashScene.instantiate()
-	_gameplay_root.add_child(flash)
+	_dynamic_visuals_root.add_child(flash)
 	flash.global_position = GGrid.cell_to_world(cell) + Vector2(footprint - Vector2i.ONE) * CELL_SIZE * 0.5
 	flash.configure(Vector2(footprint) * CELL_SIZE)
 

@@ -102,6 +102,10 @@ const ENABLE_3D_PRESENTATION_MODE: bool = false
 
 var _monsters_container: Node2D
 
+## ADR-0040 (2D-content-hiding gap, closed 2026-08-26) — see mission_scene.gd's
+## identical field for the full rationale.
+var _dynamic_visuals_root: Node2D
+
 const TowerInstanceScene: PackedScene = preload("res://src/core/tower/TowerInstance.tscn")
 
 ## Upgraded 2026-08-11 from design/quick-specs/combat-tower-placeholder-
@@ -134,7 +138,6 @@ func _ready() -> void:
 	# frame renders) is what actually keeps Camera2D the active view; the
 	# .tscn's stored false is necessary documentation of intent but not
 	# sufficient on its own.
-	_apply_presentation_mode()
 	# ADR-0038, Epic 16 Story 7: dependency-injected, not a service-locator
 	# lookup from inside MonsterManager (src/CLAUDE.md's "prefer DI over
 	# singletons") — mirrors mission_scene.gd's identical injection.
@@ -142,6 +145,13 @@ func _ready() -> void:
 	_monsters_container = Node2D.new()
 	_monsters_container.name = "MonstersContainer"
 	add_child(_monsters_container)
+	_dynamic_visuals_root = Node2D.new()
+	_dynamic_visuals_root.name = "DynamicVisuals"
+	add_child(_dynamic_visuals_root)
+	# _apply_presentation_mode() reads _monsters_container/_dynamic_visuals_root
+	# (ADR-0040) -- must run after both are created, unlike mission_scene.gd
+	# where the equivalent call already came after its own onready refs.
+	_apply_presentation_mode()
 
 	var config: GridConfig = _build_grid_config()
 	GGrid.initialize(config)
@@ -372,10 +382,19 @@ func _pick_cell_3d(mouse_pos: Vector2) -> Vector2i:
 	return Picking3D.pick_ground_cell($PresentationRoot3D/Camera3D, mouse_pos, space_state)
 
 
-## ADR-0040 — see mission_scene.gd's identical method for the full rationale.
+## ADR-0040 — see mission_scene.gd's identical method for the full rationale,
+## including the 2026-08-26 2D-content-hiding fix (hides _grid_visual/_hero/
+## _monsters_container/_dynamic_visuals_root specifically, not the whole
+## scene root, since this scene's HUD is a sibling CanvasLayer, not nested
+## under a GameplayRoot-equivalent the way mission_scene.gd's is).
 func _apply_presentation_mode() -> void:
 	$PresentationRoot3D/Camera3D.current = ENABLE_3D_PRESENTATION_MODE
 	_camera.enabled = not ENABLE_3D_PRESENTATION_MODE
+	var show_2d_content: bool = not ENABLE_3D_PRESENTATION_MODE
+	_grid_visual.visible = show_2d_content
+	_hero.visible = show_2d_content
+	_monsters_container.visible = show_2d_content
+	_dynamic_visuals_root.visible = show_2d_content
 
 
 ## Attempts to place the currently-selected blueprint at `cell`. Split out
@@ -442,7 +461,7 @@ func _on_monster_spawned(payload: MonsterSpawnedEvent) -> void:
 ## not just its top-left cell.
 func _on_tower_placed(payload: TowerPlacedEvent) -> void:
 	var vis: TowerInstance = TowerInstanceScene.instantiate()
-	add_child(vis)
+	_dynamic_visuals_root.add_child(vis)
 	vis.position = GGrid.cell_to_world(payload.grid_position) + Vector2(payload.footprint - Vector2i.ONE) * CELL_SIZE * 0.5
 	# 2026-08-17 fix (mirrors mission_scene.gd's identical fix) — see
 	# TowerInstance.ELEMENT_TEXTURES's own doc comment: configure() previously
