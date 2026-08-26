@@ -135,12 +135,21 @@ func test_boss_monster_spawn_does_not_register_with_swarm_renderer() -> void:
 	assert_int(_renderer.get_total_live_count()).is_equal(0)
 
 
-func test_boss_monster_spawn_still_builds_legacy_visual_companion() -> void:
+## Renamed and re-asserted 2026-08-26 (live gdUnit4 run) — this test's
+## original name/assertion ("still builds legacy visual companion") was true
+## partway through the Epic 16 migration but went stale: monster_instance.gd's
+## own doc comment (lines ~189-193) confirms _build_visual_companion() was
+## fully retired for BOSS too, replaced by BossCreaturePresenter3D
+## (boss_creature_presenter_test.gd already covers boss_presenter_handle's
+## real lifecycle). Never re-run until this pass — the stale assertion was
+## silently failing with no one watching.
+func test_boss_monster_spawn_builds_no_legacy_visual_companion() -> void:
 	var res := _make_boss_resource(1.0)
 	_mm._resource_table[res.monster_id] = res
 	var entity := _mm.spawn_monster(res.monster_id, SPAWN_CELL, 1, 1)
 
-	assert_object(entity.monster_instance.get_node_or_null("VisualCompanion3D")).is_not_null()
+	assert_object(entity.monster_instance).is_not_null()
+	assert_object(entity.monster_instance.get_node_or_null("VisualCompanion3D")).is_null()
 
 
 # ---------------------------------------------------------------------------

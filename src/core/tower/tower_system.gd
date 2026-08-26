@@ -728,15 +728,26 @@ func on_projectile_arrived(tower_id: int, target_entity_id: int, arrival_cell: V
 	var armor_penetration: float = damage_payload["armor_penetration"] as float
 	var is_crit: bool = damage_payload["is_crit"] as bool
 	var aoe_radius_cells: int = damage_payload["aoe_radius_cells"] as int
+	# design/gdd/tower.md line 80 / Formula 1c: "aoe_radius_cells: BALLISTIC
+	# only." Live-caught 2026-08-26 (gdUnit4 full regression sweep,
+	# test_splash_disabled_for_non_ballistic_weapon): this method previously
+	# gated splash on aoe_radius_cells > 0 alone, with no projectile_type
+	# check at all — a real regression introduced when ADR-0019 moved splash
+	# resolution from fire-time (where a type gate presumably existed) to
+	# this arrival-time method (where it did not). WeaponComponent.validate()
+	# also does not enforce this pairing (only range-checks aoe_radius_cells
+	# itself), so nothing anywhere defended against a HOMING weapon with
+	# aoe_radius_cells > 0 actually splashing.
+	var splash_eligible: bool = aoe_radius_cells > 0 and state.weapon.projectile_type == "BALLISTIC"
 
 	if _monster_cache.has(target_entity_id):
 		var entry: Dictionary = _monster_cache[target_entity_id] as Dictionary
 		var is_armored: bool = entry["is_armored"] as bool
 		GEventBus.tower_attacked.emit.call_deferred(tower_id, target_entity_id, damage, is_siege, is_armored,
 				effect_type, effect_value, effect_duration, armor_penetration, is_crit)
-		if aoe_radius_cells > 0:
+		if splash_eligible:
 			_apply_splash_damage(state, target_entity_id, entry["cell"] as Vector2i, damage, is_siege, is_crit)
-	elif aoe_radius_cells > 0:
+	elif splash_eligible:
 		_apply_splash_damage(state, -1, arrival_cell, damage, is_siege, is_crit)
 
 # ---------------------------------------------------------------------------

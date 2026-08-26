@@ -533,7 +533,13 @@ func _build_picking_ground_plane(cols: int, rows: int, cell_size: float) -> void
 ## ground-plane raycast (ADR-0039). Only ever called from the
 ## ENABLE_3D_PRESENTATION_MODE-gated branch above — see that branch's own comment.
 func _pick_cell_3d(mouse_pos: Vector2) -> Vector2i:
-	var space_state: PhysicsDirectSpaceState3D = get_world_3d().direct_space_state
+	# get_world_3d() is a Viewport/Node3D method, not available on this
+	# Node2D-rooted scene — live-verified 2026-08-26 (this was a load-breaking
+	# parse error, "Function get_world_3d() not found in base self", caught
+	# by a headless editor rescan; ENABLE_3D_PRESENTATION_MODE's dormancy
+	# meant it had never been exercised until this pass). get_viewport() IS
+	# available on any Node; Viewport.world_3d is the correct accessor.
+	var space_state: PhysicsDirectSpaceState3D = get_viewport().world_3d.direct_space_state
 	return Picking3D.pick_ground_cell(_camera_3d, mouse_pos, space_state)
 
 

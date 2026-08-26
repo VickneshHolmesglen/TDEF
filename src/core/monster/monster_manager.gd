@@ -178,7 +178,11 @@ func _physics_process(delta: float) -> void:
 func _pass1_damage() -> void:
 	for dmg in _pending_damage:
 		var entity: MonsterEntity = _entity_lookup.get(dmg.entity_id) as MonsterEntity
-		if entity == null or entity.lifecycle_state == MonsterEntity.State.DEAD:
+		# is_instance_valid() added 2026-08-26 alongside the other passes'
+		# identical guard (see _pass1b_status_effects()'s doc comment) --
+		# _entity_lookup can carry the same class of stale reference as
+		# active_monsters, for the same reason.
+		if entity == null or not is_instance_valid(entity) or entity.lifecycle_state == MonsterEntity.State.DEAD:
 			continue
 		var pre_hit_hp: float = entity.current_hp
 		entity.current_hp -= float(dmg.amount)
@@ -230,6 +234,20 @@ func _pass1_damage() -> void:
 ## batching problem; queue_free() defers actual deletion to end-of-frame
 ## regardless, per godot-gdscript-specialist's ADR-0033 review).
 func _emit_death(entity: MonsterEntity, kill_source: StringName) -> void:
+	# Live-caught 2026-08-26 (gdUnit4 full regression sweep): this method
+	# called entity.queue_free() below without ever setting lifecycle_state
+	# to DEAD first — unlike _advance_entity()'s BREACHED path (above), which
+	# does set lifecycle_state before its own queue_free() call. Without this,
+	# _pass3_movement()'s `if entity.lifecycle_state != State.ACTIVE: continue`
+	# filter never caught a killed entity, so it stayed in active_monsters for
+	# an extra frame — by which point queue_free()'s deferred deletion had
+	# already completed, and every subsequent pass in that later frame
+	# (_pass1b_status_effects/_pass2_boss_logic/_pass3_movement/
+	# _pass3c_visual_sync) crashed accessing a freed object. MonsterEntity's
+	# own State enum doc comment (monster_entity.gd) already documented
+	# "ACTIVE -> DEAD (current_hp <= 0)" as a real transition; this method
+	# just never performed it.
+	entity.lifecycle_state = MonsterEntity.State.DEAD
 	if entity.resource.tier == 2:
 		GEventBus.boss_died.emit(entity.entity_id, entity.resource.monster_id,
 				entity.wave_index, &"killed")
@@ -323,6 +341,20 @@ func _effective_speed(entity: MonsterEntity) -> float:
 ## so remove_at() during the loop is safe without a second filter pass.
 func _pass1b_status_effects(delta: float) -> void:
 	for entity in active_monsters:
+		# Live-caught 2026-08-26 (gdUnit4 full regression sweep): an entity
+		# killed via a manually-invoked pass (e.g. a test calling
+		# _pass1_damage() in isolation, without the full Pass1b-4 cascade
+		# that a real _physics_process() tick always runs together) can have
+		# its queue_free() complete before Pass 3's rebuild ever removes it
+		# from active_monsters -- merely reading .lifecycle_state on an
+		# actually-freed object throws "Invalid access... on a base object of
+		# type 'previously freed'", so the DEAD check itself must be guarded
+		# by is_instance_valid() first, mirroring ADR-0007's established
+		# "is_instance_valid() is the first statement" convention (there
+		# applied to `self` after an await; here to an iterated collection
+		# entry that may have outlived its own removal).
+		if not is_instance_valid(entity):
+			continue
 		if entity.lifecycle_state == MonsterEntity.State.DEAD:
 			continue
 		_tick_dot_instances(entity, delta)
@@ -376,6 +408,10 @@ func _decay_slow_instances(entity: MonsterEntity, delta: float) -> void:
 
 func _pass2_boss_logic(delta: float) -> void:
 	for entity in active_monsters:
+		# See _pass1b_status_effects()'s identical guard for the full
+		# rationale (live-caught 2026-08-26).
+		if not is_instance_valid(entity):
+			continue
 		if entity.lifecycle_state == MonsterEntity.State.DEAD:
 			continue
 		if entity.resource.tier != 2:
@@ -420,6 +456,10 @@ func _boss_execute_scan(entity: MonsterEntity) -> void:
 
 func _pass3_movement(delta: float) -> void:
 	for entity in active_monsters:
+		# See _pass1b_status_effects()'s identical guard for the full
+		# rationale (live-caught 2026-08-26).
+		if not is_instance_valid(entity):
+			continue
 		if entity.lifecycle_state != MonsterEntity.State.ACTIVE:
 			continue
 		_advance_entity(entity, delta)
@@ -427,6 +467,10 @@ func _pass3_movement(delta: float) -> void:
 	_active_monsters_next.clear()
 	_entity_lookup.clear()
 	for e: MonsterEntity in active_monsters:
+		# An invalid entry is dropped here too -- never carried into the
+		# rebuilt array (same guard, see above).
+		if not is_instance_valid(e):
+			continue
 		if e.lifecycle_state == MonsterEntity.State.ACTIVE:
 			_active_monsters_next.append(e)
 			_entity_lookup[e.entity_id] = e
@@ -538,6 +582,10 @@ func _advance_entity(entity: MonsterEntity, delta: float) -> void:
 ## yet, a genuine gap flagged in this story's own Out of Scope section.
 func _pass3c_visual_sync(delta: float) -> void:
 	for entity: MonsterEntity in active_monsters:
+		# See _pass1b_status_effects()'s identical guard for the full
+		# rationale (live-caught 2026-08-26).
+		if not is_instance_valid(entity):
+			continue
 		if entity.swarm_handle != null:
 			entity.hit_flash_remaining_seconds = maxf(0.0, entity.hit_flash_remaining_seconds - delta)
 			if _swarm_renderer != null:

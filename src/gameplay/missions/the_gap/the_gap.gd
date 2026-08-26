@@ -365,7 +365,10 @@ func _build_picking_ground_plane() -> void:
 ## See mission_scene.gd's identical method for the full rationale. Only ever
 ## called from the ENABLE_3D_PRESENTATION_MODE-gated branch above.
 func _pick_cell_3d(mouse_pos: Vector2) -> Vector2i:
-	var space_state: PhysicsDirectSpaceState3D = get_world_3d().direct_space_state
+	# See mission_scene.gd's identical fix/doc comment — get_world_3d() is not
+	# a valid Node2D method; this was a load-breaking parse error, live-caught
+	# 2026-08-26 by a headless editor rescan.
+	var space_state: PhysicsDirectSpaceState3D = get_viewport().world_3d.direct_space_state
 	return Picking3D.pick_ground_cell($PresentationRoot3D/Camera3D, mouse_pos, space_state)
 
 

@@ -97,6 +97,16 @@ func after_test() -> void:
 
 ## Reads INSTANCE_CUSTOM back for entity's own slot, straight from the real
 ## body MultiMesh the renderer allocated for it.
+##
+## Returns a Color (get_instance_custom_data()'s real return type) — read its
+## 4 channels via .r/.g/.b/.a (frame/flash/status/facing per
+## creature_swarm_body.gdshader's INSTANCE_CUSTOM contract), NOT .x/.y/.z/.w.
+## Fixed 2026-08-26 (live gdUnit4 run): every call site in this file
+## originally used .x/.y/.z/.w, which Color does not expose at all —
+## GDScript's static analysis rejects it as a parse error ("Cannot find
+## member 'y' in base 'Color'"), which was aborting this entire test suite's
+## CLI run before any test could execute, not just failing these tests.
+## Never live-verified until this pass.
 func _read_custom_data(entity: MonsterEntity) -> Color:
 	var handle: MonsterPresentationHandle = entity.swarm_handle
 	var batch: MonsterSwarmBatch = _renderer._batches[handle.batch_key]
@@ -123,7 +133,7 @@ func test_hit_sets_and_the_frame_after_slightly_decays_swarm_hit_flash() -> void
 	var custom := _read_custom_data(entity)
 	# One frame of decay has already been applied inside _pass3c_visual_sync()
 	# this same tick, so the readback is just under 1.0, not exactly 1.0.
-	assert_float(custom.y).is_between(0.9, 1.0)
+	assert_float(custom.g).is_between(0.9, 1.0)
 
 
 func test_hit_flash_reaches_zero_after_the_full_duration_elapses() -> void:
@@ -142,7 +152,7 @@ func test_hit_flash_reaches_zero_after_the_full_duration_elapses() -> void:
 		_mm._physics_process(DELTA)
 
 	var custom := _read_custom_data(entity)
-	assert_float(custom.y).is_equal_approx(0.0, 0.001)
+	assert_float(custom.g).is_equal_approx(0.0, 0.001)
 
 
 # ---------------------------------------------------------------------------
@@ -158,7 +168,7 @@ func test_status_mask_set_while_a_dot_effect_is_active() -> void:
 	_mm._physics_process(DELTA)
 
 	var custom := _read_custom_data(entity)
-	assert_float(custom.z).is_equal_approx(1.0, 0.001)
+	assert_float(custom.b).is_equal_approx(1.0, 0.001)
 
 
 func test_status_mask_set_while_a_slow_effect_is_active() -> void:
@@ -173,7 +183,7 @@ func test_status_mask_set_while_a_slow_effect_is_active() -> void:
 	_mm._physics_process(DELTA)
 
 	var custom := _read_custom_data(entity)
-	assert_float(custom.z).is_equal_approx(1.0, 0.001)
+	assert_float(custom.b).is_equal_approx(1.0, 0.001)
 
 
 func test_status_mask_clears_once_no_effects_remain() -> void:
@@ -184,7 +194,7 @@ func test_status_mask_clears_once_no_effects_remain() -> void:
 	_mm._physics_process(DELTA)  # no effects at all this frame
 
 	var custom := _read_custom_data(entity)
-	assert_float(custom.z).is_equal_approx(0.0, 0.001)
+	assert_float(custom.b).is_equal_approx(0.0, 0.001)
 
 
 func _make_dot_effect() -> ActiveStatusEffect:
@@ -210,7 +220,7 @@ func test_facing_variant_is_right_facing_moving_toward_positive_x() -> void:
 
 	assert_bool(entity.facing_left).is_false()
 	var custom := _read_custom_data(entity)
-	assert_float(custom.w).is_equal_approx(0.0, 0.001)
+	assert_float(custom.a).is_equal_approx(0.0, 0.001)
 
 
 func test_facing_variant_is_left_facing_moving_toward_negative_x() -> void:
@@ -223,4 +233,4 @@ func test_facing_variant_is_left_facing_moving_toward_negative_x() -> void:
 
 	assert_bool(entity.facing_left).is_true()
 	var custom := _read_custom_data(entity)
-	assert_float(custom.w).is_equal_approx(1.0, 0.001)
+	assert_float(custom.a).is_equal_approx(1.0, 0.001)

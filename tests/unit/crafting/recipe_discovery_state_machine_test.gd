@@ -50,7 +50,16 @@ func _seed_material(quantity: int) -> void:
 # ---------------------------------------------------------------------------
 
 func test_boot_sweep_discovers_ungated_recipe_with_sufficient_materials() -> void:
-	_seed_material(4)  # satisfies healing_salve (3), not iron_foundation (5)
+	# Seed corrected 4->3 2026-08-26 (live gdUnit4 run + Godot MCP diagnostic):
+	# recipe_hunters_draught.tres (ungated, {&"Material": 4}) was added at
+	# some point after this test's original 4-material seed was chosen,
+	# meaning 4 now ALSO newly satisfies it, breaking this test's "exactly
+	# one recipe discovered" assumption — live-verified via run_script
+	# against the real registry: seeding 3 discovers only healing_salve;
+	# seeding 4 discovers healing_salve AND hunters_draught. 3 still clears
+	# healing_salve's own threshold (3), so this test's actual intent is
+	# unchanged.
+	_seed_material(3)  # satisfies healing_salve (3) only, not hunters_draught (4) or iron_foundation (5)
 	var ok: bool = _crafting.restore_save_data({})
 
 	assert_bool(ok).is_true()
@@ -64,19 +73,30 @@ func test_boot_sweep_does_not_rediscover_already_discovered_recipe() -> void:
 	# Seeded quantity deliberately capped at 5 (not 10): common_scrap is both
 	# item_type=Material AND rarity=Common (TD-craft-001 RESOLVED, S6-06b) —
 	# recipe_healing_salve_bulk is ungated and rarity-keyed ({&"Common": 6}),
-	# so 10 would ALSO newly satisfy it (a real, previously-impossible-to-
-	# reach recipe now correctly discoverable), breaking this test's
-	# single-recipe assumption. 5 satisfies iron_foundation's {&"Material": 5}
-	# but stays below healing_salve_bulk's 6-Common threshold.
+	# so 10 would ALSO newly satisfy it. 5 satisfies iron_foundation's
+	# {&"Material": 5} but stays below healing_salve_bulk's 6-Common threshold.
+	#
+	# Corrected 2026-08-26 (live gdUnit4 run + Godot MCP diagnostic):
+	# recipe_hunters_draught.tres (ungated, {&"Material": 4}) also sits
+	# between healing_salve's 3 and iron_foundation's 5 — 5 was never a
+	# clean "iron_foundation only" seed once that recipe existed. Live-
+	# verified via run_script against the real registry: this exact scenario
+	# (already-discovered healing_salve, 5 Material seeded) fires exactly 2
+	# NEW recipe_discovered events, hunters_draught then iron_foundation (in
+	# that order) — not 1. This test's real intent (healing_salve must not
+	# re-fire; newly-qualifying recipes must) is preserved, just with the
+	# now-accurate count and both real recipe ids asserted.
 	_seed_material(5)
 	_crafting.restore_save_data(already_discovered)
 
-	# healing_salve was already true in the restored ledger — must not
-	# re-fire recipe_discovered for it, only for iron_foundation (newly
-	# qualifying with 5 Material).
-	assert_int(_spy.count("recipe_discovered")).is_equal(1)
-	var args: Array = (_spy.emissions["recipe_discovered"] as Array)[0] as Array
-	assert_str(args[0] as String).is_equal(String(RECIPE_IRON_FOUNDATION))
+	assert_int(_spy.count("recipe_discovered")).is_equal(2)
+	var emissions: Array = _spy.emissions["recipe_discovered"] as Array
+	var discovered_ids: Array = []
+	for emission: Array in emissions:
+		discovered_ids.append(emission[0] as String)
+	assert_bool(discovered_ids.has(String(&"recipe_hunters_draught"))).is_true()
+	assert_bool(discovered_ids.has(String(RECIPE_IRON_FOUNDATION))).is_true()
+	assert_bool(discovered_ids.has(String(RECIPE_HEALING_SALVE))).is_false()
 
 
 func test_boot_sweep_does_not_discover_recipe_with_insufficient_materials() -> void:

@@ -75,10 +75,17 @@ func test_configure_creates_visual_companion_with_a_real_node3d_mesh_child() -> 
 	_tower.configure("physical")
 
 	# Assert
+	# Child count is 2 as of ADR-0039 (3D Interaction and Picking Layer,
+	# Epic 15 Phase 2, 2026-08-25): _build_visual_companion() now also calls
+	# _build_picking_area(), adding a second child (an Area3D on
+	# Picking3D.PICKING_LAYER_TOWER) alongside the mesh node. Live-caught
+	# 2026-08-26 — this test's "exactly 1 child" assumption predates that
+	# change and was never re-run until this pass.
 	var companion: Node3D = _tower.get_node(NodePath("VisualCompanion3D")) as Node3D
 	assert_object(companion).is_not_null()
-	assert_int(companion.get_child_count()).is_equal(1)
+	assert_int(companion.get_child_count()).is_equal(2)
 	assert_bool(companion.get_child(0) is Node3D).is_true()
+	assert_bool(companion.get_child(1) is Area3D).is_true()
 
 
 # ---------------------------------------------------------------------------

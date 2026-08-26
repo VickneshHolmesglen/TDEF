@@ -9,6 +9,10 @@ extends GdUnitTestSuite
 # ---------------------------------------------------------------------------
 
 class _StubGrid extends RefCounted:
+	## Matches Grid's real default cell size (grid.gd/mission_scene.gd's own
+	## CELL_SIZE convention) — not otherwise configurable on this stub.
+	const CELL_SIZE: float = 64.0
+
 	var towers_placed: Array[int] = []
 	var towers_removed: Array[int] = []
 
@@ -22,10 +26,51 @@ class _StubGrid extends RefCounted:
 	func remove_tower(tower_id: int) -> void:
 		towers_removed.append(tower_id)
 
+	## Added 2026-08-26 (live gdUnit4 run) — TD-tower-005 (ADR-0019 Projectile
+	## Pooling, implemented an earlier session) added real cell_to_world()/
+	## world_to_cell() calls to TowerSystem's fire path (tower_system.gd
+	## _try_attack()/get_tower_world_position()/etc.) that this stub never
+	## implemented, crashing every test that exercises _try_attack() with
+	## "Nonexistent function 'cell_to_world' in base 'RefCounted (_StubGrid)'".
+	## Mirrors the real Grid.cell_to_world()/world_to_cell() formula exactly
+	## (grid.gd) rather than a simplified approximation, so tests asserting on
+	## resolved world positions get real, correct values.
+	func cell_to_world(cell: Vector2i) -> Vector2:
+		return Vector2(cell.x * CELL_SIZE + CELL_SIZE * 0.5, cell.y * CELL_SIZE + CELL_SIZE * 0.5)
+
+	func world_to_cell(world_pos: Vector2) -> Vector2i:
+		return Vector2i(int(floor(world_pos.x / CELL_SIZE)), int(floor(world_pos.y / CELL_SIZE)))
+
 
 class _StubPath extends RefCounted:
 	func would_block_all_paths(_cells: Array) -> bool:
 		return false
+
+
+## Added 2026-08-26 (live gdUnit4 run) — TD-tower-005 (ADR-0019 Projectile
+## Pooling, an earlier session) added an unconditional
+## _projectile_manager.fire() call to TowerSystem._try_attack() for HOMING/
+## BALLISTIC weapons, crashing every test in this file that exercises that
+## path (this bare TowerSystem.new() never runs _ready(), so the real field
+## stays null). Must extend the real ProjectileManager (not RefCounted, like
+## _StubGrid/_StubPath above) — TowerSystem._projectile_manager is strictly
+## typed, unlike the untyped _grid/_pathfinding fields.
+##
+## This unit test file's own header states its scope: "DPS formula, range/
+## cone, HP/destruction, targeting, monster cache" — NOT pooled-projectile
+## flight timing, which belongs in a dedicated integration test (not written
+## yet — tracked as an explicit, still-open TD-tower-005 follow-up). This
+## stub therefore skips the flight-time delay entirely and calls back into
+## the real, unmodified TowerSystem.on_projectile_arrived() synchronously —
+## exercising the real production damage/splash-resolution code, just
+## without simulating time, so existing test math (attacks-per-N-frames,
+## total-damage totals) stays valid unchanged.
+class _StubProjectileManager extends ProjectileManager:
+	func fire(tower_id: int, _projectile_type: StringName, _origin: Vector2,
+			target_entity_id: int, target_position: Vector2, damage_payload: Dictionary) -> bool:
+		var arrival_cell: Vector2i = _tower_system.world_to_cell(target_position)
+		_tower_system.on_projectile_arrived(tower_id, target_entity_id, arrival_cell, damage_payload)
+		return true
 
 
 # ---------------------------------------------------------------------------
@@ -44,6 +89,9 @@ func _make_ts() -> TowerSystem:
 	var ts := TowerSystem.new()
 	ts._grid = _StubGrid.new()
 	ts._pathfinding = _StubPath.new()
+	var pm := _StubProjectileManager.new()
+	pm._tower_system = ts
+	ts._projectile_manager = pm
 	return ts
 
 
@@ -136,6 +184,20 @@ func test_compute_dps_t4_mult_4_0_returns_280() -> void:
 
 func test_continuous_fire_t1_10_seconds_total_damage_700() -> void:
 	var data: TowerBlueprintData = _make_data(35.0, 2.0, 1.0)
+	# BEAM override, added 2026-08-26 (live gdUnit4 run): _make_data()'s
+	# WeaponComponent defaults to projectile_type="BALLISTIC" (its own real
+	# default). TD-tower-005 (ADR-0019 Projectile Pooling, an earlier
+	# session) moved BALLISTIC/HOMING's tower_attacked emission from
+	# immediate/synchronous to a pooled, flight-time-delayed path via
+	# ProjectileManager -- which this bare TowerSystem.new() unit test never
+	# instantiates (only real _ready() wires it), crashing on
+	# _projectile_manager being null. This test only cares about the DPS/
+	# damage-total formula, not projectile flight -- BEAM stays immediate/
+	# synchronous exactly as this test's original math assumes, so this is a
+	# scope-preserving fix, not a weakened test. The pooled-path tests
+	# (splash tests below) still need real ProjectileManager wiring -- not
+	# fixed here, tracked as an explicit TD-tower-005 follow-up.
+	data.weapon.projectile_type = "BEAM"
 	_place(_ts, data, Vector2i(8, 6))
 
 	# Inject a monster in range so the tower has a target
@@ -162,6 +224,7 @@ func test_continuous_fire_t1_10_seconds_total_damage_700() -> void:
 
 func test_continuous_fire_t2_10_seconds_total_damage_1120() -> void:
 	var data: TowerBlueprintData = _make_data(35.0, 2.0, 1.6)
+	data.weapon.projectile_type = "BEAM"  # see test_continuous_fire_t1's own comment above
 	_place(_ts, data, Vector2i(8, 6))
 
 	_ts._monster_cache[1] = {"cell": Vector2i(10, 6), "hp": 9999.0, "is_armored": false}
@@ -287,6 +350,7 @@ func test_sell_tower_refunds_40_percent_rounded() -> void:
 
 func test_find_lowest_hp_target_selects_lower_hp_enemy() -> void:
 	var data: TowerBlueprintData = _make_data(35.0, 2.0, 1.0, 10, 180.0)
+	data.weapon.projectile_type = "BEAM"  # see test_continuous_fire_t1's own comment above
 	_place(_ts, data, Vector2i(0, 0))
 	var tower_id: int = _ts.placed_towers.keys()[0] as int
 	var state: TowerMissionState = _ts.placed_towers[tower_id] as TowerMissionState
