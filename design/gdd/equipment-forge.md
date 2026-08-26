@@ -1,10 +1,10 @@
 # Equipment Forge System
 
-> **Status**: Designed (pending review)
+> **Status**: Approved (`/design-review --depth lean` re-review 2026-08-27 — all 4 upstream blockers resolved, no blocking items remain)
 > **Author**: Vicknesh + Claude Sonnet
-> **Last Updated**: 2026-08-11
+> **Last Updated**: 2026-08-27 (all 4 upstream blockers confirmed resolved — stale since 2026-07-17)
 > **Implements Pillar**: Everything Connects · The Sanctuary Is Your Statement
-> **Closes**: `menagerie.md`'s `target_item_id` open question (creature sacrifice → new item). **Known gaps** (10 ACs blocked): new `Inventory.apply_rune_to_item()` and `Menagerie.request_sacrifice()` interfaces don't exist yet; Constellation-sourced rune persistence is untestable until `constellation.md`'s own pre-existing OQ-1 (missing `restore_order`) resolves. See Open Questions and the dedicated "Upstream Assumption Fragility" table in Dependencies.
+> **Closes**: `menagerie.md`'s `target_item_id` open question (creature sacrifice → new item). **Known gaps — ALL RESOLVED, found stale 2026-08-27** (previously: 10 ACs blocked): `Inventory.apply_rune_to_item()` and `Inventory.has_room_for()` both shipped in `inventory.md`'s Cross-System Query & Mutation APIs section (2026-07-17); `Menagerie.request_sacrifice(creature_id, target_item_id)` shipped in `menagerie.md` Rule 13/`menagerie.gd` (2026-07-17), matching this doc's Rule 19d signature exactly; Constellation's `restore_order` (24) was assigned 2026-07-17, closing `constellation.md`'s OQ-1. See Open Questions and the "Upstream Assumption Fragility" table in Dependencies (both updated to match).
 > **Rename, 2026-08-11**: the tab-strip/screen this GDD describes is now presented to the player as **"Forge"** (`SANCTUARY_TAB_EQUIPMENT_FORGE` label text changed; the `ROOM_EQUIPMENT_FORGE` state key and `equipment_forge_screen.gd`/`EquipmentForgeScreen.tscn` file/class names are unchanged — a display-only rename, not a new room). The Craft/Imbue two-tab layout this section describes is now 2 of 3 tabs on that same screen; the third (**Upgrade Buildings**) is a separate mechanic owned by its own GDD, not by this one: see `design/gdd/building-upgrade.md`.
 > **Relocation, 2026-08-21**: **Assemble Towers** (formerly this screen's 4th tab) moved to the Crafting panel inside `InventoryScreen.tscn` (Recipes/Assemble Towers sub-tab under the Inventory & Crafting room) — player-requested, since `TowerAssembly.assemble_tower()` consumes items Crafting itself produces (Foundation/Weapon/Focus/Power Tower Components), not anything Forge-specific. Forge no longer has an Assemble tab; see `design/gdd/crafting.md`'s UI Requirements and `design/quick-specs/tower-assembly-2026-08-11.md` for the current location.
 
@@ -358,11 +358,11 @@ completeness since Equipment Forge's rules directly govern its transitions):
 
 | System | Direction | Interface |
 |---|---|---|
-| **Inventory** | Equipment Forge → Inventory (query/consume/produce) | `has_items(inputs) -> bool`, batch-consume on confirmed craft, produces output via `item_added`. **New, proposed**: `has_room_for(item_type, quantity) -> bool` (reused from Crafting's own proposed interface — same signature, same underlying need) and `apply_rune_to_item(item_id, rune_id, stat_delta) -> bool` (Rule 16, new) — neither exists in `inventory.md` today. |
+| **Inventory** | Equipment Forge → Inventory (query/consume/produce) | `has_items(inputs) -> bool`, batch-consume on confirmed craft, produces output via `item_added`. `has_room_for(item_type, quantity) -> bool` and `apply_rune_to_item(item_id, rune_id, stat_delta) -> bool` (Rule 16) — both shipped in `inventory.md` 2026-07-17, found stale here 2026-08-27. |
 | **Inventory** | Inventory → Equipment Forge | `item_added`/`item_removed` drive craftability re-checks (Rule 8) |
 | **Hero System** | No direct interface | Hero reads equipment state passively via Inventory's `equipment_slot_changed` and directly subscribes to `item_rune_imbued` for stat recalculation — Equipment Forge never calls Hero (Rule 3) |
 | **Crafting** | Crafting → Equipment Forge (schema/pattern only, no runtime call) | `RecipeResource` structure and Discovery/Craftability split reused as the template for `EquipmentRecipeResource` (Rule 4/7); `quality_tier` convention reused unchanged (Rule 5) |
-| **Menagerie** | Bidirectional (Equipment Forge → Menagerie query/consume call; Menagerie → Equipment Forge via the resulting event) | Equipment Forge calls new `Menagerie.request_sacrifice(creature_id, target_item_id) -> bool` (Rule 19d); Menagerie validates and is the sole emitter of `creature_sacrificed(creature_id, target_item_id)` |
+| **Menagerie** | Bidirectional (Equipment Forge → Menagerie query/consume call; Menagerie → Equipment Forge via the resulting event) | Equipment Forge calls `Menagerie.request_sacrifice(creature_id, target_item_id) -> bool` (Rule 19d) — shipped in `menagerie.gd` 2026-07-17; Menagerie validates and is the sole emitter of `creature_sacrificed(creature_id, target_item_id)` |
 | **Constellation** | Constellation → Equipment Forge | Subscribes to `constellation_rune_discovered(rune_id, pattern_id)` to populate `available_runes` (Rule 12) |
 | **Tarot** | Tarot → Equipment Forge | Subscribes to `tarot_rune_discovered(rune_id, card_id)` to populate `available_runes` (Rule 12) |
 | **Defense Building** | Defense Building → Equipment Forge | `tech_unlocked(tech_id, tech_category)` drives Equipment Recipe tech-gating (Rule 7), identical to Crafting's own dependency |
@@ -553,14 +553,14 @@ breaks.
 
 | System | Direction | Nature | Interface |
 |---|---|---|---|
-| **Inventory** | Depended on (hard) | `has_items()`, batch-consume, `item_added`/`item_removed` (existing); `has_room_for()` (new, proposed — shared need with `crafting.md`) and `apply_rune_to_item()` (new, proposed, this GDD's own requirement, Rule 16) |
+| **Inventory** | Depended on (hard) | `has_items()`, batch-consume, `item_added`/`item_removed` (existing); `has_room_for()` (shared need with `crafting.md`) and `apply_rune_to_item()` (this GDD's own requirement, Rule 16) — both shipped 2026-07-17, found stale here 2026-08-27 |
 | **Hero System** | No direct dependency | Confirmed non-coupling (Rule 3) — Hero reaches Equipment Forge's output only via Inventory's `equipment_slot_changed` and its own `item_rune_imbued` subscription |
 | **Crafting** | Schema/pattern dependency (soft) | `EquipmentRecipeResource` structurally extends `RecipeResource`; Discovery/Craftability split and `quality_tier` convention reused unchanged |
-| **Menagerie** | Depended on (hard, bidirectional) | New `Menagerie.request_sacrifice(creature_id, target_item_id) -> bool` interface (Rule 19d, originates the signature Menagerie's own Rule 13 anticipated but didn't name); consumes `creature_sacrificed` |
+| **Menagerie** | Depended on (hard, bidirectional) | `Menagerie.request_sacrifice(creature_id, target_item_id) -> bool` interface (Rule 19d, originates the signature Menagerie's own Rule 13 anticipated but didn't name) — shipped 2026-07-17; consumes `creature_sacrificed` |
 | **Constellation** | Depended on (hard, one-way) | Subscribes to `constellation_rune_discovered` |
 | **Tarot** | Depended on (hard, one-way) | Subscribes to `tarot_rune_discovered` |
 | **Defense Building** | Depended on (hard, upstream) | `tech_unlocked(tech_id, tech_category)` drives Equipment Recipe tech-gating |
-| **EventBus** | Depended on (hard) | Emits `hero_equipment_crafted`, `item_rune_imbued` (both frozen); emits `recipe_discovered` with a proposed new `recipe_category` value (not yet reflected in `event-bus.md`'s Key Subscribers list — flagged for sign-off) |
+| **EventBus** | Depended on (hard) | Emits `hero_equipment_crafted`, `item_rune_imbued`, `recipe_discovered` (all 3 frozen — `recipe_category` field confirmed present in `event-bus.md`'s catalogue, found stale here 2026-08-27) |
 | **Encyclopedia** | Depends on Equipment Forge | Subscribes to `recipe_discovered` |
 | **Mission HUD / Audio** | Depend on Equipment Forge | Subscribe to `hero_equipment_crafted`, `item_rune_imbued` |
 | **Building Upgrade** (new, 2026-08-11) | Depended on (hard, downstream) | `building-upgrade.md`'s `"equipment"` requirement type checks whether a specific crafted `item_id` (Equipment Forge's own craft output) is currently owned, via `Inventory.has_specific_item()` (implemented 2026-08-11) — not a direct call into Equipment Forge itself, but this doc's crafted-item identifiers are the vocabulary that requirement type reads. Building Upgrade's own screen is also hosted as a tab inside Equipment Forge's UI (`building-upgrade.md`'s own Status line) — a second, structural (not just data) dependency in the same direction |
@@ -603,7 +603,7 @@ document.)*
 | 6 | `menagerie.md` | `target_item_id` in `creature_sacrificed` is resolved here as a NEW Equipment item Equipment Forge creates in the same operation (Core Rule 17) — this GDD's own answer to Menagerie's explicitly-flagged open question. New `Menagerie.request_sacrifice(creature_id, target_item_id) -> bool` interface signature is originated here (Rule 19d), not in `menagerie.md` itself. | If `menagerie.md`'s Rule 13 changes sacrifice eligibility validation (e.g., adds an age-gate, changes which states are sacrifice-eligible, or changes the interface signature/return contract), Equipment Forge's pre-check ordering (room-check before `request_sacrifice`) still structurally holds, but the exact rejection conditions surfaced to the player and the interface call itself must be re-synced against the new contract. |
 | 7 | `menagerie.md` | The 5-species roster (Common: `glimmer_hare`/`mossback_toad`; Uncommon: `emberwing_moth`/`duskfang_fox`; Rare: `aurora_stag`) is the exhaustive key set for this GDD's Sacrifice Recipe table (Core Rule 18) — one recipe per species. | If species are added, removed, or renamed in `menagerie.md`, the Sacrifice Recipe catalogue must be revised in lockstep — an un-updated catalogue would leave a species with no corresponding sacrifice path, or reference a `required_species` that no longer exists. |
 | 8 | `constellation.md` | `constellation_rune_discovered(rune_id, pattern_id)` populates `available_runes` directly with no additional gating; the rune's Equipment-Forge-side `stat_delta` (Formula 3) is authored independently, deliberately decoupled from Constellation's own `bonus_value`/`pattern_id` mechanics (Core Rule 12). | If `constellation.md` is ever revised so that `rune_id` itself carries or implies a specific numeric bonus value (rather than being a pure identity/discovery key), this GDD's decoupled-authoring assumption breaks — rune magnitude might need to be derived from Constellation's own data instead of hand-authored here, requiring a Formula 3 rewrite. |
-| 9 | `constellation.md` | Constellation's Discovery Ledger has **no `restore_order` assigned yet** in `save-persistence.md` (Constellation's own flagged OQ-1, confirmed still open by directly reading `constellation.md`). | Equipment Forge's `available_runes` restore (part of `restore_order = 32`'s responsibility) depends on Constellation's discovered-rune set being available and correctly ordered at restore time — until `save-persistence.md` resolves Constellation's OQ-1, this GDD's own restore behavior for Constellation-sourced runes is **unverifiable end-to-end** and should be treated as a blocking cross-document gap, not just a documentation nicety. |
+| 9 | `constellation.md` | Constellation's Discovery Ledger has `restore_order = 24`, assigned in `save-persistence.md` 2026-07-17 (found stale here 2026-08-27 — `constellation.md`'s own OQ-1 had been resolved the same day but not marked). | Equipment Forge's `available_runes` restore (`restore_order = 32`) depends on Constellation's discovered-rune set restoring first — confirmed compatible, since 24 < 32. This is now verifiable end-to-end, not a blocking gap. |
 | 10 | `tarot.md` | Same decoupled-authoring pattern as Constellation: `tarot_rune_discovered(rune_id, card_id)` populates `available_runes`; Equipment Forge's `stat_delta` is independent of Tarot's own Formula F5 additive bonus applied internally to `modifier_type` — the same discovery event legitimately feeds two separate, non-conflicting bonus systems (Core Rule 12). | If `tarot.md`'s Rule 15 discovery condition is tightened (its own flagged "most swappable assumption" — currently "any mission attempt while equipped," MISSION_COMPLETE or DEFEAT), Equipment Forge's rune-availability timing shifts identically since it listens to the same event — no separate assumption breaks here, but the two documents' discovery-timing narratives should be kept in sync in any future rewrite. |
 | 11 | `inventory.md` | New required interface `Inventory.apply_rune_to_item(item_id, rune_id, stat_delta) -> bool` (Rule 16), and an **explicit exemption to Inventory's Rule 5 equipped-item lock** for this specific mutation (rune imbuing must work on a currently-equipped item). | If `inventory.md`'s Rule 5 is ever tightened to block ALL writes (not just removal/discard) on locked items, this GDD's entire rune-imbuing flow breaks and would require forcing an unequip → imbue → re-equip cycle — a materially worse UX this GDD explicitly designed against. This is the single highest-risk fragility entry in this table, since it requires an upstream document to carve out an exception for a downstream system's needs, not merely stay stable. |
 | 12 | `inventory.md` | Equipment Forge's fixed 10 Hero equipment slots (entry #1 above) are the concrete number Inventory's own Rule 5a ("≥4 free discretionary slots" floor) was explicitly waiting on. | Inventory's own Tuning Knob table (`starting_slot_count` safe range) must be revisited once Tower System's per-tower-component install-lock count is *also* fixed (still undefined as of this authoring pass) — this GDD only closes half of Rule 5a's dependency, not all of it. |
@@ -739,7 +739,7 @@ Plain equipment-crafting stays single-confirm, identical justification to `craft
 
 > **Reading note**: per this GDD's own Reading Order note and Dependencies →
 > Upstream Assumption Fragility table, several ACs below are marked
-> `[BLOCKED — depends on unimplemented API]`, mirroring the established
+> *(unblocked — dependency shipped 2026-07-17, found stale 2026-08-27)*, mirroring the established
 > pattern used in `crafting.md` (`has_room_for`/`clear_damaged_flag`),
 > `tower-mastery.md` (`get_component_loadout`), `mission-select.md`
 > (`retry_current_mission`), and `hero-skill-build.md` (`skill_modifier`
@@ -800,15 +800,14 @@ Plain equipment-crafting stays single-confirm, identical justification to `craft
   re-validation returns false, the craft is rejected, zero materials are
   consumed, and no event fires beyond a UI refresh (Rule 9 step (a), Edge
   Cases).
-- **AC-9** `[BLOCKED — depends on unimplemented API]` — **GIVEN** a
+- **AC-9** *(unblocked — dependency shipped 2026-07-17, found stale 2026-08-27)* — **GIVEN** a
   craftable Equipment Recipe whose output slot has no free Inventory room,
   **WHEN** confirm is pressed, **THEN** step (b)'s `has_room_for(output_slot,
   1)` pre-check returns false, the craft is rejected in full before step (c)
   ever runs, and zero materials are consumed (Rule 9 step (b), Edge Cases).
-  **Interface dependency flagged (qa-lead)**: `Inventory.has_room_for()`
-  does not exist in `inventory.md` today — same proposed-and-shared
-  interface already flagged blocking in `crafting.md`'s own AC-4. Not
-  automatable until adopted — see Open Questions.
+  **Interface dependency, RESOLVED 2026-07-17, found stale here 2026-08-27**: `Inventory.has_room_for()`
+  shipped in `inventory.md` — same shared interface `crafting.md`'s own
+  AC-4 also depends on. Now automatable.
 - **AC-10**: **GIVEN** a craftable Equipment Recipe with sufficient
   materials and Inventory room, **WHEN** confirm is pressed, **THEN** steps
   (a)–(e) execute synchronously within the same frame: materials are
@@ -858,7 +857,7 @@ Plain equipment-crafting stays single-confirm, identical justification to `craft
 item in this GDD)**
 
 - **AC-16 (a) — proves the Inventory Rule 5 lock exemption actually works**
-  `[BLOCKED — depends on unimplemented API]` — **GIVEN** an Equipment item
+  *(unblocked — dependency shipped 2026-07-17, found stale 2026-08-27)* — **GIVEN** an Equipment item
   that is currently equipped in a Hero slot (i.e., `equipment_slot_changed`
   has already fired for it and it remains the hero's active gear) and has at
   least one free rune slot, and a `rune_id` in state `AVAILABLE`, **WHEN**
@@ -870,14 +869,14 @@ item in this GDD)**
   throughout the entire operation** — no unequip → imbue → re-equip cycle
   occurs, and `equipment_slot_changed` does not fire as a side effect of the
   imbue (Rule 16's explicit exemption to Inventory's Rule 5 lock).
-  **Interface dependency flagged (qa-lead)**: `Inventory.apply_rune_to_item()`
-  does not exist in `inventory.md` today, and the Rule 5 exemption itself is
-  a required amendment to that document, not yet applied. This is the
-  systems-designer's own flagged highest-risk fragility item (Dependencies
-  row #11) — not automatable until both the interface and its lock exemption
-  are adopted. See Open Questions.
+  **Interface dependency, RESOLVED 2026-07-17, found stale here 2026-08-27**: `Inventory.apply_rune_to_item()`
+  shipped in `inventory.md`. That doc's own analysis found the originally-assumed
+  Rule 5 (equip-lock) amendment is very likely unnecessary — `apply_rune_to_item`
+  is an in-place metadata mutation, not a removal/discard, so it already falls
+  outside Rule 5's scope as written (advisory finding, not a blocker). Now
+  automatable.
 - **AC-16 (b) — proves the rune is consumed, one-time use**
-  `[BLOCKED — depends on unimplemented API]` — **GIVEN** `rune_id = R` was
+  *(unblocked — dependency shipped 2026-07-17, found stale 2026-08-27)* — **GIVEN** `rune_id = R` was
   successfully imbued into item `A` per AC-16(a), **WHEN** the Imbuing UI's
   rune pool is queried afterward, **THEN** `R` is absent from
   `available_runes` (transitioned `AVAILABLE → IMBUED`, terminal per States
@@ -886,7 +885,7 @@ item in this GDD)**
   Imbuing input; there is no "un-imbue" action anywhere in this GDD that
   could reintroduce it (Rule 15).
 - **AC-16 (c) — proves clean rejection with no free rune slots**
-  `[BLOCKED — depends on unimplemented API]` — **GIVEN** a target item whose
+  *(unblocked — dependency shipped 2026-07-17, found stale 2026-08-27)* — **GIVEN** a target item whose
   every rune slot is already `FILLED`, **WHEN** Rune Imbuing is confirmed
   against it with any `AVAILABLE` rune, **THEN**
   `apply_rune_to_item()` returns `false`, the item's `imbued_runes` array is
@@ -895,7 +894,7 @@ item in this GDD)**
   prompted to choose an existing rune to replace (Rule 16, Edge Cases — "no
   destructive default").
 - **AC-16 (d) — proves each of the 3 rune sources records correctly in
-  `rune_source`** `[BLOCKED — depends on unimplemented API]` — three
+  `rune_source`** *(unblocked — dependency shipped 2026-07-17, found stale 2026-08-27)* — three
   sub-cases, one per source:
   - **GIVEN** a Constellation-sourced rune (via `constellation_rune_discovered`)
     is successfully imbued, **WHEN** `item_rune_imbued` fires, **THEN**
@@ -912,7 +911,7 @@ item in this GDD)**
 **Group 7: Creature Sacrifice Resolution — dedicated block (Rules 17–20,
 closes `menagerie.md`'s explicitly-flagged open question)**
 
-- **AC-17 — the happy path** `[BLOCKED — depends on unimplemented API]` —
+- **AC-17 — the happy path** *(unblocked — dependency shipped 2026-07-17, found stale 2026-08-27)* —
   **GIVEN** a valid target creature (species matches the selected Sacrifice
   Recipe's `required_species`, not in `BREEDING_PEN`) and Inventory has room
   for the recipe's `output_slot`, **WHEN** the sacrifice is confirmed,
@@ -940,7 +939,7 @@ closes `menagerie.md`'s explicitly-flagged open question)**
   UI-level pre-check (Rule 19a) — `Menagerie.request_sacrifice()` is never
   called, no creature is touched, no item is created (Edge Cases).
 - **AC-19 — creature in `BREEDING_PEN`, mirrors Menagerie's own Rule 13**
-  `[BLOCKED — depends on unimplemented API]` — **GIVEN** a target creature
+  *(unblocked — dependency shipped 2026-07-17, found stale 2026-08-27)* — **GIVEN** a target creature
   currently in `BREEDING_PEN`, **WHEN** the sacrifice request reaches step
   (d), **THEN** `Menagerie.request_sacrifice()` returns `false` per
   Menagerie's own Rule 13 validation, and Equipment Forge aborts: the
@@ -948,7 +947,7 @@ closes `menagerie.md`'s explicitly-flagged open question)**
   created, no materials or creature are consumed, and no further events fire
   (Edge Cases). Same interface-dependency flag as AC-17.
 - **AC-20 — room check strictly precedes creature consumption**
-  `[BLOCKED — depends on unimplemented API]` — **GIVEN** Inventory has no
+  *(unblocked — dependency shipped 2026-07-17, found stale 2026-08-27)* — **GIVEN** Inventory has no
   free room for the recipe's `output_slot`, **WHEN** the sacrifice is
   attempted, **THEN** the action is rejected at step (b) — before step (d)'s
   `request_sacrifice()` call is ever made — so the creature is never touched
@@ -990,18 +989,14 @@ Gap**
   Imbuing UI rather than silently vanishing, and the load is not blocked
   (Edge Cases).
 - **AC-26 — Constellation-sourced rune persistence across save/load**
-  `[BLOCKED — cross-document gap, not an interface gap]` — **GIVEN** a
+  *(unblocked — cross-doc gap resolved 2026-07-17, found stale 2026-08-27)* — **GIVEN** a
   Constellation-sourced rune already `AVAILABLE` in `available_runes` before
   save, **WHEN** a save/load cycle completes (`restore_order = 32`,
   depending on Constellation's own ledger having already restored), **THEN**
   the rune is still correctly present and selectable in `available_runes`
-  post-restore. **This AC is explicitly unverifiable today**: per
-  Dependencies row #9, Constellation's Discovery Ledger has **no
-  `restore_order` assigned anywhere** in `save-persistence.md` — there is no
-  guaranteed ordering for Constellation's own restore relative to Equipment
-  Forge's restore-order-32 rebuild. Do not mark this AC passable until
-  `save-persistence.md` assigns Constellation a `restore_order` and that
-  ordering is confirmed compatible with 32. See Open Questions.
+  post-restore. `save-persistence.md` assigned Constellation `restore_order = 24`
+  on 2026-07-17 — 24 < 32, so Constellation's Discovery Ledger is guaranteed
+  to restore before Equipment Forge's rebuild. Now verifiable.
 - **AC-27 — Tarot-sourced rune persistence across save/load (not blocked,
   contrast case)**: **GIVEN** a Tarot-sourced rune already `AVAILABLE` in
   `available_runes` before save, **WHEN** a save/load cycle completes,
@@ -1014,12 +1009,12 @@ Gap**
 
 | Question | Owner | Notes |
 |---|---|---|
-| `Inventory.apply_rune_to_item(item_id, rune_id, stat_delta) -> bool` does not exist yet, nor does its required exemption to Inventory's Rule 5 equipped-item lock | Inventory System owner | **New interface this GDD requires** (Rule 16) — flagged by the systems-designer as the single highest-risk fragility item in the whole document (Dependencies row #11), since it requires an *upstream* document to carve out an exception for a *downstream* system's needs, not merely stay stable. Blocks AC-16(a)–(d) and, indirectly, AC-15's Menagerie-arrival confirmation. `inventory.md` needs a follow-up pass adding this method AND amending Rule 5's scope to "removal/discard only," not "all writes." |
-| `Menagerie.request_sacrifice(creature_id: String, target_item_id: String) -> bool` does not exist yet | Menagerie System owner | **New interface this GDD originates** (Rule 19d) — `menagerie.md`'s own Rule 13 anticipated this call but did not name a signature. Blocks AC-17, AC-19, AC-20. `menagerie.md` needs a follow-up pass to adopt this exact signature and its `BREEDING_PEN` rejection contract. |
-| `Inventory.has_room_for(item_type, quantity) -> bool` does not exist yet | Inventory System owner | Same proposed interface already flagged as a required follow-up in `crafting.md`'s own Open Questions — this GDD reuses the identical signature/need rather than forking a second proposal. Blocks AC-9 and AC-20. |
+| `Inventory.apply_rune_to_item(item_id, rune_id, stat_delta) -> bool` | Inventory System owner | **RESOLVED 2026-07-17** (found stale here 2026-08-27) — shipped in `inventory.md`, which also found the originally-assumed Rule 5 amendment very likely unnecessary (in-place metadata mutation, not removal/discard). AC-16(a)–(d) and AC-15's Menagerie-arrival confirmation are now automatable. |
+| `Menagerie.request_sacrifice(creature_id: String, target_item_id: String) -> bool` | Menagerie System owner | **RESOLVED 2026-07-17** (found stale here 2026-08-27) — `menagerie.md` Rule 13 adopted this exact signature; shipped in `menagerie.gd`. AC-17, AC-19, AC-20 are now automatable. |
+| `Inventory.has_room_for(item_type, quantity) -> bool` | Inventory System owner | **RESOLVED 2026-07-17** (found stale here 2026-08-27) — same shared interface `crafting.md` also depends on, shipped in `inventory.md`. AC-9 and AC-20 are now automatable. |
 | `recipe_discovered`'s Key Subscribers list extension (Encyclopedia, Crafting UI → + Equipment Forge UI) | EventBus owner | **Documentation-only change, no payload/schema change** — `recipe_category` already generically supports `"hero_equipment"`. Flagged for `event-bus.md` sign-off at its next revision pass, same low-risk-extension precedent as `component_crafted` carrying two categories under one event (Rule 7). Does not block any AC above since the event itself already fires correctly today. |
 | Constellation's Discovery Ledger has no `restore_order` assigned anywhere in `save-persistence.md` | Save & Persistence System owner / Constellation System owner | **This is a gap in `constellation.md`/`save-persistence.md`, not in this GDD** — but it makes AC-26 (Constellation-sourced rune restore-behavior) unverifiable end-to-end until resolved. Treat as a blocking cross-document gap, not a documentation nicety, per Dependencies row #9. Resolve by assigning Constellation a concrete `restore_order` and confirming it precedes 32. |
 | `save-persistence.md`'s Line 81 save-payload summary ("All crafted equipment in the hero's forge inventory") is broader than what Equipment Forge actually persists | Save & Persistence System owner | This GDD's Rule 10 is the authoritative narrower scope (two ledgers only; item data is Inventory's). Flagged for `save-persistence.md`'s next revision pass to correct the mismatch — until then, an implementer following the older summary literally risks duplicating item state Inventory already owns (Dependencies row #13). |
 | Full Equipment Recipe catalogue (6–10 recipes across 9 slot categories × tier spread) and 5 Sacrifice Recipes' exact `stat_delta`/`rune_id` content | game-designer / content pipeline | Explicitly out of scope for this GDD (Rule 6) — this document defines the mechanism only; itemization is content-authoring work, matching Crafting's own scope boundary. |
-| **(qa-lead, AC review)** 10 of the 27 ACs above are BLOCKED on interfaces that don't exist yet: AC-9, AC-16(a)–(d), AC-17, AC-19, AC-20 | Inventory System owner / Menagerie System owner | Consolidated cross-reference so the AC-to-interface dependency is explicit in one place, matching the pattern `crafting.md`'s own AC-review entry established for its `has_room_for`/`clear_damaged_flag` blockers. AC-26 is a separate, non-interface cross-document gap (Constellation `restore_order`) and should not be conflated with these 10. |
+| **(qa-lead, AC review) RESOLVED 2026-07-17, found stale here 2026-08-27** — the 10 of 27 ACs previously BLOCKED (AC-9, AC-16(a)–(d), AC-17, AC-19, AC-20) plus AC-26's separate cross-document gap (Constellation `restore_order`) | Inventory System owner / Menagerie System owner | All 4 underlying interfaces/gaps (`has_room_for`, `apply_rune_to_item`, `request_sacrifice`, Constellation `restore_order`) shipped/resolved 2026-07-17. All 11 ACs are now automatable. |
 | Rune stat magnitude authoring (Formula 3) has no closed-form example to test against, only a guideline range | game-designer | Not a testable Logic-story formula by design (deliberately hand-authored, same precedent as Crafting's Formula 2 and Defense Building's tech-cost table) — no AC above attempts to assert a specific numeric output for Formula 3 beyond the documented worked examples staying within the 0.02–0.08 / ~3%–10% guideline ranges; content review, not automated test, is the correct evidence gate for actual authored rune values. |

@@ -1,6 +1,6 @@
 # Defense Building System
 
-> **Status**: Needs Revision (`/design-review --depth lean` 2026-07-17 found AC-40 asserted a `crafting.md` tech-ID mapping that doesn't actually exist there — reworded same-day to match Core Rule 3's own honest "Assumption flagged" framing rather than asserting an unverifiable fact. Menagerie's Habitat Expansion contract independently verified to match exactly, no changes needed there.)
+> **Status**: Needs Revision (`/design-review --depth lean` 2026-07-17 found AC-40 asserted a `crafting.md` tech-ID mapping that doesn't actually exist there — reworded same-day to match Core Rule 3's own honest "Assumption flagged" framing rather than asserting an unverifiable fact. Menagerie's Habitat Expansion contract independently verified to match exactly, no changes needed there.) → **Approved** (`/design-review --depth lean` re-review 2026-08-27 — the AC-40 fix confirmed intact; no new blockers found.)
 > **Author**: Vicknesh + Claude Sonnet
 > **Last Updated**: 2026-08-03
 > **Implements Pillar**: The Sanctuary Is Your Statement · Everything Connects

@@ -1,10 +1,10 @@
 # Constellation System
 
-> **Status**: Designed (pending review)
+> **Status**: Approved (`/design-review --depth lean` re-review 2026-08-27 — no blocking items remain)
 > **Author**: Vicknesh + Claude Sonnet
-> **Last Updated**: 2026-08-24 (OQ-4 marked resolved — stale since 2026-07-18; OQ-7 performance-measurement methodology resolved)
+> **Last Updated**: 2026-08-27 (OQ-1 marked resolved — stale since 2026-07-17; OQ-4 marked resolved 2026-08-24 — stale since 2026-07-18; OQ-7 performance-measurement methodology resolved)
 > **Implements Pillar**: Mastery-as-Vindication · Everything Connects · The Sanctuary Is Your Statement
-> **Known blocker**: ~~OQ-4~~ **RESOLVED 2026-08-24** (stale — the blocker was actually closed 2026-07-18, Sprint 6 S6-08, but this header was never updated to say so). `tower_placed`/`tower_removed`/`tower_destroyed` all carry `constellation_eligibility_tag: String` today — see OQ-4's own entry below for the full resolution note.
+> **Known blockers — both resolved, this header previously not updated to say so**: ~~OQ-4~~ **RESOLVED 2026-08-24** (stale — the blocker was actually closed 2026-07-18, Sprint 6 S6-08). `tower_placed`/`tower_removed`/`tower_destroyed` all carry `constellation_eligibility_tag: String` today — see OQ-4's own entry below for the full resolution note. ~~OQ-1~~ **RESOLVED, found stale 2026-08-27** — `save-persistence.md` assigned Constellation `restore_order = 24` on 2026-07-17 (Discovery Ledger, independent of Tower's own restore), but this doc's own OQ-1 was never marked resolved to match. See OQ-1's own entry below.
 
 ## Overview
 
@@ -317,8 +317,7 @@ The Constellation System has no UI of its own — the pattern-active overlay is 
 
 ## Open Questions
 
-**OQ-1: Save & Persistence schema for the Discovery Ledger.**
-> This GDD requires the discovered-`shape_id` set (Core Rule 7) to persist across save/load, but `design/gdd/save-persistence.md` does not yet define a serialization key or restore_order slot for Constellation. Owner: Save & Persistence GDD revision. Target resolution: before this GDD's `/design-review` pass, or flagged as a blocker during that review if not resolved first.
+**OQ-1: RESOLVED** (found stale 2026-08-27 — the fix landed 2026-07-17 but this entry was never marked resolved) — `save-persistence.md` assigned Constellation `restore_order = 24` (Feature layer; independent of Tower's own restore — reads no live Tower state at restore time, only its own Discovery Ledger) on 2026-07-17, closing this GDD's own requirement to persist the discovered-`shape_id` set (Core Rule 7) across save/load.
 
 **OQ-2: `bonus_type` taxonomy.**
 > Formula 1 produces a `bonus_value` (a float percentage), but the specific `bonus_type` strings a pattern instance can grant (e.g. `"damage_pct"`, `"attack_speed_pct"`) are not enumerated in this GDD — that taxonomy is assumed to be authored and owned by Tower System (which already applies the bonus to its own stats). Owner: Tower System GDD, or a shared registry entry. Target resolution: before content authoring (per-pattern `bonus_type` assignment) begins.

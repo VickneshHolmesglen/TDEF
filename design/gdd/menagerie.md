@@ -1,6 +1,6 @@
 # Menagerie System
 
-> **Status**: Needs Revision (`/design-review --depth lean` 2026-07-17 found `target_item_id`'s sourcing undocumented and Equipment Forge's `request_sacrifice()` signature unadopted; both fixed same-day — Rule 13/AC-29 and the Interactions/Dependencies tables now adopt `equipment-forge.md` Rule 19d's exact signature and document that `target_item_id` is Forge-supplied, not Menagerie-looked-up. Defense Building's Habitat Expansion contract independently verified to match this doc's expectations exactly, no changes needed there.)
+> **Status**: Needs Revision (`/design-review --depth lean` 2026-07-17 found `target_item_id`'s sourcing undocumented and Equipment Forge's `request_sacrifice()` signature unadopted; both fixed same-day — Rule 13/AC-29 and the Interactions/Dependencies tables now adopt `equipment-forge.md` Rule 19d's exact signature and document that `target_item_id` is Forge-supplied, not Menagerie-looked-up. Defense Building's Habitat Expansion contract independently verified to match this doc's expectations exactly, no changes needed there.) → **Approved** (`/design-review --depth lean` re-review 2026-08-27 — both 2026-07-17 fixes confirmed intact and shipped in `menagerie.gd`; no new blockers found.)
 > **Author**: Vicknesh + Claude Sonnet
 > **Last Updated**: 2026-08-03
 > **Implements Pillar**: Everything Connects · The Sanctuary Is Your Statement

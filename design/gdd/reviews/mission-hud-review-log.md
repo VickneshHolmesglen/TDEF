@@ -1,5 +1,14 @@
 # Review Log: Mission HUD
 
+## Review — 2026-08-27 — Verdict: APPROVED (confirmed, 1 advisory fixed)
+Scope signal: S
+Specialists: None (lean depth — autonomous re-review pass)
+Blocking items: 0 | Recommended: 1 (fixed in-session)
+Summary: Re-review found no blocking items in any prior pass — this doc's own history already resolved everything through Group 3c's SCOUT/INTERMISSION split and the `retry_current_mission()` ownership addition. The one outstanding advisory (systems-index.md's own dependency list for this row was missing Inventory, which this doc itself already lists correctly) is fixed in this pass. Systems-index.md's row was still showing "Needs Revision" despite the doc's own header already noting "Does not reopen Approved status" — flipped to Approved to match.
+Prior verdict resolved: Yes — no regression, only the dependency-list omission found.
+
+---
+
 ## Resolution — 2026-07-15 (same day, later) — PC-5's 3 Remaining Non-Blocking Items Closed
 User asked to work through all remaining open items with recommended choices, including PC-5's three tracked non-blocking items.
 

@@ -1,6 +1,6 @@
 # Tarot System
 
-> **Status**: Needs Revision (`/design-review --depth lean` 2026-07-17 — mastery-tier count contradicted itself between Core Rules (5 tiers) and the Visual/Audio pip spec (3 masterable tiers); fixed same-day, pip count corrected 3→4 to match the 5-tier ladder. Formula F2's aggregate-stage ceiling for `tarot_reward_scalar_mult` was undefined/ambiguous against Rule 7's table; fixed same-day — explicit note added clarifying F2 passes this type through unclamped, with the real ceiling applied once at F3.)
+> **Status**: Needs Revision (`/design-review --depth lean` 2026-07-17 — mastery-tier count contradicted itself between Core Rules (5 tiers) and the Visual/Audio pip spec (3 masterable tiers); fixed same-day, pip count corrected 3→4 to match the 5-tier ladder. Formula F2's aggregate-stage ceiling for `tarot_reward_scalar_mult` was undefined/ambiguous against Rule 7's table; fixed same-day — explicit note added clarifying F2 passes this type through unclamped, with the real ceiling applied once at F3.) → **Approved** (`/design-review --depth lean` re-review 2026-08-27 — the wave-manager.md blocker (Tarot misattributed as `run_modifier_selected` sender) confirmed fixed there 2026-07-17; no new blockers found.)
 > **Author**: Vicknesh + Claude Sonnet
 > **Last Updated**: 2026-07-17
 > **Implements Pillar**: Mastery-as-Vindication · Everything Connects · The Sanctuary Is Your Statement

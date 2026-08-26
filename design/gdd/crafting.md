@@ -1,6 +1,6 @@
 # Crafting System
 
-> **Status**: Designed (pending review)
+> **Status**: Approved (`/design-review --depth lean` re-review 2026-08-27 — no blocking items remain; 7 stray body references to `component_repaired` as "proposed"/"not yet catalogued" corrected, see the "Known gaps" note below)
 > **Author**: Vicknesh + Claude Sonnet
 > **Last Updated**: 2026-07-16
 > **Implements Pillar**: Everything Connects · The Sanctuary Is Your Statement
@@ -266,10 +266,10 @@ identically to Constellation's Discovery Ledger:
 | **Defense Building** | Defense Building → Crafting | `tech_unlocked(tech_id, tech_category)` drives recipe tech-gating (Rule 3/4) |
 | **Resource Economy** | No direct interface | Per `resource-economy.md`'s own explicit statement, Crafting queries Inventory for material availability — it has zero direct interface to Resource Economy, despite being downstream of the same tiered (Common/Uncommon/Rare) material drops in spirit |
 | **Tower System** | Tower → Crafting (schema/data only, no runtime call) | `component_slot`/schema field ranges (Foundation/Weapon/Focus/Power, `tower.md` 2a) define what a `tower_component` recipe's fixed output must validate against; `damaged: bool` field is read/written by repair (Rule 6) |
-| **EventBus** | Crafting → EventBus | Emits `component_crafted`, `recipe_discovered` (both frozen in `event-bus.md`); emits proposed-new `component_repaired` (Rule 6, not yet catalogued) |
+| **EventBus** | Crafting → EventBus | Emits `component_crafted`, `recipe_discovered`, `component_repaired` (all 3 frozen in `event-bus.md`'s catalogue — `component_repaired` merged 2026-07-17, found stale here 2026-08-27) |
 | **EventBus** | EventBus → Crafting | Subscribes to `tech_unlocked`, `item_added`, `item_removed` |
 | **Encyclopedia** | Crafting → Encyclopedia | Subscribes to `recipe_discovered` |
-| **Mission HUD / Audio** | Crafting → these | Subscribe to `component_crafted`, proposed `component_repaired` |
+| **Mission HUD / Audio** | Crafting → these | Subscribe to `component_crafted`, `component_repaired` |
 
 ## Formulas
 
@@ -422,13 +422,13 @@ Rare required, versus 32+16+8 to build a fresh replacement.
 
 | System | Direction | Nature | Interface |
 |---|---|---|---|
-| **Inventory** | Depended on (hard) | `has_items()`, batch-consume, `item_added`/`item_removed` (existing); **`has_room_for()` and `clear_damaged_flag()` (new, proposed additions this GDD requires — flagged for `inventory.md` update)** |
+| **Inventory** | Depended on (hard) | `has_items()`, `has_room_for()`, `clear_damaged_flag()` (all shipped — added to `inventory.md` 2026-07-17, found stale here 2026-08-27), batch-consume, `item_added`/`item_removed` |
 | **Resource Economy** | Indirect (soft) | No direct interface, per `resource-economy.md`'s own explicit statement — Crafting only ever reads material availability through Inventory |
-| **EventBus** | Depended on (hard) | Emits `component_crafted`, `recipe_discovered` (frozen); emits proposed-new `component_repaired` (not yet catalogued — flagged); subscribes to `tech_unlocked`, `item_added`, `item_removed` |
+| **EventBus** | Depended on (hard) | Emits `component_crafted`, `recipe_discovered`, `component_repaired` (all 3 frozen — `component_repaired` merged 2026-07-17); subscribes to `tech_unlocked`, `item_added`, `item_removed` |
 | **Defense Building** | Depended on (hard, upstream) | `tech_unlocked(tech_id, tech_category)` drives recipe tech-gating (Rule 3/4) |
 | **Tower System** | Depended on (hard, data-only) | Component slot schemas (Foundation/Weapon/Focus/Power field ranges) constrain what a `tower_component` recipe's fixed output must validate against; `damaged: bool` field is read/written by repair (Rule 6) |
 | **Encyclopedia** | Depends on Crafting | Subscribes to `recipe_discovered` |
-| **Mission HUD / Audio** | Depend on Crafting | Subscribe to `component_crafted`, proposed `component_repaired` |
+| **Mission HUD / Audio** | Depend on Crafting | Subscribe to `component_crafted`, `component_repaired` |
 
 ## Tuning Knobs
 
@@ -563,13 +563,11 @@ Single confirm (click or gamepad confirm button), **not** a two-step "confirm th
 - **AC-6**: GIVEN a `damaged=true` Tower Component instance and sufficient
   Common material per Formula 3, WHEN Repair is confirmed, THEN the same
   `item_id` has `damaged` flipped to `false` (no new item created, no
-  `component_crafted` fires), and the proposed `component_repaired` event
-  fires exactly once. **Interface dependency flagged (qa-lead)**: this AC
-  exercises both `Inventory.clear_damaged_flag()` and the `component_repaired`
-  event, neither of which exist yet (Rule 6) — the AC text already flags
-  `component_repaired` as "proposed" but had not previously flagged the
-  `clear_damaged_flag()` dependency. Not automatable until both are
-  adopted — see Open Questions.
+  `component_crafted` fires), and the `component_repaired` event
+  fires exactly once. **Interface dependency, resolved 2026-07-17, found
+  stale here 2026-08-27**: this AC exercises both `Inventory.clear_damaged_flag()`
+  and the `component_repaired` event — both are now shipped (see Open
+  Questions and Dependencies).
 - **AC-7**: GIVEN two craft confirmations arriving in the same frame, WHEN
   both are processed, THEN exactly one resolves fully and the second is
   rejected by the `_craft_resolving` guard — no double-consume of materials
@@ -616,9 +614,9 @@ Single confirm (click or gamepad confirm button), **not** a two-step "confirm th
 
 | Question | Owner | Notes |
 |---|---|---|
-| `Inventory.has_room_for(item_type, quantity) -> bool` does not exist yet | Inventory System owner | **New interface this GDD requires** (Rule 7) — `inventory.md` needs a follow-up pass to add this pre-check API, analogous to how it already added `item_pickup_rejected` reactively. Not implemented as part of this GDD to avoid scope creep into an In-Review document. |
-| `Inventory.clear_damaged_flag(item_id) -> bool` does not exist yet | Inventory System owner | **New interface this GDD requires** (Rule 6) — same follow-up-pass note as above. |
-| `component_repaired(item_id, component_type)` is a new event this GDD originates | EventBus owner | Not yet in `event-bus.md`'s frozen catalogue — flagged for addition, same precedent as `tower_component_returned`/`item_pickup_rejected`. |
+| `Inventory.has_room_for(item_type, quantity) -> bool` | Inventory System owner | **RESOLVED 2026-07-17** — added to `inventory.md`'s Cross-System Query & Mutation APIs section, found stale here 2026-08-27. |
+| `Inventory.clear_damaged_flag(item_id) -> bool` | Inventory System owner | **RESOLVED 2026-07-17** — same section, same fix. |
+| `component_repaired(item_id, component_type)` | EventBus owner | **RESOLVED 2026-07-17** — merged into `event-bus.md`'s frozen catalogue (event count 76→78), same precedent as `tower_component_returned`/`item_pickup_rejected`. |
 | Full recipe catalogue (how many recipes, at which tiers, gated behind which specific tech nodes) is content-authoring work, not design-rules work | game-designer / content pipeline | Explicitly out of scope for this GDD — this document defines the *mechanism*, not the catalogue. |
 | Should `quality_tier`'s Weapon/Focus/Power "authoring signal" meaning (Rule 5) ever become a literal schema field on those components, for consistency with Foundation's `tier` field? | tower.md owner | Flagged, not resolved — would be a `tower.md` schema change, out of scope here. |
 | Real material rarity names (Common/Uncommon/Rare are placeholders per `inventory.md`) | game-designer | This GDD was the designated owner of real naming per `inventory.md`'s own note, but does not resolve it here — naming is a content/narrative decision, not a mechanics one; the mechanism above is name-agnostic and works unchanged once real names are assigned. |

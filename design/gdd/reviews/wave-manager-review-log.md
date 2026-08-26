@@ -1,5 +1,12 @@
 # Review Log: Wave Manager GDD
 
+## Review — 2026-08-27 — Verdict: APPROVED (confirmed, no regression)
+Scope signal: S
+Specialists: None (lean depth — autonomous re-review pass)
+Blocking items: 0 | Recommended: 0
+Summary: Re-review confirming Review #15's (2026-07-17) `run_modifier_selected` misattribution fix is still intact — Mission Select correctly remains the sole sender, Tarot's `mission_modifier_applied` channel remains separately documented. No regressions, no new blockers. Systems-index.md's own row was still showing this doc as "Needs Revision" despite the doc's own header recording every fix as complete — flipped to Approved to match.
+Prior verdict resolved: Yes — no regression since Review #15.
+
 ---
 
 ## Cross-Doc Correction — 2026-07-15 (same day, second pass) — Stale Siege Reference + Frame-Yield Contract Formalized
