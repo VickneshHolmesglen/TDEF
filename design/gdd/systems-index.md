@@ -2,7 +2,7 @@
 
 > **Status**: Draft
 > **Created**: 2026-04-21
-> **Last Updated**: 2026-08-17 (added row 27, Tower Assembly System — an already-shipped, already-tested system that had zero footprint in this index until now, found while extending it with blueprint-sourced components. Prior update, 2026-08-01: Monster System's `monster.md` gained AC-28/AC-40 live performance-evidence pointers; Save & Persistence's `save-persistence.md` gained "Backend implemented" notes on EC-3/EC-5 — neither was a design/review status change; Monster System stays Approved, Save & Persistence stays Needs Revision)
+> **Last Updated**: 2026-08-27 (`/design-review` re-review sweep across every remaining "Needs Revision" row except the visual-direction question — Inventory, Wave Manager, Tarot, Menagerie, Defense Building, Constellation, Crafting, Tower Mastery, Equipment Forge, and Mission HUD all flip to **Approved** — every cited blocker had already been fixed same-day back in July/August, just never propagated back to this index or, in several cases, to the GDD's own body text. Mission Select stays Needs Revision — its `retry_current_mission()` implementation gap is closed, but the DEFEAT-save-then-retry checkpoint race is genuinely still untested. Monster System's own re-review the prior session found the identical staleness pattern (2 stale cross-references, no blocking issues) — this pass generalized that check project-wide. Prior update, 2026-08-17: added row 27, Tower Assembly System — an already-shipped, already-tested system that had zero footprint in this index until then.)
 > **Source Concept**: design/gdd/game-concept.md
 
 ---
