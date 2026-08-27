@@ -2336,3 +2336,22 @@ Option 1 (CPU-side mirror) implemented in `src/core/visual_presentation/monster_
 
 ### Resolution
 - [x] Fixed 2026-08-27 — root cause definitively confirmed (`RendererDummy` never backs `MultiMesh` per-instance readback; deterministic, not a race) and the CPU-side-mirror fix implemented, verified fixed under forced `--rendering-driver dummy` (CI-equivalent), and verified zero regressions across the full `visual_presentation` integration suite.
+
+## TD-tower-006 — `tower_blueprint_data.gd` has no `base_cost` field or T4 `placement_cost` cap validation, despite `tower.md` Formula 4 describing both (found 2026-08-27, not fixed)
+
+### Gap
+Found while authoring the 5 T3/T4 tower blueprints that closed `tower.md` OQ-4's coverage gaps (`design/gdd/tower-content-catalogue.md`). `tower.md` Formula 4 defines `placement_cost = round(base_cost × archetype_cost_factor × tier_cost_factor)`, with `base_cost` a standalone field in range `[10, 60]`, and a hard rule that any `tier = 4` Foundation must have `base_cost ≤ 30` — "a load-time error otherwise" (Formula 4, Edge Cases → Formula Boundary, added 2026-07-14 resolving OQ-11).
+
+The shipped schema does not implement this at all: `FoundationComponent` (`src/core/tower/foundation_component.gd`) has no `base_cost` field, and `TowerBlueprintData` (`src/core/tower/tower_blueprint_data.gd`) stores `placement_cost` as a single directly-authored `int` with no derivation from `archetype_cost_factor`/`tier_cost_factor` and no T4 ceiling check anywhere — confirmed via `grep -rn "base_cost" src/` (zero matches) and reading both components' `validate()` methods in full (neither checks `placement_cost` against tier at all).
+
+**Not currently causing a real bug**: every one of the 18 shipped blueprints (13 original + 5 authored 2026-08-27) happens to comply with the GDD's intended T4 ceiling — the two original T4 towers cost 28/30, the two newly-authored T4 towers cost 30/30 — but this is content-author discipline (matching precedent by eye), not an enforced invariant. A future T4 blueprint authored without checking precedent (by a human, or a future session working from `tower.md`'s text alone without also reading the actual `.gd` schema) could set `placement_cost` arbitrarily high with no load-time error to catch it, silently violating the GDD's own documented economic-balance intent (OQ-11's bimodal-affordability fix).
+
+### Recommended fix
+Two directions, neither attempted here:
+1. **Match the GDD**: add a `base_cost: int` field to `FoundationComponent` (or `TowerBlueprintData`), derive `placement_cost` from it via Formula 4's actual expression, and add the T4 `base_cost ≤ 30` load-time check to `validate()`. This is the more invasive option — it changes what's currently a simple authored `int` into a derived value, and would require migrating all 18 existing `.tres` files to set `base_cost` instead of (or alongside) `placement_cost`.
+2. **Match the code**: correct `tower.md` Formula 4 to describe what's actually shipped — `placement_cost` as a single directly-authored value with a documented T4 convention (`≤ 30`, by content-authoring discipline) rather than a derived formula with load-time enforcement. Cheaper, but weakens the GDD's own stated guarantee from "cannot happen" to "shouldn't happen."
+
+Recommend option 1 if this project ever adds tooling that authors blueprints without a human eyeballing precedent (e.g. a future procedural/AI content-generation pass) — the current honor-system approach is only as safe as every future author reading the same 18 examples this session did.
+
+### Resolution
+- [ ] Not fixed — flagged during T3/T4 tower content authoring (2026-08-27). No current blueprint violates the GDD's intended cap, so this is a latent gap, not an active bug. Needs a design decision (which of the two directions above) before implementation.
