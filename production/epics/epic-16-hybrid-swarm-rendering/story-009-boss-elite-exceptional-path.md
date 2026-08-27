@@ -1,12 +1,12 @@
 # Story 009: Boss/Elite Exceptional Path
 
 > **Epic**: Hybrid Creature Swarm Rendering
-> **Status**: In Review
+> **Status**: Complete
 > **Layer**: Presentation (new capped pool) + Core (bounded MonsterManager wiring)
 > **Type**: Integration
 > **Estimate**: 4-6 hours
 > **Manifest Version**: 2026-07-13b
-> **Last Updated**: 2026-08-25
+> **Last Updated**: 2026-08-27
 
 ## Context
 
@@ -86,8 +86,8 @@ See `tests/integration/visual_presentation/boss_creature_presenter_test.gd`: dir
 - Unlocks: Story 10 (the legacy companion path is now dead for every tier — safe to formally remove and retire `enemy_ufo_a.tres`)
 
 ## Completion Notes
-**Completed**: Not yet — code and tests written 2026-08-25, gdUnit4 run against the pinned Godot 4.6.2.stable binary has not been performed this session (user explicitly said to skip running tests). Run all three listed test suites before closing this story via `/story-done`.
-**Criteria**: 8/8 authored, 0/8 live-verified
-**Deviations**: `CAPACITY = 2` is an assumed default, not pilot-verified against real concurrency data (documented above) — the ADR's own "proven in the pilot" language does not literally hold, flagged rather than silently claimed.
-**Test Evidence**: written, not yet executed.
-**Code Review**: Not yet run.
+**Completed**: 2026-08-27
+**Criteria**: 8/8 passing — verified via code read against `boss_creature_presenter_3d.gd`/`.tscn`, `monster_swarm_renderer_3d.gd`'s pass-through methods, `monster_manager.gd`'s boss wiring, and the rewritten `monster_visual_companion_test.gd`.
+**Deviations**: `CAPACITY = 2` is an assumed default, not pilot-verified against real concurrency data (documented above) — the ADR's own "proven in the pilot" language does not literally hold, flagged rather than silently claimed. Both `Sprite3D` layers use the same static texture (no distinct attack-prepare animation art exists yet) — the overlay's role is proven via visibility toggle only.
+**Test Evidence**: `tests/integration/visual_presentation/boss_creature_presenter_test.gd` and the rewritten `monster_visual_companion_test.gd` — both predate and were covered by the full gdUnit4 sweep run 2026-08-26 (2354/2354 clean, 0 errors/0 failures).
+**Code Review**: Skipped (lean mode) — user confirmed no dedicated `/code-review` pass was run for this story.

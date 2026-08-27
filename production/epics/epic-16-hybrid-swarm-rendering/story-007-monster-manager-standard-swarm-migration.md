@@ -1,12 +1,12 @@
 # Story 007: MonsterManager Standard Swarm Migration
 
 > **Epic**: Hybrid Creature Swarm Rendering
-> **Status**: In Review
+> **Status**: Complete
 > **Layer**: Core (monster simulation) + Presentation (swarm registration/sync)
 > **Type**: Integration
 > **Estimate**: 4-6 hours
 > **Manifest Version**: 2026-07-13b
-> **Last Updated**: 2026-08-24
+> **Last Updated**: 2026-08-27
 
 ## Context
 
@@ -86,8 +86,8 @@ See `tests/integration/visual_presentation/monster_swarm_migration_test.gd`: STA
 - Unlocks: Story 8 (hit/status/death presentation migration builds on the registration this story adds), Story 9 (BOSS migration follows the same DI/injection pattern this story establishes)
 
 ## Completion Notes
-**Completed**: Not yet — code and tests written 2026-08-24, gdUnit4 run against the pinned Godot 4.6.2.stable binary has not been performed this session (user explicitly said to skip running tests). Run all three listed test suites before closing this story via `/story-done`.
-**Criteria**: 7/7 authored, 0/7 live-verified
-**Deviations**: `monster_visual_companion_test.gd`'s fixture tier changed from 0 to 2 (documented above) — a necessary consequence of this story's own scope, not a deviation from the blueprint's intent.
-**Test Evidence**: written, not yet executed.
-**Code Review**: Not yet run.
+**Completed**: 2026-08-27
+**Criteria**: 7/7 passing — verified via code read against `monster_manager.gd`, `monster_entity.gd`, `monster_instance.gd`.
+**Deviations**: `monster_visual_companion_test.gd`'s fixture tier changed from 0 to 2 (documented above) — a necessary consequence of this story's own scope, not a deviation from the blueprint's intent. ADVISORY (superseded, not a regression): AC-3's "BOSS unchanged — still builds the legacy companion" clause and AC-4's `build_legacy_3d_companion` parameter were both later superseded by Story 9 (BOSS migrated to `BossCreaturePresenter3D`) and Story 10 (legacy companion code + the parameter removed entirely) — both already-closed stories. Confirmed via `monster_manager.gd:711-716`'s own doc comment naming this history. The underlying intent of both ACs (BOSS never shares the swarm renderer) still holds under the newer mechanism.
+**Test Evidence**: `tests/integration/visual_presentation/monster_swarm_migration_test.gd` and `monster_visual_companion_test.gd` — both touched/verified in the `7d69a80` regression-sweep commit (2026-08-26), part of the clean full-suite run (2354/2354, 0 errors/0 failures).
+**Code Review**: Skipped (lean mode) — user confirmed no dedicated `/code-review` pass was run for this story.

@@ -1,3 +1,124 @@
+## Session Extract — /story-done: Epic 16 Story 009 formally closed — EPIC 16 FULLY CLOSED, 2026-08-27 (part 10)
+
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/epic-16-hybrid-swarm-rendering/story-009-boss-elite-exceptional-path.md` — Boss/Elite Exceptional Path
+- Tech debt logged: None new (CAPACITY=2 and static-texture-overlay gaps were already flagged honestly in the story itself, not newly discovered).
+- **All 6 Epic 16 stories (005-010) are now formally closed via `/story-done`** — this was the last one In Review. `EPIC.md` updated to reflect full closure, not just code-completeness.
+- Next recommended: Epic 16 is done. No more Epic 16 stories remain. Next candidates: `iron_colossus_elite` still needs real art before its atlas mapping can be authored (blocked on art generation availability), Phase 5's 2D-only/hybrid/full-3D visual-direction decision (Epic 15) still needs a human/creative-director call, and TD-test-007 (the flaky headless MultiMesh test) could use a real root-cause fix or a policy reclassification whenever more time is available for that specific investigation.
+
+---
+
+## Session Extract — /story-done: Epic 16 Story 007 formally closed, 2026-08-27 (part 9)
+
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/epic-16-hybrid-swarm-rendering/story-007-monster-manager-standard-swarm-migration.md` — MonsterManager Standard Swarm Migration
+- Tech debt logged: None. Notable finding: AC-3/AC-4 as originally written are stale (superseded by already-closed Stories 9/10 which fully retired the legacy BOSS companion path) — documented in the story's own Completion Notes, not a regression.
+- Next recommended: Story 009 is the last one still In Review — closing that finishes the full Epic 16 closure pass.
+
+---
+
+## Session Extract — /story-done: Epic 16 Story 006 formally closed, 2026-08-27 (part 8)
+
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/epic-16-hybrid-swarm-rendering/story-006-mission-renderer-scene-integration.md` — Mission Renderer Scene Integration
+- Tech debt logged: None
+- Next recommended: Stories 007, 009 still In Review — continuing the same closure pass.
+
+---
+
+## Session Extract — /story-done: Epic 16 Story 005 formally closed, 2026-08-27 (part 7)
+
+- Verdict: COMPLETE WITH NOTES
+- Story: `production/epics/epic-16-hybrid-swarm-rendering/story-005-data-registry-integration.md` — Data Registry Integration
+- Tech debt logged: None (code review skipped in lean mode, noted advisory only — not registered as tech debt)
+- Next recommended: Stories 006, 007, 009 still In Review — continuing the same closure pass.
+
+---
+
+## Session Extract — /story-done: Epic 16 Stories 008 and 010 formally closed, 2026-08-27 (part 6)
+
+- Verdict: Story 008 — COMPLETE WITH NOTES. Story 010 — COMPLETE.
+- Story 008: `production/epics/epic-16-hybrid-swarm-rendering/story-008-hit-status-death-presentation-migration.md` — Hit/Status/Death Presentation Migration. 6/6 ACs satisfied; advisory notes carried forward (no dedicated rapid-hit test, `TD-test-007`'s flaky headless test still open but proven not a code defect).
+- Story 010: `production/epics/epic-16-hybrid-swarm-rendering/story-010-cleanup-and-production-gate.md` — Cleanup and Production Gate, the last story in Epic 16's blueprint. 5/5 ACs verified directly via grep/read at closure (not just re-asserting prior notes). Epic 16 is now code-complete AND gated, with 2 of 6 stories formally closed.
+- Tech debt logged: None new (TD-test-007 already logged in a prior turn this session).
+- Both self-reviewed in lean mode (review-mode.txt = lean) rather than spawning the full LP-CODE-REVIEW agent gate — read all 4 touched files in full, no issues found.
+- EPIC.md updated: stories 008/010 marked Complete in the table, top status line updated. Stories 005/006/007/009 remain In Review — not part of this request, not touched.
+- Committed and pushed.
+- Next recommended: Stories 005, 006, 007, 009 are still In Review and could go through the same `/story-done` closure pass whenever picked up. Story 010's one open non-blocking item (a full visual acceptance-capture screenshot pass) is worth doing whenever this epic's visual output is next revisited.
+
+---
+
+## Session Extract — Checked the pre-existing test-suite failure; Epic 16 docs updated, 2026-08-27 (part 5)
+
+- User asked to (1) check the one pre-existing gdUnit4 failure (`monster_swarm_channel_test.gd`), then (2) update docs — both done.
+- Investigation found the failure is non-deterministic across repeated identical runs (1 failure, then 4, then 4 again, different specific tests each time) — ruled out application-logic bugs and pointed at an environment/timing issue.
+- Live-verified via Godot MCP against the real Vulkan/Forward+ renderer (not headless) that the actual Story 8 hit-flash implementation is mathematically correct — reproduced the exact failing scenario and got the expected value.
+- Root-caused (not exhaustively, but with real evidence): gdUnit4's CLI runner forces `--headless`, which uses Godot's `RendererDummy` backend (confirmed present via this session's own earlier "DummyTexture leaked at exit" log line). `MultiMesh` custom-data readback under that backend is the likely divergence point. An attempt to isolate this further in a standalone headless script (outside gdUnit4) hung and was abandoned — diagnosis was the ask, not an open-ended fix.
+- Logged as `TD-test-007` in the tech debt register, not fixed.
+- **Docs updated**: `story-008-hit-status-death-presentation-migration.md` (status + Completion Notes, was still saying "not yet run"), `story-010-cleanup-and-production-gate.md` (this story's whole premise was "NOT gated" — now correctly reflects that the full regression WAS run 2026-08-27 with an honest, explained result), `EPIC.md` (epic-level status line), and `art-overhaul-status.md`'s Story 8 row.
+- All committed and pushed (`36d6c84` for the TD entry, plus this doc-update commit).
+- **Next recommended**: TD-test-007 needs either a real root-cause fix (isolate the headless `RendererDummy`/`MultiMesh` interaction properly, with more time budget than this pass had) or a policy decision to reclassify `MultiMesh`-readback tests as requiring a live/non-headless run rather than standard headless CI. Neither Epic 16 story has been formally closed via `/story-done` yet — that's the natural next step once TD-test-007's disposition is decided.
+
+---
+
+## Session Extract — Live-verified TD-save-004/005 via Godot MCP; docs updated, 2026-08-27 (part 4)
+
+- User asked to (1) run the gdUnit4 suite, (2) check TD-save-005 live in Godot, (3) update docs — all done.
+- Full gdUnit4 run: 2355 test cases, 0 errors, 0 failures from this session's work (1 unrelated pre-existing failure in `monster_swarm_channel_test`, Epic 16, untouched). Running it live caught 2 real mistakes in my own new test file before they'd have shipped wrong: a false assumption (DEFEAT's save doesn't touch the checkpoint — it does, via `save_slot()`'s pre-existing Rule 5 cleanup) and a cross-test file-pollution bug (slot 96 collision with an unrelated existing test).
+- That same false assumption, once corrected, revealed a real production interaction: `TD-save-005` — if DEFEAT's deferred save is still pending when the player retries, it lands a moment later and deletes the *retry's* fresh checkpoint too (not catastrophic — the DEFEAT attempt's own full save still lands — but real). Logged, not fixed (genuine "whose write wins" design decision).
+- **Live-verified both findings independently of gdUnit4**, via Godot MCP against the real pinned 4.6.2.stable binary: launched the real project, drove `GSavePersistence.start_new_game()`/`MissionSelect.select_mission()`/`confirm_launch()`, emitted a real `mission_phase_changed(DEFEAT)`, called the real `retry_current_mission()`, and inspected `user://saves/save_slot_95.dat`/checkpoint directly at each step. Reproduced exactly as predicted: checkpoint survives the immediate retry, then is deleted the instant DEFEAT's deferred save lands one frame later.
+- Docs updated to reflect all of this: `save-persistence.md` (Rule 5 gained the TD-save-005 cross-reference, Rule 9 gained the live-verification note), `mission-select.md` (Open Questions table + status header), `systems-index.md` (Mission Select row), `docs/tech-debt-register.md` (both TD entries now have live-verification checkboxes).
+- All committed and pushed (`6b271b1`, `a1abe2e`, plus this doc-update commit).
+- **Next recommended**: `TD-save-005` needs a real design decision (does the retry's checkpoint win, or does DEFEAT's stale save get cancelled/superseded when a newer `mission_launched` has already fired?) before it's fixable — not mechanical like TD-save-004 was.
+
+---
+
+## Session Extract — TD-save-004 implemented: real DEFEAT-save write added, 2026-08-27 (part 3)
+
+- User asked to implement TD-save-004's fix (found while writing the checkpoint-race test in part 2 below). Added a `mission_phase_changed` subscription to `save_persistence.gd` — on `DEFEAT`, calls `save_slot.call_deferred(_active_slot)`, exactly matching `save-persistence.md` Rule 9's own documented (but previously unimplemented) mechanism and the existing `sanctuary_state_restored` one-frame-defer idiom.
+- Extended `tests/integration/mission-select/defeat-retry-checkpoint-race_test.gd` with 2 new regression tests, and fixed a real latent issue in the 3 pre-existing tests: they called `MissionSelect`'s own `_on_mission_phase_changed()` directly, which would have silently never exercised `SavePersistence`'s new real subscription at all (the test's isolated `MissionSelect.new()` was never connected to the real EventBus). Added an `_emit_defeat()` helper that does both — matches production, where MissionSelect IS the real Autoload.
+- TD-save-004 marked fixed. `mission-select.md`/`save-persistence.md`/`systems-index.md` all updated. **Mission Select flips to Approved** — this was its last real blocker.
+- **Project-wide status is now: every GDD is Approved except Hero and Tower**, both confirmed-real content-authoring gaps (class catalogue/base-stats TBD; content-catalogue completeness), not staleness.
+- Not live-verified this session (no gdUnit4/Godot MCP run) — written/implemented and hand-traced against real code paths, per the standing no-unrequested-testing instruction. **Next recommended if testing comes back in scope**: run the full suite once, with particular attention to `defeat-retry-checkpoint-race_test.gd` and anything else touching `mission_phase_changed`/DEFEAT, since this is genuinely new production behavior (a new disk write on every mission DEFEAT), not just a doc fix.
+- Committed and pushed (`a0a42b1`).
+
+---
+
+## Session Extract — Design-review sweep: nearly every GDD in the project is now Approved, 2026-08-27 (part 2)
+
+- User asked to "keep going with the design reviews on the other GDDs" after the monster.md pass. Worked through all 12 GDDs the prior extract flagged as candidates (pathfinding.md was already Approved — skipped), then noticed 4 more systems-index.md rows were also still "Needs Revision" (Hero, Tower, Resource Economy, Save & Persistence) and checked those too before stopping.
+- **The pattern held everywhere**: every "Needs Revision" GDD checked had already had its cited blockers fixed same-day, sometimes over a month ago (2026-07-17, one as far back as 2026-05-16) — the fix just never got marked in the GDD's own header, propagated to a sibling doc that still referenced the old blocker, or reflected in systems-index.md's row. No new design work was needed for any of these — only verifying the fix actually shipped (grep/read the real code or sibling doc) and writing that fact back everywhere it was still missing.
+- **Flipped to Approved this session** (10 docs, all blockers confirmed resolved, zero regressions): inventory.md, wave-manager.md, tarot.md, menagerie.md, defense-building.md, constellation.md, crafting.md, tower-mastery.md, equipment-forge.md, mission-hud.md, resource-economy.md, save-persistence.md (12 total, including monster.md from the earlier extract this session).
+- **Notable finds** (not just "confirm and flip"):
+  - `constellation.md` had TWO stale Open Questions (OQ-4 fixed 2026-07-18, OQ-1 fixed 2026-07-17) neither ever marked resolved.
+  - `tower-mastery.md` said `TowerSystem.get_component_loadout()` "does not exist" in **9 separate places** (header, a rule, 2 dependency tables, 4 ACs, an Open Question, a test-target line) despite `tower.md` Revision 23 shipping it back on 2026-07-17 — also had a stale `restore_order=31` self-proposal that actually collided and was corrected to 34 in `save-persistence.md`, never reflected back.
+  - `equipment-forge.md` had the same shape of staleness across **~15 locations** for all 4 of its upstream blockers (`apply_rune_to_item`, `has_room_for`, `Menagerie.request_sacrifice`, Constellation's `restore_order`) — all shipped 2026-07-17, none marked.
+  - `crafting.md`'s own header already said "CLOSED (2026-08-23)" but 7 stray body references still called `component_repaired` "proposed"/"not yet catalogued."
+  - `save-persistence.md`'s OQ-1 ("what serialization format?") was resolved by **ADR-0003, Accepted since 2026-05-16** — over 3 months of drift between the ADR and the GDD saying it out loud.
+- **Stayed Needs Revision — confirmed genuinely open, not touched**:
+  - `mission-select.md`: `retry_current_mission()`'s implementation gap IS closed (shipped in `mission_select.gd`), but the DEFEAT-save-then-immediate-retry checkpoint race against `save-persistence.md`'s Rule 9/10 has no test anywhere (confirmed via grep) — real gap, left open.
+  - `hero.md`: class catalogue and base stats are genuine content TBDs; Tower Affinity tension is a user-deferred design decision. Not touched.
+  - `tower.md`: OQ-4/OQ-6/OQ-7 (content-catalogue completeness, level-design confirmations) were independently reconfirmed genuinely open just 3 days ago (2026-08-24, S8-07). Not re-litigated.
+- Every fix committed and pushed in 3 commits (`101bed3`, `2005d5b`, `e96dccd`). Review-log entries appended only where a dedicated log file already existed (wave-manager, inventory, mission-hud) — the other 8 docs rely on their own in-header history, matching this project's existing convention (not every GDD has a dedicated review-log file).
+- **Project-wide design status after this session**: every GDD is Approved except Hero, Tower, and Mission Select — and all three of those are blocked on a *confirmed real* gap (content authoring, a deferred balance decision, or a missing test), not documentation drift.
+- **Next recommended**: if picking up more of this class of work, the pattern that paid off twice (once for monster.md, generalized here) is worth periodically re-running — a GDD's own header can say "fixed same-day" while a sibling doc or the systems-index row it's copied into never gets the memo. Otherwise: Mission Select's checkpoint-race test is the one concretely actionable next item from this pass (write `tests/integration/mission-select/` coverage for DEFEAT-save + immediate retry, then re-check `save-persistence.md` Rule 9/10 against it).
+
+---
+
+## Session Extract — Cleared all flagged open items (autonomous, no-testing session), 2026-08-27
+
+- User asked to work through everything flagged at session start except the visual-direction decision, with standing approval already granted, testing explicitly skipped, then continue autonomously into unprompted work once the list was clear (user going to bed).
+- **"1 open bug" (startup hook count)**: investigated — `BUG-0001` (Tarot save-registration gap) is already `Status: Closed`, fixed via ADR-0035 back on 2026-08-12. Stale hook count, not a real open bug. No action needed.
+- **`iron_colossus_elite` missing atlas mapping (TD-visualpres-002, last item)**: attempted via the `generate-image` skill — found it's wired to an unrelated project template (hardcoded paths to a different repo, no Replicate API token configured here), not a working path in this environment. Confirmed genuinely blocked on art generation, matching the tech debt register's own existing note (no ComfyUI, Codex unavailable this session, manual ChatGPT workflow needs the user). Left as-is rather than force a placeholder.
+- **Undocumented prototype** (`prototypes/3d-tower-defense-kit-spike/`, flagged by the doc-gap hook): wrote its `README.md`. No original author trail existed, so intent is reconstructed and explicitly marked inferred: `spike.tscn` probed a free "Tower Defense Kit" GLB pack as 3D backdrop material (later reused as-is by `hybrid-swarm-pilot`); `mixed_root_check.tscn` probed `Node2D`-root/`Node3D`-child compositing — the same question ADR-0037/ADR-0038/ADR-0040 later answered rigorously (2D/3D composite independently; disabling `Camera2D` doesn't hide 2D content). Concluded/superseded, not migrated.
+- **6 `src/` TODOs**: reviewed each — all are deliberate, already-justified deferrals (HeroResource/TuningKnobs data-model migration not yet decided; `TowerMasteryArc`'s zoom counter-scaling has no real camera zoom to counter yet; Pathfinding's Voronoi-vs-Dijkstra note is an accepted post-MVP approximation with a documented GDD rule). Left alone rather than force a premature data-model abstraction ahead of a real design decision — consistent with the project's own "don't add speculative abstractions" standard.
+- **Building Upgrade content gap** (flagged open across 3 prior sessions): authored `upgrade_habitat_expansion_sheltered.tres` (tier_1) and `upgrade_habitat_expansion_thriving.tres` (tier_3) — the last 2 of 5 fixed Defense Building structures with zero upgrades. Follows the exact established pattern (Formula 1 tier-1 baseline: 60 gold, 12 Common; disclosed scaffolding-only `effect_description`). Every fixed structure now has at least one upgrade.
+- **Unprompted follow-on work** (sprint backlog exhausted — S8-03/S8-04 need a human playtester, S8-06 needs an audio pipeline decision, neither actionable alone): ran `/design-review --depth lean` on `monster.md` (a "Needs Revision"-labeled systems-index row that, on full read, was actually already Approved since 2026-07-17 — index formatting made this easy to misread at a glance). Found and fixed 2 real stale cross-references: OQ-8 and the Dependencies table's Resource Economy row both still described the Menagerie attraction material (`menagerie_lure`) as an unresolved placeholder, when `resource-economy.md` Rule 6 and `menagerie.md`/`menagerie.gd` have fully specified and shipped it. Also found and fixed the identical staleness in reverse in `resource-economy.md`'s own Rule 6 ("not yet designed"). No blocking issues in `monster.md` itself — mechanical content sound, no regression since its Approved verdict.
+- All work committed and pushed in 2 commits (`8503985`, `8c8226e`). Nothing left uncommitted.
+- **Next recommended**: `iron_colossus_elite` art remains blocked pending Codex availability or the user's manual ChatGPT workflow. If continuing this same class of work: the systems-index still lists several other GDDs whose bolded "Needs Revision" tag may, like monster.md's just was, actually be stale/superseded by a later "→ Approved" re-review recorded in the same cell — worth reading each row's full text (not just the bolded first word) before assuming a review is actually needed. Genuinely open design-review candidates likely include pathfinding.md, inventory.md, wave-manager.md, constellation.md, crafting.md, tarot.md, menagerie.md, defense-building.md, tower-mastery.md, mission-select.md, equipment-forge.md, mission-hud.md — none checked yet this session.
+
+---
+
 ## Session Extract — Dense-handle register/update/remove lifecycle implemented and live-verified, 2026-08-24
 
 - Closed the last explicitly-flagged gap from Story 4: the real ADR-0038 "Dense batch algorithm" (register/update/remove-via-swap, stale-handle rejection) had never been exercised — Story 1-4 only ever grew a fixed scatter.

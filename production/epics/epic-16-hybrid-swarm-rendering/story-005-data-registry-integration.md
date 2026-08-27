@@ -1,12 +1,12 @@
 # Story 005: Data Registry Integration
 
 > **Epic**: Hybrid Creature Swarm Rendering
-> **Status**: In Review
+> **Status**: Complete
 > **Layer**: Presentation (new data type; consumed by MonsterSwarmRenderer3D in Story 6+)
 > **Type**: Logic
 > **Estimate**: 2-4 hours
 > **Manifest Version**: 2026-07-13b
-> **Last Updated**: 2026-08-24
+> **Last Updated**: 2026-08-27
 
 ## Context
 
@@ -97,8 +97,8 @@
 - Unlocks: Story 6 (`MonsterSwarmRenderer3D` resolves mappings created here), Story 9 (`BossCreaturePresenter3D` reads `approved_presenter_class` from exceptional-class mappings)
 
 ## Completion Notes
-**Completed**: Not yet — code and tests written 2026-08-24, gdUnit4 run against the pinned Godot 4.6.2.stable binary has not been performed this session (per this project's standing "no unrequested testing" instruction — the user did not ask for a test run this turn). Run `tests/unit/visual_presentation/creature_atlas_mapping_resource_test.gd` before closing this story via `/story-done`.
-**Criteria**: 6/6 authored, 0/6 live-verified
-**Deviations**: None from the blueprint's Story 5 scope.
-**Test Evidence**: `tests/unit/visual_presentation/creature_atlas_mapping_resource_test.gd` — written, not yet executed.
-**Code Review**: Not yet run.
+**Completed**: 2026-08-27
+**Criteria**: 6/6 passing — verified via code read against `creature_atlas_mapping_resource.gd`, `creature_animation_clip.gd`, and `game_data_registry.gd`'s creature-atlas loader.
+**Deviations**: None from the blueprint's Story 5 scope. Fixture set has grown to 7 `.tres` files (beyond the 2 named here) via later epic work — not scope creep in this story.
+**Test Evidence**: `tests/unit/visual_presentation/creature_atlas_mapping_resource_test.gd` — written 2026-08-24, covered by the full gdUnit4 sweep run 2026-08-26 (2354/2354 clean, 0 errors/0 failures). Not re-run this turn per the standing no-unrequested-testing instruction.
+**Code Review**: Skipped (lean mode) — user confirmed no dedicated `/code-review` pass was run for this story.
