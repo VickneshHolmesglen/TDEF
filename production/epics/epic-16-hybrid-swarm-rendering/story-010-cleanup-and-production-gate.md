@@ -1,12 +1,12 @@
 # Story 010: Cleanup and Production Gate
 
 > **Epic**: Hybrid Creature Swarm Rendering
-> **Status**: In Review
+> **Status**: Complete
 > **Layer**: Core + Presentation (dead-code removal, data cleanup)
 > **Type**: Integration
 > **Estimate**: 2-3 hours
 > **Manifest Version**: 2026-07-13b
-> **Last Updated**: 2026-08-25
+> **Last Updated**: 2026-08-27
 
 ## Context
 
@@ -83,4 +83,10 @@ No new test file — this story is a deletion/cleanup pass. Verification is: (1)
 **Criteria**: 5/5 code-level items done; 1.5/2 gate-level items done (regression run: done, with 1 known-and-explained non-blocking test-infra failure; acceptance capture: partially covered by the targeted live verification, not a full formal pass).
 **Deviations**: None from the blueprint's described cleanup scope. The original "NOT gated" deviation from the 2026-08-25 session is now resolved — see above.
 **Test Evidence**: Full suite run 2026-08-27 — 2355 test cases, 0 errors, 1 failure (unrelated test-infra issue, `TD-test-007`, not a regression). Every pre-existing suite this epic touched passes clean.
-**Code Review**: Not yet run.
+**Code Review**: Complete — self-reviewed (lean mode) 2026-08-27, alongside Story 008 (same files: `monster_manager.gd`, `monster_instance.gd`, `monster_swarm_renderer_3d.gd`, `monster_swarm_batch.gd`, plus a direct grep sweep confirming every AC's specific deletion/rewrite claim). No issues found.
+
+## Story Done — Closed 2026-08-27
+**Verdict**: COMPLETE
+**Acceptance criteria**: 5/5 satisfied, each verified directly via grep/read at closure time (not just re-asserting the story's own Implementation Notes): no functional reference to `enemy_ufo_a`/`MONSTER_MESH_ENTITY_ID` remains outside 2 historical comments; the data file is deleted; all legacy companion machinery and the `build_legacy_3d_companion` parameter are gone, `configure()` reverted to its original 3-arg signature; `MonsterManager`'s call sites and dead fallback branch are clean; `monster_visual_companion_test.gd`'s header is rewritten in past tense with no live migration-switch language remaining.
+**Scope**: This is the last story in Epic 16's 10-story blueprint sequence. With this closure, the epic is code-complete, gated (full regression run with an honest, explained result), and both of its two un-closed stories are now formally Complete.
+**Open, non-blocking item carried forward**: "Final art-pipeline acceptance capture" (a full visual screenshot comparison across all swarm-registered creature types) is only partially covered by this session's targeted live verification. Not blocking — recommend capturing it whenever this epic's visual output is next revisited (e.g., alongside a future camera-cutover decision).
