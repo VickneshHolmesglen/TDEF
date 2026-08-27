@@ -24,6 +24,21 @@
 ## pre-existing, already-shipped `mission_launched` -> `save_checkpoint()`
 ## write triggered by a subsequent `retry_current_mission()` call.
 ##
+## **TD-save-005 found, then closed as a non-issue, same day**: running
+## these tests live surfaced that DEFEAT's deferred `save_slot()` can land
+## after an immediate retry and delete the retry's own fresh checkpoint
+## (`save_slot()`'s pre-existing Rule 5 cleanup deletes ANY pending
+## checkpoint on success, with no way to tell "superseded" from "brand
+## new"). Investigated rather than mechanically patched: `save_checkpoint()`
+## and `save_slot()` both call the same parameterless `_collect_save_data()`
+## snapshot, and `retry_current_mission()` touches only `MissionRuntimeState`
+## (excluded from every save payload by Rule 10) — no registered system's
+## persisted state actually changes between DEFEAT and an immediate retry,
+## so the deleted checkpoint and the full save that replaces it are
+## byte-identical in content. Accepted as correct-by-construction, not
+## fixed — see `test_defeat_then_immediate_retry_in_the_same_call_stack_produces_no_error`'s
+## own proof and `docs/tech-debt-register.md`'s TD-save-005 entry.
+##
 ## Uses the real `GSavePersistence`/`GEventBus` Autoloads (matching
 ## retry-current-mission-api_test.gd's own established convention) —
 ## MissionSelect is instantiated directly (no add_child()) so its own
@@ -230,30 +245,44 @@ func test_retry_checkpoint_reflects_current_state_not_the_stale_original_launch(
 # ---------------------------------------------------------------------------
 # Back-to-back DEFEAT then retry with no yield in between (the tightest
 # possible framing of the original "race" concern). Both writes land without
-# error or corruption — but this real run (2026-08-27) surfaced a genuine,
-# narrow follow-on interaction worth documenting plainly rather than
-# smoothing over: DEFEAT's save_slot() is deferred, so if it hasn't flushed
-# yet when retry_current_mission() synchronously writes a fresh checkpoint
-# for the NEW retry attempt, the deferred save_slot() landing a moment later
-# deletes that checkpoint too (save_slot()'s own pre-existing Rule 5
-# cleanup, which has no way to distinguish "a checkpoint from the attempt I'm
-# superseding" from "a checkpoint from a brand-new attempt that started
-# after me"). Net effect: the retried attempt briefly has no crash-recovery
-# checkpoint of its own until the next natural save event. This is a real,
-# narrow gap — NOT the catastrophic case TD-save-004 fixed (a full
-# `save_slot_N.dat` write for the DEFEAT attempt still lands correctly
-# either way) — logged as TD-save-005 rather than silently asserted away.
+# error or corruption. A real run (2026-08-27) surfaced that DEFEAT's
+# deferred save_slot() write does delete the retry's just-written checkpoint
+# once it lands (save_slot()'s pre-existing Rule 5 cleanup has no way to
+# distinguish "a checkpoint from the attempt I'm superseding" from "one from
+# a brand-new attempt that started after me") — logged as TD-save-005, then
+# INVESTIGATED and ACCEPTED as correct-by-construction, not a bug
+# (docs/tech-debt-register.md): save_checkpoint() and save_slot() both call
+# the same parameterless _collect_save_data() snapshot function, and
+# retry_current_mission() touches only MissionRuntimeState, which Rule 10
+# already excludes from every save payload. No registered system's
+# persisted state actually changes between DEFEAT and an immediate retry,
+# so the checkpoint that gets deleted and the full save that replaces it
+# contain byte-identical data — the retried attempt loses nothing real.
+# `load_slot()` already holds everything the deleted checkpoint would have.
 # ---------------------------------------------------------------------------
 
 func test_defeat_then_immediate_retry_in_the_same_call_stack_produces_no_error() -> void:
-	_launch("the_gap", 1)
+	var tracker := _TrackingSystem.new()
+	GSavePersistence.register(tracker, 9000)  # deliberately far outside the real 1-36 range in use
+	tracker.payload_value = 42
 
+	_launch("the_gap", 1)
 	_emit_defeat()
 	_mission_select.retry_current_mission()
 	await get_tree().process_frame  # let DEFEAT's deferred save_slot() land too
 
-	# TD-save-005: the retry's own checkpoint does NOT survive — DEFEAT's
-	# deferred save_slot() (still pending when retry wrote it) supersedes it.
+	# TD-save-005 (accepted, not a bug): the retry's own checkpoint does NOT
+	# survive — DEFEAT's deferred save_slot() (still pending when retry wrote
+	# it) supersedes it via save_slot()'s own pre-existing Rule 5 cleanup.
 	assert_bool(FileAccess.file_exists(TEST_CHECKPOINT)).is_false()
 	assert_bool(FileAccess.file_exists(TEST_DAT)).is_true()
 	assert_int(_mission_select.state).is_equal(MissionSelect.State.LAUNCHED)
+
+	# Proof the data isn't actually lost: the full save that replaced the
+	# checkpoint holds the exact same state the checkpoint would have.
+	var result: SavePersistence.LoadResult = GSavePersistence.load_slot(TEST_SLOT)
+	await get_tree().process_frame
+	assert_that(result).is_equal(SavePersistence.LoadResult.SUCCESS)
+	assert_int(tracker.payload_value).is_equal(42)
+
+	GSavePersistence.unregister(tracker)
