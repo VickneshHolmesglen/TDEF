@@ -11,6 +11,15 @@ Prior verdict resolved: N/A — no items from a prior verdict were being re-chec
 
 ---
 
+## Review — 2026-08-28 — Verdict: APPROVED
+Scope signal: L
+Specialists: None (lean mode)
+Blocking items: 0 | Recommended: 0
+Summary: Zero blocking issues found. Fixed 3 stale cross-references discovered during the pass: (1) a Notes bullet still claiming `hero_class_unlocked` needed adding to the EventBus catalogue, contradicting this doc's own already-resolved OQ-4; (2) the Dependencies table's event-subscription count, stale at 8/7 since `hero_skill_attacked` was added 2026-08-25 (actual: 9/8); (3) the Class Identity Display badge-filename list (`warrior.png`/`archer.png`/`mage.png`/`support.png`), which doesn't match the real `class_id` values (`physical`/`ranged`/`elemental`/`support`) — the same drift `hero-class-catalogue.md` flagged 2026-08-27, fixed here directly rather than left as another pointer. Remaining Open Questions (OQ-1 partial, OQ-2, OQ-9) are all legitimately deferred to inputs this project doesn't have yet (playtest data, Art Bible) — verdict does not wait on them, matching this project's existing precedent for deferred-content OQs on other Approved GDDs.
+Prior verdict resolved: Yes — flips from Needs Revision (stuck there since 2026-05-14 despite repeated "no new blockers" passes) to Approved.
+
+---
+
 ## Cross-Doc Correction — 2026-07-15 (same day, second pass) — Stale ACs/Tuning Knobs + New OQ-9
 `/review-all-gdds` re-run found the earlier same-day Formula 4/5/6 fixes (below) hadn't propagated to their own document's ACs and Tuning Knobs table. **AC-06 still used the exact pre-fix lifesteal basis** (`hp_recovered = min(270 × 0.20, 50) = 50`, using raw damage as the basis) that Formula 6's own revision note explicitly called out as the bug being fixed — the old AC's numbers coincidentally landed at the overheal clamp ceiling, which is likely why this had never been caught in review: the wrong formula produced a number that happened to look plausible. Fixed with a worked overkill example matching Formula 6's corrected basis. **Tuning Knobs table still said `effective_lifesteal`** instead of the renamed `hero_lifesteal_fraction`/`hero_lifesteal_cap` — fixed. **AC-05 was missing the `max(1, floor(...))` guard** added to Formula 5 — fixed (no change to the AC's numeric result, since the guard doesn't bind at the tested values).
 

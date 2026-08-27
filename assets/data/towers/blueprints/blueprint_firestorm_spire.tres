@@ -18,6 +18,7 @@ tier_cost_factor = 4.0
 tier_boss_dps_multiplier = 2.0
 footprint = Vector2i(1, 1)
 pre_placement_perk = ""
+base_cost = 8
 archetype_cost_factor = 1.0
 damaged = false
 
@@ -56,7 +57,7 @@ damaged = false
 script = ExtResource("1")
 tower_id = &"firestorm_spire"
 display_name = "Firestorm Spire"
-placement_cost = 30
+placement_cost = 32
 foundation = SubResource("Foundation_firestorm")
 weapon = SubResource("Weapon_firestorm")
 focus = SubResource("Focus_firestorm")

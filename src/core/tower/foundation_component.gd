@@ -33,6 +33,21 @@ extends Resource
 ## * 6) would otherwise silently yield 0 cells below that floor -- a "dead
 ## zone" this range exists to eliminate, not an arbitrary number).
 @export var perk_power: float = 0.0
+## Formula 4 (tower.md): baseline cost for a Tier 1 tower of any archetype;
+## placement_cost (TowerBlueprintData) = round(base_cost * archetype_cost_factor
+## * tier_cost_factor) -- validated as a cross-field check in
+## TowerBlueprintData.validate(), not here (this class has no access to the
+## parent's placement_cost field). TD-tower-006 (docs/tech-debt-register.md):
+## this field did not exist in the shipped schema until 2026-08-28, despite
+## tower.md describing it since 2026-07-14 -- added to close that gap.
+## Range [10, 60] for T1-T3. T4 uses a LOWER floor (7, not 10) -- unlike
+## T1-T3, T4's own ceiling was already fixed at "base_cost <= 30" by GDD
+## Revision 20/OQ-11 before this field existed; retrofitting the general
+## [10,60] floor onto T4 would demand base_cost >= 10, forcing placement_cost
+## >= 40 (10 * tier_cost_factor 4.0) -- above every T4 tower this project has
+## ever shipped (28-32). The T4 floor is lowered to match reality rather than
+## silently re-costing existing content upward.
+@export var base_cost: int = 20                      # [10, 60] T1-T3; [7, 30] T4
 @export var archetype_cost_factor: float = 1.0       # [0.5, 2.0]
 ## Tower Stats System Phase 1 (player-requested 2026-08-16): StringName tag
 ## (matching MonsterResource.archetype_tag, e.g. &"armored") -> float damage
@@ -83,6 +98,13 @@ func validate() -> bool:
 		valid = false
 	if archetype_cost_factor < 0.5 or archetype_cost_factor > 2.0:
 		push_error("[FoundationComponent] archetype_cost_factor %.2f outside [0.5, 2.0]" % archetype_cost_factor)
+		valid = false
+	if tier == 4:
+		if base_cost < 7 or base_cost > 30:
+			push_error("[FoundationComponent] T4 base_cost %d outside [7, 30]" % base_cost)
+			valid = false
+	elif base_cost < 10 or base_cost > 60:
+		push_error("[FoundationComponent] base_cost %d outside [10, 60]" % base_cost)
 		valid = false
 	if pre_placement_perk != "":
 		var floor_value: float = 0.05

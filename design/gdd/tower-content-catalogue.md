@@ -14,26 +14,28 @@ All data below is read directly from the 18 `.tres` files under `assets/data/tow
 
 ## The 18 Towers
 
-| `tower_id` | Display Name | Archetype | Tier | Cost | HP | Weapon DMG | Atk Speed | Range (cells) | Projectile | AoE (cells) | Targeting | Status Effect | Pre-Placement Perk |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| `archer` | Archer Tower | physical | 1 | 10 | 100 | 20 | 1.0 | 3 | BALLISTIC | 0 | CLOSEST_TO_GOAL | — | RANGE_BOOST |
-| `firebolt_turret` | Firebolt Turret | elemental | 1 | 10 | 90 | 14 | 0.7 | 4 | BALLISTIC | 2 | LOWEST_HP | burn (0.10) | — |
-| `frostbolt_turret` | Frostbolt Turret | elemental | 1 | 10 | 90 | 16 | 0.8 | 4 | BALLISTIC | 2 | LOWEST_HP | slow (0.15) | — |
-| `venomdart_turret` | Venom Dart Turret | elemental | 1 | 10 | 90 | 12 | 0.9 | 4 | HOMING | 0 | LOWEST_HP | poison (0.08) | — |
-| `longshot_sniper` | Longshot Sniper | ranged | 1 | 12 | 85 | 32 | 0.6 | 6 | HOMING | 0 | HIGHEST_HP | — | DAMAGE_BOOST |
-| `rally_banner` | Rally Banner | support | 1 | 12 | 100 | 8 | 1.0 | 1 | AURA (damage_buff +0.15) | 0 | CLOSEST_TO_GOAL | — | — |
-| `bulwark` | Bulwark | physical | 2 | 21 | 160 | 22 | 0.8 | 4 | BALLISTIC | 0 | SPAWN_ORDER | — | — |
-| `storm_turret` | Storm Turret | elemental | 2 | 20 | 100 | 15 | 0.75 | 4 | BALLISTIC | 2 | LOWEST_HP | — | SPEED_BOOST |
-| `barrier_ward` | Barrier Ward | support | 2 | 24 | 120 | 8 | 0.8 | 1 | AURA (damage_buff +0.20) | 0 | CLOSEST_TO_GOAL | — | AURA_EXTEND |
-| `volley_crossbow` | Volley Crossbow | ranged | 2 | 23 | 90 | 18 | 1.2 | 5 | HOMING | 0 | SCATTER | — | — |
-| `arcane_lance` | Arcane Lance | elemental | 3 | 24 | 110 | 30 | 1.0 | 5 | BALLISTIC | 1 | LOWEST_HP | — | — |
-| `warbreaker` | Warbreaker | physical | 3 | 25 | 150 | 28 | 0.9 | 4 | BALLISTIC | 0 | HIGHEST_HP | — | — |
-| `piercing_ballista` | Piercing Ballista | ranged | 3 | 26 | 90 | 26 | 1.0 | 6 | HOMING | 0 | HIGHEST_HP | — | — |
-| `sanctified_standard` | Sanctified Standard | support | 3 | 28 | 140 | 9 | 0.9 | 1 | AURA (damage_buff +0.25) | 0 | CLOSEST_TO_GOAL | — | AURA_EXTEND |
-| `siege_cannon` | Siege Cannon | physical | 4 | 28 | 140 | 100 | 0.5 | 5 | HOMING | 0 | LOWEST_HP | — | — |
-| `firestorm_spire` | Firestorm Spire | elemental | 4 | 30 | 130 | 45 | 0.6 | 4 | BALLISTIC | 3 | CLOSEST_TO_GOAL | burn (0.15) | — |
-| `railgun_emplacement` | Railgun Emplacement | ranged | 4 | 30 | 90 | 95 | 0.5 | 7 | HOMING | 0 | HIGHEST_HP | — | — |
-| `grand_rally_spire` | Grand Rally Spire | support | 4 | 30 | 150 | 10 | 1.0 | 1 | AURA (damage_buff +0.30) | 0 | CLOSEST_TO_GOAL | — | AURA_EXTEND |
+**Cost note (2026-08-28):** `Cost`/`base_cost` below reflect the values *after* `TD-tower-009`'s fix landed (see Coverage Gaps §3) — a real `base_cost: int` field now exists on `FoundationComponent`, and for any blueprint loaded through `GameDataRegistry`'s content catalogue, `placement_cost` must equal `round(base_cost × archetype_cost_factor × tier_cost_factor)` or it fails validation (this check is content-load-only, not part of general `TowerBlueprintData.validate()` — see Formula 4's own Scope note in `tower.md` for why). 4 of the 5 towers this catalogue's follow-up pass authored needed a ±2 gold adjustment from their original design values to satisfy that new integer constraint (`warbreaker` 25→26, `firestorm_spire`/`railgun_emplacement` 30→32, `grand_rally_spire` 30→28) — cosmetic, not a balance decision.
+
+| `tower_id` | Display Name | Archetype | Tier | `base_cost` | Cost | HP | Weapon DMG | Atk Speed | Range (cells) | Projectile | AoE (cells) | Targeting | Status Effect | Pre-Placement Perk |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| `archer` | Archer Tower | physical | 1 | 10 | 10 | 100 | 20 | 1.0 | 3 | BALLISTIC | 0 | CLOSEST_TO_GOAL | — | RANGE_BOOST |
+| `firebolt_turret` | Firebolt Turret | elemental | 1 | 10 | 10 | 90 | 14 | 0.7 | 4 | BALLISTIC | 2 | LOWEST_HP | burn (0.10) | — |
+| `frostbolt_turret` | Frostbolt Turret | elemental | 1 | 10 | 10 | 90 | 16 | 0.8 | 4 | BALLISTIC | 2 | LOWEST_HP | slow (0.15) | — |
+| `venomdart_turret` | Venom Dart Turret | elemental | 1 | 10 | 10 | 90 | 12 | 0.9 | 4 | HOMING | 0 | LOWEST_HP | poison (0.08) | — |
+| `longshot_sniper` | Longshot Sniper | ranged | 1 | 12 | 12 | 85 | 32 | 0.6 | 6 | HOMING | 0 | HIGHEST_HP | — | DAMAGE_BOOST |
+| `rally_banner` | Rally Banner | support | 1 | 12 | 12 | 100 | 8 | 1.0 | 1 | AURA (damage_buff +0.15) | 0 | CLOSEST_TO_GOAL | — | — |
+| `bulwark` | Bulwark | physical | 2 | 14 | 21 | 160 | 22 | 0.8 | 4 | BALLISTIC | 0 | SPAWN_ORDER | — | — |
+| `storm_turret` | Storm Turret | elemental | 2 | 13 | 20 | 100 | 15 | 0.75 | 4 | BALLISTIC | 2 | LOWEST_HP | — | SPEED_BOOST |
+| `barrier_ward` | Barrier Ward | support | 2 | 16 | 24 | 120 | 8 | 0.8 | 1 | AURA (damage_buff +0.20) | 0 | CLOSEST_TO_GOAL | — | AURA_EXTEND |
+| `volley_crossbow` | Volley Crossbow | ranged | 2 | 15 | 23 | 90 | 18 | 1.2 | 5 | HOMING | 0 | SCATTER | — | — |
+| `arcane_lance` | Arcane Lance | elemental | 3 | 12 | 24 | 110 | 30 | 1.0 | 5 | BALLISTIC | 1 | LOWEST_HP | — | — |
+| `warbreaker` | Warbreaker | physical | 3 | 13 | 26 | 150 | 28 | 0.9 | 4 | BALLISTIC | 0 | HIGHEST_HP | — | — |
+| `piercing_ballista` | Piercing Ballista | ranged | 3 | 13 | 26 | 90 | 26 | 1.0 | 6 | HOMING | 0 | HIGHEST_HP | — | — |
+| `sanctified_standard` | Sanctified Standard | support | 3 | 14 | 28 | 140 | 9 | 0.9 | 1 | AURA (damage_buff +0.25) | 0 | CLOSEST_TO_GOAL | — | AURA_EXTEND |
+| `siege_cannon` | Siege Cannon | physical | 4 | 7 | 28 | 140 | 100 | 0.5 | 5 | HOMING | 0 | LOWEST_HP | — | — |
+| `firestorm_spire` | Firestorm Spire | elemental | 4 | 8 | 32 | 130 | 45 | 0.6 | 4 | BALLISTIC | 3 | CLOSEST_TO_GOAL | burn (0.15) | — |
+| `railgun_emplacement` | Railgun Emplacement | ranged | 4 | 8 | 32 | 90 | 95 | 0.5 | 7 | HOMING | 0 | HIGHEST_HP | — | — |
+| `grand_rally_spire` | Grand Rally Spire | support | 4 | 7 | 28 | 150 | 10 | 1.0 | 1 | AURA (damage_buff +0.30) | 0 | CLOSEST_TO_GOAL | — | AURA_EXTEND |
 
 *(All 18 have `footprint = Vector2i(1, 1)` — see Coverage Gaps §3, still open.)*
 
@@ -54,14 +56,14 @@ All data below is read directly from the 18 `.tres` files under `assets/data/tow
 - **`sanctified_standard`** (support T3): escalates the aura linearly from `rally_banner`'s +0.15 → `barrier_ward`'s +0.20 → +0.25 here, with a wider `aura_radius_cells = 5`.
 - **`railgun_emplacement`** (ranged T4): the archetype's own specialist-ceiling tower, mirroring `siege_cannon`'s role for physical — near-max `weapon_damage` (95/120), min `attack_speed` (0.5), and `attack_range_cells = 7` with a narrow 30° cone (effective range exactly hits Formula 2's 9-cell cap, deliberately avoiding the documented "range=8 + narrow cone wastes a stat point" trap).
 - **`grand_rally_spire`** (support T4): completes the aura escalation to +0.30 at `aura_radius_cells = 6` (the schema's own documented radius ceiling) and takes `AURA_EXTEND` at its max `perk_power = 0.25`.
-- All 5 costed within the precedent bands observed in the original 13 (T3 ≈ 24–28, T4 = 30, the T4 `base_cost ≤ 30` figure from `tower.md` Revision 20/OQ-11 — note: not currently enforced in code, `tower_blueprint_data.gd` has no `base_cost` field or T4 cap check at all, only the doc-level convention every existing T4 blueprint already follows). None use a pre-existing perk type beyond `AURA_EXTEND` on the two support towers (matching the established "≤1 perk type demo per family" pattern) or introduce a new `aura_effect_type`, `targeting_mode`, `projectile_type`, or footprint value — every field uses vocabulary the schema and its `validate()` already recognize.
+- All 5 costed within the precedent bands observed in the original 13 (T3 ≈ 24–28, T4 ≈ 28–32, the T4 `base_cost ≤ 30` figure from `tower.md` Revision 20/OQ-11 — **now actually enforced in code**, see Coverage Gaps §3/`TD-tower-009`). None use a pre-existing perk type beyond `AURA_EXTEND` on the two support towers (matching the established "≤1 perk type demo per family" pattern) or introduce a new `aura_effect_type`, `targeting_mode`, `projectile_type`, or footprint value — every field uses vocabulary the schema and its `validate()` already recognize.
 - Verified via a headless load-and-validate pass (not just written and assumed correct): all 18 blueprints load as `TowerBlueprintData` and pass `validate()` with zero errors.
 
 ## Coverage Gaps (still real, not filled by this pass)
 
 1. **`tower.md` OQ-6 ("2×2 footprint towers — which archetypes use them?") remains open, now with even stronger evidence**: all 18 shipped blueprints (13 original + the 5 just added) use `footprint = Vector2i(1, 1)`. Zero precedent exists for a 2×2 tower anywhere in the catalogue. This remains a Level Designer / Game Designer decision (per `tower.md`'s own OQ-6 ownership) — a 2×2 footprint has real grid-occupancy and placement-cost implications (`tower.md` doesn't currently define a footprint-based cost multiplier) that need a deliberate design pass, not a retrofit onto an existing 1×1 blueprint. Deliberately not addressed by this pass — inventing a 2×2 tower's cost/balance implications without that design pass would be guessing, not designing.
 2. **Support archetype's `aura_effect_type` vocabulary has exactly one value in use** (`"damage_buff"`, all 4 support towers now, including the 2 new ones — kept consistent deliberately rather than inventing a second aura type as part of this content-filling pass). `tower.md` Rule 5a doesn't enumerate a closed set of valid `aura_effect_type` strings — worth a follow-up note to that GDD if a second aura type (e.g. a slow/utility aura) is ever authored.
-3. **`tower_blueprint_data.gd` has no `base_cost` field or T4-cost-cap validation at all** — logged as `TD-tower-006` (`docs/tech-debt-register.md`). `tower.md` Formula 4 describes `placement_cost = round(base_cost × archetype_cost_factor × tier_cost_factor)` with a T4 `base_cost ≤ 30` load-time-error rule, but the shipped schema stores `placement_cost` as a single directly-authored int with no such field or check. Every existing and new T4 blueprint happens to comply (28–30), by author discipline, not code enforcement.
+3. **RESOLVED (2026-08-28)** — `tower_blueprint_data.gd` had no `base_cost` field or T4-cost-cap validation at all, despite `tower.md` Formula 4 describing both. Logged and fixed same-day as `TD-tower-009` (`docs/tech-debt-register.md`): `FoundationComponent` gained a real `base_cost: int` field, validated per-tier (`[10,60]` for T1-T3, `[7,30]` for T4 — the T4 floor was lowered from the general 10 to match what this project's own already-shipped T4 towers actually needed, rather than silently re-costing them upward to a theoretical 40+ minimum). A new `TowerBlueprintData.validate_placement_cost_matches_formula_4()` checks `placement_cost == round(base_cost × archetype_cost_factor × tier_cost_factor)` — **deliberately separate from `validate()` itself**: a first attempt folded this into `validate()` and broke `TowerAssembly`'s real, pre-existing player-facing assembly feature, which legitimately prices towers via its own different formula from the same `base_cost` field. The Formula 4 check now runs only at `GameDataRegistry`'s content-load boundary. All 18 blueprints migrated and re-verified valid; the exact AC boundary cases (`tier=4, base_cost=35` → error; `tier=4, base_cost=30` → OK; `tier=3, base_cost=55` → OK; `base_cost=9` on non-T4 → error) confirmed behaving as `tower.md`'s own ACs specify.
 
 ## Pre-Placement Perk Coverage
 

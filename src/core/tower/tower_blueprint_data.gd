@@ -52,3 +52,25 @@ func validate() -> bool:
 	elif not power.validate():
 		valid = false
 	return valid
+
+
+## Formula 4 (tower.md): placement_cost must equal round(base_cost *
+## archetype_cost_factor * tier_cost_factor) for STATIC, content-authored
+## blueprints (the .tres catalogue under assets/data/towers/blueprints/).
+## Deliberately NOT folded into validate() above -- TowerAssembly.gd's
+## assemble_tower() produces TowerBlueprintData at runtime using its own,
+## intentionally different pricing formula (BASE_ASSEMBLY_COST *
+## tier_cost_factor * 1.75, a "quick-spec" assembly markup unrelated to
+## Formula 4) from the same FoundationComponent.base_cost field, which is
+## legitimately correct and must still pass validate() (see
+## tower_assembly_test.gd::test_assembled_blueprint_is_immediately_registered_and_placeable).
+## Call this only at the GameDataRegistry content-load boundary (TD-tower-009,
+## docs/tech-debt-register.md), never on a dynamically-assembled blueprint.
+func validate_placement_cost_matches_formula_4() -> bool:
+	if foundation == null:
+		return true  # validate() already reports the null-foundation error
+	var expected_cost: int = roundi(foundation.base_cost * foundation.archetype_cost_factor * foundation.tier_cost_factor)
+	if placement_cost != expected_cost:
+		push_error("[TowerBlueprintData '%s'] placement_cost %d does not match Formula 4 (base_cost %d * archetype_cost_factor %.2f * tier_cost_factor %.2f = %d)" % [tower_id, placement_cost, foundation.base_cost, foundation.archetype_cost_factor, foundation.tier_cost_factor, expected_cost])
+		return false
+	return true

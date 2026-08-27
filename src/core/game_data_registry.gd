@@ -564,6 +564,11 @@ func _load_tower_blueprints() -> void:
 		# way, matching _load_monster_resources()'s does-not-abort policy.
 		if not blueprint.validate():
 			push_error("[GameDataRegistry] %s: TowerBlueprintData failed validation (see errors above)." % file_name)
+		# TD-tower-009: Formula 4 cross-check applies only to static, content-authored
+		# .tres blueprints -- see validate_placement_cost_matches_formula_4()'s own
+		# doc comment for why this is not part of validate() itself.
+		if not blueprint.validate_placement_cost_matches_formula_4():
+			push_error("[GameDataRegistry] %s: TowerBlueprintData failed Formula 4 cost validation (see error above)." % file_name)
 		if _tower_blueprints.has(blueprint.tower_id):
 			push_error("[GameDataRegistry] %s: duplicate tower_id '%s' — overwriting previous entry." % [file_name, blueprint.tower_id])
 		_tower_blueprints[blueprint.tower_id] = blueprint

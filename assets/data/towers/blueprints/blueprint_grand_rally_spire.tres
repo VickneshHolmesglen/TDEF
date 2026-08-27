@@ -19,6 +19,7 @@ tier_boss_dps_multiplier = 2.0
 footprint = Vector2i(1, 1)
 pre_placement_perk = "AURA_EXTEND"
 perk_power = 0.25
+base_cost = 7
 archetype_cost_factor = 1.0
 damaged = false
 
@@ -57,7 +58,7 @@ damaged = false
 script = ExtResource("1")
 tower_id = &"grand_rally_spire"
 display_name = "Grand Rally Spire"
-placement_cost = 30
+placement_cost = 28
 foundation = SubResource("Foundation_grandrally")
 weapon = SubResource("Weapon_grandrally")
 focus = SubResource("Focus_grandrally")

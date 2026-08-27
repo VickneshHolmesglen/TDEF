@@ -2,6 +2,15 @@
 
 ---
 
+## Review — 2026-08-28 (`/design-review --depth lean` re-review) — Verdict: NEEDS REVISION → APPROVED (fixed in-session)
+Scope signal: XL
+Specialists: None (lean mode)
+Blocking items: 1 found and fixed | Recommended: 0
+Summary: Found and fixed 3 stale references at review time (Overview's "five registered tower events" undercount, OQ-6's stale "13 blueprints" count, OQ-4 update for the new T3/T4 content). Surfaced one real blocking implementability gap: two `[Logic — BLOCKING]` Acceptance Criteria tested a `base_cost` field that didn't exist anywhere in the shipped schema (`TD-tower-009`). Per user decision, implemented the fix rather than deferring it: added `base_cost: int` to `FoundationComponent` with per-tier validation (T4's floor lowered to 7, not the GDD's literal 10, by explicit user choice — raising two already-shipped T4 towers' costs by 33-43% to comply with the literal floor was rejected in favor of matching what the game already ships). A first implementation attempt broke a real, unrelated feature (`TowerAssembly`'s player-facing tower assembly, which legitimately prices towers via its own different formula) — caught by a full-suite regression run, root-caused, and fixed by moving the Formula 4 check to the correct boundary (content-load only, not general `validate()`). All 18 blueprints migrated and re-verified; the GDD's own 4 AC boundary cases independently confirmed correct. Remaining OQ-6 (2×2 footprint) and OQ-7 (Tower Affinity reference count) are both genuinely open, deferred to a Level/Game Designer decision — same category as other Approved GDDs' deferred content OQs, not treated as blocking.
+Prior verdict resolved: Yes — flips from Needs Revision (since Revision 21, 2026-07-15) to Approved.
+
+---
+
 ## Review — 2026-08-24 (S8-07, `/design-review --depth lean` re-review) — Verdict: NEEDS REVISION → fixed in-session
 Scope signal: S (documentation-drift correction only)
 Specialists: None (lean mode)
