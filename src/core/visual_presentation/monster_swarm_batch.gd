@@ -50,6 +50,20 @@ var _slot_entity_id: Array[int] = []          # size=capacity; slot -> entity_id
 var _entity_to_slot: Dictionary = {}          # entity_id(int) -> slot_index(int), live entities only
 var _entity_to_generation: Dictionary = {}    # entity_id(int) -> generation(int), live entities only
 
+## CPU-side mirror of each slot's last-written body custom-data (TD-test-007,
+## docs/tech-debt-register.md). MultiMesh.get_instance_custom_data() is
+## unconditionally unreadable under Godot's RendererDummy backend (confirmed
+## via an isolated --headless repro outside gdUnit4: 0/60 round-trips
+## succeeded across 3 separate process runs, immune to frame-waiting) --
+## this is the backend CI falls back to on a GPU-less runner. Real hardware
+## is unaffected (the MultiMesh write/render path itself is correct and
+## already live-verified against real Vulkan/Forward+), but nothing that
+## needs to READ this data back -- tests, and swap-remove's own internal
+## slot-copy below -- can rely on RenderingServer readback being available.
+## This mirror is the single source of truth for both; the MultiMesh write
+## remains for rendering only, never read back by this class again.
+var _slot_body_custom: Array[Color] = []      # size=capacity; slot -> last-written body custom data
+
 
 func _init(p_batch_key: String, p_capacity: int, body_mm: MultiMesh, shadow_mm: MultiMesh) -> void:
 	batch_key = p_batch_key
@@ -58,6 +72,8 @@ func _init(p_batch_key: String, p_capacity: int, body_mm: MultiMesh, shadow_mm: 
 	_shadow_multimesh = shadow_mm
 	_slot_entity_id.resize(capacity)
 	_slot_entity_id.fill(-1)
+	_slot_body_custom.resize(capacity)
+	_slot_body_custom.fill(Color(0, 0, 0, 0))
 
 
 ## Register a new live entity. Returns a MonsterPresentationHandle on
@@ -83,6 +99,7 @@ func register(entity_id: int, body_xform: Transform3D, body_custom: Color, shado
 	_body_multimesh.set_instance_transform(slot, body_xform)
 	_body_multimesh.set_instance_custom_data(slot, body_custom)
 	_shadow_multimesh.set_instance_transform(slot, shadow_xform)
+	_slot_body_custom[slot] = body_custom
 
 	live_count += 1
 	_sync_visible_count()
@@ -102,7 +119,19 @@ func update(handle: MonsterPresentationHandle, body_xform: Transform3D, body_cus
 	_body_multimesh.set_instance_transform(slot, body_xform)
 	_body_multimesh.set_instance_custom_data(slot, body_custom)
 	_shadow_multimesh.set_instance_transform(slot, shadow_xform)
+	_slot_body_custom[slot] = body_custom
 	return true
+
+
+## Returns the last-written body custom data for a live entity, or
+## Color(0,0,0,0) if the handle is stale/foreign (see update()'s own doc
+## comment for what "stale" means). Reads the CPU-side mirror above, never
+## RenderingServer -- see that field's doc comment for why.
+func get_custom_data(handle: MonsterPresentationHandle) -> Color:
+	var slot: int = _resolve_valid_slot(handle)
+	if slot == INVALID_SLOT:
+		return Color(0, 0, 0, 0)
+	return _slot_body_custom[slot]
 
 
 ## Remove a live entity via swap-remove (ADR-0038 "Dense batch algorithm").
@@ -125,11 +154,17 @@ func remove(handle: MonsterPresentationHandle) -> bool:
 		# transparently, via _entity_to_slot. Any handle the moved entity's
 		# owner is holding stays valid with zero action required on their
 		# part, since update()/remove() always resolve slot fresh.
+		# Custom data is copied from the CPU-side mirror, not read back from
+		# the MultiMesh (see _slot_body_custom's doc comment -- RenderingServer
+		# readback is unconditionally unreliable under RendererDummy, which
+		# would otherwise make this exact copy silently write zeros under
+		# headless CI).
 		_body_multimesh.set_instance_transform(slot, _body_multimesh.get_instance_transform(last))
-		_body_multimesh.set_instance_custom_data(slot, _body_multimesh.get_instance_custom_data(last))
+		_body_multimesh.set_instance_custom_data(slot, _slot_body_custom[last])
 		_shadow_multimesh.set_instance_transform(slot, _shadow_multimesh.get_instance_transform(last))
 		_slot_entity_id[slot] = moved_entity_id
 		_entity_to_slot[moved_entity_id] = slot
+		_slot_body_custom[slot] = _slot_body_custom[last]
 
 	# Defensively clear the now-vacated last slot -- ADR-0038 "Clear/hide
 	# the old last slot defensively." A cleared slot is fully outside
@@ -140,6 +175,7 @@ func remove(handle: MonsterPresentationHandle) -> bool:
 	_body_multimesh.set_instance_transform(last, Transform3D())
 	_body_multimesh.set_instance_custom_data(last, Color(0, 0, 0, 0))
 	_shadow_multimesh.set_instance_transform(last, Transform3D())
+	_slot_body_custom[last] = Color(0, 0, 0, 0)
 
 	_entity_to_slot.erase(entity_id)
 	# Generation is NOT deleted -- kept so a future register() of the same

@@ -95,8 +95,7 @@ func after_test() -> void:
 	_renderer.free()
 
 
-## Reads INSTANCE_CUSTOM back for entity's own slot, straight from the real
-## body MultiMesh the renderer allocated for it.
+## Reads INSTANCE_CUSTOM back for entity's own slot.
 ##
 ## Returns a Color (get_instance_custom_data()'s real return type) — read its
 ## 4 channels via .r/.g/.b/.a (frame/flash/status/facing per
@@ -106,12 +105,21 @@ func after_test() -> void:
 ## GDScript's static analysis rejects it as a parse error ("Cannot find
 ## member 'y' in base 'Color'"), which was aborting this entire test suite's
 ## CLI run before any test could execute, not just failing these tests.
-## Never live-verified until this pass.
+##
+## Fixed 2026-08-27 (TD-test-007, docs/tech-debt-register.md): previously
+## read straight from the real body MultiMesh via
+## batch._body_multimesh.get_instance_custom_data(slot). Godot's
+## RendererDummy backend (what a GPU-less CI runner falls back to under
+## --headless) never backs MultiMesh per-instance readback at all —
+## confirmed via an isolated repro outside gdUnit4, deterministic, not a
+## race, immune to frame-waiting. Now reads MonsterSwarmBatch's own
+## CPU-side _slot_body_custom mirror instead (added alongside this fix),
+## which is correct under any renderer backend since it never touches
+## RenderingServer to read.
 func _read_custom_data(entity: MonsterEntity) -> Color:
 	var handle: MonsterPresentationHandle = entity.swarm_handle
 	var batch: MonsterSwarmBatch = _renderer._batches[handle.batch_key]
-	var slot: int = batch._entity_to_slot[handle.entity_id]
-	return batch._body_multimesh.get_instance_custom_data(slot)
+	return batch.get_custom_data(handle)
 
 
 # ---------------------------------------------------------------------------

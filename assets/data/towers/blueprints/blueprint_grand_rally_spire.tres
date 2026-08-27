@@ -1,0 +1,64 @@
+[gd_resource type="Resource" script_class="TowerBlueprintData" load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://src/core/tower/tower_blueprint_data.gd" id="1"]
+[ext_resource type="Script" path="res://src/core/tower/foundation_component.gd" id="2"]
+[ext_resource type="Script" path="res://src/core/tower/weapon_component.gd" id="3"]
+[ext_resource type="Script" path="res://src/core/tower/focus_component.gd" id="4"]
+[ext_resource type="Script" path="res://src/core/tower/power_component.gd" id="5"]
+
+[sub_resource type="Resource" id="Foundation_grandrally"]
+script = ExtResource("2")
+component_id = "found_grandrally_t4"
+archetype = "support"
+hp_base = 150.0
+tier = 4
+tier_multiplier = 2.5
+tier_dps_multiplier = 4.0
+tier_cost_factor = 4.0
+tier_boss_dps_multiplier = 2.0
+footprint = Vector2i(1, 1)
+pre_placement_perk = "AURA_EXTEND"
+perk_power = 0.25
+archetype_cost_factor = 1.0
+damaged = false
+
+[sub_resource type="Resource" id="Weapon_grandrally"]
+script = ExtResource("3")
+component_id = "weap_grandrally_t4"
+weapon_damage = 10.0
+attack_speed = 1.0
+projectile_type = "AURA"
+element = ""
+aura_effect_type = "damage_buff"
+aura_effect_value = 0.30
+aura_radius_cells = 6
+aoe_radius_cells = 0
+damaged = false
+
+[sub_resource type="Resource" id="Focus_grandrally"]
+script = ExtResource("4")
+component_id = "focus_grandrally_t4"
+targeting_mode = "CLOSEST_TO_GOAL"
+attack_range_cells = 1
+cone_half_angle = 180.0
+facing_direction = "N"
+damaged = false
+
+[sub_resource type="Resource" id="Power_grandrally"]
+script = ExtResource("5")
+component_id = "power_none"
+effect_type = ""
+effect_value = 0.0
+effect_duration = 0.0
+constellation_eligibility_tag = "support_grand_rally"
+damaged = false
+
+[resource]
+script = ExtResource("1")
+tower_id = &"grand_rally_spire"
+display_name = "Grand Rally Spire"
+placement_cost = 30
+foundation = SubResource("Foundation_grandrally")
+weapon = SubResource("Weapon_grandrally")
+focus = SubResource("Focus_grandrally")
+power = SubResource("Power_grandrally")
