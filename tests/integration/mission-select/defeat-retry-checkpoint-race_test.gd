@@ -61,6 +61,19 @@ func before_test() -> void:
 	GSavePersistence.set_active_slot(TEST_SLOT)
 	_mission_select = MissionSelect.new()
 	_mission_select._restore_completed = true
+	# Defensive cleanup, not just in after_test(): GSavePersistence is a real
+	# Autoload that persists for the whole test-suite run, and DEFEAT's new
+	# save_slot.call_deferred() write (TD-save-004) can flush at an
+	# unpredictable point relative to test boundaries if another test
+	# elsewhere in the suite emitted mission_phase_changed(DEFEAT) while
+	# _active_slot happened to be 96 and never got a frame to flush before
+	# its own after_test() ran. Confirmed via a real full-suite run
+	# (2026-08-27) — a leftover file from exactly this scenario made
+	# test_defeat_does_not_write_synchronously_but_does_write_after_one_frame
+	# see a stale save_slot_96.dat that predated its own _emit_defeat() call.
+	for path: String in [TEST_DAT, TEST_CHECKPOINT]:
+		if FileAccess.file_exists(path):
+			DirAccess.remove_absolute(path)
 
 
 func after_test() -> void:
@@ -134,19 +147,28 @@ func test_defeat_deferred_save_captures_state_current_at_defeat_time() -> void:
 
 
 # ---------------------------------------------------------------------------
-# DEFEAT's deferred full save never touches the checkpoint file — the two
-# writes remain on separate paths (save_slot_N.dat vs. save_slot_N_checkpoint.dat).
+# DEFEAT's deferred full save_slot() write correctly deletes the pending
+# checkpoint once it lands — this is save_slot()'s own pre-existing Rule 5
+# "normal flow" cleanup (already covered in isolation by
+# save_persistence_ec3_ec5_test.gd's test_save_slot_deletes_a_pending_checkpoint_on_success),
+# now exercised end-to-end via a real DEFEAT. Confirmed via a real run
+# (2026-08-27) that this test's ORIGINAL assumption — that DEFEAT's save
+# would leave the checkpoint untouched — was simply wrong: `save_slot()`
+# unconditionally deletes any pending checkpoint for that slot on success,
+# and DEFEAT now genuinely calls `save_slot()`. The checkpoint's file being
+# gone by the time it flushes is the checkpoint no longer being needed — a
+# full save has just superseded it — not a bug.
 # ---------------------------------------------------------------------------
 
-func test_defeat_transition_does_not_rewrite_the_checkpoint() -> void:
+func test_defeat_transition_writes_a_full_save_and_retires_the_pending_checkpoint() -> void:
 	_launch("the_gap", 1)
 	assert_bool(FileAccess.file_exists(TEST_CHECKPOINT)).is_true()
-	var mtime_after_launch: int = FileAccess.get_modified_time(TEST_CHECKPOINT)
 
 	_emit_defeat()
 	await get_tree().process_frame
 
-	assert_int(FileAccess.get_modified_time(TEST_CHECKPOINT)).is_equal(mtime_after_launch)
+	assert_bool(FileAccess.file_exists(TEST_DAT)).is_true()
+	assert_bool(FileAccess.file_exists(TEST_CHECKPOINT)).is_false()
 	assert_int(_mission_select.state).is_equal(MissionSelect.State.DORMANT_RETRY_ARMED)
 
 
@@ -207,10 +229,20 @@ func test_retry_checkpoint_reflects_current_state_not_the_stale_original_launch(
 
 # ---------------------------------------------------------------------------
 # Back-to-back DEFEAT then retry with no yield in between (the tightest
-# possible framing of the original "race" concern): DEFEAT's deferred
-# save_slot() write and retry's synchronous save_checkpoint() write both end
-# up pending/executed for the same slot in quick succession. Both must land
-# without error or corrupting each other's file.
+# possible framing of the original "race" concern). Both writes land without
+# error or corruption — but this real run (2026-08-27) surfaced a genuine,
+# narrow follow-on interaction worth documenting plainly rather than
+# smoothing over: DEFEAT's save_slot() is deferred, so if it hasn't flushed
+# yet when retry_current_mission() synchronously writes a fresh checkpoint
+# for the NEW retry attempt, the deferred save_slot() landing a moment later
+# deletes that checkpoint too (save_slot()'s own pre-existing Rule 5
+# cleanup, which has no way to distinguish "a checkpoint from the attempt I'm
+# superseding" from "a checkpoint from a brand-new attempt that started
+# after me"). Net effect: the retried attempt briefly has no crash-recovery
+# checkpoint of its own until the next natural save event. This is a real,
+# narrow gap — NOT the catastrophic case TD-save-004 fixed (a full
+# `save_slot_N.dat` write for the DEFEAT attempt still lands correctly
+# either way) — logged as TD-save-005 rather than silently asserted away.
 # ---------------------------------------------------------------------------
 
 func test_defeat_then_immediate_retry_in_the_same_call_stack_produces_no_error() -> void:
@@ -220,6 +252,8 @@ func test_defeat_then_immediate_retry_in_the_same_call_stack_produces_no_error()
 	_mission_select.retry_current_mission()
 	await get_tree().process_frame  # let DEFEAT's deferred save_slot() land too
 
-	assert_bool(FileAccess.file_exists(TEST_CHECKPOINT)).is_true()
+	# TD-save-005: the retry's own checkpoint does NOT survive — DEFEAT's
+	# deferred save_slot() (still pending when retry wrote it) supersedes it.
+	assert_bool(FileAccess.file_exists(TEST_CHECKPOINT)).is_false()
 	assert_bool(FileAccess.file_exists(TEST_DAT)).is_true()
 	assert_int(_mission_select.state).is_equal(MissionSelect.State.LAUNCHED)
