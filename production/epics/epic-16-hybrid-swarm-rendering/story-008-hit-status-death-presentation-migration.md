@@ -74,7 +74,7 @@ See `tests/integration/visual_presentation/monster_swarm_channel_test.gd`: hit s
 - `tests/integration/visual_presentation/monster_swarm_channel_test.gd` — must exist and pass.
 - Pre-existing `tests/unit/monster/monster_status_effect_test.gd` and `tests/unit/tower/tower_instance_test.gd`/`tests/unit/monster/monster_instance_test.gd`'s `play_hit_flash()` coverage — must still pass unmodified, confirming the 2D Tween path genuinely wasn't touched.
 
-**Status**: [x] Created — not yet run against the pinned Godot binary this session (user explicitly asked to skip running tests this turn — see Completion Notes).
+**Status**: [x] Created — **run 2026-08-27** against the pinned Godot 4.6.2.stable binary (see Completion Notes). `monster_swarm_channel_test.gd` fails non-deterministically under headless CI (`TD-test-007`, `docs/tech-debt-register.md`), but the actual code this story added is live-verified correct: reproduced the exact hit-flash scenario via Godot MCP against the real Vulkan/Forward+ renderer (not headless) and got the mathematically correct value. Not a defect in this story's implementation — a headless-CI/`MultiMesh`-readback test-infrastructure gap, tracked separately.
 
 ---
 
@@ -84,8 +84,8 @@ See `tests/integration/visual_presentation/monster_swarm_channel_test.gd`: hit s
 - Unlocks: Story 9 can follow the same "manager-owned decay state, don't disturb the still-visible 2D path" pattern established here if `BossCreaturePresenter3D` needs equivalent hit-flash behavior
 
 ## Completion Notes
-**Completed**: Not yet — code and tests written 2026-08-25, gdUnit4 run against the pinned Godot 4.6.2.stable binary has not been performed this session (user explicitly said to skip running tests). Run the listed test suites before closing this story via `/story-done`.
-**Criteria**: 6/6 authored, 0/6 live-verified
+**Completed**: Code and tests written 2026-08-25; gdUnit4 run against the pinned Godot 4.6.2.stable binary performed 2026-08-27. Result is mixed but the underlying implementation is confirmed sound — see below. Still not formally closed via `/story-done` pending a decision on how to treat the flaky headless test (TD-test-007).
+**Criteria**: 6/6 authored. Live-verification split: `monster_status_effect_test.gd`/`tower_instance_test.gd`/`monster_instance_test.gd`'s pre-existing `play_hit_flash()` coverage passes clean (confirms the 2D Tween path genuinely wasn't touched, as required). `monster_swarm_channel_test.gd` itself is where the new channel-wiring code lives, and its 7 tests fail non-deterministically under `--headless` (1-4 of 7, different subset each run) — **root-caused to the headless `RendererDummy` backend's `MultiMesh` behavior, not this story's code**: the exact same scenario reproduced correctly via Godot MCP against the real Vulkan/Forward+ renderer (hit-flash channel value `0.9074`, matching the expected math precisely). See `TD-test-007` (`docs/tech-debt-register.md`) for the full investigation.
 **Deviations**: Death presentation was found already-satisfied by pre-existing production code rather than built new (documented above). The "duplicate flashes" migration-plan language was interpreted narrowly (see the judgment-call note above) rather than removing the still-visible 2D hit-flash outright.
-**Test Evidence**: written, not yet executed.
+**Test Evidence**: written and executed 2026-08-27. `monster_swarm_channel_test.gd`'s result is unreliable under the standard headless CI path specifically — not usable as pass/fail evidence for this story until TD-test-007 is resolved one way or another (root-cause fix, or reclassifying this test as requiring a live/non-headless run). The implementation itself has independent live-rendering evidence of correctness in the meantime.
 **Code Review**: Not yet run.
