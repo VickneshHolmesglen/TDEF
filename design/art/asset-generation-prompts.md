@@ -16,6 +16,21 @@ reconstructing the art-bible constraints from scratch each time.
 > the Physical set first before running the full batch. Outcome notes get
 > folded back into this file as pieces land, same as every other batch.
 
+> **Batch request, awaiting generation (0/8, 2026-08-29)**: the Art Overhaul's
+> first populated backlog batch (`production/art-overhaul-status.md`) —
+> movement spritesheets for all 8 real, already-shipped monster types, every
+> one of which currently has only a single static idle frame. 6 new walk-cycle
+> requests written this batch (`assets/art-generation-requests-2026-08-29-*.md`
+> — Spore Skitterling, Armored Brute, Forest Troll, Bog Lurker, Goblin
+> Warlord, Rift Sentinel), plus a combined base-pose+walk request for Iron
+> Colossus (the one monster with zero art at all yet), plus the pre-existing
+> 2026-08-17 Goblin Runner request below (its wiring note updated to route
+> through the current `CreatureAtlasMappingResource`/`MonsterSwarmRenderer3D`
+> pipeline, not the legacy path it originally named). This is now Codex's
+> explicit top priority per `codex-art-overhaul.md` §0.5 — closes the gap
+> where `MonsterSwarmRenderer3D`'s atlas-frame machinery has been proven
+> working (Epic 16) but had no real animated content to display.
+
 > **Batch request, awaiting generation (0/1, 2026-08-17)**: `assets/art-generation-requests-2026-08-17-goblin-runner-walk.md`
 > is a standalone, upload-ready prompt for the project's **first sprite-sheet
 > (multi-frame) generation request** — a 4-frame walk cycle for `goblin_runner`,

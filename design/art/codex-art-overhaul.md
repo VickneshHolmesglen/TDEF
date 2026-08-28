@@ -5,9 +5,37 @@
 > process, this file wins; if it's silent, fall back to `AGENTS.md` (Codex) /
 > `CLAUDE.md` (Claude Code) and `design/art/art-bible.md`.
 >
-> **Status**: Process/coordination doc — written 2026-08-23, updated 2026-08-24.
-> The hybrid medium split and category-level Art Bible specifications are locked.
-> The cross-medium Godot pilot remains the gate before mass generation.
+> **Status**: Process/coordination doc — written 2026-08-23, updated 2026-08-29.
+> The hybrid medium split and category-level Art Bible specifications are
+> locked. The cross-medium Godot pilot **passed** (2026-08-24/25 — see
+> `production/art-overhaul-status.md`'s Production Architecture section) —
+> mass generation is now unblocked. **The backlog was empty until 2026-08-29**;
+> it is now populated with a real first batch. **Read §0.5 below before
+> picking up anything — it names Codex's current priority explicitly.**
+
+## 0.5. Current priority for Codex (as of 2026-08-29)
+
+**Generate the first backlog batch — 8 monster movement spritesheets.** See
+`production/art-overhaul-status.md`'s Backlog table: every real, already-shipped
+monster type currently has only a single static idle frame (confirmed by
+inspecting the shipped `CreatureAtlasMappingResource` `.tres` files directly —
+`atlas_columns=1, atlas_rows=1, frame_count=1`, one `"idle"` clip, nothing
+else). `MonsterSwarmRenderer3D`'s atlas-frame-selection machinery has been
+live-verified working (Epic 16) and has been sitting idle waiting for exactly
+this content since 2026-08-24/25. Closing this gap is now the priority over
+any other art category (towers, environment, UI, etc.) — those all already
+have at least a first pass of real static art; monsters are the one category
+that's still 100% static/idle-only with zero movement.
+
+**Each backlog row has a standalone, upload-ready prompt file already
+written** (`assets/art-generation-requests-2026-08-29-*.md`, plus one
+pre-existing 2026-08-17 request for Goblin Runner) — no further scoping is
+needed. Claim a row in the Backlog table, generate, drop the raw output where
+the request file says, mark it `generated, awaiting processing`, and hand off
+to Claude Code per the normal §3 workflow below. Once this batch is through
+the pipeline, the next priority (idle/attack/death frames, or the remaining
+static-art categories) will be scoped the same way — don't self-expand scope
+mid-batch.
 
 ---
 

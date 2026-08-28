@@ -83,9 +83,23 @@ Avoid pure blood-red, purple, or cyan anywhere in the art.
 
 1. Drop the raw sheet into `assets/source/monsters/goblin_runner_walk.png`.
 2. Claude slices the 4 frames (uniform grid, same alpha-cut technique as
-   every other monster) into individual frames or a `SpriteFrames` resource
-   under `assets/art/monsters/`.
-3. Wired into `MonsterInstance` as a new `"move"` animation (per
+   every other monster) into individual frames under `assets/art/monsters/`.
+3. **Wiring destination updated 2026-08-29** — the old note below (wiring
+   directly into `MonsterInstance`) predates Epic 16's swarm-rendering
+   migration and is stale. Real wiring target now: sliced frames get combined
+   into one atlas texture, then `assets/data/creature_atlases/goblin_runner.tres`
+   (`CreatureAtlasMappingResource`, already exists with a single-frame `idle`
+   clip) gets updated — `atlas_texture` repointed at the new combined atlas,
+   `atlas_columns`/`frame_count` updated to 4 (or however many total frames
+   once idle+walk are combined into one sheet), and a new `"walk"`
+   `CreatureAnimationClip` added (`start_frame`, `frame_count=4`, a reasonable
+   `fps`, `loop=true`) alongside the existing `idle` clip. `MonsterSwarmRenderer3D`
+   (Epic 16 Story 6+) is what actually reads this at runtime, not
+   `MonsterInstance` — that legacy 3D-companion path was fully retired for
+   this monster's tier back in Epic 16 Story 7.
+4. ~~Wired into `MonsterInstance` as a new `"move"` animation (per
    `design/art/animation-pipeline.md`'s naming convention), used only while
    `goblin_runner` is actively pathing — this is the vertical slice's one
-   frame-animation asset; no other monster gets this treatment yet.
+   frame-animation asset; no other monster gets this treatment yet.~~
+   **Superseded by step 3 above — see `production/art-overhaul-status.md`'s
+   Backlog for this item's current claim/status.**

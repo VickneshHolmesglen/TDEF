@@ -56,12 +56,30 @@
 
 ## Backlog
 
-*(Empty — populate once the direction lock-in above is resolved. One row per
-asset or tightly-scoped batch, matching `asset-generation-prompts.md`'s
-existing granularity — not one row per whole category.)*
+**First batch, populated 2026-08-29** — the pipeline (direction lock-in,
+rendering architecture, swarm-render infrastructure) has been proven since
+2026-08-24/25 but the backlog itself sat empty until now, so nothing had
+actually been generated. This batch is scoped to close that gap with
+Codex's **current top priority: movement spritesheets for the 8 real,
+already-shipped monster types** — every one of them currently has only a
+single static idle frame (confirmed by inspecting the shipped
+`CreatureAtlasMappingResource` `.tres` files directly), and `MonsterSwarmRenderer3D`'s
+atlas-frame-selection machinery (Epic 16, live-verified working) has been
+sitting idle waiting for exactly this content. Each row below has a
+standalone, upload-ready prompt file — no further scoping needed before
+generation starts. One row per tightly-scoped batch, matching this file's own
+granularity rule.
 
 | Item | Category | Status | Owner | Notes |
 |---|---|---|---|---|
+| Goblin Runner walk cycle (4 frames) | monsters | `backlog` | Codex | `assets/art-generation-requests-2026-08-17-goblin-runner-walk.md` — pre-existing request from 2026-08-17, never generated; wiring note updated 2026-08-29 to route through the current `CreatureAtlasMappingResource`/`MonsterSwarmRenderer3D` pipeline instead of the retired legacy path it originally named |
+| Spore Skitterling walk cycle (4 frames) | monsters | `backlog` | Codex | `assets/art-generation-requests-2026-08-29-spore-skitterling-walk.md` |
+| Armored Brute walk cycle (4 frames) | monsters | `backlog` | Codex | `assets/art-generation-requests-2026-08-29-armored-brute-walk.md` |
+| Forest Troll walk cycle (4 frames) | monsters | `backlog` | Codex | `assets/art-generation-requests-2026-08-29-forest-troll-walk.md` |
+| Bog Lurker walk cycle (4 frames) | monsters | `backlog` | Codex | `assets/art-generation-requests-2026-08-29-bog-lurker-walk.md` — flags the same tight alpha-cut threshold gotcha its static art needed |
+| Goblin Warlord walk cycle (4 frames, boss-scale canvas) | monsters | `backlog` | Codex | `assets/art-generation-requests-2026-08-29-goblin-warlord-walk.md` |
+| Rift Sentinel glide cycle (4 frames, boss-scale canvas) | monsters | `backlog` | Codex | `assets/art-generation-requests-2026-08-29-rift-sentinel-glide.md` — a hover/glide, not a leg-walk, per this construct's own design; flags the same near-black alpha-cut gotcha its static art needed |
+| Iron Colossus base pose + walk cycle (net-new creature, no art exists yet) | monsters | `backlog` | Codex | `assets/art-generation-requests-2026-08-29-iron-colossus-base-and-walk.md` — the one item in this batch that's genuinely new content (not an update to existing art); also needs a brand-new `CreatureAtlasMappingResource` `.tres` on the processing side, not an edit to an existing one |
 
 ---
 
