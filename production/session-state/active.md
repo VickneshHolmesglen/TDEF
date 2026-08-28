@@ -1,3 +1,17 @@
+## Session Extract — Sanctuary UI playtest protocol prepped (S9-02), 2026-08-28 (part 17)
+
+- User asked to "prep the Sanctuary UI playtest protocol" — sprint-09's second must-have item.
+- Read `story-014-experiential-playtest.md` (its 3 ACs are all debrief-phrased: "GIVEN...WHEN debriefed afterward, THEN the player can articulate/describe/correctly say...") and `sanctuary-ui.md`'s Player Fantasy + Core Rules 2, 5, 9, 10 to trace each AC back to its exact source claim (the Overview "step back and look" peak moment; Loadout's "one continuous motion" framing; Connection Badges as tab-strip-level, not slot-level, cross-system legibility).
+- Same framing decision as the Tower Mastery protocol: a designer self-playtest, not a blind-discoverability test — these ACs test whether an already-fully-implemented shell (Stories 001-013 all Done) lands emotionally/legibly, not whether the mechanics work (already covered by those stories' own tests).
+- One real design problem worked through during prep: the Connection Badge debrief (AC-3) needs a badge to fire for a room the player is NOT currently in. Checked which of the 4 badge-triggering events (structure built, creature READY, recipe unlocked, creature acquired) is actually same-session-engineerable — ruled out Menagerie breeding-pen completion specifically, since `menagerie.md` Formula 5 gates it on `breeding_missions_remaining` (whole missions, not real time), not something that resolves within one sanctuary sitting. Left the specific event choice to the tester's own save-state judgment rather than over-specifying a mechanism I wasn't fully certain of live behavior for.
+- Wrote two new files, mirroring the Tower Mastery protocol/report pair's structure and the project's Sprint 4 facilitator-script convention:
+  - `production/qa/sanctuary-ui-playtest-protocol.md` — setup (needs a save with real accumulated sanctuary state, not an empty one — the Overview AC can't produce an honest answer against nothing to reflect), 3 debrief-moment scripts, and an after-session checklist pointing at the story's required evidence doc (`production/qa/evidence/story-014-experiential-playtest-evidence.md`, not yet created).
+  - `production/playtests/sanctuary-ui-playtest-report.md` — fill-in template forcing verbatim/near-verbatim player-words capture for each debrief (per the story's own "a pass/fail judgment alone is insufficient" requirement), explicitly marked no-fabrication.
+- Not committed yet this pass.
+- Next recommended: both S9-01 and S9-02 protocols are now prepped and waiting on Vicknesh to actually run the sessions. S9-03 (audio pipeline decision) is the only sprint-09 item with no prep work possible — it's purely a decision Vicknesh needs to make, not something to prep further.
+
+---
+
 ## Session Extract — Tower Mastery playtest protocol prepped (S9-01), 2026-08-28 (part 16)
 
 - User asked to "prep the Tower Mastery playtest protocol" — the first of sprint-09's must-have items (S9-01).
