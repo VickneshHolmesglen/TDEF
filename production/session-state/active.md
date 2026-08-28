@@ -1,3 +1,16 @@
+## Session Extract — Audio content pipeline decided: licensed/CC0 packs (S9-03), 2026-08-28 (part 18)
+
+- User asked to "prep the audio content pipeline decision options" — sprint-09's third item, the one with no autonomous prep possible, only a decision to surface.
+- Checked project state: `assets/audio/` doesn't exist at all, and `audio-system.md` OQ-2 confirms the entire `AudioCueMap` is empty — zero real audio content anywhere in the project. This reframed the ask: the real decision isn't "Tower Mastery's 3 stingers," it's "how does this project get ANY real audio content, ever" — Tower Mastery is just the first thing waiting on the answer.
+- Wrote `production/qa/audio-content-pipeline-decision.md` — 4 real options (licensed/CC0 packs, AI-generated audio via manual external workflow since no built-in audio-generation skill exists unlike `generate-image`/`generate-3d-model`, custom/commissioned sound design, placeholder procedural tones), each with honest tradeoffs, plus a "realistic hybrid" note (packs for bulk + custom for pillar-defining moments) since that's how most projects this size actually split it.
+- **User decided via `AskUserQuestion`**: Option A only — licensed/CC0 asset packs (Kenney.nl / Freesound.org CC0 / itch.io). Not the hybrid the memo suggested — speed and free/low-cost real content won over reserving a custom-commission tier for signature moments.
+- Recorded the decision: updated the decision memo's status header, `audio-system.md` OQ-2 (now says pipeline decided, content-authoring pass still not started, Tower Mastery's 3 stingers named as the pilot), and `sprint-status.yaml`'s S9-03 entry (backlog → ready-for-dev, blocker text updated to reflect the decision rather than "no decision made").
+- **Practical implication for the actual pilot**: since Option A was chosen (not B), no new staging/import workflow like the art pipeline's `assets/source/` → `assets/art/` split is needed — licensed/CC0 files get downloaded, licensed, placed directly into a new `assets/audio/` tree, and imported/wired in the same session.
+- Not committed yet this pass.
+- Next recommended: **all 3 sprint-09 prep items are now done** (S9-01/S9-02 protocols prepped and waiting on Vicknesh to run; S9-03's decision made). The one concrete piece of autonomous work this unblocks is authoring Tower Mastery's 3 real stinger files (enter-range tick, pause tone, `skill_unlocked` chime) by sourcing them from a CC0/licensed pack and wiring them into the existing `AudioCueDispatcher` mechanism — genuinely actionable now, whenever the user wants it picked up.
+
+---
+
 ## Session Extract — Sanctuary UI playtest protocol prepped (S9-02), 2026-08-28 (part 17)
 
 - User asked to "prep the Sanctuary UI playtest protocol" — sprint-09's second must-have item.

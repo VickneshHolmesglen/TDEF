@@ -43,8 +43,8 @@ stories:
     name: "Author real audio stinger content for Tower Mastery"
     file: "production/epics/epic-06-mission-combat-extensions/story-013-mid-combat-visual-audio-feedback.md"
     priority: should-have
-    status: backlog
+    status: ready-for-dev
     owner: ""
     estimate_days: 0
-    blocker: "requires audio bible/content pipeline decision"
+    blocker: "pipeline decided 2026-08-28 (licensed/CC0 packs, see production/qa/audio-content-pipeline-decision.md) -- content authoring not yet started"
     completed: ""
