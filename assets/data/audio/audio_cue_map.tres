@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="AudioCueMap" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://src/core/audio/audio_cue_map.gd" id="1"]
+[ext_resource type="Resource" path="res://assets/data/audio/cues/skill_unlocked.tres" id="2"]
+[ext_resource type="Resource" path="res://assets/data/audio/cues/tower_mastery_proximity_entered.tres" id="3"]
+[ext_resource type="Resource" path="res://assets/data/audio/cues/tower_mastery_proximity_exited.tres" id="4"]
+
+[resource]
+script = ExtResource("1")
+entries = [ExtResource("2"), ExtResource("3"), ExtResource("4")]

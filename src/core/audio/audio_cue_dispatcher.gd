@@ -13,12 +13,17 @@ extends Node
 ## `dispatch_cue()` entry point, which is where all the actual per-event
 ## *behavior* difference is data (the `AudioCueMap` entry), not code.
 ##
-## No real audio content exists yet (OQ-2, out of this epic's scope) — cues
-## are not actually played through an `AudioStreamPlayer`; this class
-## implements and exercises the real routing/attenuation mechanism (which
-## bus, which volume, spatial vs. not) against test-authored `AudioCueEntry`
-## fixtures, matching this project's "mechanism real, content placeholder"
-## convention (Diorama, Music/Ambient's own Story 002).
+## Real audio content is still nearly nonexistent (OQ-2, largely out of this
+## epic's scope) — most cues have no `AudioCueEntry.stream` assigned, so most
+## dispatches remain a routing/attenuation exercise only, matching this
+## project's "mechanism real, content placeholder" convention (Diorama,
+## Music/Ambient's own Story 002). **2026-08-28 (S9-03, audio content pilot)**:
+## for the small number of entries that DO carry a real `stream` (currently
+## Tower Mastery's 3 stingers — `assets/data/audio/audio_cue_map.tres`),
+## playback is now genuinely real — see `_play_stream()` below. A cue with no
+## `stream` still dispatches (routing/ducking/voice-limiting all still run
+## against it, per this class's own tests) but produces no sound, which is
+## the correct behavior for an unauthored cue, not a bug.
 ##
 ## World-space distance attenuation (Formula F2) needs a real distance value
 ## from a "camera focus point" concept this project has not built yet (no
@@ -30,8 +35,30 @@ extends Node
 
 const MAX_AUDIBLE_RADIUS: float = 15.0  ## Tuning Knobs default (Formula F2, R)
 
+## Default content-authored cue map (S9-03) — loaded in `_ready()` if no
+## `cue_map` was already injected (tests always inject their own fixtures via
+## `set_cue_map()` immediately after `add_child()`, before emitting any real
+## event, so this default is only ever observed in real gameplay).
+const DEFAULT_CUE_MAP_PATH: String = "res://assets/data/audio/audio_cue_map.tres"
+
+## Fixed-size pool of `AudioStreamPlayer`s, pre-allocated once — per this
+## project's own zero-alloc-in-hot-paths convention (`.claude/rules/engine-code.md`),
+## a one-shot cue must never spawn-then-free a node per dispatch. Sized to
+## `combat_impact`'s own voice cap (`VoiceLimiter.DEFAULT_FAMILY_CAPS`, the
+## largest family), the loosest realistic simultaneous-cue ceiling — beyond
+## that, the oldest-still-playing player in the pool is stolen and restarted,
+## mirroring `VoiceLimiter`'s own oldest-voice-steal policy (Core Rule 5) so
+## a saturated pool degrades the same way a saturated family already does,
+## rather than silently dropping the newest sound.
+const PLAYER_POOL_SIZE: int = 12
+
 var cue_map: AudioCueMap
 var _lookup: Dictionary[StringName, AudioCueEntry] = {}
+
+## Pre-allocated playback pool (see `PLAYER_POOL_SIZE`) — built once in
+## `_ready()`, never resized at runtime.
+var _players: Array[AudioStreamPlayer] = []
+var _next_player_index: int = 0
 
 ## Story 004 (Ducking and Voice Limiting): registers a voice against its
 ## family's cap on every dispatch. Wiring this into the live dispatch path
@@ -58,9 +85,23 @@ var _connected_callables: Array[Callable] = []
 
 func _ready() -> void:
 	if cue_map == null:
-		cue_map = AudioCueMap.new()
+		cue_map = ResourceLoader.load(DEFAULT_CUE_MAP_PATH) as AudioCueMap
+		if cue_map == null:
+			push_error("AudioCueDispatcher: failed to load %s — falling back to an empty cue map." % DEFAULT_CUE_MAP_PATH)
+			cue_map = AudioCueMap.new()
 	_rebuild_lookup()
 	_connect_all_events()
+	_build_player_pool()
+
+
+func _build_player_pool() -> void:
+	if not _players.is_empty():
+		return
+	for i in range(PLAYER_POOL_SIZE):
+		var player := AudioStreamPlayer.new()
+		player.name = "CuePlayer%d" % i
+		add_child(player)
+		_players.append(player)
 
 
 ## Ticks Formula F3's sidechain duck envelopes once per frame. Uses this
@@ -180,6 +221,40 @@ func dispatch_cue(event_name: StringName, distance: float = 0.0) -> void:
 	_last_effective_volume_linear = effective_volume
 	_dispatch_count += 1
 
+	if entry.stream != null:
+		_play_stream(entry, effective_volume)
+
+
+## Plays `entry.stream` on a pooled `AudioStreamPlayer` — prefers the first
+## currently-idle player (checked in round-robin cursor order, so repeated
+## calls spread load evenly rather than always favoring `_players[0]`); if
+## every player in the pool is already playing, takes the cursor's current
+## player anyway rather than dropping the cue. Because the cursor always
+## advances on every dispatch regardless of which branch ran, this
+## approximates `VoiceLimiter`'s own oldest-voice-steal policy (Core Rule 5)
+## without tracking exact per-voice start times — good enough for a pool this
+## small, and consistent with "the newest trigger is never silently dropped."
+## `effective_volume` is linear (already includes Formula F2 spatial
+## attenuation and Formula F1 polyphony ducking, computed by the caller) —
+## converted to dB here, the one place this class talks to `AudioStreamPlayer`
+## directly.
+func _play_stream(entry: AudioCueEntry, effective_volume: float) -> void:
+	if _players.is_empty():
+		return  # _build_player_pool() hasn't run yet (e.g. a test that never add_child()s this node) — dispatch_cue() still ran its real routing/ducking math above, only playback is skipped.
+
+	var player: AudioStreamPlayer = _players[_next_player_index]
+	for offset in range(_players.size()):
+		var candidate_index: int = (_next_player_index + offset) % _players.size()
+		if not _players[candidate_index].playing:
+			player = _players[candidate_index]
+			break
+	_next_player_index = (_next_player_index + 1) % _players.size()
+
+	player.stream = entry.stream
+	player.bus = entry.bus
+	player.volume_db = linear_to_db(effective_volume)
+	player.play()
+
 
 ## Formula F2 — World-Space Distance Attenuation (spatial cues only).
 ## `world_volume = base_volume * clamp(1 - distance / max_audible_radius, 0, 1)`
@@ -214,3 +289,20 @@ func get_dispatch_count() -> int:
 ## dispatch's entry had no `polyphony_group` (or was a lookup miss).
 func get_last_dispatch_voice_id() -> int:
 	return _last_dispatch_voice_id
+
+
+## Test/inspection accessor (S9-03 playback pool) — number of pooled
+## `AudioStreamPlayer`s the pool was actually built with (0 before `_ready()`
+## has run, e.g. a dispatcher never `add_child()`-ed into a live tree).
+func get_pool_size() -> int:
+	return _players.size()
+
+
+## Test/inspection accessor (S9-03 playback pool) — how many pooled players
+## are currently mid-playback right now.
+func get_active_player_count() -> int:
+	var count: int = 0
+	for player: AudioStreamPlayer in _players:
+		if player.playing:
+			count += 1
+	return count

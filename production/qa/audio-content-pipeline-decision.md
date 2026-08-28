@@ -1,10 +1,12 @@
 # Audio Content Pipeline Decision (S9-03)
 
-> **Status**: **DECIDED 2026-08-28** — Option A, licensed/CC0 asset packs (Kenney.nl /
-> Freesound.org CC0 / itch.io SFX packs), chosen exclusively — not the A+C hybrid this
-> doc's own "realistic hybrid" section floated. Vicknesh chose speed and free/low-cost
-> real content over a custom-commission tier for pillar-defining cues; that door isn't
-> closed permanently, just not part of this pass's scope.
+> **Status**: **DECIDED 2026-08-28, PILOT SHIPPED same day** — Option A, licensed/CC0
+> asset packs (Kenney.nl / Freesound.org CC0 / itch.io SFX packs), chosen exclusively —
+> not the A+C hybrid this doc's own "realistic hybrid" section floated. Vicknesh chose
+> speed and free/low-cost real content over a custom-commission tier for pillar-defining
+> cues; that door isn't closed permanently, just not part of this pass's scope. Tower
+> Mastery's 3 stingers are now real, sourced, and wired end-to-end — see "What happens
+> after the decision" below.
 > **Blocks**: `story-013-mid-combat-visual-audio-feedback.md`'s remaining audio gap (Tower
 > Mastery's 3 stingers), and — much more broadly — `audio-system.md`'s own OQ-2, which
 > this scoping pass confirms is **the single largest remaining task before the Audio
@@ -102,9 +104,16 @@ placed directly into a new `assets/audio/` tree, and imported/wired in by Claude
 the same session, no intermediate raw-output staging step the way `assets/source/` art
 requires.
 
-1. Tower Mastery's 3 stingers (Story 013's immediate gap: enter-range tick, pause
-   descending tone, `skill_unlocked` chime) are the pilot — small, well-scoped, already
-   specified in `tower-mastery.md`'s Visual/Audio Requirements.
-2. `audio-system.md` OQ-2 updated to record this decision (see below).
-3. Scaling to the full ~7-family `AudioCueMap` catalogue is real follow-up work beyond
-   this pass's scope — not started here.
+1. **Pilot DONE (2026-08-28)**: Tower Mastery's 3 stingers sourced from Kenney's
+   Interface Sounds pack (CC0), imported into Godot, wired via 3 new `AudioCueEntry`
+   resources + 1 `AudioCueMap` (`assets/data/audio/`). `AudioCueDispatcher` itself
+   gained real playback capability (a pooled `AudioStreamPlayer` — previously
+   `dispatch_cue()` never played anything for any cue, project-wide) — this pilot is
+   also the first real sound anyone will ever hear in this project. See
+   `story-013-mid-combat-visual-audio-feedback.md`'s Completion Notes for full detail.
+   Honest caveat: `skill_unlocked`'s sourced chime is a generic stock confirmation
+   sound, not the bespoke "bell/sparkle" timbre the GDD calls for — real content,
+   first-pass quality, flagged as a possible Option C revisit later.
+2. `audio-system.md` OQ-2 updated to record this decision and the pilot's completion.
+3. Scaling to the full ~7-family `AudioCueMap` catalogue (the other ~76 events) is
+   real follow-up work beyond this pass's scope — not started here.

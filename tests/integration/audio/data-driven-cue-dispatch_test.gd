@@ -394,3 +394,76 @@ func test_dispatchers_own_process_actually_ticks_the_sidechain_envelope_over_a_r
 	await get_tree().process_frame
 
 	assert_float(_dispatcher.voice_limiter.get_sidechain_db_offset(VoiceLimiter.SFX_TO_AMBIENT)).is_less(0.0)
+
+
+# ---------------------------------------------------------------------------
+# S9-03 playback pool: dispatch_cue() actually plays a stream when the
+# matched AudioCueEntry carries one (the small number of real Tower Mastery
+# cues authored this pass), and stays a routing-only no-op for every entry
+# that still has no real content (the overwhelming majority, per OQ-2).
+# ---------------------------------------------------------------------------
+
+func test_ready_builds_a_pool_of_the_configured_size() -> void:
+	assert_int(_dispatcher.get_pool_size()).is_equal(AudioCueDispatcher.PLAYER_POOL_SIZE)
+
+
+func test_dispatch_with_a_real_stream_actually_plays_a_pooled_player() -> void:
+	var entry := _fixture_entry(&"skill_unlocked", &"UI", &"progress_blip", false)
+	entry.stream = preload("res://assets/audio/sfx/skill_unlocked.wav")
+	var map := AudioCueMap.new()
+	map.entries = [entry]
+	_dispatcher.set_cue_map(map)
+
+	_dispatcher.dispatch_cue(&"skill_unlocked")
+
+	assert_int(_dispatcher.get_active_player_count()).is_equal(1)
+
+
+func test_dispatch_with_no_stream_plays_nothing() -> void:
+	# Matches every currently-unauthored cue in the real AudioCueMap (OQ-2) --
+	# routing/ducking/sidechain all still run (proven by the tests above),
+	# but no pooled player should ever start.
+	var entry := _fixture_entry(&"tower_attacked", &"SFX", &"combat_impact", false)
+	var map := AudioCueMap.new()
+	map.entries = [entry]
+	_dispatcher.set_cue_map(map)
+
+	_dispatcher.dispatch_cue(&"tower_attacked")
+
+	assert_int(_dispatcher.get_active_player_count()).is_equal(0)
+
+
+func test_dispatching_more_real_streams_than_the_pool_size_steals_rather_than_drops() -> void:
+	var entry := _fixture_entry(&"skill_unlocked", &"UI", &"", false)
+	entry.stream = preload("res://assets/audio/sfx/skill_unlocked.wav")
+	var map := AudioCueMap.new()
+	map.entries = [entry]
+	_dispatcher.set_cue_map(map)
+
+	for i in range(AudioCueDispatcher.PLAYER_POOL_SIZE + 3):
+		_dispatcher.dispatch_cue(&"skill_unlocked")
+
+	# Every dispatch reused/stole a pooled player rather than allocating a
+	# new node -- the pool size itself never grows past its configured cap.
+	assert_int(_dispatcher.get_pool_size()).is_equal(AudioCueDispatcher.PLAYER_POOL_SIZE)
+	assert_int(_dispatcher.get_active_player_count()).is_greater(0)
+
+
+func test_real_tower_mastery_cue_map_resource_loads_and_maps_all_3_stinger_events() -> void:
+	# Not a fixture -- loads the actual production AudioCueMap this project
+	# ships (assets/data/audio/audio_cue_map.tres), proving the 3 real S9-03
+	# entries (skill_unlocked, tower_mastery_proximity_entered/_exited) are
+	# genuinely wired, not just plausible in isolation.
+	var real_map: AudioCueMap = load("res://assets/data/audio/audio_cue_map.tres")
+	_dispatcher.set_cue_map(real_map)
+
+	_dispatcher.dispatch_cue(&"skill_unlocked")
+	assert_int(_dispatcher.get_dispatch_count()).is_equal(1)
+	assert_int(_dispatcher.get_active_player_count()).is_equal(1)
+
+	_dispatcher.dispatch_cue(&"tower_mastery_proximity_entered")
+	assert_int(_dispatcher.get_dispatch_count()).is_equal(2)
+
+	_dispatcher.dispatch_cue(&"tower_mastery_proximity_exited")
+	assert_int(_dispatcher.get_dispatch_count()).is_equal(3)
+	assert_int(_dispatcher.get_active_player_count()).is_equal(3)

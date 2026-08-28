@@ -21,7 +21,7 @@ Get the three standing human-in-the-loop items actually run or decided — the l
 ### Should Have — opportunistic
 | ID | Task | Agent/Owner | Est. Days | Dependencies | Acceptance Criteria |
 |----|------|-------------|-----------|---------------|---------------------|
-| S9-03 (carried from S8-06) | Decide the audio content pipeline, then author real stinger content for Tower Mastery (closes Story 013's remaining audio gap) | Vicknesh (decision) + Sound Designer/Claude (content) | Opportunistic | An audio bible/content pipeline decision from Vicknesh | Real stinger assets wired into the already-real `AudioCueDispatcher` mechanism (mechanism itself has existed since 2026-08-13) |
+| S9-03 (carried from S8-06) | ~~Decide the audio content pipeline, then author real stinger content for Tower Mastery~~ **DONE 2026-08-28** | Vicknesh (decision) + Claude (content) | Opportunistic | An audio bible/content pipeline decision from Vicknesh | Pipeline decided (Option A, licensed/CC0 packs). All 3 stingers sourced (Kenney Interface Sounds), imported, and wired — `AudioCueDispatcher` also gained real `AudioStreamPlayer` playback for the first time project-wide. See `production/qa/audio-content-pipeline-decision.md`. |
 
 ## Carryover from Previous Sprint
 | Task | Reason | New Estimate |
