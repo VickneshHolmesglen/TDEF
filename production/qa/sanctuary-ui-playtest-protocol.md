@@ -45,6 +45,15 @@ Play a mission to completion (win or lose — either returns you to `OVERVIEW`) 
 - **Record whether this happened unprompted.** If nothing specific comes to mind within a few seconds of genuinely looking, that's a real negative finding — write that down too, don't wait it out until something eventually occurs to you.
 
 ### 2. Debrief moment 2 — Loadout "one continuous motion"
+
+> **2026-08-28 mechanical pre-check found an anomaly worth your attention**: simulated
+> clicks on the Loadout tab (via Godot MCP) consistently opened Forge instead — but a
+> raw click on Menagerie also failed to register at all in the same session, so this may
+> be a test-harness limitation rather than a real bug (the underlying hand-off logic
+> itself was independently confirmed correct). **Please try selecting Loadout both by a
+> real mouse click on the tab and by pressing `6`, and note below if they behave
+> differently.** Full detail: `production/qa/evidence/story-014-mechanical-verification-2026-08-28.md`.
+
 From **inside a room** (not `OVERVIEW`) — Inventory & Crafting, Menagerie, Defense Building, or Equipment Forge, whichever you happen to be in mid-session — select the Loadout tab.
 
 - **Notice the transition itself**: the drawer-slide tween, the hand-off to Tarot Deck UI.
@@ -52,6 +61,12 @@ From **inside a room** (not `OVERVIEW`) — Inventory & Crafting, Menagerie, Def
 - Return from Tarot Deck UI and confirm you land back at `OVERVIEW` (Core Rule 10's documented re-entry behavior) — note if this surprised you or felt like the wrong place to land.
 
 ### 3. Debrief moment 3 — Connection Badge legibility
+
+> **2026-08-28 mechanical pre-check note**: the badge fires correctly (confirmed via
+> direct engine inspection), but its rendered indicator measured only ~10×23px at the
+> extreme corner of its tab — genuinely easy to miss. Worth paying close attention to
+> whether you notice it at all before it prompts you to look. Full detail in the same
+> evidence file linked above.
 Using the badge-triggering event you picked during setup:
 
 - Engineer the event so it fires **while you are sitting in a room other than the one whose tab will show the badge** — e.g., confirm a Defense Building structure build, then before entering that room again, switch to Menagerie or Inventory & Crafting and stay there.

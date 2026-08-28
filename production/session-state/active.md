@@ -1,3 +1,20 @@
+## Session Extract — Mechanical pre-verification of Sanctuary UI playtest scenarios via Godot MCP, 2026-08-28 (part 21)
+
+- User asked to "run the Sanctuary UI playtest now." Flagged explicitly that the protocol is a genuine human debrief (subjective reactions, forbidden to fabricate) and offered an alternative: mechanically verify the 3 scenarios function via Godot MCP, not a substitute for the real session. User chose that.
+- Ran `SanctuaryUI.tscn` standalone via `mcp__godot__run_project` (background mode), drove it with real simulated input, screenshots, and direct `run_script` introspection.
+- **Findings** (full detail: `production/qa/evidence/story-014-mechanical-verification-2026-08-28.md`):
+  1. OVERVIEW renders correctly on boot — diorama, 6-entry tab strip, chrome, no errors.
+  2. **Loadout hand-off state machine is confirmed 100% correct** — verified by calling `TabStrip._on_button_pressed(5)` directly (bypassing UI hit-testing): correctly reaches `DEPARTING_TO_LOADOUT` and mounts Tarot Deck UI.
+  3. **Anomaly found**: real simulated clicks (both `click_element` and raw `mouse_button` at verified-correct coordinates) on the Loadout tab consistently opened Forge instead — reproduced 3 times identically. But a raw click on Menagerie, at its own correct coordinates, didn't register at all in the same session — an inconsistency that reads at least as much like synthetic-input reliability limits in this specific MCP background-mode harness as a genuine game bug. Engine-side rect inspection found no overlap/z-index/layout anomaly that would explain a real click-routing bug. **Did not claim this as a confirmed shipping defect** — flagged honestly as an open anomaly, with a concrete ask added to the playtest protocol: the real human tester should try both mouse-click and the `6` hotkey and note if they diverge.
+  4. Cancel/Escape from Tarot Deck UI correctly returns to a fresh Sanctuary UI OVERVIEW instance (new node IDs confirmed via `get_ui_elements`, not a cached return).
+  5. Connection Badge mechanism confirmed correct via direct event emission (`GEventBus.sanctuary_structure_built` while sitting in Menagerie correctly lit up Defense Building's badge only, cleared nothing else). **Visual legibility could not be confirmed** — the badge `Label` measured only 10×23px at the extreme corner of its tab, real but easy to miss in the screenshot; flagged for the human tester's Debrief 3 to specifically judge, not pre-decided.
+- Updated `sanctuary-ui-playtest-protocol.md`'s Debrief 2 and 3 sections with pointers to these findings and concrete things to double-check during the real session.
+- Story 014 stays open — this was explicitly not a substitute for the human debrief, and none of the report template's subjective fields were touched.
+- Not committed yet this pass.
+- Next recommended: same as before — S9-01 (Tower Mastery playtest) and S9-02 (Sanctuary UI playtest, now with 2 specific things flagged to double-check) both still need Vicknesh directly.
+
+---
+
 ## Session Extract — New audio tests run and verified: 29/29 passing, 2026-08-28 (part 20)
 
 - User explicitly asked to "run the new audio tests" (part 19's 5 new tests, left unrun per the standing no-unrequested-testing instruction).
