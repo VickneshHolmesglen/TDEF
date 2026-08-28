@@ -1,5 +1,14 @@
 # Review Log: Damage & Status System
 
+## Review — 2026-08-28 (`/design-review --depth lean` re-review) — Verdict: APPROVED
+Scope signal: S (documentation-drift correction only)
+Specialists: None (lean mode)
+Blocking items: 0 | Recommended: 0
+Summary: Re-review of the 2026-08-25 Skill Damage Pipeline retrofit (Rule IX/Formula D7, closing `TD-hero-001`). Found zero new blocking items — the retrofit's own math, edge cases, and ACs (D7, EC-18–20, AC-36–45) all check out cleanly, mirroring Formula D2's proven shape. The retrofit had left 4 stale cross-references claiming follow-up work was still pending, all independently confirmed already resolved elsewhere and fixed back here: (1) Formula D7's `skill_power_coefficient` field note ("not yet a real field anywhere") — confirmed present in `hero-skill-build.md` Group 1 Rule 2; (2) the Dependencies table's Hero System row ("Follow-up NOT YET RESOLVED" re: `HeroSkillAttackEvent` documentation) — confirmed documented in both `hero.md`'s Interactions table and `hero-skill-build.md`'s own Dependencies row 147; (3) the Bidirectionality notes' "New follow-up, not yet resolved" paragraph — same two items, confirmed resolved; (4) OQ-5's two sub-follow-ups — same two items again, confirmed resolved, though OQ-5's own core design question (should skill damage trigger lifesteal?) remains genuinely open and was left that way, non-blocking, matching the deferred-content-OQ pattern every other Approved GDD in this project already uses. This flips Damage & Status back to Approved — the last "Needs Revision" GDD in the entire project; `systems-index.md`'s Progress Tracker now reads 26/26 Approved.
+Prior verdict resolved: Yes — the 2026-08-25 retrofit's own follow-up items, not a re-litigation of the 2026-08-24 pass's fixes (which remain intact).
+
+---
+
 ## Review — 2026-08-24 (S8-07, `/design-review --depth lean` re-review) — Verdict: NEEDS REVISION → fixed in-session
 Scope signal: S (documentation-drift correction only)
 Specialists: None (lean mode)
