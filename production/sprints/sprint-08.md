@@ -32,7 +32,7 @@ Close out the pre-existing `save_persistence_restore_test.gd` failure and clear 
 | ID | Task | Agent/Owner | Est. Days | Dependencies | Acceptance Criteria |
 |----|------|-------------|-----------|---------------|---------------------|
 | S8-06 | Author real audio stinger content for Tower Mastery (closes Epic 06 Story 013's remaining audio gap) | Sound Designer / Claude | Opportunistic | An audio bible/content pipeline decision | Real stinger assets wired into the already-real `AudioCueDispatcher` mechanism (mechanism itself has existed since 2026-08-13) |
-| S8-07 | `/design-review` re-run pass on the 4 GDDs still marked "Needs Revision" (Save & Persistence, Hero, Tower, Damage & Status) | Claude | Opportunistic | None | Each doc flips to Approved or gets a concrete, current blocker list — pure documentation hygiene, zero code risk |
+| S8-07 | ~~`/design-review` re-run pass on the 4 GDDs still marked "Needs Revision" (Save & Persistence, Hero, Tower, Damage & Status)~~ **DONE 2026-08-28** | Claude | Opportunistic | None | All 4 flipped to Approved across this sprint (Save & Persistence 2026-08-27; Hero and Tower 2026-08-28 part 13; Damage & Status 2026-08-28 part 14, the last one). **Every GDD in the project is now Approved.** |
 
 ## Carryover from Previous Sprint
 None — `TD-menag-006`, the only carried item under consideration, was found already fixed during this sprint's planning (see correction note above).
