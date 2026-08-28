@@ -1,3 +1,16 @@
+## Session Extract — Tower Mastery playtest protocol prepped (S9-01), 2026-08-28 (part 16)
+
+- User asked to "prep the Tower Mastery playtest protocol" — the first of sprint-09's must-have items (S9-01).
+- Read the two stories this closes (`story-012-live-performance-profiling-prototype.md`, `story-013-mid-combat-visual-audio-feedback.md`), `tower-mastery.md`'s Player Fantasy section, its Tuning Knobs (`MASTERY_UNLOCK_THRESHOLD` 45s default, 20-90s safe range), the existing evidence docs (both already document the mechanism/performance axes as done, playtest axis explicitly open), and the project's one existing playtest precedent (`production/qa/playtest-facilitator-script-sprint-04.md`) to match its convention.
+- **Key framing decision**: this is NOT a blind-discoverability test like Sprint 4's "The Gap" round (which specifically wanted a no-context tester) — Tower Mastery's open question ("does standing near a tower mid-combat feel fair?") is a designer-feel judgment call, and this project has exactly one available playtester (Vicknesh) who already knows the system. Wrote the protocol around an honest self-playtest under real combat pressure, not a discoverability study.
+- Wrote two new files:
+  - `production/qa/tower-mastery-playtest-protocol.md` — full session protocol: setup (5+ distinct-`build_signature` towers within accrual range, real Mission Select launch, `debug_controls_enabled=false`), a 6-step during-session script covering both Story 012's trade-off question and Story 013's legibility checklist (arc visibility, glyph readability, out-of-range vs. tower-destroyed pause distinction, `skill_unlocked` payoff, expected-silent audio), and an after-session checklist pointing at both evidence docs and the story-completion decision.
+  - `production/playtests/tower-mastery-playtest-report.md` — the fill-in template (explicitly marked "no real data yet, do not fabricate"), structured to force an explicit written yes/no verdict on both open questions rather than a hedge, per Story 012's own pass condition.
+  - Not committed yet this pass.
+- Next recommended: Vicknesh actually runs the session per the protocol; report back and I'll update the evidence docs, flip the stories, and close S9-01. S9-02 (Sanctuary UI playtest) still needs its own protocol prepped whenever picked up next — no work done on it this pass.
+
+---
+
 ## Session Extract — Sprint 8 closed early, Sprint 9 planned around the 3 human-in-the-loop items, 2026-08-28 (part 15)
 
 - Continuation of the same "continue development" session. After Damage & Status's re-review (part 14 below) made every GDD Approved, checked `production/sprints/sprint-08.md` for open work: S8-02, S8-05, and S8-07 were all already done — S8-07 in particular ("re-review the 4 Needs Revision GDDs") was the very item part 14 just finished. The only things left in sprint-08 (S8-03/S8-04 human playtests, S8-06 audio content) all need Vicknesh directly; there is no autonomous feature backlog behind them — the sprint doc's own text already called the game feature-complete across all 15 epics.
