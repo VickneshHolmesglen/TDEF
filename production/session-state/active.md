@@ -1,3 +1,18 @@
+## Session Extract — Full missing-assets audit: 76 items need generation, 2 wiring-only gaps found, 2026-08-29 (part 24)
+
+- User asked for a complete list of everything in-game needing an asset but lacking one, for ChatGPT to use as a generation work list.
+- Systematically grepped every real data file's icon/texture/sprite field (or confirmed the field doesn't exist) across every content category rather than assuming: items (78 total, checked `icon = ` presence), towers (resolved via archetype/element lookup table, not per-blueprint — confirmed NOT a gap, every blueprint renders real shared art), species (5), skills (13), tarot cards (13), defense building structures (5, confirmed NOT a gap — all have art), hero (has a 2D placeholder; real 3D model is a separately-tracked, different-pipeline gap).
+- **Two real findings beyond "list what's missing"**, both important enough to flag prominently so they don't get miscategorized as ChatGPT work:
+  1. **Menagerie species**: all 5 already have finished, real art in `assets/art/species/` — but `SpeciesResource` has zero field to reference it and nothing renders it. This is a wiring gap (Claude Code's job), not a generation gap.
+  2. **Tarot**: 22 fully-painted Major Arcana pieces already exist in `assets/art/tarot/` (`the_fool.png`, `death.png`, etc.) from an earlier pass, but the game's actual 13 gameplay cards use different IDs (`card_lucky_charm`, `card_iron_resolve`, etc.) that don't map 1:1, and `TarotCardResource` has no icon field at all. Flagged that generating blind here would likely duplicate unused art — a mapping decision needs to happen first.
+- **Final count: 76 items need real net-new 2D generation** — 36 equipment items (every crafted weapon/armor/trinket, organized by slot×tier), 13 tower components (Inventory-slot icons, explicitly distinguished from the separate, still-unresolved 2026-08-17 tower-body-layer batch — different asset, same system, don't conflate), 9 consumables, 5 non-drop-table materials, 13 skills (which also needs a small `SkillDefinitionResource.icon` schema addition, not pure art).
+- Wrote `design/art/missing-assets-audit-2026-08-29.md` — the full categorized inventory, cross-referencing existing prompt-format precedent (`asset-generation-prompts.md`'s materials batch) for suggested treatment per category.
+- **Deliberately did not write 76 individual ready-to-generate prompt files this pass** — flagged as the natural next step once the user confirms priority/batching order, matching this project's collaboration protocol for a batch this large (equipment recommended as the first sub-batch, being the biggest and most mechanically uniform).
+- Not committed yet this pass.
+- Next recommended: get the user's steer on batching order, then write the actual per-item (or per-category) standalone request files the same way the monster-walk-cycle batch was done.
+
+---
+
 ## Session Extract — Completed Equipment Forge's recipe grid: 13 new recipes closing all slot×tier gaps, 2026-08-29 (part 23)
 
 - User asked to "build out the forge system in sanctuary." Investigated before assuming scope — found the backend (Epic 8, 9/9 stories Complete, code-reviewed) and the screen (523-line `equipment_forge_screen.gd`, its own test suite) are both already fully built, not missing. Surfaced this to the user rather than guessing, along with a real found gap (imbued rune `stat_delta` is never actually applied to Hero anywhere — `grep`'d `src/core/hero/` and found zero references). User chose a third option: expand recipe/content variety, not close the stat-application gap.
