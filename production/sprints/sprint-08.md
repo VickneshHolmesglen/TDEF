@@ -1,4 +1,6 @@
-# Sprint 8 — 2026-08-23 to 2026-09-06
+# Sprint 8 — 2026-08-23 to 2026-09-06 — **CLOSED EARLY 2026-08-28**
+
+> **Closed early, 2026-08-28**: All autonomous work in this sprint is complete (S8-02, S8-05, S8-07 all done). The only remaining items — S8-03, S8-04 (human playtests), S8-06 (audio pipeline decision) — need Vicknesh directly and cannot be advanced further without that. Rather than let the sprint idle to its scheduled 2026-09-06 end date, it's closed here and those three items carry forward into `production/sprints/sprint-09.md` as S9-01/S9-02/S9-03.
 
 ## Sprint Goal
 Close out the pre-existing `save_persistence_restore_test.gd` failure and clear the way for the three remaining human-playtest gates (Tower Mastery, Sanctuary UI, Tower Mastery feedback) — the game is otherwise feature-complete across all 15 epics.
