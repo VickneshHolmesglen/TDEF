@@ -72,14 +72,14 @@ granularity rule.
 
 | Item | Category | Status | Owner | Notes |
 |---|---|---|---|---|
-| Goblin Runner walk cycle (4 frames) | monsters | `claimed by Codex` | Codex | `assets/art-generation-requests-2026-08-17-goblin-runner-walk.md` — pre-existing request from 2026-08-17, never generated; wiring note updated 2026-08-29 to route through the current `CreatureAtlasMappingResource`/`MonsterSwarmRenderer3D` pipeline instead of the retired legacy path it originally named |
-| Spore Skitterling walk cycle (4 frames) | monsters | `claimed by Codex` | Codex | `assets/art-generation-requests-2026-08-29-spore-skitterling-walk.md` |
-| Armored Brute walk cycle (4 frames) | monsters | `claimed by Codex` | Codex | `assets/art-generation-requests-2026-08-29-armored-brute-walk.md` |
-| Forest Troll walk cycle (4 frames) | monsters | `claimed by Codex` | Codex | `assets/art-generation-requests-2026-08-29-forest-troll-walk.md` |
-| Bog Lurker walk cycle (4 frames) | monsters | `claimed by Codex` | Codex | `assets/art-generation-requests-2026-08-29-bog-lurker-walk.md` — flags the same tight alpha-cut threshold gotcha its static art needed |
-| Goblin Warlord walk cycle (4 frames, boss-scale canvas) | monsters | `claimed by Codex` | Codex | `assets/art-generation-requests-2026-08-29-goblin-warlord-walk.md` |
-| Rift Sentinel glide cycle (4 frames, boss-scale canvas) | monsters | `claimed by Codex` | Codex | `assets/art-generation-requests-2026-08-29-rift-sentinel-glide.md` — a hover/glide, not a leg-walk, per this construct's own design; flags the same near-black alpha-cut gotcha its static art needed |
-| Iron Colossus base pose + walk cycle (net-new creature, no art exists yet) | monsters | `claimed by Codex` | Codex | `assets/art-generation-requests-2026-08-29-iron-colossus-base-and-walk.md` — the one item in this batch that's genuinely new content (not an update to existing art); also needs a brand-new `CreatureAtlasMappingResource` `.tres` on the processing side, not an edit to an existing one |
+| Goblin Runner walk cycle (4 frames) | monsters | `generated, awaiting processing` | Codex | Raw: `assets/source/monsters/goblin_runner_walk.png`. Four distinct run poses; identity matched to shipped reference. Isolate four pose regions and square-pad. |
+| Spore Skitterling walk cycle (4 frames) | monsters | `generated, awaiting processing` | Codex | Raw: `assets/source/monsters/spore_skitterling_walk.png`. Four distinct alternating leg phases; identity matched to shipped reference. Isolate four pose regions and square-pad. |
+| Armored Brute walk cycle (4 frames) | monsters | `generated, awaiting processing` | Codex | Raw: `assets/source/monsters/armored_brute_walk.png`. Four heavy march poses; mace hand and armor preserved. Isolate four pose regions and square-pad. |
+| Forest Troll walk cycle (4 frames) | monsters | `generated, awaiting processing` | Codex | Raw: `assets/source/monsters/forest_troll_elite_walk.png`. Four ponderous weight-shift poses; raised asymmetric branch-claw preserved. Isolate four pose regions and square-pad. |
+| Bog Lurker walk cycle (4 frames) | monsters | `generated, awaiting processing` | Codex | Raw: `assets/source/monsters/bog_lurker_elite_walk.png`. Four low crawl poses; large asymmetric claw preserved. Use tight/connected-component alpha cut for near-black body; isolate four pose regions and square-pad. |
+| Goblin Warlord walk cycle (4 frames, boss-scale canvas) | monsters | `generated, awaiting processing` | Codex | Raw: `assets/source/monsters/goblin_warlord_boss_walk.png`. Four heavy march poses; spear, banner, armor, and boss identity preserved. Isolate four pose regions and square-pad. |
+| Rift Sentinel glide cycle (4 frames, boss-scale canvas) | monsters | `generated, awaiting processing` | Codex | Raw: `assets/source/monsters/rift_sentinel_boss_glide.png`. Four hover phases with visibly progressing ring positions. Use tight/connected-component alpha cut for obsidian body; isolate four pose regions and square-pad. |
+| Iron Colossus base pose + walk cycle (net-new creature, no art exists yet) | monsters | `generated, awaiting processing` | Codex | Raw base: `assets/source/monsters/iron_colossus_elite.png`; raw walk: `assets/source/monsters/iron_colossus_elite_walk.png`. Walk generated directly from approved base; one oversized hammer-gauntlet remains on the same side across four heavy poses. Create new atlas mapping resource during processing; isolate four pose regions and square-pad. |
 
 ---
 
