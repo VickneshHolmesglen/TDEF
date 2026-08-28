@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="EquipmentRecipeResource" format=3]
+
+[ext_resource type="Script" path="res://src/core/equipment_forge/equipment_recipe_resource.gd" id="1_recipe"]
+
+[resource]
+script = ExtResource("1_recipe")
+recipe_id = &"recipe_reinforced_boots"
+recipe_category = "hero_equipment"
+output_slot = "boots"
+inputs = {&"Material": 6}
+tech_prerequisite = &"tech_production_2"
+output_item_id = &"reinforced_boots"
+quality_tier = 2
+rune_slot_count = 2

@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="EquipmentRecipeResource" format=3]
+
+[ext_resource type="Script" path="res://src/core/equipment_forge/equipment_recipe_resource.gd" id="1_recipe"]
+
+[resource]
+script = ExtResource("1_recipe")
+recipe_id = &"recipe_trollhide_striders"
+recipe_category = "hero_equipment"
+output_slot = "boots"
+inputs = {
+&"troll_hide": 32,
+&"Uncommon": 16,
+&"troll_marrow": 8
+}
+tech_prerequisite = &"tech_production_4"
+output_item_id = &"trollhide_striders"
+quality_tier = 4
+rune_slot_count = 2
