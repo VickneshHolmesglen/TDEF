@@ -1,3 +1,13 @@
+## Session Extract — New audio tests run and verified: 29/29 passing, 2026-08-28 (part 20)
+
+- User explicitly asked to "run the new audio tests" (part 19's 5 new tests, left unrun per the standing no-unrequested-testing instruction).
+- Ran `addons/gdUnit4/runtest.sh --godot_binary "<Godot_v4.6.2-stable_win64.exe>" -a res://tests/integration/audio/data-driven-cue-dispatch_test.gd`. **Result: 29/29 test cases passing, 0 errors, 0 failures, 0 flaky.** All 5 new tests confirmed green: pool construction, real-stream dispatch actually starts a pooled `AudioStreamPlayer`, no-stream dispatch plays nothing, pool-exhaustion steals rather than drops, and the real production `audio_cue_map.tres` loads and dispatches all 3 stinger events end-to-end.
+- Updated `story-013`'s Completion Notes to replace the "not live-verified this pass" caveat with the real result.
+- Committed and pushed.
+- Sprint-09 state unchanged: S9-03 was already recorded `done` (part 19); this pass just closes the honesty gap between "written" and "verified." S9-01/S9-02 still need Vicknesh directly — no other autonomous work identified.
+
+---
+
 ## Session Extract — Tower Mastery stingers sourced and wired end-to-end; AudioCueDispatcher gained real playback (S9-03 pilot), 2026-08-28 (part 19)
 
 - User asked to "go source and wire the Tower Mastery stingers. if you have an idea of what to do next, just keep going" — following directly from the audio pipeline decision (part 18).
