@@ -72,14 +72,14 @@ granularity rule.
 
 | Item | Category | Status | Owner | Notes |
 |---|---|---|---|---|
-| Goblin Runner walk cycle (4 frames) | monsters | `backlog` | Codex | `assets/art-generation-requests-2026-08-17-goblin-runner-walk.md` — pre-existing request from 2026-08-17, never generated; wiring note updated 2026-08-29 to route through the current `CreatureAtlasMappingResource`/`MonsterSwarmRenderer3D` pipeline instead of the retired legacy path it originally named |
-| Spore Skitterling walk cycle (4 frames) | monsters | `backlog` | Codex | `assets/art-generation-requests-2026-08-29-spore-skitterling-walk.md` |
-| Armored Brute walk cycle (4 frames) | monsters | `backlog` | Codex | `assets/art-generation-requests-2026-08-29-armored-brute-walk.md` |
-| Forest Troll walk cycle (4 frames) | monsters | `backlog` | Codex | `assets/art-generation-requests-2026-08-29-forest-troll-walk.md` |
-| Bog Lurker walk cycle (4 frames) | monsters | `backlog` | Codex | `assets/art-generation-requests-2026-08-29-bog-lurker-walk.md` — flags the same tight alpha-cut threshold gotcha its static art needed |
-| Goblin Warlord walk cycle (4 frames, boss-scale canvas) | monsters | `backlog` | Codex | `assets/art-generation-requests-2026-08-29-goblin-warlord-walk.md` |
-| Rift Sentinel glide cycle (4 frames, boss-scale canvas) | monsters | `backlog` | Codex | `assets/art-generation-requests-2026-08-29-rift-sentinel-glide.md` — a hover/glide, not a leg-walk, per this construct's own design; flags the same near-black alpha-cut gotcha its static art needed |
-| Iron Colossus base pose + walk cycle (net-new creature, no art exists yet) | monsters | `backlog` | Codex | `assets/art-generation-requests-2026-08-29-iron-colossus-base-and-walk.md` — the one item in this batch that's genuinely new content (not an update to existing art); also needs a brand-new `CreatureAtlasMappingResource` `.tres` on the processing side, not an edit to an existing one |
+| Goblin Runner walk cycle (4 frames) | monsters | `claimed by Codex` | Codex | `assets/art-generation-requests-2026-08-17-goblin-runner-walk.md` — pre-existing request from 2026-08-17, never generated; wiring note updated 2026-08-29 to route through the current `CreatureAtlasMappingResource`/`MonsterSwarmRenderer3D` pipeline instead of the retired legacy path it originally named |
+| Spore Skitterling walk cycle (4 frames) | monsters | `claimed by Codex` | Codex | `assets/art-generation-requests-2026-08-29-spore-skitterling-walk.md` |
+| Armored Brute walk cycle (4 frames) | monsters | `claimed by Codex` | Codex | `assets/art-generation-requests-2026-08-29-armored-brute-walk.md` |
+| Forest Troll walk cycle (4 frames) | monsters | `claimed by Codex` | Codex | `assets/art-generation-requests-2026-08-29-forest-troll-walk.md` |
+| Bog Lurker walk cycle (4 frames) | monsters | `claimed by Codex` | Codex | `assets/art-generation-requests-2026-08-29-bog-lurker-walk.md` — flags the same tight alpha-cut threshold gotcha its static art needed |
+| Goblin Warlord walk cycle (4 frames, boss-scale canvas) | monsters | `claimed by Codex` | Codex | `assets/art-generation-requests-2026-08-29-goblin-warlord-walk.md` |
+| Rift Sentinel glide cycle (4 frames, boss-scale canvas) | monsters | `claimed by Codex` | Codex | `assets/art-generation-requests-2026-08-29-rift-sentinel-glide.md` — a hover/glide, not a leg-walk, per this construct's own design; flags the same near-black alpha-cut gotcha its static art needed |
+| Iron Colossus base pose + walk cycle (net-new creature, no art exists yet) | monsters | `claimed by Codex` | Codex | `assets/art-generation-requests-2026-08-29-iron-colossus-base-and-walk.md` — the one item in this batch that's genuinely new content (not an update to existing art); also needs a brand-new `CreatureAtlasMappingResource` `.tres` on the processing side, not an edit to an existing one |
 
 ---
 
