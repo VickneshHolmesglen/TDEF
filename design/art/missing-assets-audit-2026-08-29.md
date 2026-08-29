@@ -176,13 +176,16 @@ miniature diorama style, one accent color zone + one specular highlight,
 avoid pure blood-red/purple/cyan (reserved colors).
 
 **Status as of 2026-08-29**: user chose to batch all three non-blocked
-categories at once. Standalone, upload-ready request files are written and
-in the backlog (`production/art-overhaul-status.md`):
+categories at once, then Skills. Standalone, upload-ready request files are
+written and in the backlog (`production/art-overhaul-status.md`):
 - `assets/art-generation-requests-2026-08-29-equipment.md` (36 items)
 - `assets/art-generation-requests-2026-08-29-tower-components-icons.md` (13 items)
 - `assets/art-generation-requests-2026-08-29-consumables-materials.md` (9 + 5 items)
+- `assets/art-generation-requests-2026-08-29-skills.md` (13 items) — its
+  prerequisite (`SkillDefinitionResource.icon`) was added the same pass, so
+  this is no longer blocked.
 
-Skills (13) and Tarot (13) remain **not** written — both still need their
-respective prerequisite decisions (a schema `icon` field for Skills, a
-gameplay-card-to-Major-Arcana mapping for Tarot) before prompts can be
-written without risk of wasted/duplicate generation.
+Tarot (13) remains **not** written — still needs the gameplay-card-to-
+Major-Arcana mapping decision before prompts can be written without risk of
+wasted/duplicate generation (22 pieces already exist unused in
+`assets/art/tarot/`).

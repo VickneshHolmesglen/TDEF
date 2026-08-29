@@ -36,6 +36,15 @@ extends Resource
 ## Opaque; format owned by Hero Skill Build's future content pass. Tower
 ## Mastery never interprets this field's contents (tower-mastery.md Rule 7).
 @export var effect_data: Resource = null
+## Skill-slot icon, matching ItemDefinitionResource.icon's established
+## data-driven home for slot art (design/quick-specs/inventory-slot-icons-
+## 2026-08-06.md). Null = no icon authored yet (missing-assets-audit-2026-
+## 08-29.md #5 — zero of the 13 skills had one until this field existed).
+## Mission HUD's skill-slot tiles don't render this yet (Story 007's own
+## Open Question #4 doc comment) — wiring a real "which skill occupies which
+## slot" readout into mission_hud.gd is separate, unscoped follow-up work,
+## not implied by this field landing.
+@export var icon: Texture2D = null
 
 
 ## Load-time validation. Called by GameDataRegistry at boot (ADR-0009 pattern).

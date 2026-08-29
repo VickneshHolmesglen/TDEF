@@ -84,16 +84,18 @@ granularity rule.
 **Second batch, populated 2026-08-29** — from the missing-assets audit
 (`design/art/missing-assets-audit-2026-08-29.md`), user chose all three
 non-blocked item-icon categories (equipment, tower components, consumables +
-materials). Skills (needs a schema field first) and Tarot (needs a mapping
-decision first) are deliberately excluded — see the audit doc's callouts.
-Each row has a standalone, upload-ready prompt file, same convention as the
-monster batch above.
+materials), then Skills once its schema prerequisite was closed. Tarot
+(needs a gameplay-card-to-Major-Arcana mapping decision first) is still
+deliberately excluded — see the audit doc's own callout. Each row has a
+standalone, upload-ready prompt file, same convention as the monster batch
+above.
 
 | Item | Category | Status | Owner | Notes |
 |---|---|---|---|---|
 | Equipment icons (36 — every crafted weapon/armor/trinket, all slots/tiers) | items | `claimed by Codex` | Codex | Prompt file: `assets/art-generation-requests-2026-08-29-equipment.md`. Item icons, ~64×64 scale, matches the shipped 15-material icon register. |
 | Tower component icons (13 — Foundation/Weapon/Focus/Power, Inventory-slot scale) | items | `backlog` | Codex | Prompt file: `assets/art-generation-requests-2026-08-29-tower-components-icons.md`. Distinct from the still-unresolved 2026-08-17 tower-body-layer batch — don't conflate. |
 | Consumable + material icons (9 CraftedGoods + 5 non-drop-table materials) | items | `backlog` | Codex | Prompt file: `assets/art-generation-requests-2026-08-29-consumables-materials.md`. Same icon register as the shipped 15-material batch. |
+| Skill icons (13 — Hero Skill Build catalogue, all 4 categories) | items | `backlog` | Codex | Prompt file: `assets/art-generation-requests-2026-08-29-skills.md`. Schema prerequisite closed same pass: `SkillDefinitionResource` gained a real `icon: Texture2D` field. Smaller ~40×40 render scale, bold glyph-first style — also unblocks `tower_mastery_arc.gd`'s placeholder center-glyph once wired (separate follow-up). |
 
 ---
 
