@@ -583,3 +583,24 @@ stackable: round watchtower, square armored keep, stump timber scaffold,
 stonemound earthwork pillar, octagonal rune drum, tiered sanctuary column,
 scalloped buttressed shaft, triangular precision spire body, and hex-plank
 siege frame.
+
+---
+
+## Tower tops matched to generated midsections — 9 variants
+
+**Date:** 2026-08-29  
+**Targets:** `tower_top_round`, `tower_top_square`, `tower_top_stump`,
+`tower_top_stonemound`, `tower_top_octagon`, `tower_top_tiered`,
+`tower_top_scalloped`, `tower_top_triangle`, `tower_top_hexplank`.  
+**Status:** Claimed by Codex; generation in progress.
+
+**Prompt basis:** Supply each new `assets/source/towers/tower_shaft_*.png`
+midsection as the direct camera, attachment-width, material, and style
+reference. Generate only the detachable crown/roof/weapon assembly, with a
+flat unobstructed bottom mount matching the shaft's top plane. Preserve the
+uniform black cutout background and fixed oblique miniature rendering. The
+nine gameplay-readable tops are: round light-ballista roof, square defensive
+bulwark crown, stump rally-banner assembly, stonemound earth-crystal crown,
+octagonal amber arcane-lens array, tiered sanctuary beacon, scalloped pale
+frost crown, triangular longshot crossbow, and hex-plank heavy siege ballista.
+No pedestal, plaque, shaft/body, scenery, characters, labels, or watermark.
