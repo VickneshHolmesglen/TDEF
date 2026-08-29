@@ -117,3 +117,13 @@ func test_play_hit_flash_sets_flash_amount_to_full() -> void:
 	_instance.play_hit_flash()
 	var material := _instance._sprite.material as ShaderMaterial
 	assert_float(material.get_shader_parameter("flash_amount")).is_equal_approx(1.0, 0.001)
+
+
+## _draw() can't be pixel-inspected by GdUnit4 -- this only confirms the
+## draw call path with an active tint doesn't error, mirroring this file's
+## existing coverage style for _draw()-driven state (_weapon_glow_alpha,
+## _has_perk_badge are tested as state, not as pixels).
+func test_draw_with_active_tint_does_not_error() -> void:
+	_instance.configure("elemental", "arcane")
+	_instance.notification(TowerInstance.NOTIFICATION_DRAW)
+	assert_bool(_instance._element_tint_active).is_true()

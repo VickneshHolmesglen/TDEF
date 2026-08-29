@@ -439,6 +439,10 @@ func set_perk_badge(active: bool) -> void:
 ## needed for it), keeping that channel structurally separate from both of
 ## these.
 func _draw() -> void:
+	if _element_tint_active:
+		var ring_color: Color = _element_tint_color
+		ring_color.a = ELEMENT_TINT_RING_ALPHA
+		draw_arc(Vector2.ZERO, ELEMENT_TINT_RING_RADIUS, 0.0, TAU, 32, ring_color, ELEMENT_TINT_RING_WIDTH, true)
 	if _weapon_glow_alpha > 0.0:
 		var glow_color: Color = _weapon_glow_color
 		glow_color.a = _weapon_glow_alpha
