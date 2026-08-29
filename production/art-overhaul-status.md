@@ -95,6 +95,16 @@ batch above.
 | Consumable + material icons (9 CraftedGoods + 5 non-drop-table materials) | items | `done — 14/14 generated, processed, and wired` | Codex + Claude Code | All 14 alpha-cut into `assets/art/items/` and wired. Prompt file: `assets/art-generation-requests-2026-08-29-consumables-materials.md`. Same icon register as the shipped 15-material batch. |
 | Skill icons (13 — Hero Skill Build catalogue, all 4 categories) | items | `done — 13/13 generated, processed, and wired` | Codex + Claude Code | All 13 alpha-cut into `assets/art/items/` and wired onto `SkillDefinitionResource.icon`. Piercing Shot hit the same enclosed-ring cut bug as the necklaces (target ring's donut hole wasn't border-connected) — fixed the same way, color-distance re-cut. Prompt file: `assets/art-generation-requests-2026-08-29-skills.md`. Smaller ~40×40 render scale, bold glyph-first style — also unblocks `tower_mastery_arc.gd`'s placeholder center-glyph, wiring that consumer is still separate follow-up work. |
 
+**Third batch, reactivated 2026-08-29** — the tower Base/Shaft/Top layer
+split (originally requested 2026-08-17) was written up in full but never
+actually added as a trackable backlog row, so it sat orphaned with 0/9
+generated despite having a complete, ready-to-run prompt file. Reactivating
+it here as a real queued item rather than a stray cross-reference.
+
+| Item | Category | Status | Owner | Notes |
+|---|---|---|---|---|
+| Tower Base/Shaft/Top layers (9 — 1 Base + 2 Shafts + 6 Tops) | towers | `backlog` | Codex | Prompt file: `assets/art-generation-requests-2026-08-17-tower-components.md`. Lets a custom-assembled tower (Tower Assembly, mix-and-match Foundation/Weapon/Focus/Power) render from real stacked layers instead of always falling back to one fixed archetype sprite. Distinct from the shipped Tower Component *icons* batch above (Inventory-slot icons for the crafted components themselves) — don't conflate the two. Open technical risk flagged in the prompt file itself: layers need a consistent anchor convention (fixed canvas height/width, bottom-edge-aligned) before wiring into `TowerInstance.gd`; the file recommends test-compositing just the Physical set first. |
+
 **Tarot — resolved 2026-08-29, no Codex work needed.** All 13 gameplay
 Tarot cards mapped to and wired against the 22 already-painted Major Arcana
 pieces in `assets/art/tarot/` instead of generating anything new (user
