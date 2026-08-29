@@ -532,3 +532,26 @@ explicitly requested as one matching pair; rings and necklaces were enlarged
 within the square canvas for 64×64 readability. Troll-marrow pieces alone use
 a tiny controlled Threat Crimson center accent, as specified; all other
 reserved-color exclusions remain enforced.
+
+---
+
+## Mission frame/background — dead-margin composition
+
+**Date:** 2026-08-29  
+**Target:** `assets/source/terrain/mission_frame_background.png`  
+**Status:** Claimed by Codex; generation in progress.
+
+**Prompt:** Create a wide 16:9 mission-screen background and ornamental stone
+bezel for Sanctuary Defenders. Match the existing hand-painted dark
+fieldstone texture and fixed oblique/isometric cabinet-diorama aesthetic.
+Keep the broad central and center-left region visually quiet and low-contrast
+for the gameplay battlefield and HUD. Make the previously dead right edge,
+top-right corner, and bottom-left corner read as intentional framing through
+chunky carved rock clusters, shallow recessed amber inlays, small iron braces,
+and restrained architectural rhythm. The ornament must remain part of the
+background rather than resemble buttons or interactive slots. Use Fieldstone
+Grey as the dominant color, Sanctum Amber sparingly, and Parchment Cream only
+for edge highlights. No Herald Gold, purple, cyan, green, text, symbols,
+characters, monsters, towers, UI labels, border lettering, watermark, or
+photorealism. No baked lighting hotspot beneath the gameplay field. Provide a
+complete edge-to-edge landscape composition with no transparent areas.
