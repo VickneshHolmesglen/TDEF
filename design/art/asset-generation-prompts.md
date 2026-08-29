@@ -557,3 +557,27 @@ for edge highlights. No Herald Gold, purple, cyan, green, text, symbols,
 characters, monsters, towers, UI labels, border lettering, watermark, or
 photorealism. No baked lighting hotspot beneath the gameplay field. Provide a
 complete edge-to-edge landscape composition with no transparent areas.
+
+---
+
+## Tower body shafts matched to generated pedestal bases — 9 variants
+
+**Date:** 2026-08-29  
+**Targets:** `tower_shaft_round`, `tower_shaft_square`, `tower_shaft_stump`,
+`tower_shaft_stonemound`, `tower_shaft_octagon`, `tower_shaft_tiered`,
+`tower_shaft_scalloped`, `tower_shaft_triangle`, `tower_shaft_hexplank`.  
+**Status:** Claimed by Codex; generation in progress.
+
+**Prompt basis:** Each processed `assets/art/towers/tower_base_*.png` is used
+as the direct style, perspective, footprint, material, and attachment-width
+reference for its corresponding detached shaft. Generate only the vertical
+middle body—no pedestal, plaque, roof, weapon, banner, or elemental effect.
+Keep both top and bottom attachment planes flat, unobstructed, and centered;
+use the same fixed oblique isometric camera, hand-painted miniature
+painterly-pixel texture, fieldstone/aged timber/amber-brass language, hard
+silhouette, and literal uniform black cutout background as the reference.
+The nine silhouettes deliberately vary by base family while remaining
+stackable: round watchtower, square armored keep, stump timber scaffold,
+stonemound earthwork pillar, octagonal rune drum, tiered sanctuary column,
+scalloped buttressed shaft, triangular precision spire body, and hex-plank
+siege frame.
