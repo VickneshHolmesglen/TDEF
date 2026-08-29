@@ -268,18 +268,24 @@ func _ready() -> void:
 ## ARCHETYPE_TEXTURES regardless.
 func configure(archetype: String, element: String = "") -> void:
 	var texture: Texture2D = null
+	_element_tint_active = false
 	if archetype == "elemental":
 		texture = ELEMENT_TEXTURES.get(element)
+		if texture == null and element != "":
+			_element_tint_active = true
+			_element_tint_color = ProjectileVisual.ELEMENT_COLORS.get(element, ProjectileVisual.ARCHETYPE_COLORS["elemental"])
 	if texture == null:
 		texture = ARCHETYPE_TEXTURES.get(archetype, null)
 	if texture == null:
 		push_warning("[TowerInstance] no art authored for archetype '%s'" % archetype)
 		_sprite.texture = null
+		queue_redraw()
 		return
 	_sprite.texture = texture
 	var uniform_scale: float = TARGET_DISPLAY_HEIGHT / float(texture.get_height())
 	_sprite.scale = Vector2(uniform_scale, uniform_scale)
 	_base_sprite_scale = _sprite.scale
+	queue_redraw()
 	# Epic 15 Story 003 (ADR-0037): the one line this story adds to
 	# TowerInstance's existing update method — no new _process()/
 	# _physics_process() callback. See _build_visual_companion()'s doc

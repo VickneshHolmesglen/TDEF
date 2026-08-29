@@ -66,6 +66,45 @@ func test_configure_elemental_archetype_with_unknown_element_falls_back_to_arche
 	assert_object(_instance._sprite.texture).is_equal(TowerInstance.ARCHETYPE_TEXTURES["elemental"])
 
 
+## "arcane" has a real ProjectileVisual.ELEMENT_COLORS entry but no
+## TowerInstance.ELEMENT_TEXTURES entry -- exactly the real gap this
+## feature targets (a defined element with no bespoke tower art yet).
+func test_configure_elemental_with_color_but_no_texture_activates_tint_with_its_color() -> void:
+	_instance.configure("elemental", "arcane")
+	assert_bool(_instance._element_tint_active).is_true()
+	assert_object(_instance._element_tint_color).is_equal(ProjectileVisual.ELEMENT_COLORS["arcane"])
+
+
+func test_configure_elemental_with_known_texture_element_does_not_activate_tint() -> void:
+	_instance.configure("elemental", "fire")
+	assert_bool(_instance._element_tint_active).is_false()
+
+
+func test_configure_elemental_with_wholly_unknown_element_activates_tint_with_generic_fallback_color() -> void:
+	_instance.configure("elemental", "totally_unknown_element")
+	assert_bool(_instance._element_tint_active).is_true()
+	assert_object(_instance._element_tint_color).is_equal(ProjectileVisual.ARCHETYPE_COLORS["elemental"])
+
+
+func test_configure_elemental_with_empty_element_does_not_activate_tint() -> void:
+	_instance.configure("elemental", "")
+	assert_bool(_instance._element_tint_active).is_false()
+
+
+func test_configure_non_elemental_archetype_does_not_activate_tint() -> void:
+	_instance.configure("physical")
+	assert_bool(_instance._element_tint_active).is_false()
+
+
+## Regression guard: a tower reconfigured from a tint-active element to a
+## known-texture element must not carry a stale ring over.
+func test_configure_switching_from_tint_element_to_known_texture_element_clears_tint() -> void:
+	_instance.configure("elemental", "arcane")
+	assert_bool(_instance._element_tint_active).is_true()
+	_instance.configure("elemental", "fire")
+	assert_bool(_instance._element_tint_active).is_false()
+
+
 # ---------------------------------------------------------------------------
 # Art & Animation Pipeline Upgrade (2026-08-17) — play_hit_flash()
 # ---------------------------------------------------------------------------
