@@ -173,10 +173,16 @@ Every existing successful batch in this project (see
 `design/art/asset-generation-prompts.md`) follows the same shape: a plain
 dark/black background for cutout, painterly pixel-art / hand-painted
 miniature diorama style, one accent color zone + one specular highlight,
-avoid pure blood-red/purple/cyan (reserved colors). **This document is the
-inventory, not the prompt set** — the next step, once you confirm scope and
-priority order, is writing the actual standalone upload-ready request files
-(mirroring `assets/art-generation-requests-2026-08-29-*.md`'s format) for
-whichever of the 76 items above you want tackled first. Given the volume,
-recommend batching by category (equipment first, since it's the largest and
-most mechanically uniform) rather than one 76-item mega-batch.
+avoid pure blood-red/purple/cyan (reserved colors).
+
+**Status as of 2026-08-29**: user chose to batch all three non-blocked
+categories at once. Standalone, upload-ready request files are written and
+in the backlog (`production/art-overhaul-status.md`):
+- `assets/art-generation-requests-2026-08-29-equipment.md` (36 items)
+- `assets/art-generation-requests-2026-08-29-tower-components-icons.md` (13 items)
+- `assets/art-generation-requests-2026-08-29-consumables-materials.md` (9 + 5 items)
+
+Skills (13) and Tarot (13) remain **not** written — both still need their
+respective prerequisite decisions (a schema `icon` field for Skills, a
+gameplay-card-to-Major-Arcana mapping for Tarot) before prompts can be
+written without risk of wasted/duplicate generation.
