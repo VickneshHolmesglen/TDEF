@@ -23,29 +23,51 @@
 | Tower components (Foundation/Weapon/Focus/Power) | **13** | Every mix-and-match Tower Assembly component |
 | Consumables (CraftedGood) | **9** | Food/potion/bandage items from Menagerie/Crafting recipes |
 | Materials (surplus/lure) | **5** | Non-drop-table crafting materials |
-| Skills (Hero Skill Build catalogue) | **13** | Zero skill has an icon; the schema itself has no `icon` field yet — a data-model gap, not just an art gap |
-| Tarot cards | **13** | Zero *gameplay* card has an icon; see the callout below — real Major Arcana art exists but isn't wired to these cards |
+| Skills (Hero Skill Build catalogue) | **13** | Zero skill had an icon; schema field added 2026-08-29, prompt batch written |
+| Tarot cards | **0 — RESOLVED, see callout** | Reused existing Major Arcana art via mapping, no new generation needed |
 | Menagerie species | **0 missing, but see callout** | Real art exists for all 5, but `SpeciesResource` has no field to hold it — a wiring gap, not a generation gap |
 | Iron Colossus (monster) | Tracked separately | Already in the art-overhaul backlog — don't duplicate |
 | Hero 3D model | Not applicable to ChatGPT | Real-time 3D model, tracked separately in `codex-art-overhaul.md`/Art Bible budgets — needs a 3D pipeline, not 2D image generation |
 
-**Total new 2D image-generation items for ChatGPT: 76** (36 + 13 + 9 + 5 + 13).
+**Total new 2D image-generation items for ChatGPT: 63** (36 + 13 + 9 + 5 + 13
+skills — Tarot's 13 no longer need generation, resolved via art reuse
+instead).
 
 ---
 
 ## Two important callouts before generating anything
 
-**1. Tarot: real art exists, but for the wrong cards.** `assets/art/tarot/`
-already has 22 fully-painted Major Arcana pieces (`the_fool.png`,
-`the_magician.png`, `death.png`, etc.) from an earlier pass. The game's
-actual 13 playable Tarot cards use gameplay-named IDs instead
+**1. Tarot: RESOLVED 2026-08-29 — real art exists, mapped and wired, no new
+generation needed.** `assets/art/tarot/` had 22 fully-painted Major Arcana
+pieces (`the_fool.png`, `the_magician.png`, `death.png`, etc.) from an
+earlier pass, but the game's 13 playable Tarot cards use gameplay-named IDs
 (`card_lucky_charm`, `card_iron_resolve`, `card_apex_predator`, etc.) that
-don't correspond 1:1 to Major Arcana names, and `TarotCardResource` has no
-`icon`/`texture` field at all to hold either one. **This needs a design
-decision first** (map each gameplay card to a Major Arcana identity and reuse
-the existing 22 pieces, or generate 13 new gameplay-specific illustrations)
-before any new Tarot generation prompts are written — don't generate blind,
-you'd likely duplicate art that already exists unused.
+don't correspond 1:1 to Major Arcana names. User chose to reuse the existing
+22 pieces over generating new bespoke art. `TarotCardResource` gained a real
+`icon: Texture2D` field, and each of the 13 `.tres` files was wired to a
+Major Arcana identity chosen by matching its actual gameplay modifiers
+(speed/reward/difficulty-growth mix, rarity) to that card's traditional
+meaning:
+
+| Gameplay card | Mechanic | → Major Arcana |
+|---|---|---|
+| `apex_predator` (Legendary) | speed ×2.0, reward ×1.75 | Strength |
+| `reckless_onslaught` (Rare) | speed ×2.0, reward ×2.0 | The Tower |
+| `bountiful_harvest` (Rare) | reward ×1.75 | The Empress |
+| `grim_resolve` (Rare) | difficulty growth +0.25 | Death |
+| `grinding_gauntlet` (Rare) | reward ×1.5, +difficulty | The Hanged Man |
+| `golden_ticket` | reward ×1.10 + rune bonus | Wheel of Fortune |
+| `lucky_charm` | reward ×1.15 + rune bonus | The Star |
+| `hunters_pace` | speed ×1.20 | The Chariot |
+| `swift_current` | speed ×1.69 | The Moon |
+| `cautious_advance` | speed ×0.75 | The Hermit |
+| `iron_resolve` | difficulty growth +0.18 | The Emperor |
+| `measured_pace` | difficulty growth +0.15 | Temperance |
+| `steady_hand` | difficulty growth +0.10 | Justice |
+
+9 Major Arcana pieces remain unused (Fool, Magician, High Priestess,
+Hierophant, Lovers, Devil, Sun, Judgement, World) — available for any future
+Tarot content expansion.
 
 **2. Menagerie species: art exists and is complete, just not wired.** All 5
 species (`aurora_stag`, `duskfang_fox`, `emberwing_moth`, `glimmer_hare`,
@@ -157,13 +179,15 @@ the two matters.
 
 ---
 
-## 6. Tarot Cards (13) — see callout above, don't generate until the mapping question is resolved
+## 6. Tarot Cards (0 — RESOLVED, see callout above)
 
-`card_apex_predator`, `card_bountiful_harvest`, `card_cautious_advance`,
-`card_golden_ticket`, `card_grim_resolve`, `card_grinding_gauntlet`,
-`card_hunters_pace`, `card_iron_resolve`, `card_lucky_charm`,
-`card_measured_pace`, `card_reckless_onslaught`, `card_steady_hand`,
-`card_swift_current`
+No generation needed. All 13 (`card_apex_predator`, `card_bountiful_harvest`,
+`card_cautious_advance`, `card_golden_ticket`, `card_grim_resolve`,
+`card_grinding_gauntlet`, `card_hunters_pace`, `card_iron_resolve`,
+`card_lucky_charm`, `card_measured_pace`, `card_reckless_onslaught`,
+`card_steady_hand`, `card_swift_current`) are wired to existing Major Arcana
+art via `TarotCardResource.icon` (added 2026-08-29) — see callout above for
+the full mapping.
 
 ---
 
@@ -185,7 +209,10 @@ written and in the backlog (`production/art-overhaul-status.md`):
   prerequisite (`SkillDefinitionResource.icon`) was added the same pass, so
   this is no longer blocked.
 
-Tarot (13) remains **not** written — still needs the gameplay-card-to-
-Major-Arcana mapping decision before prompts can be written without risk of
-wasted/duplicate generation (22 pieces already exist unused in
-`assets/art/tarot/`).
+Tarot needed no prompt file — resolved 2026-08-29 by reusing existing art
+(see §6 and the callout above) instead of generating anything new.
+
+**All 76 originally-audited items are now closed out or actively batched.**
+63 have standalone generation prompt files awaiting Codex; Tarot's 13 needed
+zero new generation (art reuse); Menagerie species (0 missing) remains an
+open Claude Code wiring task, not an art gap.

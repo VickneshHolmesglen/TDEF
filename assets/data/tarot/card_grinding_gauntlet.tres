@@ -1,7 +1,8 @@
-[gd_resource type="Resource" script_class="TarotCardResource" load_steps=4 format=3]
+[gd_resource type="Resource" script_class="TarotCardResource" load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://src/core/tarot/tarot_card_resource.gd" id="1"]
 [ext_resource type="Script" path="res://src/core/tarot/tarot_modifier_entry.gd" id="2"]
+[ext_resource type="Texture2D" path="res://assets/art/tarot/the_hanged_man.png" id="3"]
 
 [sub_resource type="Resource" id="Modifier_gauntlet_reward"]
 script = ExtResource("2")
@@ -20,3 +21,4 @@ rarity = "Rare"
 modifiers = [SubResource("Modifier_gauntlet_reward"), SubResource("Modifier_gauntlet_growth")]
 linked_rune_id = &"rune_grinding_gauntlet"
 unlock_tech_id = &"tech_structural_2"
+icon = ExtResource("3")

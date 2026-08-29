@@ -31,6 +31,15 @@ extends Resource
 ## F5 variable table. Only meaningful when linked_rune_id is non-empty.
 @export_range(0.02, 0.10, 0.001) var rune_bonus_flat: float = 0.05
 
+## Card-face art. Mirrors ItemDefinitionResource.icon's data-driven pattern.
+## Sourced 2026-08-29 (missing-assets-audit-2026-08-29.md §6) by mapping each
+## gameplay card to a Major Arcana identity and reusing the 22 already-
+## painted pieces in assets/art/tarot/ — see that mapping's rationale in
+## design/art/missing-assets-audit-2026-08-29.md. No net-new art generated;
+## null would mean "no icon authored," but every one of the 13 cards has a
+## mapping, so this should never actually be null in a shipped .tres.
+@export var icon: Texture2D = null
+
 const VALID_RARITIES: Array[String] = ["Common", "Rare", "Legendary"]
 const RUNE_BONUS_FLAT_RANGE: Vector2 = Vector2(0.02, 0.10)
 
