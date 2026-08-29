@@ -45,6 +45,27 @@ const ELEMENT_TEXTURES: Dictionary[String, Texture2D] = {
 	"holy": preload("res://assets/art/towers/tower_elem_holy.png"),
 }
 
+## Persistent color-identity ring for an "elemental" archetype tower whose
+## WeaponComponent.element has no bespoke art in ELEMENT_TEXTURES yet (see
+## that dict's own fallback comment above configure()) -- lets a brand-new
+## element ship with a real color identity immediately, reusing the shared
+## generic "elemental" body texture instead of requiring new painted art
+## before the element can visually read as distinct from every other
+## not-yet-authored element. Reuses ProjectileVisual.ELEMENT_COLORS (the
+## same source of truth mission_scene.gd's _resolve_tower_color(),
+## tower_destroy_vfx.gd, and aoe_ring_visual.gd already read from) rather
+## than a second color table -- this project's established single-source-
+## of-truth convention for element colors. Falls back to
+## ProjectileVisual.ARCHETYPE_COLORS["elemental"] (ice blue) for an element
+## with no entry in either dict, the same fallback _resolve_tower_color()
+## already uses. Pure Node2D._draw() output, no new art asset -- matches
+## design/art/animation-pipeline.md §2's "Towers: procedural only" rule,
+## already the basis for this file's existing weapon-glow dot and perk
+## badge below.
+const ELEMENT_TINT_RING_RADIUS: float = TARGET_DISPLAY_HEIGHT * 0.55  ## sits outside WEAPON_GLOW_ORBIT_RADIUS, around the tower's base
+const ELEMENT_TINT_RING_ALPHA: float = 0.55  ## quiet identity signal, not a spotlight -- matches IDLE_AMBIENT_CONFIGS's "low-intensity" framing
+const ELEMENT_TINT_RING_WIDTH: float = 2.5  ## world units
+
 ## Target on-screen height (world units, matches MonsterManager.CELL_SIZE=64
 ## so a tower reads as roughly one grid cell). Source art is unscaled,
 ## native ChatGPT-generation resolution and varies wildly by archetype
@@ -201,6 +222,12 @@ var _glow_offset_tween: Tween = null
 var _glow_tween: Tween = null
 var _punch_tween: Tween = null
 var _has_perk_badge: bool = false
+## Set by configure() -- true only when the tower's archetype is
+## "elemental" and its element has no entry in ELEMENT_TEXTURES (the
+## generic-fallback-texture case). See ELEMENT_TINT_RING_RADIUS's own doc
+## comment for why this exists instead of new art.
+var _element_tint_active: bool = false
+var _element_tint_color: Color = Color.WHITE
 ## Node3D visual-companion subtree (ADR-0037's Visual Companion pattern),
 ## holding the tower's MeshInstance3D-bearing mesh instance. Built and synced
 ## once from configure() — see _build_visual_companion()'s own doc comment
