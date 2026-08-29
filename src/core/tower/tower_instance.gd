@@ -265,7 +265,10 @@ func _ready() -> void:
 ## to TARGET_DISPLAY_HEIGHT. Logs a warning and leaves the sprite empty if no
 ## art exists for that archetype/element combination yet. element defaults to
 ## "" for non-elemental archetypes, which always fall through to
-## ARCHETYPE_TEXTURES regardless.
+## ARCHETYPE_TEXTURES regardless. Also the sole place that sets
+## _element_tint_active/_element_tint_color (see those fields' own doc
+## comments for the tint feature's rationale) -- an "elemental" tower with no
+## ELEMENT_TEXTURES entry for its element activates the tint ring here.
 func configure(archetype: String, element: String = "") -> void:
 	var texture: Texture2D = null
 	_element_tint_active = false
@@ -434,10 +437,14 @@ func set_perk_badge(active: bool) -> void:
 	queue_redraw()
 
 
-## Draws the TARGETING weapon-slot glow and the perk badge. The ATTACKING
-## punch lives entirely on _sprite's own modulate/scale (no custom draw
-## needed for it), keeping that channel structurally separate from both of
-## these.
+## Draws the element-tint identity ring, the TARGETING weapon-slot glow, and
+## the perk badge, in that order -- the ring paints first, so it is the
+## bottom-most layer, underneath both the glow dot and the badge. It only
+## draws when _element_tint_active is set (by configure(), for an
+## "elemental" archetype tower whose element has no bespoke texture yet; see
+## ELEMENT_TINT_RING_RADIUS's own doc comment). The ATTACKING punch lives
+## entirely on _sprite's own modulate/scale (no custom draw needed for it),
+## keeping that channel structurally separate from all three of these.
 func _draw() -> void:
 	if _element_tint_active:
 		var ring_color: Color = _element_tint_color
