@@ -319,6 +319,49 @@ regenerate the *art* extensively, but the animation *architecture* around it
 is settled — read that document rather than re-deriving frame-count/rigging
 decisions from scratch.
 
+### 5.8 Reuse via runtime tint/overlay — don't always request a new asset per
+element/variant
+
+Not every visual variant needs its own generated asset. Where a game system
+already differentiates variants by a defined **color** (element, archetype,
+rarity tier), Claude Code can often express a new variant on TOP of existing
+shared art via a cheap runtime technique — `Sprite2D.modulate`, or a
+procedurally-drawn overlay (`Node2D._draw()` primitives, no texture at all) —
+instead of Codex generating a full new sprite. This keeps the asset count from
+growing multiplicatively (shapes × variants) instead of additively
+(shapes + variants), which matters as this overhaul scales up combinatorial
+content (e.g. the tower Base/Shaft/Top layer system in this same section).
+
+**Real precedent, not theoretical**: `TowerInstance` (`src/core/tower/
+tower_instance.gd`) ships 9 full elemental tower textures (`ELEMENT_TEXTURES`
+— fire/frost/lightning/poison/earth/water/wind/shadow/holy), but a real
+shipped tower (`blueprint_arcane_lance.tres`, `element="arcane"`) had no
+bespoke texture and silently rendered as generic ice-themed art with zero
+color identity. Rather than requesting a 10th full texture from Codex, Claude
+Code added a persistent procedural ring drawn via `_draw()` (no new art asset,
+2026-08-29/30) colored from the project's existing `ProjectileVisual.
+ELEMENT_COLORS` table — the same color already used for that element's
+projectiles/AoE rings/destroy-VFX elsewhere. Any future element that ships a
+`ProjectileVisual.ELEMENT_COLORS` entry before it has bespoke tower art gets
+this ring automatically, no generation request needed until/unless bespoke
+art is later commissioned for it.
+
+**What this means for Codex when scoping a new request:**
+- **Before drafting a prompt for "one asset per element/tier/variant,"
+  check whether the variants only need to differ by a defined color** the
+  codebase already tracks (grep for `ARCHETYPE_COLORS`/`ELEMENT_COLORS` in
+  `src/scenes/projectile_visual.gd`, this project's single source of truth for
+  element colors) — if so, flag it to Claude Code as a tint/overlay candidate
+  instead of generating N full variants.
+- This does **not** replace genuine silhouette variety — a cannon and a
+  crystal spike still need separate art (see the tower weapon-top batch,
+  §0.5's Backlog). Reuse-via-tint is for variants that would otherwise be
+  the *same shape, different color only*.
+- Claude Code decides and implements the actual tint/overlay mechanism
+  (it's engine-code work, per §3's role split) — Codex's job is just to
+  recognize the pattern and avoid over-requesting art for a color-only
+  distinction.
+
 ---
 
 ## 6. What NOT to do
