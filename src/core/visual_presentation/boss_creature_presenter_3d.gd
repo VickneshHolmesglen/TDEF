@@ -11,15 +11,16 @@ extends Node3D
 ## the GDD's "walk continues uninterrupted on the base layer, attack_prepare
 ## plays on the overlay layer" design without `AnimationTree`.
 ##
-## Real content gap, flagged not hidden: neither layer has distinct
-## walk/attack_prepare/attack ANIMATION content yet — no multi-frame sprite
-## sheet exists for any monster in this project, only single static
-## textures (`MonsterInstance.MONSTER_TEXTURES`). Both layers show the same
-## static per-monster_id texture; the overlay's role in this story is
+## Real content gap, flagged not hidden: walk/attack_prepare/attack ANIMATION
+## content now exists for `goblin_warlord_boss` and `rift_sentinel_boss`
+## (mapped via `CreatureAtlasMappingResource` and `CreatureAnimationClip`).
+## Any other tier-2 boss without a full `CreatureAtlasMappingResource` falls
+## back to the static single-texture mode — both layers show the same
+## static per-monster_id texture; the overlay's role in this fallback is
 ## proven entirely through its VISIBILITY toggle (on during the
 ## attack-telegraph window, off otherwise), not through distinct animated
-## frames. Real animated boss art is a future content-authoring pass, not
-## fabricated here.
+## frames. Real animated boss art for additional bosses is a future
+## content-authoring pass, not fabricated here.
 ##
 ## No independent process callback (ADR-0038: "Exceptional presenters have
 ## no independent process callback. MonsterManager publishes the same
@@ -46,6 +47,10 @@ const CAPACITY: int = 2
 ## other.
 const POOL_BATCH_KEY: String = "__boss_presenter_pool__"
 
+const OVERLAY_STATE_HIDDEN: int = 0
+const OVERLAY_STATE_PREPARE: int = 1
+const OVERLAY_STATE_ATTACK: int = 2
+
 var _free_slots: Array[int] = []
 var _entity_to_slot: Dictionary = {}       # entity_id(int) -> slot_index(int)
 var _entity_to_generation: Dictionary = {} # entity_id(int) -> generation(int)
@@ -53,6 +58,13 @@ var _entity_to_generation: Dictionary = {} # entity_id(int) -> generation(int)
 var _slots: Array[Node3D] = []
 var _base_layers: Array[Sprite3D] = []
 var _overlay_layers: Array[Sprite3D] = []
+
+var _base_clips: Array[CreatureAnimationClip] = []
+var _base_elapsed: Array[float] = []
+var _overlay_prepare_clips: Array[CreatureAnimationClip] = []
+var _overlay_attack_clips: Array[CreatureAnimationClip] = []
+var _overlay_states: Array[int] = []
+var _overlay_elapsed: Array[float] = []
 
 
 func _ready() -> void:
@@ -80,6 +92,13 @@ func _ready() -> void:
 		slot.add_child(overlay)
 		_overlay_layers.append(overlay)
 
+		_base_clips.append(null)
+		_base_elapsed.append(0.0)
+		_overlay_prepare_clips.append(null)
+		_overlay_attack_clips.append(null)
+		_overlay_states.append(OVERLAY_STATE_HIDDEN)
+		_overlay_elapsed.append(0.0)
+
 
 ## Registers a new boss entity into a free slot. Returns a
 ## MonsterPresentationHandle on success, or null if the pool is at capacity
@@ -95,7 +114,12 @@ func register_boss(entity_id: int, monster_id: StringName, world_transform: Tran
 		push_warning("[BossCreaturePresenter3D] register_boss: pool at capacity (%d) -- registration dropped, not resized" % CAPACITY)
 		return null
 
-	var texture: Texture2D = MonsterInstance.MONSTER_TEXTURES.get(monster_id, null) as Texture2D
+	var mapping: CreatureAtlasMappingResource = GGameDataRegistry.get_creature_atlas_mapping(monster_id)
+	var idle_clip: CreatureAnimationClip = mapping.get_animation_clip(&"idle") if mapping != null else null
+	var walk_clip: CreatureAnimationClip = mapping.get_animation_clip(&"walk") if mapping != null else null
+	var has_full_animset: bool = mapping != null and idle_clip != null and walk_clip != null
+
+	var texture: Texture2D = mapping.atlas_texture if has_full_animset else MonsterInstance.MONSTER_TEXTURES.get(monster_id, null) as Texture2D
 	if texture == null:
 		push_error("[BossCreaturePresenter3D] register_boss: no art authored for monster_id '%s' -- no boss presenter." % monster_id)
 		return null
@@ -107,6 +131,24 @@ func register_boss(entity_id: int, monster_id: StringName, world_transform: Tran
 
 	_base_layers[slot].texture = texture
 	_overlay_layers[slot].texture = texture
+	if has_full_animset:
+		_base_layers[slot].hframes = mapping.atlas_columns
+		_base_layers[slot].vframes = mapping.atlas_rows
+		_base_layers[slot].frame = idle_clip.start_frame
+		_overlay_layers[slot].hframes = mapping.atlas_columns
+		_overlay_layers[slot].vframes = mapping.atlas_rows
+		_base_clips[slot] = walk_clip
+		_overlay_prepare_clips[slot] = mapping.get_animation_clip(&"attack_prepare")
+		_overlay_attack_clips[slot] = mapping.get_animation_clip(&"attack")
+	else:
+		_base_layers[slot].hframes = 1
+		_base_layers[slot].vframes = 1
+		_base_clips[slot] = null
+		_overlay_prepare_clips[slot] = null
+		_overlay_attack_clips[slot] = null
+	_base_elapsed[slot] = 0.0
+	_overlay_states[slot] = OVERLAY_STATE_HIDDEN
+	_overlay_elapsed[slot] = 0.0
 	_overlay_layers[slot].visible = false
 	_slots[slot].visible = true
 	_slots[slot].global_transform = world_transform

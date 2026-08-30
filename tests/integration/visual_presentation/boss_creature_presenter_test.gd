@@ -92,6 +92,18 @@ func test_register_boss_unmapped_monster_id_rejected() -> void:
 	assert_int(_renderer.get_boss_live_count()).is_equal(0)
 
 
+func test_register_boss_with_full_animset_sets_hframes_and_base_clip() -> void:
+	var handle: MonsterPresentationHandle = _renderer.register_boss(1, &"goblin_warlord_boss", Transform3D.IDENTITY)
+	var slot: int = _renderer._boss_presenter._entity_to_slot[handle.entity_id]
+
+	assert_int(_renderer._boss_presenter._base_layers[slot].hframes).is_equal(14)
+	assert_int(_renderer._boss_presenter._overlay_layers[slot].hframes).is_equal(14)
+	assert_object(_renderer._boss_presenter._base_clips[slot]).is_not_null()
+	assert_str(_renderer._boss_presenter._base_clips[slot].clip_name).is_equal("walk")
+	assert_object(_renderer._boss_presenter._overlay_prepare_clips[slot]).is_not_null()
+	assert_object(_renderer._boss_presenter._overlay_attack_clips[slot]).is_not_null()
+
+
 func test_update_boss_toggles_overlay_visibility_with_attack_telegraph() -> void:
 	var handle: MonsterPresentationHandle = _renderer.register_boss(1, &"goblin_warlord_boss", Transform3D.IDENTITY)
 	var moved := Transform3D(Basis(), Vector3(5.0, 0.0, 5.0))
