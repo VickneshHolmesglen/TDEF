@@ -13,29 +13,22 @@
 > it is now populated with a real first batch. **Read §0.5 below before
 > picking up anything — it names Codex's current priority explicitly.**
 
-## 0.5. Current priority for Codex (as of 2026-08-29)
+## 0.5. Current priority (updated 2026-08-30)
 
-**Generate the first backlog batch — 8 monster movement spritesheets.** See
-`production/art-overhaul-status.md`'s Backlog table: every real, already-shipped
-monster type currently has only a single static idle frame (confirmed by
-inspecting the shipped `CreatureAtlasMappingResource` `.tres` files directly —
-`atlas_columns=1, atlas_rows=1, frame_count=1`, one `"idle"` clip, nothing
-else). `MonsterSwarmRenderer3D`'s atlas-frame-selection machinery has been
-live-verified working (Epic 16) and has been sitting idle waiting for exactly
-this content since 2026-08-24/25. Closing this gap is now the priority over
-any other art category (towers, environment, UI, etc.) — those all already
-have at least a first pass of real static art; monsters are the one category
-that's still 100% static/idle-only with zero movement.
+**The Codex generation backlog is complete.** All eight requested monster
+movement sets have been generated, processed, and wired into dedicated
+locomotion atlases. The two BOSS creatures also have generated and processed
+`attack_prepare` and `attack` animation sets. The authoritative per-asset
+evidence, source paths, processed paths, corrective regenerations, and live
+verification notes are recorded in `production/art-overhaul-status.md`.
 
-**Each backlog row has a standalone, upload-ready prompt file already
-written** (`assets/art-generation-requests-2026-08-29-*.md`, plus one
-pre-existing 2026-08-17 request for Goblin Runner) — no further scoping is
-needed. Claim a row in the Backlog table, generate, drop the raw output where
-the request file says, mark it `generated, awaiting processing`, and hand off
-to Claude Code per the normal §3 workflow below. Once this batch is through
-the pipeline, the next priority (idle/attack/death frames, or the remaining
-static-art categories) will be scoped the same way — don't self-expand scope
-mid-batch.
+The remaining open art-overhaul work is not another generation batch. It is
+Claude Code's engine-side integration of the processed tower Base/Shaft/Top
+layers and the six weapon-bearing tower tops into `TowerInstance`. Until a new
+row is explicitly added to the shared backlog, Codex must not invent or
+mass-generate additional project-bound assets. Codex should instead keep the
+tracker reconciled, respond to a documented regeneration blocker if one
+appears, and leave processing/wiring to Claude Code per §3.
 
 ---
 
