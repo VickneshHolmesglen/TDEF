@@ -749,3 +749,12 @@ for every v2 sheet. Measured minimum empty gaps were 29px (Armored Brute),
 71px (Forest Troll), 10px (Bog Lurker), 111px (Goblin Warlord), 23px (Rift
 Sentinel), and 96px (Iron Colossus). These are processing replacements for
 the overlapping originals, not redesigns.
+
+**BOSS attack correction, 2026-08-30:** Follow-up column validation showed
+the original Goblin Warlord attack sheets still merged poses even though they
+looked separated at preview scale. They were replaced non-destructively by
+`goblin_warlord_boss_attack_prepare_v2.png` (exactly 4 runs, 64px minimum
+gap) and `goblin_warlord_boss_attack_v2.png` (exactly 5 runs). The release
+overlay intentionally keeps the thrown spear offscreen: projectile gameplay
+rendering is separate, while the five arm/torso follow-through poses preserve
+the required attack motion and remain deterministically sliceable.
