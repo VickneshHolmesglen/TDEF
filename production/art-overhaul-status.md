@@ -118,7 +118,7 @@ icon art is missing.
 
 | Item | Category | Status | Owner | Notes |
 |---|---|---|---|---|
-| Alternate equipment icons (9 — one per slot, T3/T4, new named-material recipes) | items | `backlog` | Codex | Prompt file: `assets/art-generation-requests-2026-08-30-equipment-alternates.md`. New items: Sentinel's Lance (weapon T4, rift_sentinel), Trollhide Buckler (offhand T3, troll), Brute's War-Helm (helmet T4, armored_brute), Warlord's Battleplate (chest T4, warlord), Lurker Claw Gauntlets (gloves T3, lurker), Goblin Raider Leggings (pants T3, goblin), Sentinel's Striders (boots T4, rift_sentinel), Warlord's Standard Amulet (neck T4, warlord), Brute Core Band (ring T4, armored_brute). All 9 backend `.tres` pairs already exist under `assets/data/items/` + `assets/data/equipment_recipes/` — Codex only needs to generate the 9 icons, same register as the shipped 36-item equipment batch. |
+| Alternate equipment icons (9 — one per slot, T3/T4, new named-material recipes) | items | `claimed by Codex — 2026-08-30` | Codex | Prompt file: `assets/art-generation-requests-2026-08-30-equipment-alternates.md`. Generating Sentinel's Lance, Trollhide Buckler, Brute's War-Helm, Warlord's Battleplate, Lurker Claw Gauntlets, Goblin Raider Leggings, Sentinel's Striders, Warlord's Standard Amulet, and Brute Core Band in the shipped 36-icon register. Raw targets: `assets/source/items/<item_id>.png`. |
 
 **Third batch, reactivated 2026-08-29** — the tower Base/Shaft/Top layer
 split (originally requested 2026-08-17) was written up in full but never
