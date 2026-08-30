@@ -183,7 +183,6 @@ rationale in `design/art/missing-assets-audit-2026-08-29.md` §6.
 
 ## Done
 
-*(Empty so far.)*
-
 | Item | Category | Completed | Commit | Notes |
 |---|---|---|---|---|
+| Art-overhaul completion audit | cross-category | 2026-08-31 | pending this documentation commit | Requirement-by-requirement audit confirms every current backlog row, generated asset batch, processing/wiring follow-up, scale check, and explicit animated-atlas budget is complete. Evidence: `production/qa/evidence/art-overhaul-completion-audit-2026-08-31.md`. Future art requires a new user-approved backlog row and is not silently inferred from the now-empty queue. |
