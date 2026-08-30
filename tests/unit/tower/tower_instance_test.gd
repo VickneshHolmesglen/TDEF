@@ -56,9 +56,39 @@ func test_configure_component_shape_mapping_is_deterministic() -> void:
 		"found_longshot_t1": &"triangle",
 		"found_siege_t4": &"hexplank",
 		"found_venomdart_t1": &"stonemound",
+		"found_iron_t1": &"square",
+		"found_reinforced_t2": &"square",
 	}
 	for component_id: String in cases:
 		assert_object(_instance.resolve_shape_for_component(component_id, "elemental")).is_equal(cases[component_id])
+
+
+## Regression guard for a real gap found via live Godot MCP verification
+## 2026-08-30: the synthetic ID lists elsewhere in this file (matching every
+## keyword the resolver knows about) never actually covered this project's
+## REAL shipped foundation data, so found_iron_t1/found_reinforced_t2 silently
+## fell through to the modular fallback for weeks without any test noticing.
+## Reads the real .tres files directly rather than hardcoding their IDs, so a
+## future foundation added to assets/data/tower_components/ is covered
+## automatically.
+func test_all_real_shipped_foundation_components_resolve_named_shapes() -> void:
+	var dir := DirAccess.open("res://assets/data/tower_components")
+	assert_object(dir).is_not_null()
+	dir.list_dir_begin()
+	var file_name: String = dir.get_next()
+	var checked_any: bool = false
+	while file_name != "":
+		if file_name.begins_with("foundation_") and file_name.ends_with(".tres"):
+			var component: FoundationComponent = load("res://assets/data/tower_components/%s" % file_name) as FoundationComponent
+			assert_object(component).is_not_null()
+			var shape: StringName = _instance.resolve_shape_for_component(component.component_id, component.archetype)
+			assert_object(shape).append_failure_message(
+				"foundation_component_id '%s' (from %s) resolved to no named shape -- falls through to the modular fallback" % [component.component_id, file_name]
+			).is_not_equal(&"")
+			checked_any = true
+		file_name = dir.get_next()
+	dir.list_dir_end()
+	assert_bool(checked_any).is_true()
 
 
 func test_unknown_component_uses_modular_archetype_fallback() -> void:

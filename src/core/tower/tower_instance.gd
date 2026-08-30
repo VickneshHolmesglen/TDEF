@@ -391,6 +391,17 @@ func resolve_shape_for_component(component_id: String, archetype: String) -> Str
 		return &"stump"
 	if "bulwark" in normalized_id or "warbreaker" in normalized_id:
 		return &"square"
+	# "iron"/"reinforced" are this project's real, currently-shipped starter
+	# foundations (found_iron_t1, found_reinforced_t2 — both "physical"
+	# archetype, a tier1->tier2 HP-tank lineage). They share "square" with
+	# bulwark/warbreaker rather than getting a dedicated shape: same
+	# defensive/blocky identity, and the tiered upgrade keeps one consistent
+	# silhouette across its tier progression (mirroring how
+	# grandrally/standard/barrier already share "tiered" above). Found live
+	# 2026-08-30 via Godot MCP verification: both IDs fell through to the
+	# modular fallback and rendered identically to each other.
+	if "iron" in normalized_id or "reinforced" in normalized_id:
+		return &"square"
 	if "archer" in normalized_id or "ballista" in normalized_id or "firebolt" in normalized_id or "volley" in normalized_id:
 		return &"round"
 	# Archetype is intentionally not used to invent a named shape. It is
