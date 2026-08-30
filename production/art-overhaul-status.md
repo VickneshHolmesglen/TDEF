@@ -70,6 +70,16 @@ standalone, upload-ready prompt file — no further scoping needed before
 generation starts. One row per tightly-scoped batch, matching this file's own
 granularity rule.
 
+**Raw-sheet validation, 2026-08-30 (Codex):** all eight motion deliverables
+exist and are wide RGB sheets (`2012–2172px × 724–782px`), consistent with the
+required four-pose horizontal slicing workflow; the Iron Colossus identity
+base also exists at `1254×1254`. Their lack of an alpha channel is expected at
+this source stage because these prompts deliberately use removable flat
+backgrounds. This is distinct from the modular tower defect, where a visible
+checkerboard was baked into RGB pixels. No monster regeneration is indicated;
+Claude Code should proceed with the row-specific alpha-cut and square-padding
+instructions below.
+
 | Item | Category | Status | Owner | Notes |
 |---|---|---|---|---|
 | Goblin Runner walk cycle (4 frames) | monsters | `generated, awaiting processing` | Codex | Raw: `assets/source/monsters/goblin_runner_walk.png`. Four distinct run poses; identity matched to shipped reference. Isolate four pose regions and square-pad. |
