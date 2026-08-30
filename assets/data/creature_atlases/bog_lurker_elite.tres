@@ -12,15 +12,23 @@ frame_count = 1
 fps = 8.0
 loop = true
 
+[sub_resource type="Resource" id="Clip_walk"]
+script = ExtResource("2")
+clip_name = &"walk"
+start_frame = 1
+frame_count = 4
+fps = 8.0
+loop = true
+
 [resource]
 script = ExtResource("1")
 creature_id = &"bog_lurker_elite"
 family_atlas_id = &"bog_lurker_elite_family"
 atlas_texture = ExtResource("3")
-atlas_columns = 1
+atlas_columns = 5
 atlas_rows = 1
-frame_count = 1
-animation_clips = [SubResource("Clip_idle")]
+frame_count = 5
+animation_clips = [SubResource("Clip_idle"), SubResource("Clip_walk")]
 world_width = 1.0
 world_height = 1.0
 foot_anchor_offset = Vector2(0.0, 0.0)
