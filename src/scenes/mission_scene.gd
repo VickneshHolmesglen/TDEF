@@ -310,7 +310,7 @@ func _on_tower_placed(payload: TowerPlacedEvent) -> void:
 	# closes (every elemental tower silently rendered as ice art).
 	var state: TowerMissionState = _tower_system.placed_towers.get(payload.tower_id) as TowerMissionState
 	var element: String = state.weapon.element if state != null else ""
-	vis.configure(payload.archetype, element)
+	vis.configure(payload.archetype, element, payload.foundation_component_id, payload.weapon_component_id)
 	if state != null:
 		vis.element = state.weapon.element
 		vis.set_idle_ambient(state.weapon.element)

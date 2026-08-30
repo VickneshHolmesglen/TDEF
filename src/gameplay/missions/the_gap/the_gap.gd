@@ -468,7 +468,8 @@ func _on_tower_placed(payload: TowerPlacedEvent) -> void:
 	# only ever received archetype, so every elemental tower silently
 	# rendered as ice art regardless of its real element.
 	var state: TowerMissionState = _tower_system.placed_towers.get(payload.tower_id) as TowerMissionState
-	vis.configure(payload.archetype, state.weapon.element if state != null else "")
+	vis.configure(payload.archetype, state.weapon.element if state != null else "",
+			payload.foundation_component_id, payload.weapon_component_id)
 	_tower_visuals[payload.tower_id] = vis
 
 

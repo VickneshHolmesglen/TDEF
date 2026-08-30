@@ -1,15 +1,10 @@
 class_name TowerInstance
 extends Node2D
 
-## Minimal visual presentation for a placed tower. Displays a static texture
-## keyed by the tower's Foundation archetype (`physical` | `ranged` |
-## `elemental` | `support`, per design/gdd/tower.md Group 2).
-##
-## Scope note: this is presentation only — it has no link yet to
-## TowerSystem/TowerMissionState (which remain RefCounted, headless
-## simulation with no scene-tree presence). Placement-triggered
-## instantiation, tier-based art swaps, and damaged-state visuals are not
-## yet designed; call configure() manually until that wiring exists.
+## Visual presentation for a placed tower. Current placement payloads provide
+## Foundation/Weapon component IDs, which assemble processed Base/Shaft/Top
+## art; the two-argument configure() path retains the former archetype texture
+## behavior for older callers and isolated tests.
 
 ## Archetype -> art lookup. All 4 archetypes now have placeholder art.
 ## "elemental" here is the fallback used when no per-element texture exists
@@ -43,6 +38,101 @@ const ELEMENT_TEXTURES: Dictionary[String, Texture2D] = {
 	"wind": preload("res://assets/art/towers/tower_elem_wind.png"),
 	"shadow": preload("res://assets/art/towers/tower_elem_shadow.png"),
 	"holy": preload("res://assets/art/towers/tower_elem_holy.png"),
+}
+
+## Processed Base/Shaft/Top art keyed by the silhouette families defined in
+## design/art/asset-generation-prompts.md. All three pieces in a family share
+## a camera and attachment language, so they are always resolved as a set.
+const SHAPE_BASE_TEXTURES: Dictionary[StringName, Texture2D] = {
+	&"round": preload("res://assets/art/towers/tower_base_matched_round.png"),
+	&"square": preload("res://assets/art/towers/tower_base_matched_square.png"),
+	&"stump": preload("res://assets/art/towers/tower_base_matched_stump.png"),
+	&"stonemound": preload("res://assets/art/towers/tower_base_matched_stonemound.png"),
+	&"octagon": preload("res://assets/art/towers/tower_base_matched_octagon.png"),
+	&"tiered": preload("res://assets/art/towers/tower_base_matched_tiered.png"),
+	&"scalloped": preload("res://assets/art/towers/tower_base_matched_scalloped.png"),
+	&"triangle": preload("res://assets/art/towers/tower_base_matched_triangle.png"),
+	&"hexplank": preload("res://assets/art/towers/tower_base_matched_hexplank.png"),
+}
+const SHAPE_SHAFT_TEXTURES: Dictionary[StringName, Texture2D] = {
+	&"round": preload("res://assets/art/towers/tower_shaft_round.png"),
+	&"square": preload("res://assets/art/towers/tower_shaft_square.png"),
+	&"stump": preload("res://assets/art/towers/tower_shaft_stump.png"),
+	&"stonemound": preload("res://assets/art/towers/tower_shaft_stonemound.png"),
+	&"octagon": preload("res://assets/art/towers/tower_shaft_octagon.png"),
+	&"tiered": preload("res://assets/art/towers/tower_shaft_tiered.png"),
+	&"scalloped": preload("res://assets/art/towers/tower_shaft_scalloped.png"),
+	&"triangle": preload("res://assets/art/towers/tower_shaft_triangle.png"),
+	&"hexplank": preload("res://assets/art/towers/tower_shaft_hexplank.png"),
+}
+const SHAPE_TOP_TEXTURES: Dictionary[StringName, Texture2D] = {
+	&"round": preload("res://assets/art/towers/tower_top_round.png"),
+	&"square": preload("res://assets/art/towers/tower_top_square.png"),
+	&"stump": preload("res://assets/art/towers/tower_top_stump.png"),
+	&"stonemound": preload("res://assets/art/towers/tower_top_stonemound.png"),
+	&"octagon": preload("res://assets/art/towers/tower_top_octagon.png"),
+	&"tiered": preload("res://assets/art/towers/tower_top_tiered.png"),
+	&"scalloped": preload("res://assets/art/towers/tower_top_scalloped.png"),
+	&"triangle": preload("res://assets/art/towers/tower_top_triangle.png"),
+	&"hexplank": preload("res://assets/art/towers/tower_top_hexplank.png"),
+}
+
+## Weapon-component identity overrides only the crown. This preserves the
+## foundation-selected body while making firing hardware readable at a glance.
+const WEAPON_TOP_TEXTURES: Dictionary[StringName, Texture2D] = {
+	&"siege": preload("res://assets/art/towers/tower_top_weapon_siege_cannon.png"),
+	&"railgun": preload("res://assets/art/towers/tower_top_weapon_railgun_laser.png"),
+	&"arcane": preload("res://assets/art/towers/tower_top_weapon_arcane_lance_emitter.png"),
+	&"storm": preload("res://assets/art/towers/tower_top_weapon_storm_emitter.png"),
+	&"firestorm": preload("res://assets/art/towers/tower_top_weapon_firestorm_emitter.png"),
+	&"frost": preload("res://assets/art/towers/tower_top_weapon_frost_emitter.png"),
+}
+
+## The shared modular batch is the safe fallback for unknown/future component
+## IDs. It avoids guessing a named silhouette while still rendering all three
+## authored layers and retaining archetype/element identity in the crown.
+const MODULAR_BASE_TEXTURE: Texture2D = preload("res://assets/art/towers/tower_modular_base_shared.png")
+const MODULAR_SHAFT_TEXTURES: Dictionary[StringName, Texture2D] = {
+	&"solid": preload("res://assets/art/towers/tower_modular_shaft_solid.png"),
+	&"support": preload("res://assets/art/towers/tower_modular_shaft_open_support.png"),
+}
+const MODULAR_TOP_TEXTURES: Dictionary[StringName, Texture2D] = {
+	&"physical": preload("res://assets/art/towers/tower_modular_top_physical.png"),
+	&"ranged": preload("res://assets/art/towers/tower_modular_top_ranged.png"),
+	&"support": preload("res://assets/art/towers/tower_modular_top_support.png"),
+	&"fire": preload("res://assets/art/towers/tower_modular_top_fire.png"),
+	&"frost": preload("res://assets/art/towers/tower_modular_top_frost.png"),
+	&"poison": preload("res://assets/art/towers/tower_modular_top_poison.png"),
+}
+
+## Transparent padding differs between the generated silhouette families, so
+## a universal overlap leaves some attachment planes floating. Values are a
+## fraction of the smaller adjacent texture height. Every authored family has
+## an explicit profile; unknown component IDs use the modular fallback.
+const SHAPE_OVERLAP_PROFILES: Dictionary[StringName, Vector2] = {
+	# x = Base -> Shaft, y = Shaft -> matched Top.
+	&"round": Vector2(0.20, 0.22),
+	&"square": Vector2(0.26, 0.20),
+	&"stump": Vector2(0.18, 0.18),
+	&"stonemound": Vector2(0.18, 0.18),
+	&"octagon": Vector2(0.18, 0.18),
+	&"tiered": Vector2(0.18, 0.18),
+	&"scalloped": Vector2(0.22, 0.24),
+	&"triangle": Vector2(0.22, 0.30),
+	&"hexplank": Vector2(0.28, 0.26),
+}
+const MODULAR_OVERLAP_PROFILE: Vector2 = Vector2(0.18, 0.18)
+
+## Dedicated weapon crowns have their own transparent mount padding. These
+## values override only the profile's y component, preserving the foundation
+## family's tuned Base -> Shaft join.
+const WEAPON_TOP_OVERLAP_PROFILES: Dictionary[StringName, float] = {
+	&"siege": 0.26,
+	&"railgun": 0.34,
+	&"arcane": 0.20,
+	&"storm": 0.20,
+	&"firestorm": 0.20,
+	&"frost": 0.24,
 }
 
 ## Persistent color-identity ring for an "elemental" archetype tower whose
@@ -249,27 +339,77 @@ var _hit_flash_tween: Tween = null
 ## degrades gracefully to 2D-only rather than erroring.
 var _hit_flash_material_3d: ShaderMaterial = null
 
+@onready var _visual_root: Node2D = $VisualRoot
+@onready var _layer_root: Node2D = $VisualRoot/LayerRoot
+@onready var _base_sprite: Sprite2D = $VisualRoot/LayerRoot/BaseSprite
+@onready var _shaft_sprite: Sprite2D = $VisualRoot/LayerRoot/ShaftSprite
+@onready var _top_sprite: Sprite2D = $VisualRoot/LayerRoot/TopSprite
 @onready var _sprite: Sprite2D = $Sprite2D
 @onready var _idle_particles: CPUParticles2D = $IdleParticles2D
 
 
 func _ready() -> void:
-	_hit_flash_material = ShaderMaterial.new()
-	_hit_flash_material.shader = HIT_FLASH_SHADER
-	_sprite.material = _hit_flash_material
+	_assign_hit_flash_material(_sprite)
+	_assign_hit_flash_material(_base_sprite)
+	_assign_hit_flash_material(_shaft_sprite)
+	_assign_hit_flash_material(_top_sprite)
+	_hit_flash_material = _sprite.material as ShaderMaterial
 
 
-## Sets the displayed texture for the given Foundation archetype (and, for
-## "elemental" archetype towers, the real WeaponComponent.element — see
-## ELEMENT_TEXTURES's own doc comment for the bug this closes) and scales it
-## to TARGET_DISPLAY_HEIGHT. Logs a warning and leaves the sprite empty if no
-## art exists for that archetype/element combination yet. element defaults to
-## "" for non-elemental archetypes, which always fall through to
-## ARCHETYPE_TEXTURES regardless. Also the sole place that sets
-## _element_tint_active/_element_tint_color (see those fields' own doc
-## comments for the tint feature's rationale) -- an "elemental" tower with no
-## ELEMENT_TEXTURES entry for its element activates the tint ring here.
-func configure(archetype: String, element: String = "") -> void:
+## Configures a tower visual. Component IDs select a three-layer body and any
+## dedicated weapon crown; omitted IDs retain the legacy archetype/element
+## texture path. Every result is normalized to TARGET_DISPLAY_HEIGHT, with a
+## safe authored fallback for unknown future component IDs.
+func configure(archetype: String, element: String = "", foundation_component_id: String = "",
+		weapon_component_id: String = "") -> void:
+	if foundation_component_id != "" or weapon_component_id != "":
+		_configure_layered(archetype, element, foundation_component_id, weapon_component_id)
+	else:
+		_configure_legacy(archetype, element)
+	_build_visual_companion()
+
+
+## Resolves a processed silhouette family from stable component identity.
+## Substring matching deliberately ignores tier suffixes, so upgraded copies
+## keep their construction language. Unknown IDs return an empty StringName
+## and are rendered through the shared modular fallback by configure().
+func resolve_shape_for_component(component_id: String, archetype: String) -> StringName:
+	var normalized_id: String = component_id.to_lower()
+	if "siege" in normalized_id:
+		return &"hexplank"
+	if "longshot" in normalized_id or "railgun" in normalized_id:
+		return &"triangle"
+	if "frost" in normalized_id:
+		return &"scalloped"
+	if "arcane" in normalized_id or "storm" in normalized_id:
+		return &"octagon"
+	if "venom" in normalized_id or "earth" in normalized_id or "crystal" in normalized_id:
+		return &"stonemound"
+	if "grandrally" in normalized_id or "standard" in normalized_id or "barrier" in normalized_id:
+		return &"tiered"
+	if "rally" in normalized_id:
+		return &"stump"
+	if "bulwark" in normalized_id or "warbreaker" in normalized_id:
+		return &"square"
+	if "archer" in normalized_id or "ballista" in normalized_id or "firebolt" in normalized_id or "volley" in normalized_id:
+		return &"round"
+	# Archetype is intentionally not used to invent a named shape. It is
+	# retained in this API because callers already possess it and fallback
+	# selection uses it immediately after this resolver returns empty.
+	var _unused_archetype: String = archetype
+	return &""
+
+
+## Returns the unscaled union of all active layered sprites. Exposed for
+## deterministic layout verification; gameplay code does not need it.
+func get_layered_visual_bounds() -> Rect2:
+	var bounds: Rect2 = _sprite_rect(_base_sprite)
+	bounds = bounds.merge(_sprite_rect(_shaft_sprite))
+	bounds = bounds.merge(_sprite_rect(_top_sprite))
+	return bounds
+
+
+func _configure_legacy(archetype: String, element: String) -> void:
 	var texture: Texture2D = null
 	_element_tint_active = false
 	if archetype == "elemental":
@@ -282,8 +422,13 @@ func configure(archetype: String, element: String = "") -> void:
 	if texture == null:
 		push_warning("[TowerInstance] no art authored for archetype '%s'" % archetype)
 		_sprite.texture = null
+		_sprite.visible = true
+		_layer_root.visible = false
 		queue_redraw()
 		return
+	_visual_root.modulate = Color.WHITE
+	_layer_root.visible = false
+	_sprite.visible = true
 	_sprite.texture = texture
 	var uniform_scale: float = TARGET_DISPLAY_HEIGHT / float(texture.get_height())
 	_sprite.scale = Vector2(uniform_scale, uniform_scale)
@@ -294,7 +439,98 @@ func configure(archetype: String, element: String = "") -> void:
 	# _physics_process() callback. See _build_visual_companion()'s doc
 	# comment for why configure() (not a new per-frame override) is correct
 	# here.
-	_build_visual_companion()
+
+
+func _configure_layered(archetype: String, element: String, foundation_component_id: String,
+		weapon_component_id: String) -> void:
+	_element_tint_active = false
+	# Keep the former single-sprite contract populated (but hidden) for tools
+	# and tests that inspect the legacy Sprite2D directly. Runtime rendering is
+	# exclusively the layer root whenever component identity is available.
+	_sprite.texture = ELEMENT_TEXTURES.get(element) if archetype == "elemental" else null
+	if _sprite.texture == null:
+		_sprite.texture = ARCHETYPE_TEXTURES.get(archetype)
+	var shape: StringName = resolve_shape_for_component(foundation_component_id, archetype)
+	if shape != &"":
+		_base_sprite.texture = SHAPE_BASE_TEXTURES[shape]
+		_shaft_sprite.texture = SHAPE_SHAFT_TEXTURES[shape]
+		_top_sprite.texture = _resolve_weapon_top(weapon_component_id, SHAPE_TOP_TEXTURES[shape])
+	else:
+		_base_sprite.texture = MODULAR_BASE_TEXTURE
+		_shaft_sprite.texture = MODULAR_SHAFT_TEXTURES[&"support" if archetype == "support" else &"solid"]
+		var fallback_top: Texture2D = _resolve_modular_top(archetype, element)
+		_top_sprite.texture = _resolve_weapon_top(weapon_component_id, fallback_top)
+		if archetype == "elemental" and not MODULAR_TOP_TEXTURES.has(StringName(element)):
+			_element_tint_active = true
+			_element_tint_color = ProjectileVisual.ELEMENT_COLORS.get(element, ProjectileVisual.ARCHETYPE_COLORS["elemental"])
+	_sprite.visible = false
+	_layer_root.visible = true
+	_visual_root.modulate = Color.WHITE
+	var overlap_profile: Vector2 = SHAPE_OVERLAP_PROFILES.get(shape, MODULAR_OVERLAP_PROFILE)
+	var weapon_top_key: StringName = _resolve_weapon_top_key(weapon_component_id)
+	if weapon_top_key != &"":
+		overlap_profile.y = WEAPON_TOP_OVERLAP_PROFILES[weapon_top_key]
+	_layout_layers(overlap_profile)
+	queue_redraw()
+
+
+func _resolve_weapon_top(weapon_component_id: String, fallback: Texture2D) -> Texture2D:
+	var weapon_top_key: StringName = _resolve_weapon_top_key(weapon_component_id)
+	return WEAPON_TOP_TEXTURES.get(weapon_top_key, fallback)
+
+
+func _resolve_weapon_top_key(weapon_component_id: String) -> StringName:
+	var normalized_id: String = weapon_component_id.to_lower()
+	# Longer/specific names must precede their shared element roots.
+	if "firestorm" in normalized_id:
+		return &"firestorm"
+	if "railgun" in normalized_id:
+		return &"railgun"
+	if "siege" in normalized_id:
+		return &"siege"
+	if "arcane" in normalized_id:
+		return &"arcane"
+	if "storm" in normalized_id:
+		return &"storm"
+	if "frost" in normalized_id:
+		return &"frost"
+	return &""
+
+
+func _resolve_modular_top(archetype: String, element: String) -> Texture2D:
+	var element_key: StringName = StringName(element)
+	if MODULAR_TOP_TEXTURES.has(element_key):
+		return MODULAR_TOP_TEXTURES[element_key]
+	return MODULAR_TOP_TEXTURES.get(StringName(archetype), MODULAR_TOP_TEXTURES[&"physical"])
+
+
+func _layout_layers(overlap_profile: Vector2) -> void:
+	var base_height: float = float(_base_sprite.texture.get_height())
+	var shaft_height: float = float(_shaft_sprite.texture.get_height())
+	var top_height: float = float(_top_sprite.texture.get_height())
+	var base_shaft_overlap: float = minf(base_height, shaft_height) * overlap_profile.x
+	var shaft_top_overlap: float = minf(shaft_height, top_height) * overlap_profile.y
+	var assembled_height: float = base_height + shaft_height + top_height - base_shaft_overlap - shaft_top_overlap
+	var bottom_y: float = assembled_height * 0.5
+	_base_sprite.position = Vector2(0.0, bottom_y - base_height * 0.5)
+	_shaft_sprite.position = Vector2(0.0, bottom_y - base_height + base_shaft_overlap - shaft_height * 0.5)
+	_top_sprite.position = Vector2(0.0, bottom_y - base_height + base_shaft_overlap - shaft_height + shaft_top_overlap - top_height * 0.5)
+	var uniform_scale: float = TARGET_DISPLAY_HEIGHT / assembled_height
+	_layer_root.scale = Vector2(uniform_scale, uniform_scale)
+	_base_sprite_scale = _layer_root.scale
+
+
+func _sprite_rect(sprite: Sprite2D) -> Rect2:
+	if sprite.texture == null:
+		return Rect2(sprite.position, Vector2.ZERO)
+	var size: Vector2 = sprite.texture.get_size()
+	return Rect2(sprite.position - size * 0.5, size)
+
+
+func _assign_hit_flash_material(sprite: Sprite2D) -> void:
+	var material: ShaderMaterial = ShaderMaterial.new()
+	material.shader = HIT_FLASH_SHADER
+	sprite.material = material
 
 
 ## element: WeaponComponent.element. Starts a continuous low-intensity idle
@@ -389,19 +625,20 @@ func _set_weapon_glow_offset(offset: Vector2) -> void:
 func play_attack_punch(color: Color) -> void:
 	if _punch_tween != null and _punch_tween.is_valid():
 		_punch_tween.kill()
-	_sprite.modulate = Color.WHITE
-	_sprite.scale = _base_sprite_scale
+	var active_visual: Node2D = _layer_root if _layer_root.visible else _sprite
+	active_visual.modulate = Color.WHITE
+	active_visual.scale = _base_sprite_scale
 	_punch_tween = create_tween()
 	# Charge-up (anticipation): a quick pull-back before the flash+scale-out
 	# below — see CHARGE_UP_DURATION's own doc comment for why this is folded
 	# into the same tween chain rather than a separately-timed call.
-	_punch_tween.tween_property(_sprite, "scale", _base_sprite_scale * CHARGE_UP_SCALE_TROUGH, CHARGE_UP_DURATION)
+	_punch_tween.tween_property(active_visual, "scale", _base_sprite_scale * CHARGE_UP_SCALE_TROUGH, CHARGE_UP_DURATION)
 	_punch_tween.chain().set_parallel(true)
-	_punch_tween.tween_property(_sprite, "modulate", color, PUNCH_FLASH_IN_DURATION)
-	_punch_tween.tween_property(_sprite, "scale", _base_sprite_scale * PUNCH_SCALE_PEAK, PUNCH_FLASH_IN_DURATION)
+	_punch_tween.tween_property(active_visual, "modulate", color, PUNCH_FLASH_IN_DURATION)
+	_punch_tween.tween_property(active_visual, "scale", _base_sprite_scale * PUNCH_SCALE_PEAK, PUNCH_FLASH_IN_DURATION)
 	_punch_tween.chain().set_parallel(true)
-	_punch_tween.tween_property(_sprite, "modulate", Color.WHITE, PUNCH_FLASH_OUT_DURATION)
-	_punch_tween.tween_property(_sprite, "scale", _base_sprite_scale, PUNCH_FLASH_OUT_DURATION)
+	_punch_tween.tween_property(active_visual, "modulate", Color.WHITE, PUNCH_FLASH_OUT_DURATION)
+	_punch_tween.tween_property(active_visual, "scale", _base_sprite_scale, PUNCH_FLASH_OUT_DURATION)
 
 
 ## Art & Animation Pipeline Upgrade, vertical slice — see HIT_FLASH_SHADER's
@@ -413,17 +650,24 @@ func play_attack_punch(color: Color) -> void:
 func play_hit_flash() -> void:
 	if _hit_flash_tween != null and _hit_flash_tween.is_valid():
 		_hit_flash_tween.kill()
-	_hit_flash_material.set_shader_parameter("flash_amount", 1.0)
+	_set_hit_flash_amount(1.0)
 	if _hit_flash_material_3d != null:
 		_hit_flash_material_3d.set_shader_parameter("flash_amount", 1.0)
 	_hit_flash_tween = create_tween()
 	_hit_flash_tween.tween_method(
 		func(v: float) -> void:
-			_hit_flash_material.set_shader_parameter("flash_amount", v)
+			_set_hit_flash_amount(v)
 			if _hit_flash_material_3d != null:
 				_hit_flash_material_3d.set_shader_parameter("flash_amount", v),
 		1.0, 0.0, HIT_FLASH_DURATION
 	)
+
+
+func _set_hit_flash_amount(amount: float) -> void:
+	var sprites: Array[Sprite2D] = [_sprite, _base_sprite, _shaft_sprite, _top_sprite]
+	for sprite: Sprite2D in sprites:
+		var material: ShaderMaterial = sprite.material as ShaderMaterial
+		material.set_shader_parameter("flash_amount", amount)
 
 
 ## design/gdd/tower.md "Pre-Placement Perk Indicator" — see PERK_BADGE_COLOR's
@@ -443,7 +687,7 @@ func set_perk_badge(active: bool) -> void:
 ## draws when _element_tint_active is set (by configure(), for an
 ## "elemental" archetype tower whose element has no bespoke texture yet; see
 ## ELEMENT_TINT_RING_RADIUS's own doc comment). The ATTACKING punch lives
-## entirely on _sprite's own modulate/scale (no custom draw needed for it),
+## entirely on the active visual root's modulate/scale (no custom draw needed),
 ## keeping that channel structurally separate from all three of these.
 func _draw() -> void:
 	if _element_tint_active:

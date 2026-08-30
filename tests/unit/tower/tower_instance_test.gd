@@ -36,6 +36,124 @@ func test_configure_scales_sprite_to_target_display_height() -> void:
 	assert_float(scaled_height).is_between(63.9, 64.1)
 
 
+func test_configure_with_component_ids_builds_three_layer_tower() -> void:
+	_instance.configure("physical", "", "found_siege_t4", "weap_siege_t4")
+	assert_bool(_instance._layer_root.visible).is_true()
+	assert_bool(_instance._sprite.visible).is_false()
+	assert_object(_instance._base_sprite.texture).is_equal(TowerInstance.SHAPE_BASE_TEXTURES[&"hexplank"])
+	assert_object(_instance._shaft_sprite.texture).is_equal(TowerInstance.SHAPE_SHAFT_TEXTURES[&"hexplank"])
+	assert_object(_instance._top_sprite.texture).is_equal(TowerInstance.WEAPON_TOP_TEXTURES[&"siege"])
+
+
+func test_configure_component_shape_mapping_is_deterministic() -> void:
+	var cases: Dictionary[String, StringName] = {
+		"found_archer_t1": &"round",
+		"found_bulwark_t2": &"square",
+		"found_rally_t1": &"stump",
+		"found_arcane_t3": &"octagon",
+		"found_grandrally_t4": &"tiered",
+		"found_frostbolt_t1": &"scalloped",
+		"found_longshot_t1": &"triangle",
+		"found_siege_t4": &"hexplank",
+		"found_venomdart_t1": &"stonemound",
+	}
+	for component_id: String in cases:
+		assert_object(_instance.resolve_shape_for_component(component_id, "elemental")).is_equal(cases[component_id])
+
+
+func test_unknown_component_uses_modular_archetype_fallback() -> void:
+	_instance.configure("elemental", "fire", "future_foundation", "future_weapon")
+	assert_object(_instance._base_sprite.texture).is_equal(TowerInstance.MODULAR_BASE_TEXTURE)
+	assert_object(_instance._shaft_sprite.texture).is_equal(TowerInstance.MODULAR_SHAFT_TEXTURES[&"solid"])
+	assert_object(_instance._top_sprite.texture).is_equal(TowerInstance.MODULAR_TOP_TEXTURES[&"fire"])
+
+
+func test_unknown_support_component_uses_open_support_shaft() -> void:
+	_instance.configure("support", "", "future_support_foundation", "future_support_weapon")
+	assert_object(_instance._shaft_sprite.texture).is_equal(TowerInstance.MODULAR_SHAFT_TEXTURES[&"support"])
+	assert_object(_instance._top_sprite.texture).is_equal(TowerInstance.MODULAR_TOP_TEXTURES[&"support"])
+
+
+func test_each_dedicated_weapon_id_resolves_its_integrated_top() -> void:
+	var cases: Dictionary[String, StringName] = {
+		"weap_siege_t4": &"siege",
+		"weap_railgun_t4": &"railgun",
+		"weap_arcane_t3": &"arcane",
+		"weap_storm_t2": &"storm",
+		"weap_firestorm_t4": &"firestorm",
+		"weap_frostbolt_t1": &"frost",
+	}
+	for weapon_id: String in cases:
+		_instance.configure("elemental", "", "found_archer_t1", weapon_id)
+		assert_object(_instance._top_sprite.texture).is_equal(TowerInstance.WEAPON_TOP_TEXTURES[cases[weapon_id]])
+
+
+func test_all_shipped_foundation_component_ids_resolve_named_shapes() -> void:
+	var component_ids: PackedStringArray = [
+		"found_arcane_t3", "found_archer_t1", "found_barrier_t2", "found_bulwark_t2",
+		"found_firebolt_t1", "found_firestorm_t4", "found_frostbolt_t1", "found_grandrally_t4",
+		"found_longshot_t1", "found_ballista_t3", "found_railgun_t4", "found_rally_t1",
+		"found_standard_t3", "found_siege_t4", "found_storm_t2", "found_venomdart_t1",
+		"found_volley_t2", "found_warbreaker_t3",
+	]
+	for component_id: String in component_ids:
+		assert_object(_instance.resolve_shape_for_component(component_id, "")).is_not_equal(&"")
+
+
+func test_layered_tower_is_scaled_to_target_height_and_bottom_centered() -> void:
+	_instance.configure("physical", "", "found_siege_t4", "weap_siege_t4")
+	var bounds: Rect2 = _instance.get_layered_visual_bounds()
+	assert_float(bounds.size.y * _instance._layer_root.scale.y).is_between(63.9, 64.1)
+	assert_float(bounds.end.y * _instance._layer_root.scale.y).is_equal_approx(TowerInstance.TARGET_DISPLAY_HEIGHT * 0.5, 0.1)
+
+
+func test_every_shape_family_has_a_complete_overlap_profile() -> void:
+	assert_int(TowerInstance.SHAPE_OVERLAP_PROFILES.size()).is_equal(TowerInstance.SHAPE_BASE_TEXTURES.size())
+	for shape: StringName in TowerInstance.SHAPE_BASE_TEXTURES:
+		assert_bool(TowerInstance.SHAPE_OVERLAP_PROFILES.has(shape)).is_true()
+		var profile: Vector2 = TowerInstance.SHAPE_OVERLAP_PROFILES[shape]
+		assert_float(profile.x).is_between(0.0, 0.5)
+		assert_float(profile.y).is_between(0.0, 0.5)
+
+
+func test_every_dedicated_weapon_top_has_an_overlap_profile() -> void:
+	assert_int(TowerInstance.WEAPON_TOP_OVERLAP_PROFILES.size()).is_equal(TowerInstance.WEAPON_TOP_TEXTURES.size())
+	for weapon_top: StringName in TowerInstance.WEAPON_TOP_TEXTURES:
+		assert_bool(TowerInstance.WEAPON_TOP_OVERLAP_PROFILES.has(weapon_top)).is_true()
+		assert_float(TowerInstance.WEAPON_TOP_OVERLAP_PROFILES[weapon_top]).is_between(0.0, 0.5)
+
+
+func test_all_shape_profiles_remain_64_units_and_bottom_centered() -> void:
+	var foundations: Dictionary[String, StringName] = {
+		"found_archer_t1": &"round", "found_bulwark_t2": &"square",
+		"found_rally_t1": &"stump", "found_venomdart_t1": &"stonemound",
+		"found_arcane_t3": &"octagon", "found_standard_t3": &"tiered",
+		"found_frostbolt_t1": &"scalloped", "found_longshot_t1": &"triangle",
+		"found_siege_t4": &"hexplank",
+	}
+	for foundation_id: String in foundations:
+		_instance.configure("physical", "", foundation_id, "weap_basic")
+		_assert_layered_layout_is_bounded()
+
+
+func test_all_weapon_top_profiles_remain_64_units_and_bottom_centered() -> void:
+	var weapon_ids: PackedStringArray = [
+		"weap_siege_t4", "weap_railgun_t4", "weap_arcane_t3",
+		"weap_storm_t2", "weap_firestorm_t4", "weap_frostbolt_t1",
+	]
+	for weapon_id: String in weapon_ids:
+		_instance.configure("elemental", "arcane", "found_archer_t1", weapon_id)
+		_assert_layered_layout_is_bounded()
+
+
+func _assert_layered_layout_is_bounded() -> void:
+	var bounds: Rect2 = _instance.get_layered_visual_bounds()
+	var scaled_height: float = bounds.size.y * _instance._layer_root.scale.y
+	var scaled_bottom: float = bounds.end.y * _instance._layer_root.scale.y
+	assert_float(scaled_height).is_between(63.9, 64.1)
+	assert_float(scaled_bottom).is_equal_approx(TowerInstance.TARGET_DISPLAY_HEIGHT * 0.5, 0.1)
+
+
 func test_configure_each_known_archetype_resolves_a_distinct_texture() -> void:
 	var seen: Dictionary = {}
 	for archetype: String in TowerInstance.ARCHETYPE_TEXTURES:
@@ -117,3 +235,12 @@ func test_play_hit_flash_sets_flash_amount_to_full() -> void:
 	_instance.play_hit_flash()
 	var material := _instance._sprite.material as ShaderMaterial
 	assert_float(material.get_shader_parameter("flash_amount")).is_equal_approx(1.0, 0.001)
+
+
+func test_play_hit_flash_updates_every_layer_material() -> void:
+	_instance.configure("physical", "", "found_siege_t4", "weap_siege_t4")
+	_instance.play_hit_flash()
+	var sprites: Array[Sprite2D] = [_instance._base_sprite, _instance._shaft_sprite, _instance._top_sprite]
+	for sprite: Sprite2D in sprites:
+		var material: ShaderMaterial = sprite.material as ShaderMaterial
+		assert_float(material.get_shader_parameter("flash_amount")).is_equal_approx(1.0, 0.001)

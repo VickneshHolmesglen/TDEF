@@ -22,13 +22,17 @@ locomotion atlases. The two BOSS creatures also have generated and processed
 evidence, source paths, processed paths, corrective regenerations, and live
 verification notes are recorded in `production/art-overhaul-status.md`.
 
-The remaining open art-overhaul work is not another generation batch. It is
-Claude Code's engine-side integration of the processed tower Base/Shaft/Top
-layers and the six weapon-bearing tower tops into `TowerInstance`. Until a new
-row is explicitly added to the shared backlog, Codex must not invent or
-mass-generate additional project-bound assets. Codex should instead keep the
-tracker reconciled, respond to a documented regeneration blocker if one
-appears, and leave processing/wiring to Claude Code per §3.
+The processed tower Base/Shaft/Top layers and all six weapon-bearing crowns
+were integrated into `TowerInstance` on 2026-08-30. All nine silhouette
+families and six weapon crowns are selected from stable component identity,
+normalized to the 64-world-unit tower height, bottom-anchored, and tuned with
+per-family mount profiles from rendered contact-sheet evidence. The generated
+art backlog and its engine-integration follow-up are therefore complete.
+
+Until a new row is explicitly added to the shared backlog, Codex must not
+invent or mass-generate additional project-bound assets. Codex should keep the
+tracker reconciled and respond only to a documented regeneration blocker or a
+new user-approved backlog item per §3.
 
 ---
 

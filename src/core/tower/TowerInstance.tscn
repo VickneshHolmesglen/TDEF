@@ -7,6 +7,20 @@ script = ExtResource("1_instance")
 
 [node name="Sprite2D" type="Sprite2D" parent="."]
 
+[node name="VisualRoot" type="Node2D" parent="."]
+
+[node name="LayerRoot" type="Node2D" parent="VisualRoot"]
+visible = false
+
+[node name="BaseSprite" type="Sprite2D" parent="VisualRoot/LayerRoot"]
+z_index = 0
+
+[node name="ShaftSprite" type="Sprite2D" parent="VisualRoot/LayerRoot"]
+z_index = 1
+
+[node name="TopSprite" type="Sprite2D" parent="VisualRoot/LayerRoot"]
+z_index = 2
+
 [node name="IdleParticles2D" type="CPUParticles2D" parent="."]
 emitting = false
 amount = 3
