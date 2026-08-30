@@ -156,14 +156,24 @@ func register_boss(entity_id: int, monster_id: StringName, world_transform: Tran
 	return MonsterPresentationHandle.new(entity_id, POOL_BATCH_KEY, slot, generation)
 
 
-## Updates a registered boss's position and attack-telegraph overlay
-## visibility. Returns false (no mutation) for a stale/foreign handle —
-## never mutates whatever entity now occupies that slot.
-func update_boss(handle: MonsterPresentationHandle, world_transform: Transform3D, attack_telegraphed: bool) -> bool:
+## Updates a registered boss's position, base-layer walk animation frame,
+## and attack-telegraph overlay visibility. `delta` advances the base-layer
+## walk clip (no-op if the boss has no full animset or `delta <= 0.0`).
+## Returns false (no mutation) for a stale/foreign handle — never mutates
+## whatever entity now occupies that slot.
+func update_boss(handle: MonsterPresentationHandle, world_transform: Transform3D, attack_telegraphed: bool, delta: float = 0.0) -> bool:
 	var slot: int = _resolve_valid_slot(handle)
 	if slot == -1:
 		return false
 	_slots[slot].global_transform = world_transform
+
+	var walk_clip: CreatureAnimationClip = _base_clips[slot]
+	if walk_clip != null and delta > 0.0:
+		_base_elapsed[slot] += delta
+		var frames_elapsed: int = int(_base_elapsed[slot] * walk_clip.fps)
+		var offset_in_clip: int = frames_elapsed % walk_clip.frame_count
+		_base_layers[slot].frame = walk_clip.start_frame + offset_in_clip
+
 	_overlay_layers[slot].visible = attack_telegraphed
 	return true
 

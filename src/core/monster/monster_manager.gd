@@ -606,7 +606,7 @@ func _pass3c_visual_sync(delta: float) -> void:
 				# "attack_prepare... the player's only warning before
 				# boss_tower_attack_attempted emits" — Pass 2 (_pass2_boss_logic())
 				# already owns this countdown; this pass only reads it.
-				_swarm_renderer.update_boss(entity.boss_presenter_handle, world_transform, entity.boss_attack_prepare_remaining > 0)
+				_swarm_renderer.update_boss(entity.boss_presenter_handle, world_transform, entity.boss_attack_prepare_remaining > 0, delta)
 			continue
 		# ADR-0038, Epic 16 Story 10: neither handle set means presentation
 		# registration failed or was never attempted (no renderer injected,

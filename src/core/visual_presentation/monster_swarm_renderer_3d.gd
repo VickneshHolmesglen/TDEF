@@ -98,8 +98,8 @@ func register_boss(entity_id: int, monster_id: StringName, world_transform: Tran
 	return _boss_presenter.register_boss(entity_id, monster_id, world_transform)
 
 
-func update_boss(handle: MonsterPresentationHandle, world_transform: Transform3D, attack_telegraphed: bool) -> bool:
-	return _boss_presenter.update_boss(handle, world_transform, attack_telegraphed)
+func update_boss(handle: MonsterPresentationHandle, world_transform: Transform3D, attack_telegraphed: bool, delta: float = 0.0) -> bool:
+	return _boss_presenter.update_boss(handle, world_transform, attack_telegraphed, delta)
 
 
 func unregister_boss(handle: MonsterPresentationHandle) -> bool:

@@ -119,6 +119,19 @@ func test_update_boss_toggles_overlay_visibility_with_attack_telegraph() -> void
 	assert_bool(_renderer._boss_presenter._overlay_layers[slot].visible).is_false()
 
 
+func test_update_boss_advances_base_walk_frame_over_time() -> void:
+	var handle: MonsterPresentationHandle = _renderer.register_boss(1, &"goblin_warlord_boss", Transform3D.IDENTITY)
+	var slot: int = _renderer._boss_presenter._entity_to_slot[handle.entity_id]
+	# walk clip: start_frame=1, frame_count=4, fps=8.0 -> one full frame every 0.125s.
+	var initial_frame: int = _renderer._boss_presenter._base_layers[slot].frame
+	assert_int(initial_frame).is_equal(0)  # idle frame set at registration
+
+	_renderer.update_boss(handle, Transform3D.IDENTITY, false, 0.2)
+
+	var advanced_frame: int = _renderer._boss_presenter._base_layers[slot].frame
+	assert_bool(advanced_frame >= 1 and advanced_frame <= 4).is_true()
+
+
 func test_update_boss_stale_handle_returns_false() -> void:
 	var handle: MonsterPresentationHandle = _renderer.register_boss(1, &"goblin_warlord_boss", Transform3D.IDENTITY)
 	_renderer.unregister_boss(handle)
