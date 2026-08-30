@@ -93,16 +93,18 @@ instructions below.
 | Corrective isolated locomotion sheets (Armored Brute, Forest Troll, Bog Lurker, Goblin Warlord, Rift Sentinel, Iron Colossus) | monsters | `done — all 6 processed via the rows above` | Codex + Claude Code | Codex's column-density-validated `_v2` sheets all sliced cleanly with the same automated technique proven on Goblin Runner/Spore Skitterling (2 needed a minor noise-sliver filter added, otherwise no manual work required). All 6 creatures now have real walk cycles wired, closing out the entire monster-movement backlog from 2026-08-29. |
 | Goblin Warlord + Rift Sentinel BOSS attack animations (4 sheets: prepare + release for each) | monsters | `generated, awaiting processing — 4/4; Warlord corrected` | Codex + Claude Code | Prompt file: `assets/art-generation-requests-2026-08-30-boss-attack-animations.md`. Use `assets/source/monsters/goblin_warlord_boss_attack_prepare_v2.png` (4 validated foreground runs, 64px minimum gap), `goblin_warlord_boss_attack_v2.png` (5 validated runs; spear projectile intentionally offscreen because gameplay projectile rendering is separate), `rift_sentinel_boss_attack_prepare.png` (4-frame charge), and `rift_sentinel_boss_attack.png` (5-frame discharge/recovery). The original Warlord sheets remain only as rejected provenance because their poses merged under column validation. Claude Code next: isolate/alpha-cut, scale-match to idle/walk, append `attack_prepare` and `attack` clips, and wire the BOSS overlay presenter. |
 
-**Processing QA finding, 2026-08-30 (Codex):** read-only inspection of
-Claude Code's active five-frame atlas worktree outputs confirms valid
-`Format32bppArgb` textures, widths divisible by five, and matching resource
-definitions (`idle` + 4-frame `walk`) for Armored Brute, Bog Lurker, Forest
-Troll, Goblin Warlord, Rift Sentinel, and the new Iron Colossus atlas. One
-blocker remains before that pass should land: Forest Troll frame 0 still
-contains the old rectangular background/ground residue and horizontal cut
-artifacts, while frames 1–4 are clean transparent cutouts. Re-cut or replace
-only the idle frame before committing; do not treat the current atlas preview
-as complete.
+**Processing QA finding, 2026-08-30 (Codex) — resolved same pass (Claude
+Code):** Codex's read-only inspection of the five-frame atlas outputs
+confirmed valid `Format32bppArgb` textures and matching resource
+definitions across the board, but caught a real defect Claude Code had
+missed: Forest Troll's idle frame (frame 0) still carried the old
+rectangular background/ground residue from a stale prior cut, while the 4
+new walk frames were clean. Re-cut the idle frame from its original raw
+source (`assets/source/monsters/mossbound_troll_with_gnarled_claw.png`,
+`edge_threshold=8`) — confirmed clean on magenta, no residue — and rebuilt
+`assets/art/monsters/forest_troll_elite.png`'s 5-frame atlas with the
+corrected idle frame. Walk frames and the `walk` clip data were already
+correct and unchanged.
 
 **Second batch, populated 2026-08-29** — from the missing-assets audit
 (`design/art/missing-assets-audit-2026-08-29.md`), user chose all three
