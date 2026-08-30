@@ -758,3 +758,12 @@ gap) and `goblin_warlord_boss_attack_v2.png` (exactly 5 runs). The release
 overlay intentionally keeps the thrown spear offscreen: projectile gameplay
 rendering is separate, while the five arm/torso follow-through poses preserve
 the required attack motion and remain deterministically sliceable.
+
+**Forest Troll idle correction, 2026-08-30:** Visual QA of the processed
+five-frame atlas found that frame 0 retained the shipped static image's ground
+plane, rectangular background residue, and horizontal cut artifacts. Codex
+generated `assets/source/monsters/forest_troll_elite_idle_v2.png` as a clean
+single-pose replacement on flat black, referencing the committed atlas for
+identity and the four clean walk frames for scale. Claude Code should alpha-
+cut and substitute only frame 0; the processed walk frames and resource clip
+definitions do not need regeneration.
