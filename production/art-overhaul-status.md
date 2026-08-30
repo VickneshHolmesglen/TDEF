@@ -119,7 +119,7 @@ icon art is missing.
 
 | Item | Category | Status | Owner | Notes |
 |---|---|---|---|---|
-| Alternate equipment icons (9 — one per slot, T3/T4, new named-material recipes) | items | `generated, awaiting processing — 9/9` | Codex + Claude Code | Prompt file: `assets/art-generation-requests-2026-08-30-equipment-alternates.md`. Codex generated Sentinel's Lance, Trollhide Buckler, Brute's War-Helm, Warlord's Battleplate, Lurker Claw Gauntlets, Goblin Raider Leggings, Sentinel's Striders, Warlord's Standard Amulet, and Brute Core Band in the shipped 36-icon register. Raw files: `assets/source/items/sentinels_lance.png`, `trollhide_buckler.png`, `brutes_war_helm.png`, `warlords_battleplate.png`, `lurker_claw_gauntlets.png`, `goblin_raider_leggings.png`, `sentinels_striders.png`, `warlords_standard_amulet.png`, and `brute_core_band.png`. Claude Code next: remove the black backgrounds, crop/normalize, import to `assets/art/items/`, create/update item resources and named-material recipes, and verify inventory/equipment rendering. |
+| Alternate equipment icons (9 — one per slot, T3/T4, new named-material recipes) | items | `done — 9/9 generated, processed, and wired` | Codex + Claude Code | All 9 alpha-cut into `assets/art/items/` and wired via `icon = ExtResource(...)`. 2 of 9 hit the same enclosed-loop cut bug as the earlier necklace/ring batch — Warlord's Standard Amulet's chain interior and Brute Core Band's ring hole both cut opaque-black instead of transparent — fixed the same way, color-distance re-cut. Prompt file: `assets/art-generation-requests-2026-08-30-equipment-alternates.md`. |
 
 **Third batch, reactivated 2026-08-29** — the tower Base/Shaft/Top layer
 split (originally requested 2026-08-17) was written up in full but never
