@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bl7blk6viky6j"
-path="res://.godot/imported/rift_sentinel_boss_locomotion.png-22df7e4cf4ebcc12bd7f2c91b0454fa0.ctex"
+uid="uid://bbt7fiurhjft1"
+path="res://.godot/imported/rift_sentinel_boss_animset.png-735075c5c4a7a5058ce157c732ab2a66.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/art/monsters/rift_sentinel_boss_locomotion.png"
-dest_files=["res://.godot/imported/rift_sentinel_boss_locomotion.png-22df7e4cf4ebcc12bd7f2c91b0454fa0.ctex"]
+source_file="res://assets/art/monsters/rift_sentinel_boss_animset.png"
+dest_files=["res://.godot/imported/rift_sentinel_boss_animset.png-735075c5c4a7a5058ce157c732ab2a66.ctex"]
 
 [params]
 

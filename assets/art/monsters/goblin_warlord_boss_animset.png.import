@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://csoe2d68klf68"
-path="res://.godot/imported/goblin_warlord_boss_locomotion.png-2c903680acb6279c87ce1b48fb98d353.ctex"
+uid="uid://bh6ywk31lxrxe"
+path="res://.godot/imported/goblin_warlord_boss_animset.png-f3468d44851b78dbc71b5b114cc519b1.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/art/monsters/goblin_warlord_boss_locomotion.png"
-dest_files=["res://.godot/imported/goblin_warlord_boss_locomotion.png-2c903680acb6279c87ce1b48fb98d353.ctex"]
+source_file="res://assets/art/monsters/goblin_warlord_boss_animset.png"
+dest_files=["res://.godot/imported/goblin_warlord_boss_animset.png-f3468d44851b78dbc71b5b114cc519b1.ctex"]
 
 [params]
 

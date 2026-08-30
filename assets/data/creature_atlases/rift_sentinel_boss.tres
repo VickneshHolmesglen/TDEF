@@ -1,8 +1,8 @@
-[gd_resource type="Resource" script_class="CreatureAtlasMappingResource" load_steps=5 format=3]
+[gd_resource type="Resource" script_class="CreatureAtlasMappingResource" load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://src/core/visual_presentation/creature_atlas_mapping_resource.gd" id="1"]
 [ext_resource type="Script" path="res://src/core/visual_presentation/creature_animation_clip.gd" id="2"]
-[ext_resource type="Texture2D" path="res://assets/art/monsters/rift_sentinel_boss_locomotion.png" id="3"]
+[ext_resource type="Texture2D" path="res://assets/art/monsters/rift_sentinel_boss_animset.png" id="3"]
 
 [sub_resource type="Resource" id="Clip_idle"]
 script = ExtResource("2")
@@ -20,15 +20,31 @@ frame_count = 4
 fps = 8.0
 loop = true
 
+[sub_resource type="Resource" id="Clip_attack_prepare"]
+script = ExtResource("2")
+clip_name = &"attack_prepare"
+start_frame = 5
+frame_count = 4
+fps = 6.0
+loop = true
+
+[sub_resource type="Resource" id="Clip_attack"]
+script = ExtResource("2")
+clip_name = &"attack"
+start_frame = 9
+frame_count = 5
+fps = 10.0
+loop = false
+
 [resource]
 script = ExtResource("1")
 creature_id = &"rift_sentinel_boss"
 family_atlas_id = &"rift_sentinel_boss_family"
 atlas_texture = ExtResource("3")
-atlas_columns = 5
+atlas_columns = 14
 atlas_rows = 1
-frame_count = 5
-animation_clips = [SubResource("Clip_idle"), SubResource("Clip_walk")]
+frame_count = 14
+animation_clips = [SubResource("Clip_idle"), SubResource("Clip_walk"), SubResource("Clip_attack_prepare"), SubResource("Clip_attack")]
 world_width = 2.5
 world_height = 3.0
 foot_anchor_offset = Vector2(0.0, 0.0)
