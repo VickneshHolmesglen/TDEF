@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="EquipmentRecipeResource" format=3]
+
+[ext_resource type="Script" path="res://src/core/equipment_forge/equipment_recipe_resource.gd" id="1_recipe"]
+
+[resource]
+script = ExtResource("1_recipe")
+recipe_id = &"recipe_brutes_war_helm"
+recipe_category = "hero_equipment"
+output_slot = "helmet"
+inputs = {
+&"iron_plating": 32,
+&"Uncommon": 16,
+&"brute_core": 8
+}
+tech_prerequisite = &"tech_production_4"
+output_item_id = &"brutes_war_helm"
+quality_tier = 4
+rune_slot_count = 2

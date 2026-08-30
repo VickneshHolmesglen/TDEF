@@ -108,6 +108,18 @@ batch above.
 | Consumable + material icons (9 CraftedGoods + 5 non-drop-table materials) | items | `done — 14/14 generated, processed, and wired` | Codex + Claude Code | All 14 alpha-cut into `assets/art/items/` and wired. Prompt file: `assets/art-generation-requests-2026-08-29-consumables-materials.md`. Same icon register as the shipped 15-material batch. |
 | Skill icons (13 — Hero Skill Build catalogue, all 4 categories) | items | `done — 13/13 generated, processed, and wired` | Codex + Claude Code | All 13 alpha-cut into `assets/art/items/` and wired onto `SkillDefinitionResource.icon`. Piercing Shot hit the same enclosed-ring cut bug as the necklaces (target ring's donut hole wasn't border-connected) — fixed the same way, color-distance re-cut. Prompt file: `assets/art-generation-requests-2026-08-29-skills.md`. Smaller ~40×40 render scale, bold glyph-first style — also unblocks `tower_mastery_arc.gd`'s placeholder center-glyph, wiring that consumer is still separate follow-up work. |
 
+**Fourth batch, populated 2026-08-30** — user asked for more equipment
+content variety (a 2nd named-monster-material recipe per slot at T3/T4,
+same pattern as the earlier 13-recipe gap-fill pass). Backend content
+(9 new `ItemDefinitionResource`/`EquipmentRecipeResource` pairs, one per
+slot, each reusing an existing monster-material family not already used
+at that slot) written and load-clean by Claude Code same pass — only the
+icon art is missing.
+
+| Item | Category | Status | Owner | Notes |
+|---|---|---|---|---|
+| Alternate equipment icons (9 — one per slot, T3/T4, new named-material recipes) | items | `backlog` | Codex | Prompt file: `assets/art-generation-requests-2026-08-30-equipment-alternates.md`. New items: Sentinel's Lance (weapon T4, rift_sentinel), Trollhide Buckler (offhand T3, troll), Brute's War-Helm (helmet T4, armored_brute), Warlord's Battleplate (chest T4, warlord), Lurker Claw Gauntlets (gloves T3, lurker), Goblin Raider Leggings (pants T3, goblin), Sentinel's Striders (boots T4, rift_sentinel), Warlord's Standard Amulet (neck T4, warlord), Brute Core Band (ring T4, armored_brute). All 9 backend `.tres` pairs already exist under `assets/data/items/` + `assets/data/equipment_recipes/` — Codex only needs to generate the 9 icons, same register as the shipped 36-item equipment batch. |
+
 **Third batch, reactivated 2026-08-29** — the tower Base/Shaft/Top layer
 split (originally requested 2026-08-17) was written up in full but never
 actually added as a trackable backlog row, so it sat orphaned with 0/9
