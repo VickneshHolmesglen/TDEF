@@ -104,7 +104,7 @@ func test_register_boss_with_full_animset_sets_hframes_and_base_clip() -> void:
 	assert_object(_renderer._boss_presenter._overlay_attack_clips[slot]).is_not_null()
 
 
-func test_update_boss_toggles_overlay_visibility_with_attack_telegraph() -> void:
+func test_update_boss_shows_overlay_on_telegraph_and_keeps_it_through_strike() -> void:
 	var handle: MonsterPresentationHandle = _renderer.register_boss(1, &"goblin_warlord_boss", Transform3D.IDENTITY)
 	var moved := Transform3D(Basis(), Vector3(5.0, 0.0, 5.0))
 
@@ -179,8 +179,9 @@ func test_update_boss_advances_base_walk_frame_over_time() -> void:
 
 	_renderer.update_boss(handle, Transform3D.IDENTITY, false, 0.2)
 
+	# 0.2s * 8.0fps = 1.6 -> int 1 -> offset 1 % 4 = 1 -> frame = start_frame(1) + 1 = 2.
 	var advanced_frame: int = _renderer._boss_presenter._base_layers[slot].frame
-	assert_bool(advanced_frame >= 1 and advanced_frame <= 4).is_true()
+	assert_int(advanced_frame).is_equal(2)
 
 
 func test_update_boss_stale_handle_returns_false() -> void:

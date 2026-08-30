@@ -578,8 +578,13 @@ func _advance_entity(entity: MonsterEntity, delta: float) -> void:
 ## (ADR-0038: "full bit allocation is a later, versioned decision").
 ## facing_variant reads MonsterEntity.facing_left, updated by
 ## _advance_entity() during movement. atlas_frame stays 0.0 — real
-## animation frame-cycling is not covered by any of this epic's 10 stories
-## yet, a genuine gap flagged in this story's own Out of Scope section.
+## animation frame-cycling is not covered on this batched swarm path (a
+## genuine gap flagged in this story's own Out of Scope section). This is
+## no longer true for the exceptional/boss path: BossCreaturePresenter3D
+## (below, `entity.boss_presenter_handle != null` branch) drives its own
+## per-frame idle/walk/attack_prepare/attack animation via Sprite3D.frame,
+## a mechanism specific to its individual-Node3D presenter that has no
+## equivalent on this Color-channel-packed MultiMesh path.
 func _pass3c_visual_sync(delta: float) -> void:
 	for entity: MonsterEntity in active_monsters:
 		# See _pass1b_status_effects()'s identical guard for the full

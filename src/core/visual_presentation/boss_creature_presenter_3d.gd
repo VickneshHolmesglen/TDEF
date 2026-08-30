@@ -143,6 +143,12 @@ func register_boss(entity_id: int, monster_id: StringName, world_transform: Tran
 	else:
 		_base_layers[slot].hframes = 1
 		_base_layers[slot].vframes = 1
+		# Sprite3D only re-derives `frame` from a hframes/vframes change when
+		# vframes > 1 -- a slot reused from a previous full-animset boss could
+		# otherwise keep a stale frame index (e.g. 13) that reads out of
+		# bounds against this 1x1 fallback texture.
+		_base_layers[slot].frame = 0
+		_overlay_layers[slot].frame = 0
 		_base_clips[slot] = null
 		_overlay_prepare_clips[slot] = null
 		_overlay_attack_clips[slot] = null
