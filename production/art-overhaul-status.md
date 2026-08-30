@@ -106,7 +106,7 @@ it here as a real queued item rather than a stray cross-reference.
 
 | Item | Category | Status | Owner | Notes |
 |---|---|---|---|---|
-| Tower Base/Shaft/Top layers (9 — 1 Base + 2 Shafts + 6 Tops) | towers | `backlog` | Codex | Prompt file: `assets/art-generation-requests-2026-08-17-tower-components.md`. Lets a custom-assembled tower (Tower Assembly, mix-and-match Foundation/Weapon/Focus/Power) render from real stacked layers instead of always falling back to one fixed archetype sprite. Distinct from the shipped Tower Component *icons* batch above (Inventory-slot icons for the crafted components themselves) — don't conflate the two. Open technical risk flagged in the prompt file itself: layers need a consistent anchor convention (fixed canvas height/width, bottom-edge-aligned) before wiring into `TowerInstance.gd`; the file recommends test-compositing just the Physical set first. |
+| Tower Base/Shaft/Top layers (9 — 1 Base + 2 Shafts + 6 Tops) | towers | `claimed by Codex — physical pilot in progress 2026-08-30` | Codex | Prompt file: `assets/art-generation-requests-2026-08-17-tower-components.md`. Shared convention chosen to resolve the prior scale blocker: every isolated layer uses the same square transparent canvas and bottom-center attachment axis; base occupies ~70% canvas width, solid/open shaft ~42%, and top ~50–55%. Generate and validate the Physical Base+Solid Shaft+Physical Top pilot before the remaining open shaft and five tops. Raw targets use `assets/source/towers/tower_modular_*.png`. |
 
 **Tarot — resolved 2026-08-29, no Codex work needed.** All 13 gameplay
 Tarot cards mapped to and wired against the 22 already-painted Major Arcana
