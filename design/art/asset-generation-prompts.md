@@ -654,6 +654,14 @@ newer variant batch's two-to-one pedestal mismatch. The approved
 `tower_physical_base.png` supplied the fixed camera, material, palette, and
 rendering-style reference for all nine pieces.
 
+**Alpha correction, 2026-08-30:** The open-support shaft plus support, frost,
+and poison tops were delivered as 24-bit RGB with a checkerboard baked into
+the pixels despite the transparency request. They were regenerated
+non-destructively as `_v2.png`; a direct `System.Drawing` pixel-format audit
+confirmed all four replacements are `Format32bppArgb`. Use the `_v2` files,
+not the rejected originals. Their canvases must be normalized with transparent
+padding during processing before shared-axis composite validation.
+
 ---
 
 ## Replacement pedestal bases matched to processed shafts — 9 variants
