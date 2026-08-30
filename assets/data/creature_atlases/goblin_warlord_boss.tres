@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" path="res://src/core/visual_presentation/creature_atlas_mapping_resource.gd" id="1"]
 [ext_resource type="Script" path="res://src/core/visual_presentation/creature_animation_clip.gd" id="2"]
-[ext_resource type="Texture2D" uid="uid://by8gmhf4ktyu7" path="res://assets/art/monsters/goblin_warlord_boss.png" id="3"]
+[ext_resource type="Texture2D" path="res://assets/art/monsters/goblin_warlord_boss_locomotion.png" id="3"]
 
 [sub_resource type="Resource" id="Clip_idle"]
 script = ExtResource("2")
