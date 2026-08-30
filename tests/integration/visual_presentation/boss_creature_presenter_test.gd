@@ -116,6 +116,57 @@ func test_update_boss_toggles_overlay_visibility_with_attack_telegraph() -> void
 
 	var ok_off: bool = _renderer.update_boss(handle, moved, false)
 	assert_bool(ok_off).is_true()
+	# Ending the telegraph enters OVERLAY_STATE_ATTACK (goblin_warlord_boss has
+	# real attack-strike frames) -- the overlay stays visible for the strike,
+	# it does not hide instantly.
+	assert_bool(_renderer._boss_presenter._overlay_layers[slot].visible).is_true()
+
+
+func test_overlay_state_machine_prepare_then_attack_then_hides() -> void:
+	var handle: MonsterPresentationHandle = _renderer.register_boss(1, &"goblin_warlord_boss", Transform3D.IDENTITY)
+	var slot: int = _renderer._boss_presenter._entity_to_slot[handle.entity_id]
+	const HIDDEN := 0
+	const PREPARE := 1
+	const ATTACK := 2
+
+	# Telegraph starts: HIDDEN -> PREPARE, overlay visible.
+	_renderer.update_boss(handle, Transform3D.IDENTITY, true, 0.1)
+	assert_int(_renderer._boss_presenter._overlay_states[slot]).is_equal(PREPARE)
+	assert_bool(_renderer._boss_presenter._overlay_layers[slot].visible).is_true()
+
+	# Telegraph ends (strike moment): PREPARE -> ATTACK, still visible.
+	_renderer.update_boss(handle, Transform3D.IDENTITY, false, 0.05)
+	assert_int(_renderer._boss_presenter._overlay_states[slot]).is_equal(ATTACK)
+	assert_bool(_renderer._boss_presenter._overlay_layers[slot].visible).is_true()
+
+	# attack clip: frame_count=5, fps=10.0 -> 0.5s total duration. Advance past it.
+	_renderer.update_boss(handle, Transform3D.IDENTITY, false, 0.6)
+	assert_int(_renderer._boss_presenter._overlay_states[slot]).is_equal(HIDDEN)
+	assert_bool(_renderer._boss_presenter._overlay_layers[slot].visible).is_false()
+
+
+func test_overlay_attack_uninterruptible_by_new_telegraph() -> void:
+	var handle: MonsterPresentationHandle = _renderer.register_boss(1, &"goblin_warlord_boss", Transform3D.IDENTITY)
+	var slot: int = _renderer._boss_presenter._entity_to_slot[handle.entity_id]
+	const ATTACK := 2
+
+	_renderer.update_boss(handle, Transform3D.IDENTITY, true, 0.1)   # -> PREPARE
+	_renderer.update_boss(handle, Transform3D.IDENTITY, false, 0.05) # -> ATTACK
+	# New telegraph arrives mid-ATTACK -- must NOT interrupt back to PREPARE.
+	_renderer.update_boss(handle, Transform3D.IDENTITY, true, 0.05)
+	assert_int(_renderer._boss_presenter._overlay_states[slot]).is_equal(ATTACK)
+
+
+func test_overlay_falls_back_to_plain_toggle_without_attack_clips() -> void:
+	# iron_colossus_elite has no attack_prepare/attack clips authored (Task 1's
+	# fallback contract) -- overlay must still toggle on/off exactly like the
+	# pre-animation behavior, never get stuck in a state with no clip to play.
+	var handle: MonsterPresentationHandle = _renderer.register_boss(1, &"iron_colossus_elite", Transform3D.IDENTITY)
+	var slot: int = _renderer._boss_presenter._entity_to_slot[handle.entity_id]
+
+	_renderer.update_boss(handle, Transform3D.IDENTITY, true, 0.1)
+	assert_bool(_renderer._boss_presenter._overlay_layers[slot].visible).is_true()
+	_renderer.update_boss(handle, Transform3D.IDENTITY, false, 0.1)
 	assert_bool(_renderer._boss_presenter._overlay_layers[slot].visible).is_false()
 
 
@@ -214,6 +265,14 @@ func test_boss_attack_prepare_shows_overlay_via_physics_process() -> void:
 
 	entity.boss_attack_prepare_remaining = 0
 	_mm._physics_process(DELTA)
+	# Ending the telegraph enters the ATTACK state (goblin_warlord_boss now has
+	# real attack-strike frames) -- the overlay stays visible through the
+	# strike, it does not hide instantly. Confirm the strike eventually ends
+	# by ticking enough additional frames to exceed the attack clip's
+	# duration (frame_count=5, fps=10.0 -> 0.5s; DELTA=1/60 -> 30 ticks).
+	assert_bool(_renderer._boss_presenter._overlay_layers[slot].visible).is_true()
+	for i in range(30):
+		_mm._physics_process(DELTA)
 	assert_bool(_renderer._boss_presenter._overlay_layers[slot].visible).is_false()
 	_free_mm()
 

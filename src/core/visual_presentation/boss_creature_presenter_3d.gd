@@ -174,7 +174,51 @@ func update_boss(handle: MonsterPresentationHandle, world_transform: Transform3D
 		var offset_in_clip: int = frames_elapsed % walk_clip.frame_count
 		_base_layers[slot].frame = walk_clip.start_frame + offset_in_clip
 
-	_overlay_layers[slot].visible = attack_telegraphed
+	var prepare_clip: CreatureAnimationClip = _overlay_prepare_clips[slot]
+	var attack_clip: CreatureAnimationClip = _overlay_attack_clips[slot]
+	if prepare_clip == null or attack_clip == null:
+		# Fallback contract (Task 1): no attack-animation art authored for
+		# this monster_id -- keep the original plain visibility toggle.
+		_overlay_layers[slot].visible = attack_telegraphed
+		return true
+
+	match _overlay_states[slot]:
+		OVERLAY_STATE_HIDDEN:
+			if attack_telegraphed:
+				_overlay_states[slot] = OVERLAY_STATE_PREPARE
+				_overlay_elapsed[slot] = 0.0
+				_overlay_layers[slot].visible = true
+				_overlay_layers[slot].frame = prepare_clip.start_frame
+		OVERLAY_STATE_PREPARE:
+			if not attack_telegraphed:
+				# Telegraph ended -- this is the strike moment. The ATTACK
+				# state always plays to completion, uninterrupted, even if
+				# attack_telegraphed flips true again before it finishes
+				# (ruling: no gameplay signal distinguishes "attack landed"
+				# from "prepare ended" today, so the strike's own visual
+				# duration is authoritative).
+				_overlay_states[slot] = OVERLAY_STATE_ATTACK
+				_overlay_elapsed[slot] = 0.0
+				_overlay_layers[slot].frame = attack_clip.start_frame
+			else:
+				_overlay_elapsed[slot] += delta
+				var frames_elapsed: int = int(_overlay_elapsed[slot] * prepare_clip.fps)
+				_overlay_layers[slot].frame = prepare_clip.start_frame + (frames_elapsed % prepare_clip.frame_count)
+		OVERLAY_STATE_ATTACK:
+			_overlay_elapsed[slot] += delta
+			var duration: float = attack_clip.frame_count / attack_clip.fps
+			# Epsilon guards against float accumulation error (e.g. 30 additions
+			# of 1.0/60.0 lands at 0.49999999999999994, not exactly 0.5) --
+			# without it, a caller ticking exactly N frames at the clip's own
+			# frame rate can miss the boundary by one frame's worth of time.
+			if _overlay_elapsed[slot] >= duration - 0.0001:
+				_overlay_states[slot] = OVERLAY_STATE_HIDDEN
+				_overlay_layers[slot].visible = false
+			else:
+				var frames_elapsed: int = int(_overlay_elapsed[slot] * attack_clip.fps)
+				var clamped_offset: int = mini(frames_elapsed, attack_clip.frame_count - 1)
+				_overlay_layers[slot].frame = attack_clip.start_frame + clamped_offset
+
 	return true
 
 
@@ -186,6 +230,8 @@ func unregister_boss(handle: MonsterPresentationHandle) -> bool:
 		return false
 	_slots[slot].visible = false
 	_overlay_layers[slot].visible = false
+	_overlay_states[slot] = OVERLAY_STATE_HIDDEN
+	_overlay_elapsed[slot] = 0.0
 	_entity_to_slot.erase(handle.entity_id)
 	_free_slots.append(slot)
 	return true
