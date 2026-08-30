@@ -5,7 +5,7 @@
 > process, this file wins; if it's silent, fall back to `AGENTS.md` (Codex) /
 > `CLAUDE.md` (Claude Code) and `design/art/art-bible.md`.
 >
-> **Status**: Process/coordination doc — written 2026-08-23, updated 2026-08-29.
+> **Status**: Process/coordination doc — written 2026-08-23, updated 2026-08-31.
 > The hybrid medium split and category-level Art Bible specifications are
 > locked. The cross-medium Godot pilot **passed** (2026-08-24/25 — see
 > `production/art-overhaul-status.md`'s Production Architecture section) —
@@ -13,21 +13,51 @@
 > it is now populated with a real first batch. **Read §0.5 below before
 > picking up anything — it names Codex's current priority explicitly.**
 
-## 0.5. Current priority (updated 2026-08-30)
+## 0.5. Current priority (updated 2026-08-31)
 
-**The Codex generation backlog is complete.** All eight requested monster
-movement sets have been generated, processed, and wired into dedicated
-locomotion atlases. The two BOSS creatures also have generated and processed
-`attack_prepare` and `attack` animation sets. The authoritative per-asset
-evidence, source paths, processed paths, corrective regenerations, and live
-verification notes are recorded in `production/art-overhaul-status.md`.
+**The Codex generation backlog is complete, and every engine-integration
+follow-up from it is now also complete and live-verified.** Nothing is
+currently `claimed by Codex` or `claimed by Claude Code` anywhere in
+`production/art-overhaul-status.md`. Full picture as of 2026-08-31:
 
-The processed tower Base/Shaft/Top layers and all six weapon-bearing crowns
-were integrated into `TowerInstance` on 2026-08-30. All nine silhouette
-families and six weapon crowns are selected from stable component identity,
-normalized to the 64-world-unit tower height, bottom-anchored, and tuned with
-per-family mount profiles from rendered contact-sheet evidence. The generated
-art backlog and its engine-integration follow-up are therefore complete.
+- **Monster movement + boss attack animation** — all 8 monster movement sets
+  and both BOSS creatures' `attack_prepare`/`attack` sets generated, processed,
+  and wired. `BossCreaturePresenter3D` now has a real per-frame
+  HIDDEN→PREPARE→ATTACK→HIDDEN state machine (added 2026-08-30, not just the
+  visibility toggle it started with), verified by both gdUnit4 (15/15) and a
+  live Godot MCP pass — every stage of both bosses' cycles was actually
+  screenshotted in a running scene. That live pass found and fixed a real bug
+  no test could have caught: `rift_sentinel_boss_animset.png` exceeded the
+  GPU's 16384px max-2D-texture-width limit, which silently failed texture
+  creation at every boot and rendered blank. Fixed by downscaling 0.85×.
+- **Animated monster atlas engine budgets (§5.6 below)** — all 8 animated
+  textures (6 standard/elite locomotion atlases + 2 boss animsets) brought
+  under their PNG/import budgets via uniform Lanczos downsampling to
+  display-scale cell heights, re-imported as BPTC. See
+  `production/qa/evidence/art-overhaul-monster-atlas-budget-2026-08-30/report.md`.
+  This work was verified and documented on 2026-08-30 but sat uncommitted in
+  the shared working tree for a day before Claude Code found and committed it
+  2026-08-31 (`1795b59`) — a reminder to commit promptly once evidence is
+  captured, not just document and move on.
+- **Tower Base/Shaft/Top + weapon-crown integration** — all 9 silhouette
+  families and 6 weapon crowns wired into `TowerInstance`, normalized to
+  64 world units, bottom-anchored, per-family mount profiles tuned from
+  rendered evidence (2026-08-30). Independently live-verified by Claude Code
+  via Godot MCP through the real runtime `configure()` path (not just Codex's
+  own capture-only proxy harness) — confirmed clean joins across every tested
+  shape. **That pass found a real content-coverage gap, since fixed**: of the
+  3 tower foundations this project actually ships (`found_archer_t1`,
+  `found_iron_t1`, `found_reinforced_t2`), only `found_archer_t1` matched
+  `resolve_shape_for_component()`'s keyword list — the other two silently fell
+  through to the generic modular fallback and rendered identically to each
+  other. Fixed 2026-08-31: both now resolve to `&"square"` (shared with
+  bulwark/warbreaker's defensive identity). A regression test now reads the
+  real `assets/data/tower_components/foundation_*.tres` files directly rather
+  than a hardcoded synthetic ID list, so this class of gap can't recur
+  silently. **6 of the 9 named shape families are still reachable only by
+  synthetic/future component IDs** — real content for the remaining shapes
+  (siege/railgun/arcane/storm/frost/venom-flavored foundations) doesn't exist
+  yet. That's a content gap for a future backlog item, not a bug.
 
 Until a new row is explicitly added to the shared backlog, Codex must not
 invent or mass-generate additional project-bound assets. Codex should keep the
