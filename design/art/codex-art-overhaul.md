@@ -45,19 +45,27 @@ currently `claimed by Codex` or `claimed by Claude Code` anywhere in
   rendered evidence (2026-08-30). Independently live-verified by Claude Code
   via Godot MCP through the real runtime `configure()` path (not just Codex's
   own capture-only proxy harness) — confirmed clean joins across every tested
-  shape. **That pass found a real content-coverage gap, since fixed**: of the
-  3 tower foundations this project actually ships (`found_archer_t1`,
-  `found_iron_t1`, `found_reinforced_t2`), only `found_archer_t1` matched
-  `resolve_shape_for_component()`'s keyword list — the other two silently fell
-  through to the generic modular fallback and rendered identically to each
-  other. Fixed 2026-08-31: both now resolve to `&"square"` (shared with
-  bulwark/warbreaker's defensive identity). A regression test now reads the
-  real `assets/data/tower_components/foundation_*.tres` files directly rather
-  than a hardcoded synthetic ID list, so this class of gap can't recur
-  silently. **6 of the 9 named shape families are still reachable only by
-  synthetic/future component IDs** — real content for the remaining shapes
-  (siege/railgun/arcane/storm/frost/venom-flavored foundations) doesn't exist
-  yet. That's a content gap for a future backlog item, not a bug.
+  shape. That pass also fixed a small real gap in the standalone
+  `assets/data/tower_components/*.tres` pool (`found_iron_t1`/
+  `found_reinforced_t2` weren't matching the resolver's keyword list; both now
+  resolve to `&"square"`), with a regression test guarding it. **Correction
+  (2026-08-31)**: an earlier version of this note claimed only 1 of the 9
+  named shapes was reachable by real gameplay content — that was wrong. It
+  only checked the standalone `tower_components/` pool, not this project's
+  actual PRIMARY placeable content: the 18 shipped `TowerBlueprintData` files
+  under `assets/data/towers/blueprints/` (see
+  `design/gdd/tower-content-catalogue.md`). Every one of those 18 already
+  embeds a `Foundation` sub-resource whose `component_id` matches the
+  resolver (`found_siege_t4`, `found_arcane_t3`, `found_railgun_t4`,
+  `found_grandrally_t4`, `found_frostbolt_t1`, `found_venomdart_t1`,
+  `found_rally_t1`, `found_bulwark_t2`/`found_warbreaker_t3`, plus 4 more
+  mapping to `round`), and `TowerSystem.place_tower()` forwards that real
+  `component_id` straight through to `TowerInstance.configure()` on
+  placement. Live-verified via Godot MCP: placed real towers by real
+  blueprint ID in a running mission and confirmed each resolved to, and
+  rendered, its correct distinct shape. **All 9 named shapes are already
+  reachable through real, normal gameplay today** — there is no content gap
+  here to fill.
 
 Until a new row is explicitly added to the shared backlog, Codex must not
 invent or mass-generate additional project-bound assets. Codex should keep the
