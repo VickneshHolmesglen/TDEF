@@ -3,20 +3,21 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://c0sqt11oa1ecv"
-path="res://.godot/imported/spore_skitterling_locomotion.png-d6736e6c1f693891f3104c558055d1cf.ctex"
+path.bptc="res://.godot/imported/spore_skitterling_locomotion.png-d6736e6c1f693891f3104c558055d1cf.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/art/monsters/spore_skitterling_locomotion.png"
-dest_files=["res://.godot/imported/spore_skitterling_locomotion.png-d6736e6c1f693891f3104c558055d1cf.ctex"]
+dest_files=["res://.godot/imported/spore_skitterling_locomotion.png-d6736e6c1f693891f3104c558055d1cf.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
