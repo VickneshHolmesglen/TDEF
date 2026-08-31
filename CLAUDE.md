@@ -60,6 +60,21 @@ When a task involves writing actual game code, produce Qwen-ready specs and
 implementation blueprints — do not author GDScript directly unless the user
 explicitly asks Claude to do so.
 
+## Codex Workload Balance
+
+This project runs Claude Code and Codex side by side. Actively look for work
+to route to Codex instead of defaulting everything to Claude Code — the goal
+is both agents carrying a comparable share of the workload, not Claude Code
+doing everything while Codex sits idle. Codex's proven strength is art
+generation (drafting prompts, running image generation, dropping raw output
+into `assets/source/<category>/` — see `design/art/codex-art-overhaul.md`);
+when scoping a session, check whether any pending backlog/content work is
+art-shaped and hand it to Codex rather than picking it up directly. This does
+NOT loosen the existing role boundary in `design/art/codex-art-overhaul.md`
+§3 — Codex drafts/generates, Claude Code processes/wires/writes engine code.
+If Codex has written GDScript or engine/scene code directly, flag it to the
+user rather than silently accepting or reverting it.
+
 ## Coding Standards
 
 See `.claude/docs/coding-standards.md` — read when writing code, authoring GDDs, or setting up tests.
