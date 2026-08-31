@@ -1,17 +1,21 @@
 ## Unit tests for Story 010 (TR-towermast-001, ADR-0029): mastery_time
-## accrual (Formula 1), progress_percent display clamp (Formula 2), and the
-## set-before-emit unlock idempotency (Formula 3).
+## accrual (Formula 1), progress_percent display clamp (Formula 2), and
+## Formula 3's skill_tree_point_earned granting (revised 2026-09-01 for
+## hero-skill-tree.md/tower-mastery.md's Rule 13 revision — Tower Mastery no
+## longer unlocks a skill directly; it grants a repeating, archetype-keyed
+## skill tree point on every whole multiple of MASTERY_THRESHOLD_SECONDS
+## crossed, tracked via points_granted_count rather than a one-shot flag).
 ##
 ## TowerMastery is instantiated directly (TowerMastery.new(), no add_child())
 ## so _ready() never fires — handler methods and tick() are called directly
 ## with a GridSpyDouble injected on _grid, matching Stories 007-009's own
 ## established convention for this system's tests.
 ##
-## Per the story's own note: "frost_bolt_skill_a" and any skill_id used here
-## is illustrative only — no real skill catalogue exists yet (deferred
-## content, Rule 7/ADR-0030). tower_mastery.gd's current implementation uses
-## the build_signature itself as a placeholder skill_id, so these tests
-## assert against the signature string, not a real catalogue entry.
+## "physical" (the archetype string TowerPlacedEvent.make()'s 3rd argument
+## carries here) is used as a valid, real archetype value throughout — Hero
+## Skill Tree's own point-crediting handler validates against the 4 real
+## archetype strings, so these tests use one rather than the pre-revision
+## placeholder "BASIC" to stay representative of a real emission.
 extends GdUnitTestSuite
 
 var _tower_mastery: TowerMastery
@@ -26,7 +30,7 @@ func before_test() -> void:
 	_tower_mastery._current_phase = "WAVE_ACTIVE"
 	_spy = EventBusSpy.new()
 	_spy.watch(GEventBus.mastery_progress_updated)
-	_spy.watch(GEventBus.skill_unlocked)
+	_spy.watch(GEventBus.skill_tree_point_earned)
 
 
 func after_test() -> void:
@@ -41,7 +45,7 @@ func after_test() -> void:
 func _place_and_track(tower_id: int, cell: Vector2i) -> void:
 	_grid.place(tower_id, cell)
 	_tower_mastery._on_tower_placed(TowerPlacedEvent.make(
-		tower_id, cell, "BASIC", Vector2i.ONE, true, "", "found_basic", "weap_frost_bolt", "focus_none", "power_none"
+		tower_id, cell, "physical", Vector2i.ONE, true, "", "found_basic", "weap_frost_bolt", "focus_none", "power_none"
 	))
 	_tower_mastery._signatures_in_range[_tower_mastery._active_signature_by_tower[tower_id]] = true
 
@@ -96,55 +100,81 @@ func test_progress_percent_reflects_partial_progress_below_threshold() -> void:
 
 
 # ---------------------------------------------------------------------------
-# AC-21: unlocked_skills[skill_id] set true BEFORE skill_unlocked emits;
-# idempotent same-frame re-evaluation (cannot double-fire same tick)
+# Formula 3 (revised 2026-09-01): points_granted_count[signature] set BEFORE
+# skill_tree_point_earned emits; idempotent same-frame re-evaluation (a
+# repeat tick() call within the same frame, crossing no NEW multiple, must
+# not double-fire).
 # ---------------------------------------------------------------------------
 
-func test_unlock_flag_set_before_emit_and_same_tick_reevaluation_does_not_refire() -> void:
+func test_point_grant_count_set_before_emit_and_same_tick_reevaluation_does_not_refire() -> void:
 	_place_and_track(0, Vector2i(2, 2))
 	var signature: String = _tower_mastery._active_signature_by_tower[0]
 
-	_tower_mastery.tick(45.0)  # crosses threshold this tick
+	_tower_mastery.tick(45.0)  # crosses 1 whole multiple this tick
 
-	assert_bool(_tower_mastery._unlocked_signatures.get(signature, false)).is_true()
-	assert_int(_spy.count("skill_unlocked")).is_equal(1)
+	assert_int(_tower_mastery.points_granted_count.get(signature, 0)).is_equal(1)
+	assert_int(_spy.count("skill_tree_point_earned")).is_equal(1)
 
 	# Same-tick re-evaluation (a second tick() call within the same frame,
-	# simulating any re-entrant recompute) must not double-fire.
+	# simulating any re-entrant recompute) crosses no further multiple and
+	# must not double-fire.
 	_tower_mastery.tick(0.0)
-	assert_int(_spy.count("skill_unlocked")).is_equal(1)
+	assert_int(_spy.count("skill_tree_point_earned")).is_equal(1)
 
 
-func test_skill_unlocked_uses_representative_live_tower_id() -> void:
+func test_skill_tree_point_earned_carries_archetype_and_representative_live_tower_id() -> void:
 	_place_and_track(5, Vector2i(2, 2))
-	var signature: String = _tower_mastery._active_signature_by_tower[5]
 
 	_tower_mastery.tick(45.0)
 
-	var emissions: Array = _spy.emissions["skill_unlocked"] as Array
-	assert_str(emissions[0][0] as String).is_equal(signature)
+	var emissions: Array = _spy.emissions["skill_tree_point_earned"] as Array
+	assert_str(emissions[0][0] as String).is_equal("physical")
 	assert_int(emissions[0][1] as int).is_equal(5)
 
 
 # ---------------------------------------------------------------------------
-# AC-22: post-unlock accrual continues unbounded; skill_unlocked never
-# re-fires for the same skill_id
+# Rule 14 (past-100% continuation, revised 2026-09-01): post-grant accrual
+# continues unbounded AND grants a further point on every subsequent whole
+# multiple of MASTERY_THRESHOLD_SECONDS crossed — this is the behavior
+# change from the pre-revision one-shot skill_unlocked: the point economy is
+# a repeating faucet, not a single unlock.
 # ---------------------------------------------------------------------------
 
-func test_post_unlock_accrual_continues_unbounded_without_refiring() -> void:
+func test_post_grant_accrual_continues_and_grants_further_points_on_each_crossing() -> void:
 	_place_and_track(0, Vector2i(2, 2))
 	var signature: String = _tower_mastery._active_signature_by_tower[0]
 
-	_tower_mastery.tick(45.0)
-	assert_int(_spy.count("skill_unlocked")).is_equal(1)
+	_tower_mastery.tick(45.0)  # 1st crossing (45.0 / 45.0 = 1)
+	assert_int(_spy.count("skill_tree_point_earned")).is_equal(1)
 
-	_tower_mastery.tick(100.0)
+	_tower_mastery.tick(100.0)  # mastery_time now 145.0 -> floor(145/45) = 3 total crossings
 	assert_float(_tower_mastery.mastery_time[signature]).is_equal_approx(145.0, 0.0001)
-	assert_int(_spy.count("skill_unlocked")).is_equal(1)
+	assert_int(_tower_mastery.points_granted_count[signature]).is_equal(3)
+	assert_int(_spy.count("skill_tree_point_earned")).is_equal(3)  # 1 + 2 more granted this tick
 
 	var emissions: Array = _spy.emissions.get("mastery_progress_updated", []) as Array
 	var last: Array = emissions[emissions.size() - 1] as Array
 	assert_float(last[2] as float).is_equal_approx(100.0, 0.0001)
+
+
+# ---------------------------------------------------------------------------
+# A signature with no tracked archetype (e.g. no tower_placed ever set one)
+# never grants a point — a missing archetype is a data gap, not a "grant
+# under an empty-string archetype" fallback.
+# ---------------------------------------------------------------------------
+
+func test_no_grant_fires_when_signature_has_no_tracked_archetype() -> void:
+	_grid.place(0, Vector2i(2, 2))
+	var signature: String = TowerMastery.compute_build_signature("found_basic", "weap_frost_bolt", "focus_none", "power_none")
+	_tower_mastery._active_signature_by_tower[0] = signature
+	_tower_mastery._signatures_in_range[signature] = true
+	# Deliberately never call _on_tower_placed(), so _archetype_by_signature
+	# has no entry for this signature.
+
+	_tower_mastery.tick(45.0)
+
+	assert_int(_spy.count("skill_tree_point_earned")).is_equal(0)
+	assert_float(_tower_mastery.mastery_time[signature]).is_equal_approx(45.0, 0.0001)
 
 
 # ---------------------------------------------------------------------------
@@ -155,13 +185,13 @@ func test_post_unlock_accrual_continues_unbounded_without_refiring() -> void:
 func test_two_different_signatures_accrue_independently_in_parallel() -> void:
 	_grid.place(1, Vector2i(2, 2))
 	_tower_mastery._on_tower_placed(TowerPlacedEvent.make(
-		1, Vector2i(2, 2), "BASIC", Vector2i.ONE, true, "", "found_basic", "weap_frost_bolt", "focus_none", "power_none"
+		1, Vector2i(2, 2), "physical", Vector2i.ONE, true, "", "found_basic", "weap_frost_bolt", "focus_none", "power_none"
 	))
 	var sig_frost: String = _tower_mastery._active_signature_by_tower[1]
 
 	_grid.place(2, Vector2i(5, 5))
 	_tower_mastery._on_tower_placed(TowerPlacedEvent.make(
-		2, Vector2i(5, 5), "BASIC", Vector2i.ONE, true, "", "found_siege", "weap_cannon", "focus_none", "power_none"
+		2, Vector2i(5, 5), "ranged", Vector2i.ONE, true, "", "found_siege", "weap_cannon", "focus_none", "power_none"
 	))
 	var sig_siege: String = _tower_mastery._active_signature_by_tower[2]
 	assert_str(sig_frost).is_not_equal(sig_siege)
