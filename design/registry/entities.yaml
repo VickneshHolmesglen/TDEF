@@ -37,7 +37,7 @@
 #   Each entry: name, status, source, referenced_by[], attributes{}, added, revised
 
 version: 1
-last_updated: "2026-07-16" # crafting.md formulas added
+last_updated: "2026-08-31" # hero-skill-tree.md consistency-check pass: skill_tree_point_grant formula added, hero_skill_category referenced_by extended, tower_mastery_build_signature note corrected (unlocked_skills -> points_granted_count)
 
 # ─── ENTITIES ────────────────────────────────────────────────────────────────
 # Named game-world objects: enemies, NPCs, characters, factions, bosses.
@@ -335,15 +335,19 @@ formulas:
       so it cannot be used to key cross-mission-persistent mastery progress. This
       build_signature (a 4-part pipe-delimited string of the tower's full component
       loadout) is the stable key used instead for all persistent storage
-      (mastery_time, unlocked_skills); tower_id is still used, unchanged, as the
-      live per-mission field in the frozen mastery_progress_updated/skill_unlocked
-      event payloads. Requires a NEW Tower System API this GDD depends on but does
+      (mastery_time, points_granted_count); tower_id is still used, unchanged, as the
+      live per-mission field in the frozen mastery_progress_updated event payload.
+      # was: '(mastery_time, unlocked_skills)' before 2026-08-31 — unlocked_skills was
+      # retired by hero-skill-tree.md's companion revision to tower-mastery.md Rule 13/5,
+      # replaced by points_granted_count: Dictionary[String, int] (repeating point grants,
+      # not a one-time unlock flag).
+      Requires a NEW Tower System API this GDD depends on but does
       not implement: TowerSystem.get_component_loadout(tower_id) ->
       Dictionary[String, String] — tower_placed's current payload does not carry
       the 4-slot component loadout. Assumption flagged: component ID strings are
       assumed to never contain the '|' delimiter."
     added: 2026-07-16
-    revised: ""
+    revised: "2026-08-31"
 
   - name: defense_building_tech_node_cost
     status: active
@@ -464,6 +468,36 @@ formulas:
       calibrated independently in tower.md. Tower System applies bonus_type/bonus_value to
       its own stats; Constellation System does not modify Tower state directly."
     added: 2026-07-16
+    revised: ""
+
+  - name: skill_tree_point_grant
+    status: active
+    source: design/gdd/hero-skill-tree.md
+    referenced_by:
+      - design/gdd/hero-skill-tree.md
+      - design/gdd/tower-mastery.md
+    variables:
+      - mastery_time
+      - mastery_threshold_seconds
+      - points_granted_count
+      - all_nodes_unlocked
+    output_range: []
+    expression: "points_earnable = floor(mastery_time[build_signature] / mastery_threshold_seconds); new_points = points_earnable - points_granted_count[build_signature]; grants 1 skill_tree_point_earned per crossing, gated by NOT all_nodes_unlocked(chain[archetype_of(build_signature)])"
+    notes: "Formula 1 in hero-skill-tree.md, the sole trigger for that system's
+      archetype-keyed skill tree point income. Revises tower-mastery.md's former
+      Formula 3 (Skill Unlock Condition, retired 2026-08-31): a mastery threshold
+      crossing no longer directly unlocks a specific skill_id, it grants one
+      repeating point to the crossed build_signature's Foundation-derived
+      archetype pool. tower-mastery.md's own (revised) Formula 3 explicitly
+      restates this arithmetic from its side of the system boundary and names
+      this entry as canonical -- the two should never be allowed to drift; if a
+      future edit changes one, update both same-session. Uncapped until the
+      mastered archetype's 4-node hero-skill-tree.md chain is fully spent
+      (all_nodes_unlocked guard, added during that GDD's own 2026-08-31 re-review
+      to close an unbounded-faucet defect found by economy-designer review) --
+      after that point this formula stops crediting new points for that archetype,
+      though mastery_time/points_granted_count both keep advancing unaffected."
+    added: 2026-08-31
     revised: ""
 
 # Example:
@@ -1137,6 +1171,7 @@ constants:
     referenced_by:
       - design/gdd/tower.md
       - design/gdd/hero-skill-build.md
+      - design/gdd/hero-skill-tree.md
     value: "physical | ranged | elemental | support (4 fixed values)"
     unit: enum (Foundation component archetype, reused)
     notes: "hero-skill-build.md's skill catalogue tags every learnable skill with
@@ -1147,9 +1182,14 @@ constants:
       matrix never needs its own separate category vocabulary from Tower's
       existing archetype system, and so hero-skill-build.md's visual language
       (archetype icon/color per slot) reuses tower.md's existing icon/accent
-      vocabulary directly with zero new iconography."
+      vocabulary directly with zero new iconography.
+      2026-08-31: hero-skill-tree.md also reuses this exact enum verbatim for its
+      4 skill tree point pools and per-archetype node chains — a build signature's
+      Foundation-derived archetype (per tower-mastery.md Rule 4/tower.md Rule 5)
+      determines which of these 4 pools a granted point credits. Third consumer of
+      this one shared taxonomy, not a fourth independently-authored vocabulary."
     added: 2026-07-17
-    revised: ""
+    revised: "2026-08-31"
 
   - name: constellation_pattern_search_radius
     status: active

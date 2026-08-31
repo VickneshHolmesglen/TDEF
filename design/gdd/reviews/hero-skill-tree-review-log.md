@@ -19,3 +19,31 @@ User chose "revise now." Two design decisions needed the user's call (grouped in
 7 non-blocking findings also addressed inline in the same pass: Formula 2 gained an explicit `all_nodes_unlocked` guard (the qa-lead/economy-designer shared root cause, now also structurally impossible to hit as an out-of-bounds index even independent of the income fix); a migration note for Tower Mastery's retired `_unlocked_skills` dict; a Dependencies line flagging `event-bus.md`'s existing `skill_unlocked` entry as stale, not just needing new events added; 3 new Acceptance Criteria (AC-9 fully-unlocked-chain rejection, AC-10 `-1` sentinel consumer tolerance, AC-11 explicit land-together gate against `tower-mastery.md`); an explicit save/load atomicity Edge Case; a functional (non-visual) Sanctuary UI requirement to expose chain position at a glance; and Group 4's Minor-node content deferral reframed as load-bearing (must be authored before implementation, not a trailing pass).
 
 Not yet re-reviewed.
+
+## Review — 2026-08-31 — Verdict: NEEDS REVISION (re-review, same day)
+Scope signal: L
+Specialists: game-designer, systems-designer, economy-designer, qa-lead, creative-director (senior synthesis)
+Blocking items: 2 confirmed blocking + 2 near-blocking AC gaps (elevated by creative-director) | Recommended: 4 | Nice-to-have: 4
+Summary: The two originally-blocking items from the first review (income ceiling, out-of-bounds index) were confirmed genuinely closed by systems-designer. New issues found: Formula 1 had no stopping condition once an archetype's chain fully unlocks (economy-designer, an unbounded points/notification faucet with no sink) and referenced an undefined `catalogue[build_signature].archetype` schema field (systems-designer, elevated to blocking by creative-director). qa-lead found AC-11 asserted an untestable cross-document fact and flagged a missing save-migration AC. game-designer called the Player Fantasy's "which archetype to advance first" promise structurally broken (spend order doesn't change eventual outcome since points are uncapped/non-fungible) — creative-director partially disagreed, reframing this as a prose overclaim (the real, defensible decision is tempo/sequencing, not sacrifice) rather than a structural defect, and downgraded it from blocking to recommended.
+Prior verdict resolved: Yes — the first review's 3 blockers stayed closed through this pass; this pass surfaced different issues in the revision itself.
+
+## Revision — 2026-08-31 — same day
+User chose "revise now." Two design decisions needed the user's call, grouped into one AskUserQuestion round: (1) how Formula 1 should behave once a chain is maxed — user chose "stop granting entirely once maxed"; (2) whether the ~2x pacing slowdown from Minor nodes riding the same threshold currency was intended — user chose "yes, ratify it as intended."
+
+| # | Item | Fix applied |
+|---|---|---|
+| 1 | Formula 1 — no stopping condition once a chain maxes out | Added an explicit `all_nodes_unlocked` guard before and inside the grant loop; a maxed archetype stops earning points/emitting `skill_tree_point_earned`, though `mastery_time` tracking continues unaffected for HUD display |
+| 2 | Formula 1 referenced undefined `catalogue[build_signature].archetype` field | Replaced with `archetype_of(build_signature)`, deriving archetype from the Foundation component per `tower-mastery.md` Rule 4/`tower.md` Rule 5, matching how the rest of the system already does it |
+| 3 | AC-11 asserted an untestable fact about `tower-mastery.md`'s own codebase | Rescoped to this system's own single `skill_unlocked` emission site; the cross-document dead-code claim explicitly left for `tower-mastery.md`'s own Acceptance Criteria |
+| 4 | No AC for the pre-revision-save migration risk | Added AC-12 |
+| 5 | Formula 1's multi-write grant loop had no atomicity guarantee | Added a matching Edge Case, mirroring Formula 2's existing one |
+| 6 | ~2x pacing slowdown never explicitly ratified | Confirmed intentional in Tuning Knobs, no retuning applied |
+| 7 | Player Fantasy overclaimed sacrifice/allocation | Reframed the closing beat around tempo ("which path pays off soonest") |
+
+User then chose "accept revisions and mark Approved" without a further re-review pass — `hero-skill-tree.md`'s Status header and `systems-index.md` updated to Approved accordingly.
+
+## Confirmation Re-review — 2026-08-31 — Verdict: APPROVED (confirmed clean)
+Scope signal: L (unchanged)
+Specialists: none — lean/solo confirmation pass, matching this project's established convention for re-reviews with no new design surface (companion-document landing only, since the last full pass)
+Summary: User requested a follow-up `/design-review` after the `tower-mastery.md`/`event-bus.md` companion revisions landed, to confirm cross-document cleanliness. Found and fixed 4 documentation-drift items, no design-logic issues: (1) this GDD's Dependencies section still described the EventBus and Save & Persistence gaps as open, though both had already been resolved earlier in the same session — updated to RESOLVED; (2) `restore_order = 37` had been proposed in this GDD but never actually landed in `save-persistence.md`'s two authoritative tables (the same "proposed but never added" drift pattern this project has caught for Crafting/Building Upgrade/Tower Assembly) — added, with `save-persistence.md`'s system count corrected 15→16 in 3 places; (3) `hero-skill-build.md`'s `mastery_source_build_signature` field found to be vestigial at runtime under the new archetype-pool model (mirroring the equivalent flag already added to `tower-mastery.md` Rule 7) — flagged in both documents; (4) the Notes section's "is written to be land-together" language updated to reflect that the companion revision has actually landed.
+Prior verdict resolved: Yes — no regression from the prior Approved state; all fixes this pass were staleness corrections between documents, not changes to this GDD's own mechanics.
