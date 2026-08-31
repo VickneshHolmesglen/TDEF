@@ -110,23 +110,28 @@ func test_item_added_does_not_discover_tech_gated_recipe_before_tech_unlocked() 
 		assert_str(emission[0] as String).is_not_equal(String(RECIPE_REINFORCED_PLATE))
 
 
-## Corrected 2026-08-26 (live gdUnit4 run + Godot MCP diagnostic):
-## recipe_iron_greaves.tres (also gated on tech_production_2, also
-## {&"Material": 6}) was added at some point after this test's original
-## "exactly one recipe" assumption was written — live-verified via
-## run_script against the real registry: this exact scenario (6 Material
-## seeded, tech_production_2 unlocked) fires exactly 2 recipe_discovered
-## events, recipe_iron_greaves then recipe_reinforced_plate. Both are real,
-## correctly-discovered recipes, not a bug — this test's actual intent
-## (reinforced_plate becomes discovered once both gates are true) is
-## preserved, just with the now-accurate count and both real recipe ids
-## checked instead of assuming reinforced_plate is the sole emission.
+## Corrected 2026-08-26, then again 2026-08-31 (live gdUnit4 run + Godot MCP
+## diagnostic each time) — this assertion keeps going stale because new
+## equipment content keeps legitimately satisfying the same discovery
+## criteria (gated on tech_production_2 or ungated, needs <=6 common_scrap),
+## not because of any bug. 2026-08-26 found recipe_iron_greaves had joined
+## recipe_reinforced_plate (2 total). 2026-08-31's full equipment-batch pass
+## (alternate T3/T4 recipes across every slot) added several more real
+## recipes that also clear this bar — live-verified via run_script against
+## the real registry: this exact scenario now fires exactly 8
+## recipe_discovered events (recipe_iron_band, recipe_iron_buckler,
+## recipe_iron_greaves, recipe_reinforced_boots, recipe_reinforced_gauntlets,
+## recipe_reinforced_helm, recipe_reinforced_plate, recipe_silver_pendant).
+## All 8 are real, correctly-discovered recipes, not a bug. Checking the full
+## real set (not just the two originally singled out) so the next new
+## qualifying recipe fails loudly here instead of silently inflating an
+## un-asserted count.
 func test_tech_unlocked_discovers_recipe_once_materials_already_sufficient() -> void:
 	_seed_material(6)
 	_forge._on_tech_unlocked(String(TECH_PRODUCTION_2), "production_tech")
 
 	assert_bool(_forge.is_discovered(RECIPE_REINFORCED_PLATE)).is_true()
-	assert_int(_spy.count("recipe_discovered")).is_equal(2)
+	assert_int(_spy.count("recipe_discovered")).is_equal(8)
 	var emissions: Array = _spy.emissions["recipe_discovered"] as Array
 	var discovered_ids: Array = []
 	var category_by_id: Dictionary = {}
@@ -134,8 +139,15 @@ func test_tech_unlocked_discovers_recipe_once_materials_already_sufficient() -> 
 		var id: String = emission[0] as String
 		discovered_ids.append(id)
 		category_by_id[id] = emission[1] as String
-	assert_bool(discovered_ids.has(String(RECIPE_REINFORCED_PLATE))).is_true()
-	assert_bool(discovered_ids.has(String(&"recipe_iron_greaves"))).is_true()
+	var expected_ids: Array[String] = [
+		"recipe_iron_band", "recipe_iron_buckler", "recipe_iron_greaves",
+		"recipe_reinforced_boots", "recipe_reinforced_gauntlets",
+		"recipe_reinforced_helm", "recipe_reinforced_plate", "recipe_silver_pendant",
+	]
+	for expected_id: String in expected_ids:
+		assert_bool(discovered_ids.has(expected_id)).append_failure_message(
+			"expected recipe '%s' to be discovered in this scenario, but it wasn't" % expected_id
+		).is_true()
 	assert_str(category_by_id[String(RECIPE_REINFORCED_PLATE)] as String).is_equal("hero_equipment")
 
 
