@@ -51,6 +51,7 @@ then core gameplay, then cross-system features, then presentation.
 | 25 | Tarot Deck UI (inferred) | Presentation | Alpha | Approved — caveat resolved, its entry point (Core Rule 3) now depends on Sanctuary UI's Approved Core Rule 10 | design/gdd/tarot-deck-ui.md | Tarot, Hero Skill Build, Save & Persistence, Sanctuary UI |
 | 26 | Building Upgrade System (inferred) | Sanctuary | Alpha | **Complete** — `/design-review` run 2026-08-12 (6 specialists + creative-director synthesis), verdict NEEDS REVISION, all 5 blocking items addressed same-session (per-requirement legibility, PURCHASABLE-transition/purchase feedback, stale AC-6 replaced, prerequisite-cycle guard + chain cap, Player Fantasy overclaim softened). Epic 14 created and all 5 stories Complete same day. Recipe-style upgrades for already-built Defense Building structures, gated on a combination of 1-4 requirement categories (another built structure, a specific crafted Equipment item, a specific unlocked Tarot card, a specific owned Menagerie creature species) — all named requirements must be simultaneously true, none are consumed. All 4 requirement categories resolved, including `"tarot"` (Tarot converted to a real Autoload via ADR-0035, closing the independent Tarot save-data-loss bug found during review — `production/qa/bugs/BUG-0001.md`, now Closed). | design/gdd/building-upgrade.md | Defense Building, Inventory, Tarot, Menagerie, Equipment Forge, Resource Economy, EventBus, Save & Persistence |
 | 27 | Tower Assembly System (inferred) | Sanctuary | Alpha | **Shipped, undocumented at GDD level** — implemented and tested (`src/core/tower_assembly/tower_assembly.gd`, 15+ unit/integration tests, live "Assemble Towers" Forge tab) but authored only as a quick-spec, never promoted to a full 8-section GDD or added to this index until this row (2026-08-17 — closed as a real tracking gap found while extending the system with blueprint-sourced components, below). Lets the player combine one owned Foundation/Weapon/Focus/Power component into a brand-new, permanently placeable `TowerBlueprintData`. **2026-08-17 extension** (player-requested): components can now also be crafted as exact copies of a pre-authored basic tower's own embedded component (e.g. "Craft Archer Foundation"), funded by a new Mission-End Building Material Surplus grant (`resource-economy.md` Formula 6) — alongside, not replacing, the original raw-material Crafting recipes. | design/quick-specs/tower-assembly-2026-08-11.md | Inventory, Crafting, EventBus, Save & Persistence, Resource Economy |
+| 28 | Hero Skill Tree | Cross-Cutting | Alpha | **Draft — not yet reviewed** (new 2026-08-31, user-requested). Inserts a spendable-point economy between Tower Mastery's mid-combat mastery accrual and the existing Hero Skill Build library: crossing a mastery threshold now grants an archetype-keyed skill tree point instead of directly unlocking a skill; the player spends points at Sanctuary on 4 fixed linear archetype chains (4 nodes each, alternating minor stat/passive nodes with the archetype's 2 existing catalogued skills). **Revises an Approved GDD**: `tower-mastery.md` Rule 13 changes (accrual itself, Rules 1-12/14, is untouched) — this doc is written to land together with that revision, not as a standalone addition. Not yet run through `/design-review`. Visual/UI treatment of the tree explicitly out of scope (OQ-3) — separate art-generation delegation once node count/structure are Approved. | design/gdd/hero-skill-tree.md | Tower Mastery (revises Rule 13), Hero Skill Build, Hero, EventBus, Save & Persistence, Sanctuary UI |
 
 ---
 
@@ -115,6 +116,7 @@ Systems sorted by dependency order — design and build top to bottom.
 2. **Equipment Forge System** — depends on: Hero, Crafting, Menagerie, Constellation, Tarot, Inventory, Save & Persistence
 3. **Building Upgrade System** — depends on: Defense Building, Inventory, Tarot, Menagerie, Equipment Forge, Resource Economy, EventBus, Save & Persistence
 4. **Encyclopedia System** — depends on: Save & Persistence, EventBus
+5. **Hero Skill Tree** — depends on: Tower Mastery (revises Rule 13), Hero Skill Build, Hero, EventBus, Save & Persistence, Sanctuary UI (Draft, not yet reviewed — added 2026-08-31)
 
 ### Presentation Layer (wraps all gameplay systems)
 
@@ -157,6 +159,7 @@ Systems in this order — independent systems at the same layer can be designed 
 | 25 | Tarot Deck UI | Alpha | Presentation | M |
 | 26 | Audio System | Full Vision | Presentation | M |
 | 27 | Tower Assembly System | Alpha | Advanced | M |
+| 28 | Hero Skill Tree | Alpha | Advanced | M |
 
 *Effort: S = 1 session · M = 2–3 sessions · L = 4+ sessions. A session = one focused design conversation producing a complete GDD.*
 
@@ -201,13 +204,13 @@ Systems with the highest number of downstream dependents — these carry the mos
 
 | Metric | Count |
 |--------|-------|
-| Total systems identified | 26 (Building Upgrade System added 2026-08-11, player-requested) |
-| Design docs started | 26 (26 Approved + 0 Needs Revision — Damage & Status, the last holdout, flipped back to Approved 2026-08-28) |
-| Design docs reviewed | 26 / 26 (batch `/design-review --depth lean` pass, 2026-07-17, plus Sanctuary UI's [6 passes], Tarot Deck UI's, Encyclopedia's, Audio System's, and Building Upgrade System's own full-mode passes, plus Damage & Status's own re-review chain through 2026-08-28) |
-| Design docs approved | 26 / 26 — **every designed GDD in the project is now Approved** (Damage & Status, the last one, flipped 2026-08-28 after its 2026-08-25 Skill Damage Pipeline retrofit's stale follow-ups were confirmed resolved and fixed back into the doc) |
+| Total systems identified | 27 (Hero Skill Tree added 2026-08-31, player-requested — not counting Tower Assembly System, still a quick-spec, never promoted to a full GDD, tracked separately in the Systems Enumeration table only) |
+| Design docs started | 27 (26 Approved + 0 Needs Revision + 1 Draft/not yet reviewed — Hero Skill Tree, added 2026-08-31) |
+| Design docs reviewed | 26 / 27 (batch `/design-review --depth lean` pass, 2026-07-17, plus Sanctuary UI's [6 passes], Tarot Deck UI's, Encyclopedia's, Audio System's, and Building Upgrade System's own full-mode passes, plus Damage & Status's own re-review chain through 2026-08-28; Hero Skill Tree not yet run through `/design-review`) |
+| Design docs approved | 26 / 27 — every previously-designed GDD remains Approved; Hero Skill Tree is new (2026-08-31) and still Draft, not yet reviewed |
 | MVP systems designed | 9 / 9, all Approved (EventBus, Grid, Save & Persistence, Hero, Tower, Monster, Damage & Status, Pathfinding, Wave Manager) |
 | Vertical Slice systems designed | 6 / 6, all Approved (Inventory, Resource Economy, Constellation, Crafting, Tarot, Mission HUD) |
-| Alpha systems designed | 9 / 9, all Approved or Complete (Menagerie, Defense Building, Tower Mastery, Mission Select, Hero Skill Build, Equipment Forge, Sanctuary UI, Tarot Deck UI, Building Upgrade) |
+| Alpha systems designed | 10 / 10, 9 Approved or Complete + 1 Draft (Menagerie, Defense Building, Tower Mastery, Mission Select, Hero Skill Build, Equipment Forge, Sanctuary UI, Tarot Deck UI, Building Upgrade all Approved/Complete; Hero Skill Tree Draft, not yet reviewed) |
 | Full Vision systems designed | 2 / 2 (Encyclopedia Approved; Audio System Approved) — **both Full Vision systems now designed and approved** |
 
 ---
