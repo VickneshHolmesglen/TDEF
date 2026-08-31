@@ -40,6 +40,14 @@ script = ExtResource("3_paperdoll")
 visible = false
 layout_mode = 2
 
+[node name="TowerShaftsPanel" type="VBoxContainer" parent="MainLayout/LeftPanel"]
+visible = false
+layout_mode = 2
+
+[node name="TowerTopsPanel" type="VBoxContainer" parent="MainLayout/LeftPanel"]
+visible = false
+layout_mode = 2
+
 [node name="SlotGrid" type="GridContainer" parent="MainLayout/LeftPanel"]
 layout_mode = 2
 columns = 5

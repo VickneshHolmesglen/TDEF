@@ -96,33 +96,41 @@ const RECIPE_CATEGORY_LABEL_KEYS: Dictionary[String, String] = {
 ## RELOCATED HERE" note).
 const SLOT_KEYS: Array[String] = ["foundation", "weapon", "focus", "power"]
 
-## Tower Component tab — "Bases" subpanel (2026-08-21, player-requested): a
-## visual reference gallery of every tower-base pedestal shape currently
-## authored in assets/art/towers/ (see that folder's own commit history --
-## "Slice tower base sheet into 9 alpha-cut pedestal pieces", 2026-08-17 --
-## and design/art/asset-generation-prompts.md's own note: "Usage (shared vs.
+## Tower Component tab — "Bases"/"Shafts"/"Tops" subpanels (2026-08-21,
+## player-requested; Shafts/Tops added 2026-09-01, same player request
+## extended to the tower's other two vertical sections): a visual reference
+## gallery of every tower-part shape currently authored in assets/art/towers/
+## (see that folder's own commit history -- "Slice tower base sheet into 9
+## alpha-cut pedestal pieces", 2026-08-17 -- and
+## design/art/asset-generation-prompts.md's own note: "Usage (shared vs.
 ## per-tier vs. per-archetype) is not yet decided, so these are named by
 ## shape rather than wired into any tower-components pipeline code"). This
 ## is deliberately a pure asset-preview gallery, NOT an inventory/ownership
-## list like the rest of this screen -- these 9 shapes have no
+## list like the rest of this screen -- these shapes have no
 ## ItemDefinitionResource, no FoundationComponent link, and are not
 ## craftable/ownable in any way yet, so there is no "owned" state to filter
 ## on. Shown alongside SlotGrid on the TowerComponent tab only, mirroring
 ## EquipmentPaperdoll's own "extra panel on one specific tab" precedent
-## above.
-const TOWER_BASE_SHAPES: Array[String] = [
+## above. All three panels share the same 9 shape names and sizing/layout
+## constants (renamed TOWER_BASE_* -> TOWER_PART_* 2026-09-01 to reflect
+## that shared reuse honestly, now that "base" would otherwise ambiguously
+## mean both "the bottom section" and "the shape id") -- only the art path
+## format differs per panel (tower_base_/tower_shaft_/tower_top_).
+const TOWER_PART_SHAPES: Array[String] = [
 	"round", "square", "octagon", "hexplank", "triangle",
 	"tiered", "scalloped", "stump", "stonemound",
 ]
 const TOWER_BASE_ART_PATH_FORMAT: String = "res://assets/art/towers/tower_base_%s.png"
+const TOWER_SHAFT_ART_PATH_FORMAT: String = "res://assets/art/towers/tower_shaft_%s.png"
+const TOWER_TOP_ART_PATH_FORMAT: String = "res://assets/art/towers/tower_top_%s.png"
 ## 20% smaller than the original 96.0 (player-requested, 2026-08-21).
-const TOWER_BASE_DISPLAY_HEIGHT: float = 76.8
-const TOWER_BASE_GRID_COLUMNS: int = 3
+const TOWER_PART_DISPLAY_HEIGHT: float = 76.8
+const TOWER_PART_GRID_COLUMNS: int = 3
 ## Spacing readjusted alongside the 20% size reduction -- tighter gaps read
 ## correctly at the smaller scale instead of leaving the same absolute gap
 ## proportionally larger than before.
-const TOWER_BASE_GRID_SEPARATION: int = 6
-const TOWER_BASE_ENTRY_SEPARATION: int = 2
+const TOWER_PART_GRID_SEPARATION: int = 6
+const TOWER_PART_ENTRY_SEPARATION: int = 2
 
 ## Injectable for tests (a caller may still supply an isolated Inventory
 ## instance). In real use, defaults to the real GInventory Autoload (ADR-0016,
@@ -145,12 +153,14 @@ const TOWER_BASE_ENTRY_SEPARATION: int = 2
 ## _active_tab == &"Equipment", toggled in _on_tab_pressed() next to
 ## _refresh_slot_visibility()'s own filtering.
 @onready var _equipment_paperdoll: Control = $MainLayout/LeftPanel/EquipmentPaperdoll
-## "Bases" subpanel (see TOWER_BASE_SHAPES' own doc comment) -- built
-## entirely in code in _build_tower_bases_panel(), same reason
-## EquipmentPaperdoll builds itself in code (equipment_paperdoll.gd's own
-## header comment): purely static content, no .tscn structure needed beyond
-## this one placeholder Control for it to attach to.
+## "Bases"/"Shafts"/"Tops" subpanels (see TOWER_PART_SHAPES' own doc
+## comment) -- built entirely in code in _build_tower_part_panel(), same
+## reason EquipmentPaperdoll builds itself in code (equipment_paperdoll.gd's
+## own header comment): purely static content, no .tscn structure needed
+## beyond these three placeholder Controls for them to attach to.
 @onready var _tower_bases_panel: Control = $MainLayout/LeftPanel/TowerBasesPanel
+@onready var _tower_shafts_panel: Control = $MainLayout/LeftPanel/TowerShaftsPanel
+@onready var _tower_tops_panel: Control = $MainLayout/LeftPanel/TowerTopsPanel
 @onready var _slot_grid: GridContainer = $MainLayout/LeftPanel/SlotGrid
 ## Crafting is deliberately NOT an Autoload (ADR-0023: "Scene-instanced,
 ## Sanctuary-only") — unlike Inventory, there is no GCrafting global to fall
@@ -244,6 +254,10 @@ func _ready() -> void:
 	_equipment_paperdoll.visible = _active_tab == &"Equipment"
 	_build_tower_bases_panel()
 	_tower_bases_panel.visible = _active_tab == &"TowerComponent"
+	_build_tower_shafts_panel()
+	_tower_shafts_panel.visible = _active_tab == &"TowerComponent"
+	_build_tower_tops_panel()
+	_tower_tops_panel.visible = _active_tab == &"TowerComponent"
 	_build_crafting_panel()
 
 	_recipes_tab_button.pressed.connect(_on_crafting_tab_pressed.bind(false))
@@ -315,6 +329,8 @@ func _on_tab_pressed(tab: StringName) -> void:
 	_refresh_slot_visibility()
 	_equipment_paperdoll.visible = tab == &"Equipment"
 	_tower_bases_panel.visible = tab == &"TowerComponent"
+	_tower_shafts_panel.visible = tab == &"TowerComponent"
+	_tower_tops_panel.visible = tab == &"TowerComponent"
 
 
 ## Rule 3: tabs filter ONE shared slot pool by item_type, not four separate
@@ -362,40 +378,65 @@ func _refresh_slot_visibility() -> void:
 
 
 # ---------------------------------------------------------------------------
-# Left panel — Tower Component tab's "Bases" subpanel (see TOWER_BASE_SHAPES'
-# own doc comment). Pure static asset gallery, built once at _ready() -- no
-# refresh trigger needed, unlike every other panel in this screen, since
-# there is no owned/live game state behind these 9 images to go stale.
+# Left panel — Tower Component tab's "Bases"/"Shafts"/"Tops" subpanels (see
+# TOWER_PART_SHAPES' own doc comment). Pure static asset galleries, built
+# once at _ready() -- no refresh trigger needed, unlike every other panel in
+# this screen, since there is no owned/live game state behind these images
+# to go stale. All three panels share one generic builder (_build_tower_part_
+# panel) and one generic entry constructor (_create_tower_part_entry) --
+# only the target panel, translation key, name prefix, and art path format
+# differ per panel.
 # ---------------------------------------------------------------------------
 
 func _build_tower_bases_panel() -> void:
+	_build_tower_part_panel(_tower_bases_panel, "BasesHeader", "INVENTORY_TOWER_BASES_HEADER", "BasesGrid", "Base", TOWER_BASE_ART_PATH_FORMAT)
+
+
+func _build_tower_shafts_panel() -> void:
+	_build_tower_part_panel(_tower_shafts_panel, "ShaftsHeader", "INVENTORY_TOWER_SHAFTS_HEADER", "ShaftsGrid", "Shaft", TOWER_SHAFT_ART_PATH_FORMAT)
+
+
+func _build_tower_tops_panel() -> void:
+	_build_tower_part_panel(_tower_tops_panel, "TopsHeader", "INVENTORY_TOWER_TOPS_HEADER", "TopsGrid", "Top", TOWER_TOP_ART_PATH_FORMAT)
+
+
+## Shared builder for the three tower-part galleries (Bases/Shafts/Tops).
+## `panel` is the placeholder Control from the .tscn to attach into;
+## `header_name`/`translation_key` label the panel's own title;
+## `grid_name` names the GridContainer node for scene-tree legibility;
+## `entry_prefix` names each individual entry ("Base_round", "Shaft_round",
+## "Top_round"); `art_path_format` selects which of the three asset sets
+## (tower_base_/tower_shaft_/tower_top_) this panel draws from -- all three
+## use the identical TOWER_PART_SHAPES id list, since the source art was
+## authored as three matched sets of the same 9 shapes.
+func _build_tower_part_panel(panel: Control, header_name: String, translation_key: String, grid_name: String, entry_prefix: String, art_path_format: String) -> void:
 	var header := Label.new()
-	header.name = "BasesHeader"
-	header.text = tr("INVENTORY_TOWER_BASES_HEADER")
+	header.name = header_name
+	header.text = tr(translation_key)
 	header.add_theme_color_override("font_color", ShellChromeStyle.UI_PARCHMENT)
-	_tower_bases_panel.add_child(header)
+	panel.add_child(header)
 
 	var grid := GridContainer.new()
-	grid.name = "BasesGrid"
-	grid.columns = TOWER_BASE_GRID_COLUMNS
-	grid.add_theme_constant_override("h_separation", TOWER_BASE_GRID_SEPARATION)
-	grid.add_theme_constant_override("v_separation", TOWER_BASE_GRID_SEPARATION)
-	_tower_bases_panel.add_child(grid)
+	grid.name = grid_name
+	grid.columns = TOWER_PART_GRID_COLUMNS
+	grid.add_theme_constant_override("h_separation", TOWER_PART_GRID_SEPARATION)
+	grid.add_theme_constant_override("v_separation", TOWER_PART_GRID_SEPARATION)
+	panel.add_child(grid)
 
-	for shape: String in TOWER_BASE_SHAPES:
-		grid.add_child(_create_tower_base_entry(shape))
+	for shape: String in TOWER_PART_SHAPES:
+		grid.add_child(_create_tower_part_entry(shape, entry_prefix, art_path_format))
 
 
-## One base entry: the alpha-cut pedestal art plus its shape name underneath
+## One tower-part entry: the alpha-cut art plus its shape name underneath
 ## (e.g. "Round", "Hexplank") -- these have no display_name anywhere (no
-## ItemDefinitionResource exists for them, see TOWER_BASE_SHAPES' own doc
+## ItemDefinitionResource exists for them, see TOWER_PART_SHAPES' own doc
 ## comment), so the shape id itself, title-cased, is the only name available.
-func _create_tower_base_entry(shape: String) -> Control:
+func _create_tower_part_entry(shape: String, entry_prefix: String, art_path_format: String) -> Control:
 	var entry := VBoxContainer.new()
-	entry.name = "Base_%s" % shape
-	entry.add_theme_constant_override("separation", TOWER_BASE_ENTRY_SEPARATION)
+	entry.name = "%s_%s" % [entry_prefix, shape]
+	entry.add_theme_constant_override("separation", TOWER_PART_ENTRY_SEPARATION)
 
-	var texture: Texture2D = load(TOWER_BASE_ART_PATH_FORMAT % shape) as Texture2D
+	var texture: Texture2D = load(art_path_format % shape) as Texture2D
 	var icon := TextureRect.new()
 	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	# EXPAND_IGNORE_SIZE: the default expand_mode (EXPAND_KEEP_SIZE) reports a
@@ -410,7 +451,7 @@ func _create_tower_base_entry(shape: String) -> Control:
 	icon.texture = texture
 	if texture != null:
 		var aspect: float = float(texture.get_width()) / float(texture.get_height())
-		icon.custom_minimum_size = Vector2(TOWER_BASE_DISPLAY_HEIGHT * aspect, TOWER_BASE_DISPLAY_HEIGHT)
+		icon.custom_minimum_size = Vector2(TOWER_PART_DISPLAY_HEIGHT * aspect, TOWER_PART_DISPLAY_HEIGHT)
 	entry.add_child(icon)
 
 	var label := Label.new()

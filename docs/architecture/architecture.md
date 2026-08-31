@@ -305,6 +305,7 @@ Every `await get_tree().process_frame` is immediately followed by `if not is_ins
 | Sanctuary UI | Tab/panel navigation | ⚠️ HIGH: dual-focus + gamepad d-pad — use ADR-0011's `InputModeTracker` pattern |
 | Tarot Deck UI | Card selection interface | ⚠️ HIGH: dual-focus — use ADR-0011's `InputModeTracker` pattern |
 | Audio System | Sound bus management; music cue state | EventBus subscriber — responds with audio |
+| Hero Skill Tree | 4 archetype point pools + 1 overflow pool + 16 chain-node unlock flags + persisted per-visit spend cap (`restore_order=37`) — new, ADR-0041 | Subscribes `skill_tree_point_earned` (Tower Mastery, sole trigger); publishes `skill_tree_overflow_point_earned`, `skill_unlocked` (moved here from Tower Mastery), `skill_tree_node_unlocked` |
 
 ---
 
