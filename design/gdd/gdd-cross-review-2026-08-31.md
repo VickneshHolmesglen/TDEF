@@ -114,6 +114,28 @@ Both open design decisions were resolved by the player and implemented, along wi
 
 All 6 flagged GDDs (`hero-skill-tree.md`, `tower-mastery.md`, `hero-skill-build.md`, `sanctuary-ui.md`, `mission-hud.md`, `save-persistence.md`) were edited same-day. None have been marked back to Approved — per this project's own convention, that requires a fresh confirmation pass (`/design-review` or `/review-all-gdds`), not a self-certification by the same session that made the fixes.
 
+## Second Re-Verification Pass (same day)
+
+A follow-up `/review-all-gdds` pass (3 parallel specialist agents, same methodology) re-verified the fixes above. Results: **3 of 4 original scenario-walkthrough blockers genuinely resolved** (double-grant, cross-system save atomicity, Mission HUD notification gap). The 4th (undeclared direct cross-system call) was fixed in the *rules and formulas* but the fix never propagated to `tower-mastery.md`'s own Interactions table, Downstream Dependents table, and an Edge Case — all three still described the removed call, contradicting the corrected rules two sections away. All three specialist agents independently caught this.
+
+This pass also surfaced **two new, genuine defects** in the fix itself, both requiring design decisions:
+
+- **Overflow points had no terminal sink.** Once all 16 nodes were cleared, `overflow_points` kept accruing forever with nothing left to spend on — the exact "unbounded faucet, no sink" pattern the original fix eliminated, recreated one layer up.
+- **The per-visit spend cap was trivially bypassable.** `visit_spend_count` wasn't persisted and reset on any Sanctuary entry, including app relaunch — purchase a node, Save & Quit, relaunch, cap resets, purchase again. This defeated the entire mechanic built to fix the original unreachable-Player-Fantasy defect (B1), for free, using an ordinary menu action.
+
+Also found: several same-session textual leftovers (`sanctuary-ui.md` self-contradicted on whether Skills was the 6th or 7th tab-strip entry; `save-persistence.md` had three different, disagreeing dependent-system counts in one document; a stale Tower Mastery attribution survived at `hero-skill-build.md` line 373; `sanctuary-ui.md`'s Interactions table was missing a row for the new room, the only room without one).
+
+### Fixes Applied (second round, same day)
+
+- **Overflow terminal sink**: new Rule 3c in `hero-skill-tree.md` — once literally all 16 nodes are unlocked, further mastery converts to a flat gold bonus (`resources_changed`, new tuning knob `HERO_SKILL_TREE_TERMINAL_MASTERY_BONUS`, default 15) via Resource Economy's existing mission-scoped channel, rather than accruing unspendable overflow.
+- **Spend-cap exploit closed**: `visit_spend_count` is now persisted, resetting only on `mission_launched` (a real mission must be played) rather than on any Sanctuary entry.
+- **`tower-mastery.md`'s stale Interactions/Downstream-Dependents/Edge-Case text corrected** to match its own already-fixed Rule 13/14/Formula 3.
+- **`sanctuary-ui.md`'s 6th-vs-7th self-contradiction resolved**: Skills is the 6th tab-strip entry, Loadout the 7th — fixed in the status header, Core Rule 2's body, and the AC Group 2 heading; a missing Interactions-table row for the new room was added.
+- **`save-persistence.md`'s three disagreeing system counts unified** at 16 (Overview/AC-2/AC-10/Downstream-Dependents-table/Rule-2/register()-table all now agree); Hero Skill Tree's row updated for `visit_spend_count`'s new persisted status.
+- **`hero-skill-build.md` line 373's stale Tower Mastery attribution corrected** to Hero Skill Tree.
+
+None of the 6 GDDs have been marked back to Approved — a third confirmation pass is recommended before treating any of them as such.
+
 ## Verdict: FAIL
 
 ### Required actions before re-running
