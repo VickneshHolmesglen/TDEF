@@ -136,6 +136,28 @@ Also found: several same-session textual leftovers (`sanctuary-ui.md` self-contr
 
 None of the 6 GDDs have been marked back to Approved — a third confirmation pass is recommended before treating any of them as such.
 
+## Third Re-Verification Pass (same day)
+
+A third `/review-all-gdds` pass confirmed the second round's core fixes genuinely hold: the persisted `visit_spend_count` exploit-closure survived adversarial stress-testing (force-quit before any save trigger, Mission Select browsing without confirmed launch — both checked and clean), and all cross-document consistency for the 6 previously-touched documents was independently re-verified clean across three agents.
+
+It also found the terminal-overflow gold-conversion fix (Rule 3c) itself had 3 new, real problems:
+
+- **Contradicted `resource-economy.md`'s own claim** that its two documented gold sources are "the entire in-mission gold faucet; there is no other gold income path" — Rule 3c introduced an undeclared third source via the same channel.
+- **Unbounded stacking exploit**: `tower-mastery.md` already established that multiple simultaneously-mastered towers accrue independently in parallel as an intentional, rewarded design. Once terminal, every one of those parallel crossings converted to gold — a player clustering several fully-mastered-archetype towers could out-earn an entire mission's legitimate gold income in a few minutes of standing still, an exploit the tuning knob's safe range never accounted for.
+- **Broke both Player Fantasy sections' permanence promise**: `tower-mastery.md`'s and `hero-skill-tree.md`'s Player Fantasy both promise the reward is "permanent, carried into the next sanctuary visit" — gold is mission-scoped and resets every mission, directly contradicting that promise for a terminal-state player.
+
+Also found: the entity registry's `skill_tree_point_grant` formula entry still described the scrapped double-grant/direct-call design from before any fix round, and a minor rule-numbering collision in `hero-skill-tree.md` (two rules both numbered "13").
+
+### Fixes Applied (third round, same day)
+
+- **Reverted Rule 3c to the originally-recommended simple cap**: once all 16 nodes are unlocked, further mastery produces a silent no-op — no new currency, no cross-document dependency, no stacking exploit. The `HERO_SKILL_TREE_TERMINAL_MASTERY_BONUS` tuning knob, the Resource Economy dependency, and the gold-conversion AC/Edge-Case were all removed; Formula 1's handler reverted accordingly.
+- **Both Player Fantasy sections rewritten again** to honestly describe the terminal state as a quiet completion, not a disguised ongoing reward.
+- **`entities.yaml`'s `skill_tree_point_grant` entry corrected** to match the current design (unconditional Tower Mastery emission, Hero Skill Tree-owned mutation, no gold conversion).
+- **Rule-numbering collision fixed** in `hero-skill-tree.md`.
+- **Long-standing `encyclopedia.md`/`hero.md` stale `skill_unlocked`/Tower Mastery references finally closed** — flagged across all three review rounds, never previously acted on since they weren't part of the original 6 flagged documents.
+
+None of the 6 GDDs have been marked back to Approved — a fourth confirmation pass is recommended before treating any of them as such, though the pattern across three rounds suggests diminishing returns; the core mechanism (double-grant, direct-call, save schema, spend-cap exploit) has now been independently re-verified clean twice.
+
 ## Verdict: FAIL
 
 ### Required actions before re-running

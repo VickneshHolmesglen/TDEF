@@ -91,7 +91,7 @@ Menagerie's `creature_acquired`/`creature_bred` payloads carry both a per-instan
 | **Equipment Forge** | Upstream | `recipe_discovered` (`recipe_category = "hero_equipment"`) | EventBus subscription | Same gating, Forge-scoped recipes. **Provenance note**: `equipment-forge.md`'s own already-written text asserts this emission, but `event-bus.md`'s frozen catalogue currently lists `recipe_discovered` under Crafting only, with no Equipment Forge emitter row — this is an inherited gap in `event-bus.md`'s own catalogue (not something this document invented), flagged as OQ-7, not treated as blocking Encyclopedia's own design |
 | **Menagerie** | Upstream | `creature_acquired`, `creature_bred` | EventBus subscription | Lure success or breeding-pen output |
 | **Defense Building** | Upstream | `tech_unlocked` | EventBus subscription | Tech tree node unlock confirmed |
-| **Tower Mastery / Hero Skill Build** | Upstream | `skill_unlocked` | EventBus subscription | Proximity threshold reached |
+| **Hero Skill Tree / Hero Skill Build** | Upstream | `skill_unlocked` | EventBus subscription | Node purchased at Sanctuary (corrected 2026-08-31, third pass — was "Proximity threshold reached," Tower Mastery's old direct-unlock trigger; that system now only feeds Hero Skill Tree, which is the sole current emitter) |
 | **Mission HUD** | Downstream | `encyclopedia_entry_added` | EventBus subscription | Any new entry, for its own discovery-notification toast |
 | **Save & Persistence** | Bidirectional | Full entry ledger, all categories | `get_save_data()`/`restore_save_data()`/`reset_to_defaults()` at `restore_order = 35` (restored last — see Edge Cases for why this is not a race) | Standard save/restore cycle |
 
@@ -119,7 +119,7 @@ None. The only numeric candidate — a completion-percentage readout per categor
 | Equipment Forge | Encyclopedia depends on | Soft — same pattern, `recipe_discovered` (Forge-scoped) |
 | Menagerie | Encyclopedia depends on | Soft — same pattern, `creature_acquired`/`creature_bred` |
 | Defense Building | Encyclopedia depends on | Soft — same pattern, `tech_unlocked` |
-| Tower Mastery / Hero Skill Build | Encyclopedia depends on | Soft — same pattern, `skill_unlocked` |
+| Hero Skill Tree / Hero Skill Build | Encyclopedia depends on | Soft — same pattern, `skill_unlocked` (corrected 2026-08-31, third pass, was Tower Mastery) |
 | Mission HUD | Depended on by Encyclopedia | Downstream — subscribes to `encyclopedia_entry_added` for its own toast; already declared on Mission HUD's own side per `event-bus.md`'s Key Subscribers column |
 
 **Bidirectional note**: each of the 7 upstream systems already lists Encyclopedia as a downstream subscriber in its own Interactions/Dependencies table (confirmed by direct cross-reference while authoring this document) — this is one of the rare cases in this project where the bidirectional-dependencies rule was already satisfied on the upstream side before this GDD existed, since every one of those documents was written expecting Encyclopedia to eventually exist.

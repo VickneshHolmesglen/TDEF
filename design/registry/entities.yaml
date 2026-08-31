@@ -480,25 +480,31 @@ formulas:
       - mastery_time
       - mastery_threshold_seconds
       - points_granted_count
-      - all_nodes_unlocked
+      - archetype_of
     output_range: []
-    expression: "points_earnable = floor(mastery_time[build_signature] / mastery_threshold_seconds); new_points = points_earnable - points_granted_count[build_signature]; grants 1 skill_tree_point_earned per crossing, gated by NOT all_nodes_unlocked(chain[archetype_of(build_signature)])"
+    expression: "Tower Mastery side (unconditional): points_earnable = floor(mastery_time[build_signature] / mastery_threshold_seconds); new_points = points_earnable - points_granted_count[build_signature]; emits skill_tree_point_earned once per crossing, always, with zero cross-system reads. Hero Skill Tree side (its own event handler): credits skill_tree_points[archetype] if that chain has a locked node; else credits overflow_points if any OTHER archetype still has a locked node; else (whole tree complete) no effect."
     notes: "Formula 1 in hero-skill-tree.md, the sole trigger for that system's
       archetype-keyed skill tree point income. Revises tower-mastery.md's former
       Formula 3 (Skill Unlock Condition, retired 2026-08-31): a mastery threshold
       crossing no longer directly unlocks a specific skill_id, it grants one
       repeating point to the crossed build_signature's Foundation-derived
-      archetype pool. tower-mastery.md's own (revised) Formula 3 explicitly
-      restates this arithmetic from its side of the system boundary and names
-      this entry as canonical -- the two should never be allowed to drift; if a
-      future edit changes one, update both same-session. Uncapped until the
-      mastered archetype's 4-node hero-skill-tree.md chain is fully spent
-      (all_nodes_unlocked guard, added during that GDD's own 2026-08-31 re-review
-      to close an unbounded-faucet defect found by economy-designer review) --
-      after that point this formula stops crediting new points for that archetype,
-      though mastery_time/points_granted_count both keep advancing unaffected."
+      archetype pool. **Corrected 2026-08-31 (third pass)**: this entry previously
+      described an early draft where Tower Mastery itself gated emission on
+      NOT all_nodes_unlocked(archetype) and mutated skill_tree_points directly --
+      that design was a double-grant bug AND an undeclared direct cross-system
+      Autoload call, both fixed the same day. The corrected, current design (see
+      expression above) has Tower Mastery emit unconditionally, forever, with
+      zero cross-system reads; Hero Skill Tree's own handler owns all pool
+      mutation (its own archetype pool, then overflow, then -- once the entire
+      16-node tree is complete -- a silent no-op, not a gold conversion; an
+      intermediate gold-conversion design was tried and reverted the same day
+      after it was found to contradict resource-economy.md and create an
+      unbounded farming exploit). tower-mastery.md's own (revised) Formula 3
+      explicitly restates the Tower Mastery side of this arithmetic and names
+      hero-skill-tree.md Formula 1 as canonical -- the two should never be
+      allowed to drift; if a future edit changes one, update both same-session."
     added: 2026-08-31
-    revised: ""
+    revised: "2026-08-31"
 
 # Example:
 #
