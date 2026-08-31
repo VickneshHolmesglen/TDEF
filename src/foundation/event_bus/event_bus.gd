@@ -663,9 +663,34 @@ signal resources_changed(gold: int, source: StringName)
 ## Key subscribers: Mission HUD.
 signal mastery_progress_updated(tower_id: int, skill_id: String, progress_percent: float)
 
-## Proximity threshold reached — skill added to learned library.
+## Proximity threshold reached — skill added to learned library. Emitted by
+## Hero Skill Tree's node-purchase path only (hero-skill-tree.md Rule 9) —
+## Tower Mastery itself no longer emits this directly as of the 2026-08-31
+## Rule 13 revision; see skill_tree_point_earned below for its own trigger.
 ## Key subscribers: Hero Skill Build, Encyclopedia, Mission HUD.
 signal skill_unlocked(skill_id: String, source_tower_id: int)
+
+# =============================================================================
+# Hero Skill Tree System (design/gdd/hero-skill-tree.md)
+# =============================================================================
+
+## Tower Mastery crossing a mastery_threshold_seconds multiple grants one
+## spendable point in `archetype`'s pool — unconditional, emitted forever,
+## never itself checking or mutating Hero Skill Tree's node state (Formula 3).
+## Key subscribers: Hero Skill Tree, Mission HUD.
+signal skill_tree_point_earned(archetype: String, source_tower_id: int)
+
+## Fires instead of skill_tree_point_earned when the crediting archetype's
+## own 4-node chain is already fully unlocked but at least one other
+## archetype still has a locked node (Rule 3b) — the point converts to the
+## shared, archetype-agnostic overflow pool instead of being lost.
+## Key subscribers: Hero Skill Tree, Mission HUD.
+signal skill_tree_overflow_point_earned(source_tower_id: int)
+
+## A Minor node was purchased at Sanctuary (Formula 2's Minor branch) — never
+## fired for a Choice node purchase, which fires skill_unlocked instead.
+## Key subscribers: Mission HUD, Encyclopedia.
+signal skill_tree_node_unlocked(archetype: String, node_index: int)
 
 ## Fires the instant a build_signature's hero-proximity state flips (entered
 ## or exited range) — added 2026-08-13 (Epic 06 Story 013's Audio

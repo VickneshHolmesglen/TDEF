@@ -319,6 +319,15 @@ func get_all_skill_resources() -> Dictionary[StringName, SkillResource]:
 	return _skill_resources.duplicate()
 
 
+## Returns a shallow copy of the skill_id -> SkillDefinitionResource cache —
+## same copy-not-live-reference isolation as get_all_skill_resources().
+## Added for Hero Skill Tree's Choice-node redesign (hero-skill-tree.md
+## Rule 9/Formula 2), which needs to resolve all skills in an archetype's
+## tier (opener/core/capstone) rather than one skill_id at a time.
+func get_all_skill_definitions() -> Dictionary[StringName, SkillDefinitionResource]:
+	return _skill_definitions.duplicate()
+
+
 ## Returns the UltimateComboTable. Always non-null after _ready() completes
 ## UNLESS ultimate_combo_table.tres failed to load (missing/corrupt file) — in
 ## that documented failure case this returns null; the load failure was

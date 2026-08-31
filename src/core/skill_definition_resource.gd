@@ -26,6 +26,11 @@ extends Resource
 @export var display_name: String = ""
 ## Must match tower.md's Foundation archetype enum exactly: physical|ranged|elemental|support.
 @export var category: String = ""
+## Added 2026-09-01 for Hero Skill Tree's Choice-node redesign
+## (hero-skill-tree.md Rule 9/Formula 2) — which of an archetype's 8
+## catalogued skills (hero-skill-build.md Rule 3) appear as candidates on
+## Choice_1/Choice_2/Choice_3 respectively. Must be one of opener|core|capstone.
+@export var tier: String = "opener"
 ## Number of passive sub-slots this skill provides. Valid range: 1-3.
 @export var passive_slot_count: int = 1
 ## Tower Mastery's build_signature this skill unlocks via mastery, or empty
@@ -59,4 +64,7 @@ func validate() -> Array[String]:
 		errors.append("category must be one of %s (got '%s')" % [VALID_CATEGORIES, category])
 	if passive_slot_count < 1 or passive_slot_count > 3:
 		errors.append("passive_slot_count must be in [1,3] (got %d)" % passive_slot_count)
+	const VALID_TIERS: Array[String] = ["opener", "core", "capstone"]
+	if not VALID_TIERS.has(tier):
+		errors.append("tier must be one of %s (got '%s')" % [VALID_TIERS, tier])
 	return errors

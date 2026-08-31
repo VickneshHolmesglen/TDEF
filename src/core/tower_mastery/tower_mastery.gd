@@ -80,7 +80,20 @@ var _active_signature_by_tower: Dictionary[int, String] = {}
 var _signatures_in_range: Dictionary[String, bool] = {}
 
 var _current_phase: String = ""
-var _unlocked_signatures: Dictionary[String, bool] = {}
+
+## Revised 2026-09-01 for hero-skill-tree.md's Rule 13 revision: no longer a
+## one-shot unlock flag. `points_granted_count[signature]` tracks how many
+## skill_tree_point_earned grants have already fired for this signature, so
+## tick() can grant the difference every time mastery_time crosses a further
+## whole multiple of MASTERY_THRESHOLD_SECONDS (Rule 14's past-100%
+## continuation), never re-granting the same crossing twice.
+var points_granted_count: Dictionary[String, int] = {}
+
+## Foundation.archetype for the signature's Foundation slot (physical|ranged|
+## elemental|support), populated from tower_placed/tower_component_equipped's
+## payload — the same source Hero Skill Tree's own Formula 3 dependency note
+## says to derive archetype from (Rule 13's revised Formula 3).
+var _archetype_by_signature: Dictionary[String, String] = {}
 
 ## Story 009: hero's last-known IN-BOUNDS cell, used to recompute
 ## `_signatures_in_range` immediately on tower lifecycle events (a tower
@@ -89,22 +102,6 @@ var _unlocked_signatures: Dictionary[String, bool] = {}
 ## yet" from Vector2i.ZERO being a legitimate cell.
 var _last_hero_cell: Vector2i = Vector2i.ZERO
 var _has_hero_cell: bool = false
-
-## Story 011 (AC-18): orphaned-skill_id handling on restore. No real skill
-## catalogue (`SkillDefinitionResource`) exists yet — deferred content,
-## Rule 7/ADR-0030. This pair is a DI seam (mirrors `_grid`'s pattern):
-## `_has_skill_catalogue` defaults false, meaning no catalogue exists to
-## check against yet, so restore never false-flags a legitimately-earned
-## skill_id as unknown. Tests (and, later, the real catalogue system) set
-## `_has_skill_catalogue = true` and populate `_known_skill_ids` to exercise
-## the orphan path.
-var _has_skill_catalogue: bool = false
-var _known_skill_ids: Dictionary[String, bool] = {}
-
-## Orphaned `unlocked_skills` entries from the most recent restore — never
-## discarded, but excluded from any future Hero Skill Build UI consumption
-## while unknown (AC-18).
-var _unknown_skills: Dictionary[String, bool] = {}
 
 ## DI seam — untyped so a RefCounted test double works in unit tests
 ## (mirrors tower_system.gd's `_grid = null` convention).
@@ -145,10 +142,18 @@ static func compute_build_signature(foundation_component_id: String, weapon_comp
 ## Story 009: also recomputes _signatures_in_range immediately (a tower
 ## appearing under a stationary hero must be reflected the same frame).
 func _on_tower_placed(payload: TowerPlacedEvent) -> void:
-	_active_signature_by_tower[payload.tower_id] = compute_build_signature(
+	var signature: String = compute_build_signature(
 		payload.foundation_component_id, payload.weapon_component_id,
 		payload.focus_component_id, payload.power_component_id
 	)
+	_active_signature_by_tower[payload.tower_id] = signature
+	# Rule 13 revision: archetype for a signature is derived from the same
+	# source Formula 4 already uses to identify the Foundation slot — the
+	# payload's own `archetype` field (TowerPlacedEvent, tower.md's Foundation
+	# archetype). Never overwritten once set for a given signature — every
+	# tower sharing a signature shares the same Foundation, so this is stable.
+	if not _archetype_by_signature.has(signature):
+		_archetype_by_signature[signature] = payload.archetype
 	_recompute_if_hero_known()
 
 
@@ -160,10 +165,24 @@ func _on_tower_placed(payload: TowerPlacedEvent) -> void:
 ## past accrual under the old signature remains exactly where it was.
 ## Story 009: also recomputes _signatures_in_range immediately.
 func _on_tower_component_equipped(payload: TowerComponentEquippedEvent) -> void:
-	_active_signature_by_tower[payload.tower_id] = compute_build_signature(
+	var old_signature: String = _active_signature_by_tower.get(payload.tower_id, "")
+	var new_signature: String = compute_build_signature(
 		payload.foundation_component_id, payload.weapon_component_id,
 		payload.focus_component_id, payload.power_component_id
 	)
+	_active_signature_by_tower[payload.tower_id] = new_signature
+	# No real emitter exists yet for this event (see class doc comment) and
+	# its payload carries no `archetype` field the way TowerPlacedEvent's
+	# does. Best-effort carry-forward: a non-Foundation slot swap can't have
+	# changed the archetype, so reuse whatever archetype the tower's OLD
+	# signature was already tracked under. A Foundation-slot swap (archetype
+	# potentially changed) has no data to derive a new archetype from here —
+	# left unset rather than guessed, matching this file's own
+	# never-guess-at-missing-data convention (see _grid seam doc comment).
+	if not _archetype_by_signature.has(new_signature) and payload.slot != "foundation":
+		var carried_archetype: String = _archetype_by_signature.get(old_signature, "")
+		if carried_archetype != "":
+			_archetype_by_signature[new_signature] = carried_archetype
 	_recompute_if_hero_known()
 
 
@@ -277,10 +296,17 @@ func _representative_tower_id_for(signature: String) -> int:
 ## gate the emission (no catalogue entry = no event) rather than always
 ## firing.
 ##
-## Formula 3 (unlock, AC-21): unlocked_signatures[signature] is set true
-## BEFORE skill_unlocked is emitted — this ordering is what makes same-frame
-## re-evaluation idempotent (a second call within the same tick sees the
-## flag already true and does not re-fire).
+## Formula 3, revised 2026-09-01 (hero-skill-tree.md Rule 13/tower-mastery.md
+## Rule 13): no longer unlocks a skill directly. Every whole multiple of
+## MASTERY_THRESHOLD_SECONDS crossed grants exactly one
+## skill_tree_point_earned(archetype, source_tower_id) — unconditional,
+## forever, never checking or mutating Hero Skill Tree's own state (that
+## system owns all further mutation, per ADR-0041's emission-only split).
+## `points_granted_count[signature]` tracks how many grants have already
+## fired so a large `delta` that crosses more than one multiple in a single
+## tick grants the correct number of points, not just one, and a repeat
+## evaluation within the same tick never double-grants (mirrors the previous
+## `_unlocked_signatures` idempotency guarantee, generalized to a counter).
 func tick(delta: float) -> void:
 	if _current_phase == "SCOUT":
 		return
@@ -295,16 +321,16 @@ func tick(delta: float) -> void:
 		)
 		GEventBus.mastery_progress_updated.emit(representative_tower_id, signature, progress_percent)
 
-		if mastery_time[signature] >= MASTERY_THRESHOLD_SECONDS and not _unlocked_signatures.get(signature, false):
-			_unlocked_signatures[signature] = true
-			GEventBus.skill_unlocked.emit(signature, representative_tower_id)
-
-
-## AC-18: true if the most recent restore_save_data() flagged `skill_id` as
-## an orphaned/unknown catalogue entry — the Hero Skill Build UI should
-## exclude any skill_id this returns true for, once that UI exists.
-func is_skill_unknown(skill_id: String) -> bool:
-	return _unknown_skills.get(skill_id, false)
+		var crossings_reached: int = int(mastery_time[signature] / MASTERY_THRESHOLD_SECONDS)
+		var already_granted: int = points_granted_count.get(signature, 0)
+		if crossings_reached <= already_granted:
+			continue
+		var archetype: String = _archetype_by_signature.get(signature, "")
+		if archetype == "":
+			continue
+		points_granted_count[signature] = crossings_reached
+		for _i: int in (crossings_reached - already_granted):
+			GEventBus.skill_tree_point_earned.emit(archetype, representative_tower_id)
 
 
 # ---------------------------------------------------------------------------
@@ -315,10 +341,19 @@ func get_save_key() -> String:
 	return "tower_mastery"
 
 
+## Migrated 2026-09-01 (hero-skill-tree.md's Dependencies migration note): the
+## old one-shot `unlocked_skills: Dictionary[String, bool]` is retired and
+## replaced by `points_granted_count` — a different key space (still keyed by
+## build_signature, but an int grant-count, not a bool). `archetype_by_signature`
+## is new: Hero Skill Tree's own point-crediting handler never re-derives
+## archetype itself, only this system does (Formula 4's own source of truth),
+## so it must survive a save/load cycle for `skill_tree_point_earned` grants
+## after a reload to resolve to the correct pool.
 func get_save_data() -> Dictionary:
 	return {
 		"mastery_time": mastery_time.duplicate(),
-		"unlocked_skills": _unlocked_signatures.duplicate(),
+		"points_granted_count": points_granted_count.duplicate(),
+		"archetype_by_signature": _archetype_by_signature.duplicate(),
 	}
 
 
@@ -330,22 +365,26 @@ func get_save_data() -> Dictionary:
 ##
 ## AC-10: mastery_time reads correctly immediately after this call, with no
 ## dependency on a live tower existing yet — this method only ever mutates
-## mastery_time/_unlocked_signatures/_unknown_skills, never anything that
-## depends on _grid or a live tower_id.
+## mastery_time/points_granted_count/_archetype_by_signature, never anything
+## that depends on _grid or a live tower_id.
 ##
-## AC-18: orphaned skill_id handling. `_has_skill_catalogue` defaults false
-## in production (no real catalogue exists yet — see the field's own doc
-## comment), so no entry is ever false-flagged as unknown today; when a
-## catalogue is eventually wired (or in a test that sets `_known_skill_ids`
-## directly), any restored skill_id absent from it is retained (never
-## discarded), tracked in `_unknown_skills`, and logged — the load never
-## blocks on this.
+## Migration case (hero-skill-tree.md AC-12, Dependencies migration note): a
+## save written before this revision carries the old `unlocked_skills` key,
+## which this method no longer reads at all — `points_granted_count` simply
+## defaults to an empty Dictionary via `data.get()`, matching every
+## signature's accrued `mastery_time` as "0 grants issued yet." The player's
+## pre-revision unlocked skills are not retroactively re-granted as tree
+## points — an accepted, explicitly out-of-scope one-time loss for this
+## pre-Alpha project, per that GDD's own migration note.
 func restore_save_data(data: Dictionary) -> bool:
 	var raw_mastery: Variant = data.get("mastery_time", {})
 	if typeof(raw_mastery) != TYPE_DICTIONARY:
 		return false
-	var raw_unlocked: Variant = data.get("unlocked_skills", {})
-	if typeof(raw_unlocked) != TYPE_DICTIONARY:
+	var raw_counts: Variant = data.get("points_granted_count", {})
+	if typeof(raw_counts) != TYPE_DICTIONARY:
+		return false
+	var raw_archetypes: Variant = data.get("archetype_by_signature", {})
+	if typeof(raw_archetypes) != TYPE_DICTIONARY:
 		return false
 
 	var restored_mastery: Dictionary[String, float] = {}
@@ -357,25 +396,27 @@ func restore_save_data(data: Dictionary) -> bool:
 			return false
 		restored_mastery[key as String] = float(value)
 
-	var restored_unlocked: Dictionary[String, bool] = {}
-	var restored_unknown: Dictionary[String, bool] = {}
-	for key: Variant in (raw_unlocked as Dictionary):
+	var restored_counts: Dictionary[String, int] = {}
+	for key: Variant in (raw_counts as Dictionary):
 		if not (key is String):
 			return false
-		var value: Variant = (raw_unlocked as Dictionary)[key]
-		if not (value is bool):
+		var value: Variant = (raw_counts as Dictionary)[key]
+		if not (value is int or value is float):
 			return false
-		var skill_id: String = key as String
-		if _has_skill_catalogue and not _known_skill_ids.has(skill_id):
-			restored_unknown[skill_id] = true
-			push_warning(
-				"TowerMastery: restored unlocked_skills entry '%s' is not in the current skill catalogue — marked UNKNOWN, retained, excluded from UI." % skill_id
-			)
-		restored_unlocked[skill_id] = value as bool
+		restored_counts[key as String] = int(value)
+
+	var restored_archetypes: Dictionary[String, String] = {}
+	for key: Variant in (raw_archetypes as Dictionary):
+		if not (key is String):
+			return false
+		var value: Variant = (raw_archetypes as Dictionary)[key]
+		if not (value is String):
+			return false
+		restored_archetypes[key as String] = value as String
 
 	mastery_time = restored_mastery
-	_unlocked_signatures = restored_unlocked
-	_unknown_skills = restored_unknown
+	points_granted_count = restored_counts
+	_archetype_by_signature = restored_archetypes
 	return true
 
 
@@ -386,5 +427,5 @@ func restore_save_data(data: Dictionary) -> bool:
 ## whether this fires).
 func reset_to_defaults() -> void:
 	mastery_time.clear()
-	_unlocked_signatures.clear()
-	_unknown_skills.clear()
+	points_granted_count.clear()
+	_archetype_by_signature.clear()
