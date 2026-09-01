@@ -38,9 +38,14 @@ extends Resource
 @export var source_build_signature: StringName = &""
 ## Seconds of proximity time required to unlock via Tower Mastery.
 @export var mastery_threshold_seconds: float = 45.0
-## Opaque; format owned by Hero Skill Build's future content pass. Tower
-## Mastery never interprets this field's contents (tower-mastery.md Rule 7).
-@export var effect_data: Resource = null
+## Formalized 2026-09-01 (hero-skill-build.md Rule 2's PoE-scale content
+## pass — "no longer deferred") — typed as HeroSkillEffectResource. Tower
+## Mastery still never interprets this field's contents (tower-mastery.md
+## Rule 7); it exists purely for Hero Skill Build/Hero Skill Tree's own
+## category-profile/Choice-node consumption. Still nullable: a skill whose
+## content-authoring pass hasn't landed yet (rare, should not ship) fails
+## validate() below rather than crashing a consumer that assumes non-null.
+@export var effect_data: HeroSkillEffectResource = null
 ## Skill-slot icon, matching ItemDefinitionResource.icon's established
 ## data-driven home for slot art (design/quick-specs/inventory-slot-icons-
 ## 2026-08-06.md). Null = no icon authored yet (missing-assets-audit-2026-
@@ -67,4 +72,9 @@ func validate() -> Array[String]:
 	const VALID_TIERS: Array[String] = ["opener", "core", "capstone"]
 	if not VALID_TIERS.has(tier):
 		errors.append("tier must be one of %s (got '%s')" % [VALID_TIERS, tier])
+	if effect_data == null:
+		errors.append("effect_data must not be null (hero-skill-build.md Rule 2 — no longer deferred)")
+	else:
+		for effect_error: String in effect_data.validate():
+			errors.append("effect_data: %s" % effect_error)
 	return errors

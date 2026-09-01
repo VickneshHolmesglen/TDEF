@@ -1,14 +1,25 @@
-[gd_resource type="Resource" script_class="SkillDefinitionResource" format=3]
+[gd_resource type="Resource" script_class="SkillDefinitionResource" load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://src/core/skill_definition_resource.gd" id="1_def"]
-[ext_resource type="Texture2D" path="res://assets/art/items/rng_volley.png" id="2_icon"]
+[ext_resource type="Script" path="res://src/core/hero_skill_effect_resource.gd" id="2_effect_script"]
+[ext_resource type="Texture2D" path="res://assets/art/items/rng_volley.png" id="3_icon"]
+
+[sub_resource type="Resource" id="Resource_effect"]
+script = ExtResource("2_effect_script")
+damage_type = "physical"
+delivery = "projectile_spread"
+skill_power_coefficient = 0.9
+secondary_effect = "none"
+tags = Array[String](["Projectile", "Area"])
 
 [resource]
 script = ExtResource("1_def")
 skill_id = &"rng_volley"
 display_name = "Volley"
 category = "ranged"
+tier = "core"
 passive_slot_count = 2
 source_build_signature = &"found_volley_t2|weap_volley_t2|focus_volley_t2|power_none"
 mastery_threshold_seconds = 45.0
-icon = ExtResource("2_icon")
+effect_data = SubResource("Resource_effect")
+icon = ExtResource("3_icon")

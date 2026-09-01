@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="SkillDefinitionResource" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://src/core/skill_definition_resource.gd" id="1_def"]
+[ext_resource type="Script" path="res://src/core/hero_skill_effect_resource.gd" id="2_effect_script"]
+[ext_resource type="Texture2D" path="res://assets/art/items/rng_barrage.png" id="3_icon"]
+
+[sub_resource type="Resource" id="Resource_effect"]
+script = ExtResource("2_effect_script")
+damage_type = "physical"
+delivery = "channel"
+skill_power_coefficient = 0.5
+secondary_effect = "none"
+tags = Array[String](["Channeling", "Projectile"])
+
+[resource]
+script = ExtResource("1_def")
+skill_id = &"rng_barrage"
+display_name = "Barrage"
+category = "ranged"
+tier = "core"
+passive_slot_count = 1
+source_build_signature = &""
+mastery_threshold_seconds = 45.0
+effect_data = SubResource("Resource_effect")
+icon = ExtResource("3_icon")
