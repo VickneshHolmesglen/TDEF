@@ -56,9 +56,35 @@ func test_unlocked_skill_is_listed_in_the_library() -> void:
 	assert_object(_screen.call("get_library_button", "phys_cleave")).is_not_null()
 
 
-func test_locked_skill_is_not_listed() -> void:
+## Revised 2026-09-01 for the not-yet-learned-skills roadmap decision
+## (player decision via AskUserQuestion, hero-skill-build.md's own
+## previously-open question, now resolved): the library always lists the
+## FULL catalogue now, not just unlocked skills -- a locked entry is listed
+## but disabled, not absent.
+func test_locked_skill_is_listed_but_disabled() -> void:
 	_rebuild_all()
-	assert_object(_screen.call("get_library_button", "phys_cleave")).is_null()
+	var button: Button = _screen.call("get_library_button", "phys_cleave")
+	assert_object(button).is_not_null()
+	assert_bool(button.disabled).is_true()
+
+
+func test_unlocked_skill_is_not_disabled() -> void:
+	_unlock(SKILL_PHYS_CLEAVE)
+	_rebuild_all()
+	var button: Button = _screen.call("get_library_button", "phys_cleave")
+	assert_bool(button.disabled).is_false()
+
+
+## Defense-in-depth guard (see _on_library_skill_pressed()'s own doc
+## comment): a locked skill_id is rejected even when the handler is called
+## directly, not just gated by the UI's own disabled button.
+func test_pressing_a_locked_skill_directly_is_a_no_op() -> void:
+	_rebuild_all()
+
+	@warning_ignore("unsafe_method_access")
+	_screen.call("_on_library_skill_pressed", "phys_cleave")
+
+	assert_str(GHeroSkillBuild.get_active_slots()[0]).is_equal("")
 
 
 func test_pressing_a_library_skill_assigns_it_to_the_first_empty_active_slot() -> void:

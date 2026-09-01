@@ -57,10 +57,15 @@ extends Control
 ##   pattern") added beneath the Ultimate readout, built from
 ##   HeroSkillBuild.get_category_count() (already existed, unused by any UI
 ##   until now) using the same letter-badge glyphs, one per occupied slot.
+## - Not-yet-learned skills roadmap closed 2026-09-01 (Claude Code, player
+##   decision via AskUserQuestion — see _rebuild_library()'s own doc
+##   comment): the library now always lists the full 32-skill catalogue,
+##   not just unlocked skills. A locked entry is disabled, dimmed, and
+##   tagged "[LOCKED]" — matching tarot_screen.gd's REAL established
+##   plain-text-tag convention, correcting the GDD's own inaccurate
+##   "lock icon" description of it.
 ## - Still not implemented: a connector-line visual between slots and the
-##   Ultimate readout, and the not-yet-learned-skills roadmap/lock-icon
-##   convention (UI Requirements, separate from this pass's scope) — both
-##   remain genuinely unscoped work.
+##   Ultimate readout — remains genuinely unscoped art-direction work.
 ##
 ## Root is a plain Control. No class_name — matches the other room/screen
 ## scripts' TD-workflow-001 precedent.
@@ -353,6 +358,22 @@ func _on_passive_cycle_pressed(slot_index: int) -> void:
 # Library panel — assignable skills
 # ---------------------------------------------------------------------------
 
+## Roadmap treatment resolved 2026-09-01 (player decision, AskUserQuestion —
+## hero-skill-build.md's own Open Question: "does the library panel intend to
+## show not-yet-learned (locked) skills... needs a decision before UI
+## implementation"): yes — the FULL catalogue (GameDataRegistry.
+## get_all_skill_definitions(), not just get_assignable_skills()) is always
+## listed. A not-yet-learned skill is disabled, dimmed, and tagged
+## "[LOCKED]". **Correction to that GDD's own wording, same category as this
+## file's archetype-glyph finding**: it calls for "the existing grey-out-
+## plus-lock-icon convention (same lock glyph as Inventory/Crafting/Tarot)"
+## — false on inspection. tarot_screen.gd's own doc comment states its
+## established convention is a plain-text bracketed tag
+## ("[LOCKED]"/"[EQUIPPED]"/"[AVAILABLE]"/"[CONFLICT: ...]"), explicitly
+## NOT a corner-anchored glyph, "since no card art/badge iconography exists
+## anywhere in this project." This screen now matches that REAL convention
+## (a "[LOCKED]" text tag + dimming), not the GDD's inaccurate "lock icon"
+## description of it.
 func _rebuild_library() -> void:
 	for child: Node in _library_list.get_children():
 		child.queue_free()
@@ -361,18 +382,30 @@ func _rebuild_library() -> void:
 	if hero_skill_build == null:
 		return
 	var assignable: Array[String] = hero_skill_build.get_assignable_skills()
-	assignable.sort()
+	var assignable_set: Dictionary[String, bool] = {}
+	for id: String in assignable:
+		assignable_set[id] = true
 
-	for skill_id: String in assignable:
+	var all_ids: Array[String] = []
+	for id: StringName in GGameDataRegistry.get_all_skill_definitions():
+		all_ids.append(String(id))
+	all_ids.sort()
+
+	for skill_id: String in all_ids:
+		var is_locked: bool = not assignable_set.has(skill_id)
 		var button := Button.new()
 		button.name = "Library_%s" % skill_id
 		button.focus_mode = Control.FOCUS_ALL
 		button.clip_text = true
 		button.add_theme_constant_override("icon_max_width", ICON_MAX_WIDTH)
 		var is_active: bool = hero_skill_build.get_active_slots().has(skill_id)
-		button.text = "%s%s" % [_skill_label(skill_id), " [ACTIVE]" if is_active else ""]
+		var suffix: String = "[LOCKED]" if is_locked else ("[ACTIVE]" if is_active else "")
+		button.text = "%s %s" % [_skill_label(skill_id), suffix] if not suffix.is_empty() else _skill_label(skill_id)
 		button.icon = _skill_icon(skill_id)
 		_apply_archetype_style(button, skill_id)
+		if is_locked:
+			button.disabled = true
+			button.modulate = Color(1.0, 1.0, 1.0, 0.45)
 		button.pressed.connect(_on_library_skill_pressed.bind(skill_id))
 		_wire_focus_ring(button)
 		_library_list.add_child(button)
@@ -382,9 +415,16 @@ func _rebuild_library() -> void:
 ## GDD simplification (see class doc comment): assigns to the first empty
 ## active slot; a no-op if all 4 are already filled (matching
 ## set_active_slot()'s own LOCKED/out-of-range rejection shape -- zero
-## mutation, no crash).
+## mutation, no crash). Also rejects a not-yet-learned skill_id even if
+## called directly (not through the UI's own `button.disabled` gate, which
+## only blocks a real player click) -- defense in depth, matching this
+## project's general "never trust a UI-only reject" discipline (e.g.
+## HeroSkillBuild.is_locked()'s own data-layer gate, not just a disabled
+## button elsewhere in this codebase).
 func _on_library_skill_pressed(skill_id: String) -> void:
 	if hero_skill_build == null:
+		return
+	if not hero_skill_build.get_assignable_skills().has(skill_id):
 		return
 	var bindings: Array[String] = hero_skill_build.get_active_slots()
 	for i: int in range(bindings.size()):
