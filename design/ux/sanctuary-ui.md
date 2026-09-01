@@ -1,8 +1,8 @@
 # UX Spec: Sanctuary UI
 
-> **Status**: Current (2026-07-24, follow-up pass complete). History: `/ux-review` found 1 blocking issue (a malformed Information Hierarchy table row — fixed) and 3 advisory issues (2 fixed same-session [toast missing from Component Inventory; no resolution/aspect-ratio AC], 1 left open as an inherited, pre-existing project-wide drift not this document's defect to fix [Standard-vs-Comprehensive reduced-motion tier inconsistency between `accessibility-requirements.md` and established `mission-hud.md` precedent]). Later the same day, the governing GDD's Core Rule 10 was redesigned (Loadout became a genuine 6th tab-strip entry), making this spec briefly stale (tracked as OQ-9). **This follow-up pass (2026-07-24, later still) closes that gap**: both ASCII wireframes, Component Inventory, the full binding table, Focus Traversal Order, Entry & Exit Points, States & Variants, and Events Fired are all now updated for the 6-entry tab strip. OQ-9 is Resolved. This spec is current for implementation.
+> **Status**: Current (2026-09-02, second follow-up pass complete). History: `/ux-review` found 1 blocking issue (a malformed Information Hierarchy table row — fixed) and 3 advisory issues (2 fixed same-session [toast missing from Component Inventory; no resolution/aspect-ratio AC], 1 left open as an inherited, pre-existing project-wide drift not this document's defect to fix [Standard-vs-Comprehensive reduced-motion tier inconsistency between `accessibility-requirements.md` and established `mission-hud.md` precedent]). On 2026-07-24, the governing GDD's Core Rule 10 was redesigned (Loadout became a genuine 6th tab-strip entry) and a same-day follow-up pass closed that gap (OQ-9, Resolved). On 2026-08-31/2026-09-01 the GDD's Core Rule 11 added a 7th entry (`ROOM_HERO_SKILLS`, "Skills," inserted at position 6, pushing Loadout to hotkey 7) — this spec went stale again until this pass. **This follow-up pass (2026-09-02, via `/reverse-document`, reconciled against the shipped `tab_strip.gd`/`hero_skills_room.gd` code, not just the GDD text) closes that gap**: both ASCII wireframes, Component Inventory, the full binding table, Focus Traversal Order, States & Variants, Events Fired, and Localization are all now updated for the 7-entry tab strip. This spec is current for implementation.
 > **Author**: Claude Sonnet (autonomous session, no user review)
-> **Last Updated**: 2026-07-24
+> **Last Updated**: 2026-09-02
 > **Journey Phase(s)**: Not tracked — `design/player-journey.md` does not exist in this project. This spec's Player Context on Arrival section below stands in for that mapping until a formal journey document exists; flagged here per the skill's own gap-reporting convention, and again in Open Questions.
 > **Template**: UX Spec
 > **Governing GDD**: `design/gdd/sanctuary-ui.md` (Needs Revision status at time of writing, but this UX spec authors against its Detailed Design in full — the "Needs Revision" flag is a request for one more formal `/design-review` confirmation pass, not an indication the content is unreliable; this spec should be re-checked against that GDD if it changes materially before implementation)
@@ -11,11 +11,11 @@
 
 ## Purpose & Player Need
 
-Sanctuary UI is the only player-facing surface for five otherwise-invisible systems (Inventory, Crafting, Menagerie, Defense Building, Equipment Forge) and for the Sanctuary-overview diorama itself — the physical embodiment of the Player Fantasy's "self-portrait taking shape." It serves two distinct needs that must never fight each other for the same pixels: **(1) the contemplative "step back and look" need** — a player who just finished a mission wants a moment to see what their choices built, with zero task pressure — and **(2) the efficient "get to work" need** — a player who knows exactly which room they want and should reach it in one input, from anywhere, without a tour through intermediate screens.
+Sanctuary UI is the only player-facing surface for six otherwise-invisible systems (Inventory, Crafting, Menagerie, Defense Building, Equipment Forge, and — added 2026-08-31/2026-09-01, Core Rule 11 — the composite Hero Skill Build + Hero Skill Tree "Skills" room) and for the Sanctuary-overview diorama itself — the physical embodiment of the Player Fantasy's "self-portrait taking shape." It serves two distinct needs that must never fight each other for the same pixels: **(1) the contemplative "step back and look" need** — a player who just finished a mission wants a moment to see what their choices built, with zero task pressure — and **(2) the efficient "get to work" need** — a player who knows exactly which room they want and should reach it in one input, from anywhere, without a tour through intermediate screens.
 
 The shell fails if either need crowds out the other: a diorama so small it can't be appreciated, or a room-switch flow so slow or buried that "I want to check Crafting" becomes a multi-step hunt. It also fails if the Player Fantasy's cross-system promise ("a choice in one drawer lights up the connected slots in another") goes undelivered — the GDD's Core Rule 9 revision narrowed this to tab-strip-level Connection Badges specifically so it stays deliverable; this spec's job is to make sure that narrower promise is still felt as connection, not just as a stray notification icon.
 
-Success is a player who, on any post-mission return, spends a few unhurried seconds looking at `OVERVIEW` before diving into a room — and who, mid-session, can jump to any of the 5 rooms in one input without thinking about navigation at all.
+Success is a player who, on any post-mission return, spends a few unhurried seconds looking at `OVERVIEW` before diving into a room — and who, mid-session, can jump to any of the 7 tab-strip entries (5 rooms, Overview, or the Loadout hand-off) in one input without thinking about navigation at all.
 
 ---
 
@@ -28,7 +28,7 @@ Success is a player who, on any post-mission return, spends a few unhurried seco
 | **Post-mission return (forced)** | `MISSION_COMPLETE` or `DEFEAT` just resolved | Coming down from combat — satisfaction or disappointment, either way seeking a beat to reset | See the sanctuary reflect what just happened (new structure, if one was earned); orient before deciding what's next |
 | **Voluntary mid-session return** | Player pressed tab 1 / hotkey `1` from inside a room | Task-focused, briefly checking in | Confirm a change landed (e.g. "did that structure actually appear?"), or just take the offered break before continuing |
 | **Direct room entry (returning player)** | Player already knows which room they want (e.g. "I have new materials, straight to Crafting") | Purposeful, low patience for ceremony | Reach the room in one input; no forced detour through `OVERVIEW` first |
-| **First-ever mount (new player)** | Very first mission just completed | Orienting — first time seeing this screen at all | Understand there are 5 rooms and 2 ways to move between them (tab strip direct-select vs. `[`/`]`/triggers cycle) — this is what the onboarding tooltip (Core Rule 2) exists to solve |
+| **First-ever mount (new player)** | Very first mission just completed | Orienting — first time seeing this screen at all | Understand there are 5 rooms plus Loadout and 2 ways to move between them (tab strip direct-select vs. `[`/`]`/triggers cycle) — this is what the onboarding tooltip (Core Rule 2) exists to solve |
 | **Mid-room, Connection Badge appears** | Player is deep in one room, unrelated to the badge's origin | Focused on current task | Notice the badge without being pulled out of flow; understand roughly what it means without opening the room (per the GDD's Experiential Criterion) |
 
 Design implication: because entry always defaults to `OVERVIEW` (Core Rule 5) regardless of arrival moment, the `OVERVIEW` state itself must satisfy the *first* need (the contemplative beat) every single time, even for a player who's about to immediately hotkey away from it. This spec treats that beat as "available, never mandatory" — nothing about `OVERVIEW` should force a dwell time.
@@ -41,7 +41,7 @@ Sanctuary UI is a top-level destination, not a sub-screen. It sits at:
 
 `Mission Select → [Mission] → MISSION_COMPLETE / DEFEAT → Sanctuary UI (OVERVIEW) → Mission Select`
 
-Within Sanctuary UI itself, navigation is flat, not hierarchical, for the 5 rooms — the tab strip presents all 5 as siblings, one input apart from each other and from `OVERVIEW`. The only hierarchy that exists is *inside* a room (e.g. Equipment Forge's Craft/Imbue toggle, Menagerie's breeding-pen flow), which is that room's own concern per its own GDD, not this shell's.
+Within Sanctuary UI itself, navigation is flat, not hierarchical, for the 5 rooms — the tab strip presents all 7 entries (5 rooms, Overview, Loadout) as siblings, one input apart from each other. The only hierarchy that exists is *inside* a room (e.g. Equipment Forge's Craft/Imbue toggle, Menagerie's breeding-pen flow, Skills' own Loadout/Skill Tree sub-screen toggle), which is that room's own concern per its own GDD, not this shell's.
 
 ---
 
@@ -112,7 +112,7 @@ There is no "quit to desktop" or "return to main menu" affordance owned by this 
 
 | Zone | Visibility | Behaviour |
 |---|---|---|
-| Tab Strip (left edge, ≤96px) | Always | **6 entries** top-to-bottom (updated 2026-07-24 — the GDD's Core Rule 2/10 was redesigned to add Loadout as a genuine tab-strip entry, after this spec was originally authored against the 5-entry version): Overview, Inventory & Crafting, Menagerie, Defense Building, Equipment Forge, Loadout. Icon-only at rest; label reveals on focus/hover (Tuning Knobs). Connection Badges overlay the icon's top-right corner on the 4 room entries only — Loadout never carries one (GDD Core Rule 2). Selecting Loadout triggers `DEPARTING_TO_LOADOUT` (a shell exit to Tarot Deck UI) instead of a room mount, reachable from any state, not `OVERVIEW`-only. **The wireframes and legend below still show the pre-redesign 5-entry layout and have not yet been refreshed — flagged as Open Question OQ-9, not silently left inconsistent.** |
+| Tab Strip (left edge, ≤96px) | Always | **7 entries** top-to-bottom (updated 2026-09-02 — the GDD's Core Rule 11 added Skills as a genuine 6th tab-strip entry on 2026-08-31/2026-09-01, pushing Loadout to 7th): Overview, Inventory & Crafting, Menagerie, Defense Building, Equipment Forge, Skills, Loadout. Icon-only at rest; label reveals on focus/hover (Tuning Knobs) — except Skills, which has no icon asset yet (`tab_strip.gd`'s own flagged gap — `TAB_ICON_TEXTURES[5] = null`) and so renders text-only regardless of focus state until one is generated. Connection Badges overlay the icon's top-right corner on the 5 room entries (Inventory & Crafting, Menagerie, Defense Building, Equipment Forge, Skills) — Overview and Loadout never carry one (GDD Core Rule 2). Selecting Loadout triggers `DEPARTING_TO_LOADOUT` (a shell exit to Tarot Deck UI) instead of a room mount, reachable from any state, not `OVERVIEW`-only. Selecting Skills mounts `HeroSkillsRoom.tscn`, a composite room hosting Hero Skill Build's Loadout sub-screen (default) and Hero Skill Tree's Skill Tree sub-screen, toggled internally via `LB`/`RB` (`room_bumper_left`/`room_bumper_right`) or two click tabs — this internal toggle never changes the shell's own active `ROOM_*` state (Core Rule 9/11's "bumpers never trigger a tab-strip switch"). |
 | Resource Header (top edge, ≤64px) | Always | Gold + materials, read-only, no focus ring ever (Core Rule 3) |
 | Content / `RoomHost` (remaining frame) | Always, content swaps | `OVERVIEW`'s diorama or the active room's full-rect screen — never both, never neither |
 
@@ -124,8 +124,8 @@ This is a deliberately thin, static two-strip chrome frame (left + top) around a
 
 | Component | Type | Content | Interactive | Pattern |
 |---|---|---|---|---|
-| Tab entry ×6 (updated 2026-07-24) | Icon button + label-on-focus | Room icon, label, active-state fill | Yes — click / hotkey `1`–`6` / `[`/`]` / `LT`/`RT` | New pattern candidate: **Persistent Room Tab Strip** (see Interaction Patterns note below). 5 of the 6 select a shell-internal state; the 6th (Loadout) triggers a shell hand-off instead — visually identical entry type, different activation outcome, no special-cased styling |
-| Connection Badge ×4 (on Inventory/Menagerie/Defense Building/Equipment Forge entries only — `OVERVIEW`'s own tab and the Loadout tab never carry one) | Overlay icon + optional count | Small badge glyph, corner-anchored on the tab icon | No (informational only) | New pattern — **Connection Badge** (see below). Loadout's carve-out is deliberate (GDD Core Rule 2/OQ-8), not an oversight |
+| Tab entry ×7 (updated 2026-09-02) | Icon button + label-on-focus (Skills is text-only — no icon asset yet) | Room icon, label, active-state fill | Yes — click / hotkey `1`–`7` / `[`/`]` / `LT`/`RT` | New pattern candidate: **Persistent Room Tab Strip** (see Interaction Patterns note below). 6 of the 7 select a shell-internal state; the 7th (Loadout) triggers a shell hand-off instead — visually identical entry type, different activation outcome, no special-cased styling |
+| Connection Badge ×5 (on Inventory/Menagerie/Defense Building/Equipment Forge/Skills entries only — `OVERVIEW`'s own tab and the Loadout tab never carry one) | Overlay icon + optional count | Small badge glyph, corner-anchored on the tab icon | No (informational only) | New pattern — **Connection Badge** (see below). Loadout's carve-out is deliberate (GDD Core Rule 2/OQ-8), not an oversight. Skills' badge (added 2026-09-01, Core Rule 11) is driven by `skill_unlocked`, `skill_tree_point_earned`, or `skill_tree_overflow_point_earned` — any of the three increments it |
 | Onboarding tooltip | One-time contextual tooltip | One line: trigger/bumper split | Dismiss on any input | Reuses tooltip conventions from `interaction-patterns.md`'s Gap list ("Tooltip on hover" — not yet formally catalogued; this is a second user, worth promoting once authored) |
 | "Staged changes discarded" toast | Non-blocking notification toast | One line, room-name-agnostic phrasing ("Staged changes discarded") | No (informational only, auto-hold then fade) | Matches `interaction-patterns.md`'s existing Gap list entry **"Floating notification toast"** (added to the review pass 2026-07-24 — this component should cite that gap entry rather than being treated as unprecedented; distinct from the onboarding tooltip's contextual-hover-tooltip lineage) |
 
@@ -143,6 +143,13 @@ This is a deliberately thin, static two-strip chrome frame (left + top) around a
 | Diorama | World-space full-canvas render | Built structures + habitat occupancy at fixed positions | Yes — click a structure/habitat (secondary entry path) | Reuses the oblique-camera diorama convention (`art-bible.md`), stacked-sprite/shadow treatment |
 | Structure/habitat inert tooltip | Contextual info | Structure name, "no gameplay effect" framing for structures with no room | No | Adjacent to Pattern 2 (Contextual Info Panel) but lighter-weight — a single-line tooltip, not a full panel |
 | Launch/Depart button | Primary action button | "Launch Mission" (see Localization) | Yes | Fully-chamfered primary-action button per art bible's UI shape family |
+
+#### Content Zone — `ROOM_HERO_SKILLS` (composite room, added 2026-09-01)
+
+| Component | Type | Content | Interactive | Pattern |
+|---|---|---|---|---|
+| Sub-screen tab strip (in-room, above sub-screen host) | `HBoxContainer`, 2 toggle buttons | "Loadout" / "Skill Tree" labels, active-state pressed styling | Yes — click, or `LB`/`RB` (`room_bumper_left`/`room_bumper_right`) | Same in-room-tab family as Inventory's category tabs, Defense Building's Tech/Build, Equipment Forge's Craft/Imbue — distinct scope from the shell's own Room Tab Strip, same as `ROOM_INVENTORY_CRAFTING`'s own category tabs below |
+| Sub-screen host | `Control`, full remaining rect | Hero Skill Build's `HeroSkillBuildScreen` (default) or Hero Skill Tree's `HeroSkillTreeScreen`, toggled via `.visible` — both instantiated once at room mount and kept alive for the room's whole lifetime (not destroy/recreate per switch, unlike the shell's own room-level lifecycle) | Yes — full sub-screen content, each screen's own GDD/UX owns its internal layout | Room-owned, unchanged from `hero-skill-build.md`/`hero-skill-tree.md` |
 
 #### Content Zone — `ROOM_INVENTORY_CRAFTING` (the one room that exists in code today)
 
@@ -175,11 +182,14 @@ This is a deliberately thin, static two-strip chrome frame (left + top) around a
 │ frg│                                            │  LAUNCH MISSION ││
 │    │                                            └─────────────────┘│
 │ □6 │                                                                │
+│ skl│                                                                │
+│    │                                                                │
+│ □7 │                                                                │
 │ ldt│                                                                │
 └────┴──────────────────────────────────────────────────────────────┘
 ```
 
-Legend: `▣1` = active tab (Overview), `□2`–`□6` = inactive tabs (icon shown, label hidden — labels shown here for wireframe clarity only), `▲` = clickable structure/habitat (secondary entry path), `ldt` = Loadout (updated 2026-07-24 — the tab strip's own height grows to fit this 6th entry per Core Rule 2's `VBoxContainer`-of-fixed-width-entries architecture; entry width is unchanged), diorama rendered at full content-zone size. Note Loadout selection never mounts room content in this content zone — it triggers a hand-off to Tarot Deck UI instead (see Entry & Exit Points).
+Legend: `▣1` = active tab (Overview), `□2`–`□7` = inactive tabs (icon shown, label hidden — labels shown here for wireframe clarity only; `skl` has no icon asset yet and renders text-only regardless), `▲` = clickable structure/habitat (secondary entry path), `skl` = Skills (added 2026-09-02 — the tab strip's own height grows to fit this 7th entry per Core Rule 2's `VBoxContainer`-of-fixed-width-entries architecture; entry width is unchanged), `ldt` = Loadout (now the 7th entry, shifted down one position from Skills' insertion), diorama rendered at full content-zone size. Note Loadout selection never mounts room content in this content zone — it triggers a hand-off to Tarot Deck UI instead (see Entry & Exit Points). Skills selection mounts `HeroSkillsRoom` like any other room.
 
 **Updated 2026-08-21 (player-requested medieval-town layout)**: the diorama now renders a fixed **Castle** placeholder (`Diorama.CASTLE_LABEL`/`CASTLE_SIZE`, `diorama.gd`'s `_render_castle()`) at a centered position (`STRUCTURE_POSITIONS["castle"] = Vector2(220, 80)`), permanent decoration rendered unconditionally in `_ready()` — never gated on `sanctuary_structure_built`, and not a `▲` clickable entry (no room maps to it; it is purely the town-layout centerpiece named by the Player Fantasy request). Watchtower and the Menagerie habitat repositioned around it (`Vector2(120, 150)`/`Vector2(320, 150)`) rather than the prior scattered 4-structure sketch above, which predates this session and was never fully built (Forge/Tech-spire structures shown in the original sketch do not exist in the shipped diorama — only Watchtower, Menagerie's habitat, and the new Castle render today). Leveling up a built structure swaps its displayed sprite/frame at the same fixed position (no re-layout) — position is stable per structure, only the visual changes.
 
@@ -202,7 +212,10 @@ Legend: `▣1` = active tab (Overview), `□2`–`□6` = inactive tabs (icon sh
 │ □5 │  ← Equipment Forge
 │ frg│
 ├────┤
-│ □6 │  ← Loadout (never carries a badge — GDD Core Rule 2's
+│ □6●│  ← Skills — Connection Badge showing (e.g. a skill was just
+│ skl│     learned, or a skill tree point is banked unspent)
+├────┤
+│ □7 │  ← Loadout (never carries a badge — GDD Core Rule 2's
 │ ldt│     deliberate carve-out, OQ-8, not an oversight)
 └────┘
 ```
@@ -230,11 +243,14 @@ The badge sits corner-anchored on the icon (top-right), does not push or resize 
 │ frg│                                                                │
 │    │                                                                │
 │ □6 │                                                                │
+│ skl│                                                                │
+│    │                                                                │
+│ □7 │                                                                │
 │ ldt│                                                                │
 └────┴──────────────────────────────────────────────────────────────┘
 ```
 
-Legend: `IT` = inventory item slot, `▣` = active tab / owned recipe, `░` = locked recipe. Loadout (`□6`/`ldt`) remains visible and selectable while any room is active — including from inside Inventory & Crafting shown here — per Core Rule 10's "reachable from any state" rule. Matches `InventoryScreen.tscn`'s actual `HBoxContainer`(`LeftPanel` `stretch_ratio=2.0` / `RightPanel` `stretch_ratio=1.0`) split — this wireframe is proportioned to reflect that real 2:1 ratio, not an arbitrary guess. The room occupies the full content zone (frame minus tab strip width and header height) with no additional shell chrome inside it.
+Legend: `IT` = inventory item slot, `▣` = active tab / owned recipe, `░` = locked recipe. Skills (`□6`/`skl`) and Loadout (`□7`/`ldt`) both remain visible and selectable while any room is active — including from inside Inventory & Crafting shown here — Skills per Core Rule 6's ordinary in-shell room model, Loadout per Core Rule 10's "reachable from any state" rule. Matches `InventoryScreen.tscn`'s actual `HBoxContainer`(`LeftPanel` `stretch_ratio=2.0` / `RightPanel` `stretch_ratio=1.0`) split — this wireframe is proportioned to reflect that real 2:1 ratio, not an arbitrary guess. The room occupies the full content zone (frame minus tab strip width and header height) with no additional shell chrome inside it.
 
 ---
 
@@ -244,8 +260,9 @@ Legend: `IT` = inventory item slot, `▣` = active tab / owned recipe, `░` = l
 |---|---|---|
 | `OVERVIEW` | Default entry (Core Rule 5); tab 1 / hotkey `1`; `[`/`]`/`LT`/`RT` cycle lands here | Diorama renders full content zone; Launch/Depart visible; tab strip default-focused unless diorama explicitly entered |
 | `ROOM_INVENTORY_CRAFTING` / `ROOM_MENAGERIE` / `ROOM_DEFENSE_BUILDING` / `ROOM_EQUIPMENT_FORGE` | Tab/hotkey/`LT`/`RT` selection; fresh instance per Core Rule 6 | That room's own full screen mounts in `RoomHost`; Launch/Depart absent; that room's own `InputModeTracker` gains focus at its own default |
+| `ROOM_HERO_SKILLS` (added 2026-08-31/2026-09-01, Core Rule 11) | Tab/hotkey `6`/`LT`/`RT` selection; fresh `HeroSkillsRoom` instance per Core Rule 6 | `HeroSkillsRoom` mounts, defaulting to its Loadout (Hero Skill Build) sub-screen; Launch/Depart absent; the room's own `InputModeTracker` gains focus at its own default. Internal `LB`/`RB` (or click) toggles the sub-screen between Loadout and Skill Tree without leaving this state or touching the shell's own active state |
 | `DEPARTING` | Launch/Depart confirmed | Chrome fades (fastest first), diorama pulls back and settles, all input discarded (terminal latch) |
-| `DEPARTING_TO_LOADOUT` (added 2026-07-24) | Loadout tab selected from **any** state | Any active room torn down first (Core Rule 6); shell hands off to Tarot Deck UI; all further input discarded (shared terminal latch with `DEPARTING`, Core Rule 10). No dedicated visual beat is specified by the GDD beyond the room-teardown that was already in flight — this spec does not invent a separate `DEPARTING_TO_LOADOUT`-specific transition animation, since Core Rule 10 explicitly frames the walk to Loadout as "one continuous motion," not a second departure beat mirroring `DEPARTING`'s own pacing |
+| `DEPARTING_TO_LOADOUT` (added 2026-07-24; hotkey shifted from `6` to `7` on 2026-09-01 when Skills was inserted) | Loadout tab selected from **any** state | Any active room torn down first (Core Rule 6); shell hands off to Tarot Deck UI; all further input discarded (shared terminal latch with `DEPARTING`, Core Rule 10). No dedicated visual beat is specified by the GDD beyond the room-teardown that was already in flight — this spec does not invent a separate `DEPARTING_TO_LOADOUT`-specific transition animation, since Core Rule 10 explicitly frames the walk to Loadout as "one continuous motion," not a second departure beat mirroring `DEPARTING`'s own pacing |
 | Onboarding tooltip active | First-ever mount this session | Non-blocking tooltip anchored to tab strip; dismisses on any input |
 | Connection Badge present | Badge-trigger event fires for a non-active room | Badge appears with scale-pop on that tab's icon corner; clears instantly on entry |
 | Diorama-selection focus | Player explicitly directs input at the diorama (click, or `Down` from tab strip's bottom tab) | Focus moves from tab strip's `InputModeTracker` to `OVERVIEW`'s own structure-selection tracker; Cancel returns focus to tab strip |
@@ -263,10 +280,10 @@ Interactions mapped for: **Keyboard/Mouse (primary), Gamepad (partial)**. All in
 
 | Action | K/M | Gamepad | Scope | Notes |
 |---|---|---|---|---|
-| Select tab-strip entry directly | Click tab | — | Tab strip | Mouse-only direct-select; gamepad uses D-pad focus + confirm instead (see below). Applies to all 6 entries, including Loadout |
-| Jump to entry by number (updated 2026-07-24) | `1`–`6` | — | Global (any state) | `1`=Overview, `2`=Inventory & Crafting, `3`=Menagerie, `4`=Defense Building, `5`=Equipment Forge, `6`=Loadout. `6` reaches `DEPARTING_TO_LOADOUT` from any state, not `OVERVIEW`-only — unlike Launch/Depart, which has no hotkey and is `OVERVIEW`-only by design |
-| Cycle entry prev/next (updated 2026-07-24) | `[` / `]` | `LT` / `RT` | Global (any state) | Wraps at both ends (6↔1, updated from the pre-redesign 5-item wrap) — not explicitly stated in the GDD; this spec makes that call (see Open Questions) |
-| Switch in-room tab (Inventory categories, Defense Building Tech/Build, Equipment Forge Craft/Imbue) | Room-owned bind (e.g. `Q`/`E` or click) | `LB` / `RB` | Inside active room only | Deliberately never triggers a room switch (Core Rule 2) |
+| Select tab-strip entry directly | Click tab | — | Tab strip | Mouse-only direct-select; gamepad uses D-pad focus + confirm instead (see below). Applies to all 7 entries, including Loadout |
+| Jump to entry by number (updated 2026-09-02) | `1`–`7` | — | Global (any state) | `1`=Overview, `2`=Inventory & Crafting, `3`=Menagerie, `4`=Defense Building, `5`=Equipment Forge, `6`=Skills, `7`=Loadout. `7` reaches `DEPARTING_TO_LOADOUT` from any state, not `OVERVIEW`-only — unlike Launch/Depart, which has no hotkey and is `OVERVIEW`-only by design |
+| Cycle entry prev/next (updated 2026-09-02) | `[` / `]` | `LT` / `RT` | Global (any state) | Wraps at both ends (7↔1, updated from the pre-Skills 6-item wrap) — not explicitly stated in the GDD; this spec makes that call (see Open Questions) |
+| Switch in-room tab (Inventory categories, Defense Building Tech/Build, Equipment Forge Craft/Imbue, Skills' Loadout/Skill Tree toggle) | Room-owned bind (e.g. `Q`/`E` or click) | `LB` / `RB` | Inside active room only | Deliberately never triggers a room switch (Core Rule 2). Skills' own toggle (added 2026-09-01) uses new, generically-named `room_bumper_left`/`room_bumper_right` InputMap actions (`JOY_BUTTON_LEFT_SHOULDER`/`RIGHT_SHOULDER`, plus a `Q`/`E` K/M fallback) — the first room to wire a real LB/RB action in this project; the other rooms' in-room tabs listed here are click-only in the shipped code today despite this row's framing, a pre-existing gap this spec does not attempt to close |
 | Navigate tab strip (focus move) | `↑`/`↓` or Tab/Shift+Tab | D-pad Up/Down or Left Stick Up/Down | Tab strip | Focus-ring traversal, top (Overview) to bottom (Equipment Forge) |
 | Confirm focused tab | `Enter`/`Space` | `A` / South face button | Tab strip | Activates the focused tab, same result as a click |
 | Enter diorama (structure-selection focus) | Click a structure directly | `Down` from the tab strip's bottom-most focused tab (Equipment Forge) | `OVERVIEW`, tab strip → diorama handoff | This is the "dedicated input" the GDD (Core Rule 6) left unnamed — this spec names it concretely as **`Down` from the bottom tab, mirroring a list-to-grid boundary handoff** |
@@ -277,18 +294,19 @@ Interactions mapped for: **Keyboard/Mouse (primary), Gamepad (partial)**. All in
 | Cancel (room root → `OVERVIEW`) | `Esc` | `B` / East face button | Room root | Exits room, destroys instance, returns to `OVERVIEW` (Core Rule 6/7) |
 | Cancel (tab strip, no room open) | `Esc` | `B` / East face button | Tab strip, `OVERVIEW` | No-op — explicit, not silently remapped (Edge Cases) |
 | Launch/Depart | Click button | `A` / South face button (button must be focus-reachable via the same tab-strip-adjacent traversal) | `OVERVIEW` only | Only interactive surface that ends the Sanctuary UI session — irreversible, pacing-gated |
-| Select Loadout (added 2026-07-24) | Click tab | `A` / South face button on focused tab, or `LT`/`RT`/hotkey `6` | Global — any state, `OVERVIEW` or any `ROOM_*` | Reversible lateral navigation, no pacing gate — same activation mechanism as any other tab entry (Core Rule 10's own explicit "same button, different focus path to reach it" framing); tears down any active room before hand-off |
+| Select Skills (added 2026-09-02, mirrors the other rooms) | Click tab | `A` / South face button on focused tab, or `LT`/`RT`/hotkey `6` | Tab strip / global | Ordinary in-shell room mount (Core Rule 6/11), not a hand-off — mounts `HeroSkillsRoom`, defaulting to its Loadout sub-screen |
+| Select Loadout (added 2026-07-24; hotkey shifted `6`→`7` on 2026-09-01) | Click tab | `A` / South face button on focused tab, or `LT`/`RT`/hotkey `7` | Global — any state, `OVERVIEW` or any `ROOM_*` | Reversible lateral navigation, no pacing gate — same activation mechanism as any other tab entry (Core Rule 10's own explicit "same button, different focus path to reach it" framing); tears down any active room before hand-off |
 | Dismiss onboarding tooltip | Any input | Any input | First mount only | No dedicated dismiss button — any input works, including the input that triggers the action itself |
 
 ### Focus Traversal Order
 
-1. **Tab strip** (default focus on `OVERVIEW` entry, per Core Rule 6): Overview → Inventory & Crafting → Menagerie → Defense Building → Equipment Forge → Loadout, top to bottom, wrapping top↔bottom on continued `↑`/`↓` press (updated 2026-07-24 — Loadout is now the bottom-most tab entry, not Equipment Forge).
-2. **`Down` from Loadout (now the bottom tab, updated 2026-07-24)** hands off to the diorama's structure-selection tracker (only reachable when `OVERVIEW` is active — this input is inert/no-op while any `ROOM_*` state is active, since the diorama isn't rendered then). Since Loadout itself confirms via `A`/South face/click rather than `Down`, this boundary-crossing input and Loadout's own activation input remain distinct and don't conflict on the focused Loadout tab.
+1. **Tab strip** (default focus on `OVERVIEW` entry, per Core Rule 6): Overview → Inventory & Crafting → Menagerie → Defense Building → Equipment Forge → Skills → Loadout, top to bottom, wrapping top↔bottom on continued `↑`/`↓` press (updated 2026-09-02 — Loadout is now the bottom-most tab entry, pushed down one position by Skills' insertion; Skills sits directly above it).
+2. **`Down` from Loadout (now the bottom tab)** hands off to the diorama's structure-selection tracker (only reachable when `OVERVIEW` is active — this input is inert/no-op while any `ROOM_*` state is active, since the diorama isn't rendered then). Since Loadout itself confirms via `A`/South face/click rather than `Down`, this boundary-crossing input and Loadout's own activation input remain distinct and don't conflict on the focused Loadout tab.
 3. **Diorama structure-selection ring**: nearest-neighbor spatial traversal between clickable structures/habitats. `Esc`/`B` returns to step 1.
-4. **Inside a room**: that room's own `InputModeTracker` and its own documented focus order (out of scope for this spec — see each room's own GDD/UX).
+4. **Inside a room**: that room's own `InputModeTracker` and its own documented focus order (out of scope for this spec — see each room's own GDD/UX). For Skills specifically: `HeroSkillsRoom` owns its own `InputModeTracker`, with `LB`/`RB` toggling between its two sub-screens as lateral navigation within this one focus region, not a step in this outer traversal order.
 5. **Launch/Depart button**: reachable as the final stop past the diorama's structure ring (or via a direct `Tab`/D-pad-right from the tab strip, whichever the eventual implementation finds more natural — flagged as an implementation-detail choice, not fixed here, since the GDD doesn't specify it and both are equally valid Standard-tier options).
 
-This satisfies the accessibility requirement (below) that all 6 `InputModeTracker` regions (4 rooms + tab strip + `OVERVIEW`'s diorama ring) are keyboard/gamepad-reachable with no mouse-only step.
+This satisfies the accessibility requirement (below) that all 7 `InputModeTracker` regions (5 rooms + tab strip + `OVERVIEW`'s diorama ring) are keyboard/gamepad-reachable with no mouse-only step.
 
 ---
 
@@ -312,6 +330,7 @@ This satisfies the accessibility requirement (below) that all 6 `InputModeTracke
 | `recipe_unlocked` | Increments Inventory & Crafting's Connection Badge (Tuning Knob, provisional per OQ-6) |
 | Creature reaches `READY` state | Increments Menagerie's Connection Badge (Tuning Knob, provisional per OQ-6) |
 | `rune_socket_unlocked` | Increments Equipment Forge's Connection Badge (Tuning Knob, provisional per OQ-6) |
+| `skill_unlocked` / `skill_tree_point_earned` / `skill_tree_overflow_point_earned` | Increments Skills' Connection Badge if that room isn't active (Core Rule 11's own explicit badge spec, added 2026-09-01 — not a provisional OQ-6 guess like the 4 events above, since these are real, already-shipped `event_bus.gd` signals confirmed against Core Rule 11's text) |
 
 All of the above are discarded once `DEPARTING` is entered (terminal latch, Edge Cases).
 
@@ -348,15 +367,15 @@ Sanctuary UI is almost entirely read-heavy — a pure subscriber/display shell, 
 | Structure positions + build state | Defense Building / Sanctuary-overview's own rendering data | Read | `sanctuary_structure_built` event; diorama keeps listening regardless of active state | |
 | Connection Badge counts (per room) | EventBus, various (see Tuning Knobs) | Read | Increments on trigger event; cleared to 0 on room entry | Purely informational, no persisted unread state |
 | Onboarding-seen flag | Session-local (not `save-persistence.md`-tracked) | Read/Write | Set on first mount this session; not saved across sessions | Matches "no UI state is ever saved" (Core Rule 2) |
-| Room content (all 5 rooms) | Each room's own GDD/scene | Read (hosted, not owned) | Room's own event subscriptions; Sanctuary UI only controls mount/unmount timing | Sanctuary UI never reads or writes into a room's internal state directly |
+| Room content (all 5 rooms) | Each room's own GDD/scene | Read (hosted, not owned) | Room's own event subscriptions; Sanctuary UI only controls mount/unmount timing | Sanctuary UI never reads or writes into a room's internal state directly. Skills' room is unusual only in hosting two sub-screens (`hero-skill-build.md`, `hero-skill-tree.md`) instead of one — from the shell's perspective it is still a single `ROOM_*` mount |
 
 ### Initial / Null State Specification
 
 | Data | Initial Value at Mount | Null Fallback |
 |---|---|---|
-| Active state | `OVERVIEW` | Never null — always set synchronously on mount, before any input is processed. Now 7 possible values (`OVERVIEW`, 4 `ROOM_*` states, `DEPARTING`, `DEPARTING_TO_LOADOUT` — updated 2026-07-24 to include the redesigned Loadout transitional state) |
+| Active state | `OVERVIEW` | Never null — always set synchronously on mount, before any input is processed. Now 8 possible values (`OVERVIEW`, 5 `ROOM_*` states including `ROOM_HERO_SKILLS`, `DEPARTING`, `DEPARTING_TO_LOADOUT` — updated 2026-09-02 to include the 2026-08-31/2026-09-01 Skills addition) |
 | Resource header values | Direct poll of Resource Economy's current balance | If `resources_changed` hasn't fired yet, the poll covers it (Edge Cases) — never shows an empty/loading state |
-| Connection Badges | All 4 room tabs start with no badge | 0/absent is a valid, common state — not an error |
+| Connection Badges | All 5 badge-eligible room tabs start with no badge | 0/absent is a valid, common state — not an error |
 | Onboarding tooltip | Shown if this is truly the first mount this session | Not shown on any subsequent mount this session |
 | Diorama structure render | Reflects Defense Building's currently-built state at mount time | If no structures are built yet, diorama renders its base/empty layout — not a loading placeholder |
 
@@ -374,8 +393,8 @@ Accessibility tier: **Standard** — per `design/accessibility-requirements.md`.
 |---|---|---|---|
 | Tab strip active/inactive state | Color-as-only-indicator | Filled-vs-outline convention (existing project pattern) — active tab is never distinguished by color alone | Per GDD Visual/Audio Requirements: "Active-tab state reuses the existing filled-vs-outline actionable convention (never color-only)" |
 | Connection Badge | Color-as-only-indicator | Distinct badge glyph shape, not a color-only dot — same principle as Defense Building's built/unbuilt structure distinction | Per GDD Visual/Audio Requirements, explicitly stated |
-| All 6 `InputModeTracker` regions | Keyboard-only completion | Full traversal path: tab strip → (optional) diorama structure-selection ring → (optional) active room's own tracker, with `Down`/`Esc` as the named boundary-crossing inputs (Interaction Map) | No mouse-only step exists anywhere in this spec's own navigation — room-internal completeness is each room's own GDD's responsibility |
-| All 6 `InputModeTracker` regions | Gamepad-only completion | Same traversal path via D-pad/Left Stick + face buttons + `LT`/`RT` | Confirmed distinct from `LB`/`RB` (in-room tabs) per Core Rule 2's explicit split |
+| All 7 `InputModeTracker` regions | Keyboard-only completion | Full traversal path: tab strip → (optional) diorama structure-selection ring → (optional) active room's own tracker, with `Down`/`Esc` as the named boundary-crossing inputs (Interaction Map) | No mouse-only step exists anywhere in this spec's own navigation — room-internal completeness is each room's own GDD's responsibility |
+| All 7 `InputModeTracker` regions | Gamepad-only completion | Same traversal path via D-pad/Left Stick + face buttons + `LT`/`RT` | Confirmed distinct from `LB`/`RB` (in-room tabs) per Core Rule 2's explicit split |
 | Resource header text | Text scaling | Follows the project's committed UI scale slider (75%–150%, Standard tier); at 150% scale the header must not exceed its 64px height budget in a way that clips text — widen the numeric display area or abbreviate large material counts (e.g. "99+") before allowing clipping | New commitment this spec adds — the GDD's Tuning Knobs table only states the header's *default* height, not its behavior under UI scale extremes; this spec closes that gap provisionally, matching `mission-hud.md`'s own "test all HUD zones at 75% and 150%" acceptance criterion precedent |
 | Connection Badge count text | Text scaling | Numeric count (when present) follows the same UI scale slider; at 150% scale, if the badge count would overlap the tab icon's own glyph, cap displayed count at "9+" rather than allowing visual collision | New commitment, same rationale as above |
 | Room-switch drawer-slide | Reduced motion | Instant swap (no slide) when reduced motion is enabled — see Transitions & Animations table | Matches project's committed "Motion / animation reduction mode" (Standard tier) |
@@ -399,6 +418,7 @@ A 40% text expansion (typical for English → German/French) must not break any 
 | Tab label: "Menagerie" | 9 chars | Medium | Same reveal-on-focus treatment |
 | Tab label: "Defense Building" | 17 chars | **HIGH** | ~24 chars at 40% expansion — same reveal-tooltip wrap rule as Inventory & Crafting |
 | Tab label: "Equipment Forge" | 15 chars | Medium | Same reveal-on-focus treatment |
+| Tab label: "Skills" (added 2026-09-02) | 6 chars | Low | Shortest label in the set — same reveal-on-focus treatment; no expansion risk of note |
 | Resource header labels ("Gold", material type names) | 4–10 chars | Medium | Icon-first design (per Pattern 5, Resource Counter) means the label is secondary to the icon — numeric value stays fixed-width regardless of label length, per that pattern's existing convention |
 | Launch/Depart button label ("Launch Mission") | 15 chars | **HIGH** | At 40% expansion, ~21 chars. This is a single fully-chamfered primary button (art bible convention) with no stated width constraint yet — cap translated label at 20 chars or allow the button to grow up to 25% wider before wrapping to a second line (never truncate — this is the most consequential single action in the screen) |
 | Onboarding tooltip line (trigger/bumper split, e.g. "Triggers switch rooms — bumpers switch tabs") | ~44 chars | **HIGH** | At 40% expansion, ~62 chars. Anchored to the tab strip (a narrow, tall region) — must wrap to 2–3 lines rather than requiring width the tab strip doesn't have. Cap at 3 lines, ~22 chars/line |
@@ -433,7 +453,9 @@ Carried forward from the GDD (not resolved here, since resolving them is explici
 | OQ-6 (GDD) | Connection Badge trigger events per room are a first-pass guess, not confirmed against each room's own owning designer. This spec's Localization and Data Requirements sections both reference these events as given but do not independently verify them. | Game Designer | `design/gdd/sanctuary-ui.md` |
 | OQ-7 (new, this spec) | `[`/`]` and `LT`/`RT` cycling wrap-around behavior (now 6→1 and 1→6, updated from the pre-redesign 5-item count) is not stated in the GDD's States and Transitions table or Core Rule 2. This spec assumes wrapping (a common list-navigation convention, and the friendlier choice for a flat set) but this is a UX-specific call, not confirmed against the GDD. | UX Designer / Game Designer | This spec (Interaction Map) |
 | OQ-8 (new, this spec) | The `DEPARTING` beat's reduced-motion variant is not explicitly specified in the GDD (unlike every other transition in `mission-hud.md`, which specs reduced-motion per-entry). This spec provisionally defines one (instant cut, no pull-back, no hold) following `mission-hud.md`'s own MISSION_COMPLETE/DEFEAT precedent, but it has not been confirmed against Visual/Audio Requirements sign-off. | UX Designer / Art Director | This spec (Transitions & Animations) |
-| ~~OQ-9~~ | ~~Resolved 2026-07-24, same-day follow-up pass~~ — this spec has been fully updated for the 6-entry tab strip: both ASCII wireframes (`OVERVIEW`, the tab-strip-detail Connection Badge diagram, `ROOM_INVENTORY_CRAFTING`), Component Inventory, the full binding table, Focus Traversal Order, Entry & Exit Points, States & Variants (new `DEPARTING_TO_LOADOUT` row), and Events Fired now all reflect Loadout as the 6th tab entry. No open transcription work remains. | — | Resolved |
+| ~~OQ-9~~ | ~~Resolved 2026-07-24, same-day follow-up pass~~ — this spec was fully updated for the then-6-entry tab strip. Superseded by OQ-10 below once Skills was added. | — | Resolved (superseded) |
+| OQ-10 (new, this pass) | No icon asset exists yet for the Skills tab (`tab_strip.gd`'s `TAB_ICON_TEXTURES[5] = null`, matching the GDD Core Rule 11's own flagged gap) — it renders text-only. This spec's wireframes/legends note this but do not invent a placeholder icon design, per this project's "flag the gap, don't invent unapproved art" discipline. | Art Director | This spec + `design/gdd/sanctuary-ui.md` Core Rule 11 |
+| ~~OQ-11~~ | ~~Resolved 2026-09-02, this pass~~ — this spec has been fully updated for the 7-entry tab strip: both ASCII wireframes (`OVERVIEW`, the tab-strip-detail Connection Badge diagram, `ROOM_INVENTORY_CRAFTING`), a new `ROOM_HERO_SKILLS` Content Zone entry, Component Inventory, the full binding table, Focus Traversal Order, States & Variants (new `ROOM_HERO_SKILLS` row, updated `DEPARTING_TO_LOADOUT` hotkey), Events Fired (Skills' 3 badge triggers), Data Requirements, and Localization now all reflect Skills as the 6th tab entry and Loadout as the 7th. No open transcription work remains. | — | Resolved |
 
 ### New Interaction Patterns Introduced
 
