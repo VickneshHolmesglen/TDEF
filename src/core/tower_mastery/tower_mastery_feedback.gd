@@ -31,6 +31,7 @@ const STALE_THRESHOLD_SECONDS: float = 0.5
 
 var _arcs: Dictionary[String, TowerMasteryArc] = {}
 var _signature_by_tower: Dictionary[int, String] = {}
+var _archetype_by_tower: Dictionary[int, String] = {}
 var _cell_by_tower: Dictionary[int, Vector2i] = {}
 var _last_update_seconds_by_signature: Dictionary[String, float] = {}
 var _elapsed_seconds: float = 0.0
@@ -47,7 +48,8 @@ func _ready() -> void:
 	GEventBus.tower_removed.connect(_on_tower_removed)
 	GEventBus.tower_destroyed.connect(_on_tower_destroyed)
 	GEventBus.mastery_progress_updated.connect(_on_mastery_progress_updated)
-	GEventBus.skill_unlocked.connect(_on_skill_unlocked)
+	GEventBus.skill_tree_point_earned.connect(_on_skill_tree_point_earned)
+	GEventBus.skill_tree_overflow_point_earned.connect(_on_skill_tree_overflow_point_earned)
 
 
 func _exit_tree() -> void:
@@ -56,7 +58,8 @@ func _exit_tree() -> void:
 	GEventBus.tower_removed.disconnect(_on_tower_removed)
 	GEventBus.tower_destroyed.disconnect(_on_tower_destroyed)
 	GEventBus.mastery_progress_updated.disconnect(_on_mastery_progress_updated)
-	GEventBus.skill_unlocked.disconnect(_on_skill_unlocked)
+	GEventBus.skill_tree_point_earned.disconnect(_on_skill_tree_point_earned)
+	GEventBus.skill_tree_overflow_point_earned.disconnect(_on_skill_tree_overflow_point_earned)
 
 
 func _on_tower_placed(payload: TowerPlacedEvent) -> void:
@@ -64,6 +67,7 @@ func _on_tower_placed(payload: TowerPlacedEvent) -> void:
 		payload.foundation_component_id, payload.weapon_component_id,
 		payload.focus_component_id, payload.power_component_id
 	)
+	_archetype_by_tower[payload.tower_id] = payload.archetype
 	_cell_by_tower[payload.tower_id] = payload.grid_position
 
 
@@ -92,6 +96,7 @@ func _on_tower_destroyed(tower_id: int, _grid_position: Vector2i, _archetype: St
 func _handle_tower_gone(tower_id: int) -> void:
 	var signature: String = _signature_by_tower.get(tower_id, "")
 	_signature_by_tower.erase(tower_id)
+	_archetype_by_tower.erase(tower_id)
 	_cell_by_tower.erase(tower_id)
 	if signature == "":
 		return
@@ -106,6 +111,7 @@ func _on_mastery_progress_updated(tower_id: int, skill_id: String, progress_perc
 	# tower_mastery.gd's class doc comment for the precedent this follows.
 	var signature: String = skill_id
 	var arc: TowerMasteryArc = _get_or_create_arc(signature)
+	arc.set_archetype(_archetype_by_tower.get(tower_id, ""))
 	var cell: Vector2i = _cell_by_tower.get(tower_id, Vector2i.ZERO)
 	arc.position = _grid.cell_to_world(cell)
 	if arc.state != TowerMasteryArc.State.UNLOCKED_PULSE:
@@ -114,8 +120,30 @@ func _on_mastery_progress_updated(tower_id: int, skill_id: String, progress_perc
 	_last_update_seconds_by_signature[signature] = _elapsed_seconds
 
 
-func _on_skill_unlocked(skill_id: String, _source_tower_id: int) -> void:
-	var arc: TowerMasteryArc = _arcs.get(skill_id)
+## Pulses the source tower's own arc when its mastery threshold crossing
+## grants an archetype-pool skill tree point. Replaces the pre-2026-08-31
+## `skill_unlocked` hookup this manager originally shipped with: Tower
+## Mastery no longer emits `skill_unlocked` at all (event-bus.md's own
+## catalogue note) — a threshold crossing now grants a point via
+## `skill_tree_point_earned`/`skill_tree_overflow_point_earned` instead, and
+## Hero Skill Tree, not Tower Mastery, is the sole remaining emitter of
+## `skill_unlocked` (fired on a node purchase, keyed by a real catalogue
+## `skill_id`, not a build_signature — the old handler's `_arcs.get(skill_id)`
+## lookup could never actually match this manager's signature-keyed `_arcs`
+## dict once that redesign landed, silently dead code until this fix).
+func _on_skill_tree_point_earned(_archetype: String, source_tower_id: int) -> void:
+	_pulse_arc_for_tower(source_tower_id)
+
+
+func _on_skill_tree_overflow_point_earned(source_tower_id: int) -> void:
+	_pulse_arc_for_tower(source_tower_id)
+
+
+func _pulse_arc_for_tower(tower_id: int) -> void:
+	var signature: String = _signature_by_tower.get(tower_id, "")
+	if signature == "":
+		return
+	var arc: TowerMasteryArc = _arcs.get(signature)
 	if arc != null:
 		arc.set_state(TowerMasteryArc.State.UNLOCKED_PULSE)
 

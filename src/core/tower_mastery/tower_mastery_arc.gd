@@ -6,7 +6,10 @@ extends Node2D
 ## build_signature's live mastery progress. Pure view component: owns no
 ## EventBus subscriptions itself. `TowerMasteryFeedback` (the scene-instanced
 ## manager) creates, positions, and drives instances of this class from
-## Story 010's `mastery_progress_updated`/`skill_unlocked` events.
+## Story 010's `mastery_progress_updated` event and (2026-09-01 on) the
+## `skill_tree_point_earned`/`skill_tree_overflow_point_earned` pulse
+## triggers — see tower_mastery_feedback.gd's own doc comment for why this
+## replaced the original `skill_unlocked` hookup.
 ##
 ## Colors sourced from design/art/art-bible.md — Sanctum Amber #C8801A,
 ## Fieldstone Grey #7E8590. Herald Gold is explicitly excluded per this
@@ -19,10 +22,14 @@ extends Node2D
 ## and UNLOCKED_PULSE each add an animated transition on top of any color
 ## shift.
 ##
-## Archetype glyph: no real per-archetype glyph asset catalogue exists yet
-## (mirrors the skill catalogue's own deferred-content status, Story
-## 010/ADR-0030) — the center glyph renders as a placeholder filled circle.
-## Swap `_draw_glyph()`'s body when real glyph assets land.
+## Archetype glyph: reuses the letter-badge convention established by
+## hero_skill_build_screen.gd/hero_skill_tree_screen.gd (2026-09-01) — a
+## plain bold P/R/E/S letter on a ProjectileVisual.ARCHETYPE_COLORS-tinted
+## circle, not bespoke art, matching this project's "no unapproved art
+## invented" discipline. `set_archetype()` must be called by the owning
+## manager (TowerMasteryFeedback, from `tower_placed`'s own `archetype`
+## field) before this reads as anything but the neutral placeholder circle
+## drawn for an empty/unrecognized archetype string.
 ##
 ## Exact timing/opacity values below are a first-pass, honestly-flagged
 ## placeholder tuning — this story's own manual QA checks (arc legibility,
@@ -47,18 +54,28 @@ const FIELDSTONE_GREY: Color = Color(0.494117647, 0.52156863, 0.564705882, 1.0)
 const TRACK_COLOR: Color = Color(0.494117647, 0.52156863, 0.564705882, 0.25)
 const GLYPH_PLACEHOLDER_COLOR: Color = Color(0.784313725, 0.501960784, 0.101960784, 0.9)
 
+## Mirrors hero_skill_build_screen.gd/hero_skill_tree_screen.gd's own
+## identically-named, identically-valued constant — duplicated per this
+## project's established precedent for this small a lookup table (see those
+## files' own doc comments) rather than a new shared cross-file dependency.
+const ARCHETYPE_GLYPHS: Dictionary[String, String] = {
+	"physical": "P", "ranged": "R", "elemental": "E", "support": "S",
+}
+
 ## AC: paused-out-of-range freezes fill, opacity ~100%->~55%, no motion/color shift.
 const PAUSED_OUT_OF_RANGE_OPACITY: float = 0.55
 
 ## AC: source-tower-destroyed -> Fieldstone Grey desaturate-and-fade (~0.5s).
 const DESTROYED_FADE_SECONDS: float = 0.5
 
-## AC: skill_unlocked -> brief intensify-and-pulse (~0.5-1s), matching
-## Constellation's own pacing rule, then clears back to normal ACCRUING fill.
+## AC: a skill tree point earned (archetype or overflow) -> brief
+## intensify-and-pulse (~0.5-1s), matching Constellation's own pacing rule,
+## then clears back to normal ACCRUING fill.
 const PULSE_DURATION_SECONDS: float = 0.75
 
 var progress_percent: float = 0.0
 var state: State = State.ACCRUING
+var archetype: String = ""
 
 var _destroyed_fade_elapsed: float = 0.0
 var _pulse_elapsed: float = 0.0
@@ -66,6 +83,11 @@ var _pulse_elapsed: float = 0.0
 
 func set_progress(percent: float) -> void:
 	progress_percent = clampf(percent, 0.0, 100.0)
+	queue_redraw()
+
+
+func set_archetype(new_archetype: String) -> void:
+	archetype = new_archetype
 	queue_redraw()
 
 
@@ -125,5 +147,29 @@ func _current_fill_color() -> Color:
 			return SANCTUM_AMBER
 
 
+## No glyph badge for an unrecognized/unset archetype (matches
+## _make_glyph_badge()'s sibling screens falling back to a neutral "?"
+## conceptually — here, drawn as the original neutral filled circle rather
+## than a "?" glyph, since a Node2D arc has no font-contrast requirement to
+## satisfy the way a UI Label badge does) — this keeps every existing test
+## double / call site that never sets archetype rendering exactly as before.
 func _draw_glyph() -> void:
-	draw_circle(Vector2.ZERO, ARC_RADIUS_PX * 0.35, GLYPH_PLACEHOLDER_COLOR)
+	var glyph_radius: float = ARC_RADIUS_PX * 0.35
+	if not ARCHETYPE_GLYPHS.has(archetype):
+		draw_circle(Vector2.ZERO, glyph_radius, GLYPH_PLACEHOLDER_COLOR)
+		return
+
+	var badge_color: Color = ProjectileVisual.ARCHETYPE_COLORS.get(archetype, GLYPH_PLACEHOLDER_COLOR)
+	draw_circle(Vector2.ZERO, glyph_radius, badge_color)
+
+	var glyph: String = ARCHETYPE_GLYPHS[archetype]
+	var font: Font = ThemeDB.fallback_font
+	var font_size: int = int(glyph_radius * 1.4)
+	var font_color: Color = Color.BLACK if badge_color.get_luminance() > 0.5 else Color.WHITE
+	# draw_string()'s position is its text baseline, not a bounding-box
+	# corner — center manually via get_string_size()/ascent-descent rather
+	# than relying on HORIZONTAL_ALIGNMENT_CENTER (which only centers within
+	# an explicit width, not around the given position, at width=-1).
+	var text_width: float = font.get_string_size(glyph, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+	var baseline_y: float = (font.get_ascent(font_size) - font.get_descent(font_size)) / 2.0
+	draw_string(font, Vector2(-text_width / 2.0, baseline_y), glyph, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, font_color)

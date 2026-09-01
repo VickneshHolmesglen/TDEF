@@ -1,7 +1,10 @@
 ## Unit tests for Story 013's TowerMasteryFeedback: arc creation/positioning
 ## from mastery_progress_updated, destroyed-anchor pause and automatic
 ## repositioning/resumption, staleness-based out-of-range pause, the
-## skill_unlocked pulse hookup, and post-fade arc cleanup.
+## skill_tree_point_earned/skill_tree_overflow_point_earned pulse hookup
+## (replaces the pre-2026-08-31 skill_unlocked hookup — see
+## tower_mastery_feedback.gd's own _on_skill_tree_point_earned doc comment),
+## and post-fade arc cleanup.
 ##
 ## TowerMasteryFeedback is instantiated directly (no add_child()) so
 ## _ready() never fires — handler methods and _process() are called
@@ -53,6 +56,16 @@ func test_mastery_progress_updated_creates_arc_at_towers_world_position() -> voi
 	assert_that(arc.position).is_equal(_grid.cell_to_world(Vector2i(2, 3)))
 	assert_float(arc.progress_percent).is_equal_approx(40.0, 0.0001)
 	assert_int(arc.state).is_equal(TowerMasteryArc.State.ACCRUING)
+
+
+func test_mastery_progress_updated_sets_the_arcs_archetype_from_tower_placed() -> void:
+	_place(1, Vector2i(2, 3))
+	var signature: String = TowerMastery.compute_build_signature("found_basic", "weap_frost_bolt", "focus_none", "power_none")
+
+	_feedback._on_mastery_progress_updated(1, signature, 40.0)
+
+	var arc: TowerMasteryArc = _feedback._arcs[signature]
+	assert_str(arc.archetype).is_equal("BASIC")
 
 
 func test_repeated_updates_reuse_the_same_arc_instance() -> void:
@@ -153,23 +166,39 @@ func test_fresh_update_before_stale_threshold_prevents_pause() -> void:
 
 
 # ---------------------------------------------------------------------------
-# skill_unlocked hookup
+# skill_tree_point_earned / skill_tree_overflow_point_earned hookup
 # ---------------------------------------------------------------------------
 
-func test_skill_unlocked_triggers_pulse_on_the_matching_arc() -> void:
+func test_skill_tree_point_earned_triggers_pulse_on_the_towers_arc() -> void:
 	_place(1, Vector2i(2, 3))
 	var signature: String = TowerMastery.compute_build_signature("found_basic", "weap_frost_bolt", "focus_none", "power_none")
 	_feedback._on_mastery_progress_updated(1, signature, 100.0)
 
-	_feedback._on_skill_unlocked(signature, 1)
+	_feedback._on_skill_tree_point_earned("physical", 1)
 
 	var arc: TowerMasteryArc = _feedback._arcs[signature]
 	assert_int(arc.state).is_equal(TowerMasteryArc.State.UNLOCKED_PULSE)
 
 
-func test_skill_unlocked_for_unknown_signature_does_not_crash() -> void:
-	_feedback._on_skill_unlocked("no_such_signature", 1)
-	assert_bool(_feedback._arcs.has("no_such_signature")).is_false()
+func test_skill_tree_overflow_point_earned_triggers_pulse_on_the_towers_arc() -> void:
+	_place(1, Vector2i(2, 3))
+	var signature: String = TowerMastery.compute_build_signature("found_basic", "weap_frost_bolt", "focus_none", "power_none")
+	_feedback._on_mastery_progress_updated(1, signature, 100.0)
+
+	_feedback._on_skill_tree_overflow_point_earned(1)
+
+	var arc: TowerMasteryArc = _feedback._arcs[signature]
+	assert_int(arc.state).is_equal(TowerMasteryArc.State.UNLOCKED_PULSE)
+
+
+func test_skill_tree_point_earned_for_unknown_tower_does_not_crash() -> void:
+	_feedback._on_skill_tree_point_earned("physical", 999)
+	assert_int(_feedback._arcs.size()).is_equal(0)
+
+
+func test_skill_tree_overflow_point_earned_for_unknown_tower_does_not_crash() -> void:
+	_feedback._on_skill_tree_overflow_point_earned(999)
+	assert_int(_feedback._arcs.size()).is_equal(0)
 
 
 # ---------------------------------------------------------------------------

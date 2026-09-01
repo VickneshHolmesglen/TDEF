@@ -36,6 +36,15 @@ func test_default_state_is_accruing() -> void:
 	assert_int(_arc.state).is_equal(TowerMasteryArc.State.ACCRUING)
 
 
+func test_default_archetype_is_empty() -> void:
+	assert_str(_arc.archetype).is_equal("")
+
+
+func test_set_archetype_updates_the_field() -> void:
+	_arc.set_archetype("elemental")
+	assert_str(_arc.archetype).is_equal("elemental")
+
+
 func test_set_state_paused_out_of_range() -> void:
 	_arc.set_state(TowerMasteryArc.State.PAUSED_OUT_OF_RANGE)
 	assert_int(_arc.state).is_equal(TowerMasteryArc.State.PAUSED_OUT_OF_RANGE)
