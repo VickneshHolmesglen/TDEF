@@ -30,9 +30,17 @@ extends Control
 ## - Skill icon rendering closed 2026-09-01 (Claude Code): all 32 catalogued
 ##   skills now have real, processed icon art (SkillDefinitionResource.icon —
 ##   see that session's art-processing/content-authoring commits). Active-
-##   slot and library buttons now show that icon via Godot's own native
-##   `Button.icon`, plus each skill's `display_name` instead of the raw
-##   `skill_id`.
+##   slot and library buttons show that icon plus each skill's
+##   `display_name` instead of the raw `skill_id`. **Revised same day, live
+##   Godot MCP verification**: initially used Godot's native `Button.icon`
+##   (theme constant `icon_max_width`), but that only caps rendered WIDTH,
+##   scaling height proportionally uncapped — confirmed via
+##   get_ui_elements() that library row heights varied 31px-97px across the
+##   32 skills' differing icon aspect ratios. Switched to
+##   _build_button_content()'s manually-composed fixed-size TextureRect +
+##   Label, matching inventory_screen.gd's own established icon-sizing
+##   convention — every row is now a consistent height regardless of
+##   source art.
 ## - Archetype color/glyph treatment closed 2026-09-01 (Claude Code), per
 ##   hero-skill-build.md UI Requirements' "Archetype identity per slot" and
 ##   "shape/glyph is the primary identifier, color is confirmatory only"
@@ -80,12 +88,14 @@ extends Control
 
 const FOCUS_RING_COLOR: Color = Color(1.0, 0.85, 0.2, 1.0)  ## placeholder — art-director TBD
 const ACTIVE_SLOT_LABELS: Array[String] = ["A", "B", "C", "D"]
-## Caps a skill icon's rendered size regardless of its source resolution
-## (the processed art in assets/art/items/ is a tight content crop, not a
-## pre-sized icon sheet — sizes vary from ~350px to ~1150px across the 32
-## skills). Godot's native Button icon_max_width theme constant, matching
-## the project's existing "always verify/cap scale explicitly, never trust
-## default sizing" lesson (design/art/codex-art-overhaul.md §5.5).
+## Caps a skill icon's rendered box (both dimensions — see
+## _build_button_content()'s own doc comment for why a fixed box, not
+## Button's native icon_max_width, is required here) regardless of source
+## resolution (the processed art in assets/art/items/ is a tight content
+## crop, not a pre-sized icon sheet — sizes and aspect ratios vary widely
+## across the 32 skills). Matches the project's existing "always verify/cap
+## scale explicitly, never trust default sizing" lesson
+## (design/art/codex-art-overhaul.md §5.5).
 const ICON_MAX_WIDTH: int = 32
 
 ## Single-letter "shape" glyph per archetype — see class doc comment for why
@@ -227,10 +237,9 @@ func _rebuild_active_slots() -> void:
 		# while still leaving room for the shorter "Passives: N/M (cycle)" text.
 		slot_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		slot_button.size_flags_stretch_ratio = 3.0
-		slot_button.add_theme_constant_override("icon_max_width", ICON_MAX_WIDTH)
 		var bound: String = bindings[i] if i < bindings.size() else ""
-		slot_button.text = "%s: %s" % [ACTIVE_SLOT_LABELS[i], _skill_label(bound) if not bound.is_empty() else "(empty)"]
-		slot_button.icon = _skill_icon(bound)
+		var slot_text: String = "%s: %s" % [ACTIVE_SLOT_LABELS[i], _skill_label(bound) if not bound.is_empty() else "(empty)"]
+		_build_button_content(slot_button, _skill_icon(bound), slot_text)
 		_apply_archetype_style(slot_button, bound)
 		slot_button.pressed.connect(_on_active_slot_pressed.bind(i))
 		_wire_focus_ring(slot_button)
@@ -249,6 +258,63 @@ func _rebuild_active_slots() -> void:
 		_passive_cycle_buttons[i] = passive_button
 
 		_active_slot_list.add_child(row)
+
+
+## Builds this button's icon+text content as manually-composed children
+## (a fixed-size TextureRect + a Label) instead of Godot's native
+## `Button.icon`/`Button.text`. Real bug found via live Godot MCP
+## verification (2026-09-01): `Button`'s `icon_max_width` theme constant
+## caps the icon's rendered WIDTH only — it scales the icon down preserving
+## aspect ratio, with no independent height cap. The processed skill icons
+## (assets/art/items/) are tight content crops with wildly varying aspect
+## ratios (confirmed via get_ui_elements: library row heights ranged
+## 31px-97px, "Ranger Totem" being the worst offender, a tall/narrow totem
+## crop scaled to 32px wide but left to grow proportionally tall). This
+## builder gives the icon a genuinely fixed 32x32 box (EXPAND_IGNORE_SIZE +
+## STRETCH_KEEP_ASPECT_CENTERED, matching inventory_screen.gd's own
+## established icon-sizing convention) so every row is a consistent height
+## regardless of source art. `mouse_filter = MOUSE_FILTER_IGNORE` on every
+## added child (and the wrapping HBoxContainer) so clicks still reach the
+## Button underneath rather than being intercepted by its children.
+func _build_button_content(button: Button, texture: Texture2D, label_text: String) -> void:
+	button.text = ""
+	button.icon = null
+	# Real bug found via live Godot MCP verification (2026-09-01), same
+	# session as the icon-aspect-ratio fix this function itself exists for:
+	# with text/icon both cleared, Button's own computed minimum size
+	# collapses to near-zero -- a plain Control (Button is not a Container)
+	# never feeds an anchored child's size back into its own minimum-size
+	# calculation, unlike a real Container. Every library/slot row
+	# collapsed to a sliver and visibly overlapped its neighbors (confirmed
+	# via screenshot) until this explicit minimum height was added.
+	button.custom_minimum_size.y = ICON_MAX_WIDTH + 8.0
+
+	var content := HBoxContainer.new()
+	content.name = "Content"
+	content.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	content.set_anchors_preset(Control.PRESET_FULL_RECT)
+	content.add_theme_constant_override("separation", 6)
+
+	if texture != null:
+		var icon_rect := TextureRect.new()
+		icon_rect.name = "Icon"
+		icon_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		icon_rect.custom_minimum_size = Vector2(ICON_MAX_WIDTH, ICON_MAX_WIDTH)
+		icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		icon_rect.texture = texture
+		content.add_child(icon_rect)
+
+	var label := Label.new()
+	label.name = "Text"
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	label.text = label_text
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	label.clip_text = true
+	content.add_child(label)
+
+	button.add_child(content)
 
 
 ## Display-name lookup for a skill_id, falling back to the raw skill_id
@@ -483,11 +549,10 @@ func _rebuild_library() -> void:
 		button.name = "Library_%s" % skill_id
 		button.focus_mode = Control.FOCUS_ALL
 		button.clip_text = true
-		button.add_theme_constant_override("icon_max_width", ICON_MAX_WIDTH)
 		var is_active: bool = hero_skill_build.get_active_slots().has(skill_id)
 		var suffix: String = "[LOCKED]" if is_locked else ("[ACTIVE]" if is_active else "")
-		button.text = "%s %s" % [_skill_label(skill_id), suffix] if not suffix.is_empty() else _skill_label(skill_id)
-		button.icon = _skill_icon(skill_id)
+		var library_text: String = "%s %s" % [_skill_label(skill_id), suffix] if not suffix.is_empty() else _skill_label(skill_id)
+		_build_button_content(button, _skill_icon(skill_id), library_text)
 		_apply_archetype_style(button, skill_id)
 		if is_locked:
 			button.disabled = true
