@@ -64,8 +64,16 @@ extends Control
 ##   tagged "[LOCKED]" — matching tarot_screen.gd's REAL established
 ##   plain-text-tag convention, correcting the GDD's own inaccurate
 ##   "lock icon" description of it.
-## - Still not implemented: a connector-line visual between slots and the
-##   Ultimate readout — remains genuinely unscoped art-direction work.
+## - Connector-line visual closed 2026-09-01 (Claude Code, player-requested
+##   after the earlier "genuinely unscoped art-direction work" assessment).
+##   Implemented as plain geometric lines (Control.draw_line(), via the
+##   `draw` signal on a dedicated ConnectorLines overlay Control — see that
+##   node's own onready doc comment), not illustrated art: one line per
+##   occupied active slot, from that slot's center to the Ultimate label's
+##   center, tinted with the slot's own archetype accent. This is the "no
+##   bespoke art invented" treatment, same discipline as the letter-badge
+##   glyphs above — a real connector-art pass remains open, separate,
+##   unscoped work if this project ever wants one.
 ##
 ## Root is a plain Control. No class_name — matches the other room/screen
 ## scripts' TD-workflow-001 precedent.
@@ -96,6 +104,15 @@ const ARCHETYPE_GLYPHS: Dictionary[String, String] = {
 @onready var _pip_tally_row: HBoxContainer = $MainLayout/PipTallyRow
 @onready var _active_slot_list: VBoxContainer = $MainLayout/AssemblyArea/ActiveSlotList
 @onready var _library_list: VBoxContainer = $MainLayout/Library/LibraryList
+## Connector-line visual (new 2026-09-01, player-requested — see this class's
+## own doc comment for the earlier "genuinely unscoped art-direction work"
+## assessment this supersedes). A plain Control drawn on via its own `draw`
+## signal (Godot 4 — no dedicated subclass/script needed for a single
+## _draw()-shaped need), full-rect over the whole screen, last sibling under
+## root so lines render on top of the buttons/labels they connect —
+## mirrors a tech-tree-style connector overlay, appropriate given this
+## project's own "Path of Exile in complexity" framing for this system.
+@onready var _connector_lines: Control = $ConnectorLines
 
 var _active_slot_buttons: Dictionary[int, Button] = {}
 var _passive_cycle_buttons: Dictionary[int, Button] = {}
@@ -109,6 +126,8 @@ func _ready() -> void:
 	_input_mode_tracker.input_mode_changed.connect(_on_input_mode_changed)
 	GEventBus.active_skill_equipped.connect(_on_build_changed)
 	GEventBus.ultimate_skill_changed.connect(_on_build_changed)
+	_connector_lines.draw.connect(_on_connector_lines_draw)
+	resized.connect(_queue_connector_redraw)
 
 	_rebuild_everything()
 
@@ -127,6 +146,16 @@ func _rebuild_everything() -> void:
 	_rebuild_pip_tally()
 	_rebuild_active_slots()
 	_rebuild_library()
+	_queue_connector_redraw()
+
+
+## Deferred, not immediate: connector positions depend on the just-rebuilt
+## buttons' final laid-out rects, which Godot's Container sort pass computes
+## during this same frame's idle processing — calling queue_redraw()
+## synchronously here would read stale (pre-layout) positions on the very
+## first rebuild. call_deferred() runs after that sort pass completes.
+func _queue_connector_redraw() -> void:
+	_connector_lines.call_deferred("queue_redraw")
 
 
 func _rebuild_ultimate_label() -> void:
@@ -284,6 +313,39 @@ func _make_glyph_badge(category: String, size: int) -> Label:
 	badge.add_theme_color_override("font_color", Color.BLACK if accent.get_luminance() > 0.5 else Color.WHITE)
 	badge.add_theme_stylebox_override("normal", style)
 	return badge
+
+
+## Draws one line per occupied active slot, from that slot button's center
+## to the Ultimate label's center, tinted with the slot's own archetype
+## accent (ProjectileVisual.ARCHETYPE_COLORS) — a plain geometric line, not
+## illustrated art, matching this project's existing "no bespoke art
+## invented, compose from StyleBoxFlat/draw primitives" precedent elsewhere
+## in this screen (the archetype border/badge treatment) and across the
+## codebase (e.g. FocusRingFactory). An empty slot draws nothing.
+func _on_connector_lines_draw() -> void:
+	if hero_skill_build == null:
+		return
+	var ultimate_center: Vector2 = _global_center_in_local(_ultimate_label)
+	var bindings: Array[String] = hero_skill_build.get_active_slots()
+	for i: int in range(ACTIVE_SLOT_LABELS.size()):
+		if i >= bindings.size() or bindings[i].is_empty():
+			continue
+		var button: Button = _active_slot_buttons.get(i)
+		if button == null:
+			continue
+		var category: String = _skill_category(bindings[i])
+		var accent: Color = ProjectileVisual.ARCHETYPE_COLORS.get(category, Color(0.7, 0.7, 0.7))
+		var slot_center: Vector2 = _global_center_in_local(button)
+		_connector_lines.draw_line(slot_center, ultimate_center, accent, 2.0, true)
+
+
+## Converts `control`'s global-space rect center into _connector_lines' own
+## local coordinate space — the two Controls don't share a common ancestor
+## transform assumption otherwise (this screen applies no scale/rotation
+## anywhere today, but this stays correct even if that ever changes).
+func _global_center_in_local(control: Control) -> Vector2:
+	var global_center: Vector2 = control.get_global_rect().get_center()
+	return _connector_lines.get_global_transform().affine_inverse() * global_center
 
 
 func _passive_summary_text(skill_id: String) -> String:
