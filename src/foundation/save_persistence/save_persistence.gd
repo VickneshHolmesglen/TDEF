@@ -102,25 +102,38 @@ func _exit_tree() -> void:
 	GEventBus.mission_phase_changed.disconnect(_on_mission_phase_changed)
 
 
-## restore_order registry (TD-hero-004, fixed 2026-07-08) — every system that
-## calls register() below, listed here so a reviewer can check a new
-## registration for collisions without grepping the whole codebase. ADR-0003's
-## Decision Summary reserves the band: Foundation 0-9, Core 10-49, Feature 50+.
+## restore_order registry (TD-hero-004, fully closed 2026-09-02 — see that
+## entry in docs/tech-debt-register.md) — every system that calls register()
+## below, listed here so a reviewer can check a new registration for
+## collisions without grepping the whole codebase. ADR-0003's Decision
+## Summary reserves the band: Foundation 0-9, Core 10-49, Feature 50+.
 ## Update this list whenever a new SaveRestorer implementor is added.
 ##
-##   restore_order | System    | Layer      | Source
-##   --------------|-----------|------------|----------------------------------
-##   10            | Inventory | Core       | src/core/inventory/inventory.gd
-##                 |           |            | (Story-001, ADR-0016) —
-##                 |           |            | GSavePersistence.register(self, 10)
-##   30            | Hero      | Core       | src/core/hero/hero.gd (Story-008,
-##                 |           |            | ADR-0003) — GSavePersistence.register(self, 30)
+##   restore_order | System              | Source
+##   --------------|---------------------|---------------------------------------
+##   10            | Inventory           | src/core/inventory/inventory.gd
+##   11            | Mission Select      | src/core/mission_select/mission_select.gd
+##   20            | Menagerie           | src/core/menagerie/menagerie.gd
+##   21            | Defense Building    | src/core/defense_building/defense_building.gd
+##   22            | Tarot               | src/core/tarot/tarot.gd
+##   24            | Constellation       | src/core/constellation/constellation.gd
+##   25            | Crafting            | src/core/crafting/crafting.gd
+##   30            | Hero                | src/core/hero/hero.gd (Story-008, ADR-0003)
+##   31            | Hero Skill Build    | src/core/hero_skill_build/hero_skill_build.gd
+##   32            | Equipment Forge     | src/core/equipment_forge/equipment_forge.gd
+##   33            | Building Upgrade    | src/core/building_upgrade/building_upgrade.gd
+##   34            | Tower Mastery       | src/core/tower_mastery/tower_mastery.gd
+##   35            | Encyclopedia        | src/core/encyclopedia/encyclopedia.gd
+##   36            | Tower Assembly      | src/core/tower_assembly/tower_assembly.gd
+##   37            | Hero Skill Tree     | src/core/hero_skill_tree/hero_skill_tree.gd
 ##
-## Inventory (restore_order=10) now runs before Hero (restore_order=30) during a
-## restore pass, giving the first real cross-system verification of ADR-0003's
-## "runs after Foundation, before Feature layer" / ascending-restore_order
-## ordering claim — see tests/unit/save_persistence/save_persistence_restore_test.gd's
-## ordering test for the general mechanism this relies on.
+## All 15 values are distinct and fall within the Core band (10-49) — no
+## collisions, confirmed by direct grep of every `RESTORE_ORDER` constant in
+## `src/` (2026-09-02). This is real, ascending, cross-system verification of
+## ADR-0003's ordering claim, not just Inventory-before-Hero's original
+## 2-system case — see
+## tests/unit/save_persistence/save_persistence_restore_test.gd's ordering
+## test for the general mechanism this relies on.
 
 ## Register a saveable system. Call from the system's _ready().
 ## If a save has already been loaded this session, the newly-registered

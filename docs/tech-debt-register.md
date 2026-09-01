@@ -1137,7 +1137,7 @@ mirroring `activate_skill()`'s pattern.
 
 ---
 
-## TD-hero-004 — No registry preventing SaveRestorer `restore_order` collisions (docs fixed)
+## TD-hero-004 — No registry preventing SaveRestorer `restore_order` collisions (fixed)
 
 **Logged**: 2026-07-04
 **Docs fixed**: 2026-07-08
@@ -1167,8 +1167,8 @@ can be checked for collisions at review time rather than discovered at runtime.
 ### Resolution
 - [x] Central `restore_order` reference created (2026-07-08) — doc comment block in `save_persistence.gd` directly above `register()`, listing every registered value/system/layer/source, so a reviewer can check a new registration for collisions without grepping the codebase. Documents ADR-0003's reserved band (Foundation 0-9, Core 10-49, Feature 50+).
 - [x] Hero's entry (30) documented there (2026-07-08)
-- [ ] Second SaveRestorer implementor's order verified against the reference — **still genuinely blocked**: Hero remains the only registered implementor anywhere in the codebase. ADR-0003's "runs after Foundation, before Feature layer" ordering claim stays structurally unverified until a second system actually registers. Narrowed rather than force-closed, same pattern as `TD-hero-001`'s Skill Power half.
-- [ ] This entry closed — will close once a second implementor registers and its order is checked against the reference table above.
+- [x] Second (and third through fifteenth) SaveRestorer implementor's order verified against the reference (2026-09-02) — this entry's "still genuinely blocked, Hero remains the only registered implementor" note went stale as the project grew: a direct grep of every `RESTORE_ORDER` constant in `src/` found 15 real, live registrations today (Inventory=10, Mission Select=11, Menagerie=20, Defense Building=21, Tarot=22, Constellation=24, Crafting=25, Hero=30, Hero Skill Build=31, Equipment Forge=32, Building Upgrade=33, Tower Mastery=34, Encyclopedia=35, Tower Assembly=36, Hero Skill Tree=37) — all 15 values distinct, no collisions, all within ADR-0003's reserved Core band (10-49). The reference table this entry's original fix added to `save_persistence.gd` had itself gone stale (still listing only Inventory/Hero from 2026-07-08) — updated to list all 15.
+- [x] This entry closed (2026-09-02).
 
 ---
 
