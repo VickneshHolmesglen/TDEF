@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="ShaftComponent" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/core/tower/shaft_component.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+component_id = "shaft_basic_t1"
+range_bonus_cells = 1
+damaged = false

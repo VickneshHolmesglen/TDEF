@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="TopComponent" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/core/tower/top_component.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+component_id = "top_basic_t1"
+bonus_type = "damage"
+bonus_value = 8.0
+damaged = false

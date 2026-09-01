@@ -15,7 +15,7 @@ extends Resource
 
 @export var recipe_id: StringName = &""
 @export var recipe_category: String = ""              # "tower_component" | "crafted_good"
-@export var component_slot: String = ""               # foundation|weapon|focus|power; "" unless tower_component
+@export var component_slot: String = ""               # foundation|weapon|focus|power|shaft|top; "" unless tower_component
 @export var inputs: Dictionary[StringName, int] = {}   # item_type -> quantity, 1-3 entries (TD-craft-001: ADR-0023's own comment calls this "material_id", but Inventory.has_items() actually sums by item_type — this field is keyed to match has_items()'s real, already-shipped contract)
 @export var tech_prerequisite: StringName = &""        # "" = ungated
 @export var output_item_id: StringName = &""
@@ -36,7 +36,9 @@ extends Resource
 @export var source_blueprint_tower_id: StringName = &""
 
 const VALID_CATEGORIES: Array[String] = ["tower_component", "crafted_good"]
-const VALID_COMPONENT_SLOTS: Array[String] = ["foundation", "weapon", "focus", "power"]
+## "shaft"/"top" added 2026-09-01 for the new tier-gated Shaft/Top components
+## (shaft_component.gd/top_component.gd, tower_assembly.gd's REQUIRED_AT_TIER).
+const VALID_COMPONENT_SLOTS: Array[String] = ["foundation", "weapon", "focus", "power", "shaft", "top"]
 
 ## TD-craft-001 / TD-defbuild-002 (same open design question, unresolved):
 ## crafting.md's Formulas 1-3 are explicitly rarity-based (Common/Uncommon/

@@ -41,8 +41,12 @@ func _seed(item_id: StringName, quantity: int) -> void:
 	GInventory.add_stackable(def, quantity)
 
 
-## Crafts all 4 Archer-copy components via the real Crafting flow and
-## returns their 4 instance_ids in (foundation, weapon, focus, power) order.
+## Crafts all 4 Archer-copy components via the real Crafting flow, plus one
+## real basic Shaft item (new 2026-09-01, tower.md Rule 4c — archer_foundation_
+## component is Tier 1, so Shaft is a required slot; seeded via add_unique_item()
+## directly rather than a Crafting recipe, matching tower_assembly_test.gd's
+## own basic_shaft_component precedent), and returns their instance_ids in
+## (foundation, weapon, focus, power, shaft) order.
 func _craft_full_archer_copy_set() -> Array[int]:
 	_crafting._discovery_ledger[RECIPE_ARCHER_FOUNDATION] = true
 	_crafting._discovery_ledger[RECIPE_ARCHER_WEAPON] = true
@@ -58,7 +62,7 @@ func _craft_full_archer_copy_set() -> Array[int]:
 	assert_bool(_crafting.resolve_craft(RECIPE_ARCHER_FOCUS)).is_true()
 	assert_bool(_crafting.resolve_craft(RECIPE_ARCHER_POWER)).is_true()
 
-	var ids: Array[int] = [-1, -1, -1, -1]
+	var ids: Array[int] = [-1, -1, -1, -1, -1]
 	var wanted: Array[StringName] = [&"archer_foundation_component", &"archer_weapon_component", &"archer_focus_component", &"archer_power_component"]
 	for i: int in range(GInventory.get_slot_count()):
 		var contents: Dictionary = GInventory.get_slot_contents(i)
@@ -67,6 +71,10 @@ func _craft_full_archer_copy_set() -> Array[int]:
 		var idx: int = wanted.find(StringName(contents.get("item_id") as String))
 		if idx != -1:
 			ids[idx] = contents.get("instance_id") as int
+
+	var shaft_def: ItemDefinitionResource = GGameDataRegistry.get_item_definition(&"basic_shaft_component")
+	var shaft_slot: int = GInventory.add_unique_item(shaft_def)
+	ids[4] = GInventory.get_slot_contents(shaft_slot)["instance_id"] as int
 	return ids
 
 
@@ -76,8 +84,9 @@ func test_assemble_tower_succeeds_from_crafted_archer_copy_components() -> void:
 	assert_int(ids[1]).is_not_equal(-1)
 	assert_int(ids[2]).is_not_equal(-1)
 	assert_int(ids[3]).is_not_equal(-1)
+	assert_int(ids[4]).is_not_equal(-1)
 
-	var tower_id: StringName = _tower_assembly.assemble_tower(ids[0], ids[1], ids[2], ids[3], "My Archer Remix")
+	var tower_id: StringName = _tower_assembly.assemble_tower(ids[0], ids[1], ids[2], ids[3], "My Archer Remix", ids[4])
 	assert_that(tower_id).is_not_equal(&"")
 
 	var blueprint: TowerBlueprintData = _tower_assembly.get_assembled_blueprint(tower_id)

@@ -161,6 +161,28 @@ text = "Power"
 [node name="PowerList" type="VBoxContainer" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/SlotColumns/PowerColumn"]
 layout_mode = 2
 
+[node name="ShaftColumn" type="VBoxContainer" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/SlotColumns"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="ShaftLabel" type="Label" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/SlotColumns/ShaftColumn"]
+layout_mode = 2
+text = "Shaft"
+
+[node name="ShaftList" type="VBoxContainer" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/SlotColumns/ShaftColumn"]
+layout_mode = 2
+
+[node name="TopColumn" type="VBoxContainer" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/SlotColumns"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="TopLabel" type="Label" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/SlotColumns/TopColumn"]
+layout_mode = 2
+text = "Top"
+
+[node name="TopList" type="VBoxContainer" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/SlotColumns/TopColumn"]
+layout_mode = 2
+
 [node name="AssembledColumn" type="VBoxContainer" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/SlotColumns"]
 layout_mode = 2
 size_flags_horizontal = 3

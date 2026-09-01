@@ -8,12 +8,28 @@
 
 ## Change Summary
 
-A new Forge tab lets the player combine four owned crafted tower components
-(one Foundation, one Weapon, one Focus, one Power — each a real, separate
-Inventory item) into a brand-new, player-named `TowerBlueprintData`, which is
-then placeable in missions exactly like the game's pre-authored blueprints
-(Archer, Frostbolt Turret, Longshot Sniper, Rally Banner). The four source
-items are consumed; the new blueprint persists permanently across the save.
+A new Forge tab lets the player combine 3-6 owned crafted tower components
+(Foundation and Weapon always; Shaft/Top/Focus/Power phasing in as the
+Foundation's own tier rises — see the 2026-09-01 amendment below — each a
+real, separate Inventory item) into a brand-new, player-named
+`TowerBlueprintData`, which is then placeable in missions exactly like the
+game's pre-authored blueprints (Archer, Frostbolt Turret, Longshot Sniper,
+Rally Banner). Only the actually-supplied source items are consumed; any
+slot not yet required at the assembled tower's tier is auto-filled with a
+fresh, inert default component instead of demanding one. The new blueprint
+persists permanently across the save.
+
+**Amendment, 2026-09-01 (player-requested — see `tower.md` Rules 4a-4c)**:
+adds `shaft_instance_id`/`top_instance_id` (default -1 = "not supplied") to
+`assemble_tower()`'s signature, and a tier-gated required-slot table
+(`TowerAssembly.REQUIRED_AT_TIER`): Tier 1 requires Foundation+Weapon+Shaft
+(3 slots); Tier 2 adds Top (4); Tier 3 adds Focus (5); Tier 4 adds Power (6)
+— see `tower.md` Rule 4c for the full table and rationale. This changes
+Steps 1-2 below: only slots required at the SUPPLIED Foundation's tier are
+re-validated as owned/non-damaged; an unsupplied optional slot resolves to
+a fresh `ShaftComponent.new()`/`TopComponent.new()`/`FocusComponent.new()`/
+`PowerComponent.new()` (all already inert at their own export defaults)
+rather than failing validation.
 
 ## Motivation
 

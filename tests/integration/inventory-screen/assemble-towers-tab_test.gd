@@ -19,6 +19,9 @@ const FOUNDATION_ITEM: StringName = &"iron_foundation_component"
 const WEAPON_ITEM: StringName = &"advanced_weapon_component"
 const FOCUS_ITEM: StringName = &"basic_focus_component"
 const POWER_ITEM: StringName = &"tier4_power_component"
+## New 2026-09-01 (tower.md Rules 4a-4c) — iron_foundation_component is
+## Tier 1, so Shaft is now a required slot alongside Foundation/Weapon.
+const SHAFT_ITEM: StringName = &"basic_shaft_component"
 
 var _tower_assembly: TowerAssembly
 var _runner: GdUnitSceneRunner
@@ -52,7 +55,7 @@ func _rebuild() -> void:
 ## returns their instance_ids keyed by slot.
 func _seed_full_component_set() -> Dictionary[String, int]:
 	var ids: Dictionary[String, int] = {}
-	for entry: Array in [["foundation", FOUNDATION_ITEM], ["weapon", WEAPON_ITEM], ["focus", FOCUS_ITEM], ["power", POWER_ITEM]]:
+	for entry: Array in [["foundation", FOUNDATION_ITEM], ["weapon", WEAPON_ITEM], ["focus", FOCUS_ITEM], ["power", POWER_ITEM], ["shaft", SHAFT_ITEM]]:
 		var slot: String = entry[0]
 		var item_id: StringName = entry[1]
 		var definition: ItemDefinitionResource = GGameDataRegistry.get_item_definition(item_id)
@@ -115,7 +118,8 @@ func test_pressing_a_component_selects_it_and_pressing_again_deselects() -> void
 func test_assemble_button_with_incomplete_selection_does_not_open_confirm_dialog() -> void:
 	var ids: Dictionary[String, int] = _seed_full_component_set()
 	_rebuild()
-	# Only 3 of 4 slots selected -- foundation is deliberately left unset.
+	# Only 3 of 5 seeded slots selected -- foundation and shaft (both
+	# required at this fixture's Tier 1) are deliberately left unset.
 	@warning_ignore("unsafe_method_access")
 	_screen.call("_on_assemble_component_pressed", "weapon", ids["weapon"])
 	@warning_ignore("unsafe_method_access")

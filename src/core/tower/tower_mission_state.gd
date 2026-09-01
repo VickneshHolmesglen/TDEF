@@ -20,6 +20,14 @@ var foundation: FoundationComponent = null
 var weapon: WeaponComponent = null
 var focus: FocusComponent = null
 var power: PowerComponent = null
+## Shaft/Top (new 2026-09-01) — unlike TowerBlueprintData's own nullable
+## fields, these are never null once TowerSystem.place_tower() finishes
+## constructing this state: a blueprint with shaft/top == null gets a fresh
+## inert ShaftComponent.new()/TopComponent.new() substituted at that point
+## (see place_tower()'s own comment), so every consumer downstream of
+## placement can assume non-null here.
+var shaft: ShaftComponent = null
+var top: TopComponent = null
 var grid_position: Vector2i = Vector2i.ZERO
 var current_hp: float = 0.0
 var max_hp: float = 0.0

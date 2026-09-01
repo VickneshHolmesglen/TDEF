@@ -52,8 +52,9 @@ extends Control
 ##
 ## Assemble Towers tab, RELOCATED HERE (2026-08-21, player-requested): moved
 ## out of Equipment Forge (equipment_forge_screen.gd) — TowerAssembly.
-## assemble_tower() consumes 4 owned Tower Component items (Foundation/
-## Weapon/Focus/Power), which Crafting's own recipes produce, not anything
+## assemble_tower() consumes 3-6 owned Tower Component items (Foundation/
+## Weapon/Focus/Power/Shaft/Top, tier-gated per tower.md Rule 4c since
+## 2026-09-01), which Crafting's own recipes produce, not anything
 ## Forge-specific (equipment/runes/sacrifices). Its prior placement in Forge
 ## had no stated architectural reason (design/quick-specs/tower-assembly-
 ## 2026-08-11.md never gives one — it just says "Forge tab"), and moving it
@@ -93,8 +94,11 @@ const RECIPE_CATEGORY_LABEL_KEYS: Dictionary[String, String] = {
 ## used to classify an owned TowerComponent item into its assembly column
 ## purely from its resolved Resource's runtime type. Ported unchanged from
 ## equipment_forge_screen.gd (see this file's own "Assemble Towers tab,
-## RELOCATED HERE" note).
-const SLOT_KEYS: Array[String] = ["foundation", "weapon", "focus", "power"]
+## RELOCATED HERE" note). "shaft"/"top" added 2026-09-01 — Foundation+Weapon
+## remain always-required; Shaft/Top/Focus/Power phase in by the selected
+## Foundation's tier (tower_assembly.gd's REQUIRED_AT_TIER) — see
+## _all_slots_selected()'s own doc comment for the exact gating.
+const SLOT_KEYS: Array[String] = ["foundation", "weapon", "focus", "power", "shaft", "top"]
 
 ## Tower Component tab — "Bases"/"Shafts"/"Tops" subpanels (2026-08-21,
 ## player-requested; Shafts/Tops added 2026-09-01, same player request
@@ -193,6 +197,8 @@ const TOWER_PART_ENTRY_SEPARATION: int = 2
 	"weapon": $MainLayout/RightPanel/RightPanelContent/AssembleView/SlotColumns/WeaponColumn/WeaponList,
 	"focus": $MainLayout/RightPanel/RightPanelContent/AssembleView/SlotColumns/FocusColumn/FocusList,
 	"power": $MainLayout/RightPanel/RightPanelContent/AssembleView/SlotColumns/PowerColumn/PowerList,
+	"shaft": $MainLayout/RightPanel/RightPanelContent/AssembleView/SlotColumns/ShaftColumn/ShaftList,
+	"top": $MainLayout/RightPanel/RightPanelContent/AssembleView/SlotColumns/TopColumn/TopList,
 }
 @onready var _assembled_list: VBoxContainer = $MainLayout/RightPanel/RightPanelContent/AssembleView/SlotColumns/AssembledColumn/AssembledList
 @onready var _assemble_name_edit: LineEdit = $MainLayout/RightPanel/RightPanelContent/AssembleView/AssembleFooter/AssembleNameEdit
@@ -220,11 +226,12 @@ var _active_tab: StringName = Inventory.TAB_ORDER[0]
 
 ## Assemble Towers tab state — ported unchanged from equipment_forge_screen.gd.
 var _assemble_component_buttons: Dictionary[String, Dictionary] = {}  ## slot -> {instance_id: Button}
-## slot ("foundation"/"weapon"/"focus"/"power") -> selected instance_id, or
-## -1 if that slot has no selection yet. Reset on every successful assembly
-## and on tab-away-and-back is deliberately NOT done -- a player switching
-## tabs mid-selection (e.g. to check Recipes) should not lose their picks.
-var _assemble_selection: Dictionary[String, int] = {"foundation": -1, "weapon": -1, "focus": -1, "power": -1}
+## slot ("foundation"/"weapon"/"focus"/"power"/"shaft"/"top") -> selected
+## instance_id, or -1 if that slot has no selection yet. Reset on every
+## successful assembly and on tab-away-and-back is deliberately NOT done --
+## a player switching tabs mid-selection (e.g. to check Recipes) should not
+## lose their picks.
+var _assemble_selection: Dictionary[String, int] = {"foundation": -1, "weapon": -1, "focus": -1, "power": -1, "shaft": -1, "top": -1}
 ## true = Assemble Towers sub-tab showing, false = Recipes or Repair sub-tab
 ## showing. Kept exactly as-is (not widened to a 3-way enum) so existing
 ## callers of is_showing_assemble() keep their current true-only-for-Assemble
@@ -1128,6 +1135,10 @@ func _classify_component_slot(item_id: StringName) -> String:
 		return "focus"
 	if component is PowerComponent:
 		return "power"
+	if component is ShaftComponent:
+		return "shaft"
+	if component is TopComponent:
+		return "top"
 	return ""
 
 
@@ -1179,11 +1190,49 @@ func _on_assemble_button_pressed() -> void:
 	_assemble_confirm_dialog.popup_centered()
 
 
+## Foundation+Weapon+Shaft are always required; Top/Focus/Power phase in as
+## the SELECTED Foundation's own tier rises (mirrors tower_assembly.gd's
+## REQUIRED_AT_TIER exactly — this is a client-side pre-check only, the real
+## gate is TowerAssembly.assemble_tower() itself, which rejects independently
+## if this ever drifts out of sync). No Foundation selected, or a selected
+## Foundation whose component fails to resolve, is always "not ready."
 func _all_slots_selected() -> bool:
-	for slot: String in SLOT_KEYS:
-		if _assemble_selection.get(slot, -1) == -1:
-			return false
+	if _assemble_selection.get("foundation", -1) == -1:
+		return false
+	if _assemble_selection.get("weapon", -1) == -1:
+		return false
+	if _assemble_selection.get("shaft", -1) == -1:
+		return false
+	var tier: int = _resolve_selected_foundation_tier()
+	if tier == -1:
+		return false
+	if tier >= 2 and _assemble_selection.get("top", -1) == -1:
+		return false
+	if tier >= 3 and _assemble_selection.get("focus", -1) == -1:
+		return false
+	if tier >= 4 and _assemble_selection.get("power", -1) == -1:
+		return false
 	return true
+
+
+## Resolves the currently-selected Foundation's own `tier` field, or -1 if
+## nothing is selected or the selection no longer resolves to a real
+## FoundationComponent (e.g. consumed elsewhere since selection).
+func _resolve_selected_foundation_tier() -> int:
+	var instance_id: int = _assemble_selection.get("foundation", -1)
+	if instance_id == -1:
+		return -1
+	var contents: Dictionary = inventory.get_slot_contents_by_instance_id(instance_id)
+	if contents.is_empty():
+		return -1
+	var item_id: String = contents.get("item_id", "") as String
+	var definition: ItemDefinitionResource = GGameDataRegistry.get_item_definition(StringName(item_id))
+	if definition == null or definition.component_resource_path == "":
+		return -1
+	var component: Resource = ResourceLoader.load(definition.component_resource_path)
+	if component is FoundationComponent:
+		return (component as FoundationComponent).tier
+	return -1
 
 
 func _on_assemble_confirmed() -> void:
@@ -1192,12 +1241,13 @@ func _on_assemble_confirmed() -> void:
 	var display_name: String = _assemble_name_edit.text.strip_edges()
 	tower_assembly.assemble_tower(
 			_assemble_selection["foundation"], _assemble_selection["weapon"],
-			_assemble_selection["focus"], _assemble_selection["power"], display_name)
+			_assemble_selection["focus"], _assemble_selection["power"], display_name,
+			_assemble_selection["shaft"], _assemble_selection["top"])
 	# Reset regardless of the call's own success/rejection -- a rejected
 	# assembly (e.g. a selected component was consumed elsewhere between
 	# selection and confirm) leaves nothing meaningful to keep selected; the
 	# rebuild below re-lists whatever the player still actually owns.
-	_assemble_selection = {"foundation": -1, "weapon": -1, "focus": -1, "power": -1}
+	_assemble_selection = {"foundation": -1, "weapon": -1, "focus": -1, "power": -1, "shaft": -1, "top": -1}
 	_assemble_name_edit.text = ""
 	_rebuild_assemble_lists()
 

@@ -194,6 +194,14 @@ func place_tower(blueprint_id: StringName, top_left: Vector2i) -> bool:
 	state.weapon = data.weapon.duplicate_deep()
 	state.focus = data.focus.duplicate_deep()
 	state.power = data.power.duplicate_deep()
+	# Shaft/Top (new 2026-09-01): data.shaft/data.top are nullable on
+	# TowerBlueprintData (pre-existing static blueprints predate this
+	# feature) -- substitute a fresh, inert ShaftComponent.new()/
+	# TopComponent.new() rather than crashing on .duplicate_deep() of a null
+	# reference. TowerMissionState.shaft/top are documented as never-null
+	# for exactly this reason.
+	state.shaft = data.shaft.duplicate_deep() if data.shaft != null else ShaftComponent.new()
+	state.top = data.top.duplicate_deep() if data.top != null else TopComponent.new()
 	state.grid_position = top_left
 	state.max_hp = state.foundation.hp_base * state.foundation.tier_multiplier
 	state.current_hp = state.max_hp
@@ -334,29 +342,38 @@ func get_placed_tower_slot_tally() -> Array[TowerMissionState]:
 # Combat formulas (AC-9 to AC-17)
 # ---------------------------------------------------------------------------
 
-## DPS formula: weapon_damage × attack_speed × tier_dps_multiplier.
+## DPS formula: (weapon_damage + Top's "damage"-type bonus, if any) ×
+## attack_speed × tier_dps_multiplier.
 ## Amendment 2026-07-19: tier_dps_multiplier lives on FoundationComponent per
 ## tower.md's schema (not WeaponComponent), split accordingly.
-func compute_dps(weapon: WeaponComponent, foundation: FoundationComponent) -> float:
-	return weapon.weapon_damage * weapon.attack_speed * foundation.tier_dps_multiplier
+## Amendment 2026-09-01: `top` defaults to null (treated as +0.0 bonus) so
+## every pre-existing call site (tower_combat_test.gd) is unaffected.
+func compute_dps(weapon: WeaponComponent, foundation: FoundationComponent, top: TopComponent = null) -> float:
+	var top_damage_bonus: float = top.bonus_value if (top != null and top.bonus_type == "damage") else 0.0
+	return (weapon.weapon_damage + top_damage_bonus) * weapon.attack_speed * foundation.tier_dps_multiplier
 
 
 ## True when enemy_cell is within the tower's effective range.
 ##
-## Effective range = attack_range_cells + 2 if cone_half_angle ≤ 30°.
+## Effective range = attack_range_cells + shaft's range_bonus_cells (new
+## 2026-09-01), + 2 more if cone_half_angle ≤ 30°.
 ## Distance metric: Chebyshev (diagonals equal to cardinals).
-func is_in_range(tower_cell: Vector2i, enemy_cell: Vector2i, focus: FocusComponent) -> bool:
+## `shaft` defaults to null (treated as +0 bonus) so this stays callable
+## exactly as before wherever a caller has no Shaft to pass (e.g. this
+## project's existing test suite, tower_combat_test.gd).
+func is_in_range(tower_cell: Vector2i, enemy_cell: Vector2i, focus: FocusComponent, shaft: ShaftComponent = null) -> bool:
 	var chebyshev: int = max(
 		abs(tower_cell.x - enemy_cell.x), abs(tower_cell.y - enemy_cell.y)
 	)
-	return chebyshev <= _get_effective_range(focus)
+	return chebyshev <= _get_effective_range(focus, shaft)
 
 
-## Effective range after cone bonus.
-func _get_effective_range(focus: FocusComponent) -> int:
+## Effective range after Shaft's range_bonus_cells and the cone bonus.
+func _get_effective_range(focus: FocusComponent, shaft: ShaftComponent = null) -> int:
+	var range_bonus: int = shaft.range_bonus_cells if shaft != null else 0
 	if focus.cone_half_angle <= 30.0:
-		return focus.attack_range_cells + 2
-	return focus.attack_range_cells
+		return focus.attack_range_cells + range_bonus + 2
+	return focus.attack_range_cells + range_bonus
 
 # ---------------------------------------------------------------------------
 # Attack resolution
@@ -397,9 +414,19 @@ func _try_attack(state: TowerMissionState) -> void:
 	var is_armored: bool = entry["is_armored"] as bool
 	var is_siege: bool = state.foundation.tier == 4
 
-	var base_damage: float = state.weapon.weapon_damage * state.foundation.tier_dps_multiplier
-	var is_crit: bool = randf() < state.weapon.crit_chance
-	var crit_mult: float = state.weapon.crit_multiplier if is_crit else 1.0
+	# Top's bonus_type (new 2026-09-01) additively amplifies exactly one of
+	# Weapon's own base stats -- never more than one, per bonus_type's own
+	# validate() (only one type is ever active on a given Top instance).
+	# state.top is never null (place_tower() substitutes an inert
+	# TopComponent.new() for legacy content -- see that call site's comment),
+	# and bonus_type "" contributes 0.0 to every branch below by construction.
+	var top_damage_bonus: float = state.top.bonus_value if state.top.bonus_type == "damage" else 0.0
+	var top_crit_chance_bonus: float = state.top.bonus_value if state.top.bonus_type == "crit_chance" else 0.0
+	var top_crit_damage_bonus: float = state.top.bonus_value if state.top.bonus_type == "crit_damage" else 0.0
+
+	var base_damage: float = (state.weapon.weapon_damage + top_damage_bonus) * state.foundation.tier_dps_multiplier
+	var is_crit: bool = randf() < (state.weapon.crit_chance + top_crit_chance_bonus)
+	var crit_mult: float = (state.weapon.crit_multiplier + top_crit_damage_bonus) if is_crit else 1.0
 	var vs_tag_mult: float = _resolve_vs_tag_multiplier(state.foundation, entry)
 	var boss_mult: float = state.foundation.tier_boss_dps_multiplier if entry.get("is_boss", false) else 1.0
 	var aura_mult: float = 1.0 + state.damage_buff_fraction  # TD-tower-008 fix
@@ -616,7 +643,7 @@ func _candidates_in_range(state: TowerMissionState) -> Array[int]:
 	var result: Array[int] = []
 	for entity_id: int in _monster_cache:
 		var cell: Vector2i = (_monster_cache[entity_id] as Dictionary)["cell"] as Vector2i
-		if is_in_range(state.grid_position, cell, state.focus):
+		if is_in_range(state.grid_position, cell, state.focus, state.shaft):
 			result.append(entity_id)
 	return result
 

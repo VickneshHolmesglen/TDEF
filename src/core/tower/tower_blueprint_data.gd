@@ -22,10 +22,24 @@ extends Resource
 @export var weapon: WeaponComponent
 @export var focus: FocusComponent
 @export var power: PowerComponent
+## Shaft/Top (new 2026-09-01) — see shaft_component.gd/top_component.gd's own
+## class doc comments. Deliberately NULLABLE, unlike the 4 components above:
+## every one of this project's 18 pre-existing, already-shipped static
+## blueprints (assets/data/towers/blueprints/) predates this feature and has
+## no Shaft/Top authored at all. Rather than a breaking content migration,
+## null is treated as "inert" everywhere this Resource is consumed
+## (validate() below, and tower_system.gd's place_tower(), which substitutes
+## a fresh ShaftComponent.new()/TopComponent.new() — both types' own export
+## defaults are already inert) — a null Shaft/Top behaves identically to an
+## explicit +0/"" one.
+@export var shaft: ShaftComponent
+@export var top: TopComponent
 
 
-## Validates all 4 components plus this Resource's own top-level fields.
-## Returns true only if every component (and this Resource) is valid.
+## Validates all populated components plus this Resource's own top-level
+## fields. Foundation/Weapon/Focus/Power remain required (non-null); Shaft/
+## Top are optional (null = inert, see their own field doc comment above) —
+## if present, they must still individually validate.
 func validate() -> bool:
 	var valid: bool = true
 	if tower_id == &"":
@@ -50,6 +64,10 @@ func validate() -> bool:
 		push_error("[TowerBlueprintData '%s'] power component is null" % tower_id)
 		valid = false
 	elif not power.validate():
+		valid = false
+	if shaft != null and not shaft.validate():
+		valid = false
+	if top != null and not top.validate():
 		valid = false
 	return valid
 
