@@ -32,12 +32,35 @@ extends Control
 ##   see that session's art-processing/content-authoring commits). Active-
 ##   slot and library buttons now show that icon via Godot's own native
 ##   `Button.icon`, plus each skill's `display_name` instead of the raw
-##   `skill_id`. Still not implemented: an archetype-color/glyph treatment
-##   distinguishing physical/ranged/elemental/support at a glance (this
-##   screen has no category-color convention yet, unlike inventory_screen.gd's
-##   RarityFrame), and no connector-line visual between slots and the
-##   Ultimate readout — both remain genuinely unscoped art-direction work,
-##   not just "art didn't exist yet."
+##   `skill_id`.
+## - Archetype color/glyph treatment closed 2026-09-01 (Claude Code), per
+##   hero-skill-build.md UI Requirements' "Archetype identity per slot" and
+##   "shape/glyph is the primary identifier, color is confirmatory only"
+##   colorblind-safety rule. **Real gap found while implementing this**: that
+##   GDD text claims this screen is "the fourth consumer... of the same
+##   [glyph] visual vocabulary" established by Tower Info Panel/tower
+##   base/projectile trails — false on inspection. Only a COLOR table exists
+##   in code (`ProjectileVisual.ARCHETYPE_COLORS`, extended here with a new
+##   "support" entry the GDD's own "Support warm gold" language calls for
+##   but the table never had, since Support towers never fire a projectile);
+##   no actual glyph/shape asset or convention exists anywhere in this
+##   project for any of the 4 archetypes. Rather than block on that or
+##   silently invent full bespoke iconography (against this project's own
+##   discipline), the "shape" identifier here is a plain bold letter badge
+##   (P/R/E/S) — colorblind-safe by construction (distinct letterforms, not
+##   just distinct hues of the same shape) and consistent with this same
+##   GDD's own "NEW-skill badge... text/glyph in addition to color" fallback
+##   pattern elsewhere. A real illustrated glyph set remains open,
+##   unscoped art-direction work if/when this project wants one.
+## - Category-count pip tally (UI Requirements: "a deliberate pedagogical
+##   surface... learn to read '3 Elemental + 1 Support -> Ultimate X' as a
+##   pattern") added beneath the Ultimate readout, built from
+##   HeroSkillBuild.get_category_count() (already existed, unused by any UI
+##   until now) using the same letter-badge glyphs, one per occupied slot.
+## - Still not implemented: a connector-line visual between slots and the
+##   Ultimate readout, and the not-yet-learned-skills roadmap/lock-icon
+##   convention (UI Requirements, separate from this pass's scope) — both
+##   remain genuinely unscoped work.
 ##
 ## Root is a plain Control. No class_name — matches the other room/screen
 ## scripts' TD-workflow-001 precedent.
@@ -52,11 +75,20 @@ const ACTIVE_SLOT_LABELS: Array[String] = ["A", "B", "C", "D"]
 ## default sizing" lesson (design/art/codex-art-overhaul.md §5.5).
 const ICON_MAX_WIDTH: int = 32
 
+## Single-letter "shape" glyph per archetype — see class doc comment for why
+## this is a plain letter badge rather than illustrated iconography. Keys
+## match HeroSkillBuild.CATEGORIES exactly (reused directly for iteration
+## order below, not re-declared here).
+const ARCHETYPE_GLYPHS: Dictionary[String, String] = {
+	"physical": "P", "ranged": "R", "elemental": "E", "support": "S",
+}
+
 ## Injectable for tests; defaults to the real GHeroSkillBuild Autoload.
 @export var hero_skill_build: HeroSkillBuild
 
 @onready var _input_mode_tracker: InputModeTracker = $InputModeTracker
 @onready var _ultimate_label: Label = $MainLayout/UltimateLabel
+@onready var _pip_tally_row: HBoxContainer = $MainLayout/PipTallyRow
 @onready var _active_slot_list: VBoxContainer = $MainLayout/AssemblyArea/ActiveSlotList
 @onready var _library_list: VBoxContainer = $MainLayout/Library/LibraryList
 
@@ -87,6 +119,7 @@ func _on_build_changed(_a: Variant = null, _b: Variant = null) -> void:
 
 func _rebuild_everything() -> void:
 	_rebuild_ultimate_label()
+	_rebuild_pip_tally()
 	_rebuild_active_slots()
 	_rebuild_library()
 
@@ -96,6 +129,26 @@ func _rebuild_ultimate_label() -> void:
 		_ultimate_label.text = "Ultimate: —"
 		return
 	_ultimate_label.text = "Ultimate: %s" % hero_skill_build.get_all_slot_bindings()["U"]
+
+
+## UI Requirements' "deliberate pedagogical surface": one letter-glyph badge
+## per occupied active slot, grouped by category and repeated per occupant
+## (e.g. 3 Elemental + 1 Support glyphs) — never colored dots alone, per the
+## GDD's own colorblind-safety line. Built from get_category_count()
+## (Story-001-scoped occupied-slot tally — deliberately the same looser tally
+## the GDD's own pip-tally description uses, not Formula 1's stricter
+## all-4-filled Ultimate-derivation precondition; a 2-of-4-filled build still
+## gets a legible partial tally here).
+func _rebuild_pip_tally() -> void:
+	for child: Node in _pip_tally_row.get_children():
+		child.queue_free()
+	if hero_skill_build == null:
+		return
+	var counts: Dictionary[String, int] = hero_skill_build.get_category_count()
+	for category: String in HeroSkillBuild.CATEGORIES:
+		var count: int = counts.get(category, 0)
+		for _i: int in count:
+			_pip_tally_row.add_child(_make_glyph_badge(category, 18))
 
 
 # ---------------------------------------------------------------------------
@@ -123,6 +176,7 @@ func _rebuild_active_slots() -> void:
 		var bound: String = bindings[i] if i < bindings.size() else ""
 		slot_button.text = "%s: %s" % [ACTIVE_SLOT_LABELS[i], _skill_label(bound) if not bound.is_empty() else "(empty)"]
 		slot_button.icon = _skill_icon(bound)
+		_apply_archetype_style(slot_button, bound)
 		slot_button.pressed.connect(_on_active_slot_pressed.bind(i))
 		_wire_focus_ring(slot_button)
 		row.add_child(slot_button)
@@ -162,6 +216,69 @@ func _skill_icon(skill_id: String) -> Texture2D:
 	if definition == null:
 		return null
 	return definition.icon
+
+
+## Category lookup for a skill_id — "" for an empty/orphaned skill_id.
+func _skill_category(skill_id: String) -> String:
+	if skill_id.is_empty():
+		return ""
+	var definition: SkillDefinitionResource = GGameDataRegistry.get_skill_definition(StringName(skill_id))
+	if definition == null:
+		return ""
+	return definition.category
+
+
+## Applies UI Requirements' "slot frame's border takes the archetype's
+## accent" (border only — the button's own bg/hover/pressed states are left
+## at their Godot-default look, not fully re-skinned) plus a corner glyph
+## badge (top-right, matching inventory_screen.gd's own corner-badge
+## precedent for its quantity label). A no-op for an empty/orphaned
+## skill_id — an empty active slot keeps its plain default look.
+func _apply_archetype_style(button: Button, skill_id: String) -> void:
+	var category: String = _skill_category(skill_id)
+	if category.is_empty():
+		return
+	var accent: Color = ProjectileVisual.ARCHETYPE_COLORS.get(category, Color(0.5, 0.5, 0.5))
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.15, 0.15, 0.15, 0.6)
+	style.border_width_left = 3
+	style.border_width_right = 3
+	style.border_width_top = 3
+	style.border_width_bottom = 3
+	style.border_color = accent
+	button.add_theme_stylebox_override("normal", style)
+
+	var badge: Label = _make_glyph_badge(category, 16)
+	badge.name = "ArchetypeBadge"
+	badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	badge.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	badge.offset_left = -18.0
+	badge.offset_top = 2.0
+	badge.offset_right = -2.0
+	badge.offset_bottom = 18.0
+	button.add_child(badge)
+
+
+## Builds one letter-glyph badge (see class doc comment for why a plain
+## letter, not illustrated iconography) — a small square Label, background-
+## tinted with ProjectileVisual.ARCHETYPE_COLORS, text set to
+## ARCHETYPE_GLYPHS. Falls back to a neutral grey "?" for an unrecognized
+## category rather than omitting the badge entirely (shape/glyph presence
+## itself, not just its specific letter, is what colorblind-safety needs).
+func _make_glyph_badge(category: String, size: int) -> Label:
+	var badge := Label.new()
+	badge.text = ARCHETYPE_GLYPHS.get(category, "?")
+	badge.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	badge.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	badge.custom_minimum_size = Vector2(size, size)
+	badge.add_theme_font_size_override("font_size", int(size * 0.65))
+	var accent: Color = ProjectileVisual.ARCHETYPE_COLORS.get(category, Color(0.5, 0.5, 0.5))
+	var style := StyleBoxFlat.new()
+	style.bg_color = accent
+	style.set_corner_radius_all(int(size * 0.2))
+	badge.add_theme_color_override("font_color", Color.BLACK if accent.get_luminance() > 0.5 else Color.WHITE)
+	badge.add_theme_stylebox_override("normal", style)
+	return badge
 
 
 func _passive_summary_text(skill_id: String) -> String:
@@ -255,6 +372,7 @@ func _rebuild_library() -> void:
 		var is_active: bool = hero_skill_build.get_active_slots().has(skill_id)
 		button.text = "%s%s" % [_skill_label(skill_id), " [ACTIVE]" if is_active else ""]
 		button.icon = _skill_icon(skill_id)
+		_apply_archetype_style(button, skill_id)
 		button.pressed.connect(_on_library_skill_pressed.bind(skill_id))
 		_wire_focus_ring(button)
 		_library_list.add_child(button)

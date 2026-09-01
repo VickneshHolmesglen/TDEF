@@ -26,11 +26,19 @@ const JAGGED_SEGMENTS: int = 3      ## midpoints along lightning's tail, jittere
 const JAGGED_JITTER: float = 6.0    ## world units, max perpendicular offset per jagged midpoint
 
 ## design/gdd/tower.md "Archetype projectile color language" table.
-## Support/AURA towers never fire a projectile (Rule 5a) so are absent here.
+## Support/AURA towers never fire a projectile (Rule 5a), so "support" was
+## absent here until 2026-09-01, when hero-skill-build.md's UI Requirements
+## ("Archetype identity per slot" — Support warm gold) needed a canonical
+## color for a non-projectile consumer (hero_skill_build_screen.gd) — added
+## here rather than a second, competing table, matching this constant's own
+## established "the same visual vocabulary, every consumer" role (see its
+## callers' doc comments across tower_instance.gd/aoe_ring_visual.gd/
+## mission_scene.gd/tower_destroy_vfx.gd).
 const ARCHETYPE_COLORS: Dictionary[String, Color] = {
 	"physical": Color(0.494, 0.522, 0.565),   ## Fieldstone Grey — matches project palette
 	"ranged": Color(0.42, 0.28, 0.16),        ## brown / wood / metal
 	"elemental": Color(0.65, 0.85, 1.0),      ## ice blue — generic fallback for an unset/unrecognized element
+	"support": Color(0.85, 0.7, 0.25),        ## warm gold — non-projectile archetype, added 2026-09-01
 }
 
 ## design/gdd/tower.md "Elemental sub-type color language" table — Fire,
