@@ -103,6 +103,29 @@ func test_wave_active_entry_spawns_monster_via_monster_manager() -> void:
 	assert_bool(_wm._all_spawns_fired).is_true()
 
 
+## TD-wave-002's own recommended regression test (docs/tech-debt-register.md):
+## drives WAVE_ACTIVE entry from a real, loaded WaveConfig instead of the
+## test-injection seam every other test in this file uses — proving
+## _enter_wave_active() actually populates _wave_spawn_entries from
+## _wave_config.wave_scripts (wave_manager.gd's own fix for the bug this
+## file's other tests would never have caught, since they all inject
+## _wave_spawn_entries directly and never exercise _wave_config at all).
+func test_wave_active_entry_populates_spawn_entries_from_a_real_loaded_wave_config() -> void:
+	var script := WaveScript.new()
+	script.entries = [WaveSpawnEntry.new(&"goblin", 0.0), WaveSpawnEntry.new(&"goblin", 0.0)]
+	var cfg := WaveConfig.new()
+	cfg.wave_scripts = [script]
+	_wm._wave_config = cfg
+	# Deliberately NOT setting _wm._wave_spawn_entries — this is the whole
+	# point: proving the real _wave_config path populates it on its own.
+
+	_wm._transition_to(WaveManager.Phase.WAVE_ACTIVE)
+
+	assert_array(_wm._wave_spawn_entries).is_equal(script.entries)
+	assert_int(_mm.active_monsters.size()).is_equal(2)
+	assert_int(_wm._enemies_alive).is_equal(2)
+
+
 func test_full_spawn_cycle_multiple_entries_tracks_enemies_alive() -> void:
 	_wm._wave_spawn_entries = [
 		WaveSpawnEntry.new(&"goblin", 0.0),

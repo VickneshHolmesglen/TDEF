@@ -458,10 +458,10 @@ orphans). Full regression: 609/609 executed, 0 errors, 1 pre-existing unrelated 
 `event_payload_validation_test.gd` (untouched by this change) — 0 new failures, 0 new orphans.
 
 ### Resolution
-- [ ] Pause mechanism decided (engine-native `SceneTree.paused` vs. custom EventBus-driven)
-- [ ] Implemented and wired to Pause Menu once that screen is built
-- [ ] Verified functional in every mission phase, no exceptions
-- [ ] This entry closed
+- [x] Pause mechanism decided (2026-07-08, ADR-0014) — engine-native `SceneTree.paused`, per user decision.
+- [x] Implemented and wired to Pause Menu (2026-07-08) — `src/gameplay/ui/pause_menu/pause_menu.gd`/`.tscn` instanced into both `MissionScene.tscn` and `the_gap.tscn` (verified present, 2026-09-02).
+- [x] Verified functional in every mission phase, no exceptions — including the mid-`WAVE_ACTIVE` spawn-coroutine gap this same fix found and closed (`wave_manager.gd`'s `create_timer(..., process_always: false)`). Test evidence: `tests/unit/pause_menu/pause_menu_test.gd`, 10/10 passing at the time of the fix.
+- [x] This entry closed (2026-09-02) — this checklist itself was the only thing left open; the "Resolution (2026-07-08)" narrative above it already documented full closure over a year of commits ago but the checklist was never ticked to match.
 
 ---
 
@@ -1257,8 +1257,8 @@ mission after this fix.
 - [x] Fixed in `wave_manager.gd::_enter_wave_active()` — 2026-07-05
 - [x] Verified via live headless run (real spawn observed) — 2026-07-05
 - [x] Full existing test suite re-run: 542/542 test cases, 0 errors, 1 pre-existing unrelated failure (see TD-hero-005), 0 new failures — 2026-07-05
-- [ ] Dedicated regression test added to `tests/integration/wave_manager/` asserting `_wave_spawn_entries` is populated from a real (non-injected) `_wave_config` at `WAVE_ACTIVE` entry (partially covered by `tests/integration/mission_scene/mission_scene_the_gap_test.gd`'s end-to-end assertion; a WaveManager-suite-local unit test is still recommended)
-- [ ] This entry closed
+- [x] Dedicated regression test added (2026-09-02) — `tests/integration/wave_manager/wave_manager_spawn_integration_test.gd::test_wave_active_entry_populates_spawn_entries_from_a_real_loaded_wave_config()`. Sets a real `_wave_config` (never touching the `_wave_spawn_entries` test-injection seam every other test in that file uses), transitions to `WAVE_ACTIVE`, and asserts `_wave_spawn_entries` matches the config's own wave-1 entries plus that both monsters actually spawned via the real `MonsterManager` in the same suite — closing the exact gap this recommendation named.
+- [x] This entry closed (2026-09-02).
 
 ---
 
