@@ -1,0 +1,38 @@
+[gd_scene load_steps=3 format=3 uid="uid://heroskilltreescreen0"]
+
+[ext_resource type="Script" path="res://src/gameplay/ui/hero_skill_tree_screen/hero_skill_tree_screen.gd" id="1_ctrl"]
+[ext_resource type="Script" path="res://src/ui/input_mode_tracker.gd" id="2_tracker"]
+
+[node name="HeroSkillTreeScreen" type="Control"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_ctrl")
+
+[node name="InputModeTracker" type="Node" parent="."]
+script = ExtResource("2_tracker")
+
+[node name="MainLayout" type="VBoxContainer" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 8
+
+[node name="PoolRow" type="HBoxContainer" parent="MainLayout"]
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 16
+
+[node name="VisitSpendLabel" type="Label" parent="MainLayout"]
+layout_mode = 2
+horizontal_alignment = 1
+text = "1 purchase available this visit"
+
+[node name="ChainsRow" type="HBoxContainer" parent="MainLayout"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 16
