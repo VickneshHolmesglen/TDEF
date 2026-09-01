@@ -27,15 +27,30 @@ extends Control
 ##   functioning assignment — not a placeholder — just not the full nested-
 ##   socket-selection UI the GDD describes). Long-pressing a filled sub-slot
 ##   equivalent (a plain click here) clears it.
-## - No skill icon/archetype-glyph rendering, no connector-line visual
-##   between slots and the Ultimate readout — no such art exists anywhere in
-##   this project. All state is shown as plain text.
+## - Skill icon rendering closed 2026-09-01 (Claude Code): all 32 catalogued
+##   skills now have real, processed icon art (SkillDefinitionResource.icon —
+##   see that session's art-processing/content-authoring commits). Active-
+##   slot and library buttons now show that icon via Godot's own native
+##   `Button.icon`, plus each skill's `display_name` instead of the raw
+##   `skill_id`. Still not implemented: an archetype-color/glyph treatment
+##   distinguishing physical/ranged/elemental/support at a glance (this
+##   screen has no category-color convention yet, unlike inventory_screen.gd's
+##   RarityFrame), and no connector-line visual between slots and the
+##   Ultimate readout — both remain genuinely unscoped art-direction work,
+##   not just "art didn't exist yet."
 ##
 ## Root is a plain Control. No class_name — matches the other room/screen
 ## scripts' TD-workflow-001 precedent.
 
 const FOCUS_RING_COLOR: Color = Color(1.0, 0.85, 0.2, 1.0)  ## placeholder — art-director TBD
 const ACTIVE_SLOT_LABELS: Array[String] = ["A", "B", "C", "D"]
+## Caps a skill icon's rendered size regardless of its source resolution
+## (the processed art in assets/art/items/ is a tight content crop, not a
+## pre-sized icon sheet — sizes vary from ~350px to ~1150px across the 32
+## skills). Godot's native Button icon_max_width theme constant, matching
+## the project's existing "always verify/cap scale explicitly, never trust
+## default sizing" lesson (design/art/codex-art-overhaul.md §5.5).
+const ICON_MAX_WIDTH: int = 32
 
 ## Injectable for tests; defaults to the real GHeroSkillBuild Autoload.
 @export var hero_skill_build: HeroSkillBuild
@@ -104,8 +119,10 @@ func _rebuild_active_slots() -> void:
 		slot_button.name = "ActiveSlot_%s" % ACTIVE_SLOT_LABELS[i]
 		slot_button.focus_mode = Control.FOCUS_ALL
 		slot_button.clip_text = true
+		slot_button.add_theme_constant_override("icon_max_width", ICON_MAX_WIDTH)
 		var bound: String = bindings[i] if i < bindings.size() else ""
-		slot_button.text = "%s: %s" % [ACTIVE_SLOT_LABELS[i], bound if not bound.is_empty() else "(empty)"]
+		slot_button.text = "%s: %s" % [ACTIVE_SLOT_LABELS[i], _skill_label(bound) if not bound.is_empty() else "(empty)"]
+		slot_button.icon = _skill_icon(bound)
 		slot_button.pressed.connect(_on_active_slot_pressed.bind(i))
 		_wire_focus_ring(slot_button)
 		row.add_child(slot_button)
@@ -120,6 +137,31 @@ func _rebuild_active_slots() -> void:
 		_passive_cycle_buttons[i] = passive_button
 
 		_active_slot_list.add_child(row)
+
+
+## Display-name lookup for a skill_id, falling back to the raw skill_id
+## itself if no SkillDefinitionResource resolves (an orphaned/unrecognized
+## skill_id — see hero-skill-build.md's own AC-21/AC-22 orphan handling;
+## this screen still needs to show SOMETHING for it, not a blank button).
+func _skill_label(skill_id: String) -> String:
+	if skill_id.is_empty():
+		return skill_id
+	var definition: SkillDefinitionResource = GGameDataRegistry.get_skill_definition(StringName(skill_id))
+	if definition == null or definition.display_name.is_empty():
+		return skill_id
+	return definition.display_name
+
+
+## Icon lookup for a skill_id — null for an empty/orphaned skill_id or a
+## skill whose content-authoring pass hasn't set an icon (renders as
+## Button's own no-icon layout, same as before this feature landed).
+func _skill_icon(skill_id: String) -> Texture2D:
+	if skill_id.is_empty():
+		return null
+	var definition: SkillDefinitionResource = GGameDataRegistry.get_skill_definition(StringName(skill_id))
+	if definition == null:
+		return null
+	return definition.icon
 
 
 func _passive_summary_text(skill_id: String) -> String:
@@ -209,8 +251,10 @@ func _rebuild_library() -> void:
 		button.name = "Library_%s" % skill_id
 		button.focus_mode = Control.FOCUS_ALL
 		button.clip_text = true
+		button.add_theme_constant_override("icon_max_width", ICON_MAX_WIDTH)
 		var is_active: bool = hero_skill_build.get_active_slots().has(skill_id)
-		button.text = "%s%s" % [skill_id, " [ACTIVE]" if is_active else ""]
+		button.text = "%s%s" % [_skill_label(skill_id), " [ACTIVE]" if is_active else ""]
+		button.icon = _skill_icon(skill_id)
 		button.pressed.connect(_on_library_skill_pressed.bind(skill_id))
 		_wire_focus_ring(button)
 		_library_list.add_child(button)
