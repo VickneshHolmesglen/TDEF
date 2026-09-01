@@ -98,10 +98,14 @@ func test_selecting_loadout_tears_down_active_room_and_enters_distinct_state() -
 	assert_that(_shell.get_active_state()).is_not_equal(&"DEPARTING")
 
 
-func test_selecting_loadout_via_tab_strip_hotkey_6_routes_correctly() -> void:
+## Renamed 2026-09-01 (Claude Code): Loadout shifted from hotkey 6 to hotkey 7
+## when the new Skills entry (ROOM_HERO_SKILLS) was inserted at index 5,
+## between Equipment Forge and Loadout, per sanctuary-ui.md Core Rule 11 --
+## see tab_strip.gd's own TAB_TARGETS doc comment.
+func test_selecting_loadout_via_tab_strip_hotkey_7_routes_correctly() -> void:
 	_shell.get_tab_strip_for_test().get_tab_button(2).pressed.emit()  # Menagerie
 
-	_shell.get_tab_strip_for_test().get_tab_button(5).pressed.emit()  # Loadout, index 5
+	_shell.get_tab_strip_for_test().get_tab_button(6).pressed.emit()  # Loadout, index 6 (was 5 before the Skills entry)
 
 	assert_that(_shell.get_active_state()).is_equal(&"DEPARTING_TO_LOADOUT")
 	assert_object(_shell.get_room_host().get_current_room()).is_null()

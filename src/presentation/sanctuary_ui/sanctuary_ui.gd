@@ -72,11 +72,19 @@ const DEPARTING_TO_LOADOUT_STATE: StringName = &"DEPARTING_TO_LOADOUT"
 ## selection instead of the GDD's literal 3-way item→slot→rune selection,
 ## since `Inventory.apply_rune_to_item()` has no per-slot targeting to
 ## select in the first place).
+## Hero Skills added 2026-09-01 (Claude Code): `HeroSkillsRoom.tscn`, a new
+## composite room hosting both hero_skill_build_screen.gd (Loadout) and
+## hero_skill_tree_screen.gd (Skill Tree) as bumper-toggled sub-screens,
+## per sanctuary-ui.md Core Rule 11 — see that scene's own doc comment for
+## the real gaps this closes (no ROOM_HERO_SKILLS entry existed anywhere in
+## code before this, and no LB/RB gamepad InputMap action existed in this
+## project at all despite tab_strip.gd's own comment implying one did).
 const ROOM_SCENES: Dictionary[StringName, PackedScene] = {
 	&"ROOM_INVENTORY_CRAFTING": preload("res://src/gameplay/ui/inventory_screen/InventoryScreen.tscn"),
 	&"ROOM_MENAGERIE": preload("res://src/gameplay/ui/menagerie_screen/MenagerieScreen.tscn"),
 	&"ROOM_DEFENSE_BUILDING": preload("res://src/gameplay/ui/defense_building_screen/DefenseBuildingScreen.tscn"),
 	&"ROOM_EQUIPMENT_FORGE": preload("res://src/gameplay/ui/equipment_forge_screen/EquipmentForgeScreen.tscn"),
+	&"ROOM_HERO_SKILLS": preload("res://src/gameplay/ui/hero_skills_room/HeroSkillsRoom.tscn"),
 }
 
 ## GDD Tuning Knobs default (56-96px safe range) — Story 002 owns tuning this.

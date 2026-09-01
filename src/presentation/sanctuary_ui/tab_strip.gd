@@ -67,13 +67,21 @@ extends VBoxContainer
 
 signal tab_target_selected(target_state: StringName)
 
-## Index-ordered 1:1 with the GDD's 6-entry tab strip layout.
+## Index-ordered 1:1 with the GDD's 7-entry tab strip layout. `ROOM_HERO_SKILLS`
+## added 2026-09-01 (Claude Code) at position 5 (between Equipment Forge and
+## Loadout, per sanctuary-ui.md Core Rule 11) -- Loadout shifts from hotkey 6
+## to hotkey 7. Real gap closed: this entry (and the matching ROOM_SCENES row
+## in sanctuary_ui.gd) is what makes hero_skill_build_screen.gd/hero_skill_
+## tree_screen.gd reachable from the live game for the first time -- both
+## screens existed, fully built and live-verified standalone, with no way to
+## actually reach them before this change.
 const TAB_TARGETS: Array[StringName] = [
 	&"OVERVIEW",
 	&"ROOM_INVENTORY_CRAFTING",
 	&"ROOM_MENAGERIE",
 	&"ROOM_DEFENSE_BUILDING",
 	&"ROOM_EQUIPMENT_FORGE",
+	&"ROOM_HERO_SKILLS",
 	&"DEPARTING_TO_LOADOUT",
 ]
 
@@ -84,29 +92,40 @@ const TAB_LABEL_KEYS: Array[String] = [
 	"SANCTUARY_TAB_MENAGERIE",
 	"SANCTUARY_TAB_DEFENSE_BUILDING",
 	"SANCTUARY_TAB_EQUIPMENT_FORGE",
+	"SANCTUARY_TAB_HERO_SKILLS",
 	"SANCTUARY_TAB_LOADOUT",
 ]
 
 ## Index-ordered 1:1 with TAB_TARGETS -- `design/art/asset-UI-prompt.md`'s
-## "Sanctuary Room Tab Strip" icon set (2026-08-04).
+## "Sanctuary Room Tab Strip" icon set (2026-08-04) only ever covered the
+## original 6 entries. **Real gap, not fixed here**: no icon exists for the
+## new Skills entry (index 5) -- `null` renders as Button's own no-icon
+## layout (text-only), matching this project's established "flag the gap,
+## don't invent unapproved art" precedent rather than reusing an unrelated
+## icon that would misrepresent the room.
 const TAB_ICON_TEXTURES: Array[Texture2D] = [
 	preload("res://assets/art/ui/tab_overview.png"),
 	preload("res://assets/art/ui/tab_inventory_crafting.png"),
 	preload("res://assets/art/ui/tab_menagerie.png"),
 	preload("res://assets/art/ui/tab_defense_building.png"),
 	preload("res://assets/art/ui/tab_equipment_forge.png"),
+	null,
 	preload("res://assets/art/ui/tab_loadout.png"),
 ]
 
 ## Index-ordered 1:1 with TAB_TARGETS -- InputMap actions added in project.godot.
+## sanctuary_tab_7 added 2026-09-01 alongside the new Skills entry.
 const HOTKEY_ACTIONS: Array[StringName] = [
 	&"sanctuary_tab_1", &"sanctuary_tab_2", &"sanctuary_tab_3",
-	&"sanctuary_tab_4", &"sanctuary_tab_5", &"sanctuary_tab_6",
+	&"sanctuary_tab_4", &"sanctuary_tab_5", &"sanctuary_tab_6", &"sanctuary_tab_7",
 ]
 
-## The 4 room-tab indices eligible for a Connection Badge (Overview=0 and
-## Loadout=5 are never eligible -- see class doc).
-const BADGE_ELIGIBLE_INDICES: Array[int] = [1, 2, 3, 4]
+## The 5 room-tab indices eligible for a Connection Badge (Overview=0 and
+## Loadout=6 are never eligible -- see class doc). Skills (5) added
+## 2026-09-01 per sanctuary-ui.md Core Rule 11's explicit badge spec
+## (driven by skill_unlocked / skill_tree_point_earned /
+## skill_tree_overflow_point_earned).
+const BADGE_ELIGIBLE_INDICES: Array[int] = [1, 2, 3, 4, 5]
 
 ## Session-local onboarding flag (GDD Core Rule 2's onboarding paragraph):
 ## "has a Sanctuary UI instance mounted before this session" -- explicitly
@@ -157,6 +176,9 @@ func _exit_tree() -> void:
 	GEventBus.sanctuary_structure_built.disconnect(_on_sanctuary_structure_built)
 	GEventBus.item_rune_imbued.disconnect(_on_item_rune_imbued)
 	GEventBus.building_upgrade_became_purchasable.disconnect(_on_building_upgrade_became_purchasable)
+	GEventBus.skill_unlocked.disconnect(_on_skill_unlocked)
+	GEventBus.skill_tree_point_earned.disconnect(_on_skill_tree_point_earned)
+	GEventBus.skill_tree_overflow_point_earned.disconnect(_on_skill_tree_overflow_point_earned)
 
 
 func _input(event: InputEvent) -> void:
@@ -268,6 +290,9 @@ func _connect_badge_triggers() -> void:
 	GEventBus.sanctuary_structure_built.connect(_on_sanctuary_structure_built)
 	GEventBus.item_rune_imbued.connect(_on_item_rune_imbued)
 	GEventBus.building_upgrade_became_purchasable.connect(_on_building_upgrade_became_purchasable)
+	GEventBus.skill_unlocked.connect(_on_skill_unlocked)
+	GEventBus.skill_tree_point_earned.connect(_on_skill_tree_point_earned)
+	GEventBus.skill_tree_overflow_point_earned.connect(_on_skill_tree_overflow_point_earned)
 
 
 func _on_recipe_discovered(_recipe_id: String, _recipe_category: String) -> void:
@@ -292,6 +317,21 @@ func _on_item_rune_imbued(_item_id: String, _rune_id: String, _rune_source: Stri
 ## _on_item_rune_imbued above, added 2026-08-12.
 func _on_building_upgrade_became_purchasable(_upgrade_id: String) -> void:
 	_increment_badge(4)  # ROOM_EQUIPMENT_FORGE
+
+
+## Core Rule 11's own badge spec (2026-09-01, Claude Code): a newly-learned,
+## not-yet-equipped skill.
+func _on_skill_unlocked(_skill_id: String, _source_tower_id: int) -> void:
+	_increment_badge(5)  # ROOM_HERO_SKILLS
+
+
+## Core Rule 11's own badge spec: an unspent banked skill tree point.
+func _on_skill_tree_point_earned(_archetype: String, _source_tower_id: int) -> void:
+	_increment_badge(5)  # ROOM_HERO_SKILLS
+
+
+func _on_skill_tree_overflow_point_earned(_source_tower_id: int) -> void:
+	_increment_badge(5)  # ROOM_HERO_SKILLS
 
 
 ## Fires regardless of the currently active tab -- a badge-triggering event

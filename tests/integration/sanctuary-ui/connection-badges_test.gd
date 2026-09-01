@@ -74,7 +74,41 @@ func test_equipment_forge_badge_appears_on_building_upgrade_became_purchasable()
 
 
 # ---------------------------------------------------------------------------
-# Loadout (index 5) never shows a badge, under any trigger event
+# Skills (index 5, new 2026-09-01, Claude Code -- sanctuary-ui.md Core Rule
+# 11's own badge spec) responds to its own 3 real trigger signals.
+# ---------------------------------------------------------------------------
+
+func test_skills_badge_appears_on_skill_unlocked() -> void:
+	GEventBus.skill_unlocked.emit("phys_cleave", -1)
+	assert_bool(_tab_strip.is_badge_visible(5)).is_true()
+
+
+func test_skills_badge_appears_on_skill_tree_point_earned() -> void:
+	GEventBus.skill_tree_point_earned.emit("physical", 7)
+	assert_bool(_tab_strip.is_badge_visible(5)).is_true()
+
+
+func test_skills_badge_appears_on_skill_tree_overflow_point_earned() -> void:
+	GEventBus.skill_tree_overflow_point_earned.emit(7)
+	assert_bool(_tab_strip.is_badge_visible(5)).is_true()
+
+
+func test_skills_badge_clears_on_entry() -> void:
+	GEventBus.skill_unlocked.emit("phys_cleave", -1)
+	assert_bool(_tab_strip.is_badge_visible(5)).is_true()
+
+	_tab_strip.get_tab_button(5).pressed.emit()
+
+	assert_bool(_tab_strip.is_badge_visible(5)).is_false()
+
+
+# ---------------------------------------------------------------------------
+## Loadout shifted from index 5 to index 6 2026-09-01 (Claude Code) when the
+## new Skills entry was inserted -- see tab_strip.gd's own TAB_TARGETS doc
+## comment. Loadout never shows a badge, under any trigger event (including
+## Skills' own new triggers, which is the whole point of this being renamed
+## rather than just index-bumped -- confirms the carve-out generalized
+## correctly to the new event set, not just the original 4).
 # ---------------------------------------------------------------------------
 
 func test_loadout_never_shows_a_badge_under_any_trigger_event() -> void:
@@ -82,8 +116,11 @@ func test_loadout_never_shows_a_badge_under_any_trigger_event() -> void:
 	GEventBus.creature_returned_from_breeding_pen.emit(42)
 	GEventBus.sanctuary_structure_built.emit("watchtower", "defensive")
 	GEventBus.item_rune_imbued.emit("sword_001", "rune_flame", "constellation")
+	GEventBus.skill_unlocked.emit("phys_cleave", -1)
+	GEventBus.skill_tree_point_earned.emit("physical", 7)
+	GEventBus.skill_tree_overflow_point_earned.emit(7)
 
-	assert_bool(_tab_strip.is_badge_visible(5)).is_false()
+	assert_bool(_tab_strip.is_badge_visible(6)).is_false()
 
 
 func test_overview_never_shows_a_badge_under_any_trigger_event() -> void:

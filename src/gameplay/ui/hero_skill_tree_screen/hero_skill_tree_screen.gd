@@ -12,20 +12,15 @@ extends Control
 ## rationale) — not the bespoke node-layout/connector-art OQ-3 describes,
 ## which remains genuinely separate, unscoped art-direction work.
 ##
-## **Not yet wired into Sanctuary UI's live room-hosting shell.** Real gap
-## found while building this (2026-09-01): `sanctuary_ui.gd`'s `ROOM_SCENES`
-## dictionary only maps 4 rooms (Inventory/Menagerie/Defense Building/
-## Equipment Forge) — `ROOM_HERO_SKILLS` doesn't exist anywhere in code,
-## despite `sanctuary-ui.md` Core Rule 11 describing it in detail as
-## "Approved" (a 7th tab-strip entry, LB/RB bumper-toggling between this
-## screen and hero_skill_build_screen.gd). That means EITHER of these two
-## screens is currently unreachable from the actual game's Sanctuary flow.
-## Wiring the tab strip entry, the bumper toggle, and RoomHost mounting is
-## real, separate architectural surface (SanctuaryUI's own state machine) —
-## deliberately not attempted in this same pass. This screen is built and
-## live-verified standalone (scene-direct launch), matching this session's
-## own hero_skill_build_screen.gd precedent, ready to be mounted once that
-## shell wiring lands.
+## **Wired into Sanctuary UI's live room-hosting shell, same session
+## (2026-09-01).** The gap this comment originally flagged — `sanctuary_ui.gd`'s
+## `ROOM_SCENES` had no `ROOM_HERO_SKILLS` entry, and no tab-strip 7th entry
+## or LB/RB bumper toggle existed anywhere in code, despite `sanctuary-ui.md`
+## Core Rule 11 describing it as "Approved" — is now closed: see
+## `src/gameplay/ui/hero_skills_room/hero_skills_room.gd` (the new composite
+## room hosting this screen alongside hero_skill_build_screen.gd) and
+## `tab_strip.gd`'s Skills entry. Live-verified end-to-end via Godot MCP,
+## including a regression check of the other 4 pre-existing rooms.
 ##
 ## Scope, honestly bounded:
 ## - Choice-node candidate selection uses an inline expand-in-place panel

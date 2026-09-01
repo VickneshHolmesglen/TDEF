@@ -61,17 +61,21 @@ func test_rapid_hotkey_mashing_through_5_targets_leaves_only_the_last_mounted() 
 	# own reference -- a stale/leaked node would show up there.
 
 
-func test_rapid_mashing_through_all_6_tab_strip_entries_produces_no_errors() -> void:
-	# Includes Loadout (index 6) -- since select_loadout() latches _departing
-	# permanently, this is deliberately the LAST press in the sequence (a
-	# press after it would be a no-op by design, not part of what this AC
-	# tests: the mashing itself must not error, not that departing can be
-	# un-departed).
+## Renamed 2026-09-01 (Claude Code): 7 tab-strip entries now (Skills added at
+## index 5 -- see tab_strip.gd's own TAB_TARGETS doc comment), Loadout
+## shifted from hotkey 6 to hotkey 7.
+func test_rapid_mashing_through_all_7_tab_strip_entries_produces_no_errors() -> void:
+	# Includes Skills and Loadout (hotkeys 6 and 7) -- since select_loadout()
+	# latches _departing permanently, Loadout is deliberately the LAST press
+	# in the sequence (a press after it would be a no-op by design, not part
+	# of what this AC tests: the mashing itself must not error, not that
+	# departing can be un-departed).
 	_press_hotkey(&"sanctuary_tab_3")
 	_press_hotkey(&"sanctuary_tab_4")
 	_press_hotkey(&"sanctuary_tab_5")
 	_press_hotkey(&"sanctuary_tab_2")
 	_press_hotkey(&"sanctuary_tab_6")
+	_press_hotkey(&"sanctuary_tab_7")
 
 	assert_that(_shell.get_active_state()).is_equal(&"DEPARTING_TO_LOADOUT")
 	assert_object(_shell.get_room_host().get_current_room()).is_null()

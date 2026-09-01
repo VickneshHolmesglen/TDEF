@@ -1,0 +1,42 @@
+[gd_scene load_steps=3 format=3 uid="uid://heroskillsroom0"]
+
+[ext_resource type="Script" path="res://src/gameplay/ui/hero_skills_room/hero_skills_room.gd" id="1_ctrl"]
+[ext_resource type="Script" path="res://src/ui/input_mode_tracker.gd" id="2_tracker"]
+
+[node name="HeroSkillsRoom" type="Control"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_ctrl")
+
+[node name="InputModeTracker" type="Node" parent="."]
+script = ExtResource("2_tracker")
+
+[node name="MainLayout" type="VBoxContainer" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="SubTabStrip" type="HBoxContainer" parent="MainLayout"]
+layout_mode = 2
+
+[node name="LoadoutTabButton" type="Button" parent="MainLayout/SubTabStrip"]
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+button_pressed = true
+text = "Loadout"
+
+[node name="SkillTreeTabButton" type="Button" parent="MainLayout/SubTabStrip"]
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+text = "Skill Tree"
+
+[node name="SubScreenHost" type="Control" parent="MainLayout"]
+layout_mode = 2
+size_flags_vertical = 3

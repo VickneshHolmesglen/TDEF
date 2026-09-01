@@ -1,6 +1,10 @@
 ## Integration tests for Story 002 (epic-10-sanctuary-ui, ADR-0011): Tab Strip
-## Navigation -- 6-entry direct click routing, global hotkeys 1-6, `[`/`]` and
-## gamepad LT/RT prev/next cycling, LB/RB bumper absence, and the one-time
+## Navigation -- 7-entry direct click routing (Skills added 2026-09-01,
+## Claude Code -- see tab_strip.gd's own TAB_TARGETS doc comment), global
+## hotkeys 1-7, `[`/`]` and gamepad LT/RT prev/next cycling, LB/RB bumper
+## absence AT THE TAB-STRIP LEVEL specifically (individual rooms, including
+## the new HeroSkillsRoom, may now legitimately use LB/RB for their own
+## internal sub-navigation -- see hero_skills_room.gd), and the one-time
 ## session-local onboarding tooltip (GDD Core Rule 2, AC Group 2).
 ##
 ## Hotkeys / `[`/`]` / LT/RT are exercised by constructing an InputEventAction
@@ -106,10 +110,19 @@ func test_hotkey_jumps_directly_from_a_room_state_not_only_overview() -> void:
 	assert_that(_shell.get_active_state()).is_equal(&"ROOM_EQUIPMENT_FORGE")
 
 
-func test_hotkey_6_reaches_departing_to_loadout_from_a_room_state() -> void:
+## Renamed 2026-09-01 (Claude Code): Loadout shifted from hotkey 6 to hotkey 7
+## when the new Skills entry (ROOM_HERO_SKILLS) was inserted at index 5 --
+## see tab_strip.gd's own TAB_TARGETS doc comment.
+func test_hotkey_7_reaches_departing_to_loadout_from_a_room_state() -> void:
+	_press_action(&"sanctuary_tab_2")
+	_press_action(&"sanctuary_tab_7")
+	assert_that(_shell.get_active_state()).is_equal(&"DEPARTING_TO_LOADOUT")
+
+
+func test_hotkey_6_reaches_room_hero_skills() -> void:
 	_press_action(&"sanctuary_tab_2")
 	_press_action(&"sanctuary_tab_6")
-	assert_that(_shell.get_active_state()).is_equal(&"DEPARTING_TO_LOADOUT")
+	assert_that(_shell.get_active_state()).is_equal(&"ROOM_HERO_SKILLS")
 
 
 # ---------------------------------------------------------------------------
@@ -128,21 +141,25 @@ func test_bracket_keys_cycle_forward_then_back() -> void:
 
 
 func test_bracket_prev_wraps_from_first_index_to_last() -> void:
-	# Default state on mount is OVERVIEW (index 0) -- one `[` from there must wrap to index 5.
+	# Default state on mount is OVERVIEW (index 0) -- one `[` from there must
+	# wrap to index 6 (Loadout, shifted from index 5 2026-09-01 when the new
+	# Skills entry was inserted at index 5 -- see tab_strip.gd's own
+	# TAB_TARGETS doc comment).
 	_press_action(&"sanctuary_tab_prev")
 	assert_that(_shell.get_active_state()).is_equal(&"DEPARTING_TO_LOADOUT")
 
 
 func test_bracket_next_wraps_from_last_index_to_first() -> void:
-	# Updated by Story 010: reaching Loadout (index 5) now triggers a real,
-	# one-way terminal-latch hand-off (select_loadout()), not a plain state
-	# swap -- cycling past it no longer un-departs, by design (the same
-	# guarantee Launch/Depart's own DEPARTING state already has). The tab
-	# strip's OWN index still wraps 5->0 at its own level (asserted below);
-	# SanctuaryUI's active_state correctly stays latched at
-	# DEPARTING_TO_LOADOUT, since select_loadout() intentionally blocks all
-	# further navigation once it fires.
-	_press_action(&"sanctuary_tab_6")
+	# Updated by Story 010: reaching Loadout (index 6, shifted from index 5
+	# 2026-09-01 -- see tab_strip.gd's own TAB_TARGETS doc comment) now
+	# triggers a real, one-way terminal-latch hand-off (select_loadout()),
+	# not a plain state swap -- cycling past it no longer un-departs, by
+	# design (the same guarantee Launch/Depart's own DEPARTING state already
+	# has). The tab strip's OWN index still wraps 6->0 at its own level
+	# (asserted below); SanctuaryUI's active_state correctly stays latched
+	# at DEPARTING_TO_LOADOUT, since select_loadout() intentionally blocks
+	# all further navigation once it fires.
+	_press_action(&"sanctuary_tab_7")
 	assert_that(_shell.get_active_state()).is_equal(&"DEPARTING_TO_LOADOUT")
 
 	_press_action(&"sanctuary_tab_next")
@@ -172,8 +189,16 @@ func test_trigger_actions_mirror_bracket_cycling() -> void:
 
 
 # ---------------------------------------------------------------------------
-# AC-5: LB/RB never switch tabs (no InputMap action exists to target, so this
-# is the one test in the suite that calls _input() directly)
+# AC-5: LB/RB never switch tabs AT THE TAB-STRIP LEVEL. Real InputMap actions
+# (room_bumper_left/room_bumper_right) now exist (added 2026-09-01 alongside
+# hero_skills_room.gd's own internal sub-navigation, Claude Code) -- but
+# TabStrip itself still has no code path referencing them at all (this test
+# dispatches the raw InputEventJoypadButton directly, not the mapped action,
+# matching this suite's own established direct-_input()-dispatch pattern),
+# so this AC's guarantee is unaffected by that addition. A hosted room (like
+# the new HeroSkillsRoom) consuming these actions for its OWN internal
+# sub-screen toggle is a different, legitimate concern this test does not
+# cover -- see hero-skills-room_test.gd (new) for that.
 # ---------------------------------------------------------------------------
 
 func test_bumpers_never_change_active_state() -> void:
