@@ -103,7 +103,18 @@ const ARCHETYPE_GLYPHS: Dictionary[String, String] = {
 @onready var _ultimate_label: Label = $MainLayout/UltimateLabel
 @onready var _pip_tally_row: HBoxContainer = $MainLayout/PipTallyRow
 @onready var _active_slot_list: VBoxContainer = $MainLayout/AssemblyArea/ActiveSlotList
-@onready var _library_list: VBoxContainer = $MainLayout/Library/LibraryList
+## Real gap found via live Godot MCP verification (2026-09-01): this list
+## had no ScrollContainer, fine when only a handful of skills existed but
+## broken once the not-yet-learned-skills roadmap (same-day change) made it
+## always list all 32 -- content height (~1300px+) exceeded the window,
+## and MainLayout's own grow_vertical=2 shifted the ENTIRE screen (Ultimate
+## label, pip tally, active slots, connector lines, everything) symmetrically
+## off-screen to accommodate it (confirmed via get_ui_elements: UltimateLabel
+## at y=-535 instead of y=0). Fixed by wrapping this list in a
+## LibraryScroll ScrollContainer, matching inventory_screen.gd's own
+## RecipeScroll precedent -- Library's PanelContainer now scrolls its own
+## overflow instead of pushing MainLayout's total height past the viewport.
+@onready var _library_list: VBoxContainer = $MainLayout/Library/LibraryScroll/LibraryList
 ## Connector-line visual (new 2026-09-01, player-requested — see this class's
 ## own doc comment for the earlier "genuinely unscoped art-direction work"
 ## assessment this supersedes). A plain Control drawn on via its own `draw`
@@ -206,6 +217,16 @@ func _rebuild_active_slots() -> void:
 		slot_button.name = "ActiveSlot_%s" % ACTIVE_SLOT_LABELS[i]
 		slot_button.focus_mode = Control.FOCUS_ALL
 		slot_button.clip_text = true
+		# Real bug found via live Godot MCP verification (2026-09-01): neither
+		# button in this row had a size_flags_horizontal set, so HBoxContainer
+		# gave each only its own tiny minimum content size instead of sharing
+		# the row's full width -- with clip_text=true, slot_button collapsed to
+		# ~42px (icon-only), and its "A: Cleave [ACTIVE]" text was entirely
+		# invisible, clipped away. EXPAND_FILL with a 3:1 stretch ratio against
+		# passive_button below gives the skill name the majority of the row
+		# while still leaving room for the shorter "Passives: N/M (cycle)" text.
+		slot_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		slot_button.size_flags_stretch_ratio = 3.0
 		slot_button.add_theme_constant_override("icon_max_width", ICON_MAX_WIDTH)
 		var bound: String = bindings[i] if i < bindings.size() else ""
 		slot_button.text = "%s: %s" % [ACTIVE_SLOT_LABELS[i], _skill_label(bound) if not bound.is_empty() else "(empty)"]
@@ -218,6 +239,9 @@ func _rebuild_active_slots() -> void:
 
 		var passive_button := Button.new()
 		passive_button.name = "PassiveCycle_%s" % ACTIVE_SLOT_LABELS[i]
+		passive_button.clip_text = true
+		passive_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		passive_button.size_flags_stretch_ratio = 1.0
 		passive_button.text = _passive_summary_text(bound)
 		passive_button.disabled = bound.is_empty()
 		passive_button.pressed.connect(_on_passive_cycle_pressed.bind(i))
