@@ -30,8 +30,11 @@ func after_test() -> void:
 # ---------------------------------------------------------------------------
 
 func test_passive_slot_change_emits_no_eventbus_event() -> void:
-	# phys_bulwark has passive_slot_count = 2.
-	var result: bool = _hero_skill_build.set_passive_slot("phys_bulwark", 0, "some_item_id")
+	# phys_bulwark has passive_slot_count = 2. sup_mod_faster_casting's
+	# requires_tag is "any" (2026-09-02, Rule 13's typed-slot check) — it is
+	# compatible with every skill, so it's used wherever a test only needs
+	# ANY valid equip to succeed, not a specific tag match.
+	var result: bool = _hero_skill_build.set_passive_slot("phys_bulwark", 0, "sup_mod_faster_casting")
 
 	assert_bool(result).is_true()
 	assert_bool(_spy.was_emitted("active_skill_equipped")).is_false()
@@ -53,12 +56,15 @@ func test_active_slot_change_still_emits_as_normal() -> void:
 # ---------------------------------------------------------------------------
 
 func test_get_passive_loadout_returns_equipped_item_synchronously() -> void:
-	_hero_skill_build.set_passive_slot("phys_bulwark", 0, "item_a")
-	_hero_skill_build.set_passive_slot("phys_bulwark", 1, "item_b")
+	# phys_shatter_slam has passive_slot_count = 2 and tags = [Melee, Area] —
+	# sup_mod_ruthless (requires_tag Melee) and sup_mod_increased_aoe
+	# (requires_tag Area) are both real, tag-compatible skill-modifier items.
+	_hero_skill_build.set_passive_slot("phys_shatter_slam", 0, "sup_mod_ruthless")
+	_hero_skill_build.set_passive_slot("phys_shatter_slam", 1, "sup_mod_increased_aoe")
 
-	var loadout: Array[String] = _hero_skill_build.get_passive_loadout("phys_bulwark")
+	var loadout: Array[String] = _hero_skill_build.get_passive_loadout("phys_shatter_slam")
 
-	assert_array(loadout).contains_exactly(["item_a", "item_b"])
+	assert_array(loadout).contains_exactly(["sup_mod_ruthless", "sup_mod_increased_aoe"])
 
 
 func test_get_passive_loadout_empty_for_never_equipped_skill() -> void:
@@ -67,7 +73,7 @@ func test_get_passive_loadout_empty_for_never_equipped_skill() -> void:
 
 
 func test_set_passive_slot_clears_with_empty_string() -> void:
-	_hero_skill_build.set_passive_slot("phys_bulwark", 0, "item_a")
+	_hero_skill_build.set_passive_slot("phys_bulwark", 0, "sup_mod_faster_casting")
 	_hero_skill_build.set_passive_slot("phys_bulwark", 0, "")
 
 	var loadout: Array[String] = _hero_skill_build.get_passive_loadout("phys_bulwark")
@@ -103,3 +109,46 @@ func test_set_passive_slot_rejected_while_locked() -> void:
 	var result: bool = _hero_skill_build.set_passive_slot("phys_bulwark", 0, "item_a")
 	assert_bool(result).is_false()
 	assert_array(_hero_skill_build.get_passive_loadout("phys_bulwark")).is_empty()
+
+
+# ---------------------------------------------------------------------------
+# Rule 13 (revised 2026-09-01): typed passive slots — requires_tag must
+# match the socketed skill's own effect_data.tags, or be "any".
+# ---------------------------------------------------------------------------
+
+func test_set_passive_slot_accepts_a_tag_compatible_skill_modifier() -> void:
+	# phys_shatter_slam tags = [Melee, Area]; sup_mod_ruthless requires Melee.
+	var result: bool = _hero_skill_build.set_passive_slot("phys_shatter_slam", 0, "sup_mod_ruthless")
+	assert_bool(result).is_true()
+
+
+func test_set_passive_slot_rejects_a_tag_incompatible_skill_modifier() -> void:
+	# phys_shatter_slam tags = [Melee, Area]; sup_mod_totem_life requires Totem.
+	var result: bool = _hero_skill_build.set_passive_slot("phys_shatter_slam", 0, "sup_mod_totem_life")
+	assert_bool(result).is_false()
+	assert_array(_hero_skill_build.get_passive_loadout("phys_shatter_slam")).is_empty()
+
+
+func test_set_passive_slot_accepts_an_any_tag_skill_modifier_on_any_skill() -> void:
+	# sup_mod_faster_casting's requires_tag is "any" -- compatible regardless
+	# of the socketed skill's own tags.
+	var result: bool = _hero_skill_build.set_passive_slot("phys_bulwark", 0, "sup_mod_faster_casting")
+	assert_bool(result).is_true()
+
+
+func test_set_passive_slot_rejects_a_non_skill_modifier_item() -> void:
+	# common_scrap is a real, registered item but item_type == "Material",
+	# not "skill_modifier" -- must be rejected regardless of tags.
+	var result: bool = _hero_skill_build.set_passive_slot("phys_shatter_slam", 0, "common_scrap")
+	assert_bool(result).is_false()
+
+
+func test_set_passive_slot_rejects_an_unresolvable_item_id() -> void:
+	var result: bool = _hero_skill_build.set_passive_slot("phys_shatter_slam", 0, "no_such_item")
+	assert_bool(result).is_false()
+
+
+func test_set_passive_slot_clearing_with_empty_string_bypasses_the_type_check() -> void:
+	_hero_skill_build.set_passive_slot("phys_shatter_slam", 0, "sup_mod_ruthless")
+	var result: bool = _hero_skill_build.set_passive_slot("phys_shatter_slam", 0, "")
+	assert_bool(result).is_true()

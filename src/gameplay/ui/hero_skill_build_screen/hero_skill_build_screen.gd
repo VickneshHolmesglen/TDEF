@@ -495,6 +495,15 @@ func _on_passive_cycle_pressed(slot_index: int) -> void:
 	if next_empty_index == -1:
 		return  # no free sub-slot
 
+	# Real bug found and fixed 2026-09-02 (closing hero-skill-build.md's
+	# flagged skill_modifier item_type gap): this loop previously cycled
+	# through ANY owned Inventory item regardless of item_type — a stub
+	# predating Rule 13's 2026-09-01 typed-slot revision, never updated once
+	# HeroSkillBuild.set_passive_slot() actually started enforcing
+	# requires_tag compatibility. Now filters to item_type == "skill_modifier"
+	# candidates only, and keeps scanning past a type-eligible-but-
+	# tag-incompatible item (set_passive_slot() returning false) instead of
+	# stopping on the first owned item found.
 	for i: int in range(GInventory.get_slot_count()):
 		var contents: Dictionary = GInventory.get_slot_contents(i)
 		if contents.is_empty():
@@ -502,8 +511,11 @@ func _on_passive_cycle_pressed(slot_index: int) -> void:
 		var item_id: String = contents["item_id"] as String
 		if already_assigned.has(item_id):
 			continue
-		hero_skill_build.set_passive_slot(skill_id, next_empty_index, item_id)
-		return
+		var item_definition: ItemDefinitionResource = GGameDataRegistry.get_item_definition(StringName(item_id))
+		if item_definition == null or item_definition.item_type != &"skill_modifier":
+			continue
+		if hero_skill_build.set_passive_slot(skill_id, next_empty_index, item_id):
+			return
 
 
 # ---------------------------------------------------------------------------

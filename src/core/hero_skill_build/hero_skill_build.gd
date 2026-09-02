@@ -325,7 +325,19 @@ func _derive_ultimate_id() -> String:
 ## Equips item_id into skill_id's passive_slot_index (0-based, bounded by
 ## that skill's own passive_slot_count). Rejected while LOCKED (Rule 3) or if
 ## slot_index is out of bounds. No EventBus event fires (Forbidden rule,
-## AC-13) — internal state only. Pass an empty String to clear the slot.
+## AC-13) — internal state only. Pass an empty String to clear the slot
+## (always allowed regardless of item_type — clearing never needs a
+## compatibility check).
+##
+## Rule 13 (revised 2026-09-01 — typed passive slots): item_id must resolve
+## to a real ItemDefinitionResource with item_type == "skill_modifier", and
+## its requires_tag must either be "any" or appear in the socketed skill's
+## own effect_data.tags. Checked here, not continuously — an already-equipped
+## item is never retroactively invalidated (Rule 13's own explicit framing).
+## Does not touch Inventory.set_slot_locked() — no existing equip flow in
+## this codebase (Hero equipment, Tower Components) currently calls it
+## either, confirmed via grep; wiring that up is a separate, pre-existing
+## gap affecting the whole equip system, not scoped to this change.
 func set_passive_slot(skill_id: String, slot_index: int, item_id: String) -> bool:
 	if is_locked():
 		return false
@@ -334,6 +346,8 @@ func set_passive_slot(skill_id: String, slot_index: int, item_id: String) -> boo
 		return false
 	if slot_index < 0 or slot_index >= definition.passive_slot_count:
 		return false
+	if item_id != "" and not _is_skill_modifier_compatible(item_id, definition):
+		return false
 	if not _passive_slots.has(skill_id):
 		_passive_slots[skill_id] = []
 	var loadout: Array = _passive_slots[skill_id]
@@ -341,6 +355,21 @@ func set_passive_slot(skill_id: String, slot_index: int, item_id: String) -> boo
 		loadout.append("")
 	loadout[slot_index] = item_id
 	return true
+
+
+## Rule 13's typed-slot compatibility check — see set_passive_slot()'s own
+## doc comment. False for a non-existent item, a non-skill_modifier item, or
+## a requires_tag that doesn't match the socketed skill's tags (and isn't
+## "any").
+func _is_skill_modifier_compatible(item_id: String, skill: SkillDefinitionResource) -> bool:
+	var item: ItemDefinitionResource = GGameDataRegistry.get_item_definition(StringName(item_id))
+	if item == null or item.item_type != &"skill_modifier":
+		return false
+	if item.requires_tag == "any":
+		return true
+	if skill.effect_data == null:
+		return false
+	return skill.effect_data.tags.has(item.requires_tag)
 
 
 ## Synchronous read of skill_id's current passive loadout, pulled at UI-open

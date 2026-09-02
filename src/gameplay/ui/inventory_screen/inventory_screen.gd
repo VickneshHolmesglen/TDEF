@@ -380,8 +380,19 @@ func _refresh_slot_visibility() -> void:
 		var visible_on_tab: bool = false
 		if item_id != "" and quantity > 0:
 			var definition: ItemDefinitionResource = GGameDataRegistry.get_item_definition(StringName(item_id))
-			visible_on_tab = definition != null and definition.item_type == _active_tab
+			visible_on_tab = definition != null and _tab_for_item_type(definition.item_type) == _active_tab
 		_slot_buttons[i].visible = visible_on_tab
+
+
+## hero-skill-build.md Rule 13: skill-modifier items are filed under the
+## Equipment tab rather than a 5th tab of their own — the only item_type
+## whose tab membership isn't its own name. Every other item_type maps to
+## itself, matching Inventory.TAB_ORDER's existing 1:1 identity convention
+## (see that const's own doc comment) unchanged.
+func _tab_for_item_type(item_type: StringName) -> StringName:
+	if item_type == &"skill_modifier":
+		return &"Equipment"
+	return item_type
 
 
 # ---------------------------------------------------------------------------

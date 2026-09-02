@@ -19,7 +19,7 @@ extends Resource
 ## CraftedGood — base_stats is unused).
 
 @export var item_id: StringName = &""
-@export var item_type: StringName = &""  ## Equipment | TowerComponent | Material | CraftedGood
+@export var item_type: StringName = &""  ## Equipment | TowerComponent | Material | CraftedGood | skill_modifier
 @export var display_name: String = ""
 @export var is_unique_instance: bool = false  ## true = cap 1, stat-rolled; false = cap 99, stackable
 @export var base_stats: Dictionary[StringName, float] = {}  ## only meaningful when is_unique_instance == true
@@ -59,11 +59,29 @@ extends Resource
 ## (crafted components had no gameplay effect at all before this — see the
 ## quick-spec's own Motivation section).
 @export var component_resource_path: String = ""
+## hero-skill-build.md Rule 13 (revised 2026-09-01 — typed passive slots):
+## the single tag this skill-modifier item requires a socketed skill's own
+## `effect_data.tags` to contain, or `"any"` to accept every skill
+## regardless of tags. Checked by HeroSkillBuild.set_passive_slot() at
+## equip time — see that function's own doc comment. Only meaningful when
+## item_type == &"skill_modifier"; empty string for every other item_type,
+## mirroring component_resource_path's mutual-exclusivity convention above.
+## Duplicates HeroSkillEffectResource.VALID_TAGS' 8 values rather than
+## referencing that class directly — Inventory is a lower architectural
+## layer than Hero Skill Build (Advanced tier) and should not depend
+## upward on it; matches this project's own established small-lookup-table
+## duplication precedent (e.g. ARCHETYPE_GLYPHS across 3 UI files).
+@export var requires_tag: String = ""
 
-const VALID_ITEM_TYPES: Array[StringName] = [&"Equipment", &"TowerComponent", &"Material", &"CraftedGood"]
+const VALID_ITEM_TYPES: Array[StringName] = [&"Equipment", &"TowerComponent", &"Material", &"CraftedGood", &"skill_modifier"]
 const VALID_RARITIES: Array[String] = ["", "Common", "Uncommon", "Rare"]
 const VALID_EQUIPMENT_CATEGORIES: Array[String] = [
 	"", "weapon", "offhand", "helmet", "chest", "gloves", "pants", "boots", "neck", "ring",
+]
+## Mirrors HeroSkillEffectResource.VALID_TAGS (src/core/hero_skill_effect_resource.gd)
+## plus the wildcard "any" (hero-skill-build.md Rule 13).
+const VALID_REQUIRES_TAGS: Array[String] = [
+	"any", "Area", "Projectile", "Duration", "Channeling", "Totem", "Melee", "Ranged", "Buff",
 ]
 
 
@@ -77,7 +95,7 @@ func validate() -> Array[String]:
 	if display_name == "":
 		errors.append("display_name must not be empty")
 	if not VALID_ITEM_TYPES.has(item_type):
-		errors.append("item_type must be one of Equipment/TowerComponent/Material/CraftedGood (got '%s')" % item_type)
+		errors.append("item_type must be one of Equipment/TowerComponent/Material/CraftedGood/skill_modifier (got '%s')" % item_type)
 	if not VALID_RARITIES.has(rarity):
 		errors.append("rarity must be one of \"\"/Common/Uncommon/Rare (got '%s')" % rarity)
 	if not VALID_EQUIPMENT_CATEGORIES.has(equipment_category):
@@ -88,4 +106,8 @@ func validate() -> Array[String]:
 		errors.append("component_resource_path must not be empty when item_type is TowerComponent (Tower Assembly cannot resolve this item to a real component)")
 	if item_type != &"TowerComponent" and component_resource_path != "":
 		errors.append("component_resource_path must be empty when item_type is not TowerComponent (got '%s')" % component_resource_path)
+	if item_type == &"skill_modifier" and not VALID_REQUIRES_TAGS.has(requires_tag):
+		errors.append("requires_tag must be one of %s when item_type is skill_modifier (got '%s')" % [VALID_REQUIRES_TAGS, requires_tag])
+	if item_type != &"skill_modifier" and requires_tag != "":
+		errors.append("requires_tag must be empty when item_type is not skill_modifier (got '%s')" % requires_tag)
 	return errors

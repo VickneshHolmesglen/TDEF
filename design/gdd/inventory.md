@@ -84,7 +84,18 @@ the one place it's all visible together, rather than authoring the payoff itself
      (`item_added` fires for 2), and `item_pickup_rejected` fires for the
      remaining 3.
 3. **Tabs** are fixed, by item category: Equipment, Tower Components,
-   Materials, Crafted Goods. Not player-customizable at MVP.
+   Materials, Crafted Goods. Not player-customizable at MVP. **Amendment
+   (2026-09-02, closes `hero-skill-build.md`'s flagged gap)**: `item_type =
+   "skill_modifier"` is a new, 5th valid `item_type` value, but it does
+   **not** get a 5th tab — it files under the existing Equipment tab
+   (per `hero-skill-build.md` Rule 13's own recommendation: skill-modifier
+   items are individually-instanced and hero-affecting, mechanically closer
+   to Equipment than to the other 3 categories, and Equipment's existing
+   `stack_cap_unique = 1` plus equipped-item lock already fit them exactly).
+   The tab-to-item_type mapping is therefore no longer a strict 1:1
+   identity for this one value — `skill_modifier` → Equipment tab is a
+   named exception, every other `item_type` still maps to its own
+   identically-named tab.
 4. **Slot expansion**: craftable only (no gold cost, no Defense Building
    structure). 5 tiers, diminishing-returns curve: 18 → 24 → 30 → 36 → 42 → 48
    (max), each tier costing progressively rarer/more materials than the last.

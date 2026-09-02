@@ -2362,3 +2362,29 @@ All 18 blueprints (13 original + 5 authored 2026-08-27) migrated to add `base_co
 
 ### Resolution
 - [x] Fixed 2026-08-28 — `base_cost` field added, T4 floor lowered to `[7,30]` by explicit user decision (not silently re-costing shipped towers), Formula 4 cross-check added at the correct boundary (content-load, not general `validate()`) after a real regression against `TowerAssembly` was caught and fixed, all 18 blueprints migrated and re-verified, and the GDD's own 4 boundary-case ACs independently confirmed behaving correctly.
+
+---
+
+## TD-hero-skill-002 — 4 of 13 skill-modifier items can't be expressed by Rule 13's `requires_tag: String` schema; effect application is entirely unbuilt
+
+**Logged**: 2026-09-02 (found while closing `hero-skill-build.md`'s own flagged `skill_modifier` item_type gap, user-approved full implementation)
+**Severity**: Medium — 9 of 13 catalogued items are real, equippable, correctly-gated content; the other 4 are simply absent (not faked with a wrong gate), and none of the 13 mechanically do anything yet.
+**Area**: `assets/data/items/sup_mod_*.tres`, `src/core/inventory/item_definition_resource.gd` (`requires_tag`), `src/core/hero_skill_build/hero_skill_build.gd` (`get_effective_passive_loadout()`), `design/gdd/hero-skill-build.md` Rule 13/14
+
+### Gap
+
+Rule 13 (revised 2026-09-01) specifies `requires_tag: String` as "one of the 8 tag values Rule 2's `effect_data.tags` uses, or `\"any\"`" — a single-axis, tag-membership-only compatibility check. Rule 14's own 13-item catalogue table doesn't actually stay within that schema: 9 items genuinely key off a tag (`Projectile`×2, `Area`×2, `Melee`×2, `Totem`, `Channeling`, `any`) and were authored as real `ItemDefinitionResource` `.tres` files (`sup_mod_multiple_projectiles`, `sup_mod_chain`, `sup_mod_increased_aoe`, `sup_mod_faster_casting`, `sup_mod_concentrated_effect`, `sup_mod_ruthless`, `sup_mod_fortify`, `sup_mod_totem_life`, `sup_mod_spell_echo`). The remaining 4 key off a *different* field entirely, which `requires_tag` cannot represent without misrepresenting the design: `sup_mod_elemental_focus` ("any non-`physical` `damage_type`"), `sup_mod_vile_toxins` (`secondary_effect` = `dot_poison` or `dot_burn`), `sup_mod_immolate` (`damage_type` = `fire`), `sup_mod_arcane_surge` (`damage_type` ∈ {`lightning`,`frost`,`fire`,`arcane`}) — none of these are tag values, and one (`arcane_surge`) is even multi-valued. Authoring these 4 as `requires_tag = "any"` would silently make them universally equippable, contradicting the design table's actual restriction — worse than leaving them unauthored, so they were not created.
+
+**Also found, same investigation**: even for the 9 real items, nothing anywhere folds a skill-modifier's actual mechanical effect (the catalogue table's "Effect" column — e.g. "+2 projectiles; −20% `skill_power_coefficient` per added projectile") into a skill's `effect_data` at cast time. `HeroSkillBuild.get_effective_passive_loadout()` only resolves which item_ids are validly equipped (Rule 12's "additive-bucket-then-emit pattern" is named but not implemented for this input). The 9 real items are correctly typed, gate-checked at equip time (`HeroSkillBuild._is_skill_modifier_compatible()`, added this same pass), and inventory-visible — but mechanically inert.
+
+### Recommended fix
+
+1. Extend `requires_tag`'s schema (or add a second field, e.g. `requires_condition: String` with a small `field:value` grammar) so `damage_type`/`secondary_effect` conditions can be expressed without overloading the tag axis — a design/schema decision for whoever owns Rule 13 next, not a unilateral pick.
+2. Author the 4 remaining items once the schema question above is resolved.
+3. Design and implement the actual effect-folding pipeline for all 13 (or 9, if the schema question is deferred) — likely a new step in `HeroSkillBuild`'s effective-loadout resolution, folding each equipped modifier's stat delta into a copy of the socketed skill's `effect_data` before it reaches Damage & Status's Formula D7. This is real combat-math scope, not a data-authoring task.
+
+### Resolution
+- [x] 9 of 13 items authored and equip-time-gated (2026-09-02) — see Gap section above for the full list and reasoning.
+- [ ] 4 items genuinely blocked on a schema decision, not fixed here.
+- [ ] Effect-folding pipeline not designed or implemented — all 13 items are currently equip-only, mechanically inert.
+- [ ] This entry stays open until both remaining items are addressed.

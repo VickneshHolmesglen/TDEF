@@ -35,7 +35,7 @@ func test_slot_assignments_survive_a_save_load_round_trip() -> void:
 	_hero_skill_build._is_sanctuary = true
 	_hero_skill_build._on_skill_unlocked("phys_cleave", 1)
 	_hero_skill_build.set_active_slot(0, "phys_cleave")
-	_hero_skill_build.set_passive_slot("phys_cleave", 0, "some_item")
+	_hero_skill_build.set_passive_slot("phys_cleave", 0, "sup_mod_ruthless")
 
 	var saved: Dictionary = _hero_skill_build.get_save_data()
 	assert_bool(saved.has("equippable_skills")).is_true()
@@ -47,7 +47,7 @@ func test_slot_assignments_survive_a_save_load_round_trip() -> void:
 	assert_bool(ok).is_true()
 
 	assert_array(restored.get_active_slots()).contains_exactly(["phys_cleave", "", "", ""])
-	assert_array(restored.get_passive_loadout("phys_cleave")).contains_exactly(["some_item"])
+	assert_array(restored.get_passive_loadout("phys_cleave")).contains_exactly(["sup_mod_ruthless"])
 	restored.free()
 
 
@@ -73,7 +73,7 @@ func test_reset_to_defaults_clears_all_three_structures_together() -> void:
 	_hero_skill_build._is_sanctuary = true
 	_hero_skill_build._on_skill_unlocked("phys_cleave", 1)
 	_hero_skill_build.set_active_slot(0, "phys_cleave")
-	_hero_skill_build.set_passive_slot("phys_cleave", 0, "some_item")
+	_hero_skill_build.set_passive_slot("phys_cleave", 0, "sup_mod_ruthless")
 
 	_hero_skill_build.reset_to_defaults()
 

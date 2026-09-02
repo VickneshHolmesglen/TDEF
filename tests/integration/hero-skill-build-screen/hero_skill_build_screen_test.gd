@@ -150,33 +150,42 @@ func test_passive_cycle_disabled_for_an_empty_active_slot() -> void:
 	assert_bool(button.disabled).is_true()
 
 
+## Real bug found and fixed 2026-09-02 (closing hero-skill-build.md's
+## flagged skill_modifier item_type gap): _on_passive_cycle_pressed()
+## previously cycled through ANY owned Inventory item, including plain
+## Materials like common_scrap -- a stub predating Rule 13's 2026-09-01
+## typed-slot revision. It now filters to item_type == "skill_modifier"
+## candidates, so these tests use real skill-modifier content
+## (sup_mod_ruthless/sup_mod_increased_aoe, both compatible with
+## phys_cleave's [Melee, Area] tags) added via add_unique_item() --
+## skill-modifier items are is_unique_instance == true, not stackable.
 func test_passive_cycle_assigns_the_next_owned_item_to_the_next_empty_sub_slot() -> void:
 	_unlock(SKILL_PHYS_CLEAVE)
 	GHeroSkillBuild.set_active_slot(0, "phys_cleave")  # passive_slot_count = 1
-	var def: ItemDefinitionResource = GGameDataRegistry.get_item_definition(&"common_scrap")
-	GInventory.add_stackable(def, 1)
+	var def: ItemDefinitionResource = GGameDataRegistry.get_item_definition(&"sup_mod_ruthless")
+	GInventory.add_unique_item(def)
 	_rebuild_all()
 
 	@warning_ignore("unsafe_method_access")
 	_screen.call("_on_passive_cycle_pressed", 0)
 
 	var loadout: Array[String] = GHeroSkillBuild.get_passive_loadout("phys_cleave")
-	assert_array(loadout).contains("common_scrap")
+	assert_array(loadout).contains("sup_mod_ruthless")
 
 
 func test_passive_cycle_is_a_no_op_when_no_free_sub_slot_remains() -> void:
 	_unlock(SKILL_PHYS_CLEAVE)
 	GHeroSkillBuild.set_active_slot(0, "phys_cleave")  # passive_slot_count = 1
-	GHeroSkillBuild.set_passive_slot("phys_cleave", 0, "common_scrap")
-	var def: ItemDefinitionResource = GGameDataRegistry.get_item_definition(&"iron_ore")
-	GInventory.add_stackable(def, 1)
+	GHeroSkillBuild.set_passive_slot("phys_cleave", 0, "sup_mod_ruthless")
+	var def: ItemDefinitionResource = GGameDataRegistry.get_item_definition(&"sup_mod_increased_aoe")
+	GInventory.add_unique_item(def)
 	_rebuild_all()
 
 	@warning_ignore("unsafe_method_access")
 	_screen.call("_on_passive_cycle_pressed", 0)
 
 	var loadout: Array[String] = GHeroSkillBuild.get_passive_loadout("phys_cleave")
-	assert_array(loadout).is_equal(["common_scrap"])  # unchanged -- still full
+	assert_array(loadout).is_equal(["sup_mod_ruthless"])  # unchanged -- still full
 
 
 # ---------------------------------------------------------------------------

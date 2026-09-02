@@ -95,6 +95,20 @@ func test_equipment_item_hidden_on_material_tab_visible_on_equipment_tab() -> vo
 	assert_bool(_slot_button(0).visible).is_true()
 
 
+## hero-skill-build.md Rule 13 (2026-09-02): skill_modifier is a 5th valid
+## item_type but files under the existing Equipment tab, not a 5th tab of
+## its own — confirmed here via a real skill-modifier item.
+func test_skill_modifier_item_visible_on_equipment_tab_not_a_new_tab() -> void:
+	var definition: ItemDefinitionResource = GGameDataRegistry.get_item_definition(&"sup_mod_ruthless")
+	GInventory.add_unique_item(definition)
+
+	_press_tab(&"Material")
+	assert_bool(_slot_button(0).visible).is_false()
+
+	_press_tab(&"Equipment")
+	assert_bool(_slot_button(0).visible).is_true()
+
+
 func test_tower_component_and_crafted_good_each_visible_only_on_their_own_tab() -> void:
 	var foundation: ItemDefinitionResource = GGameDataRegistry.get_item_definition(&"iron_foundation_component")
 	GInventory.add_unique_item(foundation)

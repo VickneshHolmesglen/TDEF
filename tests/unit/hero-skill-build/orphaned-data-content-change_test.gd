@@ -141,7 +141,7 @@ func test_off_build_passive_configuration_allowed() -> void:
 	# phys_cleave is never assigned to any active slot.
 	assert_array(_hero_skill_build.get_active_slots()).not_contains(["phys_cleave"])
 
-	var result: bool = _hero_skill_build.set_passive_slot("phys_cleave", 0, "some_item")
+	var result: bool = _hero_skill_build.set_passive_slot("phys_cleave", 0, "sup_mod_ruthless")
 
 	assert_bool(result).is_true()
-	assert_array(_hero_skill_build.get_passive_loadout("phys_cleave")).contains_exactly(["some_item"])
+	assert_array(_hero_skill_build.get_passive_loadout("phys_cleave")).contains_exactly(["sup_mod_ruthless"])
