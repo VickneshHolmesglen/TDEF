@@ -270,6 +270,11 @@ func get_all_tower_blueprints() -> Dictionary[StringName, TowerBlueprintData]:
 ## at its own _ready(), so any blueprint registered before the next mission
 ## launch is picked up naturally).
 func register_dynamic_tower_blueprint(blueprint: TowerBlueprintData) -> void:
+	# TD-tower-004: this is Tower Assembly's own "equip-time" moment for a
+	# player-composed blueprint — the exact case that entry's own text named
+	# ("needs Tower Assembly's cross-component view at equip time") — see
+	# warn_if_perk_benefit_wasted()'s own doc comment for the full rationale.
+	blueprint.warn_if_perk_benefit_wasted()
 	_tower_blueprints[blueprint.tower_id] = blueprint
 
 
@@ -578,6 +583,10 @@ func _load_tower_blueprints() -> void:
 		# doc comment for why this is not part of validate() itself.
 		if not blueprint.validate_placement_cost_matches_formula_4():
 			push_error("[GameDataRegistry] %s: TowerBlueprintData failed Formula 4 cost validation (see error above)." % file_name)
+		# TD-tower-004: Rule 12a's equip-time "wasted benefit" warning — see
+		# warn_if_perk_benefit_wasted()'s own doc comment for why this is a
+		# separate, non-validate()-blocking, content-load-boundary-only call.
+		blueprint.warn_if_perk_benefit_wasted()
 		if _tower_blueprints.has(blueprint.tower_id):
 			push_error("[GameDataRegistry] %s: duplicate tower_id '%s' — overwriting previous entry." % [file_name, blueprint.tower_id])
 		_tower_blueprints[blueprint.tower_id] = blueprint

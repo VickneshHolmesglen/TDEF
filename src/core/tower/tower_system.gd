@@ -248,10 +248,11 @@ func place_tower(blueprint_id: StringName, top_left: Vector2i) -> bool:
 ## so there's nothing to track or decay, only to apply once and forget.
 ## Silently no-ops if the tower's archetype isn't in the perk's
 ## archetype_restrictions -- a content-authoring contract, not a runtime
-## error path (equip-time cross-component validation for SPEED_BOOST/
-## AURA_EXTEND's "wasted benefit" warnings is intentionally NOT implemented
-## here -- it needs Tower Assembly's cross-component view, not TowerSystem's
-## single-instance one; flagged as still-open in TD-tower-004's own entry).
+## error path (the equip-time cross-component "wasted benefit" WARNING for
+## SPEED_BOOST/RANGE_BOOST/AURA_EXTEND lives on TowerBlueprintData.
+## warn_if_perk_benefit_wasted() instead -- that Resource, not TowerSystem's
+## single-instance TowerMissionState, already holds Foundation and Weapon/
+## Focus simultaneously; TD-tower-004 in docs/tech-debt-register.md).
 func _apply_pre_placement_perk(state: TowerMissionState) -> void:
 	var registry: TowerPerkRegistry = GGameDataRegistry.get_perk_registry()
 	if registry == null or not registry.entries.has(state.foundation.pre_placement_perk):

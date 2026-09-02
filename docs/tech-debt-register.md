@@ -1296,7 +1296,7 @@ against, and no legitimate call path where discarding this signal is correct.
 - [x] Fixed in `wave_manager.gd::_on_templates_ready()` — 2026-07-05
 - [x] Verified via live headless run (real spawn observed after both TD-wave-002 and this fix) — 2026-07-05
 - [x] Full existing test suite re-run: 542/542 test cases, 0 errors, 1 pre-existing unrelated failure (see TD-hero-005), 0 new failures — 2026-07-05
-- [ ] This entry closed
+- [x] This entry closed (2026-09-02 — fix, verification, and regression were all already complete as of 2026-07-05; only this checkbox was never ticked).
 
 ---
 
@@ -1335,7 +1335,7 @@ subscriptions, requiring no scene-local wiring in `the_gap.gd`.
 - [x] `DamageStatus` node added to `the_gap.tscn` — 2026-07-06
 - [x] Verified via the new AC-6 integration test (real monster HP decreases after a real Hero auto-attack) — 2026-07-06
 - [x] Full regression suite re-run with no new failures introduced — 2026-07-06
-- [ ] This entry closed
+- [x] This entry closed (2026-09-02 — fix, verification, and regression were all already complete as of 2026-07-06; only this checkbox was never ticked).
 
 ---
 
@@ -2201,7 +2201,8 @@ Wire `foundation_component.gd`'s `pre_placement_perk` field through to a real ef
 
 ### Resolution
 - [x] Fixed 2026-08-24. Added `perk_power: float` to `FoundationComponent` (tower.md's own per-type range table: DAMAGE_BOOST/SPEED_BOOST [0.05,0.25], RANGE_BOOST [0.0625,0.25], AURA_EXTEND [0.10,0.25]), enforced at load time in `validate()`. Added `TowerSystem._apply_pre_placement_perk(state)`, called once at Scout-Phase placement right before `pre_placement_perk_activated` fires — mutates the tower's own already-`duplicate_deep()`'d component copies directly (matching ADR-0008 isolation, same pattern as `damaged`), checking `archetype_restrictions` (case-normalized via `.capitalize()` against the registry's capitalized archetype strings) before applying: `DAMAGE_BOOST` → `weapon_damage *= (1.0+power)`, `SPEED_BOOST` → `attack_speed = min(4.0, attack_speed*(1.0+power))`, `RANGE_BOOST` → `attack_range_cells = min(8, attack_range_cells + round(power*8))`, `AURA_EXTEND` → `aura_radius_cells = min(6, aura_radius_cells + round(power*6))`. Authored real, non-wasteful `pre_placement_perk`/`perk_power` values onto one blueprint per eligible archetype: Archer (Physical, `RANGE_BOOST` 0.125), Longshot Sniper (Ranged, `DAMAGE_BOOST` 0.20), Storm Turret (Elemental, `SPEED_BOOST` 0.15), Barrier Ward (Support, `AURA_EXTEND` 0.15) — checked each against its own clamp ceiling by hand to confirm no wasted benefit.
-- [ ] **Not implemented, still genuinely open**: the equip-time cross-component "wasted benefit" WARNING validation tower.md describes for `SPEED_BOOST`/`AURA_EXTEND`/`RANGE_BOOST` (fires when a Foundation's perk is paired with a Weapon/Focus whose stat would exceed the cap) — this needs Tower Assembly's cross-component view at equip time, not `FoundationComponent.validate()`'s single-resource view or `TowerSystem`'s single-instance view, and is a separate deliverable. Not re-verified via the test suite this session, per the standing "no unrequested testing" instruction.
+- [x] **Implemented 2026-09-02**: `TowerBlueprintData.warn_if_perk_benefit_wasted()` — the cross-component view this needed turned out to already exist on `TowerBlueprintData` itself (it holds Foundation and Weapon/Focus simultaneously), no Tower Assembly changes required. Mirrors `_apply_pre_placement_perk()`'s exact formulas for `SPEED_BOOST`/`RANGE_BOOST`/`AURA_EXTEND` (`DAMAGE_BOOST` excluded — no paired hard cap to check), `push_warning()`s (not a `validate()` failure) when the boosted value would exceed the paired stat's cap. Wired at both real content-load boundaries: `GameDataRegistry._load_tower_blueprints()` (the 18 static `.tres` blueprints) and `register_dynamic_tower_blueprint()` (Tower Assembly's own equip-time path this entry's text specifically named). New tests: `tests/unit/tower/tower_blueprint_data_test.gd` (9 cases — one warning + one no-warning boundary per perk type, plus `DAMAGE_BOOST`/no-perk/null-foundation no-op cases). Not run this session, per the standing "no unrequested testing" instruction — hand-verified against `_apply_pre_placement_perk()`'s own formulas and against AC-Rule-12a's exact worked example (3.5 attack_speed, 0.25 perk_power → 4.375, warns; 3.0 → 3.75, silent).
+- [x] This entry closed (2026-09-02).
 
 
 ## TD-visualpres-001 — the_gap.tscn missing BreachFlashOverlay nodes mission_hud.gd unconditionally expects (fixed)

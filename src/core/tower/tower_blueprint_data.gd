@@ -92,3 +92,57 @@ func validate_placement_cost_matches_formula_4() -> bool:
 		push_error("[TowerBlueprintData '%s'] placement_cost %d does not match Formula 4 (base_cost %d * archetype_cost_factor %.2f * tier_cost_factor %.2f = %d)" % [tower_id, placement_cost, foundation.base_cost, foundation.archetype_cost_factor, foundation.tier_cost_factor, expected_cost])
 		return false
 	return true
+
+
+## Rule 12a (tower.md) / TD-tower-004 (docs/tech-debt-register.md): the
+## equip-time cross-component "wasted benefit" warning that entry's own fix
+## left explicitly unimplemented, flagged there as needing "a cross-component
+## view, not FoundationComponent.validate()'s single-resource view" — this
+## Resource is exactly that view, since it already holds Foundation (owner
+## of `pre_placement_perk`/`perk_power`) and Weapon/Focus (owners of the
+## paired stat the perk boosts) simultaneously. A load-time WARNING, not a
+## validate() failure — an over-authored perk_power that partially exceeds
+## the paired stat's hard cap is still legal content, just suboptimal
+## (matches tower.md's AC-Rule-12a wording exactly: "a load-time WARNING
+## (not hard error)"). Formulas mirror tower_system.gd's
+## `_apply_pre_placement_perk()` exactly, so a warning here means that
+## function's real applied effect will also be partially wasted, not just a
+## theoretical one.
+##
+## DAMAGE_BOOST is deliberately excluded — `weapon_damage` has no universal
+## hard cap the way `attack_speed`/`attack_range_cells`/`aura_radius_cells`
+## do elsewhere in this codebase (its [8.0, 120.0] range is a per-component
+## content bound, not a boosted-value ceiling), matching Rule 12a's own AC
+## wording (a SPEED_BOOST example only).
+##
+## Deliberately does not check the perk's `archetype_restrictions` (would
+## require a `GGameDataRegistry` dependency this pure-data Resource
+## otherwise has no need of) — an archetype-ineligible perk silently no-ops
+## entirely at `_apply_pre_placement_perk()` (0% benefit realized), a
+## different and more severe condition than "partially capped," and out of
+## this warning's stated scope. Call only at the GameDataRegistry
+## content-load boundary, matching `validate_placement_cost_matches_formula_4()`'s
+## own convention above.
+func warn_if_perk_benefit_wasted() -> void:
+	if foundation == null or foundation.pre_placement_perk == "":
+		return
+	var power: float = foundation.perk_power
+	match foundation.pre_placement_perk:
+		"SPEED_BOOST":
+			if weapon == null:
+				return
+			var boosted_speed: float = weapon.attack_speed * (1.0 + power)
+			if boosted_speed > 4.0:
+				push_warning("[TowerBlueprintData '%s'] SPEED_BOOST perk_power %.4f boosts attack_speed %.2f to %.4f, exceeding the 4.0 cap — partial perk benefit wasted" % [tower_id, power, weapon.attack_speed, boosted_speed])
+		"RANGE_BOOST":
+			if focus == null:
+				return
+			var boosted_range: int = focus.attack_range_cells + roundi(power * 8.0)
+			if boosted_range > 8:
+				push_warning("[TowerBlueprintData '%s'] RANGE_BOOST perk_power %.4f boosts attack_range_cells %d to %d, exceeding the 8 cap — partial perk benefit wasted" % [tower_id, power, focus.attack_range_cells, boosted_range])
+		"AURA_EXTEND":
+			if weapon == null:
+				return
+			var boosted_radius: int = weapon.aura_radius_cells + roundi(power * 6.0)
+			if boosted_radius > 6:
+				push_warning("[TowerBlueprintData '%s'] AURA_EXTEND perk_power %.4f boosts aura_radius_cells %d to %d, exceeding the 6 cap — partial perk benefit wasted" % [tower_id, power, weapon.aura_radius_cells, boosted_radius])
