@@ -21,5 +21,6 @@ tier = "capstone"
 passive_slot_count = 2
 source_build_signature = &""
 mastery_threshold_seconds = 45.0
+base_cooldown = 10.0
 effect_data = SubResource("Resource_effect")
 icon = ExtResource("3_icon")

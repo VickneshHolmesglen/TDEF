@@ -13,10 +13,23 @@ extends Resource
 ##                  docs/architecture/adr-0029-tower-mastery-proximity-detection.md (amended in place)
 ##
 ## Loaded by GameDataRegistry from res://assets/data/skills/definitions/ — a
-## separate subdirectory from res://assets/data/skills/'s existing
-## SkillResource content (cooldown-only, a different concept, TD-hero-002) to
-## avoid a directory-scan collision between the two skill_id-keyed Resource
-## subclasses (same pattern as Story 008's MissionEntry/MissionResource split).
+## separate subdirectory from res://assets/data/skills/'s legacy SkillResource
+## content, to avoid a directory-scan collision between the two skill_id-keyed
+## Resource subclasses (same pattern as Story 008's MissionEntry/MissionResource
+## split).
+##
+## TD-hero-006 (docs/tech-debt-register.md, fixed 2026-09-02): SkillResource's
+## catalogue (assets/data/skills/*.tres — fireball/earth_slam/frost_nova/
+## chain_lightning, 4 skills) has zero skill_id overlap with this catalogue's
+## real, player-equippable 32-skill roster (assets/data/skills/definitions/).
+## Hero.gd originally read cooldown/skill_power_coefficient from SkillResource
+## regardless, so every one of the 32 real skills dealt zero damage and used a
+## wrong, always-floored 0.5s cooldown in shipped combat. Fixed by adding
+## base_cooldown here (this catalogue is the correct, single source of truth
+## for an equippable skill's full activation contract) and repointing Hero.gd
+## at get_skill_definition()/effect_data instead of the legacy pipeline.
+## SkillResource itself is left in place, now fully unreferenced by production
+## code — a candidate for a future deletion pass, not removed here.
 
 ## Unique skill identifier.
 @export var skill_id: StringName = &""
@@ -38,6 +51,15 @@ extends Resource
 @export var source_build_signature: StringName = &""
 ## Seconds of proximity time required to unlock via Tower Mastery.
 @export var mastery_threshold_seconds: float = 45.0
+## TD-hero-006: this skill's active-slot cooldown, seconds — Hero.activate_skill()
+## reads this via Rule 12's formula (effective_cooldown = base_cooldown x
+## (1 - cdr), floored at 0.5s). Per-tier structural placeholder, not yet
+## through a dedicated balance pass (same "real values, not yet tuned"
+## precedent as skill_power_coefficient): opener 4.0s, core 6.0s, capstone
+## 10.0s — lower-commitment openers stay spammable, capstones are the bigger
+## cooldown payoff. Range matches the legacy SkillResource catalogue's own
+## historical 3.0-8.0s spread.
+@export var base_cooldown: float = 4.0
 ## Formalized 2026-09-01 (hero-skill-build.md Rule 2's PoE-scale content
 ## pass — "no longer deferred") — typed as HeroSkillEffectResource. Tower
 ## Mastery still never interprets this field's contents (tower-mastery.md
@@ -72,6 +94,8 @@ func validate() -> Array[String]:
 	const VALID_TIERS: Array[String] = ["opener", "core", "capstone"]
 	if not VALID_TIERS.has(tier):
 		errors.append("tier must be one of %s (got '%s')" % [VALID_TIERS, tier])
+	if base_cooldown <= 0.0:
+		errors.append("base_cooldown must be > 0.0 (got %.2f)" % base_cooldown)
 	if effect_data == null:
 		errors.append("effect_data must not be null (hero-skill-build.md Rule 2 — no longer deferred)")
 	else:

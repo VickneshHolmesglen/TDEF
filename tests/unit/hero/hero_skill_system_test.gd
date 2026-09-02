@@ -236,26 +236,78 @@ func test_cdr_above_cap_still_floors_at_half_second() -> void:
 
 
 # ---------------------------------------------------------------------------
-# TD-hero-002 (fixed): self-populate from GGameDataRegistry when
-# _inject_skill_data() is NOT called — proves the real SkillResource
-# pipeline (res://assets/data/skills/) actually wires through to Hero, not
-# just the test-only injection seam above.
+# TD-hero-006 (fixed 2026-09-02): self-populate from GGameDataRegistry when
+# _inject_skill_data() is NOT called — proves the real SkillDefinitionResource
+# catalogue (res://assets/data/skills/definitions/) actually wires through to
+# Hero, not just the test-only injection seam above. Previously asserted
+# against "fireball" (the legacy, now-unreferenced SkillResource catalogue) —
+# switched to phys_cleave, a real catalogue skill_id, once TD-hero-006 fixed
+# Hero.gd to read the correct catalogue. phys_cleave's tier is "opener"
+# (base_cooldown 4.0s), which happens to match the old fireball fixture's
+# expected value exactly, so the assertion numbers are unchanged.
 # ---------------------------------------------------------------------------
 
 func test_skill_cooldowns_self_populate_from_registry_when_not_injected() -> void:
 	# GGameDataRegistry is the real live Autoload — already loaded the real
-	# res://assets/data/skills/ content at its own boot, before this test ran.
-	var real_cooldown: float = _hero._skill_cooldowns.get(&"fireball", -1.0)
+	# res://assets/data/skills/definitions/ content at its own boot, before
+	# this test ran.
+	var real_cooldown: float = _hero._skill_cooldowns.get(&"phys_cleave", -1.0)
 	assert_float(real_cooldown).is_equal_approx(4.0, 0.0001)
 
 
 func test_activate_skill_uses_registry_sourced_cooldown_when_not_injected() -> void:
 	_hero._base_stats[&"cdr"] = 0.0
-	GEventBus.active_skill_equipped.emit(0, "fireball")
+	GEventBus.active_skill_equipped.emit(0, "phys_cleave")
 
 	_hero.activate_skill(0)
 
 	assert_float(_hero._skill_cooldown_timers[0].wait_time).is_equal_approx(4.0, 0.0001)
+
+
+# ---------------------------------------------------------------------------
+# TD-hero-006 (fixed 2026-09-02): _resolve_skill_hit() payload construction
+# against a real catalogue skill_id — the exact path this bug hid in, since
+# no test previously exercised it against real content (only fireball/etc.
+# fixtures, or nothing at all). Confirms hero_skill_attacked actually fires
+# with the real skill's skill_power_coefficient now, not a silent no-op.
+# ---------------------------------------------------------------------------
+
+func test_activate_skill_emits_hero_skill_attacked_with_real_catalogue_skill() -> void:
+	_hero._base_stats[&"cdr"] = 0.0
+	_hero._base_stats[&"attack_range"] = 1000.0
+	_hero._base_stats[&"skill_power"] = 100.0
+	_hero._base_stats[&"crit_chance"] = 0.0
+	_hero._monster_cache[1] = {"cell": Vector2i(0, 0), "hp": 100.0, "tier": 0, "path_step": 0}
+	GEventBus.active_skill_equipped.emit(0, "phys_cleave")
+	_spy = EventBusSpy.new()
+	_spy.watch(GEventBus.hero_skill_attacked)
+
+	_hero.activate_skill(0)
+
+	assert_bool(_spy.was_emitted("hero_skill_attacked")).is_true()
+	var payload: HeroSkillAttackEvent = (_spy.emissions["hero_skill_attacked"] as Array)[0][0] as HeroSkillAttackEvent
+	assert_that(payload.skill_id).is_equal(&"phys_cleave")
+	assert_int(payload.target_id).is_equal(1)
+	assert_float(payload.skill_power).is_equal_approx(100.0, 0.0001)
+	# phys_cleave's real, authored skill_power_coefficient (assets/data/skills/
+	# definitions/phys_cleave.tres) — this is the exact value that silently
+	# never reached a payload at all before this fix (the old code read a
+	# different, unrelated resource and returned before emitting anything).
+	assert_float(payload.skill_power_coefficient).is_equal_approx(1.2, 0.0001)
+
+
+func test_activate_skill_with_no_target_in_range_does_not_emit_hero_skill_attacked() -> void:
+	_hero._base_stats[&"cdr"] = 0.0
+	_hero._base_stats[&"attack_range"] = 1.0  # no monster seeded -- no target regardless
+	GEventBus.active_skill_equipped.emit(0, "phys_cleave")
+	_spy = EventBusSpy.new()
+	_spy.watch(GEventBus.hero_skill_attacked)
+
+	_hero.activate_skill(0)
+
+	assert_bool(_spy.was_emitted("hero_skill_attacked")).is_false()
+	# Cooldown still starts even on a whiff (Rule IX's own documented behavior).
+	assert_bool(_hero._skill_cooldown_timers[0].is_stopped()).is_false()
 
 
 # ---------------------------------------------------------------------------

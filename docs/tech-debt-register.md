@@ -2387,3 +2387,36 @@ Rule 13 (revised 2026-09-01) specifies `requires_tag: String` as "one of the 8 t
 - [x] 9 of 13 items authored and equip-time-gated (2026-09-02) — see Gap section above for the full list and reasoning.
 - [x] **Schema decision made and implemented (2026-09-02, user-approved)**: added two sibling gating axes to `ItemDefinitionResource` — `requires_damage_type: Array[String]` and `requires_secondary_effect: Array[String]` — alongside the existing `requires_tag: String`. Exactly one of the 3 must be set per skill-modifier item (validated), matching Rule 14's own table where each item has exactly one stated condition; array-typed (not a single String) so multi-valued conditions like `sup_mod_arcane_surge`'s 4-element damage_type set are representable without inventing sentinel keywords. `HeroSkillBuild._is_skill_modifier_compatible()` extended to check whichever axis is populated. All 4 remaining items authored: `sup_mod_elemental_focus` (`requires_damage_type = [fire, frost, poison, lightning, arcane]`), `sup_mod_immolate` (`[fire]`), `sup_mod_arcane_surge` (`[lightning, frost, fire, arcane]`), `sup_mod_vile_toxins` (`requires_secondary_effect = [dot_poison, dot_burn]`). All 13 catalogued skill-modifier items now exist as real, equip-gated content.
 - [ ] Effect-folding pipeline not designed or implemented — all 13 items are currently equip-only, mechanically inert. This is real combat-math scope (folding each equipped modifier's stat delta into a copy of the socketed skill's `effect_data` before Damage & Status's Formula D7), not a data-authoring task — this entry stays open for that alone.
+
+---
+
+## TD-hero-006 — Hero's live combat read the wrong skill catalogue — all 32 real, player-equippable skills dealt zero damage (fixed)
+
+**Logged**: 2026-09-02 (found while scoping the skill-modifier effect-folding pipeline, at user's request)
+**Fixed**: 2026-09-02 (same session, user-approved)
+**Severity**: Critical — a real, shipped, silent production bug, not a hypothetical. Every skill in the actual player-facing 32-skill catalogue (`assets/data/skills/definitions/`, built out this session) dealt zero damage in live combat, and used a wrong, always-floored 0.5s cooldown, since neither existed in the catalogue Hero.gd was actually reading from.
+**Area**: `src/core/hero/hero.gd` (`_ready()`'s self-populate block, `_resolve_skill_hit()`), `src/core/skill_definition_resource.gd` (new `base_cooldown` field), `assets/data/skills/definitions/*.tres` (32 files)
+
+### Gap
+
+`Hero._resolve_skill_hit()` (the function that builds and emits `HeroSkillAttackEvent`, the trigger for Damage & Status's Formula D7) called `GGameDataRegistry.get_skill_resource(skill_id)` — this reads the **legacy `SkillResource` catalogue** (`assets/data/skills/*.tres`: `fireball`, `earth_slam`, `frost_nova`, `chain_lightning` — 4 skills, predates this session's 32-skill catalogue and TD-hero-002's original MVP scope). It does not read `SkillDefinitionResource` (`assets/data/skills/definitions/*.tres`), the real catalogue Hero Skill Build actually manages, equips, and that skill-modifier items (Rule 13) gate against.
+
+There is **zero `skill_id` overlap** between the two catalogues (confirmed by directory listing — the real catalogue is entirely `phys_*`/`rng_*`/`elem_*`/`sup_*`-prefixed). The result: `get_skill_resource(skill_id)` returned `null` for all 32 real skills, and `_resolve_skill_hit()` returned early before ever emitting `hero_skill_attacked` — every equipped skill cast silently whiffed, dealing 0 damage, with no error logged. `Hero._ready()`'s self-populate block had the identical bug for `_skill_cooldowns` (sourced from `get_all_skill_resources()`), so every real skill's `base_cooldown` lookup also missed and fell back to `0.0`, making `activate_skill()`'s CDR formula (`max(0.5, base * (1-cdr))`) always floor to a flat 0.5s regardless of the skill's actual intended pacing.
+
+No test caught this: the only existing skill-cooldown self-populate test asserted against `"fireball"` (a legacy catalogue skill_id, still valid against the wrong-but-consistent old code) rather than any real catalogue skill_id, and no test anywhere exercised `_resolve_skill_hit()`'s actual payload construction against real content at all.
+
+**Not a design-document bug** — `damage-status.md`'s Formula D7 documentation always correctly stated `skill_power_coefficient` is "read from the cast skill's `effect_data`" (i.e. `SkillDefinitionResource.effect_data`, the real catalogue). Only the code was wrong.
+
+### Fix applied
+
+1. Added `base_cooldown: float` to `SkillDefinitionResource` (with `validate()` rule, `must be > 0.0`) — this catalogue is now the single, correct source of truth for a skill's full activation contract (cooldown + damage), matching its own doc comment's "shared skill catalogue entry" framing. Authored real, per-tier structural-placeholder values on all 32 `.tres` files: opener 4.0s, core 6.0s, capstone 10.0s (matches the legacy catalogue's own historical 3.0–8.0s spread; not yet through a dedicated balance pass, same precedent as `skill_power_coefficient`).
+2. `Hero._ready()`'s self-populate block now reads `GGameDataRegistry.get_all_skill_definitions()`/`get_skill_definition()` instead of the legacy `get_all_skill_resources()`/`get_skill_resource()`.
+3. `Hero._resolve_skill_hit()` now reads `GGameDataRegistry.get_skill_definition(skill_id)` and `skill.effect_data.skill_power_coefficient` instead of the legacy `SkillResource` path.
+4. Legacy `SkillResource` (`assets/data/skills/*.tres`, the class itself, `GameDataRegistry.get_skill_resource()`/`get_all_skill_resources()`) is left in place, now fully unreferenced by production code — flagged as a candidate for a future deletion pass, not removed here (out of scope for a bug fix).
+5. Tests: `tests/unit/hero/hero_skill_system_test.gd`'s 2 self-populate tests switched from `"fireball"` to `"phys_cleave"` (a real catalogue skill_id, `tier="opener"` → `base_cooldown=4.0`, which happens to match the old fixture's expected value exactly, so assertion numbers are unchanged). Added 2 new tests exercising `_resolve_skill_hit()`'s payload construction against real content for the first time — `test_activate_skill_emits_hero_skill_attacked_with_real_catalogue_skill` (confirms `hero_skill_attacked` actually fires with `phys_cleave`'s real `skill_power_coefficient=1.2`) and `test_activate_skill_with_no_target_in_range_does_not_emit_hero_skill_attacked` (the whiff path).
+
+### Resolution
+- [x] Fixed 2026-09-02 — see Fix applied above.
+- [x] New/updated test coverage added, closing the real gap that let this ship undetected.
+- [x] Targeted gdUnit4 regression run 2026-09-02: `tests/unit/hero`, `tests/unit/game_data_registry`, `tests/unit/hero-skill-build`, `tests/integration/hero-skill-build`, `tests/integration/hero-skill-build-screen` — 194/194 passing, 0 errors, 0 failures. 37 orphans, isolated to `game_data_registry_test.gd` alone (unmodified by this fix) — confirmed pre-existing baseline noise, not a regression, matching this project's own established TD-test-001/002/004/006 precedent for that suite.
+- [x] This entry closed (2026-09-02).

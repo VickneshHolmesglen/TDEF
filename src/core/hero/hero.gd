@@ -120,11 +120,16 @@ const CLASS_PROXIMITY_RADIUS: int = 3
 const CLASS_UNLOCK_THRESHOLD_S: float = 30.0
 
 ## Story-007 (TR-hero-005): per-skill base cooldown, keyed by skill StringName ID.
-## TD-hero-002 (fixed): self-populated at _ready() from GGameDataRegistry's
-## SkillResource pipeline (res://assets/data/skills/) if empty — see _ready()'s
-## self-populate block. _inject_skill_data() (test seam, below) still overrides
-## this wholesale for tests, matching the established MonsterManager/TowerSystem
-## self-populate-if-empty pattern (S5-01).
+## TD-hero-006 (fixed 2026-09-02): self-populated at _ready() from
+## GGameDataRegistry's real 32-skill SkillDefinitionResource catalogue
+## (res://assets/data/skills/definitions/) if empty — see _ready()'s
+## self-populate block. Previously read the legacy SkillResource pipeline
+## (res://assets/data/skills/, 4 unrelated skill_ids with zero overlap with
+## the real catalogue), which meant every real, player-equippable skill had
+## no cooldown data and no damage — see TD-hero-006 in
+## docs/tech-debt-register.md for the full bug. _inject_skill_data() (test
+## seam, below) still overrides this wholesale for tests, matching the
+## established MonsterManager/TowerSystem self-populate-if-empty pattern (S5-01).
 ##
 ## Epic 08 / ADR-0030 correction (Story 003, 2026-07-19): this field previously
 ## sat alongside a second `_ultimate_lookup` Dictionary + `_recompute_ultimate()`
@@ -406,14 +411,17 @@ func _ready() -> void:
 	add_child(_cooldown_broadcast_timer)
 	_cooldown_broadcast_timer.timeout.connect(_on_cooldown_broadcast_timeout)
 
-	# TD-hero-002 (fixed): self-populate from GGameDataRegistry if empty, mirroring
-	# MonsterManager/TowerSystem's established self-populate-if-empty pattern
-	# (S5-01). Only self-populates when empty so _inject_skill_data() (test seam)
-	# still works exactly as before — a test that injects fixture data runs
-	# after this and overwrites both fields wholesale regardless.
+	# TD-hero-006 (fixed 2026-09-02): self-populate from GGameDataRegistry's
+	# real 32-skill catalogue if empty, mirroring MonsterManager/TowerSystem's
+	# established self-populate-if-empty pattern (S5-01). Only self-populates
+	# when empty so _inject_skill_data() (test seam) still works exactly as
+	# before — a test that injects fixture data runs after this and overwrites
+	# the field wholesale regardless. Previously read get_all_skill_resources()
+	# (the legacy, unrelated 4-skill catalogue) — see this field's own doc
+	# comment above and TD-hero-006 in docs/tech-debt-register.md.
 	if _skill_cooldowns.is_empty():
-		for skill_id: StringName in GGameDataRegistry.get_all_skill_resources():
-			var skill: SkillResource = GGameDataRegistry.get_skill_resource(skill_id)
+		for skill_id: StringName in GGameDataRegistry.get_all_skill_definitions():
+			var skill: SkillDefinitionResource = GGameDataRegistry.get_skill_definition(skill_id)
 			_skill_cooldowns[skill_id] = skill.base_cooldown
 
 	GEventBus.monster_spawned.connect(_on_monster_spawned)
@@ -834,18 +842,29 @@ func activate_skill(slot_index: int) -> void:
 ## cast still consumes the skill's cooldown (already started in
 ## activate_skill() above) but emits no hero_skill_attacked — the cast
 ## simply whiffs, mirroring _on_attack_timer_timeout()'s identical no-target
-## early return. Multi-target/AoE skills (Rule IX.8's elem_firestorm example)
-## are not yet content-authored in assets/data/skills/ (grep-confirmed) —
-## every currently shipped skill resolves as a single hit here; a future
-## multi-target skill would need this method extended to emit one
-## HeroSkillAttackEvent per struck target, per Rule IX.8's explicit
-## requirement.
+## early return. Multi-target/AoE resolution (Rule IX.8's elem_firestorm
+## example) is not implemented here regardless of a skill's own `delivery`
+## value (e.g. `aoe_zone`) — every cast resolves as a single hit against
+## _select_target()'s one priority target; a future pass would need this
+## method extended to emit one HeroSkillAttackEvent per struck target, per
+## Rule IX.8's explicit requirement. TD-hero-006 (2026-09-02) fixed this
+## method reading the wrong skill catalogue entirely (see below) but did not
+## change this single-target scoping.
 func _resolve_skill_hit(skill_id: StringName) -> void:
 	var target_id: int = _select_target()
 	if target_id == -1:
 		return
-	var skill: SkillResource = GGameDataRegistry.get_skill_resource(skill_id)
-	if skill == null:
+	# TD-hero-006 (fixed 2026-09-02): previously read GGameDataRegistry.
+	# get_skill_resource() (the legacy, unrelated 4-skill catalogue) — every
+	# real, player-equippable skill_id resolved to null here and this
+	# function returned before ever emitting hero_skill_attacked, so no
+	# equipped skill dealt any damage. Now reads the real catalogue
+	# (SkillDefinitionResource.effect_data.skill_power_coefficient), matching
+	# damage-status.md's own Formula D7 doc, which always said this value
+	# comes from "the cast skill's effect_data" — the GDD was correct; only
+	# the code was wrong. See docs/tech-debt-register.md TD-hero-006.
+	var skill: SkillDefinitionResource = GGameDataRegistry.get_skill_definition(skill_id)
+	if skill == null or skill.effect_data == null:
 		return
 	var entry: Dictionary = _monster_cache[target_id] as Dictionary
 	var payload := HeroSkillAttackEvent.new()
@@ -856,7 +875,7 @@ func _resolve_skill_hit(skill_id: StringName) -> void:
 	# _on_attack_timer_timeout()'s base_damage line, closing the Skill Power
 	# half of TD-hero-001 (the Damage half already applies this formula).
 	payload.skill_power = get_effective_stat(&"skill_power") * (1.0 + get_effective_stat(&"tower_affinity"))
-	payload.skill_power_coefficient = skill.skill_power_coefficient
+	payload.skill_power_coefficient = skill.effect_data.skill_power_coefficient
 	payload.is_crit = randf() < get_effective_stat(&"crit_chance")
 	payload.crit_multiplier_effective = CRIT_MULTIPLIER_BASE + get_effective_stat(&"crit_multiplier")
 	payload.hero_bonus_tier = entry.get("tier", 0) as int

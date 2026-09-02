@@ -21,5 +21,6 @@ tier = "opener"
 passive_slot_count = 2
 source_build_signature = &"found_frostbolt_t1|weap_frostbolt_t1|focus_frostbolt_t1|power_frostbolt_slow_t1"
 mastery_threshold_seconds = 45.0
+base_cooldown = 4.0
 effect_data = SubResource("Resource_effect")
 icon = ExtResource("3_icon")
