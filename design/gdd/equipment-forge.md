@@ -924,14 +924,12 @@ closes `menagerie.md`'s explicitly-flagged open question)**
   adds it via `item_added`, emits `hero_equipment_crafted(item_id, item_type
   = output_slot, quality_tier)` and then, in the same synchronous operation,
   `item_rune_imbued(item_id, rune_id, rune_source = "menagerie")` — in that
-  exact order (Rule 19). **Interface dependency flagged (qa-lead)**:
-  `Menagerie.request_sacrifice(creature_id, target_item_id) -> bool` does
-  not exist in `menagerie.md` today; this GDD originates the signature
-  Menagerie's own Rule 13 only anticipated. Not automatable until Menagerie
-  adopts it — flagged with the same rigor as `constellation.md` OQ-4,
-  `crafting.md`'s `has_room_for`/`clear_damaged_flag`, `tower-mastery.md`'s
-  `get_component_loadout`, `mission-select.md`'s `retry_current_mission`,
-  and `hero-skill-build.md`'s `skill_modifier` item_type. See Open Questions.
+  exact order (Rule 19). ~~**Interface dependency flagged (qa-lead)**~~
+  **RESOLVED 2026-07-17, found stale here 2026-09-02** (AC-19/AC-20 below
+  were already corrected on 2026-08-27, this AC's own text was missed in
+  that pass): `Menagerie.request_sacrifice(creature_id, target_item_id) ->
+  bool` shipped in `menagerie.gd`, adopting this GDD's originated signature
+  per Menagerie's own Rule 13/19d. Fully automatable today.
 - **AC-18 — species mismatch, rejected before any Menagerie call**:
   **GIVEN** a selected Sacrifice Recipe with `required_species = X` and a
   target creature whose species is `Y ≠ X`, **WHEN** the sacrifice is
@@ -951,9 +949,9 @@ closes `menagerie.md`'s explicitly-flagged open question)**
   free room for the recipe's `output_slot`, **WHEN** the sacrifice is
   attempted, **THEN** the action is rejected at step (b) — before step (d)'s
   `request_sacrifice()` call is ever made — so the creature is never touched
-  and never consumed for a materially-impossible outcome (Rule 19b). Blocked
-  jointly on `has_room_for()` and `request_sacrifice()` (neither exists
-  yet).
+  and never consumed for a materially-impossible outcome (Rule 19b). Both
+  `has_room_for()` and `request_sacrifice()` have shipped since 2026-07-17
+  (found stale here 2026-09-02) — fully automatable.
 - **AC-21 — Formula 2 worked example (maximum)**: **GIVEN** a sacrificed
   `aurora_stag` (`species_tier = 3`, Rare), **WHEN** Formula 2 is evaluated,
   **THEN** `quality_tier = clamp(3+1, 1, 4) = 4` exactly — matching the
