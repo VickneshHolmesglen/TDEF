@@ -552,10 +552,12 @@ Single confirm (click or gamepad confirm button), **not** a two-step "confirm th
 - **AC-4**: GIVEN a craftable `tower_component` recipe and a full Inventory
   (no room for the output slot type), WHEN Craft is confirmed, THEN zero
   materials are consumed, no `component_crafted` fires, and the craft is
-  rejected before any Inventory consume call. **Interface dependency
-  flagged (qa-lead)**: this AC exercises `Inventory.has_room_for()`, a
-  proposed method that does not exist in `inventory.md` today (Rule 7). Not
-  automatable until that interface is adopted — see Open Questions.
+  rejected before any Inventory consume call. **Interface dependency,
+  resolved 2026-07-17, found stale here 2026-09-02**: this AC exercises
+  `Inventory.has_room_for()` — shipped (`src/core/inventory/inventory.gd`)
+  since the same pass that closed AC-6's `clear_damaged_flag()` dependency
+  below; this AC's own note was simply never updated to match. Automatable
+  today.
 - **AC-5**: GIVEN a craftable recipe, WHEN Craft is confirmed successfully,
   THEN materials are consumed, the output is added via `item_added`, and
   `component_crafted(component_id, component_type, quality_tier)` fires
@@ -621,4 +623,4 @@ Single confirm (click or gamepad confirm button), **not** a two-step "confirm th
 | Should `quality_tier`'s Weapon/Focus/Power "authoring signal" meaning (Rule 5) ever become a literal schema field on those components, for consistency with Foundation's `tier` field? | tower.md owner | Flagged, not resolved — would be a `tower.md` schema change, out of scope here. |
 | Real material rarity names (Common/Uncommon/Rare are placeholders per `inventory.md`) | game-designer | This GDD was the designated owner of real naming per `inventory.md`'s own note, but does not resolve it here — naming is a content/narrative decision, not a mechanics one; the mechanism above is name-agnostic and works unchanged once real names are assigned. |
 | **(qa-lead, AC review) Rule 4 has no defined initialization/save-load-restore trigger path** | Crafting GDD owner | AC-1 assumes recipes whose gates are already both-true get swept and `recipe_discovered`-fired at session start / restore, but Rule 4 only names two triggers (`tech_unlocked`, `item_added`). Needs either a third explicit trigger path added to Rule 4, or confirmation that `save-persistence.md`'s restore sequence re-fires enough `item_added` events to cover this case incidentally. Resolve before AC-1 is implementable as an automated test. |
-| **(qa-lead, AC review) AC-4 and AC-6 depend on proposed-but-nonexistent Inventory interfaces** | Inventory System owner | AC-4 requires `Inventory.has_room_for()`; AC-6 requires `Inventory.clear_damaged_flag()`. Both are already tracked above as required new interfaces, but neither prior entry called out that specific ACs are BLOCKED on them — added here to make the AC-to-interface dependency explicit, matching the pattern `constellation.md`'s OQ-4 established. |
+| ~~(qa-lead, AC review) AC-4 and AC-6 depend on proposed-but-nonexistent Inventory interfaces~~ | — | **RESOLVED 2026-09-02** — both `Inventory.has_room_for()` and `Inventory.clear_damaged_flag()` have been shipped since 2026-07-17 (confirmed via direct grep of `inventory.gd`); AC-6 was updated to reflect this on 2026-08-27, but AC-4's own note was missed in that pass and still said "not automatable" until this correction. Both ACs are automatable today. |
