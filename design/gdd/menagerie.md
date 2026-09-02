@@ -144,9 +144,9 @@ The Menagerie System is the sanctuary's living-care layer: it lets the player co
     minimum "age" or cooldown before a newly-acquired creature is eligible
     for sacrifice (ASSUMPTION — avoids an arbitrary restriction the brief
     didn't ask for).
-14. **New cross-system event required (flagged, not yet in `event-bus.md`'s
-    catalogue — same pattern Inventory used for `item_pickup_rejected` and
-    Tower used for `tower_component_returned`):** `creature_acquired(creature_id:
+14. **Cross-system event, catalogued in `event-bus.md` since 2026-07-17**
+    (same pattern Inventory used for `item_pickup_rejected` and Tower used
+    for `tower_component_returned`): `creature_acquired(creature_id:
     String, species: String)`, emitted once per successful Lure (Rule 2).
     Key Subscribers: Encyclopedia (species-discovery entry), Mission HUD
     (acquisition toast). Payload shape deliberately mirrors `creature_bred`'s
@@ -179,12 +179,12 @@ breeding-offspring-creation are one-way (no transition back from
 
 | System | Direction | Interface |
 |---|---|---|
-| **EventBus** | Menagerie → | `creature_happiness_changed`, `creature_bred`, `creature_sacrificed`, `creature_moved_to_breeding_pen`, `creature_returned_from_breeding_pen` (all frozen contracts, unchanged), plus the new `creature_acquired` proposal (Rule 14) |
+| **EventBus** | Menagerie → | `creature_happiness_changed`, `creature_bred`, `creature_sacrificed`, `creature_moved_to_breeding_pen`, `creature_returned_from_breeding_pen`, `creature_acquired` (Rule 14, catalogued 2026-07-17) — all frozen contracts |
 | **Resource Economy** | Menagerie → Economy | `creature_happiness_changed`'s `quality_bonus` field is the sole feed for `menagerie_quality_bonus` (Rule 6); Resource Economy caches, never recomputes |
 | **Inventory** | Menagerie ↔ Inventory | Query for `menagerie_lure` (and any future acquisition material) balance before a Lure action resolves; `materials_spent` on success (Rule 2). Bred offspring and sacrifice do not touch Inventory directly. |
 | **Equipment Forge** *(authored 2026-07-17)* | Forge → Menagerie (direct call), Menagerie → Forge (indirect, via `creature_sacrificed`) | Forge calls `Menagerie.request_sacrifice(creature_id: String, target_item_id: String) -> bool` (signature adopted 2026-07-17 from `equipment-forge.md` Rule 19d — that GDD originated the exact name/shape since `menagerie.md` had only anticipated the call without naming it). `target_item_id` identifies the Equipment item Forge is about to imbue — **it is supplied by Equipment Forge, not looked up by Menagerie**; Menagerie does not read or validate it beyond passing it through unchanged into the `creature_sacrificed` payload (Forge owns validating that the item exists and is eligible for imbuing, per its own Rule 16/19). Menagerie validates the sacrifice request against its own state (Rule 13) and is the sole `creature_sacrificed` emitter, mirroring Inventory's `tower_component_returned` → `item_added` ownership precedent. |
-| **Encyclopedia** | Menagerie → Encyclopedia | Subscribes to `creature_bred` (existing) and the proposed `creature_acquired` (Rule 14) for species-discovery entries |
-| **Defense Building** (undesigned) | Building → Menagerie (soft, anticipated) | `sanctuary_structure_built` for the "Habitat Expansion" structure is expected to raise HABITAT capacity per Rule 4's tier table; exact structure cost is Defense Building's to define |
+| **Encyclopedia** | Menagerie → Encyclopedia | Subscribes to `creature_bred` and `creature_acquired` (Rule 14, catalogued) for species-discovery entries |
+| **Defense Building** *(authored 2026-07-17)* | Building → Menagerie (soft) | `sanctuary_structure_built` for the "Habitat Expansion" structure raises HABITAT capacity per Rule 4's tier table, now authored and cross-verified consistent against `defense-building.md` (4 tiers) |
 | **Save & Persistence** | Menagerie implements `SaveRestorer` | `restore_order = 20`, restored immediately after Inventory (10); save payload is every creature instance (`creature_id`, `species`, `state`, `happiness`, `missions_since_tended`) plus current HABITAT capacity tier and any active breeding-pen pairings/timers |
 | **Mission HUD** | Menagerie → HUD (read-only) | Subscribes to `creature_happiness_changed`, `creature_bred`, `creature_acquired` for live notification/toast display; no functional dependency |
 | **Crafting** | None (confirmed by `crafting.md`'s own Dependencies table) | No direct interface — Crafting lists Menagerie only as a future anticipated consumer of Inventory's Materials tab, not a direct coupling |
@@ -296,12 +296,12 @@ breeding_missions_remaining(tier) = base_breeding_duration + tier_breeding_penal
 
 | System | Direction | Nature |
 |---|---|---|
-| **EventBus** | Hard dependency | All cross-system communication routes through it — `creature_happiness_changed`, `creature_bred`, `creature_sacrificed`, `creature_moved_to_breeding_pen`, `creature_returned_from_breeding_pen` (frozen), plus the proposed `creature_acquired` (Rule 14, not yet catalogued) |
+| **EventBus** | Hard dependency | All cross-system communication routes through it — `creature_happiness_changed`, `creature_bred`, `creature_sacrificed`, `creature_moved_to_breeding_pen`, `creature_returned_from_breeding_pen`, `creature_acquired` (Rule 14, catalogued 2026-07-17) — all frozen |
 | **Resource Economy** | Hard dependency (downstream) | Reads `menagerie_quality_bonus` exclusively through `creature_happiness_changed`'s `quality_bonus` field (Rule 6); Menagerie must push, Resource Economy never recomputes |
 | **Inventory** | Hard dependency (bidirectional) | Menagerie queries/consumes `menagerie_lure` for Lure actions (Rule 2, Formula 4) via the same query/consume convention Crafting uses; Resource Economy hands `menagerie_lure` to Inventory upstream via `materials_earned`, not directly from Menagerie |
 | **Equipment Forge** *(authored 2026-07-17)* | Hard dependency (bidirectional, upgraded from soft/anticipated) | Forge calls `Menagerie.request_sacrifice(creature_id, target_item_id) -> bool` — signature and `target_item_id` sourcing now adopted from `equipment-forge.md` Rule 19d, see the Interactions table above. Menagerie validates (Rule 13) and is the sole `creature_sacrificed` emitter. |
-| **Defense Building** *(undesigned)* | Soft dependency (anticipated) | Expected to raise HABITAT capacity via a "Habitat Expansion" structure and `sanctuary_structure_built`; exact structure cost is Defense Building's to define, not Menagerie's |
-| **Encyclopedia** | Soft dependency (downstream) | Subscribes to `creature_bred` and the proposed `creature_acquired` for species-discovery entries |
+| **Defense Building** *(authored 2026-07-17)* | Soft dependency | Raises HABITAT capacity via the "Habitat Expansion" structure and `sanctuary_structure_built`; structure cost/tiers now authored and cross-verified consistent in `defense-building.md` (4 tiers) |
+| **Encyclopedia** | Soft dependency (downstream) | Subscribes to `creature_bred` and `creature_acquired` for species-discovery entries |
 | **Save & Persistence** | Hard dependency | `restore_order = 20`, immediately after Inventory (10); save payload is creature instances (id/species/state/happiness/missions_since_tended), HABITAT capacity tier, and active breeding-pen pairings/timers |
 | **Mission HUD** | Soft dependency (downstream) | Reads `creature_happiness_changed`/`creature_bred`/`creature_acquired` for live display only; no functional dependency |
 | **Crafting** | None | Confirmed no direct interface by `crafting.md`'s own Dependencies table — Menagerie is listed there only as a future, anticipated consumer of Inventory's Materials tab |
@@ -475,9 +475,9 @@ Follows the same input model established by Inventory/Crafting, adapted to the h
   succeeds, WHEN the new creature instance is created, THEN it is placed
   directly into `HABITAT` (not `RESERVE`), and the transition table's
   `creature_acquired` + aggregate-recompute + `creature_happiness_changed`
-  side effects fire (Rule 6). **Interface dependency flagged (qa-lead)**:
-  this AC's `creature_acquired` assertion depends on Rule 14's proposed
-  event — see Open Questions.
+  side effects fire (Rule 6). ~~Interface dependency flagged (qa-lead)~~
+  **RESOLVED 2026-09-02**: `creature_acquired` has been a real, catalogued
+  `event-bus.md` event since 2026-07-17 — this AC is fully automatable.
 - **AC-5**: GIVEN HABITAT is at full capacity at the moment Lure succeeds,
   WHEN the new creature instance is created, THEN it is placed into
   `RESERVE`, `creature_acquired` fires, but no aggregate recompute or
@@ -657,19 +657,16 @@ Follows the same input model established by Inventory/Crafting, adapted to the h
   Lure), WHEN Equipment Forge requests sacrifice against it, THEN the
   request is accepted with no minimum-age rejection.
 
-### Core Rule 14 — Proposed `creature_acquired` Event
+### Core Rule 14 — `creature_acquired` Event
 
-- **AC-32** *(BLOCKED pending event-bus.md adoption)*: GIVEN a successful
+- ~~**AC-32** *(BLOCKED pending event-bus.md adoption)*~~ **RESOLVED 2026-09-02** (merged into the catalogue 2026-07-17, this AC's own note simply never updated to match — same staleness pattern `crafting.md`'s AC-4/AC-6 already had, found and fixed the same session): GIVEN a successful
   Lure action, WHEN the new creature instance is created, THEN
   `creature_acquired(creature_id: String, species: String)` fires exactly
   once, regardless of whether the creature lands in HABITAT or RESERVE.
-  **Interface dependency flagged (qa-lead)**: `creature_acquired` is not
-  yet in `event-bus.md`'s frozen catalogue (Rule 14) — this AC, and AC-4's
-  partial dependency on the same event, cannot be exercised as a true
-  cross-system integration test until the event is catalogued. A
-  Menagerie-internal unit test asserting the signal is emitted locally is
-  the interim, partial test path; full Encyclopedia/Mission HUD subscriber
-  behavior remains untestable until then. See Open Questions.
+  `creature_acquired` is a real, catalogued `event-bus.md` entry (confirmed
+  present) — this AC and AC-4's partial dependency on the same event are
+  both fully automatable as real cross-system integration tests today, not
+  just Menagerie-internal unit tests.
 
 ### Formula 3 — Aggregate `menagerie_quality_bonus`
 
@@ -755,11 +752,11 @@ Follows the same input model established by Inventory/Crafting, adapted to the h
 
 | Question | Owner | Notes |
 |---|---|---|
-| `creature_acquired(creature_id: String, species: String)` does not exist in `event-bus.md`'s frozen catalogue yet | EventBus owner | **New event this GDD originates** (Rule 14) — same precedent as Inventory's `item_pickup_rejected` and Tower's `tower_component_returned`. AC-4 and AC-32 are both flagged (qa-lead) as blocked or partial pending its adoption; full Encyclopedia/Mission HUD subscriber testing cannot proceed until then. |
+| ~~`creature_acquired(creature_id: String, species: String)` does not exist in `event-bus.md`'s frozen catalogue yet~~ | — | **RESOLVED 2026-09-02** (merged into the catalogue 2026-07-17 — this row and several other body references throughout this document were never updated to match, the same staleness pattern `crafting.md`'s `component_repaired` references had; found and fixed together this pass). AC-4 and AC-32 are both fully automatable now; Encyclopedia/Mission HUD subscriber testing is unblocked. |
 | ~~Defense Building's "Habitat Expansion" structure has no GDD yet~~ **RESOLVED (`defense-building.md` authored; 2026-08-03: extended to 4 tiers)** | Defense Building System owner | Menagerie fixes the slot-count curve (+2/tier, max 4 tiers) and expects `sanctuary_structure_built`; the structure's own material/gold cost, build prerequisites, and exact event payload shape are defined in `defense-building.md` Core Rule 5/Formula 2, independently verified to match this GDD's Rule 4 exactly (including the 2026-08-03 Tier 4 addition). AC-7's isolation-testability flag is resolved now that the real contract exists. |
 | Real species names (`glimmer_hare`, `mossback_toad`, `emberwing_moth`, `duskfang_fox`, `aurora_stag` are placeholders per Rule 1) | game-designer | Same caveat pattern `inventory.md` already applies to its own rarity-tier material names — these are not final creative-approved names. The mechanism above (tier assignment, lure cost, breeding pairing) is name-agnostic and works unchanged once real names are assigned; AC-1/AC-25/AC-26/AC-37/AC-38 reference the placeholder identifiers as authored and will need no logic change, only a naming pass. |
 | ~~Equipment Forge's sacrifice-consumer contract has no GDD yet~~ **RESOLVED (2026-07-17)** | Equipment Forge System owner | `equipment-forge.md` is now authored and Rule 19d's `Menagerie.request_sacrifice(creature_id, target_item_id) -> bool` signature has been adopted into Rule 13 and the Interactions/Dependencies tables above. AC-29/AC-30/AC-31 are now fully automatable as integration tests against Equipment Forge's authored GDD, not just a Menagerie-side mock. |
 | Whether a full initialization/save-restore sweep needs to re-fire `creature_happiness_changed` with the restored aggregate immediately on load, or waits for the next natural trigger | systems-designer | Not explicitly specified by Rule 6 or the Save & Persistence interaction row — Resource Economy's cache could read a stale pre-save aggregate for one extra frame/session-start window if no restore-time push exists. Flagged during AC authoring (qa-lead); no AC currently exercises this because the GDD doesn't specify a behavior to test against. |
 | Exact numeric happiness thresholds for the Thriving/Neutral/Neglected visual bands | systems-designer (per Visual Requirements' own note) | Out of scope for Acceptance Criteria — these are Visual/Feel-classified UI bands (ADVISORY gate: screenshot + lead sign-off), not Logic-tier testable thresholds, and the GDD explicitly defers the exact numbers already. |
 
-Content type classification note (qa-lead): the majority of this GDD's ACs are **Logic** (formulas, state machine, decay/tend/breeding math) — BLOCKING gate, automated unit tests required in `tests/unit/menagerie/`. AC-7, AC-29, AC-30, AC-31, and AC-32 are **Integration**-classified (BLOCKING gate) but currently only partially satisfiable as isolated Menagerie-side tests pending the three undesigned/uncatalogued external contracts listed above — full cross-system integration coverage should be re-run once Defense Building, Equipment Forge, and the `creature_acquired` event are each finalized. The Visual/Audio/UI Requirements sections above are Visual/Feel and UI classified (ADVISORY gate: screenshot/manual-walkthrough evidence, not automated tests) and are intentionally not converted into ACs here.
+Content type classification note (qa-lead): the majority of this GDD's ACs are **Logic** (formulas, state machine, decay/tend/breeding math) — BLOCKING gate, automated unit tests required in `tests/unit/menagerie/`. AC-7, AC-29, AC-30, AC-31, and AC-32 are **Integration**-classified (BLOCKING gate) — ~~currently only partially satisfiable... pending the three undesigned/uncatalogued external contracts~~ **all three (Defense Building, Equipment Forge, `creature_acquired`) are now finalized/catalogued (resolved 2026-09-02, was stale)** — full cross-system integration coverage is unblocked. The Visual/Audio/UI Requirements sections above are Visual/Feel and UI classified (ADVISORY gate: screenshot/manual-walkthrough evidence, not automated tests) and are intentionally not converted into ACs here.
