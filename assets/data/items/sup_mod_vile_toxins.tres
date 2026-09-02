@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="ItemDefinitionResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/core/inventory/item_definition_resource.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+item_id = &"sup_mod_vile_toxins"
+item_type = &"skill_modifier"
+display_name = "Vile Toxins"
+is_unique_instance = true
+base_stats = {}
+rarity = ""
+equipment_category = ""
+requires_tag = ""
+requires_damage_type = Array[String]([])
+requires_secondary_effect = Array[String](["dot_poison", "dot_burn"])

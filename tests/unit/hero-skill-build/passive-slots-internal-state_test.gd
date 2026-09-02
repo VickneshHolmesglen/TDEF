@@ -152,3 +152,28 @@ func test_set_passive_slot_clearing_with_empty_string_bypasses_the_type_check() 
 	_hero_skill_build.set_passive_slot("phys_shatter_slam", 0, "sup_mod_ruthless")
 	var result: bool = _hero_skill_build.set_passive_slot("phys_shatter_slam", 0, "")
 	assert_bool(result).is_true()
+
+
+# ---------------------------------------------------------------------------
+# TD-hero-skill-002 resolution: requires_damage_type/requires_secondary_effect
+# gating axes (sibling to requires_tag).
+# ---------------------------------------------------------------------------
+
+func test_set_passive_slot_accepts_a_damage_type_compatible_skill_modifier() -> void:
+	# elem_frostbolt's damage_type is "frost"; sup_mod_elemental_focus
+	# requires_damage_type includes "frost".
+	var result: bool = _hero_skill_build.set_passive_slot("elem_frostbolt", 0, "sup_mod_elemental_focus")
+	assert_bool(result).is_true()
+
+
+func test_set_passive_slot_rejects_a_damage_type_incompatible_skill_modifier() -> void:
+	# sup_mod_immolate requires_damage_type is ["fire"] only; frost doesn't match.
+	var result: bool = _hero_skill_build.set_passive_slot("elem_frostbolt", 0, "sup_mod_immolate")
+	assert_bool(result).is_false()
+
+
+func test_set_passive_slot_accepts_a_secondary_effect_compatible_skill_modifier() -> void:
+	# elem_poison_nova's secondary_effect is "dot_poison"; sup_mod_vile_toxins
+	# requires_secondary_effect includes "dot_poison".
+	var result: bool = _hero_skill_build.set_passive_slot("elem_poison_nova", 0, "sup_mod_vile_toxins")
+	assert_bool(result).is_true()

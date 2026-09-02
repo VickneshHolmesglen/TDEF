@@ -2365,7 +2365,7 @@ All 18 blueprints (13 original + 5 authored 2026-08-27) migrated to add `base_co
 
 ---
 
-## TD-hero-skill-002 — 4 of 13 skill-modifier items can't be expressed by Rule 13's `requires_tag: String` schema; effect application is entirely unbuilt
+## TD-hero-skill-002 — 4 of 13 skill-modifier items can't be expressed by Rule 13's `requires_tag: String` schema; effect application is entirely unbuilt (schema gap fixed)
 
 **Logged**: 2026-09-02 (found while closing `hero-skill-build.md`'s own flagged `skill_modifier` item_type gap, user-approved full implementation)
 **Severity**: Medium — 9 of 13 catalogued items are real, equippable, correctly-gated content; the other 4 are simply absent (not faked with a wrong gate), and none of the 13 mechanically do anything yet.
@@ -2385,6 +2385,5 @@ Rule 13 (revised 2026-09-01) specifies `requires_tag: String` as "one of the 8 t
 
 ### Resolution
 - [x] 9 of 13 items authored and equip-time-gated (2026-09-02) — see Gap section above for the full list and reasoning.
-- [ ] 4 items genuinely blocked on a schema decision, not fixed here.
-- [ ] Effect-folding pipeline not designed or implemented — all 13 items are currently equip-only, mechanically inert.
-- [ ] This entry stays open until both remaining items are addressed.
+- [x] **Schema decision made and implemented (2026-09-02, user-approved)**: added two sibling gating axes to `ItemDefinitionResource` — `requires_damage_type: Array[String]` and `requires_secondary_effect: Array[String]` — alongside the existing `requires_tag: String`. Exactly one of the 3 must be set per skill-modifier item (validated), matching Rule 14's own table where each item has exactly one stated condition; array-typed (not a single String) so multi-valued conditions like `sup_mod_arcane_surge`'s 4-element damage_type set are representable without inventing sentinel keywords. `HeroSkillBuild._is_skill_modifier_compatible()` extended to check whichever axis is populated. All 4 remaining items authored: `sup_mod_elemental_focus` (`requires_damage_type = [fire, frost, poison, lightning, arcane]`), `sup_mod_immolate` (`[fire]`), `sup_mod_arcane_surge` (`[lightning, frost, fire, arcane]`), `sup_mod_vile_toxins` (`requires_secondary_effect = [dot_poison, dot_burn]`). All 13 catalogued skill-modifier items now exist as real, equip-gated content.
+- [ ] Effect-folding pipeline not designed or implemented — all 13 items are currently equip-only, mechanically inert. This is real combat-math scope (folding each equipped modifier's stat delta into a copy of the socketed skill's `effect_data` before Damage & Status's Formula D7), not a data-authoring task — this entry stays open for that alone.

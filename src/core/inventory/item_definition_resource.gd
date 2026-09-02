@@ -71,7 +71,30 @@ extends Resource
 ## layer than Hero Skill Build (Advanced tier) and should not depend
 ## upward on it; matches this project's own established small-lookup-table
 ## duplication precedent (e.g. ARCHETYPE_GLYPHS across 3 UI files).
+##
+## TD-hero-skill-002 (docs/tech-debt-register.md, resolved 2026-09-02):
+## Rule 14's own 13-item catalogue has 4 items that gate on `damage_type`
+## or `secondary_effect` instead of a tag (e.g. "any non-physical
+## damage_type", "damage_type = fire") — `requires_tag` alone can't
+## represent that without misrepresenting the design. `requires_damage_type`/
+## `requires_secondary_effect` below are the two sibling gating axes this
+## added to close that gap. Exactly one of the three gating fields
+## (`requires_tag`, `requires_damage_type`, `requires_secondary_effect`)
+## must be populated per skill-modifier item — never zero, never more than
+## one — matching Rule 14's own table, where each item has exactly one
+## stated condition.
 @export var requires_tag: String = ""
+## See `requires_tag`'s own doc comment for the 3-way mutual-exclusivity
+## contract. Array of `HeroSkillEffectResource.VALID_DAMAGE_TYPES` values —
+## the item is compatible if the socketed skill's `effect_data.damage_type`
+## is IN this array (multi-value, e.g. `sup_mod_arcane_surge`'s
+## `["lightning","frost","fire","arcane"]`). Empty = this axis unused.
+@export var requires_damage_type: Array[String] = []
+## See `requires_tag`'s own doc comment for the 3-way mutual-exclusivity
+## contract. Array of `HeroSkillEffectResource.VALID_SECONDARY_EFFECTS`
+## values — the item is compatible if the socketed skill's
+## `effect_data.secondary_effect` is IN this array. Empty = this axis unused.
+@export var requires_secondary_effect: Array[String] = []
 
 const VALID_ITEM_TYPES: Array[StringName] = [&"Equipment", &"TowerComponent", &"Material", &"CraftedGood", &"skill_modifier"]
 const VALID_RARITIES: Array[String] = ["", "Common", "Uncommon", "Rare"]
@@ -82,6 +105,15 @@ const VALID_EQUIPMENT_CATEGORIES: Array[String] = [
 ## plus the wildcard "any" (hero-skill-build.md Rule 13).
 const VALID_REQUIRES_TAGS: Array[String] = [
 	"any", "Area", "Projectile", "Duration", "Channeling", "Totem", "Melee", "Ranged", "Buff",
+]
+## Mirrors HeroSkillEffectResource.VALID_DAMAGE_TYPES (excluding "" — an
+## empty damage_type means "deals no elemental-resistance-checked damage,"
+## not a value a skill-modifier would ever gate equipping on).
+const VALID_REQUIRES_DAMAGE_TYPES: Array[String] = ["physical", "fire", "frost", "poison", "lightning", "arcane"]
+## Mirrors HeroSkillEffectResource.VALID_SECONDARY_EFFECTS (excluding
+## "none" for the same reason "" is excluded from damage types above).
+const VALID_REQUIRES_SECONDARY_EFFECTS: Array[String] = [
+	"slow", "knockback", "armor_shred", "dot_burn", "dot_poison", "chain", "fork", "stun", "lifesteal_bonus",
 ]
 
 
@@ -106,8 +138,17 @@ func validate() -> Array[String]:
 		errors.append("component_resource_path must not be empty when item_type is TowerComponent (Tower Assembly cannot resolve this item to a real component)")
 	if item_type != &"TowerComponent" and component_resource_path != "":
 		errors.append("component_resource_path must be empty when item_type is not TowerComponent (got '%s')" % component_resource_path)
-	if item_type == &"skill_modifier" and not VALID_REQUIRES_TAGS.has(requires_tag):
-		errors.append("requires_tag must be one of %s when item_type is skill_modifier (got '%s')" % [VALID_REQUIRES_TAGS, requires_tag])
-	if item_type != &"skill_modifier" and requires_tag != "":
-		errors.append("requires_tag must be empty when item_type is not skill_modifier (got '%s')" % requires_tag)
+	if requires_tag != "" and not VALID_REQUIRES_TAGS.has(requires_tag):
+		errors.append("requires_tag must be one of %s (got '%s')" % [VALID_REQUIRES_TAGS, requires_tag])
+	for damage_type: String in requires_damage_type:
+		if not VALID_REQUIRES_DAMAGE_TYPES.has(damage_type):
+			errors.append("requires_damage_type entry '%s' is not one of %s" % [damage_type, VALID_REQUIRES_DAMAGE_TYPES])
+	for secondary_effect: String in requires_secondary_effect:
+		if not VALID_REQUIRES_SECONDARY_EFFECTS.has(secondary_effect):
+			errors.append("requires_secondary_effect entry '%s' is not one of %s" % [secondary_effect, VALID_REQUIRES_SECONDARY_EFFECTS])
+	var gating_axes_set: int = int(requires_tag != "") + int(not requires_damage_type.is_empty()) + int(not requires_secondary_effect.is_empty())
+	if item_type == &"skill_modifier" and gating_axes_set != 1:
+		errors.append("exactly one of requires_tag/requires_damage_type/requires_secondary_effect must be set when item_type is skill_modifier (found %d set)" % gating_axes_set)
+	if item_type != &"skill_modifier" and gating_axes_set != 0:
+		errors.append("requires_tag/requires_damage_type/requires_secondary_effect must all be empty when item_type is not skill_modifier")
 	return errors

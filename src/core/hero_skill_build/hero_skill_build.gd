@@ -358,9 +358,12 @@ func set_passive_slot(skill_id: String, slot_index: int, item_id: String) -> boo
 
 
 ## Rule 13's typed-slot compatibility check — see set_passive_slot()'s own
-## doc comment. False for a non-existent item, a non-skill_modifier item, or
-## a requires_tag that doesn't match the socketed skill's tags (and isn't
-## "any").
+## doc comment. False for a non-existent item or a non-skill_modifier item.
+## Otherwise checks exactly whichever of the item's 3 mutually-exclusive
+## gating axes is populated (ItemDefinitionResource.requires_tag's own doc
+## comment) — TD-hero-skill-002's resolution (2026-09-02) added the latter
+## two axes for the 4 catalogued items that gate on damage_type/
+## secondary_effect rather than a tag.
 func _is_skill_modifier_compatible(item_id: String, skill: SkillDefinitionResource) -> bool:
 	var item: ItemDefinitionResource = GGameDataRegistry.get_item_definition(StringName(item_id))
 	if item == null or item.item_type != &"skill_modifier":
@@ -369,7 +372,13 @@ func _is_skill_modifier_compatible(item_id: String, skill: SkillDefinitionResour
 		return true
 	if skill.effect_data == null:
 		return false
-	return skill.effect_data.tags.has(item.requires_tag)
+	if item.requires_tag != "":
+		return skill.effect_data.tags.has(item.requires_tag)
+	if not item.requires_damage_type.is_empty():
+		return item.requires_damage_type.has(skill.effect_data.damage_type)
+	if not item.requires_secondary_effect.is_empty():
+		return item.requires_secondary_effect.has(skill.effect_data.secondary_effect)
+	return false
 
 
 ## Synchronous read of skill_id's current passive loadout, pulled at UI-open

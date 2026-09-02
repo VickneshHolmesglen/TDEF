@@ -55,3 +55,53 @@ func test_material_item_with_no_requires_tag_passes_validation() -> void:
 	item.item_type = &"Material"
 	item.display_name = "Test Material"
 	assert_array(item.validate()).is_empty()
+
+
+# ---------------------------------------------------------------------------
+# TD-hero-skill-002 resolution: requires_damage_type/requires_secondary_effect
+# as sibling gating axes to requires_tag, exactly one of the 3 required.
+# ---------------------------------------------------------------------------
+
+func test_skill_modifier_with_valid_requires_damage_type_passes_validation() -> void:
+	var item := ItemDefinitionResource.new()
+	item.item_id = &"test_modifier"
+	item.item_type = &"skill_modifier"
+	item.display_name = "Test Modifier"
+	item.requires_damage_type = ["fire", "frost"]
+	assert_array(item.validate()).is_empty()
+
+
+func test_skill_modifier_with_valid_requires_secondary_effect_passes_validation() -> void:
+	var item := ItemDefinitionResource.new()
+	item.item_id = &"test_modifier"
+	item.item_type = &"skill_modifier"
+	item.display_name = "Test Modifier"
+	item.requires_secondary_effect = ["dot_poison", "dot_burn"]
+	assert_array(item.validate()).is_empty()
+
+
+func test_skill_modifier_with_invalid_requires_damage_type_entry_fails_validation() -> void:
+	var item := ItemDefinitionResource.new()
+	item.item_id = &"test_modifier"
+	item.item_type = &"skill_modifier"
+	item.display_name = "Test Modifier"
+	item.requires_damage_type = ["not_a_real_damage_type"]
+	assert_array(item.validate()).is_not_empty()
+
+
+func test_skill_modifier_with_two_gating_axes_set_fails_validation() -> void:
+	var item := ItemDefinitionResource.new()
+	item.item_id = &"test_modifier"
+	item.item_type = &"skill_modifier"
+	item.display_name = "Test Modifier"
+	item.requires_tag = "Melee"
+	item.requires_damage_type = ["fire"]
+	assert_array(item.validate()).is_not_empty()
+
+
+func test_skill_modifier_with_zero_gating_axes_set_fails_validation() -> void:
+	var item := ItemDefinitionResource.new()
+	item.item_id = &"test_modifier"
+	item.item_type = &"skill_modifier"
+	item.display_name = "Test Modifier"
+	assert_array(item.validate()).is_not_empty()
