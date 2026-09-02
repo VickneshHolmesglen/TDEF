@@ -37,7 +37,7 @@
 #   Each entry: name, status, source, referenced_by[], attributes{}, added, revised
 
 version: 1
-last_updated: "2026-08-31" # hero-skill-tree.md consistency-check pass: skill_tree_point_grant formula added, hero_skill_category referenced_by extended, tower_mastery_build_signature note corrected (unlocked_skills -> points_granted_count)
+last_updated: "2026-09-02" # hero-skill-build.md AC-20 resolution: new hero_ultimate_id constant (19 fixed Ultimate ID values, Formula 3's table). Prior: 2026-08-31 hero-skill-tree.md consistency-check pass: skill_tree_point_grant formula added, hero_skill_category referenced_by extended, tower_mastery_build_signature note corrected (unlocked_skills -> points_granted_count)
 
 # ─── ENTITIES ────────────────────────────────────────────────────────────────
 # Named game-world objects: enemies, NPCs, characters, factions, bosses.
@@ -1196,6 +1196,34 @@ constants:
       this one shared taxonomy, not a fourth independently-authored vocabulary."
     added: 2026-07-17
     revised: "2026-08-31"
+
+  - name: hero_ultimate_id
+    status: active
+    source: design/gdd/hero-skill-build.md
+    referenced_by:
+      - design/gdd/hero-skill-build.md
+      - design/gdd/hero.md
+      - design/gdd/mission-hud.md
+    value: "physical_ascendant | ranged_ascendant | elemental_ascendant | support_ascendant
+      | physical_overload | ranged_overload | elemental_overload | support_overload
+      | elemental_physical_fusion | elemental_ranged_fusion | elemental_support_fusion
+      | physical_ranged_fusion | physical_support_fusion | ranged_support_fusion
+      | physical_surge | ranged_surge | elemental_surge | support_surge | convergence
+      (19 fixed values, plus EMPTY as the precondition-failure sentinel — not itself
+      an ultimate_id, see hero_ultimate_id_derivation formula)"
+    unit: "enum (Ultimate skill identifier, hero-skill-build.md Formula 3's fully enumerated table)"
+    notes: "AC-20 (hero-skill-build.md, resolved 2026-09-02): the literal 19-value
+      table Formula 3 hand-authors, registered here as the single canonical list so
+      Hero System, Mission HUD, and Hero Skill Build itself reference one source
+      instead of three independently hardcoded copies. Derivation mechanism (which
+      category-count profile maps to which of these 19 values) is the separate
+      hero_ultimate_id_derivation formula entry above — this entry is the resulting
+      value set only. Mathematically exhaustive and closed (5 partitions of 4
+      collapsing 35 raw profiles onto exactly these 19 IDs) — adding new skills to
+      the catalogue never grows this list; only a change to the 4-category taxonomy
+      itself (hero_skill_category above) would."
+    added: 2026-09-02
+    revised: ""
 
   - name: constellation_pattern_search_radius
     status: active
