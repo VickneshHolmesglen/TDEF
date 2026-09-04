@@ -16,12 +16,15 @@ extends Resource
 ## skill/ability system — matches this project's existing disambiguation
 ## precedent (e.g. `TowerMissionState` vs. a bare `MissionState`).
 
-## damage/fire/frost/poison/lightning/arcane — reuses tower.md's
-## WeaponComponent.element vocabulary and monster.md's
-## monster_elemental_resistances verbatim, not a new taxonomy. "" for
-## non-damage support/buff skills (physical is represented as "physical",
-## distinct from "" which means "this skill deals no elemental-resistance-
-## checked damage at all").
+## physical | fire | ice | poison | lightning | arcane, or "" for non-damage
+## support/buff skills ("" is distinct from "physical" — see VALID_DAMAGE_TYPES).
+## Renamed 2026-09-04 (player decision): "frost" -> "ice", the canonical name
+## for this project's damage-classification taxonomy (see VALID_TAGS below) —
+## same underlying type, only the name changed; no gameplay change.
+## Open, growing list, not a fixed enum closed for all time (player's own
+## framing: "we can add more tags/classification as necessary later") — adding
+## a new value here is expected as real content needs it, same as any other
+## VALID_* const in this codebase.
 @export var damage_type: String = ""
 
 ## melee_arc | projectile_pierce | projectile_spread | beam | aoe_zone |
@@ -36,20 +39,54 @@ extends Resource
 ## stun | lifesteal_bonus | none
 @export var secondary_effect: String = "none"
 
-## Any of Area/Projectile/Duration/Channeling/Totem/Melee/Ranged/Buff — the
-## axis hero-skill-build.md Rule 13's typed passive slots check
-## skill-modifier item compatibility against (`requires_tag`).
+## Two independent tag families share this one array (both consumed by
+## hero-skill-build.md Rule 13's typed passive-slot skill-modifier
+## compatibility check, `requires_tag`):
+##   (a) delivery-shape tags (pre-existing): Area/Projectile/Duration/
+##       Channeling/Totem/Melee/Ranged/Buff.
+##   (b) damage-classification tags (added 2026-09-04, player-directed
+##       reclassification pass — see this const's own doc comment below).
+## A skill's `tags` array is the union of whichever of both families apply —
+## e.g. a fire melee skill carries both `Melee` and `Fire`/`Basic`/
+## `Elemental`/`DifferentDamage`.
 @export var tags: Array[String] = []
 
-const VALID_DAMAGE_TYPES: Array[String] = ["", "physical", "fire", "frost", "poison", "lightning", "arcane"]
+const VALID_DAMAGE_TYPES: Array[String] = ["", "physical", "fire", "ice", "poison", "lightning", "arcane"]
 const VALID_DELIVERIES: Array[String] = [
 	"melee_arc", "projectile_pierce", "projectile_spread", "beam", "aoe_zone", "self_buff", "totem", "channel",
 ]
 const VALID_SECONDARY_EFFECTS: Array[String] = [
 	"slow", "knockback", "armor_shred", "dot_burn", "dot_poison", "chain", "fork", "stun", "lifesteal_bonus", "none",
 ]
+## Damage-classification tags (2026-09-04, player-directed reclassification
+## pass — `docs/tech-debt-register.md` TD-hero-skill-003 has the full open/
+## closed breakdown). Authored directly onto each damage-dealing skill's own
+## `tags` array (not a separate central lookup table — same authoring
+## convention as the pre-existing delivery-shape tags), per damage_type:
+##   fire/water/earth/wind ("Basic Elemental")  -> own name + Basic + Elemental + DifferentDamage
+##   ice/lightning/light/dark/solar/steam/spark ("Advanced Elemental") -> Advanced + Elemental + DifferentDamage (no own-name tag)
+##   arcane ("Magic")                            -> Basic + Magic + DifferentDamage (no own-name tag)
+##   physical, "" (no damage_type)                -> no classification tags at all
+## Explicitly NOT yet classified — do not guess, ask the player first:
+##   poison — player has not decided its classification yet
+##   bleed/haemorrhage (physical-lineage DoT family, "Bleed gets 'physical'"
+##     per the player) — bleed is a future new damage_type, not yet
+##     authored on any skill; whether it also needs a "DoT" tag alongside
+##     "Physical" is unresolved
+## Player's own framing: "we can add more tags/classification as necessary
+## later" — this list grows as real content needs new values, same pattern
+## as VALID_DAMAGE_TYPES above.
+##
+## ItemDefinitionResource.VALID_REQUIRES_TAGS (src/core/inventory/
+## item_definition_resource.gd) intentionally duplicates only the pre-
+## existing delivery-shape half of VALID_TAGS, not this new classification
+## half — no skill-modifier currently needs to gate on a damage
+## classification, so extending that duplicate now would be speculative.
+## Flagged here so the two lists' "mirrors X" doc comments don't silently
+## drift further out of sync without a reader knowing why.
 const VALID_TAGS: Array[String] = [
 	"Area", "Projectile", "Duration", "Channeling", "Totem", "Melee", "Ranged", "Buff",
+	"Fire", "Water", "Earth", "Wind", "Basic", "Advanced", "Elemental", "Magic", "DifferentDamage", "Physical",
 ]
 
 

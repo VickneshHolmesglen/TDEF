@@ -160,14 +160,14 @@ func test_set_passive_slot_clearing_with_empty_string_bypasses_the_type_check() 
 # ---------------------------------------------------------------------------
 
 func test_set_passive_slot_accepts_a_damage_type_compatible_skill_modifier() -> void:
-	# elem_frostbolt's damage_type is "frost"; sup_mod_elemental_focus
-	# requires_damage_type includes "frost".
+	# elem_frostbolt's damage_type is "ice" (renamed from "frost" 2026-09-04);
+	# sup_mod_elemental_focus's requires_damage_type includes "ice".
 	var result: bool = _hero_skill_build.set_passive_slot("elem_frostbolt", 0, "sup_mod_elemental_focus")
 	assert_bool(result).is_true()
 
 
 func test_set_passive_slot_rejects_a_damage_type_incompatible_skill_modifier() -> void:
-	# sup_mod_immolate requires_damage_type is ["fire"] only; frost doesn't match.
+	# sup_mod_immolate requires_damage_type is ["fire"] only; ice doesn't match.
 	var result: bool = _hero_skill_build.set_passive_slot("elem_frostbolt", 0, "sup_mod_immolate")
 	assert_bool(result).is_false()
 

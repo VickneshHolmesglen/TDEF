@@ -6,11 +6,11 @@
 
 [sub_resource type="Resource" id="Resource_effect"]
 script = ExtResource("2_effect_script")
-damage_type = "frost"
+damage_type = "ice"
 delivery = "projectile_pierce"
 skill_power_coefficient = 1.2
 secondary_effect = "slow"
-tags = Array[String](["Projectile"])
+tags = Array[String](["Projectile", "Advanced", "Elemental", "DifferentDamage"])
 
 [resource]
 script = ExtResource("1_def")

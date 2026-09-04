@@ -10,7 +10,7 @@ damage_type = "lightning"
 delivery = "beam"
 skill_power_coefficient = 1.1
 secondary_effect = "chain"
-tags = Array[String](["Projectile"])
+tags = Array[String](["Projectile", "Advanced", "Elemental", "DifferentDamage"])
 
 [resource]
 script = ExtResource("1_def")

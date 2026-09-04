@@ -10,7 +10,7 @@ damage_type = "lightning"
 delivery = "aoe_zone"
 skill_power_coefficient = 0.5
 secondary_effect = "stun"
-tags = Array[String](["Area", "Duration", "Buff"])
+tags = Array[String](["Area", "Duration", "Buff", "Advanced", "Elemental", "DifferentDamage"])
 
 [resource]
 script = ExtResource("1_def")

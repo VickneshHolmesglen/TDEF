@@ -10,7 +10,7 @@ damage_type = "fire"
 delivery = "channel"
 skill_power_coefficient = 0.6
 secondary_effect = "dot_burn"
-tags = Array[String](["Channeling", "Area"])
+tags = Array[String](["Channeling", "Area", "Fire", "Basic", "Elemental", "DifferentDamage"])
 
 [resource]
 script = ExtResource("1_def")

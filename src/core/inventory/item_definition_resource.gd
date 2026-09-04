@@ -88,7 +88,7 @@ extends Resource
 ## contract. Array of `HeroSkillEffectResource.VALID_DAMAGE_TYPES` values —
 ## the item is compatible if the socketed skill's `effect_data.damage_type`
 ## is IN this array (multi-value, e.g. `sup_mod_arcane_surge`'s
-## `["lightning","frost","fire","arcane"]`). Empty = this axis unused.
+## `["lightning","ice","fire","arcane"]`). Empty = this axis unused.
 @export var requires_damage_type: Array[String] = []
 ## See `requires_tag`'s own doc comment for the 3-way mutual-exclusivity
 ## contract. Array of `HeroSkillEffectResource.VALID_SECONDARY_EFFECTS`
@@ -109,7 +109,7 @@ const VALID_REQUIRES_TAGS: Array[String] = [
 ## Mirrors HeroSkillEffectResource.VALID_DAMAGE_TYPES (excluding "" — an
 ## empty damage_type means "deals no elemental-resistance-checked damage,"
 ## not a value a skill-modifier would ever gate equipping on).
-const VALID_REQUIRES_DAMAGE_TYPES: Array[String] = ["physical", "fire", "frost", "poison", "lightning", "arcane"]
+const VALID_REQUIRES_DAMAGE_TYPES: Array[String] = ["physical", "fire", "ice", "poison", "lightning", "arcane"]
 ## Mirrors HeroSkillEffectResource.VALID_SECONDARY_EFFECTS (excluding
 ## "none" for the same reason "" is excluded from damage types above).
 const VALID_REQUIRES_SECONDARY_EFFECTS: Array[String] = [

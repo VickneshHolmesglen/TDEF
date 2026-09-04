@@ -67,7 +67,7 @@ func test_skill_modifier_with_valid_requires_damage_type_passes_validation() -> 
 	item.item_id = &"test_modifier"
 	item.item_type = &"skill_modifier"
 	item.display_name = "Test Modifier"
-	item.requires_damage_type = ["fire", "frost"]
+	item.requires_damage_type = ["fire", "ice"]  # "ice" -- renamed from "frost" 2026-09-04
 	assert_array(item.validate()).is_empty()
 
 

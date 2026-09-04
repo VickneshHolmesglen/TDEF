@@ -12,5 +12,5 @@ base_stats = {}
 rarity = ""
 equipment_category = ""
 requires_tag = ""
-requires_damage_type = Array[String](["fire", "frost", "poison", "lightning", "arcane"])
+requires_damage_type = Array[String](["fire", "ice", "poison", "lightning", "arcane"])
 requires_secondary_effect = Array[String]([])

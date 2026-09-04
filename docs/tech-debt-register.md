@@ -2420,3 +2420,37 @@ No test caught this: the only existing skill-cooldown self-populate test asserte
 - [x] New/updated test coverage added, closing the real gap that let this ship undetected.
 - [x] Targeted gdUnit4 regression run 2026-09-02: `tests/unit/hero`, `tests/unit/game_data_registry`, `tests/unit/hero-skill-build`, `tests/integration/hero-skill-build`, `tests/integration/hero-skill-build-screen` — 194/194 passing, 0 errors, 0 failures. 37 orphans, isolated to `game_data_registry_test.gd` alone (unmodified by this fix) — confirmed pre-existing baseline noise, not a regression, matching this project's own established TD-test-001/002/004/006 precedent for that suite.
 - [x] This entry closed (2026-09-02).
+
+---
+
+## TD-hero-skill-003 — Damage-classification reclassification pass: open items not yet decided (open)
+
+**Logged**: 2026-09-04 (player-directed reclassification of Hero skill damage types)
+**Severity**: Low — content-authoring completeness gap, not a bug. Nothing shipped is broken; some real content (`poison`, used by `elem_poison_nova`) simply carries no classification tags yet.
+**Area**: `src/core/hero_skill_effect_resource.gd` (`VALID_TAGS`, `VALID_DAMAGE_TYPES`), `assets/data/skills/definitions/*.tres`
+
+### What landed this pass
+
+Player-directed reclassification of Hero skill damage types into a tag-based taxonomy (own `tags` array, not a separate lookup table):
+- **Basic Elemental** (fire, water, earth, wind): own name + `Basic` + `Elemental` + `DifferentDamage`. Only `fire` has real content today (3 skills) — water/earth/wind added to nothing yet, no content authored.
+- **Advanced Elemental** (ice, lightning, light, dark, solar, steam, spark): `Advanced` + `Elemental` + `DifferentDamage`, no self-name tag. `ice` (renamed from `frost` — same type, name only) and `lightning` have real content (5 skills total); light/dark/solar/steam/spark have none yet.
+- **Magic** (arcane): `Basic` + `Magic` + `DifferentDamage`, no self-name tag. No skill currently authors `arcane` as its `damage_type` — classification is ready, unused.
+- `physical` and `""` (non-damage support/buff skills): no classification tags — this is the deliberate baseline `DifferentDamage` is relative to.
+- `frost` → `ice` renamed everywhere it appeared for Hero skills (`HeroSkillEffectResource.VALID_DAMAGE_TYPES`, the 3 affected skills' `damage_type`, and the 2 skill-modifier items — `sup_mod_elemental_focus`, `sup_mod_arcane_surge` — whose `requires_damage_type` arrays included it). **Tower's own `WeaponComponent.element` still uses `frost`** — deliberately not touched, out of scope for this pass (player asked to rework skill classifications, not tower weapons).
+
+### Explicitly open — do not guess, ask the player first
+
+- **`poison`'s classification is undecided.** Real, shipped content (`elem_poison_nova`) carries `damage_type="poison"` but no classification tags. Player: "I haven't classified poison yet."
+- **`bleed` (a future, not-yet-authored damage_type)**: player said "Bleed gets 'physical'" — whether that means bleed's classification is just `Physical` alone, or `Physical` + a `DoT` tag (not currently in `VALID_TAGS` at all), is unresolved. `DoT` is not yet a defined tag anywhere in this codebase.
+- **`haemorrhage`**: player named this as a future "advanced" version of bleed, explicitly not built yet — no `damage_type` value, no content, not scoped.
+- **`ItemDefinitionResource.VALID_REQUIRES_TAGS`** (skill-modifier `requires_tag` compatibility) intentionally does NOT include the new classification tags (Fire/Basic/Elemental/etc.) — no skill-modifier currently needs to gate on a damage classification. If one ever does, that list needs extending too.
+
+### Recommended fix
+
+None of this is fixable independently — every remaining item requires a player design decision (poison's category; whether DoT needs its own tag; when/if water/earth/wind/light/dark/solar/steam/spark/arcane/bleed/haemorrhage get real content). **Player's own explicit instruction (2026-09-04): raise this proactively whenever asked to work on things related to Hero skills, skill content, or damage types — don't wait to be asked.**
+
+### Resolution
+- [x] Confirmed portion implemented and tested 2026-09-04 (287/287 passing, 0 errors, 0 failures) — see "What landed this pass" above.
+- [ ] `poison` classification — open, player-owned decision.
+- [ ] `DoT` tag shape for bleed/haemorrhage — open, player-owned decision.
+- [ ] This entry stays open until the remaining classification decisions are made.
