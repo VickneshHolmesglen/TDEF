@@ -47,3 +47,20 @@ var last_scatter_target_id: int = -1
 ## decay timer at all rather than a simple "reapply forever" flag.
 var damage_buff_fraction: float = 0.0
 var damage_buff_remaining: float = 0.0
+
+## tower.md Rule 23 (TowerWaveSummary) -- per-wave engagement counters,
+## accumulated during WAVE_ACTIVE by TowerSystem._try_attack()/
+## _apply_splash_damage(), reset to these defaults on wave_started (mirroring
+## scatter_index/last_scatter_target_id's own identical reset above), read
+## and emitted once per tower on wave_completed, per active tower.
+var shots_fired: int = 0
+var damage_dealt: float = 0.0
+var idle_ticks: int = 0
+## Support/AURA only -- number of tower_aura_pulse emissions this wave.
+## Always 0 for non-Support archetypes (this tower's weapon never takes the
+## AURA branch in _try_attack(), so this field is simply never incremented).
+var aura_applications_this_wave: int = 0
+## SCATTER Focus only -- entity_id -> hit_count for every target that
+## received at least one confirmed shot this wave. Empty for non-SCATTER
+## towers (never written to).
+var scatter_target_cycle: Dictionary = {}  ## Dictionary[int, int]

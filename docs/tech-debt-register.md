@@ -2454,3 +2454,28 @@ None of this is fixable independently — every remaining item requires a player
 - [ ] `poison` classification — open, player-owned decision.
 - [ ] `DoT` tag shape for bleed/haemorrhage — open, player-owned decision.
 - [ ] This entry stays open until the remaining classification decisions are made.
+
+---
+
+## TD-tower-010 — Tower HP never reset between waves; `tower_wave_summary` never emitted at all (fixed)
+
+**Logged**: 2026-09-05 (found while implementing a fork-subagent survey finding, fixed same session)
+**Severity**: High — a real, live gameplay bug, not just missing telemetry. `tower_system.gd` had no `wave_completed` subscription anywhere in the file; `TowerMissionState.current_hp` was only ever set once, at placement (`current_hp = max_hp`). Boss damage taken by a tower in one wave carried over permanently into every subsequent wave for that tower's entire mission lifetime, directly contradicting `tower.md` Rule 23's own text ("a tower that survives a wave at 1 HP begins the next wave at full HP"). The `tower_wave_summary` event itself (payload class `TowerWaveSummary`, `src/foundation/event_bus/event_payloads/tower_wave_summary.gd`, already fully built) was never emitted by anything, so no downstream consumer could ever have observed a tower's per-wave engagement stats either.
+**Area**: `src/core/tower/tower_system.gd`, `src/core/tower/tower_mission_state.gd`
+
+### Gap
+
+A fork-subagent survey (dispatched to hunt for "GDD says X, code does Y" bugs in systems not otherwise touched this session, matching `TD-hero-006`'s class) flagged that `tower_wave_summary` is never emitted. Investigating the emission gap surfaced a larger root cause: `_on_wave_started()` existed (resetting SCATTER's `scatter_index`/`last_scatter_target_id`), but no `_on_wave_completed()` handler, and no `GEventBus.wave_completed` subscription, existed anywhere in `tower_system.gd` — confirmed by grepping the whole file for `wave_completed` and for every `current_hp =` assignment (exactly one hit, at placement). Rule 23 bundles both halves as one rule: HP resets to Foundation-defined max on `wave_completed`, AND the Tower System emits `tower_wave_summary` once per active tower immediately after that reset — neither half was implemented.
+
+### Fix implemented (2026-09-05)
+
+- `TowerMissionState` (`tower_mission_state.gd`) gained 5 new per-wave counters: `shots_fired`, `damage_dealt`, `idle_ticks`, `aura_applications_this_wave` (Support/AURA only), `scatter_target_cycle` (SCATTER Focus only, `Dictionary[int,int]` entity_id→hit_count).
+- `tower_system.gd` now subscribes to `GEventBus.wave_completed` in `_ready()`/unsubscribes in `_exit_tree()`.
+- `_on_wave_started()` extended to also reset the 5 new counters (mirrors the existing SCATTER reset).
+- New `_on_wave_completed()` handler: for every active tower, resets `current_hp = max_hp`, then constructs and emits a fully-populated `TowerWaveSummary`.
+- `_try_attack()` now increments `idle_ticks` on both no-valid-target paths, `aura_applications_this_wave` on the AURA branch, and calls a new `_record_shot()` helper (increments `shots_fired`/`damage_dealt`, and `scatter_target_cycle` for SCATTER towers) only on a confirmed successful fire (after `ProjectileManager.fire()` succeeds for BALLISTIC/HOMING, or immediately for BEAM).
+- `_apply_splash_damage()` adds splash damage to `damage_dealt` (not to `shots_fired`/`scatter_target_cycle` — splash is real damage but not itself a distinct shot, per Rule 23's own AC wording).
+
+### Resolution
+- [x] Fixed 2026-09-05 — HP-reset mechanic and `tower_wave_summary` emission both implemented and wired together, matching Rule 23's bundled contract.
+- [x] Regression tests added `tests/unit/tower/tower_wave_summary_test.gd` covering: HP reset after damage, counter accuracy (`shots_fired`/`idle_ticks`/`damage_dealt`), counter reset on the next `wave_started`, AURA/SCATTER-specific fields, and one-summary-per-active-tower.

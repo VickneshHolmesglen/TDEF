@@ -36,10 +36,11 @@ extends Node
 ## equip-time (EC-3/AC-16's equip-time half); the data-error runtime
 ## fallback ("lowest deck-slot index wins, log the rest as discarded") is
 ## explicitly Wave Manager's own consumption-side responsibility per the
-## GDD's own Formula F2 stacking-rule text — neither Wave Manager nor
-## Monster System subscribes to `mission_modifier_applied` yet (confirmed by
-## inspection), so that half is a genuine downstream gap, not fabricated
-## here. Tarot subscribes read-only to `run_modifier_selected` (Rule 8) —
+## GDD's own Formula F2 stacking-rule text. Both Wave Manager
+## (wave_manager.gd) and Monster System (monster_manager.gd) do subscribe to
+## `mission_modifier_applied` (confirmed by inspection, 2026-09-05) — the
+## F2 aggregation/clamping/stacking logic itself lives entirely on their
+## side, not here. Tarot subscribes read-only to `run_modifier_selected` (Rule 8) —
 ## `has_run_modifier_conflict()` is a queryable surface for a future Tarot
 ## Deck UI conflict indicator, never used to alter resolution logic.
 ##

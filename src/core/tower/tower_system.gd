@@ -116,6 +116,7 @@ func _ready() -> void:
 	GEventBus.monster_died.connect(_on_monster_died)
 	GEventBus.monster_breached.connect(_on_monster_breached)
 	GEventBus.wave_started.connect(_on_wave_started)
+	GEventBus.wave_completed.connect(_on_wave_completed)
 	GEventBus.boss_tower_attack_attempted.connect(_on_boss_tower_attack_attempted)
 	GEventBus.tower_sell_requested.connect(_on_tower_sell_requested)
 
@@ -127,6 +128,7 @@ func _exit_tree() -> void:
 	GEventBus.monster_died.disconnect(_on_monster_died)
 	GEventBus.monster_breached.disconnect(_on_monster_breached)
 	GEventBus.wave_started.disconnect(_on_wave_started)
+	GEventBus.wave_completed.disconnect(_on_wave_completed)
 	GEventBus.boss_tower_attack_attempted.disconnect(_on_boss_tower_attack_attempted)
 	GEventBus.tower_sell_requested.disconnect(_on_tower_sell_requested)
 
@@ -405,11 +407,14 @@ func _try_attack(state: TowerMissionState) -> void:
 		pulse.aura_radius_cells = state.weapon.aura_radius_cells
 		GEventBus.tower_aura_pulse.emit(pulse)
 		_apply_aura_pulse(state)
+		state.aura_applications_this_wave += 1  # tower.md Rule 23
 		return
 	var target_id: int = _find_target(state)
 	if target_id == -1:
+		state.idle_ticks += 1  # tower.md Rule 23 -- timer expired, no valid target
 		return
 	if not _monster_cache.has(target_id):
+		state.idle_ticks += 1  # rare race: target vanished between selection and lookup
 		return
 	var entry: Dictionary = _monster_cache[target_id] as Dictionary
 	var is_armored: bool = entry["is_armored"] as bool
@@ -468,12 +473,30 @@ func _try_attack(state: TowerMissionState) -> void:
 				origin_world, target_id, target_world, payload)
 		if not fired:
 			return  # pool exhausted -- shot silently dropped, per ADR-0019's graceful-degradation contract
+		_record_shot(state, target_id, damage)
 		return
 
 	# BEAM (the only remaining projectile_type here) — unchanged: immediate,
 	# no pool involvement, no flight delay.
 	GEventBus.tower_attacked.emit.call_deferred(state.tower_id, target_id, damage, is_siege, is_armored,
 			effect_type, effect_value, effect_duration, state.weapon.armor_penetration, is_crit)
+	_record_shot(state, target_id, damage)
+
+
+## tower.md Rule 23 (TowerWaveSummary): records one confirmed successful
+## attack against target_id -- called only once fire is certain to have
+## actually happened (after _projectile_manager.fire() returns true for
+## BALLISTIC/HOMING, or immediately for BEAM's synchronous path). damage_dealt
+## uses this primary hit's already-resolved damage value, matching Rule 23's
+## AC ("damage_dealt equals the sum of all damage_dealt fields across those
+## N tower_attacked events") -- splash damage to secondary targets is tracked
+## separately in _apply_splash_damage(), added to damage_dealt only (splash
+## is not itself a distinct "shot").
+func _record_shot(state: TowerMissionState, target_id: int, damage: float) -> void:
+	state.shots_fired += 1
+	state.damage_dealt += damage
+	if state.focus.targeting_mode == "SCATTER":
+		state.scatter_target_cycle[target_id] = int(state.scatter_target_cycle.get(target_id, 0)) + 1
 
 
 ## Formula 1c (design/gdd/tower.md) — every other monster within
@@ -500,6 +523,11 @@ func _apply_splash_damage(state: TowerMissionState, primary_id: int, primary_cel
 		var is_armored: bool = entry["is_armored"] as bool
 		GEventBus.tower_attacked.emit.call_deferred(state.tower_id, entity_id, splash_damage, is_siege,
 				is_armored, "", 0.0, 0.0, state.weapon.armor_penetration, is_crit)
+		# tower.md Rule 23: splash is real weapon damage delivered, so it
+		# counts toward damage_dealt -- but it is not itself a distinct
+		# "shot" (shots_fired/scatter_target_cycle are only touched by the
+		# primary hit in _record_shot(), not here).
+		state.damage_dealt += splash_damage
 
 
 ## TD-tower-008 fix — the buff-application half of TD-tower-007's original
@@ -861,11 +889,46 @@ func _on_monster_breached(entity_id: int, _monster_id: StringName, _tier: int) -
 
 ## tower.md Rule 15 (SCATTER): scatter_index/last_scatter_target_id reset to
 ## defaults at the start of every wave, for every currently-placed tower.
+## tower.md Rule 23: the 5 TowerWaveSummary counters reset the same way, same
+## trigger -- "Counters... are accumulated during WAVE_ACTIVE and reset at the
+## start of each new wave on wave_started."
 func _on_wave_started(_wave_number: int, _total_waves: int, _wave_difficulty: float) -> void:
 	for id: int in placed_towers:
 		var state: TowerMissionState = placed_towers[id] as TowerMissionState
 		state.scatter_index = 0
 		state.last_scatter_target_id = -1
+		state.shots_fired = 0
+		state.damage_dealt = 0.0
+		state.idle_ticks = 0
+		state.aura_applications_this_wave = 0
+		state.scatter_target_cycle = {}
+
+
+## tower.md Rule 23 (TD-tower-010, docs/tech-debt-register.md -- found and
+## fixed 2026-09-05): Tower HP previously never reset between waves at all --
+## no wave_completed subscription existed anywhere in this file, so
+## current_hp was only ever set once, at placement. A tower that survived a
+## wave damaged carried that damage permanently into every subsequent wave,
+## directly contradicting this rule's own text ("a tower that survives a
+## wave at 1 HP begins the next wave at full HP"). Also the direct cause of
+## `tower_wave_summary` never being emitted -- the GDD bundles both in the
+## same rule ("after HP resets, the Tower System emits tower_wave_summary
+## once per active tower"). Fixed together: reset HP to max, then emit the
+## summary reading the counters _on_wave_started() resets at the top of the
+## NEXT wave (so this wave's own totals are still intact when read here).
+func _on_wave_completed(_wave_number: int, _enemies_remaining: int, _was_boss_breached: bool) -> void:
+	for id: int in placed_towers:
+		var state: TowerMissionState = placed_towers[id] as TowerMissionState
+		state.current_hp = state.max_hp
+		var summary := TowerWaveSummary.new()
+		summary.tower_id = id
+		summary.max_hp = state.max_hp
+		summary.shots_fired = state.shots_fired
+		summary.damage_dealt = state.damage_dealt
+		summary.idle_ticks = state.idle_ticks
+		summary.aura_applications_this_wave = state.aura_applications_this_wave
+		summary.scatter_target_cycle = state.scatter_target_cycle.duplicate()
+		GEventBus.tower_wave_summary.emit(summary)
 
 # ---------------------------------------------------------------------------
 # Phase and resource tracking
