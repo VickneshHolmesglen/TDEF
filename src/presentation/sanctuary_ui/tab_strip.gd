@@ -398,12 +398,32 @@ func _build_buttons() -> void:
 		if index in BADGE_ELIGIBLE_INDICES:
 			var badge := Label.new()
 			badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			badge.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+			button.add_child(badge)
+			# Explicit fixed 20x20 rect, anchored to the button's top-right
+			# corner and inset 4px on both axes (found 2026-09-08, S9-02
+			# playtest): the original bare Label had no min size and no
+			# offset, so it shrank to fit only its own digit glyph pinned
+			# flush to the button's exact corner -- a near-invisible sliver
+			# against a 56x56 button. Set AFTER add_child so the anchor math
+			# resolves against the real parent rect, not an unparented
+			# Control's stale/zeroed size (set_anchors_and_offsets_preset
+			# before add_child was tried first and produced a badge
+			# positioned outside the button's own bounds entirely).
+			badge.anchor_left = 1.0
+			badge.anchor_right = 1.0
+			badge.anchor_top = 0.0
+			badge.anchor_bottom = 0.0
+			badge.offset_right = -4.0
+			badge.offset_left = -24.0
+			badge.offset_top = 4.0
+			badge.offset_bottom = 24.0
+			badge.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			badge.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+			badge.add_theme_font_size_override("font_size", 14)
 			badge.add_theme_stylebox_override("normal", ShellChromeStyle.badge_stylebox())
 			badge.add_theme_color_override("font_color", ShellChromeStyle.UI_CHROME)
-			badge.pivot_offset = Vector2(8, 8)
+			badge.pivot_offset = Vector2(10, 10)
 			badge.visible = false
-			button.add_child(badge)
 			_badges[index] = badge
 			_badge_counts[index] = 0
 
