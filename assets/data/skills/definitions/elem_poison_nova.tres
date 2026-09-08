@@ -10,7 +10,7 @@ damage_type = "poison"
 delivery = "aoe_zone"
 skill_power_coefficient = 0.9
 secondary_effect = "dot_poison"
-tags = Array[String](["Area"])
+tags = Array[String](["Area", "Poison", "Basic", "Elemental", "DifferentDamage"])
 
 [resource]
 script = ExtResource("1_def")

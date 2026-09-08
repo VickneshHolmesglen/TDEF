@@ -59,20 +59,21 @@ const VALID_SECONDARY_EFFECTS: Array[String] = [
 	"slow", "knockback", "armor_shred", "dot_burn", "dot_poison", "chain", "fork", "stun", "lifesteal_bonus", "none",
 ]
 ## Damage-classification tags (2026-09-04, player-directed reclassification
-## pass — `docs/tech-debt-register.md` TD-hero-skill-003 has the full open/
-## closed breakdown). Authored directly onto each damage-dealing skill's own
-## `tags` array (not a separate central lookup table — same authoring
-## convention as the pre-existing delivery-shape tags), per damage_type:
-##   fire/water/earth/wind ("Basic Elemental")  -> own name + Basic + Elemental + DifferentDamage
+## pass — `docs/tech-debt-register.md` TD-hero-skill-003 has the full history).
+## Authored directly onto each damage-dealing skill's own `tags` array (not a
+## separate central lookup table — same authoring convention as the
+## pre-existing delivery-shape tags), per damage_type:
+##   fire/water/earth/wind/poison ("Basic Elemental") -> own name + Basic + Elemental + DifferentDamage
 ##   ice/lightning/light/dark/solar/steam/spark ("Advanced Elemental") -> Advanced + Elemental + DifferentDamage (no own-name tag)
 ##   arcane ("Magic")                            -> Basic + Magic + DifferentDamage (no own-name tag)
 ##   physical, "" (no damage_type)                -> no classification tags at all
-## Explicitly NOT yet classified — do not guess, ask the player first:
-##   poison — player has not decided its classification yet
-##   bleed/haemorrhage (physical-lineage DoT family, "Bleed gets 'physical'"
-##     per the player) — bleed is a future new damage_type, not yet
-##     authored on any skill; whether it also needs a "DoT" tag alongside
-##     "Physical" is unresolved
+##   bleed/haemorrhage (future, not-yet-authored physical-lineage DoT family) ->
+##     Physical + DoT (player decision, 2026-09-08: "Bleed gets 'physical'" plus
+##     a dedicated DoT tag, not Physical alone) — no `damage_type` value exists
+##     for either yet, so no skill carries this combination today; the DoT tag
+##     is added to VALID_TAGS in advance of that content, not speculatively used.
+## poison classified 2026-09-08 (player decision): Basic Elemental, same
+## treatment as fire — see `elem_poison_nova.tres`.
 ## Player's own framing: "we can add more tags/classification as necessary
 ## later" — this list grows as real content needs new values, same pattern
 ## as VALID_DAMAGE_TYPES above.
@@ -86,7 +87,7 @@ const VALID_SECONDARY_EFFECTS: Array[String] = [
 ## drift further out of sync without a reader knowing why.
 const VALID_TAGS: Array[String] = [
 	"Area", "Projectile", "Duration", "Channeling", "Totem", "Melee", "Ranged", "Buff",
-	"Fire", "Water", "Earth", "Wind", "Basic", "Advanced", "Elemental", "Magic", "DifferentDamage", "Physical",
+	"Fire", "Water", "Earth", "Wind", "Poison", "Basic", "Advanced", "Elemental", "Magic", "DifferentDamage", "Physical", "DoT",
 ]
 
 

@@ -2423,7 +2423,7 @@ No test caught this: the only existing skill-cooldown self-populate test asserte
 
 ---
 
-## TD-hero-skill-003 — Damage-classification reclassification pass: open items not yet decided (open)
+## TD-hero-skill-003 — Damage-classification reclassification pass: open items not yet decided (fixed)
 
 **Logged**: 2026-09-04 (player-directed reclassification of Hero skill damage types)
 **Severity**: Low — content-authoring completeness gap, not a bug. Nothing shipped is broken; some real content (`poison`, used by `elem_poison_nova`) simply carries no classification tags yet.
@@ -2438,22 +2438,18 @@ Player-directed reclassification of Hero skill damage types into a tag-based tax
 - `physical` and `""` (non-damage support/buff skills): no classification tags — this is the deliberate baseline `DifferentDamage` is relative to.
 - `frost` → `ice` renamed everywhere it appeared for Hero skills (`HeroSkillEffectResource.VALID_DAMAGE_TYPES`, the 3 affected skills' `damage_type`, and the 2 skill-modifier items — `sup_mod_elemental_focus`, `sup_mod_arcane_surge` — whose `requires_damage_type` arrays included it). **Tower's own `WeaponComponent.element` still uses `frost`** — deliberately not touched, out of scope for this pass (player asked to rework skill classifications, not tower weapons).
 
-### Explicitly open — do not guess, ask the player first
+### Resolved 2026-09-08 (player decisions)
 
-- **`poison`'s classification is undecided.** Real, shipped content (`elem_poison_nova`) carries `damage_type="poison"` but no classification tags. Player: "I haven't classified poison yet."
-- **`bleed` (a future, not-yet-authored damage_type)**: player said "Bleed gets 'physical'" — whether that means bleed's classification is just `Physical` alone, or `Physical` + a `DoT` tag (not currently in `VALID_TAGS` at all), is unresolved. `DoT` is not yet a defined tag anywhere in this codebase.
-- **`haemorrhage`**: player named this as a future "advanced" version of bleed, explicitly not built yet — no `damage_type` value, no content, not scoped.
-- **`ItemDefinitionResource.VALID_REQUIRES_TAGS`** (skill-modifier `requires_tag` compatibility) intentionally does NOT include the new classification tags (Fire/Basic/Elemental/etc.) — no skill-modifier currently needs to gate on a damage classification. If one ever does, that list needs extending too.
-
-### Recommended fix
-
-None of this is fixable independently — every remaining item requires a player design decision (poison's category; whether DoT needs its own tag; when/if water/earth/wind/light/dark/solar/steam/spark/arcane/bleed/haemorrhage get real content). **Player's own explicit instruction (2026-09-04): raise this proactively whenever asked to work on things related to Hero skills, skill content, or damage types — don't wait to be asked.**
+- **`poison`'s classification**: **Basic Elemental**, same treatment as fire. `elem_poison_nova.tres`'s `tags` now reads `["Area", "Poison", "Basic", "Elemental", "DifferentDamage"]` (was `["Area"]`).
+- **`bleed` (still a future, not-yet-authored `damage_type`)**: **Physical + a new `DoT` tag**, not `Physical` alone. `DoT` added to `HeroSkillEffectResource.VALID_TAGS` in advance of that content — no skill carries it yet, since neither `bleed` nor `haemorrhage` has a `damage_type` value or any authored content.
+- **`haemorrhage`**: still named only as a future "advanced" version of bleed — no `damage_type` value, no content, not scoped. Unaffected by this pass.
+- **`ItemDefinitionResource.VALID_REQUIRES_TAGS`** (skill-modifier `requires_tag` compatibility) still intentionally does NOT include the classification tags (Fire/Basic/Elemental/Poison/DoT/etc.) — no skill-modifier currently needs to gate on a damage classification. Unchanged by this pass; extend if one ever does.
 
 ### Resolution
 - [x] Confirmed portion implemented and tested 2026-09-04 (287/287 passing, 0 errors, 0 failures) — see "What landed this pass" above.
-- [ ] `poison` classification — open, player-owned decision.
-- [ ] `DoT` tag shape for bleed/haemorrhage — open, player-owned decision.
-- [ ] This entry stays open until the remaining classification decisions are made.
+- [x] `poison` classification resolved and implemented 2026-09-08 — Basic Elemental.
+- [x] `DoT` tag added to `VALID_TAGS` 2026-09-08 (bleed/haemorrhage still have no content to apply it to).
+- [x] Entry closed — no further open items.
 
 ---
 
