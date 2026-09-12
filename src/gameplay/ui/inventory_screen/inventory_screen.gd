@@ -127,14 +127,19 @@ const TOWER_PART_SHAPES: Array[String] = [
 const TOWER_BASE_ART_PATH_FORMAT: String = "res://assets/art/towers/tower_base_%s.png"
 const TOWER_SHAFT_ART_PATH_FORMAT: String = "res://assets/art/towers/tower_shaft_%s.png"
 const TOWER_TOP_ART_PATH_FORMAT: String = "res://assets/art/towers/tower_top_%s.png"
-## 20% smaller than the original 96.0 (player-requested, 2026-08-21).
-const TOWER_PART_DISPLAY_HEIGHT: float = 76.8
+## 96.0 -> 76.8 (20% smaller, player-requested 2026-08-21) -> 40.0 -> 24.0
+## (player-requested 2026-09-12 twice in the same session: first "still
+## oversized at 76.8," then -- after the name labels below the icon were
+## removed -- "some components are out of bounds on screen," since all 3
+## panels' 9-shape grids stacked in LeftPanel still overflowed the viewport
+## at 40.0 with no scroll to reach the clipped rows).
+const TOWER_PART_DISPLAY_HEIGHT: float = 24.0
 const TOWER_PART_GRID_COLUMNS: int = 3
-## Spacing readjusted alongside the 20% size reduction -- tighter gaps read
-## correctly at the smaller scale instead of leaving the same absolute gap
-## proportionally larger than before.
-const TOWER_PART_GRID_SEPARATION: int = 6
-const TOWER_PART_ENTRY_SEPARATION: int = 2
+## 6 -> 4 alongside the 40.0 icon-size reduction, then 14 (spread-out
+## request), settled back down to 8 alongside the 24.0 reduction + label
+## removal -- less per-entry height now needs less breathing room to avoid
+## reading as cramped.
+const TOWER_PART_GRID_SEPARATION: int = 8
 
 ## Injectable for tests (a caller may still supply an isolated Inventory
 ## instance). In real use, defaults to the real GInventory Autoload (ADR-0016,
@@ -193,17 +198,50 @@ const TOWER_PART_ENTRY_SEPARATION: int = 2
 @onready var _repair_empty_label: Label = $MainLayout/RightPanel/RightPanelContent/RepairView/RepairListHost/RepairEmptyLabel
 @onready var _assemble_view: Control = $MainLayout/RightPanel/RightPanelContent/AssembleView
 @onready var _assemble_slot_lists: Dictionary[String, VBoxContainer] = {
-	"foundation": $MainLayout/RightPanel/RightPanelContent/AssembleView/SlotColumns/FoundationColumn/FoundationList,
-	"weapon": $MainLayout/RightPanel/RightPanelContent/AssembleView/SlotColumns/WeaponColumn/WeaponList,
-	"focus": $MainLayout/RightPanel/RightPanelContent/AssembleView/SlotColumns/FocusColumn/FocusList,
-	"power": $MainLayout/RightPanel/RightPanelContent/AssembleView/SlotColumns/PowerColumn/PowerList,
-	"shaft": $MainLayout/RightPanel/RightPanelContent/AssembleView/SlotColumns/ShaftColumn/ShaftList,
-	"top": $MainLayout/RightPanel/RightPanelContent/AssembleView/SlotColumns/TopColumn/TopList,
+	"foundation": $MainLayout/RightPanel/RightPanelContent/AssembleView/FoundationColumn/FoundationScroll/FoundationList,
+	"weapon": $MainLayout/RightPanel/RightPanelContent/AssembleView/WeaponColumn/WeaponScroll/WeaponList,
+	"focus": $MainLayout/RightPanel/RightPanelContent/AssembleView/FocusColumn/FocusScroll/FocusList,
+	"power": $MainLayout/RightPanel/RightPanelContent/AssembleView/PowerColumn/PowerScroll/PowerList,
+	"shaft": $MainLayout/RightPanel/RightPanelContent/AssembleView/ShaftColumn/ShaftScroll/ShaftList,
+	"top": $MainLayout/RightPanel/RightPanelContent/AssembleView/TopColumn/TopScroll/TopList,
 }
-@onready var _assembled_list: VBoxContainer = $MainLayout/RightPanel/RightPanelContent/AssembleView/SlotColumns/AssembledColumn/AssembledList
+@onready var _assembled_list: VBoxContainer = $MainLayout/RightPanel/RightPanelContent/AssembleView/AssembledColumn/AssembledScroll/AssembledList
 @onready var _assemble_name_edit: LineEdit = $MainLayout/RightPanel/RightPanelContent/AssembleView/AssembleFooter/AssembleNameEdit
 @onready var _assemble_button: Button = $MainLayout/RightPanel/RightPanelContent/AssembleView/AssembleFooter/AssembleButton
 @onready var _assemble_confirm_dialog: ConfirmationDialog = $AssembleConfirmDialog
+
+## Assemble Towers tab's own sub-tab strip (2026-09-12, player-requested): the
+## 7 component/assembled-tower categories no longer render as 7 simultaneous
+## side-by-side columns -- at RightPanel's real ~420px width that squeezed
+## every column to unreadable, overlapping-label narrowness before a single
+## owned component button was even added (confirmed via live Godot MCP
+## screenshot: "Assembled Towers" clipped off the right edge with the panel
+## still empty). One category visible at a time, selected by this tab strip,
+## mirrors CraftingTabStrip's own established Recipes/Assemble/Repair
+## sub-tab convention one level up (_on_crafting_tab_pressed).
+@onready var _assemble_slot_tab_buttons: Dictionary[String, Button] = {
+	"foundation": $MainLayout/RightPanel/RightPanelContent/AssembleView/AssembleSlotTabStrip/FoundationTabButton,
+	"weapon": $MainLayout/RightPanel/RightPanelContent/AssembleView/AssembleSlotTabStrip/WeaponTabButton,
+	"focus": $MainLayout/RightPanel/RightPanelContent/AssembleView/AssembleSlotTabStrip/FocusTabButton,
+	"power": $MainLayout/RightPanel/RightPanelContent/AssembleView/AssembleSlotTabStrip/PowerTabButton,
+	"shaft": $MainLayout/RightPanel/RightPanelContent/AssembleView/AssembleSlotTabStrip/ShaftTabButton,
+	"top": $MainLayout/RightPanel/RightPanelContent/AssembleView/AssembleSlotTabStrip/TopTabButton,
+	"assembled": $MainLayout/RightPanel/RightPanelContent/AssembleView/AssembleSlotTabStrip/AssembledTabButton,
+}
+## Same 7 keys as _assemble_slot_tab_buttons -- "assembled" here maps to
+## AssembledColumn (owned Tower Components use _assemble_slot_lists, keyed by
+## SLOT_KEYS only; this dict additionally covers the read-only Assembled
+## Towers panel so both share one visibility-toggle code path).
+@onready var _assemble_slot_columns: Dictionary[String, Control] = {
+	"foundation": $MainLayout/RightPanel/RightPanelContent/AssembleView/FoundationColumn,
+	"weapon": $MainLayout/RightPanel/RightPanelContent/AssembleView/WeaponColumn,
+	"focus": $MainLayout/RightPanel/RightPanelContent/AssembleView/FocusColumn,
+	"power": $MainLayout/RightPanel/RightPanelContent/AssembleView/PowerColumn,
+	"shaft": $MainLayout/RightPanel/RightPanelContent/AssembleView/ShaftColumn,
+	"top": $MainLayout/RightPanel/RightPanelContent/AssembleView/TopColumn,
+	"assembled": $MainLayout/RightPanel/RightPanelContent/AssembleView/AssembledColumn,
+}
+var _active_assemble_slot: String = "foundation"
 
 var _slot_buttons: Array[Button] = []
 var _slot_focus_rings: Array[Panel] = []
@@ -272,6 +310,8 @@ func _ready() -> void:
 	_repair_tab_button.pressed.connect(_on_repair_tab_pressed)
 	_assemble_button.pressed.connect(_on_assemble_button_pressed)
 	_assemble_confirm_dialog.confirmed.connect(_on_assemble_confirmed)
+	for slot: String in _assemble_slot_tab_buttons:
+		_assemble_slot_tab_buttons[slot].pressed.connect(_on_assemble_slot_tab_pressed.bind(slot))
 	_rebuild_assemble_lists()
 	_rebuild_repair_list()
 
@@ -441,21 +481,43 @@ func _build_tower_part_panel(panel: Control, header_name: String, translation_ke
 	grid.add_theme_constant_override("v_separation", TOWER_PART_GRID_SEPARATION)
 	panel.add_child(grid)
 
+	# One ButtonGroup per panel (Bases/Shafts/Tops each select independently)
+	# -- same toggle-strip convention _build_tab_strip already uses one level
+	# up, so at most one shape is highlighted per panel at a time.
+	var group := ButtonGroup.new()
 	for shape: String in TOWER_PART_SHAPES:
-		grid.add_child(_create_tower_part_entry(shape, entry_prefix, art_path_format))
+		grid.add_child(_create_tower_part_entry(shape, entry_prefix, art_path_format, group))
 
 
-## One tower-part entry: the alpha-cut art plus its shape name underneath
-## (e.g. "Round", "Hexplank") -- these have no display_name anywhere (no
+## One tower-part entry: the alpha-cut art only -- no name label underneath
+## (removed 2026-09-12, player-requested: with all 3 panels' 9-shape grids
+## stacked in LeftPanel, the label's added per-entry height was pushing the
+## Tops panel's bottom row off the bottom of the viewport with no scroll to
+## reach it). The shape id is still discoverable via tooltip_text rather
+## than lost outright -- these have no display_name anywhere (no
 ## ItemDefinitionResource exists for them, see TOWER_PART_SHAPES' own doc
 ## comment), so the shape id itself, title-cased, is the only name available.
-func _create_tower_part_entry(shape: String, entry_prefix: String, art_path_format: String) -> Control:
-	var entry := VBoxContainer.new()
+##
+## Clickable/selectable (2026-09-12, player-requested): previously a plain
+## VBoxContainer with no focus_mode and no pressed signal -- these shapes
+## still have no linked game data (no ItemDefinitionResource, not craftable/
+## ownable, per this class's own doc comment above), so selecting one has no
+## downstream effect yet. This makes the gallery a real focusable/toggleable
+## UI element rather than static art -- root is a Button so a click/focus
+## anywhere in the entry's rect registers, with the icon overlaid as a
+## MOUSE_FILTER_IGNORE child so it doesn't steal the click from the Button
+## underneath.
+func _create_tower_part_entry(shape: String, entry_prefix: String, art_path_format: String, group: ButtonGroup) -> Control:
+	var entry := Button.new()
 	entry.name = "%s_%s" % [entry_prefix, shape]
-	entry.add_theme_constant_override("separation", TOWER_PART_ENTRY_SEPARATION)
+	entry.toggle_mode = true
+	entry.button_group = group
+	entry.focus_mode = Control.FOCUS_ALL
+	entry.tooltip_text = shape.capitalize()
 
 	var texture: Texture2D = load(art_path_format % shape) as Texture2D
 	var icon := TextureRect.new()
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	# EXPAND_IGNORE_SIZE: the default expand_mode (EXPAND_KEEP_SIZE) reports a
 	# TextureRect's own native texture size as its minimum size, silently
@@ -467,15 +529,35 @@ func _create_tower_part_entry(shape: String, entry_prefix: String, art_path_form
 	# rediscovering the same bug a third time.
 	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	icon.texture = texture
+	var icon_width: float = TOWER_PART_DISPLAY_HEIGHT
 	if texture != null:
 		var aspect: float = float(texture.get_width()) / float(texture.get_height())
-		icon.custom_minimum_size = Vector2(TOWER_PART_DISPLAY_HEIGHT * aspect, TOWER_PART_DISPLAY_HEIGHT)
-	entry.add_child(icon)
+		icon_width = TOWER_PART_DISPLAY_HEIGHT * aspect
+		icon.custom_minimum_size = Vector2(icon_width, TOWER_PART_DISPLAY_HEIGHT)
 
-	var label := Label.new()
-	label.text = shape.capitalize()
-	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	entry.add_child(label)
+	# CenterContainer, not an anchor preset on the icon itself (2026-09-12,
+	# fixes a real misalignment player found live): Control.set_anchors_preset
+	# computes its offset from the control's CURRENT size at call time, but
+	# `icon` is freshly constructed here with no size yet (zero), and Button
+	# -- unlike the VBoxContainer this used to be -- is not a Container, so
+	# those anchors/offsets are never recalculated once the icon's real size
+	# is known later. The icon ended up with its top-left corner pinned to
+	# the button's center point rather than actually centered. CenterContainer
+	# is a real Container -- it centers `icon` correctly regardless of when
+	# the icon's size becomes known.
+	var center := CenterContainer.new()
+	center.name = "Center"
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	center.add_child(icon)
+	entry.add_child(center)
+	# entry.custom_minimum_size is set explicitly rather than relying on
+	# Button's own minimum-size calculation, which (unlike the VBoxContainer
+	# this used to be) does NOT account for arbitrary child Controls -- a
+	# real bug this project already found live: leaving it unset let
+	# GridContainer collapse every cell to Button's near-zero default,
+	# spilling icons into neighboring entries.
+	entry.custom_minimum_size = Vector2(icon_width, TOWER_PART_DISPLAY_HEIGHT)
 
 	return entry
 
@@ -993,6 +1075,21 @@ func _on_crafting_tab_pressed(show_assemble: bool) -> void:
 
 func is_showing_assemble() -> bool:
 	return _showing_assemble
+
+
+## One category column visible at a time (see _assemble_slot_tab_buttons/
+## _assemble_slot_columns' own doc comment for why). Selections already made
+## in other categories are untouched -- _assemble_selection is keyed
+## independently of which column is currently on screen.
+func _on_assemble_slot_tab_pressed(slot: String) -> void:
+	_active_assemble_slot = slot
+	for key: String in _assemble_slot_columns:
+		_assemble_slot_columns[key].visible = key == slot
+		_assemble_slot_tab_buttons[key].button_pressed = key == slot
+
+
+func get_active_assemble_slot() -> String:
+	return _active_assemble_slot
 
 
 # ---------------------------------------------------------------------------

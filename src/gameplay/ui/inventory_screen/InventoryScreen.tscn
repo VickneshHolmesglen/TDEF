@@ -112,87 +112,170 @@ layout_mode = 2
 size_flags_vertical = 3
 theme_override_constants/separation = 8
 
-[node name="SlotColumns" type="HBoxContainer" parent="MainLayout/RightPanel/RightPanelContent/AssembleView"]
+[node name="AssembleSlotTabStrip" type="HBoxContainer" parent="MainLayout/RightPanel/RightPanelContent/AssembleView"]
 layout_mode = 2
-size_flags_vertical = 3
-theme_override_constants/separation = 16
+theme_override_constants/separation = 4
 
-[node name="FoundationColumn" type="VBoxContainer" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/SlotColumns"]
+[node name="FoundationTabButton" type="Button" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/AssembleSlotTabStrip"]
 layout_mode = 2
 size_flags_horizontal = 3
+toggle_mode = true
+button_pressed = true
+text = "Foundation"
 
-[node name="FoundationLabel" type="Label" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/SlotColumns/FoundationColumn"]
+[node name="WeaponTabButton" type="Button" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/AssembleSlotTabStrip"]
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+text = "Weapon"
+
+[node name="FocusTabButton" type="Button" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/AssembleSlotTabStrip"]
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+text = "Focus"
+
+[node name="PowerTabButton" type="Button" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/AssembleSlotTabStrip"]
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+text = "Power"
+
+[node name="ShaftTabButton" type="Button" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/AssembleSlotTabStrip"]
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+text = "Shaft"
+
+[node name="TopTabButton" type="Button" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/AssembleSlotTabStrip"]
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+text = "Top"
+
+[node name="AssembledTabButton" type="Button" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/AssembleSlotTabStrip"]
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+text = "Assembled"
+
+[node name="FoundationColumn" type="VBoxContainer" parent="MainLayout/RightPanel/RightPanelContent/AssembleView"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="FoundationLabel" type="Label" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/FoundationColumn"]
 layout_mode = 2
 text = "Foundation"
 
-[node name="FoundationList" type="VBoxContainer" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/SlotColumns/FoundationColumn"]
+[node name="FoundationScroll" type="ScrollContainer" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/FoundationColumn"]
 layout_mode = 2
+size_flags_vertical = 3
 
-[node name="WeaponColumn" type="VBoxContainer" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/SlotColumns"]
+[node name="FoundationList" type="VBoxContainer" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/FoundationColumn/FoundationScroll"]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="WeaponLabel" type="Label" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/SlotColumns/WeaponColumn"]
+[node name="WeaponColumn" type="VBoxContainer" parent="MainLayout/RightPanel/RightPanelContent/AssembleView"]
+visible = false
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="WeaponLabel" type="Label" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/WeaponColumn"]
 layout_mode = 2
 text = "Weapon"
 
-[node name="WeaponList" type="VBoxContainer" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/SlotColumns/WeaponColumn"]
+[node name="WeaponScroll" type="ScrollContainer" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/WeaponColumn"]
 layout_mode = 2
+size_flags_vertical = 3
 
-[node name="FocusColumn" type="VBoxContainer" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/SlotColumns"]
+[node name="WeaponList" type="VBoxContainer" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/WeaponColumn/WeaponScroll"]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="FocusLabel" type="Label" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/SlotColumns/FocusColumn"]
+[node name="FocusColumn" type="VBoxContainer" parent="MainLayout/RightPanel/RightPanelContent/AssembleView"]
+visible = false
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="FocusLabel" type="Label" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/FocusColumn"]
 layout_mode = 2
 text = "Focus"
 
-[node name="FocusList" type="VBoxContainer" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/SlotColumns/FocusColumn"]
+[node name="FocusScroll" type="ScrollContainer" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/FocusColumn"]
 layout_mode = 2
+size_flags_vertical = 3
 
-[node name="PowerColumn" type="VBoxContainer" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/SlotColumns"]
+[node name="FocusList" type="VBoxContainer" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/FocusColumn/FocusScroll"]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="PowerLabel" type="Label" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/SlotColumns/PowerColumn"]
+[node name="PowerColumn" type="VBoxContainer" parent="MainLayout/RightPanel/RightPanelContent/AssembleView"]
+visible = false
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="PowerLabel" type="Label" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/PowerColumn"]
 layout_mode = 2
 text = "Power"
 
-[node name="PowerList" type="VBoxContainer" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/SlotColumns/PowerColumn"]
+[node name="PowerScroll" type="ScrollContainer" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/PowerColumn"]
 layout_mode = 2
+size_flags_vertical = 3
 
-[node name="ShaftColumn" type="VBoxContainer" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/SlotColumns"]
+[node name="PowerList" type="VBoxContainer" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/PowerColumn/PowerScroll"]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="ShaftLabel" type="Label" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/SlotColumns/ShaftColumn"]
+[node name="ShaftColumn" type="VBoxContainer" parent="MainLayout/RightPanel/RightPanelContent/AssembleView"]
+visible = false
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="ShaftLabel" type="Label" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/ShaftColumn"]
 layout_mode = 2
 text = "Shaft"
 
-[node name="ShaftList" type="VBoxContainer" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/SlotColumns/ShaftColumn"]
+[node name="ShaftScroll" type="ScrollContainer" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/ShaftColumn"]
 layout_mode = 2
+size_flags_vertical = 3
 
-[node name="TopColumn" type="VBoxContainer" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/SlotColumns"]
+[node name="ShaftList" type="VBoxContainer" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/ShaftColumn/ShaftScroll"]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="TopLabel" type="Label" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/SlotColumns/TopColumn"]
+[node name="TopColumn" type="VBoxContainer" parent="MainLayout/RightPanel/RightPanelContent/AssembleView"]
+visible = false
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="TopLabel" type="Label" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/TopColumn"]
 layout_mode = 2
 text = "Top"
 
-[node name="TopList" type="VBoxContainer" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/SlotColumns/TopColumn"]
+[node name="TopScroll" type="ScrollContainer" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/TopColumn"]
 layout_mode = 2
+size_flags_vertical = 3
 
-[node name="AssembledColumn" type="VBoxContainer" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/SlotColumns"]
+[node name="TopList" type="VBoxContainer" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/TopColumn/TopScroll"]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="AssembledLabel" type="Label" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/SlotColumns/AssembledColumn"]
+[node name="AssembledColumn" type="VBoxContainer" parent="MainLayout/RightPanel/RightPanelContent/AssembleView"]
+visible = false
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="AssembledLabel" type="Label" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/AssembledColumn"]
 layout_mode = 2
 text = "Assembled Towers"
 
-[node name="AssembledList" type="VBoxContainer" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/SlotColumns/AssembledColumn"]
+[node name="AssembledScroll" type="ScrollContainer" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/AssembledColumn"]
 layout_mode = 2
+size_flags_vertical = 3
+
+[node name="AssembledList" type="VBoxContainer" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/AssembledColumn/AssembledScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
 
 [node name="AssembleFooter" type="HBoxContainer" parent="MainLayout/RightPanel/RightPanelContent/AssembleView"]
 layout_mode = 2
