@@ -132,8 +132,12 @@ const TOWER_TOP_ART_PATH_FORMAT: String = "res://assets/art/towers/tower_top_%s.
 ## oversized at 76.8," then -- after the name labels below the icon were
 ## removed -- "some components are out of bounds on screen," since all 3
 ## panels' 9-shape grids stacked in LeftPanel still overflowed the viewport
-## at 40.0 with no scroll to reach the clipped rows).
-const TOWER_PART_DISPLAY_HEIGHT: float = 24.0
+## at 40.0 with no scroll to reach the clipped rows) -> 31.2 -> 40.56
+## (player-requested "+30%" twice in the same session, 2026-09-15 -- each
+## request applied on top of the prior value, not back to the 24.0 baseline;
+## re-verified live both times that all 3 panels' 27 shapes still fit the
+## viewport with no scroll needed).
+const TOWER_PART_DISPLAY_HEIGHT: float = 40.56
 const TOWER_PART_GRID_COLUMNS: int = 3
 ## 6 -> 4 alongside the 40.0 icon-size reduction, then 14 (spread-out
 ## request), settled back down to 8 alongside the 24.0 reduction + label
