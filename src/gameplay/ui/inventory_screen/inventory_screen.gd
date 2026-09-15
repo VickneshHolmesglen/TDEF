@@ -563,6 +563,20 @@ func _create_tower_part_entry(shape: String, entry_prefix: String, art_path_form
 	# spilling icons into neighboring entries.
 	entry.custom_minimum_size = Vector2(icon_width, TOWER_PART_DISPLAY_HEIGHT)
 
+	# Selected-state ring (2026-09-15, player-requested "make it clickable"
+	# after confirming live that entry.button_pressed genuinely does flip on
+	# click -- the gap was never the click itself, it was that nothing ever
+	# rendered the selection: the default Button pressed/normal styleboxes
+	# read as visually identical against this tile's icon-filled content, so
+	# a real, working click looked like it did nothing. ADR-0011's own
+	# FocusRingFactory overlay pattern (used elsewhere in this file for
+	# keyboard focus) applied here to selection instead -- toggled tracks
+	# button_pressed directly, including ButtonGroup-driven deselection when
+	# a sibling shape in the same panel is picked instead.
+	var selected_ring: Panel = FocusRingFactory.build(entry)
+	selected_ring.name = "SelectedRing"
+	entry.toggled.connect(func(is_selected: bool) -> void: selected_ring.visible = is_selected)
+
 	return entry
 
 
