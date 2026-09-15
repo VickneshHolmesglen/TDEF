@@ -138,7 +138,6 @@ const TOWER_TOP_ART_PATH_FORMAT: String = "res://assets/art/towers/tower_top_%s.
 ## re-verified live each time that all 3 panels' 27 shapes still fit the
 ## viewport with no scroll needed).
 const TOWER_PART_DISPLAY_HEIGHT: float = 48.672
-const TOWER_PART_GRID_COLUMNS: int = 3
 ## 6 -> 4 alongside the 40.0 icon-size reduction, then 14 (spread-out
 ## request), settled back down to 8 alongside the 24.0 reduction + label
 ## removal -- less per-entry height now needs less breathing room to avoid
@@ -465,7 +464,7 @@ func _build_tower_tops_panel() -> void:
 ## Shared builder for the three tower-part galleries (Bases/Shafts/Tops).
 ## `panel` is the placeholder Control from the .tscn to attach into;
 ## `header_name`/`translation_key` label the panel's own title;
-## `grid_name` names the GridContainer node for scene-tree legibility;
+## `grid_name` names the HFlowContainer node for scene-tree legibility;
 ## `entry_prefix` names each individual entry ("Base_round", "Shaft_round",
 ## "Top_round"); `art_path_format` selects which of the three asset sets
 ## (tower_base_/tower_shaft_/tower_top_) this panel draws from -- all three
@@ -478,9 +477,17 @@ func _build_tower_part_panel(panel: Control, header_name: String, translation_ke
 	header.add_theme_color_override("font_color", ShellChromeStyle.UI_PARCHMENT)
 	panel.add_child(header)
 
-	var grid := GridContainer.new()
+	# HFlowContainer, not GridContainer (2026-09-15, player-requested): a
+	# fixed 3-column GridContainer only ever used about a third of the real
+	# available width next to RightPanel, leaving the rest blank (confirmed
+	# by the player's own annotated screenshot, docs/Tower Components
+	# Layout.PNG, at a much wider actual window size than this project's
+	# 1280x720 MCP test resolution). HFlowContainer wraps entries
+	# left-to-right based on whatever width it's actually given, so it fills
+	# that space now and keeps reflowing correctly as more shapes are added
+	# later (the player's stated plan) without a column count to retune.
+	var grid := HFlowContainer.new()
 	grid.name = grid_name
-	grid.columns = TOWER_PART_GRID_COLUMNS
 	grid.add_theme_constant_override("h_separation", TOWER_PART_GRID_SEPARATION)
 	grid.add_theme_constant_override("v_separation", TOWER_PART_GRID_SEPARATION)
 	panel.add_child(grid)
