@@ -144,6 +144,18 @@ const TOWER_PART_DISPLAY_HEIGHT: float = 48.672
 ## reading as cramped.
 const TOWER_PART_GRID_SEPARATION: int = 8
 
+## Fixed footprint every preview slot shares regardless of its shape's own
+## native art aspect ratio (2026-09-15, player-requested "match in terms of
+## size... appear attached to the other part") -- see
+## _build_tower_preview_slot's own doc comment.
+const TOWER_PREVIEW_SLOT_SIZE: Vector2 = Vector2(140.0, 64.0)
+## Player-specified: "Blue for bases, green for shafts, and yellow for tops."
+## Placeholder alpha -- art-director TBD, matches FOCUS_RING_COLOR-style
+## precedent elsewhere in this codebase for an unlocked visual-polish value.
+const TOWER_PREVIEW_BASE_COLOR: Color = Color(0.2, 0.45, 0.9, 0.45)
+const TOWER_PREVIEW_SHAFT_COLOR: Color = Color(0.25, 0.75, 0.35, 0.45)
+const TOWER_PREVIEW_TOP_COLOR: Color = Color(0.95, 0.85, 0.15, 0.45)
+
 ## Injectable for tests (a caller may still supply an isolated Inventory
 ## instance). In real use, defaults to the real GInventory Autoload (ADR-0016,
 ## Story 019 — Inventory is Autoload #9) rather than instancing a fresh,
@@ -170,9 +182,26 @@ const TOWER_PART_GRID_SEPARATION: int = 8
 ## reason EquipmentPaperdoll builds itself in code (equipment_paperdoll.gd's
 ## own header comment): purely static content, no .tscn structure needed
 ## beyond these three placeholder Controls for them to attach to.
-@onready var _tower_bases_panel: Control = $MainLayout/LeftPanel/TowerBasesPanel
-@onready var _tower_shafts_panel: Control = $MainLayout/LeftPanel/TowerShaftsPanel
-@onready var _tower_tops_panel: Control = $MainLayout/LeftPanel/TowerTopsPanel
+##
+## Order reversed top-to-bottom (2026-09-15, player-requested) from the
+## original Bases/Shafts/Tops reading order to Tops/Shafts/Bases -- so the
+## on-screen stacking visually matches a real tower (foundation at the
+## bottom of the screen, top piece at the top), and lines up with
+## TowerPreviewPanel's own Top/Shaft/Base slot order to its right.
+## TowerComponentRow (new wrapper, replaces the 3 panels' own individual
+## .visible toggling) holds TowerPartsColumn (these 3 panels) side-by-side
+## with TowerPreviewPanel -- see that var's own doc comment.
+@onready var _tower_component_row: Control = $MainLayout/LeftPanel/TowerComponentRow
+@onready var _tower_tops_panel: Control = $MainLayout/LeftPanel/TowerComponentRow/TowerPartsColumn/TowerTopsPanel
+@onready var _tower_shafts_panel: Control = $MainLayout/LeftPanel/TowerComponentRow/TowerPartsColumn/TowerShaftsPanel
+@onready var _tower_bases_panel: Control = $MainLayout/LeftPanel/TowerComponentRow/TowerPartsColumn/TowerBasesPanel
+## Live tower-assembly preview (2026-09-15, player-requested): shows the
+## currently-selected shape from each of the 3 galleries stacked as one
+## silhouette (Top/Shaft/Base, top to bottom -- see _tower_tops_panel's own
+## doc comment for the ordering rationale), each slot tinted by category
+## (TOWER_PREVIEW_TOP_COLOR/_SHAFT_COLOR/_BASE_COLOR) to match the player's
+## own yellow/green/blue color scheme. Built in _build_tower_preview_panel().
+@onready var _tower_preview_panel: Control = $MainLayout/LeftPanel/TowerComponentRow/TowerPreviewPanel
 @onready var _slot_grid: GridContainer = $MainLayout/LeftPanel/SlotGrid
 ## Crafting is deliberately NOT an Autoload (ADR-0023: "Scene-instanced,
 ## Sanctuary-only") — unlike Inventory, there is no GCrafting global to fall
@@ -246,6 +275,14 @@ const TOWER_PART_GRID_SEPARATION: int = 8
 }
 var _active_assemble_slot: String = "foundation"
 
+## Set by _build_tower_preview_panel() (called before the 3 galleries build
+## their own entries -- see _ready()'s own comment) and read by
+## _build_tower_part_panel()/_create_tower_part_entry() to wire each shape's
+## selection straight to its matching preview slot.
+var _preview_top_icon: TextureRect
+var _preview_shaft_icon: TextureRect
+var _preview_base_icon: TextureRect
+
 var _slot_buttons: Array[Button] = []
 var _slot_focus_rings: Array[Panel] = []
 ## Second overlay ring per slot, distinct from _slot_focus_rings (keyboard
@@ -300,12 +337,15 @@ func _ready() -> void:
 	_wire_focus_neighbors()
 	_refresh_slot_visibility()
 	_equipment_paperdoll.visible = _active_tab == &"Equipment"
+	# Preview panel built BEFORE the 3 galleries -- each gallery entry wires
+	# its own toggled signal straight to the matching preview slot's icon
+	# (see _build_tower_part_panel's own doc comment), so the icon reference
+	# must already exist by the time gallery entries are constructed.
+	_build_tower_preview_panel()
 	_build_tower_bases_panel()
-	_tower_bases_panel.visible = _active_tab == &"TowerComponent"
 	_build_tower_shafts_panel()
-	_tower_shafts_panel.visible = _active_tab == &"TowerComponent"
 	_build_tower_tops_panel()
-	_tower_tops_panel.visible = _active_tab == &"TowerComponent"
+	_tower_component_row.visible = _active_tab == &"TowerComponent"
 	_build_crafting_panel()
 
 	_recipes_tab_button.pressed.connect(_on_crafting_tab_pressed.bind(false))
@@ -378,9 +418,7 @@ func _on_tab_pressed(tab: StringName) -> void:
 	_active_tab = tab
 	_refresh_slot_visibility()
 	_equipment_paperdoll.visible = tab == &"Equipment"
-	_tower_bases_panel.visible = tab == &"TowerComponent"
-	_tower_shafts_panel.visible = tab == &"TowerComponent"
-	_tower_tops_panel.visible = tab == &"TowerComponent"
+	_tower_component_row.visible = tab == &"TowerComponent"
 
 
 ## Rule 3: tabs filter ONE shared slot pool by item_type, not four separate
@@ -450,15 +488,67 @@ func _tab_for_item_type(item_type: StringName) -> StringName:
 # ---------------------------------------------------------------------------
 
 func _build_tower_bases_panel() -> void:
-	_build_tower_part_panel(_tower_bases_panel, "BasesHeader", "INVENTORY_TOWER_BASES_HEADER", "BasesGrid", "Base", TOWER_BASE_ART_PATH_FORMAT)
+	_build_tower_part_panel(_tower_bases_panel, "BasesHeader", "INVENTORY_TOWER_BASES_HEADER", "BasesGrid", "Base", TOWER_BASE_ART_PATH_FORMAT, _preview_base_icon)
 
 
 func _build_tower_shafts_panel() -> void:
-	_build_tower_part_panel(_tower_shafts_panel, "ShaftsHeader", "INVENTORY_TOWER_SHAFTS_HEADER", "ShaftsGrid", "Shaft", TOWER_SHAFT_ART_PATH_FORMAT)
+	_build_tower_part_panel(_tower_shafts_panel, "ShaftsHeader", "INVENTORY_TOWER_SHAFTS_HEADER", "ShaftsGrid", "Shaft", TOWER_SHAFT_ART_PATH_FORMAT, _preview_shaft_icon)
 
 
 func _build_tower_tops_panel() -> void:
-	_build_tower_part_panel(_tower_tops_panel, "TopsHeader", "INVENTORY_TOWER_TOPS_HEADER", "TopsGrid", "Top", TOWER_TOP_ART_PATH_FORMAT)
+	_build_tower_part_panel(_tower_tops_panel, "TopsHeader", "INVENTORY_TOWER_TOPS_HEADER", "TopsGrid", "Top", TOWER_TOP_ART_PATH_FORMAT, _preview_top_icon)
+
+
+# ---------------------------------------------------------------------------
+# Left panel — Tower Component tab's live assembly preview (2026-09-15,
+# player-requested). Shows the currently-selected shape from each of the 3
+# galleries stacked into one silhouette -- Top/Shaft/Base, top to bottom,
+# same order as the reordered galleries to their left -- each slot tinted by
+# category to match the player's own yellow/green/blue color scheme. All 3
+# slots share one fixed size (TOWER_PREVIEW_SLOT_SIZE) regardless of each
+# shape's own native art aspect ratio, and the slot stack has zero
+# separation, so a Base+Shaft+Top selection reads as one continuous tower
+# rather than three mismatched pieces.
+# ---------------------------------------------------------------------------
+
+func _build_tower_preview_panel() -> void:
+	var header := Label.new()
+	header.name = "PreviewHeader"
+	header.text = tr("INVENTORY_TOWER_PREVIEW_HEADER")
+	header.add_theme_color_override("font_color", ShellChromeStyle.UI_PARCHMENT)
+	_tower_preview_panel.add_child(header)
+
+	var stack := VBoxContainer.new()
+	stack.name = "SlotStack"
+	stack.add_theme_constant_override("separation", 0)
+	_tower_preview_panel.add_child(stack)
+
+	_preview_top_icon = _build_tower_preview_slot(stack, "TopSlot", TOWER_PREVIEW_TOP_COLOR)
+	_preview_shaft_icon = _build_tower_preview_slot(stack, "ShaftSlot", TOWER_PREVIEW_SHAFT_COLOR)
+	_preview_base_icon = _build_tower_preview_slot(stack, "BaseSlot", TOWER_PREVIEW_BASE_COLOR)
+
+
+## One preview slot: a color-tinted PanelContainer (its stylebox background
+## IS the category color) hosting a single TextureRect that PanelContainer
+## stretches to fill the slot -- STRETCH_KEEP_ASPECT_CENTERED then centers
+## whichever shape's art within that fixed rect, so every slot presents at
+## the same footprint no matter the source art's own proportions.
+func _build_tower_preview_slot(parent: Control, slot_name: String, color: Color) -> TextureRect:
+	var slot := PanelContainer.new()
+	slot.name = slot_name
+	slot.custom_minimum_size = TOWER_PREVIEW_SLOT_SIZE
+	var style := StyleBoxFlat.new()
+	style.bg_color = color
+	slot.add_theme_stylebox_override("panel", style)
+	parent.add_child(slot)
+
+	var icon := TextureRect.new()
+	icon.name = "Icon"
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	slot.add_child(icon)
+	return icon
 
 
 ## Shared builder for the three tower-part galleries (Bases/Shafts/Tops).
@@ -469,8 +559,11 @@ func _build_tower_tops_panel() -> void:
 ## "Top_round"); `art_path_format` selects which of the three asset sets
 ## (tower_base_/tower_shaft_/tower_top_) this panel draws from -- all three
 ## use the identical TOWER_PART_SHAPES id list, since the source art was
-## authored as three matched sets of the same 9 shapes.
-func _build_tower_part_panel(panel: Control, header_name: String, translation_key: String, grid_name: String, entry_prefix: String, art_path_format: String) -> void:
+## authored as three matched sets of the same 9 shapes. `preview_icon` is
+## this panel's matching slot in TowerPreviewPanel (built beforehand by
+## _build_tower_preview_panel(), see _ready()'s own comment) -- each entry
+## wires its own selection straight to it.
+func _build_tower_part_panel(panel: Control, header_name: String, translation_key: String, grid_name: String, entry_prefix: String, art_path_format: String, preview_icon: TextureRect) -> void:
 	var header := Label.new()
 	header.name = header_name
 	header.text = tr(translation_key)
@@ -497,7 +590,7 @@ func _build_tower_part_panel(panel: Control, header_name: String, translation_ke
 	# up, so at most one shape is highlighted per panel at a time.
 	var group := ButtonGroup.new()
 	for shape: String in TOWER_PART_SHAPES:
-		grid.add_child(_create_tower_part_entry(shape, entry_prefix, art_path_format, group))
+		grid.add_child(_create_tower_part_entry(shape, entry_prefix, art_path_format, group, preview_icon))
 
 
 ## One tower-part entry: the alpha-cut art only -- no name label underneath
@@ -518,7 +611,7 @@ func _build_tower_part_panel(panel: Control, header_name: String, translation_ke
 ## anywhere in the entry's rect registers, with the icon overlaid as a
 ## MOUSE_FILTER_IGNORE child so it doesn't steal the click from the Button
 ## underneath.
-func _create_tower_part_entry(shape: String, entry_prefix: String, art_path_format: String, group: ButtonGroup) -> Control:
+func _create_tower_part_entry(shape: String, entry_prefix: String, art_path_format: String, group: ButtonGroup, preview_icon: TextureRect) -> Control:
 	var entry := Button.new()
 	entry.name = "%s_%s" % [entry_prefix, shape]
 	entry.toggle_mode = true
@@ -583,6 +676,17 @@ func _create_tower_part_entry(shape: String, entry_prefix: String, art_path_form
 	var selected_ring: Panel = FocusRingFactory.build(entry)
 	selected_ring.name = "SelectedRing"
 	entry.toggled.connect(func(is_selected: bool) -> void: selected_ring.visible = is_selected)
+
+	# Live preview wiring (2026-09-15, player-requested "when i click on a
+	# tower component, it should show up on the right panel"). Only reacts to
+	# is_selected == true -- ButtonGroup fires toggled(false) on the
+	# previously-selected sibling right around the same time as this entry's
+	# toggled(true), so reacting to both would just overwrite the slot twice
+	# with the same final texture; reacting only to the true case is both
+	# simpler and correct regardless of which shape was shown before.
+	entry.toggled.connect(func(is_selected: bool) -> void:
+		if is_selected:
+			preview_icon.texture = texture)
 
 	return entry
 

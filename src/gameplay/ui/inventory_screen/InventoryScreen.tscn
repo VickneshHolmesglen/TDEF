@@ -36,17 +36,29 @@ layout_mode = 2
 size_flags_horizontal = 4
 script = ExtResource("3_paperdoll")
 
-[node name="TowerBasesPanel" type="VBoxContainer" parent="MainLayout/LeftPanel"]
+[node name="TowerComponentRow" type="HBoxContainer" parent="MainLayout/LeftPanel"]
 visible = false
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="TowerPartsColumn" type="VBoxContainer" parent="MainLayout/LeftPanel/TowerComponentRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 2.0
+
+[node name="TowerTopsPanel" type="VBoxContainer" parent="MainLayout/LeftPanel/TowerComponentRow/TowerPartsColumn"]
 layout_mode = 2
 
-[node name="TowerShaftsPanel" type="VBoxContainer" parent="MainLayout/LeftPanel"]
-visible = false
+[node name="TowerShaftsPanel" type="VBoxContainer" parent="MainLayout/LeftPanel/TowerComponentRow/TowerPartsColumn"]
 layout_mode = 2
 
-[node name="TowerTopsPanel" type="VBoxContainer" parent="MainLayout/LeftPanel"]
-visible = false
+[node name="TowerBasesPanel" type="VBoxContainer" parent="MainLayout/LeftPanel/TowerComponentRow/TowerPartsColumn"]
 layout_mode = 2
+
+[node name="TowerPreviewPanel" type="VBoxContainer" parent="MainLayout/LeftPanel/TowerComponentRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 1.0
 
 [node name="SlotGrid" type="GridContainer" parent="MainLayout/LeftPanel"]
 layout_mode = 2
