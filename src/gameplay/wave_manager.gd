@@ -841,20 +841,17 @@ func _on_mission_launched(mission_id: String, _modifiers: PackedStringArray, dif
 ## sub-case: the partial intermission is discarded and its timer stopped
 ## before a fresh mission can begin).
 ##
-## Known gap (found during Story 005, NOT fixed here — flagged, not silently
-## dropped): this function does not disconnect a possibly-still-live
-## `GEventBus.path_invalidated` subscription to `_on_path_invalidated()`. If a
-## mission is restarted (mission_launched fires again) while
+## Closes the known gap flagged during Story 005 (EC-9's full state-reset
+## list) — no story previously owned disconnecting a possibly-still-live
+## `GEventBus.path_invalidated` subscription to `_on_path_invalidated()` here.
+## If a mission is restarted (mission_launched fires again) while
 ## `_rebuild_pending_gate` was `true` and the subscription still live — e.g.
 ## the mission was abandoned mid-INTERMISSION-rebuild before `path_invalidated`
-## ever fired — this reset clears the flag but leaves the stale subscription
-## connected. The story's own Out of Scope section explicitly assigns
-## "disconnecting any stale path_invalidated subscription on mission_launched"
-## to Story 006 (EC-9's full state-reset list), but Story 006 already landed
-## this session, before `_rebuild_pending_gate` (and `_on_path_invalidated()`)
-## existed, so it could not have addressed this. No dedicated story currently
-## owns this fix — tracked here as a known gap for a follow-up story/ADR
-## review, not fixed unilaterally as part of this story's own scope.
+## ever fired — this reset now disconnects the stale subscription alongside
+## clearing the flag, using the same is_connected()-guarded disconnect
+## `_check_rebuild_gate()`/`_on_path_invalidated()` already establish
+## elsewhere in this file (never a bare disconnect() — double-disconnecting
+## an already-disconnected signal pushes an error).
 func _reset_all_state() -> void:
 	_stop_phase_timers()
 	_wave_index = 0
@@ -865,6 +862,8 @@ func _reset_all_state() -> void:
 	_wave_clear_fired = false
 	_templates_ready = false
 	_rebuild_pending_gate = false
+	if GEventBus.path_invalidated.is_connected(_on_path_invalidated):
+		GEventBus.path_invalidated.disconnect(_on_path_invalidated)
 	# ADR-0036: reset on every mission launch AND retry (retry_current_mission()
 	# re-emits mission_launched on this same Autoload instance without
 	# recreating it) -- without this, a retried mission would compound the
