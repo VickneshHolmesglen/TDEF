@@ -97,6 +97,26 @@ var hit_flash_remaining_seconds: float = 0.0
 ## companion (neither implements a facing flip).
 var facing_left: bool = false
 
+## ADR-0038, Epic 16 Story 8 follow-up: this swarm-registered (STANDARD/
+## ELITE) entity's cached "walk" CreatureAnimationClip, resolved once at
+## spawn time (MonsterManager._spawn_entity()) rather than looked up from
+## GGameDataRegistry every frame in _pass3c_visual_sync() — keeps the
+## per-frame visual-sync pass allocation/lookup-free per
+## .claude/rules/engine-code.md's "ZERO allocations in hot paths" rule.
+## Null if this creature's CreatureAtlasMappingResource has no "walk" clip
+## (non-fatal — atlas_frame simply stays at the clip's absence default,
+## matching monster_instance's own "presentation absence is non-fatal"
+## policy) or this entity has no swarm_handle at all (BOSS tier).
+var walk_clip: CreatureAnimationClip = null
+
+## Seconds accumulated toward walk_clip's frame-cycling since this entity
+## last had a live swarm_handle — mirrors BossCreaturePresenter3D's own
+## _base_elapsed[slot] pattern (src/core/visual_presentation/
+## boss_creature_presenter_3d.gd), just entity-owned instead of slot-array-owned
+## since the swarm path has one MonsterEntity per creature rather than a
+## capped presenter pool.
+var walk_anim_elapsed_seconds: float = 0.0
+
 # ---- BOSS-only runtime fields (safe to leave at defaults for STANDARD/ELITE) ----
 
 ## Frames remaining before next tower scan. Initialized to 0 so BOSS scans on its first frame.

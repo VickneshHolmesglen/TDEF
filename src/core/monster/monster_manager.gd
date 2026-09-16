@@ -577,14 +577,13 @@ func _advance_entity(entity: MonsterEntity, delta: float) -> void:
 ## signal, matching the pilot's own documented placeholder bit allocation
 ## (ADR-0038: "full bit allocation is a later, versioned decision").
 ## facing_variant reads MonsterEntity.facing_left, updated by
-## _advance_entity() during movement. atlas_frame stays 0.0 — real
-## animation frame-cycling is not covered on this batched swarm path (a
-## genuine gap flagged in this story's own Out of Scope section). This is
-## no longer true for the exceptional/boss path: BossCreaturePresenter3D
-## (below, `entity.boss_presenter_handle != null` branch) drives its own
-## per-frame idle/walk/attack_prepare/attack animation via Sprite3D.frame,
-## a mechanism specific to its individual-Node3D presenter that has no
-## equivalent on this Color-channel-packed MultiMesh path.
+## _advance_entity() during movement. atlas_frame now cycles through the
+## entity's cached MonsterEntity.walk_clip (resolved once at spawn — see
+## its own doc comment), mirroring BossCreaturePresenter3D.update_boss()'s
+## frames_elapsed % frame_count pattern (closed 2026-09-17; this was the
+## story's own flagged Out of Scope gap). Stays 0.0 for a creature whose
+## CreatureAtlasMappingResource has no "walk" clip — non-fatal, same
+## "presentation absence is non-fatal" policy as elsewhere in this file.
 func _pass3c_visual_sync(delta: float) -> void:
 	for entity: MonsterEntity in active_monsters:
 		# See _pass1b_status_effects()'s identical guard for the full
@@ -596,10 +595,21 @@ func _pass3c_visual_sync(delta: float) -> void:
 			if _swarm_renderer != null:
 				var flash: float = entity.hit_flash_remaining_seconds / MonsterInstance.HIT_FLASH_DURATION
 				var has_status: bool = not entity.active_status_effects.is_empty() or not entity.active_slow_effects.is_empty()
+				# ADR-0038 Epic 16 Story 8 follow-up: real walk-cycle
+				# frame-cycling for the batched swarm path (previously
+				# hardcoded 0.0 -- see this method's own doc comment above).
+				# Mirrors BossCreaturePresenter3D.update_boss()'s identical
+				# frames_elapsed % frame_count pattern.
+				var atlas_frame: float = 0.0
+				if entity.walk_clip != null:
+					entity.walk_anim_elapsed_seconds += delta
+					var frames_elapsed: int = int(entity.walk_anim_elapsed_seconds * entity.walk_clip.fps)
+					var offset_in_clip: int = frames_elapsed % entity.walk_clip.frame_count
+					atlas_frame = float(entity.walk_clip.start_frame + offset_in_clip)
 				var snapshot := MonsterPresentationSnapshot.new(
 						entity.entity_id, entity.resource.monster_id,
 						Transform3D(Basis(), VisualMath.map_to_3d(entity.global_position, MonsterInstance.MONSTER_LAYER_HEIGHT)),
-						0.0, flash, 1.0 if has_status else 0.0, 1.0 if entity.facing_left else 0.0)
+						atlas_frame, flash, 1.0 if has_status else 0.0, 1.0 if entity.facing_left else 0.0)
 				_swarm_renderer.update_creature(entity.swarm_handle, snapshot)
 			continue
 		if entity.boss_presenter_handle != null:
@@ -743,6 +753,12 @@ func _spawn_entity(res: MonsterResource, spawn_cell: Vector2i, wave_index: int,
 			var spawn_snapshot := MonsterPresentationSnapshot.new(
 					entity.entity_id, res.monster_id, initial_transform, 0.0, 0.0, 0.0, 0.0)
 			entity.swarm_handle = _swarm_renderer.register_creature(spawn_snapshot)
+			# Cache the walk clip once here (not per-frame in
+			# _pass3c_visual_sync()) -- see MonsterEntity.walk_clip's own doc
+			# comment for why.
+			var swarm_mapping: CreatureAtlasMappingResource = GGameDataRegistry.get_creature_atlas_mapping(res.monster_id)
+			if swarm_mapping != null:
+				entity.walk_clip = swarm_mapping.get_animation_clip(&"walk")
 
 	var path: Array[Vector2i] = _pathfinding.find_path(spawn_cell, res.tier)
 	if path.is_empty():
