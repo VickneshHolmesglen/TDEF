@@ -45,6 +45,19 @@ and prunes a deleted one. If for some reason this isn't available in your contex
 entry can also be added by hand — see `TD-workflow-001` in `docs/tech-debt-register.md` for
 the exact format and a worked example.
 
+## Known Gotcha: New/Edited `strings.csv` Rows Need the Same Reimport
+
+Same root cause as the `class_name` cache gotcha above: `assets/localization/strings.csv`'s
+compiled `Translation` resource (`strings.en.translation`, gitignored) is only rebuilt by an
+editor-mode filesystem scan. A headless game-runtime session (test run or AI-agent `run_project`)
+loads whichever `.translation` was last compiled, not the current `.csv` — so a newly-added or
+-edited localization key renders as the literal key string in-game (e.g. `INVENTORY_FOO_HEADER`
+instead of its real text), with no error. **Fix**: the same `godot --headless --editor --quit`
+pass used for the `class_name` cache also reimports `strings.csv`. Run it after any `strings.csv`
+edit, before trusting a headless/MCP UI verification pass. See
+`docs/engine-reference/godot/VERSION.md`'s Project-Specific API Tracking table for the full
+writeup (discovered 2026-09-16).
+
 ## Installing GdUnit4
 
 1. Open Godot → AssetLib → search "GdUnit4" → Download & Install
