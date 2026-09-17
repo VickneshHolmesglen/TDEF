@@ -23,9 +23,12 @@ extends Node2D
 ##      never instanced anywhere before, real or test-adjacent scenes alike,
 ##      so the Scout Phase starting grant and monster-kill drops never
 ##      actually fired in real gameplay regardless of the debug seed).
-##   3. Hero._base_stats has no public setter (no HeroResource pipeline exists yet — a
-##      known, previously-flagged gap in Story 008/epic-02's own Completion Notes). Set
-##      directly here as a documented stopgap so the Hero isn't shipped at 0 HP.
+##   3. No HeroResource pipeline exists yet (a known, previously-flagged gap in
+##      Story 008/epic-02's own Completion Notes), so the Hero would otherwise ship at
+##      0 HP. Set via Hero.apply_placeholder_base_stats() as a documented stopgap
+##      (deduplicated 2026-09-17 — both this scene and mission_scene.gd used to poke
+##      _base_stats directly with their own identical copy of the literal; now both
+##      delegate to that one shared method).
 ##   4. [S4-18, 2026-07-06] TD-monster-003 CLOSED — MonsterManager now calls add_child()
 ##      on every spawned entity itself (src/core/monster/monster_manager.gd::_spawn_entity()),
 ##      so entities are real scene-tree nodes from creation, not orphans. This scene's
@@ -290,22 +293,7 @@ func _line_cells(from: Vector2i, to: Vector2i) -> Array[Vector2i]:
 # ---------------------------------------------------------------------------
 
 func _set_hero_placeholder_stats() -> void:
-	_hero._base_stats = {
-		&"max_hp": 500.0,
-		&"damage": 25.0,
-		&"move_speed": 220.0,
-		&"cdr": 0.0,
-		&"crit_chance": 0.1,
-		&"armor": 0.0,
-		&"skill_power": 10.0,
-		&"attack_range": 220.0,
-		&"elemental_resist_fire": 0.0,
-		&"elemental_resist_frost": 0.0,
-		&"lifesteal": 0.0,
-		&"tower_affinity": 1.0,
-		&"crit_multiplier": 0.0,
-	}
-	_hero.reset_to_defaults()
+	_hero.apply_placeholder_base_stats()
 
 
 func _launch_mission() -> void:

@@ -157,6 +157,26 @@ var _skill_cooldowns: Dictionary[StringName, float] = {}
 ## &"crit_multiplier".
 var _base_stats: Dictionary[StringName, float] = {}
 
+## Stopgap values for apply_placeholder_base_stats() below — see that
+## method's own doc comment. Deduplicated 2026-09-17 from two identical
+## copies (the_gap.gd's and mission_scene.gd's own _set_hero_placeholder_
+## stats(), byte-for-byte the same dict) into this single source of truth.
+const PLACEHOLDER_BASE_STATS: Dictionary[StringName, float] = {
+	&"max_hp": 500.0,
+	&"damage": 25.0,
+	&"move_speed": 220.0,
+	&"cdr": 0.0,
+	&"crit_chance": 0.1,
+	&"armor": 0.0,
+	&"skill_power": 10.0,
+	&"attack_range": 220.0,
+	&"elemental_resist_fire": 0.0,
+	&"elemental_resist_frost": 0.0,
+	&"lifesteal": 0.0,
+	&"tower_affinity": 1.0,
+	&"crit_multiplier": 0.0,
+}
+
 ## Flat (pre-multiplier) bonuses from gear, skills, etc.
 var _flat_bonuses: Dictionary[StringName, float] = {}
 
@@ -1106,6 +1126,21 @@ func reset_to_defaults() -> void:
 	_class_locked = false
 	_skill_slots = [&"", &"", &"", &""]
 	_phase = HeroPhase.IDLE_SANCTUARY
+
+
+## Stopgap, unchanged in effect from the two identical call sites this
+## replaces (the_gap.gd's and mission_scene.gd's own _set_hero_placeholder_
+## stats()) — no real HeroResource pipeline exists yet to author
+## _base_stats externally (see that field's own doc comment). Both mission
+## entry scenes now call this instead of poking _base_stats directly with
+## their own duplicated literal, so the one placeholder value set has one
+## source of truth (PLACEHOLDER_BASE_STATS above) until the real pipeline
+## lands. Also calls reset_to_defaults() so _current_hp/_max_hp resolve
+## against the newly-set base_stats immediately, matching both original
+## call sites' own sequencing.
+func apply_placeholder_base_stats() -> void:
+	_base_stats = PLACEHOLDER_BASE_STATS.duplicate()
+	reset_to_defaults()
 
 
 # ---------------------------------------------------------------------------

@@ -259,23 +259,11 @@ func _on_mission_launched(_mission_id: String, _modifiers: PackedStringArray, _d
 
 ## Stopgap, unchanged from the_gap.gd's own identical, already-flagged gap:
 ## no HeroResource pipeline exists yet to author these values externally.
+## Deduplicated 2026-09-17: both this and the_gap.gd's identical method now
+## delegate to Hero.apply_placeholder_base_stats() (see its own doc comment)
+## instead of each poking _base_stats with its own copy of the literal.
 func _set_hero_placeholder_stats() -> void:
-	_hero._base_stats = {
-		&"max_hp": 500.0,
-		&"damage": 25.0,
-		&"move_speed": 220.0,
-		&"cdr": 0.0,
-		&"crit_chance": 0.1,
-		&"armor": 0.0,
-		&"skill_power": 10.0,
-		&"attack_range": 220.0,
-		&"elemental_resist_fire": 0.0,
-		&"elemental_resist_frost": 0.0,
-		&"lifesteal": 0.0,
-		&"tower_affinity": 1.0,
-		&"crit_multiplier": 0.0,
-	}
-	_hero.reset_to_defaults()
+	_hero.apply_placeholder_base_stats()
 
 
 ## Mirrors the_gap.gd's own identical visual-grouping handler. Player-
