@@ -225,3 +225,43 @@ func test_roll_drop_occurs_statistical_rate_within_two_percent_of_base_drop_rate
 
 	var observed_rate: float = float(success_count) / float(SAMPLE_SIZE)
 	assert_float(observed_rate).is_between(0.43, 0.47)
+
+
+# ---------------------------------------------------------------------------
+# Hero Combat & Stats Redesign (2026-09-18), Section 3.4.1: Luck boosts
+# DropEntry occurrence chance directly.
+# ---------------------------------------------------------------------------
+
+func test_hero_luck_drop_bonus_increases_effective_occurrence_rate() -> void:
+	const SAMPLE_SIZE: int = 10000
+	const BASE_DROP_RATE: float = 0.30
+	const LUCK_BONUS: float = 0.20
+	_re.set_hero_luck_drop_bonus(LUCK_BONUS)
+	var success_count: int = 0
+	for i: int in range(SAMPLE_SIZE):
+		if ResourceEconomy._roll_drop_occurs(clampf(BASE_DROP_RATE + _re._hero_luck_drop_bonus, 0.0, 1.0)):
+			success_count += 1
+	# Expected effective rate: 0.30 + 0.20 = 0.50
+	var observed_rate: float = float(success_count) / float(SAMPLE_SIZE)
+	assert_float(observed_rate).is_between(0.48, 0.52)
+
+
+func test_hero_luck_drop_bonus_clamps_effective_rate_to_one() -> void:
+	_re.set_hero_luck_drop_bonus(0.90)
+	var table: DropTableResource = _make_drop_table(&"luck_clamp_test", 0.50, 1)
+	_seed_drop_table(table)
+
+	# 0.50 + 0.90 = 1.40, must clamp to 1.0 (guaranteed occurrence), never error.
+	GEventBus.monster_died.emit(_make_died_event(&"luck_clamp_test", 1.0))
+
+	assert_int(_spy.count("materials_earned")).is_equal(1)
+
+
+func test_zero_luck_bonus_leaves_base_drop_rate_unaffected() -> void:
+	# Default _hero_luck_drop_bonus = 0.0 -- no set_hero_luck_drop_bonus() call.
+	var table: DropTableResource = _make_drop_table(&"no_luck_test", 0.0, 1)
+	_seed_drop_table(table)
+
+	GEventBus.monster_died.emit(_make_died_event(&"no_luck_test", 1.0))
+
+	assert_int(_spy.count("materials_earned")).is_equal(0)

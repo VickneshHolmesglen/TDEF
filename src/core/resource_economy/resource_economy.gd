@@ -65,6 +65,23 @@ const QUALITY_PROBABILITY_CEILING: float = 0.80
 ## Story 012). Consumed as a plain multiplier by _compute_drop_quantity() below.
 var _menagerie_quality_bonus: float = 1.0
 
+## Hero Combat & Stats Redesign (2026-09-18), Section 3.4.1: the Hero's
+## diminished Luck value (Hero._effective_stat(&"luck")'s own diminishing-
+## curve result — this system never reads Hero directly, per this project's
+## no-direct-cross-system-reference convention; the mission scene resolves
+## it once at mission start and pushes it in via set_hero_luck_drop_bonus()
+## below, mirroring _menagerie_quality_bonus's own plain-field test-seam
+## pattern). Added directly to each DropEntry's base_drop_rate before
+## _roll_drop_occurs()'s check — boosts occurrence chance, not quantity.
+var _hero_luck_drop_bonus: float = 0.0
+
+
+## Public setter for _hero_luck_drop_bonus above — called once by the
+## mission scene after Hero's placeholder stats are applied (Task 9).
+func set_hero_luck_drop_bonus(bonus: float) -> void:
+	_hero_luck_drop_bonus = bonus
+
+
 ## kill_source value Monster System sets for wave-end force-clears
 ## (monster_manager.gd:366-368). Story 011 (AC-07, fixing TD-econ-002 —
 ## flagged during Story 008's code review as a then-live GDD violation):
@@ -299,7 +316,8 @@ func _process_drops(payload: MonsterDiedEvent) -> void:
 	if table == null:
 		return
 	for entry: DropEntry in table.entries:
-		if not _roll_drop_occurs(table.base_drop_rate):
+		var boosted_drop_rate: float = clampf(table.base_drop_rate + _hero_luck_drop_bonus, 0.0, 1.0)
+		if not _roll_drop_occurs(boosted_drop_rate):
 			continue
 		var quantity: int = _compute_drop_quantity(
 			entry.base_quantity,
