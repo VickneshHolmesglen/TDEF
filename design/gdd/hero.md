@@ -65,7 +65,7 @@ And sometimes the plan breaks. The boss is immune to fire and your entire kill c
 
 5. Auto-attack always hits the current target. There is no miss chance. Dodge, if introduced, is resolved on the target's side.
 
-6. On each swing the Hero System: (a) rolls crit against `hero_crit_chance`, (b) reads the target's archetype tags to determine `hero_bonus_tier: int` (0 = STANDARD, 1 = ELITE, 2 = BOSS), (c) pre-computes `crit_multiplier_effective = hero_crit_multiplier_base + crit_multiplier_bonus`, and (d) emits `hero_auto_attacked` as a `HeroAutoAttackEvent` Resource with 6 fields: `base_damage`, `is_crit`, `target_id`, `crit_multiplier_effective`, `hero_lifesteal_fraction`, `hero_bonus_tier: int`. Actual damage arithmetic (tier multiplier, crit application, floor rounding) is performed by the Damage & Status System upon receiving this event — the Hero System does not resolve the final damage value itself.
+6. On each swing the Hero System: (a) rolls crit against `hero_crit_chance`, (b) reads the target's archetype tags to determine `hero_bonus_tier: int` (0 = STANDARD, 1 = ELITE, 2 = BOSS), (c) resolves `crit_multiplier_effective` via `get_effective_stat(&"crit_multiplier")` — this already applies Formula 7's diminishing-returns curve (base 1.5×, curved bonus capped at +2.0×, hard ceiling 3.5×) internally, no separate base+bonus fold — and (d) emits `hero_auto_attacked` as a `HeroAutoAttackEvent` Resource with 6 fields: `base_damage`, `is_crit`, `target_id`, `crit_multiplier_effective`, `hero_lifesteal_fraction`, `hero_bonus_tier: int`. Actual damage arithmetic (tier multiplier, crit application, floor rounding) is performed by the Damage & Status System upon receiving this event — the Hero System does not resolve the final damage value itself.
 
 7. A swing already in progress completes normally even if the hero moves out of range mid-animation.
 
@@ -107,7 +107,7 @@ And sometimes the plan breaks. The boss is immune to fire and your entire kill c
 
 #### Group 5: Tower Affinity
 
-20. Tower Affinity converts the number of live towers on the field into a bonus to the hero's Damage and Skill Power. It is recalculated whenever a tower is placed, voluntarily removed, or destroyed (triggered by `tower_placed`, `tower_removed`, and `tower_destroyed` EventBus events — not polled per frame).
+20. Tower Affinity converts the number of live towers on the field into a bonus to the hero's Physical Attack and Magic Attack. It is recalculated whenever a tower is placed, voluntarily removed, or destroyed (triggered by `tower_placed`, `tower_removed`, and `tower_destroyed` EventBus events — not polled per frame).
 
 21. The bonus uses square-root scaling (see Formulas). A hero with 0 towers placed has 0 affinity bonus regardless of the Tower Affinity stat value.
 
@@ -185,23 +185,23 @@ effective_stat = (base_stat + flat_bonus) × (1 + additive_bonus_total)
 
 **Output range:** Floor: 0 (no stat goes negative). Ceiling per stat in Tuning Knobs. The additive cap of +3.00 means any stat can at most reach 4× its flat-adjusted base.
 
-**Example (Damage stat):**
+**Example (Physical Attack stat):**
 ```
-base_damage = 50, flat_bonus = +12 (equipment + class perk), additive_bonus_total = 0.45
-effective_damage = (50 + 12) × (1 + 0.45) = 62 × 1.45 = 89.9 → 90
+base_physical_attack = 50, flat_bonus = +12 (equipment + class perk), additive_bonus_total = 0.45
+effective_physical_attack = (50 + 12) × (1 + 0.45) = 62 × 1.45 = 89.9 → 90
 ```
 
 ---
 
 ### Formula 2: Tower Affinity Bonus
 
-Converts Tower Affinity stat and live tower count into a bonus multiplier on Damage and Skill Power. Uses square-root scaling to reward early tower investment without creating a "place 30 towers" degenerate strategy.
+Converts Tower Affinity stat and live tower count into a bonus multiplier on Physical Attack and Magic Attack. Uses square-root scaling to reward early tower investment without creating a "place 30 towers" degenerate strategy.
 
 ```
 tower_affinity_bonus = tower_affinity_stat × sqrt(qualifying_towers / TOWERS_AFFINITY_REFERENCE)
 
-effective_damage_final = effective_damage × (1 + tower_affinity_bonus)
-effective_skill_power_final = effective_skill_power × (1 + tower_affinity_bonus)
+effective_physical_attack_final = effective_physical_attack × (1 + tower_affinity_bonus)
+effective_magic_attack_final = effective_magic_attack × (1 + tower_affinity_bonus)
 ```
 
 | Variable | Symbol | Type | Range | Description |
@@ -211,13 +211,13 @@ effective_skill_power_final = effective_skill_power × (1 + tower_affinity_bonus
 | Affinity reference count | `TOWERS_AFFINITY_REFERENCE` | int | constant: 16 | Tower count at which the bonus equals the Tower Affinity stat face value |
 | Tower affinity bonus | `tower_affinity_bonus` | float | 0.00 – 2.00 (clamped) | Fractional bonus; clamped at 2.00 |
 
-**Output range:** At `TOWERS_AFFINITY_REFERENCE = 16`, a hero with 40% Tower Affinity placing 16 qualifying towers gains exactly +40% to Damage and Skill Power. Clamped at +200% maximum bonus.
+**Output range:** At `TOWERS_AFFINITY_REFERENCE = 16`, a hero with 40% Tower Affinity placing 16 qualifying towers gains exactly +40% to Physical Attack and Magic Attack. Clamped at +200% maximum bonus.
 
 **Example:**
 ```
 tower_affinity_stat = 0.40, qualifying_towers = 20, TOWERS_AFFINITY_REFERENCE = 16
 tower_affinity_bonus = 0.40 × sqrt(20/16) = 0.40 × 1.118 = 0.447
-effective_damage_final = 90 × 1.447 = 130
+effective_physical_attack_final = 90 × 1.447 = 130
 ```
 
 ---
@@ -263,7 +263,7 @@ Mission 2: 22s near frost towers → proximity_time[frost] = 34 ≥ 30 → Frost
 ```
 effective_damage      = [Hero System computes and emits this as `base_damage` — Formula 1 + Formula 2 output]
 final_damage           = effective_damage × hero_damage_bonus_multiplier
-                        × [1 + (CRIT_MULTIPLIER_BASE − 1 + crit_multiplier_bonus) × is_crit]
+                        × [crit_multiplier_effective if is_crit else 1.0]
                         [D&S computes this — see Formula D2, damage-status.md]
 ```
 
@@ -272,17 +272,16 @@ final_damage           = effective_damage × hero_damage_bonus_multiplier
 | Effective damage | `effective_damage` | float | 0 – unbounded | From Formula 1 + Formula 2 (after class perk and affinity). Sent to D&S as `HeroAutoAttackEvent.base_damage`, unmultiplied. | Hero System |
 | Hero damage bonus multiplier | `hero_damage_bonus_multiplier` | float | 1.25 – 2.00 (default 1.50) | Applied if target tagged `[ELITE]` or `[BOSS]` (`hero_bonus_tier > 0`), else 1.0×. **Renamed from `elite_boss_multiplier`** — same value, owned and tuned by D&S (see `damage-status.md` Tuning Knobs), not Hero. Hero only reads the target's tags to set `hero_bonus_tier`; it does not apply this multiplier. | Damage & Status |
 | Crit check | `is_crit` | bool | {0, 1} | `rand_float(0, 1) < effective_crit_chance`. Rolled by Hero, applied by D&S. | Hero rolls / D&S applies |
-| Base crit multiplier | `CRIT_MULTIPLIER_BASE` | float | constant: 1.75 | A crit deals 175% of base hit damage before bonuses | Hero System (tunable here per D&S's own Tuning Knobs cross-reference) |
-| Crit multiplier bonus | `crit_multiplier_bonus` | float | 0.00 – 1.50 | Additive bonus from equipment/class perks. Pre-folded by Hero into `crit_multiplier_effective = CRIT_MULTIPLIER_BASE + crit_multiplier_bonus` and forwarded as a single value — D&S does not read `crit_multiplier_bonus` independently. | Hero System |
+| Crit multiplier (effective) | `crit_multiplier_effective` | float | 1.5× – 3.5× | Hero's Crit Multiplier stat, already fully resolved via Formula 7's diminishing-returns curve (base 1.5× with a diminishing-curve bonus on top, hard ceiling 3.5×). **This redesign removed the old additive base+bonus fold** — `get_effective_stat(&"crit_multiplier")` returns this complete, ready-to-use multiplier directly; Hero forwards it as a single value and D&S applies it with no further folding. See Formula 7 for the full math and worked examples. | Hero System (Formula 7) / D&S applies |
 
-**Output range:** Minimum 0. No hard cap. Maximum crit: `CRIT_MULTIPLIER_BASE + 1.50 = 3.25×`.
+**Output range:** Minimum 0. No hard cap on `final_damage` itself. Maximum crit multiplier: 3.5× (Formula 7's hard cap — base 1.5× plus a diminishing-curve bonus capped at 2.0×, never a flat addition).
 
 **Example (elite hit, crit) — full pipeline result, spanning both systems:**
 ```
 effective_damage = 90 (Hero computes, emits as base_damage)
 hero_damage_bonus_multiplier = 1.5, is_crit = true (D&S applies)
-CRIT_MULTIPLIER_BASE = 1.75, crit_multiplier_bonus = 0.25 (Hero pre-folds into crit_multiplier_effective = 2.0, forwards to D&S)
-final_damage = 90 × 1.5 × [1 + (0.75 + 0.25)] = 135 × 2.0 = 270  (D&S computes this; Hero never sees this number)
+crit_multiplier_effective = 2.5× (Hero resolves this via Formula 7 — Raw = 1.0 input, base 1.5× + curved bonus 1.0× = 2.5×, matching that formula's own worked example — and forwards the single ready-to-use value; D&S does no additional base/bonus fold)
+final_damage = 90 × 1.5 × 2.5 = 337.5 → 337  (D&S computes this; Hero never sees this number)
 ```
 
 ---
@@ -398,7 +397,7 @@ Luck also contributes a secondary Crit Chance source: `effective_crit_chance = m
 
 **Tower Affinity**
 
-- **If `qualifying_towers = 0`**: `tower_affinity_bonus = 0` exactly. No division-by-zero risk (0 is the numerator). Hero deals unmodified Damage and Skill Power. Intentional by Rule 21.
+- **If `qualifying_towers = 0`**: `tower_affinity_bonus = 0` exactly. No division-by-zero risk (0 is the numerator). Hero deals unmodified Physical Attack and Magic Attack. Intentional by Rule 21.
 
 - **If all qualifying towers are destroyed mid-wave**: Tower Affinity bonus drops to 0 immediately on the `tower_destroyed` event — same frame, no grace period. This is a meaningful consequence of aggressive monster play, not a bug.
 
@@ -463,10 +462,10 @@ Luck also contributes a secondary Crit Chance source: `effective_crit_chance = m
 | `CLASS_UNLOCK_THRESHOLD` — second class | 90 seconds | 60–180 | Second class effectively locked to extremely dedicated players | Second class unlocks in one mission; too easy to stack |
 | `CLASS_PROXIMITY_RADIUS` | 3 cells (Chebyshev) | 2–5 | Hero barely needs to be near a tower; proximity is trivial | Hero must stand on the tower's cell; conflicts with combat movement |
 | `TOWERS_AFFINITY_REFERENCE` | 16 towers | 8–24 | High tower counts needed for meaningful affinity bonus | Affinity maxes out at 8 towers; reward feels trivial |
-| `CRIT_MULTIPLIER_BASE` | 1.75× | 1.5–2.5 | Crit builds feel overwhelmingly powerful vs non-crit | Crits feel like normal hits; crit_chance stat irrelevant |
+| `CRIT_MULTIPLIER_BASE` | 1.5× | 1.5–2.5 | Crit builds feel overwhelmingly powerful vs non-crit | Crits feel like normal hits; crit_chance stat irrelevant |
 | `ARMOR_COEFFICIENT` | 100 | 50–200 | Armor reduces damage steeply at low values; armor-stacking becomes dominant | Armor barely matters; survivability comes only from HP |
 | `hero_lifesteal_cap` (`hero_lifesteal_fraction` ceiling) | 40% | 20–60% | Lifesteal sustain trivialises damage; hero is unkillable | Lifesteal stat has no observable impact on survivability |
-| `effective_crit_chance` cap | 80% | 60–90% | High crit builds guarantee crits; variance disappears | Crit chance cap too low for crit-focused builds to feel distinct |
+| `effective_crit_chance` cap | 85% | 60–90% | High crit builds guarantee crits; variance disappears | Crit chance cap too low for crit-focused builds to feel distinct |
 | CDR cap | 75% | 50–90% | Near-zero cooldowns; skill spam eliminates resource management | CDR affixes feel useless; skills feel too slow |
 | Min effective cooldown | 0.5 seconds | 0.3–1.0 | Floor too high; CDR stops feeling useful before cap | Spammable skills with zero CDR; game becomes trivial |
 | Tower affinity bonus cap | 200% (+2.00) | 100–300% | Tower-affinity builds dwarf all other build paths | Diminishing returns kick in too early; affinity feels like a minor bonus |
@@ -559,7 +558,7 @@ whichever system owns that screen.
 
 - **AC-02** — **GIVEN** a hero with additive bonuses summing above `+3.00`, **WHEN** the effective stat formula is evaluated, **THEN** the additive total is clamped to `3.00` before multiplication — the maximum multiplier applied is `4.0×` the flat-adjusted base.
 
-- **AC-03** — **GIVEN** a hero with `effective_damage = 90` attacking a standard enemy with `is_crit = true`, `CRIT_MULTIPLIER_BASE = 1.75`, and `crit_multiplier_bonus = 0.25`, **WHEN** the auto-attack resolves, **THEN** `final_damage = 90 × [1 + (0.75 + 0.25)] = 180`.
+- **AC-03** — **GIVEN** a hero with `effective_damage = 90` attacking a standard enemy with `is_crit = true` and `crit_multiplier_effective = 2.5×` (Hero's Crit Multiplier stat resolved via Formula 7 — base 1.5× plus a diminishing-curve bonus of 1.0×, matching that formula's own Raw = 1.0 worked example), **WHEN** the auto-attack resolves, **THEN** `final_damage = 90 × 2.5 = 225`. *(Corrected 2026-09-18: this AC previously used the removed `CRIT_MULTIPLIER_BASE = 1.75` additive-fold mechanism — updated to the redesign's diminishing-curve `crit_multiplier_effective`, per Formula 7.)*
 
 - **AC-04** — **GIVEN** a hero with `effective_damage = 90` attacking an enemy tagged `[BOSS]` or `[ELITE]` with `is_crit = false`, **WHEN** the auto-attack resolves, **THEN** `final_damage = 90 × 1.5 = 135` for both tags.
 
@@ -567,7 +566,7 @@ whichever system owns that screen.
 
 - **AC-06** — **GIVEN** a hero lands a killing blow dealing 270 raw resolved damage against a target with only 180 HP remaining (`absorbed = min(270, 180) = 180`), `hero_lifesteal_fraction = 0.20`, `max_health = 500`, `current_health = 450` (50 HP missing), **WHEN** lifesteal resolves on `monster_hp_absorbed`, **THEN** `heal_amount = floor(180 × 0.20) = 36`, `hp_recovered = min(36, 50) = 36` HP. *(Corrected 2026-07-15: this AC previously used the raw 270 as the healing basis — `hp_recovered = min(270 × 0.20, 50) = 50` — the exact pre-overkill-cap error Formula 6's revision fixed. The old AC's numbers coincidentally landed at the overheal clamp ceiling, masking the bug. This AC now matches Formula 6's corrected worked example and basis.)*
 
-- **AC-07** — **GIVEN** a hero with `tower_affinity_stat = 0.40` and `qualifying_towers = 20` (`TOWERS_AFFINITY_REFERENCE = 16`), **WHEN** Tower Affinity is calculated, **THEN** `tower_affinity_bonus ≈ 0.447` and both `effective_damage` and `effective_skill_power` are multiplied by `1.447`. **AND** given `qualifying_towers = 0`, the bonus is exactly `0.0`.
+- **AC-07** — **GIVEN** a hero with `tower_affinity_stat = 0.40` and `qualifying_towers = 20` (`TOWERS_AFFINITY_REFERENCE = 16`), **WHEN** Tower Affinity is calculated, **THEN** `tower_affinity_bonus ≈ 0.447` and both `effective_physical_attack` and `effective_magic_attack` are multiplied by `1.447`. **AND** given `qualifying_towers = 0`, the bonus is exactly `0.0`.
 
 - **AC-08** — **GIVEN** a hero has Mage as Primary class, with 6 elemental towers and 4 physical towers on the field, **WHEN** Tower Affinity recalculates after a `tower_placed` event, **THEN** `qualifying_towers = 6` (elemental only) — not 10. The physical towers contribute nothing to the count.
 

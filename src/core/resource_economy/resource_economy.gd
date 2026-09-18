@@ -66,7 +66,7 @@ const QUALITY_PROBABILITY_CEILING: float = 0.80
 var _menagerie_quality_bonus: float = 1.0
 
 ## Hero Combat & Stats Redesign (2026-09-18), Section 3.4.1: the Hero's
-## diminished Luck value (Hero._effective_stat(&"luck")'s own diminishing-
+## diminished Luck value (Hero.get_effective_stat(&"luck")'s own diminishing-
 ## curve result — this system never reads Hero directly, per this project's
 ## no-direct-cross-system-reference convention; the mission scene resolves
 ## it once at mission start and pushes it in via set_hero_luck_drop_bonus()
@@ -315,8 +315,11 @@ func _process_drops(payload: MonsterDiedEvent) -> void:
 	var table: DropTableResource = _resolve_drop_table(payload)
 	if table == null:
 		return
+	# Loop-invariant: depends only on table.base_drop_rate and
+	# _hero_luck_drop_bonus, neither of which varies per entry -- hoisted out
+	# of the loop so it's computed once per kill instead of once per entry.
+	var boosted_drop_rate: float = clampf(table.base_drop_rate + _hero_luck_drop_bonus, 0.0, 1.0)
 	for entry: DropEntry in table.entries:
-		var boosted_drop_rate: float = clampf(table.base_drop_rate + _hero_luck_drop_bonus, 0.0, 1.0)
 		if not _roll_drop_occurs(boosted_drop_rate):
 			continue
 		var quantity: int = _compute_drop_quantity(

@@ -46,7 +46,13 @@ static func _resolve_target_mitigation(damage_type: String, target_armor: float,
 	if damage_type == "true":
 		return 1.0
 	if damage_type == "physical":
-		var armor_mitigation: float = target_armor / (target_armor + HERO_ARMOR_MITIGATION_LEVEL_SCALAR * float(HERO_LEVEL_PLACEHOLDER))
+		# MonsterResource.validate() rejects negative armor at content-authoring
+		# time, but validate() is advisory -- a malformed .tres can still load at
+		# runtime. Clamp to 0 here so a bad negative value degrades to "no
+		# mitigation" instead of driving the denominator to 0/negative and
+		# producing inf/nonsensical results.
+		var clamped_armor: float = maxf(0.0, target_armor)
+		var armor_mitigation: float = clamped_armor / (clamped_armor + HERO_ARMOR_MITIGATION_LEVEL_SCALAR * float(HERO_LEVEL_PLACEHOLDER))
 		return 1.0 - armor_mitigation
 	return 1.0 - target_elemental_resist
 

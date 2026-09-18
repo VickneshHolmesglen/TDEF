@@ -265,3 +265,20 @@ func test_zero_luck_bonus_leaves_base_drop_rate_unaffected() -> void:
 	GEventBus.monster_died.emit(_make_died_event(&"no_luck_test", 1.0))
 
 	assert_int(_spy.count("materials_earned")).is_equal(0)
+
+
+## Regression guard for the actual _process_drops() production wiring, distinct
+## from the statistical test above (which calls _roll_drop_occurs() directly and
+## re-implements the boosted-rate expression itself — it would still pass even if
+## _process_drops() stopped reading _hero_luck_drop_bonus at all). This test drives
+## the real end-to-end path: a guaranteed-failure base_drop_rate that only succeeds
+## once Luck is applied, through the real monster_died signal, asserting the real
+## materials_earned emission. Deterministic — no statistical tolerance band needed.
+func test_hero_luck_drop_bonus_flips_guaranteed_failure_to_guaranteed_success_via_process_drops() -> void:
+	var table: DropTableResource = _make_drop_table(&"luck_wiring_regression", 0.0, 1)
+	_seed_drop_table(table)
+	_re.set_hero_luck_drop_bonus(1.0)
+
+	GEventBus.monster_died.emit(_make_died_event(&"luck_wiring_regression", 1.0))
+
+	assert_int(_spy.count("materials_earned")).is_equal(1)

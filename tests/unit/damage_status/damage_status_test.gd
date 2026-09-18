@@ -371,6 +371,17 @@ func test_resolve_target_mitigation_physical_with_armor_worked_example() -> void
 	assert_float(multiplier).is_equal_approx(0.5, 0.0001)
 
 
+func test_resolve_target_mitigation_physical_negative_armor_clamps_to_zero_not_inf() -> void:
+	# Malformed/invalid negative armor (validate() is advisory, not enforced at
+	# runtime) must degrade to "no mitigation" (multiplier = 1.0, same as
+	# armor=0) instead of driving the denominator to 0/negative and producing
+	# inf or NaN.
+	var multiplier: float = DamageStatus._resolve_target_mitigation("physical", -50.0, 0.0)
+	assert_float(multiplier).is_equal_approx(1.0, 0.0001)
+	assert_bool(is_inf(multiplier)).is_false()
+	assert_bool(is_nan(multiplier)).is_false()
+
+
 func test_resolve_target_mitigation_magic_uses_elemental_resist_directly() -> void:
 	var multiplier: float = DamageStatus._resolve_target_mitigation("fire", 500.0, 0.4)
 	# damage_type != "physical"/"true" -> ignores target_armor entirely, uses
