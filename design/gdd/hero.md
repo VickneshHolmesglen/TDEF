@@ -34,22 +34,23 @@ And sometimes the plan breaks. The boss is immune to fire and your entire kill c
 
 #### Group 1: Stats
 
-1. The hero has exactly **12 base stats**. Each has a floor of 0 and no hard ceiling unless noted. Equipment affixes, class perks, and skills modify these stats at the Sanctuary before a mission.
+1. The hero has exactly **13 base stats**. Each has a floor of 0 and no hard ceiling unless noted. Equipment affixes, class perks, and skills modify these stats at the Sanctuary before a mission.
 
 | # | Stat | Governs |
 |---|------|---------|
 | 1 | Health (HP) | Total hit points. Hero dies at 0 → DEFEAT immediately. |
-| 2 | Damage | Base value for auto-attack and physical skill calculations. |
+| 2 | Physical Attack | Scales any ability whose damage_type is "physical", including auto-attack. Replaces the old "Damage" stat (Hero Combat & Stats Redesign, 2026-09-18). |
 | 3 | Movement Speed | World-units per second, all directions. |
 | 4 | Cooldown Reduction (CDR) | % reduction to skill cooldown durations. Cap: 75%. Does NOT affect auto-attack rate. |
-| 5 | Crit Chance | Probability (0–80%) a hit applies the Crit Multiplier. |
-| 6 | Armor | Reduces incoming damage via a mitigation formula (see Formulas). |
-| 7 | Skill Power | Multiplier for skills tagged `[SKILL_POWER_SCALING]`. Does not affect auto-attack. |
+| 5 | Crit Chance | Probability a hit applies the Crit Multiplier, via a diminishing-returns curve asymptotically approaching 85% (see Formulas) — no longer a flat 80% hard clamp. |
+| 6 | Armor | Reduces incoming damage TO the Hero via a mitigation formula (see Formulas). Distinct from a monster's own Armor stat (design/gdd/monster.md), which reduces the Hero's outgoing Physical Attack damage instead. |
+| 7 | Magic Attack | Scales any ability whose damage_type is fire/ice/poison/lightning/arcane. Replaces the old "Skill Power" stat (Hero Combat & Stats Redesign, 2026-09-18). |
 | 8 | Attack Range | World-unit radius within which auto-attack acquires a target. |
-| 9 | Elemental Resistances | Per-element % damage reduction (fire, frost, poison, lightning, arcane). Cap: 75% per element. |
+| 9 | Elemental Resistances | Per-element % damage reduction TO the Hero (fire, frost, poison, lightning, arcane). Cap: 75% per element. Distinct from a monster's own elemental_resistances, which reduce the Hero's outgoing Magic Attack damage instead. |
 | 10 | Lifesteal | % of auto-attack damage returned as HP. Cap: 40%. Cannot overheal. |
-| 11 | Tower Affinity | % bonus to Damage and Skill Power per tower placed, using a square-root scaling curve (see Formulas). |
-| 12 | Crit Multiplier | Damage multiplier when a crit is triggered. Base: 1.75×. Equipment and perks add additively. Floor: 1.0×. |
+| 11 | Tower Affinity | % bonus to Physical Attack and Magic Attack per tower placed, using a square-root scaling curve (see Formulas). |
+| 12 | Crit Multiplier | Damage multiplier when a crit is triggered, via a diminishing-returns curve. Base: 1.5× (was 1.75×). Cap: 3.5×. Equipment and perks add to the curve's raw input. |
+| 13 | Luck | New stat (Hero Combat & Stats Redesign, 2026-09-18). Boosts monster drop-occurrence chance and contributes a secondary Crit Chance source, via its own diminishing-returns curve asymptotically approaching 35%. |
 
 2. Effective stat resolution uses the additive-bucket model: `effective_stat = (base_stat + flat_bonus) × (1 + additive_bonus_total)`. All flat bonuses sum first, then all percentage bonuses are collapsed into a single multiplier. The additive total is clamped to [−0.75, +3.00].
 
@@ -169,7 +170,7 @@ Proximity accumulation is active only during `COMBAT` and `INTERMISSION`. Class 
 
 ### Formula 1: Effective Stat Calculation
 
-Applies to all 12 stats. Flat bonuses resolve before percentage bonuses, which means flat affixes feel more impactful at low base values (early-game equipment matters). All percentage bonuses collapse into a single additive bucket to prevent multiplicative stacking spirals.
+Applies to all 13 stats. Flat bonuses resolve before percentage bonuses, which means flat affixes feel more impactful at low base values (early-game equipment matters). All percentage bonuses collapse into a single additive bucket to prevent multiplicative stacking spirals. For Crit Chance, Crit Multiplier, and Luck specifically, this formula's result becomes the "Raw" input to a further diminishing-returns curve (Formula 7) rather than a flat hard clamp — see that formula for the full mechanic.
 
 ```
 effective_stat = (base_stat + flat_bonus) × (1 + additive_bonus_total)
@@ -345,6 +346,37 @@ hero_lifesteal_fraction = 0.20
 heal_amount = floor(180 × 0.20) = 36 HP (NOT 54 — the old formula would have used the full 270 raw damage: floor(270 × 0.20) = 54, over-healing by 18 HP on every overkill hit)
 hp_recovered = min(36, remaining HP headroom)
 ```
+
+---
+
+### Formula 7: Diminishing-Returns Curve (Crit Chance / Crit Multiplier / Luck)
+
+Replaces a flat hard clamp for exactly these 3 stats — every other capped stat (Lifesteal, CDR, Elemental Resist) keeps a flat clamp.
+
+```
+Actual = (Raw × HardCap) / (Raw + ScalingConstant)
+```
+
+| Variable | Symbol | Type | Range | Description |
+|----------|--------|------|-------|-------------|
+| Raw stat | `Raw` | float | ≥ 0 | The stat's Formula 1 result, before this curve applies |
+| Hard cap | `HardCap` | float | stat-specific | The value Actual asymptotically approaches but never reaches |
+| Scaling constant | `ScalingConstant` | float | stat-specific | Raw value at which Actual reaches exactly half of HardCap |
+| Actual | `Actual` | float | 0 – HardCap | The final, game-facing value |
+
+| Stat | Hard Cap | Scaling Constant |
+|------|----------|-------------------|
+| Crit Chance | 85% | 0.5 |
+| Crit Multiplier (bonus portion only — 1.5× base added on top) | 2.0× (so 3.5× total) | 1.0 |
+| Luck | 35% | 0.5 |
+
+**Example (Crit Chance, Raw = 0.5):** `Actual = (0.5 × 0.85) / (0.5 + 0.5) = 0.425 / 1.0 = 42.5%`
+
+**Example (Crit Multiplier, Raw = 1.0):** `Actual = 1.5 + (1.0 × 2.0) / (1.0 + 1.0) = 1.5 + 1.0 = 2.5×`
+
+Luck also contributes a secondary Crit Chance source: `effective_crit_chance = min(Actual(crit_chance) + Actual(luck), 0.85)` — both curved independently, then summed and re-clamped so a maxed build never exceeds the 85% ceiling from combining both sources.
+
+---
 
 ## Edge Cases
 
