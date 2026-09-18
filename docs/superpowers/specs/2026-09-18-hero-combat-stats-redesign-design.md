@@ -41,11 +41,13 @@ Replaces the flat hard-clamp cap for exactly 3 stats: Crit Chance, Crit Multipli
 
 Formula: `Actual = (Raw × HardCap) / (Raw + ScalingConstant)`, where `Raw` is the stat's Formula-1-resolved value (`(base + flat) × (1 + additive)`) *before* any cap is applied — this curve **replaces** `_apply_stat_cap()`'s existing hard-clamp branch for these 3 stats only.
 
+**Correction (2026-09-18, found while writing the implementation plan)**: the source doc's own scaling constants (100/200/150) assume "Raw Stat" is an unbounded RPG stat-point value (its own worked examples use 25–2000). This game's Crit Chance and Luck are already stored as direct 0.0–1.0 fractions (same convention as Lifesteal/CDR/Elemental Resist — e.g. the placeholder base `crit_chance = 0.1` means 10%), and Crit Multiplier's bonus portion is a small additive-bucket-style number too. Plugging a 0.0–1.0 raw value into a scaling constant of 100 collapses to ~0% (`0.1 × 85 / 100.1 ≈ 0.08%`) — the doc's constants are 2–4 orders of magnitude too large for this game's actual units. Player decision: rescale the constants to fit the existing fractional convention rather than switch these 2 stats to a new large-number convention. New constants below place each curve's "half of hard cap" point at a raw value of ~0.5 (matching the scale of realistic stat investment already established by `crit_chance`'s own 0.1 placeholder), and are pure implementation-level tuning within the player-approved rescaling approach — the curve *shape* and *hard caps* are unchanged from the earlier-approved sections.
+
 | Stat | Hard Cap | Scaling Constant | Notes |
 |------|----------|-------------------|-------|
-| Crit Chance | 85% (was 80% hard clamp) | 100 | |
-| Crit Multiplier | base 1.5× (was 1.75×), formula `1.5 + (Raw × 2.0) / (Raw + 200)` | 200 | hard cap 3.5× |
-| Luck | **35%** (player-corrected from the doc's 75%) | 150 (unchanged from doc, player's explicit choice) | |
+| Crit Chance | 85% | **0.5** (was 100 in the source doc — rescaled) | e.g. raw 0.1→14.2%, raw 0.5→42.5%, raw 1.0→56.7%, raw 5.0→77.3% |
+| Crit Multiplier | base 1.5× (was 1.75×), bonus portion formula `(Raw × 2.0) / (Raw + 1.0)` | **1.0** (was 200 — rescaled) | full formula `1.5 + (Raw×2.0)/(Raw+1.0)`; hard cap 3.5×; e.g. raw 0→1.5×, raw 1.0→2.5×, raw 3.0→3.0×, raw 10.0→3.32× |
+| Luck | **35%** (player-corrected from the doc's 75%) | **0.5** (was 150 — rescaled) | e.g. raw 0.1→5.8%, raw 0.5→17.5%, raw 1.0→23.3%, raw 2.0→28% |
 
 ### 3.3 Monster-side new stats
 
@@ -62,7 +64,7 @@ Monster's existing `elemental_resistances: Dictionary` (already generic-keyed, n
 
 Two mechanical hooks (player-selected; the source doc's third listed use, "random environmental triggers," has no system to hook into and is out of scope):
 
-1. **Drop-rate bonus**: the diminished Luck value nudges `ResourceEconomy`'s drop-table rarity-tier rolls upward — a roll that would land on a given tier below the table's top tier has a `Luck Bonus%` chance to be promoted to the next tier up instead. Exactly one promotion step per roll (never cascading — a promoted roll is not re-rolled against Luck a second time to potentially promote again). Only affects tier selection; drop occurrence/quantity math (existing Formula 9) is untouched.
+1. **Drop-rate bonus** (corrected 2026-09-18, found while writing the implementation plan): the original "promotes a roll to the next rarity tier" description assumed a live rarity-tier system that doesn't exist — `ResourceEconomy._process_drops()` has no tier-promotion mechanism; each `DropEntry` independently rolls **occurrence** via `_roll_drop_occurs()` (`random() < base_drop_rate`) and, on success, a scaled quantity. A dormant `base_quality_probability`/Formula 3 calculation exists but is explicitly uncrolled/unconsumed by design (its own doc comment: "the actual roll-and-branch is Story 011/012's job once a real consumer exists"). Real, immediately-observable hook instead: the diminished Luck value is **added directly to each `DropEntry`'s `base_drop_rate`** before `_roll_drop_occurs()`'s check, clamped to `[0.0, 1.0]` same as any probability. Only affects occurrence chance; quantity math (Formula 2) is untouched.
 2. **Secondary Crit Chance contributor**: `effective_crit_chance = diminished(Crit Chance) + diminished(Luck)`, both curves computed independently (3.2) then summed. The **summed** result is then clamped to the same 85% ceiling (not just each stat individually) so a heavily-stacked build can never exceed the "never quite guaranteed" cap.
 
 ### 3.5 Combat resolution flow (per Hero attack, replacing D2/D7)
@@ -79,9 +81,11 @@ Runs identically for auto-attack and every skill cast — auto-attack is treated
 
 ### 3.6 Required plumbing (not a design decision — mechanical prerequisite)
 
-`SkillResource` (the resource actually loaded and consumed by the live combat path, `assets/data/skills/*.tres`) currently has **no `damage_type` field** — only `skill_id`/`base_cooldown`/`skill_power_coefficient`. `damage_type` exists today only on the separate `SkillDefinitionResource`/`HeroSkillEffectResource` "catalogue" resource, which is explicitly documented as never read by combat. Practical consequence found during this design: elemental skills currently deal damage with **zero elemental-resistance mitigation applied** — a real pre-existing gap, independent of this redesign, that this work now must close since routing to Physical vs. Magic Attack requires knowing each skill's damage_type at combat time.
+**Correction (2026-09-18, found while writing the implementation plan)**: the original version of this section, based on `SkillResource`'s and `HeroSkillEffectResource`'s own doc comments, was wrong. Those doc comments are themselves stale — `TD-hero-006` (fixed 2026-09-02, see `skill_definition_resource.gd`'s own doc comment) already repointed `Hero._resolve_skill_hit()` at `SkillDefinitionResource.effect_data` for `skill_power_coefficient`, and `SkillResource` itself is "left in place, now fully unreferenced by production code." `effect_data.damage_type` is therefore **already available, right now**, at the exact point `Hero._resolve_skill_hit()` builds `HeroSkillAttackEvent` (`hero.gd:886-898`) — no schema addition needed.
 
-Required: add `damage_type` to `SkillResource` (mirroring the value already authored on the catalogue side for each of the 32 skills), and thread it through `HeroSkillAttackEvent` into `damage_status.gd`.
+What actually IS still missing: `HeroSkillAttackEvent`'s own payload class has no `damage_type` field to carry that already-available value into `damage_status.gd`, and `HeroAutoAttackEvent` has no such field either (auto-attack has no skill resource at all — it's simply always `"physical"`, hardcoded at the emission site, not looked up). Required: add a `damage_type: String` field to `HeroSkillAttackEvent`, populate it from `skill.effect_data.damage_type` in `_resolve_skill_hit()`, and hardcode `"physical"` for `HeroAutoAttackEvent`'s equivalent (either a matching field for uniformity, or a direct literal in `damage_status.gd`'s auto-attack handler — an implementation-plan-level choice, not a design one).
+
+Confirmed real, pre-existing consequence (unrelated to this redesign but now directly relevant): elemental skills currently deal damage with **zero elemental-resistance mitigation applied**, since neither `_on_hero_auto_attacked()` nor `_on_hero_skill_attacked()` in `damage_status.gd` consumes any monster resistance/armor/evasion data today — confirmed by reading both handlers in full. This redesign's mitigation step (3.5.4) closes that gap as a side effect.
 
 ## 4. Formulas
 
@@ -89,11 +93,11 @@ All formulas are stated in full in sections 3.2, 3.3, 3.4, and 3.5 above. Summar
 
 | Constant | Old value | New value |
 |---|---|---|
-| `CRIT_CHANCE_CAP` | 0.80 (hard clamp) | 85% via diminishing curve, scaling constant 100 |
+| `CRIT_CHANCE_CAP` | 0.80 (hard clamp) | 0.85 via diminishing curve, scaling constant 0.5 |
 | `CRIT_MULTIPLIER_BASE` | 1.75 | 1.5 |
-| Crit Multiplier cap | none (only additive-bucket ±0.75/+3.00 clamp) | 3.5× via diminishing curve, scaling constant 200 |
+| Crit Multiplier cap | none (only additive-bucket ±0.75/+3.00 clamp) | 3.5× via diminishing curve (2.0× bonus cap on top of 1.5× base), scaling constant 1.0 |
 | `ARMORED_MITIGATION_MULTIPLIER` | flat 0.5 (boolean-gated) | replaced by numeric Armor / diminishing curve, `50 × hero_level` denominator term, `hero_level` hardcoded to 1 |
-| Luck cap | n/a (stat didn't exist) | 35%, scaling constant 150 |
+| Luck cap | n/a (stat didn't exist) | 0.35, scaling constant 0.5 |
 | Skill Base Value | n/a (never existed) | not added — deliberately kept at the current purely-multiplicative model |
 
 ## 5. Edge Cases
@@ -106,11 +110,11 @@ All formulas are stated in full in sections 3.2, 3.3, 3.4, and 3.5 above. Summar
 
 ## 6. Dependencies
 
-- **Damage & Status System** (`damage_status.gd`): D2/D7 formulas fully replaced by the unified flow in 3.5. Depends on `SkillResource` gaining `damage_type` (3.6).
+- **Damage & Status System** (`damage_status.gd`): D2/D7 formulas fully replaced by the unified flow in 3.5. Depends on `HeroSkillAttackEvent`/`HeroAutoAttackEvent` carrying `damage_type` (3.6).
 - **Hero System** (`hero.gd`): stat renames (Physical Attack/Magic Attack/Luck), `_apply_stat_cap()` gains the diminishing-curve branch for Crit Chance/Crit Multiplier/Luck, Tower Affinity bonus application unchanged in mechanism.
 - **Monster System** (`monster_resource.gd`, `monster_manager.gd`): new `armor`/`evasion` fields on `MonsterResource`; `archetype_tag == "armored"` mitigation path removed from `tower_system.gd`'s cache-building and wherever else it's consumed (note: `is_armored` is also used for **tower** damage mitigation, per `monster_resource.gd`'s own doc comment "50% tower damage mitigation" — this redesign only concerns **Hero's** outgoing damage; the tower-damage use of `is_armored` is a separate, untouched system and must NOT be removed, only Hero's own consumption of it).
-- **Resource Economy** (`resource_economy.gd`): drop-table tier-roll promotion hook for Luck (3.4).
-- **Hero Skill Build System**: `SkillDefinitionResource`/`HeroSkillEffectResource`'s existing `damage_type` field becomes the source of truth copied onto `SkillResource` at content-authoring time (3.6) — no change to that resource itself.
+- **Resource Economy** (`resource_economy.gd`): `_process_drops()`'s per-entry `_roll_drop_occurs()` call gains a Luck-boosted `base_drop_rate` (3.4).
+- **Hero Skill Build System**: no change — `SkillDefinitionResource`/`HeroSkillEffectResource`'s existing `damage_type` field is already the live source of truth Hero reads at cast time (3.6); this redesign only adds a carrier field on the event payload, not a new data source.
 - **Future Hero Leveling System** (not designed yet): must supply the real `hero_level` value to replace the hardcoded `1` in the Armor mitigation formula (3.3) as one of its own requirements.
 
 ## 7. Tuning Knobs
@@ -118,12 +122,12 @@ All formulas are stated in full in sections 3.2, 3.3, 3.4, and 3.5 above. Summar
 | Knob | Safe range | Affects |
 |---|---|---|
 | Crit Chance hard cap | 50–95% | ceiling on crit frequency |
-| Crit Chance scaling constant | 50–300 | how quickly raw crit chance approaches its cap |
+| Crit Chance scaling constant | 0.2–2.0 (fractional-stat scale, not the source doc's point scale) | how quickly raw crit chance approaches its cap |
 | Crit Multiplier base | 1.0–2.0× | floor of crit damage |
-| Crit Multiplier cap | 2.0–5.0× | ceiling of crit damage |
-| Crit Multiplier scaling constant | 100–400 | how quickly raw crit damage approaches its cap |
+| Crit Multiplier bonus cap | 1.0–3.0× (on top of base) | ceiling of crit damage |
+| Crit Multiplier scaling constant | 0.3–3.0 (fractional-stat scale) | how quickly raw crit damage approaches its cap |
 | Luck hard cap | player-fixed at 35% for now | ceiling on both drop-rate and secondary-crit contribution |
-| Luck scaling constant | player-fixed at 150 for now | curve shape |
+| Luck scaling constant | player-fixed at 0.5 for now (fractional-stat scale) | curve shape |
 | Combat variance range | fixed at ±5% per source doc | pure game-feel, not meant to be re-tuned casually |
 | Monster Armor per-creature value | 0–500+ (content-authoring, per monster tier) | how much Physical Attack a given monster resists |
 | Monster Evasion per-creature value | 0–100% (content-authoring) | miss chance against that monster |
@@ -136,7 +140,7 @@ All formulas are stated in full in sections 3.2, 3.3, 3.4, and 3.5 above. Summar
 - AC-3: A monster with Armor > 0 mitigates Hero Physical Attack damage per the curve in 3.3, with `hero_level` fixed at 1; a monster with an `elemental_resistances` entry for a skill's damage_type mitigates that skill's Magic Attack damage by that percentage; a `true` damage_type skill (once authored) bypasses both.
 - AC-4: A monster with Evasion > 0 has a matching chance to fully negate a Hero attack (0 damage, no secondary effect), verified statistically over repeated rolls in a test.
 - AC-5: Combat variance applies a ±5% multiplier to final damage on every hit.
-- AC-6: Luck's drop-rate hook measurably shifts `ResourceEconomy`'s tier-roll distribution toward rarer tiers as Luck increases, without changing drop occurrence/quantity math.
-- AC-7: Every one of the 32 catalogued skills has a `damage_type` on the live-combat `SkillResource` (not just the catalogue resource) matching its already-authored classification, and elemental skills now show real damage reduction against a monster with matching `elemental_resistances` (closing the pre-existing zero-mitigation gap, 3.6).
+- AC-6: Luck's diminished value measurably increases `_roll_drop_occurs()`'s effective occurrence rate (statistically, over repeated rolls in a test) as Luck increases, without changing Formula 2's quantity math.
+- AC-7: `HeroSkillAttackEvent` carries the cast skill's real `damage_type` (read from `SkillDefinitionResource.effect_data.damage_type`, already authored for all 32 skills — no new content needed) through to `damage_status.gd`, and elemental skills now show real damage reduction against a monster with matching `elemental_resistances` (closing the pre-existing zero-mitigation gap, 3.6).
 - AC-8: Tower-damage mitigation's own consumption of `MonsterResource.is_armored`/`archetype_tag` (a separate system, `tower_system.gd`) is unaffected by this redesign — only Hero's own consumption of monster armor changes.
 - AC-9: `hero.md`'s Formula 1 (flat/additive-bucket stacking) is otherwise unchanged for every stat this design doesn't explicitly modify.
