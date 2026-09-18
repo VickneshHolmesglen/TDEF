@@ -20,15 +20,34 @@ extends Resource
 @export var base_hp: float = 100.0
 @export var base_speed: float = 1.0  ## cells per second at wave 1
 ## Tower Stats System Phase 1 (player-requested 2026-08-16): StringName
-## element (matching WeaponComponent.element -- "fire"/"frost"/"poison"/
-## "lightning"/"arcane") -> float resist fraction [0.0, 0.9]. Missing key =
-## 0.0 (no resistance) -- fully backward-compatible, no data migration
+## element (matching WeaponComponent.element -- "fire"/"ice"/"poison"/
+## "lightning"/"arcane", per HeroSkillEffectResource.VALID_DAMAGE_TYPES'
+## canonical "frost" -> "ice" rename, 2026-09-04 -- corrected here 2026-09-18,
+## this doc comment was stale) -> float resist fraction [0.0, 0.9]. Missing
+## key = 0.0 (no resistance) -- fully backward-compatible, no data migration
 ## needed for existing monster content. Read by TowerSystem's monster cache
 ## (see tower_system.gd::_on_monster_spawned()) and applied in
 ## _try_attack()'s damage formula; physical hits (WeaponComponent.element ==
 ## "") never consult this dictionary at all. Capped at 0.9, not 1.0, so no
-## element can make a monster fully damage-immune.
+## element can make a monster fully damage-immune. Hero Combat & Stats
+## Redesign (2026-09-18): this same dict now also mitigates the Hero's own
+## Magic Attack damage (Hero._on_monster_spawned() caches it for that
+## purpose too) -- one shared resistance value per element, not a separate
+## tower-vs-hero pair.
 @export var elemental_resistances: Dictionary = {}
+## Hero Combat & Stats Redesign (2026-09-18), Section 3.3: mitigates the
+## Hero's own outgoing PHYSICAL Attack damage only (never tower damage --
+## that stays on archetype_tag/is_armored, untouched by this field). Formula:
+## Mitigation% = Armor / (Armor + 50 x hero_level), hero_level hardcoded to 1
+## in damage_status.gd pending the not-yet-designed Hero Leveling system.
+## Default 0.0 = no mitigation (fully backward-compatible with every existing
+## monster .tres, none of which author this field yet).
+@export var armor: float = 0.0
+## Hero Combat & Stats Redesign (2026-09-18), Section 3.3: flat percentage
+## [0, 100] chance the Hero's attack (any damage_type) misses this monster
+## entirely -- rolled before any damage math in damage_status.gd. Default 0.0
+## = never evades (fully backward-compatible).
+@export_range(0.0, 100.0, 0.1) var evasion: float = 0.0
 
 @export_group("Drop / Economy")
 @export var drop_table_id: StringName = &""
@@ -66,4 +85,8 @@ func validate() -> Array[String]:
 		var resistance: float = elemental_resistances[element] as float
 		if resistance < 0.0 or resistance > 0.9:
 			errors.append("elemental_resistances[%s] must be in [0.0, 0.9] (got %.2f)" % [element, resistance])
+	if armor < 0.0:
+		errors.append("armor must not be negative (got %.2f)" % armor)
+	if evasion < 0.0 or evasion > 100.0:
+		errors.append("evasion must be in [0.0, 100.0] (got %.2f)" % evasion)
 	return errors

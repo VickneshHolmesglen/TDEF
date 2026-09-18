@@ -91,3 +91,38 @@ func test_validate_fully_valid_boss_tier_returns_empty_array() -> void:
 	res.boss_attack_range_cells = 4
 	var errors: Array[String] = res.validate()
 	assert_array(errors).is_empty()
+
+
+func test_validate_negative_armor_is_invalid() -> void:
+	var res := _make_valid_standard()
+	res.armor = -5.0
+	var errors: Array[String] = res.validate()
+	assert_bool(errors.is_empty()).is_false()
+
+
+func test_validate_zero_armor_is_valid() -> void:
+	var res := _make_valid_standard()
+	res.armor = 0.0
+	var errors: Array[String] = res.validate()
+	assert_bool(errors.is_empty()).is_true()
+
+
+func test_validate_evasion_above_one_hundred_is_invalid() -> void:
+	var res := _make_valid_standard()
+	res.evasion = 100.1
+	var errors: Array[String] = res.validate()
+	assert_bool(errors.is_empty()).is_false()
+
+
+func test_validate_evasion_below_zero_is_invalid() -> void:
+	var res := _make_valid_standard()
+	res.evasion = -0.1
+	var errors: Array[String] = res.validate()
+	assert_bool(errors.is_empty()).is_false()
+
+
+func test_validate_evasion_within_range_is_valid() -> void:
+	var res := _make_valid_standard()
+	res.evasion = 50.0
+	var errors: Array[String] = res.validate()
+	assert_bool(errors.is_empty()).is_true()
