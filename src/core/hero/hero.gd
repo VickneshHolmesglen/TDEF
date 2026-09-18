@@ -352,6 +352,18 @@ func get_effective_stat(stat_name: StringName) -> float:
 	return _apply_stat_cap(stat_name, effective)
 
 
+## Hero Combat & Stats Redesign (2026-09-18), Section 3.4.2: Luck contributes
+## a secondary Crit Chance source on top of the dedicated Crit Chance stat,
+## each independently diminishing-curved (get_effective_stat handles that per
+## stat), then summed and re-clamped to CRIT_CHANCE_CAP so a heavily-stacked
+## build can never exceed the "never quite guaranteed" ceiling even with both
+## sources maxed. Both auto-attack and skill-cast crit rolls use this instead
+## of a bare get_effective_stat(&"crit_chance") read.
+func _effective_crit_chance() -> float:
+	var combined: float = get_effective_stat(&"crit_chance") + get_effective_stat(&"luck")
+	return minf(combined, CRIT_CHANCE_CAP)
+
+
 ## Diminishing-returns curve (Hero Combat & Stats Redesign, 2026-09-18):
 ## Actual = (Raw x HardCap) / (Raw + ScalingConstant). Raw <= 0 short-circuits
 ## to 0.0 (avoids a needless divide when there is nothing to diminish, and

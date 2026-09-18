@@ -188,3 +188,30 @@ func test_effective_stat_luck_never_reaches_hard_cap_at_large_raw() -> void:
 	var hero := _make_hero_for_stat(&"luck", 1000.0, 0.0, 0.0)
 	assert_float(hero.get_effective_stat(&"luck")).is_less(0.35)
 	assert_float(hero.get_effective_stat(&"luck")).is_greater(0.34)
+
+
+# ---------------------------------------------------------------------------
+# _effective_crit_chance() — Crit Chance + Luck combined, re-clamped
+# (Hero Combat & Stats Redesign, 2026-09-18, Section 3.4.2)
+# ---------------------------------------------------------------------------
+
+func test_effective_crit_chance_sums_crit_chance_and_luck_curves() -> void:
+	var hero := _make_hero_for_stat(&"crit_chance", 0.5, 0.0, 0.0)
+	hero._base_stats[&"luck"] = 0.5
+	# crit_chance curve: 0.425 (Task 2's worked example). luck curve: 0.175
+	# (Task 2's worked example). Sum = 0.6.
+	assert_float(hero._effective_crit_chance()).is_equal_approx(0.6, 0.0001)
+
+
+func test_effective_crit_chance_clamps_combined_sum_to_cap() -> void:
+	var hero := _make_hero_for_stat(&"crit_chance", 1000.0, 0.0, 0.0)
+	hero._base_stats[&"luck"] = 1000.0
+	# Both curves individually approach their own caps (0.85 + 0.35 = 1.2 max
+	# possible sum) — the combined result must still clamp to 0.85, not 1.2.
+	assert_float(hero._effective_crit_chance()).is_equal_approx(0.85, 0.0001)
+
+
+func test_effective_crit_chance_zero_luck_equals_bare_crit_chance() -> void:
+	var hero := _make_hero_for_stat(&"crit_chance", 0.5, 0.0, 0.0)
+	assert_float(hero._effective_crit_chance()).is_equal_approx(
+		hero.get_effective_stat(&"crit_chance"), 0.0001)
