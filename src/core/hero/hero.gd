@@ -725,15 +725,22 @@ func _on_attack_timer_timeout() -> void:
 	var entry: Dictionary = _monster_cache[target_id] as Dictionary
 
 	var payload := HeroAutoAttackEvent.new()
-	# GDD Formula 2 (ADR-0010): damage x (1 + tower_affinity_bonus). Closes the
-	# Damage half of TD-hero-001 — Skill Power still has no consumer to fold this
-	# into (tracked separately, remains open).
+	# GDD Formula 2 (ADR-0010): damage x (1 + tower_affinity_bonus).
 	payload.base_damage = get_effective_stat(&"physical_attack") * (1.0 + get_effective_stat(&"tower_affinity"))
-	payload.is_crit = randf() < get_effective_stat(&"crit_chance")
+	payload.is_crit = randf() < _effective_crit_chance()
 	payload.target_id = target_id
-	payload.crit_multiplier_effective = CRIT_MULTIPLIER_BASE + get_effective_stat(&"crit_multiplier")
+	# CRIT_MULTIPLIER_BASE is now folded into get_effective_stat() itself
+	# (Hero Combat & Stats Redesign, 2026-09-18, _apply_stat_cap()) — no
+	# longer added here separately.
+	payload.crit_multiplier_effective = get_effective_stat(&"crit_multiplier")
 	payload.hero_lifesteal_fraction = get_effective_stat(&"lifesteal")
 	payload.hero_bonus_tier = entry.get("tier", 0) as int
+	# Auto-attack is always physical (Hero Combat & Stats Redesign,
+	# 2026-09-18, Section 3.5) — damage_type left at its "physical" default,
+	# target_elemental_resist left at its 0.0 default (never consulted for a
+	# physical hit).
+	payload.target_armor = entry.get("armor", 0.0) as float
+	payload.target_evasion = entry.get("evasion", 0.0) as float
 	GEventBus.hero_auto_attacked.emit(payload)
 
 
@@ -779,6 +786,13 @@ func _on_monster_spawned(payload: MonsterSpawnedEvent) -> void:
 		"monster_id": payload.monster_id,
 		"tier": resource.tier if resource != null else 0,
 		"path_step": 0,
+		# Hero Combat & Stats Redesign (2026-09-18): cached once at spawn
+		# (immutable per monster type, same reasoning as "tier" above) so
+		# _on_attack_timer_timeout()/_resolve_skill_hit() can resolve target
+		# mitigation without a second GameDataRegistry lookup per attack.
+		"armor": resource.armor if resource != null else 0.0,
+		"evasion": resource.evasion if resource != null else 0.0,
+		"elemental_resistances": resource.elemental_resistances if resource != null else {},
 	}
 
 
@@ -937,18 +951,33 @@ func _resolve_skill_hit(skill_id: StringName) -> void:
 	if skill == null or skill.effect_data == null:
 		return
 	var entry: Dictionary = _monster_cache[target_id] as Dictionary
+	# "" (non-damage support/buff skill) normalizes to "physical" here —
+	# matches this codebase's existing behavior of always emitting a real
+	# damage hit regardless of a skill's effect_data.damage_type (D&S has
+	# never gated on it); Section 3.6 flags this as a separate, out-of-scope
+	# question this redesign does not attempt to resolve.
+	var damage_type: String = skill.effect_data.damage_type
+	if damage_type == "":
+		damage_type = "physical"
+	var attack_stat: StringName = &"physical_attack" if damage_type == "physical" else &"magic_attack"
+	var elemental_resistances: Dictionary = entry.get("elemental_resistances", {}) as Dictionary
 	var payload := HeroSkillAttackEvent.new()
 	payload.skill_id = skill_id
 	payload.target_id = target_id
-	# GDD Formula 2: effective_skill_power_final = effective_skill_power x
+	# GDD Formula 2: effective_attack_final = effective_attack x
 	# (1 + tower_affinity_bonus) — identical shape to
-	# _on_attack_timer_timeout()'s base_damage line, closing the Skill Power
-	# half of TD-hero-001 (the Damage half already applies this formula).
-	payload.skill_power = get_effective_stat(&"magic_attack") * (1.0 + get_effective_stat(&"tower_affinity"))
+	# _on_attack_timer_timeout()'s base_damage line.
+	payload.skill_power = get_effective_stat(attack_stat) * (1.0 + get_effective_stat(&"tower_affinity"))
 	payload.skill_power_coefficient = skill.effect_data.skill_power_coefficient
-	payload.is_crit = randf() < get_effective_stat(&"crit_chance")
-	payload.crit_multiplier_effective = CRIT_MULTIPLIER_BASE + get_effective_stat(&"crit_multiplier")
+	payload.is_crit = randf() < _effective_crit_chance()
+	# CRIT_MULTIPLIER_BASE is now folded into get_effective_stat() itself
+	# (Hero Combat & Stats Redesign, 2026-09-18, _apply_stat_cap()).
+	payload.crit_multiplier_effective = get_effective_stat(&"crit_multiplier")
 	payload.hero_bonus_tier = entry.get("tier", 0) as int
+	payload.damage_type = damage_type
+	payload.target_armor = entry.get("armor", 0.0) as float
+	payload.target_evasion = entry.get("evasion", 0.0) as float
+	payload.target_elemental_resist = elemental_resistances.get(damage_type, 0.0) as float
 	GEventBus.hero_skill_attacked.emit(payload)
 
 
