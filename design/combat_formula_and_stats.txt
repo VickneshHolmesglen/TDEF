@@ -1,0 +1,77 @@
+COMBAT DAMAGE FORMULA & HERO STAT DIMINISHING RETURNS
+======================================================
+
+1. THE BASIC DAMAGE ENGINE (ONE-WAY ATTACK)
+-------------------------------------------
+Since the Hero takes no damage, this formula calculates how much damage the Hero inflicts upon the Target (Monster/Enemy).
+
+Step 1: Check for Evasion / Dodge
+* Roll a random number between 0% and 100%.
+* If the roll is less than the Target's Evasion Rate (%), the attack misses completely.
+* Result: 0 Damage.
+
+Step 2: Calculate Base Damage
+* Physical Attack: Base Damage = Skill Base Value + (Hero Physical Attack * Skill Scaling Factor)
+* Magical Attack: Base Damage = Skill Base Value + (Hero Magic Attack * Skill Scaling Factor)
+* True Attack: Base Damage = Skill Base Value (Bypasses armor/resistances completely)
+
+Step 3: Check for Critical Hit
+* Roll a random number between 0% and 100%.
+* If the roll is less than the Hero's Diminished Critical Hit Chance (%), the hit crits.
+* New Damage = Base Damage * Hero's Diminished Critical Damage Multiplier
+
+Step 4: Enemy Armor Mitigation
+* Calculate enemy mitigation percentage using a diminishing returns curve so enemies cannot hit 100% reduction:
+  Mitigation % = Enemy Armor / (Enemy Armor + (50 * Hero Level))
+* Final Blocked Damage = Damage * (1 - Mitigation %)
+
+Step 5: Combat Variance (Game Feel)
+* Multiply the final damage value by a random float between 0.95 and 1.05.
+* This introduces a native +/- 5% variance so output values don't look sterile.
+
+
+2. DIMINISHING RETURNS FOR HERO STATS (SOFT CAPS)
+-------------------------------------------------
+To prevent the Hero from reaching 100% Critical Chance, infinite Critical Damage, or guaranteed Lucky drops, unmitigated "Raw Stats" are fed into a diminishing returns formula.
+
+The Mathematical Curve:
+Actual Stat % = (Raw Stat * Hard Cap) / (Raw Stat + Scaling Constant)
+
+* This curve means as Raw Stats approach infinity, the Actual Stat smoothly flattens out, perfectly approaching but never exceeding the specified Hard Cap.
+
+---
+
+A. LUCK BONUS (LUK)
+* Purpose: Influences rare loot drops, random environmental triggers, and critical adjustments.
+* Hard Cap: 75% max bonus chance
+* Scaling Constant: 150
+* Formula: Actual Luck Bonus % = (Raw Luck * 75) / (Raw Luck + 150)
+  - 50 Raw Luck   => 18.75% Actual Bonus
+  - 150 Raw Luck  => 37.50% Actual Bonus
+  - 500 Raw Luck  => 57.69% Actual Bonus
+  - 2000 Raw Luck => 69.76% Actual Bonus
+
+B. CRITICAL HIT CHANCE (CRIT %)
+* Purpose: The frequency of landing a critical strike.
+* Hard Cap: 85% max chance (keeps some RNG alive; never a guaranteed 100% crit)
+* Scaling Constant: 100
+* Formula: Actual Crit Chance % = (Raw Crit Stat * 85) / (Raw Crit Stat + 100)
+  - 25 Raw Crit   => 17.00% Actual Chance
+  - 100 Raw Crit  => 42.50% Actual Chance
+  - 300 Raw Crit  => 63.75% Actual Chance
+  - 1000 Raw Crit => 77.27% Actual Chance
+
+C. CRITICAL DAMAGE MULTIPLIER (CRIT DMG)
+* Purpose: The scalar magnitude of a critical strike. Base crit damage starts at 1.5x (150%).
+* Hard Cap: 3.5x max multiplier (350% maximum output damage)
+* Scaling Constant: 200
+* Formula: Actual Crit Multiplier = 1.5 + ((Raw Crit Damage Stat * 2.0) / (Raw Crit Damage Stat + 200))
+  - 50 Raw Crit Dmg   => 1.90x Multiplier (190%)
+  - 200 Raw Crit Dmg  => 2.50x Multiplier (250%)
+  - 600 Raw Crit Dmg  => 3.00x Multiplier (300%)
+  - 2000 Raw Crit Dmg => 3.32x Multiplier (332%)
+
+
+3. SUMMARY FLOW OF A SINGLE ATTACK
+----------------------------------
+Raw Hero Stats -> Diminishing Returns Curves -> Actual Stat Percentages -> Roll Evasion -> Roll Crit Chance -> Apply Crit Multiplier -> Deduct Enemy Armor Mitigation -> Apply +/- 5% Variance -> Final Damage Output.
