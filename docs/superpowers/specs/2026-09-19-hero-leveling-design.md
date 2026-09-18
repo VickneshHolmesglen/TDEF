@@ -55,15 +55,19 @@ Every level (2 through 50):
 - **+10 Max HP, +2 Physical Attack, +2 Magic Attack**, added directly into `Hero._base_stats` (the same dictionary Formula 1 already reads — no new stat-resolution path).
 
 Every 5th level (5, 10, 15, ..., 50 — 10 grants total across a full climb to 50), **in addition to** the flat growth above:
-- **1 Skill Tree point**, credited to the archetype pool matching Hero's current `_primary_class` at the moment of level-up, via the existing `skill_tree_point_earned(archetype_id: String, source: String)` event contract (`hero-skill-tree.md` Formula 1) — `source` carries a new literal (`"hero_level"`) distinct from Tower Mastery's own `source_tower_id`-based `source` values, so the Skill Tree system (or any future analytics) can distinguish a level-derived point from a tower-mastery-derived one if that ever matters.
-- **+1 (or +0.5%, see table) to a class-specific placeholder stat**, per this provisional mapping — **explicitly a placeholder**, superseded whenever the real class catalogue (`hero.md` Rule 23) ships:
+- **1 Skill Tree point**, credited to the archetype pool matching Hero's current `_primary_class` at the moment of level-up, via the existing `skill_tree_point_earned(archetype: String, source_tower_id: int)` EventBus signal (`hero-skill-tree.md` Formula 1). **Correction (2026-09-19, found while writing the implementation plan)**: `source_tower_id` is a real `int` parameter (identifying which tower's mastery crossing earned the point), not a string label as originally drafted here. `HeroSkillTree._on_skill_tree_point_earned()` only forwards this value through to `skill_tree_overflow_point_earned` for traceability when the archetype's pool is already terminal (`hero-skill-tree.md` Rule 18) — it is never used for gating/branching logic. A level-derived point emits with a reserved sentinel, `source_tower_id = -1` (never a real tower id, since those are always >= 0), so a level-derived point is distinguishable from a tower-derived one in that same traceability path without any schema change to the signal or its subscriber.
+- **+1 (or +0.5%, see table) to a class-specific placeholder stat**, per this provisional mapping — **explicitly a placeholder**, superseded whenever the real class catalogue (`hero.md` Rule 23) ships.
 
-| Primary Class | Bonus stat | Amount per qualifying level |
-|---|---|---|
-| Warrior | Physical Attack (flat) | +1 |
-| Archer | Crit Chance (raw, pre-curve) | +0.005 (0.5%) |
-| Mage / Elemental | Magic Attack (flat) | +1 |
-| Support / Engineer | CDR (raw, pre-curve) | +0.01 (1%) |
+**Correction (2026-09-19, found while writing the implementation plan)**: `Hero._primary_class` does NOT hold the display-name class values from `hero.md`'s Rule 22 table ("Warrior"/"Archer"/"Mage / Elemental"/"Support / Engineer") — no code anywhere maps those display names to anything. `_primary_class` is set directly from a placed tower's own `archetype` field (`hero.gd:_update_class_proximity()`: `_primary_class = arch` where `arch` comes straight off `TowerPlacedEvent.archetype`), and the real, currently-shipped archetype values (grepped from every `assets/data/towers/blueprints/*.tres`) are the lowercase strings `"physical"`, `"ranged"`, `"elemental"`, `"support"` — there is no separate "class name" layer in code today, despite Rule 22's table implying one. The mapping below is keyed by these real runtime strings instead of the aspirational display names, so it actually matches what `_primary_class` can equal in the shipped game:
+
+| `_primary_class` value | Display equivalent (hero.md Rule 22) | Bonus stat | Amount per qualifying level |
+|---|---|---|---|
+| `"physical"` | Warrior | Physical Attack (flat) | +1 |
+| `"ranged"` | Archer | Crit Chance (raw, pre-curve) | +0.005 (0.5%) |
+| `"elemental"` | Mage / Elemental | Magic Attack (flat) | +1 |
+| `"support"` | Support / Engineer | CDR (raw, pre-curve) | +0.01 (1%) |
+
+This same real string is passed as-is to `skill_tree_point_earned(archetype: String, ...)`'s `archetype` parameter above — `hero-skill-tree.md`'s own archetype pools are keyed by this identical vocabulary (confirmed: Tower Mastery, which is `skill_tree_point_earned`'s other real emitter, is itself archetype-keyed off the same tower-blueprint `archetype` field), so no translation layer is needed there either.
 
 If no Primary class is designated at the moment a qualifying (every-5th) level-up occurs, **both** the Skill Tree point and the class-bonus stat are skipped for that level-up — not banked, not retroactively granted later. The flat universal stat growth (Section 3.4's first bullet) is never skipped; it applies unconditionally every level regardless of class designation.
 
@@ -119,7 +123,7 @@ A single large XP grant (e.g. a BOSS kill at low level) can cross multiple level
 
 - **Hero System** (`hero.gd`): owns `current_level`/`current_xp`, the XP-grant/level-up resolution loop, and the two new emission-site reads (real `hero_level` replacing the placeholder).
 - **Damage & Status System** (`damage_status.gd`): `_resolve_target_mitigation()`'s existing formula gains a real `hero_level` input instead of the hardcoded constant — no formula change, just where the value comes from.
-- **Monster System**: `monster_died`/`monsters_died_batch` already carry `tier` and (via `MonsterDiedEvent`) enough context to resolve kill XP; no new fields needed on that event — Hero itself already caches tier per entity_id in `_monster_cache` (from the auto-attack targeting system), and can resolve death-position distance from its own cached `cell` per entity.
+- **Monster System**: `MonsterDiedEvent` already carries `tier` and `world_position` (both already-shipped fields) — no schema change needed on that event at all; Hero resolves kill-XP band directly from `payload.world_position` vs. its own `global_position`, with no dependency on `_monster_cache` (simpler than originally drafted here, since `world_position` was already on the payload).
 - **Wave Manager**: `wave_completed` already exists and fires exactly once per wave clear — Hero subscribes to it for wave-completion XP, no changes needed to Wave Manager itself.
 - **Event Bus**: `mission_phase_changed(new_phase == "MISSION_COMPLETE")` already exists for mission-completion XP.
 - **Hero Skill Tree System** (`hero-skill-tree.md`): receives a new `source` value on the existing `skill_tree_point_earned` event — no schema change to that system, only a new literal value flowing through an existing parameter.
