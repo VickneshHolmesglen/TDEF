@@ -151,7 +151,7 @@ func test_select_target_returns_negative_one_when_cache_empty() -> void:
 func test_attack_timeout_emits_payload_with_expected_fields_on_deterministic_no_crit() -> void:
 	# Given: Hero with damage=90, crit_chance=0.0 (deterministic no-crit),
 	# crit_multiplier bonus=0.25, lifesteal=0.1, targeting an ELITE monster (tier=1)
-	_hero._base_stats[&"damage"] = 90.0
+	_hero._base_stats[&"physical_attack"] = 90.0
 	_hero._base_stats[&"crit_chance"] = 0.0
 	_hero._base_stats[&"crit_multiplier"] = 0.25
 	_hero._base_stats[&"lifesteal"] = 0.1
@@ -223,7 +223,7 @@ func test_attack_timeout_folds_tower_affinity_bonus_into_base_damage() -> void:
 	# primary class set -> unfiltered count). bonus_multiplier = sqrt(4/16) = 0.5,
 	# so effective tower_affinity = 1.0 * 0.5 = 0.5. Expected base_damage =
 	# 100 * (1 + 0.5) = 150.
-	_hero._base_stats[&"damage"] = 100.0
+	_hero._base_stats[&"physical_attack"] = 100.0
 	_hero._base_stats[&"tower_affinity"] = 1.0
 	_hero._base_stats[&"attack_range"] = 1000.0
 	for i: int in range(4):
@@ -239,7 +239,7 @@ func test_attack_timeout_folds_tower_affinity_bonus_into_base_damage() -> void:
 
 func test_attack_timeout_zero_tower_affinity_leaves_base_damage_unchanged() -> void:
 	# Given: no towers placed -> tower_affinity resolves to 0 -> (1 + 0) = 1x, no change.
-	_hero._base_stats[&"damage"] = 100.0
+	_hero._base_stats[&"physical_attack"] = 100.0
 	_hero._base_stats[&"tower_affinity"] = 1.0
 	_hero._base_stats[&"attack_range"] = 1000.0
 	_hero._monster_cache[1] = {"cell": Vector2i(0, 0), "hp": 100.0, "tier": 0, "path_step": 0}

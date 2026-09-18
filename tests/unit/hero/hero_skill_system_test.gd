@@ -275,7 +275,11 @@ func test_activate_skill_uses_registry_sourced_cooldown_when_not_injected() -> v
 func test_activate_skill_emits_hero_skill_attacked_with_real_catalogue_skill() -> void:
 	_hero._base_stats[&"cdr"] = 0.0
 	_hero._base_stats[&"attack_range"] = 1000.0
-	_hero._base_stats[&"skill_power"] = 100.0
+	# phys_cleave has damage_type == "physical" (assets/data/skills/definitions/
+	# phys_cleave.tres), so it will read Physical Attack, not Magic Attack, once
+	# Hero._resolve_skill_hit() branches by damage_type (Task 7). For now (Task 1),
+	# all skills read from the renamed magic_attack stat.
+	_hero._base_stats[&"magic_attack"] = 100.0
 	_hero._base_stats[&"crit_chance"] = 0.0
 	_hero._monster_cache[1] = {"cell": Vector2i(0, 0), "hp": 100.0, "tier": 0, "path_step": 0}
 	GEventBus.active_skill_equipped.emit(0, "phys_cleave")

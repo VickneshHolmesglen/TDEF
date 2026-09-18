@@ -151,10 +151,10 @@ const CLASS_UNLOCK_THRESHOLD_S: float = 30.0
 var _skill_cooldowns: Dictionary[StringName, float] = {}
 
 ## Base stat values, set from HeroResource at mission start (wired in a later story).
-## Keys are the 12 stat StringNames from design/gdd/hero.md, e.g. &"max_hp", &"damage",
-## &"move_speed", &"cdr", &"crit_chance", &"armor", &"skill_power", &"attack_range",
-## &"elemental_resist_fire", &"elemental_resist_frost", &"lifesteal", &"tower_affinity",
-## &"crit_multiplier".
+## Keys are the 13 stat StringNames from design/gdd/hero.md, e.g. &"max_hp",
+## &"physical_attack", &"move_speed", &"cdr", &"crit_chance", &"armor", &"magic_attack",
+## &"attack_range", &"elemental_resist_fire", &"elemental_resist_frost", &"lifesteal",
+## &"tower_affinity", &"crit_multiplier", &"luck".
 var _base_stats: Dictionary[StringName, float] = {}
 
 ## Stopgap values for apply_placeholder_base_stats() below — see that
@@ -163,18 +163,19 @@ var _base_stats: Dictionary[StringName, float] = {}
 ## stats(), byte-for-byte the same dict) into this single source of truth.
 const PLACEHOLDER_BASE_STATS: Dictionary[StringName, float] = {
 	&"max_hp": 500.0,
-	&"damage": 25.0,
+	&"physical_attack": 25.0,
 	&"move_speed": 220.0,
 	&"cdr": 0.0,
 	&"crit_chance": 0.1,
 	&"armor": 0.0,
-	&"skill_power": 10.0,
+	&"magic_attack": 10.0,
 	&"attack_range": 220.0,
 	&"elemental_resist_fire": 0.0,
 	&"elemental_resist_frost": 0.0,
 	&"lifesteal": 0.0,
 	&"tower_affinity": 1.0,
 	&"crit_multiplier": 0.0,
+	&"luck": 0.0,
 }
 
 ## Flat (pre-multiplier) bonuses from gear, skills, etc.
@@ -678,7 +679,7 @@ func _on_attack_timer_timeout() -> void:
 	# GDD Formula 2 (ADR-0010): damage x (1 + tower_affinity_bonus). Closes the
 	# Damage half of TD-hero-001 — Skill Power still has no consumer to fold this
 	# into (tracked separately, remains open).
-	payload.base_damage = get_effective_stat(&"damage") * (1.0 + get_effective_stat(&"tower_affinity"))
+	payload.base_damage = get_effective_stat(&"physical_attack") * (1.0 + get_effective_stat(&"tower_affinity"))
 	payload.is_crit = randf() < get_effective_stat(&"crit_chance")
 	payload.target_id = target_id
 	payload.crit_multiplier_effective = CRIT_MULTIPLIER_BASE + get_effective_stat(&"crit_multiplier")
@@ -894,7 +895,7 @@ func _resolve_skill_hit(skill_id: StringName) -> void:
 	# (1 + tower_affinity_bonus) — identical shape to
 	# _on_attack_timer_timeout()'s base_damage line, closing the Skill Power
 	# half of TD-hero-001 (the Damage half already applies this formula).
-	payload.skill_power = get_effective_stat(&"skill_power") * (1.0 + get_effective_stat(&"tower_affinity"))
+	payload.skill_power = get_effective_stat(&"magic_attack") * (1.0 + get_effective_stat(&"tower_affinity"))
 	payload.skill_power_coefficient = skill.effect_data.skill_power_coefficient
 	payload.is_crit = randf() < get_effective_stat(&"crit_chance")
 	payload.crit_multiplier_effective = CRIT_MULTIPLIER_BASE + get_effective_stat(&"crit_multiplier")

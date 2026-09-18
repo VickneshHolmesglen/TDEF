@@ -3,7 +3,7 @@
 ## No rounding is applied (see hero.gd doc comment) — tests compare with is_equal_approx().
 extends GdUnitTestSuite
 
-const STAT: StringName = &"damage"
+const STAT: StringName = &"physical_attack"
 
 # Hero extends CharacterBody2D — Hero.new() allocates real PhysicsServer/
 # RenderingServer RIDs (physics body + CanvasItem), unlike a plain Node or
