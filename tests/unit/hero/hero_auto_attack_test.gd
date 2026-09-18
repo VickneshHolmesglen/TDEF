@@ -12,13 +12,15 @@ extends GdUnitTestSuite
 ## populated from monster_spawned/monster_cell_entered/monster_died, mirroring
 ## TowerSystem's shipped monster-cache pattern (ADR-0007).
 ##
-## Gap 5 (crit-chance cap): get_effective_stat(&"crit_chance") is capped at
-## Hero.CRIT_CHANCE_CAP = 0.8 (story-001 Tuning Knobs), so crit_chance = 1.0
-## does NOT deterministically guarantee is_crit = true. Rule 6 payload-shape
-## coverage uses crit_chance = 0.0 for a deterministic no-crit case (randf() < 0.0
-## is always false) and a separate statistical smoke test at the capped 0.8 to
-## prove the crit path is reachable (p(0 crits in 50 trials) = 0.8^50 ≈ 1.4e-5,
-## a negligible flake risk in practice).
+## Gap 5 (crit-chance cap): get_effective_stat(&"crit_chance") is now resolved
+## via a diminishing-returns curve (Hero Combat & Stats Redesign, 2026-09-18),
+## asymptotically approaching Hero.CRIT_CHANCE_CAP = 0.85 but never reaching
+## it, so crit_chance = 1.0 does NOT deterministically guarantee is_crit =
+## true. Rule 6 payload-shape coverage uses crit_chance = 0.0 for a
+## deterministic no-crit case (randf() < 0.0 is always false) and a separate
+## statistical smoke test at raw=1.0 (curved to ~0.567) to prove the crit path
+## is reachable (p(0 crits in 50 trials) = (1-0.567)^50, effectively 0, a
+## negligible flake risk in practice).
 
 const CELL_SIZE: float = 64.0  # matches GGrid._cell_size default
 
@@ -166,7 +168,8 @@ func test_attack_timeout_emits_payload_with_expected_fields_on_deterministic_no_
 	assert_float(payload.base_damage).is_equal_approx(90.0, 0.001)
 	assert_bool(payload.is_crit).is_false()
 	assert_int(payload.target_id).is_equal(42)
-	assert_float(payload.crit_multiplier_effective).is_equal_approx(2.0, 0.001)  # 1.75 + 0.25
+	# 1.5 base + diminishing_curve(0.25, 2.0, 1.0) = 1.5 + (0.25*2.0)/(0.25+1.0) = 1.5 + 0.4 = 1.9
+	assert_float(payload.crit_multiplier_effective).is_equal_approx(1.9, 0.001)
 	assert_float(payload.hero_lifesteal_fraction).is_equal_approx(0.1, 0.001)
 	assert_int(payload.hero_bonus_tier).is_equal(1)  # ELITE
 
@@ -193,9 +196,10 @@ func test_attack_timeout_no_target_in_range_emits_no_event() -> void:
 
 
 func test_attack_timeout_crit_roll_can_occur_when_crit_chance_is_capped_high() -> void:
-	# Statistical smoke test: crit_chance = 1.0 is clamped to CRIT_CHANCE_CAP = 0.8
-	# (story-001 Tuning Knobs) — not a deterministic guarantee. Fire the timeout 50
-	# times and assert at least one crit occurred. p(zero crits) = 0.8^50 ≈ 1.4e-5.
+	# Statistical smoke test: crit_chance = 1.0 curves to ~0.5667 (diminishing
+	# curve, Hero Combat & Stats Redesign, 2026-09-18) — not a deterministic
+	# guarantee. Fire the timeout 50 times and assert at least one crit
+	# occurred. p(zero crits) = (1-0.5667)^50, effectively 0.
 	_hero._base_stats[&"crit_chance"] = 1.0
 	_hero._base_stats[&"attack_range"] = 1000.0
 	_hero._monster_cache[1] = {"cell": Vector2i(0, 0), "hp": 100.0, "tier": 0, "path_step": 0}

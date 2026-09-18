@@ -93,20 +93,37 @@ func _make_hero_for_stat(stat: StringName, base: float, flat: float, additive: f
 	return _hero
 
 
-func test_effective_stat_crit_chance_above_cap_clamps_to_eighty_percent() -> void:
-	# Formula 1 alone would resolve to 1.0 (base=1.0, no flat/additive) — cap clamps to 0.80.
+## Diminishing curve (Hero Combat & Stats Redesign, 2026-09-18): raw=1.0 ->
+## (1.0 x 0.85) / (1.0 + 0.5) = 0.85 / 1.5 = 0.56667.
+func test_effective_stat_crit_chance_curve_at_raw_one_returns_worked_example() -> void:
 	var hero := _make_hero_for_stat(&"crit_chance", 1.0, 0.0, 0.0)
-	assert_float(hero.get_effective_stat(&"crit_chance")).is_equal_approx(0.8, 0.0001)
+	assert_float(hero.get_effective_stat(&"crit_chance")).is_equal_approx(0.56667, 0.0001)
 
 
-func test_effective_stat_crit_chance_exactly_at_cap_passes_through_unclamped() -> void:
-	var hero := _make_hero_for_stat(&"crit_chance", 0.8, 0.0, 0.0)
-	assert_float(hero.get_effective_stat(&"crit_chance")).is_equal_approx(0.8, 0.0001)
+## raw=0.1 (this project's placeholder base value) -> (0.1 x 0.85) / (0.1 + 0.5)
+## = 0.085 / 0.6 = 0.14167.
+func test_effective_stat_crit_chance_curve_at_placeholder_base_value() -> void:
+	var hero := _make_hero_for_stat(&"crit_chance", 0.1, 0.0, 0.0)
+	assert_float(hero.get_effective_stat(&"crit_chance")).is_equal_approx(0.14167, 0.0001)
 
 
-func test_effective_stat_crit_chance_below_cap_is_unaffected() -> void:
+## Asymptotic approach: a very large raw value must never reach or exceed 0.85.
+func test_effective_stat_crit_chance_never_reaches_hard_cap_at_large_raw() -> void:
+	var hero := _make_hero_for_stat(&"crit_chance", 1000.0, 0.0, 0.0)
+	assert_float(hero.get_effective_stat(&"crit_chance")).is_less(0.85)
+	assert_float(hero.get_effective_stat(&"crit_chance")).is_greater(0.84)
+
+
+func test_effective_stat_crit_chance_zero_raw_returns_zero() -> void:
+	var hero := _make_hero_for_stat(&"crit_chance", 0.0, 0.0, 0.0)
+	assert_float(hero.get_effective_stat(&"crit_chance")).is_equal_approx(0.0, 0.0001)
+
+
+## raw=0.5 -> (0.5 x 0.85) / (0.5 + 0.5) = 0.425 / 1.0 = 0.425 (the curve's own
+## documented "half of hard cap at raw=scaling_constant" property).
+func test_effective_stat_crit_chance_curve_half_cap_at_scaling_constant() -> void:
 	var hero := _make_hero_for_stat(&"crit_chance", 0.5, 0.0, 0.0)
-	assert_float(hero.get_effective_stat(&"crit_chance")).is_equal_approx(0.5, 0.0001)
+	assert_float(hero.get_effective_stat(&"crit_chance")).is_equal_approx(0.425, 0.0001)
 
 
 func test_effective_stat_elemental_resist_fire_above_cap_clamps_to_seventy_five_percent() -> void:
@@ -127,3 +144,47 @@ func test_effective_stat_lifesteal_above_cap_clamps_to_forty_percent() -> void:
 func test_effective_stat_cdr_above_cap_clamps_to_seventy_five_percent() -> void:
 	var hero := _make_hero_for_stat(&"cdr", 1.0, 0.0, 0.0)
 	assert_float(hero.get_effective_stat(&"cdr")).is_equal_approx(0.75, 0.0001)
+
+
+# ---------------------------------------------------------------------------
+# Crit Multiplier diminishing curve (Hero Combat & Stats Redesign, 2026-09-18)
+# get_effective_stat(&"crit_multiplier") now returns the FULL multiplier
+# (base 1.5 + curved bonus), not a bonus-only value.
+# ---------------------------------------------------------------------------
+
+func test_effective_stat_crit_multiplier_zero_raw_returns_base_only() -> void:
+	var hero := _make_hero_for_stat(&"crit_multiplier", 0.0, 0.0, 0.0)
+	assert_float(hero.get_effective_stat(&"crit_multiplier")).is_equal_approx(1.5, 0.0001)
+
+
+## raw=1.0 -> 1.5 + (1.0 x 2.0) / (1.0 + 1.0) = 1.5 + 1.0 = 2.5
+func test_effective_stat_crit_multiplier_curve_at_raw_one() -> void:
+	var hero := _make_hero_for_stat(&"crit_multiplier", 1.0, 0.0, 0.0)
+	assert_float(hero.get_effective_stat(&"crit_multiplier")).is_equal_approx(2.5, 0.0001)
+
+
+func test_effective_stat_crit_multiplier_never_reaches_hard_cap_at_large_raw() -> void:
+	var hero := _make_hero_for_stat(&"crit_multiplier", 1000.0, 0.0, 0.0)
+	assert_float(hero.get_effective_stat(&"crit_multiplier")).is_less(3.5)
+	assert_float(hero.get_effective_stat(&"crit_multiplier")).is_greater(3.4)
+
+
+# ---------------------------------------------------------------------------
+# Luck diminishing curve (new stat, Hero Combat & Stats Redesign, 2026-09-18)
+# ---------------------------------------------------------------------------
+
+func test_effective_stat_luck_zero_raw_returns_zero() -> void:
+	var hero := _make_hero_for_stat(&"luck", 0.0, 0.0, 0.0)
+	assert_float(hero.get_effective_stat(&"luck")).is_equal_approx(0.0, 0.0001)
+
+
+## raw=0.5 -> (0.5 x 0.35) / (0.5 + 0.5) = 0.175 / 1.0 = 0.175
+func test_effective_stat_luck_curve_half_cap_at_scaling_constant() -> void:
+	var hero := _make_hero_for_stat(&"luck", 0.5, 0.0, 0.0)
+	assert_float(hero.get_effective_stat(&"luck")).is_equal_approx(0.175, 0.0001)
+
+
+func test_effective_stat_luck_never_reaches_hard_cap_at_large_raw() -> void:
+	var hero := _make_hero_for_stat(&"luck", 1000.0, 0.0, 0.0)
+	assert_float(hero.get_effective_stat(&"luck")).is_less(0.35)
+	assert_float(hero.get_effective_stat(&"luck")).is_greater(0.34)

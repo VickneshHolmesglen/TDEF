@@ -51,7 +51,19 @@ const ADDITIVE_BONUS_CAP: float = 3.0
 ## TODO: migrate these into HeroResource or a TuningKnobs data resource once that data
 ## model lands (stories 005/006) — hardcoded here for now, matching ADR-0010's own
 ## Key Interfaces sketch, which has no data-file mechanism defined yet for this story.
-const CRIT_CHANCE_CAP: float = 0.8
+## Diminishing-returns curve cap/scaling-constant pairs (design/combat_
+## formula_and_stats.txt, reconciled in docs/superpowers/specs/2026-09-18-
+## hero-combat-stats-redesign-design.md Section 3.2). Scaling constants are
+## rescaled from the source doc's large-stat-point examples (100/200/150) to
+## fit this game's existing 0.0-1.0 fractional stat convention — see that
+## spec section's own correction note for the worked-example values these
+## produce.
+const CRIT_CHANCE_CAP: float = 0.85
+const CRIT_CHANCE_SCALING_CONSTANT: float = 0.5
+const CRIT_MULTIPLIER_BONUS_CAP: float = 2.0
+const CRIT_MULTIPLIER_SCALING_CONSTANT: float = 1.0
+const LUCK_CAP: float = 0.35
+const LUCK_SCALING_CONSTANT: float = 0.5
 const ELEMENTAL_RESIST_CAP: float = 0.75
 const LIFESTEAL_CAP: float = 0.4
 const CDR_CAP: float = 0.75
@@ -96,9 +108,12 @@ const HERO_LAYER_HEIGHT: float = 0.0
 ## yet for this story either.
 const AUTO_ATTACK_INTERVAL_S: float = 1.0
 
-## Story-003 (S4-05) crit multiplier base (GDD event-bus.md / ADR-0010). Constant, not
-## a stat — get_effective_stat(&"crit_multiplier") supplies only the bonus on top.
-const CRIT_MULTIPLIER_BASE: float = 1.75
+## Story-003 (S4-05) crit multiplier base (GDD event-bus.md / ADR-0010).
+## Hero Combat & Stats Redesign (2026-09-18): base changed 1.75 -> 1.5 per
+## the reconciled source doc. Now folded INTO get_effective_stat(&"crit_
+## multiplier")'s own return value by _apply_stat_cap() below — callers no
+## longer add this constant on top (see that function).
+const CRIT_MULTIPLIER_BASE: float = 1.5
 
 ## Story-005 (ADR-0010 Formula 2): Tower Affinity sqrt-scaling reference tower count
 ## and the multiplier's hard cap.
@@ -337,12 +352,34 @@ func get_effective_stat(stat_name: StringName) -> float:
 	return _apply_stat_cap(stat_name, effective)
 
 
+## Diminishing-returns curve (Hero Combat & Stats Redesign, 2026-09-18):
+## Actual = (Raw x HardCap) / (Raw + ScalingConstant). Raw <= 0 short-circuits
+## to 0.0 (avoids a needless divide when there is nothing to diminish, and
+## keeps a negative Formula-1 intermediate — already impossible per
+## get_effective_stat()'s own maxf(0.0, ...) floor — from ever reaching this
+## function in a way that could misbehave).
+static func _diminishing_curve(raw: float, hard_cap: float, scaling_constant: float) -> float:
+	if raw <= 0.0:
+		return 0.0
+	return (raw * hard_cap) / (raw + scaling_constant)
+
+
 ## Applies the per-stat post-formula cap (story-001 Tuning Knobs), if any, to an
-## already-resolved Formula 1 value. Stats with no defined cap pass through unchanged.
+## already-resolved Formula 1 value. Stats with no defined cap pass through
+## unchanged. crit_chance/crit_multiplier/luck use the diminishing-returns
+## curve above (Hero Combat & Stats Redesign, 2026-09-18) instead of a flat
+## clamp; crit_multiplier's curve computes only the BONUS portion, with
+## CRIT_MULTIPLIER_BASE added on top so this function's return value is
+## always the full, ready-to-use multiplier (callers never add the base
+## separately anymore).
 func _apply_stat_cap(stat_name: StringName, value: float) -> float:
 	match stat_name:
 		&"crit_chance":
-			return minf(value, CRIT_CHANCE_CAP)
+			return _diminishing_curve(value, CRIT_CHANCE_CAP, CRIT_CHANCE_SCALING_CONSTANT)
+		&"crit_multiplier":
+			return CRIT_MULTIPLIER_BASE + _diminishing_curve(value, CRIT_MULTIPLIER_BONUS_CAP, CRIT_MULTIPLIER_SCALING_CONSTANT)
+		&"luck":
+			return _diminishing_curve(value, LUCK_CAP, LUCK_SCALING_CONSTANT)
 		&"elemental_resist_fire", &"elemental_resist_frost":
 			return minf(value, ELEMENTAL_RESIST_CAP)
 		&"lifesteal":
