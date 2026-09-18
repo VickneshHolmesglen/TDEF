@@ -49,7 +49,7 @@ Monsters carry the stakes and the spoils. Their approach is what makes a tower p
    | ~~`hero_damage_bonus_eligible`~~ | ~~`bool`~~ | **Deprecated — do not use.** D&S now derives the hero damage tier from the entity's `tier` field (0=STANDARD, 1=ELITE, 2=BOSS) at attack-roll time via `hero_bonus_tier: int` in `HeroAutoAttackEvent`. This field is dead weight and must not be read by any system. Retain in the schema for a migration window; remove after Hero GDD and EventBus GDD are updated. |
    | `sprite_frames` | `SpriteFrames` | Required animations: `"walk"`, `"death"`. BOSS additionally requires `"attack"` and **`"attack_prepare"`** (the telegraph animation, see Rule 17d). |
    | `death_vfx_scene` | `PackedScene` | One-shot VFX scene instantiated at death position. |
-   | `armor` | `float`, default 0.0 | Mitigates the Hero's own outgoing Physical Attack damage only (never tower damage). Formula: Mitigation% = Armor / (Armor + 50 × Hero Level). See hero.md Formula 7's governing spec for the full mechanic. |
+   | `armor` | `float`, default 0.0 | Mitigates the Hero's own outgoing Physical Attack damage only (never tower damage). Formula: Mitigation% = Armor / (Armor + 50 × Hero Level). |
    | `evasion` | `float [0, 100]`, default 0.0 | Flat percentage chance the Hero's attack (any damage type) misses this monster entirely. Rolled before any damage math. Never affects tower damage. |
 
 3. MonsterResource data lives in `assets/data/monsters/`. Each monster type has exactly one `.tres` file. Tuning (HP, speed, damage, drop chance) is done by editing resource files — never hardcoded in scripts.
