@@ -40,12 +40,15 @@ xp_required(level) = floor(100 × 1.15^(level - 1))
 
 Level cap: 50. `xp_required(50)` is the last meaningful threshold — no XP is gained or tracked past level 50 (excess XP at the cap is simply discarded, not banked for a future cap raise).
 
+**Correction (2026-09-19, found while writing the implementation plan)**: the table below was originally hand-approximated and got level 2 wrong (had it at 100, an arithmetic slip — `floor(100 × 1.15^1)` is not 100). Values below are computed with double-precision `pow()`/`floor()` (Node.js, matching the IEEE 754 double-precision semantics GDScript's own `pow()`/`floor()` use) rather than by hand, since this formula is exactly the kind of floating-point-boundary calculation where hand arithmetic and a real runtime's `pow()` can disagree by 1 at the floor boundary (e.g. `1.15^1` may compute as `1.1499999999999999` rather than exactly `1.15`). The implementation's own test assertions (Task 1 of the plan) use these same computed values, not hand-derived ones.
+
 | Level | XP required for this level | Cumulative XP from 1 |
 |---|---|---|
-| 2 | 100 | 100 |
-| 10 | 351 | ~2,043 |
-| 25 | 3,292 | ~24,000 |
-| 50 | 92,655 | ~660,000 |
+| 2 | 114 | 114 |
+| 3 | 132 | 246 |
+| 10 | 351 | 1,926 |
+
+Levels 25/50's cumulative totals are large enough that minor floor-boundary drift doesn't matter for balance purposes — omitted here rather than presenting more hand-approximated figures; the implementation computes them from the formula, never a hardcoded table, per this section's own opening sentence.
 
 (Exact cumulative values are illustrative — the implementation computes them from the formula, never a hardcoded table.)
 
