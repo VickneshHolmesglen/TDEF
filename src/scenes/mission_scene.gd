@@ -99,6 +99,7 @@ const ENABLE_3D_PRESENTATION_MODE: bool = false
 ## independently flagged this).
 @onready var _tower_system: TowerSystem = $GameplayRoot/TowerSystem
 @onready var _monster_manager: MonsterManager = $GameplayRoot/MonsterManager
+@onready var _resource_economy: ResourceEconomy = $GameplayRoot/ResourceEconomy
 
 ## Tower Build Panel's own pending selection (Mission HUD's Planning Cluster,
 ## added 2026-08-10) — empty string means nothing selected, matching
@@ -264,6 +265,9 @@ func _on_mission_launched(_mission_id: String, _modifiers: PackedStringArray, _d
 ## instead of each poking _base_stats with its own copy of the literal.
 func _set_hero_placeholder_stats() -> void:
 	_hero.apply_placeholder_base_stats()
+	# Hero Combat & Stats Redesign (2026-09-18), Section 3.4.1 — see
+	# the_gap.gd's identical wiring for the full rationale.
+	_resource_economy.set_hero_luck_drop_bonus(_hero.get_effective_stat(&"luck"))
 
 
 ## Mirrors the_gap.gd's own identical visual-grouping handler. Player-

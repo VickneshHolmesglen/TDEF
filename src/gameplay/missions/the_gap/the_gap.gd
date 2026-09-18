@@ -98,6 +98,7 @@ const ENABLE_3D_PRESENTATION_MODE: bool = false
 @onready var _tower_system: TowerSystem = $TowerSystem
 @onready var _hero: Hero = $Hero
 @onready var _camera: Camera2D = $Camera2D
+@onready var _resource_economy: ResourceEconomy = $ResourceEconomy
 @onready var _hud_phase_label: Label = $HUD/Panel/VBox/PhaseLabel
 @onready var _hud_wave_label: Label = $HUD/Panel/VBox/WaveLabel
 @onready var _hud_timer_label: Label = $HUD/Panel/VBox/TimerLabel
@@ -294,6 +295,12 @@ func _line_cells(from: Vector2i, to: Vector2i) -> Array[Vector2i]:
 
 func _set_hero_placeholder_stats() -> void:
 	_hero.apply_placeholder_base_stats()
+	# Hero Combat & Stats Redesign (2026-09-18), Section 3.4.1: resolved once
+	# here (Hero's stats are fixed for the whole mission once applied — no
+	# mid-mission equipment/level changes exist yet) and pushed into
+	# ResourceEconomy, which never reads Hero directly (no cross-system
+	# reference exists between them otherwise).
+	_resource_economy.set_hero_luck_drop_bonus(_hero.get_effective_stat(&"luck"))
 
 
 func _launch_mission() -> void:
