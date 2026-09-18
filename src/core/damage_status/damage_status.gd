@@ -12,6 +12,52 @@ extends Node
 const ARMORED_MITIGATION_MULTIPLIER: float = 0.50
 const HERO_DAMAGE_BONUS_MULTIPLIER: float = 1.50
 
+## Hero Combat & Stats Redesign (2026-09-18), Section 3.3: Hero Level is
+## hardcoded to 1 pending the not-yet-designed Hero Leveling system -- swap
+## this constant for Hero's real current level once that system exists (one-
+## line change, no formula rework, per the governing spec's own explicit
+## sequencing decision).
+const HERO_LEVEL_PLACEHOLDER: int = 1
+const HERO_ARMOR_MITIGATION_LEVEL_SCALAR: float = 50.0
+const COMBAT_VARIANCE_MIN: float = 0.95
+const COMBAT_VARIANCE_MAX: float = 1.05
+
+
+## Evasion roll (Section 3.5.1): true if the attack misses entirely.
+## evasion_percent is MonsterResource.evasion, already in [0,100] units (not
+## a 0.0-1.0 fraction) -- matches that field's own @export_range.
+static func _roll_evasion(evasion_percent: float) -> bool:
+	return randf() * 100.0 < evasion_percent
+
+
+## Target mitigation (Section 3.5.4): returns a 0.0-1.0 multiplier to apply
+## to raw damage. "physical" uses the Armor diminishing-returns curve
+## (Mitigation% = Armor / (Armor + 50 x hero_level), hero_level hardcoded
+## per HERO_LEVEL_PLACEHOLDER above); any other damage_type (fire/ice/poison/
+## lightning/arcane) uses the caller-resolved target_elemental_resist
+## directly (Hero already looked this up from the target's
+## MonsterResource.elemental_resistances dict by the ability's own
+## damage_type before emitting -- this function never does that lookup
+## itself, matching the project's existing "caller resolves, D&S only does
+## math" division of labor already established by _on_tower_attacked()'s
+## is_armored parameter); "true" bypasses both, returning 1.0 (no
+## mitigation) per Section 3.3's dormant-capability note.
+static func _resolve_target_mitigation(damage_type: String, target_armor: float, target_elemental_resist: float) -> float:
+	if damage_type == "true":
+		return 1.0
+	if damage_type == "physical":
+		var armor_mitigation: float = target_armor / (target_armor + HERO_ARMOR_MITIGATION_LEVEL_SCALAR * float(HERO_LEVEL_PLACEHOLDER))
+		return 1.0 - armor_mitigation
+	return 1.0 - target_elemental_resist
+
+
+## Combat variance (Section 3.5.5): a fixed +/-5% multiplier per the source
+## doc's own stated range -- not meant to be re-tuned casually (see the
+## governing spec's Tuning Knobs table).
+static func _apply_combat_variance(damage: float) -> float:
+	return damage * randf_range(COMBAT_VARIANCE_MIN, COMBAT_VARIANCE_MAX)
+
+
 ## target_entity_id → hero_lifesteal_fraction. Registered before await so the
 ## round-trip value is available when monster_hp_absorbed arrives next frame.
 var _lifesteal_pending: Dictionary[int, float] = {}
@@ -74,17 +120,26 @@ func _on_tower_attacked(_tower_id: int, target_monster_id: int, damage_amount: f
 	GEventBus.monster_damage_taken.emit(ev)
 
 
-## D2 formula: floor(base × tier_mult × crit_mult). One flat HERO_DAMAGE_BONUS_MULTIPLIER
-## for any hero_bonus_tier > 0 (ELITE and BOSS resolve identically) — confirmed correct
-## per design/gdd/hero.md Formula 4 (`elite_boss_multiplier` range is {1.0, 1.5}, no
-## distinct BOSS value) and user decision (TD-story-002, resolved 2026-07-08). Story
-## 004's own text originally claimed a distinct BOSS=2.0x, contradicting its own
-## governing GDD; the story text was corrected to match this shipped behavior instead.
-## Lifesteal fraction registered before await — must survive across the frame boundary.
+## D2 formula, extended by Hero Combat & Stats Redesign (2026-09-18): evasion
+## roll -> floor(base × tier_mult × crit_mult × target_mitigation ×
+## combat_variance). One flat HERO_DAMAGE_BONUS_MULTIPLIER for any
+## hero_bonus_tier > 0 (ELITE and BOSS resolve identically) — confirmed
+## correct per design/gdd/hero.md Formula 4 (`elite_boss_multiplier` range is
+## {1.0, 1.5}, no distinct BOSS value) and user decision (TD-story-002,
+## resolved 2026-07-08). Story 004's own text originally claimed a distinct
+## BOSS=2.0x, contradicting its own governing GDD; the story text was
+## corrected to match this shipped behavior instead. Target mitigation (real
+## armor/elemental-resist reduction of Hero's own outgoing damage) did not
+## exist at all before this redesign -- closes that gap. Lifesteal fraction
+## registered before await — must survive across the frame boundary.
 func _on_hero_auto_attacked(event: HeroAutoAttackEvent) -> void:
+	if _roll_evasion(event.target_evasion):
+		return
 	var tier_dmg: float = event.base_damage * (HERO_DAMAGE_BONUS_MULTIPLIER if event.hero_bonus_tier > 0 else 1.0)
 	var crit_dmg: float = tier_dmg * (event.crit_multiplier_effective if event.is_crit else 1.0)
-	var final_damage: int = floori(crit_dmg)
+	var mitigated_dmg: float = crit_dmg * _resolve_target_mitigation(event.damage_type, event.target_armor, event.target_elemental_resist)
+	var final_dmg: float = _apply_combat_variance(mitigated_dmg)
+	var final_damage: int = floori(final_dmg)
 	if final_damage <= 0:
 		return
 	if event.hero_lifesteal_fraction > 0.0:
@@ -114,10 +169,14 @@ func _on_hero_auto_attacked(event: HeroAutoAttackEvent) -> void:
 ## so there is no fraction to register into _lifesteal_pending even
 ## defensively. See damage-status.md OQ-5 for the open question this leaves.
 func _on_hero_skill_attacked(event: HeroSkillAttackEvent) -> void:
+	if _roll_evasion(event.target_evasion):
+		return
 	var base_skill_damage: float = event.skill_power * event.skill_power_coefficient
 	var tier_dmg: float = base_skill_damage * (HERO_DAMAGE_BONUS_MULTIPLIER if event.hero_bonus_tier > 0 else 1.0)
 	var crit_dmg: float = tier_dmg * (event.crit_multiplier_effective if event.is_crit else 1.0)
-	var final_damage: int = floori(crit_dmg)
+	var mitigated_dmg: float = crit_dmg * _resolve_target_mitigation(event.damage_type, event.target_armor, event.target_elemental_resist)
+	var final_dmg: float = _apply_combat_variance(mitigated_dmg)
+	var final_damage: int = floori(final_dmg)
 	if final_damage <= 0:
 		return
 	await get_tree().process_frame

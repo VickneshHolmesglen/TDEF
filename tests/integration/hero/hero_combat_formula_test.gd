@@ -8,17 +8,13 @@ extends GdUnitTestSuite
 ## one frame later via `await get_tree().process_frame`.
 ##
 ## Scope: AC-03 (crit damage) and AC-04 (elite/boss tier multiplier) only.
-## AC-05 (monster armor reduction) and AC-06 (lifesteal overheal clamp) are
-## explicitly out of scope for this story — see dispatch brief:
-##   - AC-05 describes a "monster armor" stat applied to hero-dealt damage
-##     that does not exist anywhere in damage_status.gd or the GDDs. Real
-##     armor reduction (Formula 5 / D1, ARMORED_MITIGATION_MULTIPLIER) only
-##     applies to tower_attacked (incoming damage to monsters from towers),
-##     and is unrelated to any "monster armor vs hero" concept.
-##   - AC-06's overheal clamp is Hero System's responsibility per GDD, but
-##     Hero has no current_hp field and no hero_healed subscriber yet.
-## No changes were made to src/ — this file only exercises the existing,
-## shipped D&S implementation.
+## AC-05 (monster armor reduction) is CLOSED by the Hero Combat & Stats
+## Redesign (2026-09-18, docs/superpowers/specs/2026-09-18-hero-combat-
+## stats-redesign-design.md) — see damage_status_test.gd's own new
+## test_d2_physical_armor_reduces_damage() for that coverage; this file's
+## scope stays crit/tier-only, unchanged. AC-06 (lifesteal overheal clamp)
+## remains out of scope for this file — Hero System's own responsibility per
+## GDD, covered by tests/unit/hero/hero_lifesteal_test.gd instead.
 ##
 ## Discrepancy vs. the story's Implementation Notes: damage_status.gd's
 ## HERO_DAMAGE_BONUS_MULTIPLIER is a single flat 1.5x constant applied to
@@ -81,10 +77,11 @@ func test_hero_auto_attack_crit_damage_applies_crit_multiplier() -> void:
 	await get_tree().process_frame
 	assert_that(is_instance_valid(self)).is_true()
 
-	# Assert: final_damage = floor(90 * 1.0 * 2.0) = 180
+	# final_damage = floor(90 * 1.0 * 2.0) = 180; ±5% combat variance
+	# (Hero Combat & Stats Redesign, 2026-09-18): floor(180*0.95)=171, floor(180*1.05)=189
 	assert_int(_spy.count("monster_damage_taken")).is_equal(1)
 	var ev: MonsterDamageTaken = (_spy.emissions["monster_damage_taken"] as Array)[0][0] as MonsterDamageTaken
-	assert_int(ev.amount).is_equal(180)
+	assert_int(ev.amount).is_between(171, 189)
 	assert_int(ev.entity_id).is_equal(101)
 	assert_bool(ev.is_crit).is_true()
 	assert_int(ev.source_type).is_equal(1)  # 1 = hero
@@ -101,10 +98,11 @@ func test_hero_auto_attack_no_crit_applies_no_multiplier() -> void:
 	await get_tree().process_frame
 	assert_that(is_instance_valid(self)).is_true()
 
-	# Assert: final_damage = floor(90 * 1.0 * 1.0) = 90
+	# final_damage = floor(90 * 1.0 * 1.0) = 90; ±5% combat variance:
+	# floor(90*0.95)=85, floor(90*1.05)=94
 	assert_int(_spy.count("monster_damage_taken")).is_equal(1)
 	var ev: MonsterDamageTaken = (_spy.emissions["monster_damage_taken"] as Array)[0][0] as MonsterDamageTaken
-	assert_int(ev.amount).is_equal(90)
+	assert_int(ev.amount).is_between(85, 94)
 	assert_bool(ev.is_crit).is_false()
 
 
@@ -121,10 +119,11 @@ func test_hero_auto_attack_elite_tier_applies_flat_bonus_multiplier() -> void:
 	await get_tree().process_frame
 	assert_that(is_instance_valid(self)).is_true()
 
-	# Assert: final_damage = floor(90 * 1.5 * 1.0) = 135
+	# final_damage = floor(90 * 1.5 * 1.0) = 135; ±5% combat variance:
+	# floor(135*0.95)=128, floor(135*1.05)=141
 	assert_int(_spy.count("monster_damage_taken")).is_equal(1)
 	var ev: MonsterDamageTaken = (_spy.emissions["monster_damage_taken"] as Array)[0][0] as MonsterDamageTaken
-	assert_int(ev.amount).is_equal(135)
+	assert_int(ev.amount).is_between(128, 141)
 	assert_int(ev.hero_bonus_tier).is_equal(1)
 
 
@@ -142,10 +141,11 @@ func test_hero_auto_attack_boss_tier_applies_same_flat_bonus_multiplier_as_elite
 	await get_tree().process_frame
 	assert_that(is_instance_valid(self)).is_true()
 
-	# Assert: final_damage = floor(90 * 1.5 * 1.0) = 135 (NOT 180 — see note above)
+	# final_damage = floor(90 * 1.5 * 1.0) = 135 (NOT 180 — see note above);
+	# ±5% combat variance: floor(135*0.95)=128, floor(135*1.05)=141
 	assert_int(_spy.count("monster_damage_taken")).is_equal(1)
 	var ev: MonsterDamageTaken = (_spy.emissions["monster_damage_taken"] as Array)[0][0] as MonsterDamageTaken
-	assert_int(ev.amount).is_equal(135)
+	assert_int(ev.amount).is_between(128, 141)
 	assert_int(ev.hero_bonus_tier).is_equal(2)
 
 
@@ -160,7 +160,8 @@ func test_hero_auto_attack_elite_crit_stacks_tier_and_crit_multipliers() -> void
 	await get_tree().process_frame
 	assert_that(is_instance_valid(self)).is_true()
 
-	# Assert: tier_dmg = 90 * 1.5 = 135; crit_dmg = 135 * 2.0 = 270; floor = 270
+	# tier_dmg = 90 * 1.5 = 135; crit_dmg = 135 * 2.0 = 270; floor = 270;
+	# ±5% combat variance: floor(270*0.95)=256, floor(270*1.05)=283
 	assert_int(_spy.count("monster_damage_taken")).is_equal(1)
 	var ev: MonsterDamageTaken = (_spy.emissions["monster_damage_taken"] as Array)[0][0] as MonsterDamageTaken
-	assert_int(ev.amount).is_equal(270)
+	assert_int(ev.amount).is_between(256, 283)
