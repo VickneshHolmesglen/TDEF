@@ -23,3 +23,21 @@ extends Resource
 @export var crit_multiplier_effective: float = 1.0
 @export var hero_lifesteal_fraction: float = 0.0
 @export var hero_bonus_tier: int = 0  ## 0 = STANDARD, 1 = ELITE, 2 = BOSS
+## Hero Combat & Stats Redesign (2026-09-18): auto-attack is always a
+## physical-damage-type ability (never set to anything else at the emission
+## site) -- present here (rather than hardcoded only in damage_status.gd) so
+## D&S's mitigation branch reads identically for both this event and
+## HeroSkillAttackEvent.
+@export var damage_type: String = "physical"
+## Target's MonsterResource.armor, resolved by Hero at emission time (mirrors
+## TowerSystem's own is_armored-resolved-before-emit pattern). Only consulted
+## when damage_type == "physical".
+@export var target_armor: float = 0.0
+## Target's MonsterResource.evasion [0,100], resolved by Hero at emission
+## time. Rolled first, before any damage math (Section 3.5.1).
+@export var target_evasion: float = 0.0
+## Target's MonsterResource.elemental_resistances[damage_type], resolved by
+## Hero at emission time. Always 0.0 here since auto-attack's damage_type is
+## always "physical" (elemental resist never applies to physical damage) --
+## present for structural symmetry with HeroSkillAttackEvent's own field.
+@export var target_elemental_resist: float = 0.0

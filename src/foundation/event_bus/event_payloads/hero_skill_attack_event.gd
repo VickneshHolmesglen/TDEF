@@ -29,3 +29,20 @@ extends Resource
 @export var is_crit: bool = false
 @export var crit_multiplier_effective: float = 1.0
 @export var hero_bonus_tier: int = 0  ## 0 = STANDARD, 1 = ELITE, 2 = BOSS
+## Hero Combat & Stats Redesign (2026-09-18): the cast skill's own damage_type
+## (SkillDefinitionResource.effect_data.damage_type, "" normalized to
+## "physical" by Hero at emission time -- see hero.gd's
+## _resolve_skill_hit()). Drives D&S's mitigation branch: "physical" ->
+## target_armor's curve, any other value -> target_elemental_resist, "true"
+## -> no mitigation.
+@export var damage_type: String = "physical"
+## Target's MonsterResource.armor, resolved by Hero at emission time. Only
+## consulted when damage_type == "physical".
+@export var target_armor: float = 0.0
+## Target's MonsterResource.evasion [0,100], resolved by Hero at emission
+## time. Rolled first, before any damage math (Section 3.5.1).
+@export var target_evasion: float = 0.0
+## Target's MonsterResource.elemental_resistances[damage_type], resolved by
+## Hero at emission time. Only consulted when damage_type is a magic element;
+## irrelevant (stays 0.0) for "physical"/"true".
+@export var target_elemental_resist: float = 0.0
