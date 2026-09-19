@@ -12,12 +12,10 @@ extends Node
 const ARMORED_MITIGATION_MULTIPLIER: float = 0.50
 const HERO_DAMAGE_BONUS_MULTIPLIER: float = 1.50
 
-## Hero Combat & Stats Redesign (2026-09-18), Section 3.3: Hero Level is
-## hardcoded to 1 pending the not-yet-designed Hero Leveling system -- swap
-## this constant for Hero's real current level once that system exists (one-
-## line change, no formula rework, per the governing spec's own explicit
-## sequencing decision).
-const HERO_LEVEL_PLACEHOLDER: int = 1
+## Hero Leveling System (2026-09-19): the Hero Combat & Stats Redesign's
+## HERO_LEVEL_PLACEHOLDER=1 constant is now retired -- _resolve_target_
+## mitigation() below takes the real per-attack hero_level as a parameter
+## instead (see HeroAutoAttackEvent.hero_level/HeroSkillAttackEvent.hero_level).
 const HERO_ARMOR_MITIGATION_LEVEL_SCALAR: float = 50.0
 const COMBAT_VARIANCE_MIN: float = 0.95
 const COMBAT_VARIANCE_MAX: float = 1.05
@@ -32,8 +30,9 @@ static func _roll_evasion(evasion_percent: float) -> bool:
 
 ## Target mitigation (Section 3.5.4): returns a 0.0-1.0 multiplier to apply
 ## to raw damage. "physical" uses the Armor diminishing-returns curve
-## (Mitigation% = Armor / (Armor + 50 x hero_level), hero_level hardcoded
-## per HERO_LEVEL_PLACEHOLDER above); any other damage_type (fire/ice/poison/
+## (Mitigation% = Armor / (Armor + 50 x hero_level), hero_level now the real
+## per-attack value passed in by the caller -- see Hero Leveling System
+## 2026-09-19 note above); any other damage_type (fire/ice/poison/
 ## lightning/arcane) uses the caller-resolved target_elemental_resist
 ## directly (Hero already looked this up from the target's
 ## MonsterResource.elemental_resistances dict by the ability's own
@@ -42,7 +41,7 @@ static func _roll_evasion(evasion_percent: float) -> bool:
 ## math" division of labor already established by _on_tower_attacked()'s
 ## is_armored parameter); "true" bypasses both, returning 1.0 (no
 ## mitigation) per Section 3.3's dormant-capability note.
-static func _resolve_target_mitigation(damage_type: String, target_armor: float, target_elemental_resist: float) -> float:
+static func _resolve_target_mitigation(damage_type: String, target_armor: float, target_elemental_resist: float, hero_level: int) -> float:
 	if damage_type == "true":
 		return 1.0
 	if damage_type == "physical":
@@ -52,7 +51,13 @@ static func _resolve_target_mitigation(damage_type: String, target_armor: float,
 		# mitigation" instead of driving the denominator to 0/negative and
 		# producing inf/nonsensical results.
 		var clamped_armor: float = maxf(0.0, target_armor)
-		var armor_mitigation: float = clamped_armor / (clamped_armor + HERO_ARMOR_MITIGATION_LEVEL_SCALAR * float(HERO_LEVEL_PLACEHOLDER))
+		# maxi(1, hero_level) guards against a malformed/zero level ever
+		# producing a divide-by-zero -- hero_level is always >= 1 in practice
+		# per Hero._current_level's own field default and save-restore
+		# validation, but this keeps the formula itself defensively correct
+		# regardless of caller discipline, mirroring the clamped_armor guard
+		# immediately above it.
+		var armor_mitigation: float = clamped_armor / (clamped_armor + HERO_ARMOR_MITIGATION_LEVEL_SCALAR * float(maxi(1, hero_level)))
 		return 1.0 - armor_mitigation
 	return 1.0 - target_elemental_resist
 
@@ -143,7 +148,7 @@ func _on_hero_auto_attacked(event: HeroAutoAttackEvent) -> void:
 		return
 	var tier_dmg: float = event.base_damage * (HERO_DAMAGE_BONUS_MULTIPLIER if event.hero_bonus_tier > 0 else 1.0)
 	var crit_dmg: float = tier_dmg * (event.crit_multiplier_effective if event.is_crit else 1.0)
-	var mitigated_dmg: float = crit_dmg * _resolve_target_mitigation(event.damage_type, event.target_armor, event.target_elemental_resist)
+	var mitigated_dmg: float = crit_dmg * _resolve_target_mitigation(event.damage_type, event.target_armor, event.target_elemental_resist, event.hero_level)
 	var final_dmg: float = _apply_combat_variance(mitigated_dmg)
 	var final_damage: int = floori(final_dmg)
 	if final_damage <= 0:
@@ -180,7 +185,7 @@ func _on_hero_skill_attacked(event: HeroSkillAttackEvent) -> void:
 	var base_skill_damage: float = event.skill_power * event.skill_power_coefficient
 	var tier_dmg: float = base_skill_damage * (HERO_DAMAGE_BONUS_MULTIPLIER if event.hero_bonus_tier > 0 else 1.0)
 	var crit_dmg: float = tier_dmg * (event.crit_multiplier_effective if event.is_crit else 1.0)
-	var mitigated_dmg: float = crit_dmg * _resolve_target_mitigation(event.damage_type, event.target_armor, event.target_elemental_resist)
+	var mitigated_dmg: float = crit_dmg * _resolve_target_mitigation(event.damage_type, event.target_armor, event.target_elemental_resist, event.hero_level)
 	var final_dmg: float = _apply_combat_variance(mitigated_dmg)
 	var final_damage: int = floori(final_dmg)
 	if final_damage <= 0:

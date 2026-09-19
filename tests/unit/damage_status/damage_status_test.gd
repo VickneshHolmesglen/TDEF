@@ -356,18 +356,18 @@ func test_roll_evasion_statistical_rate_within_tolerance() -> void:
 
 
 func test_resolve_target_mitigation_true_damage_type_bypasses_everything() -> void:
-	var multiplier: float = DamageStatus._resolve_target_mitigation("true", 500.0, 0.9)
+	var multiplier: float = DamageStatus._resolve_target_mitigation("true", 500.0, 0.9, 1)
 	assert_float(multiplier).is_equal_approx(1.0, 0.0001)
 
 
 func test_resolve_target_mitigation_physical_zero_armor_applies_no_mitigation() -> void:
-	var multiplier: float = DamageStatus._resolve_target_mitigation("physical", 0.0, 0.0)
+	var multiplier: float = DamageStatus._resolve_target_mitigation("physical", 0.0, 0.0, 1)
 	assert_float(multiplier).is_equal_approx(1.0, 0.0001)
 
 
 func test_resolve_target_mitigation_physical_with_armor_worked_example() -> void:
 	# Armor=50, hero_level=1 (hardcoded): mitigation% = 50/(50+50*1) = 0.5 -> multiplier = 0.5
-	var multiplier: float = DamageStatus._resolve_target_mitigation("physical", 50.0, 0.0)
+	var multiplier: float = DamageStatus._resolve_target_mitigation("physical", 50.0, 0.0, 1)
 	assert_float(multiplier).is_equal_approx(0.5, 0.0001)
 
 
@@ -376,14 +376,14 @@ func test_resolve_target_mitigation_physical_negative_armor_clamps_to_zero_not_i
 	# runtime) must degrade to "no mitigation" (multiplier = 1.0, same as
 	# armor=0) instead of driving the denominator to 0/negative and producing
 	# inf or NaN.
-	var multiplier: float = DamageStatus._resolve_target_mitigation("physical", -50.0, 0.0)
+	var multiplier: float = DamageStatus._resolve_target_mitigation("physical", -50.0, 0.0, 1)
 	assert_float(multiplier).is_equal_approx(1.0, 0.0001)
 	assert_bool(is_inf(multiplier)).is_false()
 	assert_bool(is_nan(multiplier)).is_false()
 
 
 func test_resolve_target_mitigation_magic_uses_elemental_resist_directly() -> void:
-	var multiplier: float = DamageStatus._resolve_target_mitigation("fire", 500.0, 0.4)
+	var multiplier: float = DamageStatus._resolve_target_mitigation("fire", 500.0, 0.4, 1)
 	# damage_type != "physical"/"true" -> ignores target_armor entirely, uses
 	# 1.0 - target_elemental_resist = 0.6
 	assert_float(multiplier).is_equal_approx(0.6, 0.0001)
@@ -451,3 +451,12 @@ func test_d2_magic_damage_type_uses_elemental_resist_not_armor() -> void:
 	# floor(100 * 0.5 * variance[0.95,1.05]) -> in [47, 52] -- if target_armor
 	# were wrongly consulted instead, this would be far lower.
 	assert_int(payload.amount).is_between(47, 52)
+
+
+func test_resolve_target_mitigation_physical_higher_hero_level_reduces_mitigation() -> void:
+	# Armor=50: level 1 -> 50/(50+50)=0.5 mitigation -> multiplier 0.5.
+	# level 2 -> 50/(50+100)=0.333 mitigation -> multiplier 0.667 (less mitigated).
+	var level_one: float = DamageStatus._resolve_target_mitigation("physical", 50.0, 0.0, 1)
+	var level_two: float = DamageStatus._resolve_target_mitigation("physical", 50.0, 0.0, 2)
+	assert_float(level_one).is_equal_approx(0.5, 0.0001)
+	assert_float(level_two).is_greater(level_one)

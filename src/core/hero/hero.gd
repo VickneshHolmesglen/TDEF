@@ -856,6 +856,7 @@ func _on_attack_timer_timeout() -> void:
 	# physical hit).
 	payload.target_armor = entry.get("armor", 0.0) as float
 	payload.target_evasion = entry.get("evasion", 0.0) as float
+	payload.hero_level = _current_level
 	GEventBus.hero_auto_attacked.emit(payload)
 
 
@@ -1122,6 +1123,7 @@ func _resolve_skill_hit(skill_id: StringName) -> void:
 	payload.target_armor = entry.get("armor", 0.0) as float
 	payload.target_evasion = entry.get("evasion", 0.0) as float
 	payload.target_elemental_resist = elemental_resistances.get(damage_type, 0.0) as float
+	payload.hero_level = _current_level
 	GEventBus.hero_skill_attacked.emit(payload)
 
 

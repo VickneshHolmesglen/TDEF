@@ -46,3 +46,7 @@ extends Resource
 ## Hero at emission time. Only consulted when damage_type is a magic element;
 ## irrelevant (stays 0.0) for "physical"/"true".
 @export var target_elemental_resist: float = 0.0
+## Hero Leveling System (2026-09-19): Hero's real current level at the
+## moment of this attack, replacing damage_status.gd's previous
+## HERO_LEVEL_PLACEHOLDER=1 constant in the Armor mitigation formula.
+@export var hero_level: int = 1
