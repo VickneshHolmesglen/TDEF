@@ -123,19 +123,31 @@ And sometimes the plan breaks. The boss is immune to fire and your entire kill c
 
 23. The full class list (all possible tower-synced classes and their perk definitions) is a separate design deliverable — the **class catalogue**. The Hero System GDD specifies the mechanics; the class catalogue specifies the content. The four archetypes above are the foundation-layer examples.
 
-#### Group 6: Hero Death
+#### Group 6: Hero Leveling
 
-24. Hero HP reaching 0 from any source triggers DEFEAT immediately. There is no respawn, revival item, or tower effect that can prevent this.
+25. Hero Level is persistent across missions — part of the same persistent domain as equipment, tech tree, and menagerie state. It resets only on a full new-game/new-adventure reset, in lockstep with the Hero Skill Tree's own reset trigger. Surviving a DEFEAT does not reset level or XP.
 
-25. Lifesteal and healing skills apply before the HP-reaches-0 check; they cannot trigger on the killing hit to prevent it.
+26. XP sources: a monster kill within the Hero's current Attack Range grants full tier-based XP (STANDARD 5 / ELITE 15 / BOSS 100); a kill within 2x Attack Range but outside that inner band grants half that amount, floored; beyond 2x Attack Range grants none. Wave completion grants a flat 25 XP; mission completion grants a flat 150 XP (withheld on DEFEAT).
 
-#### Group 7: Movement
+27. The level curve is `xp_required(level) = floor(100 x 1.15^(level-1))` (see Formulas), capped at level 50. A single large XP grant may cross multiple level thresholds in one resolution; every crossed level's rewards apply independently, never just the first.
 
-26. The hero moves in continuous world space, omnidirectionally. Keyboard/Mouse is the primary input; gamepad is supported. Velocity: `velocity = direction.normalized() × movement_speed` (instantaneous — no acceleration curve for MVP; feel pass deferred to Polish phase).
+28. Every level grants +10 Max HP, +2 Physical Attack, +2 Magic Attack. Every 5th level additionally grants 1 Skill Tree point (credited to the archetype pool matching the Hero's current Primary class) and a small class-specific stat bonus, per Rule 29 — both skipped, not banked, for a qualifying level reached with no Primary class designated.
 
-27. Hero movement is blocked by `BLOCKED` cells and cells occupied by towers. The hero can traverse PATH, PLACEABLE (unoccupied), SPAWN, and GOAL cells freely.
+29. **Placeholder class-bonus mapping** (explicitly provisional — superseded whenever the real class catalogue, Rule 23, ships): Physical archetype -> +1 Physical Attack; Ranged archetype -> +0.5% Crit Chance; Elemental archetype -> +1 Magic Attack; Support archetype -> +1% CDR.
 
-28. Each physics frame, the Hero System calls `Grid.world_to_cell(hero_world_pos)` to determine the current grid cell. When the result changes from the previous frame (`prev_cell != current_cell`), `hero_position_changed` is emitted to the EventBus with `grid_position: Vector2i`. This resolves EventBus Open Question #5: per-cell-boundary emission with an O(1) guard is sufficient — no frame throttling needed.
+#### Group 7: Hero Death
+
+30. Hero HP reaching 0 from any source triggers DEFEAT immediately. There is no respawn, revival item, or tower effect that can prevent this.
+
+31. Lifesteal and healing skills apply before the HP-reaches-0 check; they cannot trigger on the killing hit to prevent it.
+
+#### Group 8: Movement
+
+32. The hero moves in continuous world space, omnidirectionally. Keyboard/Mouse is the primary input; gamepad is supported. Velocity: `velocity = direction.normalized() × movement_speed` (instantaneous — no acceleration curve for MVP; feel pass deferred to Polish phase).
+
+33. Hero movement is blocked by `BLOCKED` cells and cells occupied by towers. The hero can traverse PATH, PLACEABLE (unoccupied), SPAWN, and GOAL cells freely.
+
+34. Each physics frame, the Hero System calls `Grid.world_to_cell(hero_world_pos)` to determine the current grid cell. When the result changes from the previous frame (`prev_cell != current_cell`), `hero_position_changed` is emitted to the EventBus with `grid_position: Vector2i`. This resolves EventBus Open Question #5: per-cell-boundary emission with an O(1) guard is sufficient — no frame throttling needed.
 
 ---
 
@@ -377,6 +389,34 @@ Luck also contributes a secondary Crit Chance source: `effective_crit_chance = m
 
 ---
 
+### Formula 8: XP Required Per Level
+
+```
+xp_required(level) = floor(100 x 1.15^(level - 1))
+```
+
+| Variable | Range | Description |
+|---|---|---|
+| `level` | 2-50 | The level being leveled up TO |
+| Result | int >= 100 | XP needed, accumulated from 0, to complete this level |
+
+**Example:** `xp_required(10) = floor(100 x 1.15^9) = 351` (computed with double-precision `pow()`/`floor()`, matching this project's own runtime semantics — do not hand-round the intermediate `1.15^9`, since floor-boundary calculations like this one can differ by 1 from hand arithmetic due to floating-point representation)
+
+---
+
+### Formula 9: Kill XP Band Resolution
+
+```
+distance = hero.global_position.distance_to(death_position)
+if distance <= attack_range:       kill_xp = tier_base_xp[tier]
+elif distance <= 2 x attack_range:  kill_xp = floor(tier_base_xp[tier] x 0.5)
+else:                                kill_xp = 0
+```
+
+Where `tier_base_xp = {STANDARD: 5, ELITE: 15, BOSS: 100}`.
+
+---
+
 ## Edge Cases
 
 **Stat Clamping**
@@ -469,6 +509,21 @@ Luck also contributes a secondary Crit Chance source: `effective_crit_chance = m
 | CDR cap | 75% | 50–90% | Near-zero cooldowns; skill spam eliminates resource management | CDR affixes feel useless; skills feel too slow |
 | Min effective cooldown | 0.5 seconds | 0.3–1.0 | Floor too high; CDR stops feeling useful before cap | Spammable skills with zero CDR; game becomes trivial |
 | Tower affinity bonus cap | 200% (+2.00) | 100–300% | Tower-affinity builds dwarf all other build paths | Diminishing returns kick in too early; affinity feels like a minor bonus |
+| Kill XP — STANDARD tier | 5 | 2–10 | Low-tier kills grant too little XP; grind feels endless | Early progression trivializes end-game; level cap reached too fast |
+| Kill XP — ELITE tier | 15 | 8–25 | Elite kills feel unrewarding | Elite farming becomes dominant XP strategy |
+| Kill XP — BOSS tier | 100 | 50–200 | Boss kills grant insufficient XP for their challenge | Boss grinding trivializes the progression curve |
+| Kill XP — outer-band multiplier | 0.5× (floored) | 0.25–1.0 | Proximity doesn't matter; ranged builds get full XP from across the map | Too harsh; any miss punishes the player heavily |
+| Kill XP — outer-band range | 2× attack_range | 1.5–3.0× | Outer band too wide; hero doesn't need to position tactically | Too narrow; ranged attacks almost never qualify for outer-band |
+| Wave completion XP | 25 | 10–50 | Flat wave bonus feels negligible vs kill XP | Wave bonus trivializes kill-based progression; encourages tower-only play |
+| Mission completion XP | 150 | 75–250 | Mission completion barely registers in level progression | Mission completion XP dominates; grinds out level too fast |
+| Level curve base | 100 | 80–120 | Steep early curve; mid-game levels take forever | Early levels too cheap; endgame reached immediately |
+| Level curve growth rate | 1.15× | 1.05–1.25 | Shallow scaling; levels never feel progressively harder | Exponential scaling makes late levels unreachable |
+| Level cap | 50 | 25–100 | Level 50 reached trivially; endgame undefined | Level cap so high it's never reached; progression feels infinite |
+| Per-level HP gain | +10 | +5–+20 | Hero never gains meaningful durability per level | Leveling trivializes early content due to survivability scaling |
+| Per-level Physical Attack gain | +2 | +1–+5 | Physical builds scale weakly; damage per level feels irrelevant | Physical damage scales too fast; overshadows all other stats |
+| Per-level Magic Attack gain | +2 | +1–+5 | Magic builds scale weakly; damage per level feels irrelevant | Magic damage scales too fast; overshadows all other stats |
+| Skill Tree point interval | Every 5th level | Every 3rd–Every 5th | Skill tree fills too slowly; specialization feels locked in | Skill tree points come too fast; no meaningful build commitment |
+| Class bonus grant interval | Every 5th level | Every 3rd–Every 5th | Class bonus applies too rarely; class choice feels irrelevant | Class bonus applies too often; bonus is negligible per instance |
 
 **Note:** Hero base stat starting values (HP, damage, movement speed, attack range) are production-phase tuning decisions. These must be calibrated against the target wave difficulty curve defined in `design/gdd/game-concept.md` and will be set when the first playable mission is designed. Add them to `design/registry/entities.yaml` as constants once confirmed.
 
