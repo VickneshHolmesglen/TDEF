@@ -1458,14 +1458,21 @@ func apply_placeholder_base_stats() -> void:
 	# real progress on every single mission entry. Save/restore level and
 	# xp around this call, and re-derive/re-apply the level-up growth this
 	# reseed would otherwise discard (see _reapply_persistent_level_growth()).
+	# Round-2 fix (scoped re-review, 2026-09-19): _accumulated_class_bonuses
+	# needs the identical save/restore treatment -- reset_to_defaults()
+	# clears it unconditionally too, and the first pass of this fix missed
+	# that, silently losing the ledger on a second call in the same session
+	# or on the next save.
 	var saved_level: int = _current_level
 	var saved_xp: int = _current_xp
+	var saved_class_bonuses: Dictionary[StringName, float] = _accumulated_class_bonuses.duplicate()
 	_base_stats = PLACEHOLDER_BASE_STATS.duplicate()
 	_current_level = saved_level
 	_reapply_persistent_level_growth()
 	reset_to_defaults()
 	_current_level = saved_level
 	_current_xp = saved_xp
+	_accumulated_class_bonuses = saved_class_bonuses
 
 
 # ---------------------------------------------------------------------------

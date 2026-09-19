@@ -364,3 +364,14 @@ func test_reset_to_defaults_clears_accumulated_class_bonuses() -> void:
 	_hero._accumulated_class_bonuses[&"magic_attack"] = 5.0
 	_hero.reset_to_defaults()
 	assert_bool(_hero._accumulated_class_bonuses.is_empty()).is_true()
+
+
+func test_apply_placeholder_base_stats_preserves_class_bonuses_across_repeated_calls() -> void:
+	_hero._current_level = 1
+	_hero._accumulated_class_bonuses[&"magic_attack"] = 3.0
+	_hero.apply_placeholder_base_stats()
+	_hero.apply_placeholder_base_stats()  # second call, same session -- must not lose the ledger
+	assert_float(_hero._accumulated_class_bonuses[&"magic_attack"]).is_equal_approx(3.0, 0.0001)
+	# magic_attack seeded at 10.0 by the placeholder each time; class bonus (3.0) must still be
+	# folded in after the second reseed too, not just the first
+	assert_float(_hero._base_stats[&"magic_attack"]).is_equal_approx(13.0, 0.0001)
