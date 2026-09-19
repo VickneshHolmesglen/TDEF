@@ -1,9 +1,9 @@
 extends GdUnitTestSuite
 
-## Unit tests for Hero Leveling System (docs/superpowers/specs/2026-09-
-## hero-leveling-design.md). Formula L1 (xp curve) and save/restore/reset
-## coverage. Level-up resolution (Formula L3) is covered in a later task's
-## own test additions to this same file.
+## Unit tests for Hero Leveling System (docs/superpowers/specs/2026-09-19-
+## hero-leveling-design.md). Formula L1 (xp curve), save/restore/reset,
+## and Formula L2/L3 (kill XP bands, level-up resolution) coverage are all
+## included below in this same file.
 
 var _hero: Hero
 
@@ -51,7 +51,7 @@ func test_xp_required_for_level_ten_matches_double_precision_curve() -> void:
 
 func test_xp_required_grows_monotonically() -> void:
 	var previous: int = Hero._xp_required_for_level(2)
-	for level in range(3, 51):
+	for level: int in range(3, 51):
 		var current: int = Hero._xp_required_for_level(level)
 		assert_int(current).is_greater(previous)
 		previous = current
@@ -300,3 +300,67 @@ func test_level_five_emits_skill_tree_point_earned_with_sentinel_source() -> voi
 	assert_str(args[0] as String).is_equal("support")
 	assert_int(args[1] as int).is_equal(Hero.LEVEL_DERIVED_SKILL_POINT_SOURCE_ID)
 	spy.disconnect_all()
+
+
+func test_kill_xp_band_returns_zero_for_wave_end_despawn() -> void:
+	_hero._base_stats[&"attack_range"] = 100.0
+	_hero.global_position = Vector2.ZERO
+	var payload := _make_died_event(2, Vector2(10, 0))  # BOSS, well within range
+	payload.kill_source = "wave_end"
+	assert_int(_hero._resolve_kill_xp_band(payload)).is_equal(0)
+
+
+# ---------------------------------------------------------------------------
+# Finding C1 (final review, 2026-09-19): level/growth survives
+# apply_placeholder_base_stats()'s per-mission _base_stats reseed.
+# ---------------------------------------------------------------------------
+
+func test_apply_placeholder_base_stats_preserves_level_and_xp() -> void:
+	_hero._current_level = 12
+	_hero._current_xp = 50
+	_hero.apply_placeholder_base_stats()
+	assert_int(_hero._current_level).is_equal(12)
+	assert_int(_hero._current_xp).is_equal(50)
+
+
+func test_apply_placeholder_base_stats_reapplies_universal_growth() -> void:
+	_hero._current_level = 6  # 5 levels gained above level 1
+	_hero._current_xp = 0
+	_hero.apply_placeholder_base_stats()
+	# PLACEHOLDER_BASE_STATS seeds physical_attack at 25.0; +2.0 per level gained (5) = +10.0
+	assert_float(_hero._base_stats[&"physical_attack"]).is_equal_approx(35.0, 0.0001)
+
+
+func test_apply_placeholder_base_stats_reapplies_accumulated_class_bonus() -> void:
+	_hero._current_level = 1
+	_hero._accumulated_class_bonuses[&"magic_attack"] = 3.0  # e.g. 3 historical elemental-class qualifying levels
+	_hero.apply_placeholder_base_stats()
+	# PLACEHOLDER_BASE_STATS seeds magic_attack at 10.0; class bonus adds 3.0 on top
+	assert_float(_hero._base_stats[&"magic_attack"]).is_equal_approx(13.0, 0.0001)
+
+
+func test_get_save_data_and_restore_round_trips_accumulated_class_bonuses() -> void:
+	_hero._accumulated_class_bonuses[&"physical_attack"] = 4.0
+	_hero._accumulated_class_bonuses[&"cdr"] = 0.02
+	var data: Dictionary = _hero.get_save_data()
+
+	var fresh := Hero.new()
+	add_child(fresh)
+	var ok: bool = fresh.restore_save_data(data)
+	assert_bool(ok).is_true()
+	assert_float(fresh._accumulated_class_bonuses[&"physical_attack"]).is_equal_approx(4.0, 0.0001)
+	assert_float(fresh._accumulated_class_bonuses[&"cdr"]).is_equal_approx(0.02, 0.0001)
+	fresh.get_parent().remove_child(fresh)
+	fresh.free()
+
+
+func test_restore_save_data_rejects_missing_class_bonuses_key() -> void:
+	var data: Dictionary = _hero.get_save_data()
+	data.erase("class_bonuses")
+	assert_bool(_hero.restore_save_data(data)).is_false()
+
+
+func test_reset_to_defaults_clears_accumulated_class_bonuses() -> void:
+	_hero._accumulated_class_bonuses[&"magic_attack"] = 5.0
+	_hero.reset_to_defaults()
+	assert_bool(_hero._accumulated_class_bonuses.is_empty()).is_true()

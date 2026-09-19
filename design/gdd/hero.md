@@ -123,31 +123,31 @@ And sometimes the plan breaks. The boss is immune to fire and your entire kill c
 
 23. The full class list (all possible tower-synced classes and their perk definitions) is a separate design deliverable — the **class catalogue**. The Hero System GDD specifies the mechanics; the class catalogue specifies the content. The four archetypes above are the foundation-layer examples.
 
-#### Group 6: Hero Leveling
+#### Group 6: Hero Death
 
-25. Hero Level is persistent across missions — part of the same persistent domain as equipment, tech tree, and menagerie state. It resets only on a full new-game/new-adventure reset, in lockstep with the Hero Skill Tree's own reset trigger. Surviving a DEFEAT does not reset level or XP.
+24. Hero HP reaching 0 from any source triggers DEFEAT immediately. There is no respawn, revival item, or tower effect that can prevent this.
 
-26. XP sources: a monster kill within the Hero's current Attack Range grants full tier-based XP (STANDARD 5 / ELITE 15 / BOSS 100); a kill within 2x Attack Range but outside that inner band grants half that amount, floored; beyond 2x Attack Range grants none. Wave completion grants a flat 25 XP; mission completion grants a flat 150 XP (withheld on DEFEAT).
+25. Lifesteal and healing skills apply before the HP-reaches-0 check; they cannot trigger on the killing hit to prevent it.
 
-27. The level curve is `xp_required(level) = floor(100 x 1.15^(level-1))` (see Formulas), capped at level 50. A single large XP grant may cross multiple level thresholds in one resolution; every crossed level's rewards apply independently, never just the first.
+#### Group 7: Movement
 
-28. Every level grants +10 Max HP, +2 Physical Attack, +2 Magic Attack. Every 5th level additionally grants 1 Skill Tree point (credited to the archetype pool matching the Hero's current Primary class) and a small class-specific stat bonus, per Rule 29 — both skipped, not banked, for a qualifying level reached with no Primary class designated.
+26. The hero moves in continuous world space, omnidirectionally. Keyboard/Mouse is the primary input; gamepad is supported. Velocity: `velocity = direction.normalized() × movement_speed` (instantaneous — no acceleration curve for MVP; feel pass deferred to Polish phase).
 
-29. **Placeholder class-bonus mapping** (explicitly provisional — superseded whenever the real class catalogue, Rule 23, ships): Physical archetype -> +1 Physical Attack; Ranged archetype -> +0.5% Crit Chance; Elemental archetype -> +1 Magic Attack; Support archetype -> +1% CDR.
+27. Hero movement is blocked by `BLOCKED` cells and cells occupied by towers. The hero can traverse PATH, PLACEABLE (unoccupied), SPAWN, and GOAL cells freely.
 
-#### Group 7: Hero Death
+28. Each physics frame, the Hero System calls `Grid.world_to_cell(hero_world_pos)` to determine the current grid cell. When the result changes from the previous frame (`prev_cell != current_cell`), `hero_position_changed` is emitted to the EventBus with `grid_position: Vector2i`. This resolves EventBus Open Question #5: per-cell-boundary emission with an O(1) guard is sufficient — no frame throttling needed.
 
-30. Hero HP reaching 0 from any source triggers DEFEAT immediately. There is no respawn, revival item, or tower effect that can prevent this.
+#### Group 8: Hero Leveling
 
-31. Lifesteal and healing skills apply before the HP-reaches-0 check; they cannot trigger on the killing hit to prevent it.
+29. Hero Level is persistent across missions — part of the same persistent domain as equipment, tech tree, and menagerie state. It resets only on a full new-game/new-adventure reset, in lockstep with the Hero Skill Tree's own reset trigger. Surviving a DEFEAT does not reset level or XP.
 
-#### Group 8: Movement
+30. XP sources: a monster kill within the Hero's current Attack Range grants full tier-based XP (STANDARD 5 / ELITE 15 / BOSS 100); a kill within 2x Attack Range but outside that inner band grants half that amount, floored; beyond 2x Attack Range grants none; a monster force-removed at wave-end (not a real kill) grants none. Wave completion grants a flat 25 XP; mission completion grants a flat 150 XP (withheld on DEFEAT).
 
-32. The hero moves in continuous world space, omnidirectionally. Keyboard/Mouse is the primary input; gamepad is supported. Velocity: `velocity = direction.normalized() × movement_speed` (instantaneous — no acceleration curve for MVP; feel pass deferred to Polish phase).
+31. The level curve is `xp_required(level) = floor(100 x 1.15^(level-1))` (see Formulas), capped at level 50. A single large XP grant may cross multiple level thresholds in one resolution; every crossed level's rewards apply independently, never just the first.
 
-33. Hero movement is blocked by `BLOCKED` cells and cells occupied by towers. The hero can traverse PATH, PLACEABLE (unoccupied), SPAWN, and GOAL cells freely.
+32. Every level grants +10 Max HP, +2 Physical Attack, +2 Magic Attack. Every 5th level additionally grants 1 Skill Tree point (credited to the archetype pool matching the Hero's current Primary class) and a small class-specific stat bonus, per Rule 33 — both skipped, not banked, for a qualifying level reached with no Primary class designated. Both the universal growth and the class bonus persist across missions, re-derived/re-applied from the persisted level and the persisted accumulated class-bonus total on every mission entry — never re-rolled or lost.
 
-34. Each physics frame, the Hero System calls `Grid.world_to_cell(hero_world_pos)` to determine the current grid cell. When the result changes from the previous frame (`prev_cell != current_cell`), `hero_position_changed` is emitted to the EventBus with `grid_position: Vector2i`. This resolves EventBus Open Question #5: per-cell-boundary emission with an O(1) guard is sufficient — no frame throttling needed.
+33. **Placeholder class-bonus mapping** (explicitly provisional — superseded whenever the real class catalogue, Rule 23, ships): Physical archetype -> +1 Physical Attack; Ranged archetype -> +0.5% Crit Chance; Elemental archetype -> +1 Magic Attack; Support archetype -> +1% CDR.
 
 ---
 
@@ -169,7 +169,7 @@ Proximity accumulation is active only during `COMBAT` and `INTERMISSION`. Class 
 
 | System | Direction | Data | Mechanism |
 |---|---|---|---|
-| **EventBus** | Hero → | `hero_auto_attacked`, `hero_health_changed`, `hero_died`, `hero_position_changed`, `hero_equipment_changed`, `hero_skill_activated`, `hero_skill_attacked`, `hero_class_unlocked` | Direct signal emission. Note: `hero_damage_taken` is owned by D&S (moved from Hero System per EventBus catalogue update). `hero_skill_attacked` added 2026-08-25 (`damage-status.md` Rule IX/Formula D7, closes `TD-hero-001`) — a distinct event from `hero_skill_activated`: the latter marks cast-start (Audio/HUD), the former marks a resolved hit on one target (one emission per target struck), the actual Damage & Status pipeline trigger. |
+| **EventBus** | Hero → | `hero_auto_attacked`, `hero_health_changed`, `hero_died`, `hero_position_changed`, `hero_equipment_changed`, `hero_skill_activated`, `hero_skill_attacked`, `hero_class_unlocked`, `hero_xp_gained`, `hero_leveled_up` | Direct signal emission. Note: `hero_damage_taken` is owned by D&S (moved from Hero System per EventBus catalogue update). `hero_skill_attacked` added 2026-08-25 (`damage-status.md` Rule IX/Formula D7, closes `TD-hero-001`) — a distinct event from `hero_skill_activated`: the latter marks cast-start (Audio/HUD), the former marks a resolved hit on one target (one emission per target struck), the actual Damage & Status pipeline trigger. |
 | **EventBus** | → Hero | `equipment_slot_changed`, `active_skill_equipped`, `ultimate_skill_changed`, `item_rune_imbued`, `mission_phase_changed`, `sanctuary_state_restored`, `tower_placed`, `tower_removed`, `tower_destroyed` | Signal subscriptions connected in `_ready()` |
 | **Grid** | Hero → Grid | `world_to_cell(hero_world_pos)` per physics frame | Direct read API (Autoload call) |
 | **Save & Persistence** | Bidirectional | `get_save_data()` / `restore_save_data()` / `reset_to_defaults()`; registers with `restore_order = 30` | Direct API call in `_ready()` |

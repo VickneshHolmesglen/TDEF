@@ -180,6 +180,18 @@ var _base_stats: Dictionary[StringName, float] = {}
 var _current_level: int = 1
 var _current_xp: int = 0
 
+## Hero Leveling System (2026-09-19), Critical fix (found in final review):
+## the running total of every class-specific level-up bonus stat delta
+## ever granted (Section 3.4's every-5th-level reward). Persisted directly
+## rather than re-derived from _current_level, because it depends on
+## whichever Primary class was active at EACH historical qualifying
+## level-up -- which can differ from the Hero's CURRENT Primary class if
+## the player has since changed it. Re-deriving from the current class
+## would silently rewrite history for that case. Keys are the real
+## stat StringNames (e.g. &"physical_attack"), matching CLASS_LEVEL_BONUS's
+## own bonus_stat values.
+var _accumulated_class_bonuses: Dictionary[StringName, float] = {}
+
 ## Level cap (Section 3.3 of the governing spec) — no further XP/levels
 ## past this point; excess XP at the cap is discarded, never banked.
 const LEVEL_CAP: int = 50
@@ -221,7 +233,16 @@ static func _xp_required_for_level(level: int) -> int:
 ## own world_position/tier fields directly -- never _monster_cache, which
 ## _on_monster_died() erases the entry from before XP would resolve in
 ## some call orderings.
+## Finding I2 (final review, 2026-09-19): a monster force-removed at
+## wave-end (kill_source == "wave_end") is not a real kill -- matches
+## ResourceEconomy._process_drops()'s own identical first-check convention
+## for the same reason (MonsterDiedEvent's own doc comment: "Resource
+## Economy must filter kill_source == 'wave_end' and suppress drop
+## resolution" -- Hero Leveling is a second reward consumer subject to the
+## same rule, just not originally called out for it).
 func _resolve_kill_xp_band(payload: MonsterDiedEvent) -> int:
+	if payload.kill_source == "wave_end":
+		return 0
 	var base_xp: int = KILL_XP_BY_TIER.get(payload.tier, 0)
 	if base_xp <= 0:
 		return 0
@@ -246,7 +267,6 @@ func _grant_xp(amount: int) -> void:
 	if _current_level >= LEVEL_CAP:
 		return
 	_current_xp += amount
-	GEventBus.hero_xp_gained.emit(amount, _current_level)
 	while _current_level < LEVEL_CAP and _current_xp >= _xp_required_for_level(_current_level + 1):
 		_current_xp -= _xp_required_for_level(_current_level + 1)
 		_current_level += 1
@@ -254,6 +274,10 @@ func _grant_xp(amount: int) -> void:
 		GEventBus.hero_leveled_up.emit(_current_level)
 	if _current_level >= LEVEL_CAP:
 		_current_xp = 0
+	# Finding I3 (final review, 2026-09-19): emitted AFTER the level-up loop
+	# (was emitted before it, so new_level was the pre-grant level, not the
+	# resulting one -- contradicted this signal's own doc comment).
+	GEventBus.hero_xp_gained.emit(amount, _current_level)
 
 
 ## Flat per-level stat growth (Section 3.4's first bullet) -- applies
@@ -266,6 +290,11 @@ func _apply_level_up_rewards() -> void:
 	_base_stats[&"max_hp"] = _base_stats.get(&"max_hp", 0.0) + 10.0
 	_base_stats[&"physical_attack"] = _base_stats.get(&"physical_attack", 0.0) + 2.0
 	_base_stats[&"magic_attack"] = _base_stats.get(&"magic_attack", 0.0) + 2.0
+	# Finding M6 (final review): keep _max_hp's live cache in sync with the
+	# just-raised base stat immediately, not only at the next
+	# reset_to_defaults() call -- the HP bar/overheal clamp both read
+	# _max_hp, not get_effective_stat(&"max_hp"), directly.
+	_max_hp = get_effective_stat(&"max_hp")
 
 	if _current_level % SKILL_POINT_LEVEL_INTERVAL != 0:
 		return
@@ -278,6 +307,31 @@ func _apply_level_up_rewards() -> void:
 	var bonus_stat: StringName = bonus_entry[0] as StringName
 	var bonus_amount: float = bonus_entry[1] as float
 	_base_stats[bonus_stat] = _base_stats.get(bonus_stat, 0.0) + bonus_amount
+	# Finding C1 (final review): also record into the persisted running
+	# total, so this exact bonus survives apply_placeholder_base_stats()'s
+	# per-mission _base_stats reseed via _reapply_persistent_level_growth()
+	# below -- see that function and _accumulated_class_bonuses's own doc
+	# comment for why this can't just be re-derived from the current
+	# Primary class instead.
+	_accumulated_class_bonuses[bonus_stat] = _accumulated_class_bonuses.get(bonus_stat, 0.0) + bonus_amount
+	_max_hp = get_effective_stat(&"max_hp")
+
+## Finding C1 (final review, 2026-09-19): re-applies every persistent
+## level-up reward on top of a freshly-reseeded _base_stats dict.
+## Universal growth (+10 HP/+2 Physical Attack/+2 Magic Attack per level)
+## is purely deterministic from _current_level, so it's recomputed fresh
+## here rather than stored separately. The class bonus portion is NOT
+## recomputed -- it's added back verbatim from _accumulated_class_bonuses,
+## which was built up historically at the moment each qualifying level-up
+## actually occurred (see that field's own doc comment for why).
+func _reapply_persistent_level_growth() -> void:
+	var levels_gained: int = _current_level - 1
+	if levels_gained > 0:
+		_base_stats[&"max_hp"] = _base_stats.get(&"max_hp", 0.0) + 10.0 * float(levels_gained)
+		_base_stats[&"physical_attack"] = _base_stats.get(&"physical_attack", 0.0) + 2.0 * float(levels_gained)
+		_base_stats[&"magic_attack"] = _base_stats.get(&"magic_attack", 0.0) + 2.0 * float(levels_gained)
+	for stat: StringName in _accumulated_class_bonuses:
+		_base_stats[stat] = _base_stats.get(stat, 0.0) + _accumulated_class_bonuses[stat]
 
 ## Stopgap values for apply_placeholder_base_stats() below — see that
 ## method's own doc comment. Deduplicated 2026-09-17 from two identical
@@ -1275,6 +1329,9 @@ func get_save_data() -> Dictionary:
 	var slots: Array = []
 	for slot_id: StringName in _skill_slots:
 		slots.append(String(slot_id))
+	var class_bonuses_data: Dictionary = {}
+	for stat: StringName in _accumulated_class_bonuses:
+		class_bonuses_data[String(stat)] = _accumulated_class_bonuses[stat]
 	return {
 		"hp": _current_hp,
 		"proximity_time": proximity_data,
@@ -1283,6 +1340,7 @@ func get_save_data() -> Dictionary:
 		"skill_slots": slots,
 		"level": _current_level,
 		"xp": _current_xp,
+		"class_bonuses": class_bonuses_data,
 	}
 
 
@@ -1295,7 +1353,7 @@ func get_save_data() -> Dictionary:
 func restore_save_data(data: Dictionary) -> bool:
 	if not (data.has("hp") and data.has("proximity_time") and data.has("primary_class")
 			and data.has("class_locked") and data.has("skill_slots")
-			and data.has("level") and data.has("xp")):
+			and data.has("level") and data.has("xp") and data.has("class_bonuses")):
 		return false
 
 	var hp_value: Variant = data["hp"]
@@ -1326,6 +1384,10 @@ func restore_save_data(data: Dictionary) -> bool:
 	if not (xp_raw is int) or (xp_raw as int) < 0:
 		return false
 
+	var class_bonuses_raw: Variant = data["class_bonuses"]
+	if not (class_bonuses_raw is Dictionary):
+		return false
+
 	var restored_proximity: Dictionary[StringName, float] = {}
 	for key: Variant in (proximity_raw as Dictionary):
 		var value: Variant = (proximity_raw as Dictionary)[key]
@@ -1340,6 +1402,13 @@ func restore_save_data(data: Dictionary) -> bool:
 			return false
 		restored_slots[i] = StringName(slot_value as String)
 
+	var restored_class_bonuses: Dictionary[StringName, float] = {}
+	for key: Variant in (class_bonuses_raw as Dictionary):
+		var value: Variant = (class_bonuses_raw as Dictionary)[key]
+		if not (value is float or value is int):
+			return false
+		restored_class_bonuses[StringName(String(key))] = float(value)
+
 	_current_hp = float(hp_value)
 	_proximity_time = restored_proximity
 	_primary_class = StringName(primary_class_raw as String)
@@ -1347,6 +1416,7 @@ func restore_save_data(data: Dictionary) -> bool:
 	_skill_slots = restored_slots
 	_current_level = level_raw as int
 	_current_xp = xp_raw as int
+	_accumulated_class_bonuses = restored_class_bonuses
 	return true
 
 
@@ -1366,6 +1436,7 @@ func reset_to_defaults() -> void:
 	_phase = HeroPhase.IDLE_SANCTUARY
 	_current_level = 1
 	_current_xp = 0
+	_accumulated_class_bonuses.clear()
 
 
 ## Stopgap, unchanged in effect from the two identical call sites this
@@ -1379,8 +1450,22 @@ func reset_to_defaults() -> void:
 ## against the newly-set base_stats immediately, matching both original
 ## call sites' own sequencing.
 func apply_placeholder_base_stats() -> void:
+	# Finding C1 (final review, 2026-09-19): reset_to_defaults() below also
+	# resets _current_level/_current_xp to 1/0 -- this stopgap runs on
+	# EVERY mission launch, well after Hero._ready()'s own correct
+	# SavePersistence-driven restore already happened, so calling
+	# reset_to_defaults() unguarded here was silently wiping a player's
+	# real progress on every single mission entry. Save/restore level and
+	# xp around this call, and re-derive/re-apply the level-up growth this
+	# reseed would otherwise discard (see _reapply_persistent_level_growth()).
+	var saved_level: int = _current_level
+	var saved_xp: int = _current_xp
 	_base_stats = PLACEHOLDER_BASE_STATS.duplicate()
+	_current_level = saved_level
+	_reapply_persistent_level_growth()
 	reset_to_defaults()
+	_current_level = saved_level
+	_current_xp = saved_xp
 
 
 # ---------------------------------------------------------------------------
