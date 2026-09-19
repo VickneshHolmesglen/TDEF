@@ -249,3 +249,54 @@ func test_mission_complete_grants_mission_xp_but_defeat_does_not() -> void:
 	_hero._on_mission_phase_changed("WAVE_ACTIVE", "MISSION_COMPLETE", 0.0)
 	assert_int(_hero._current_xp).is_equal(Hero.MISSION_COMPLETION_XP)
 	assert_int(_hero._current_level).is_equal(20)
+
+
+# ---------------------------------------------------------------------------
+# Every-5th-level Skill Tree point + class bonus
+# ---------------------------------------------------------------------------
+
+func test_level_five_with_primary_class_grants_class_bonus_stat() -> void:
+	_hero._primary_class = &"elemental"
+	_hero._current_level = 4
+	_hero._current_xp = Hero._xp_required_for_level(5) - 1
+	var base_magic: float = _hero._base_stats.get(&"magic_attack", 0.0)
+	_hero._grant_xp(1)
+	assert_int(_hero._current_level).is_equal(5)
+	# +2 universal (Task 3) + 1.0 class bonus (elemental -> magic_attack)
+	assert_float(_hero._base_stats[&"magic_attack"]).is_equal_approx(base_magic + 3.0, 0.0001)
+
+
+func test_level_five_without_primary_class_skips_class_bonus_and_skill_point() -> void:
+	_hero._primary_class = &""
+	_hero._current_level = 4
+	_hero._current_xp = Hero._xp_required_for_level(5) - 1
+	var base_magic: float = _hero._base_stats.get(&"magic_attack", 0.0)
+	_hero._grant_xp(1)
+	assert_int(_hero._current_level).is_equal(5)
+	# only the +2 universal growth applies -- no class bonus without a Primary class
+	assert_float(_hero._base_stats[&"magic_attack"]).is_equal_approx(base_magic + 2.0, 0.0001)
+
+
+func test_non_qualifying_level_skips_class_bonus_even_with_primary_class() -> void:
+	_hero._primary_class = &"physical"
+	_hero._current_level = 5
+	_hero._current_xp = Hero._xp_required_for_level(6) - 1
+	var base_physical: float = _hero._base_stats.get(&"physical_attack", 0.0)
+	_hero._grant_xp(1)
+	assert_int(_hero._current_level).is_equal(6)  # not a multiple of 5
+	# only the +2 universal growth applies at a non-qualifying level
+	assert_float(_hero._base_stats[&"physical_attack"]).is_equal_approx(base_physical + 2.0, 0.0001)
+
+
+func test_level_five_emits_skill_tree_point_earned_with_sentinel_source() -> void:
+	_hero._primary_class = &"support"
+	_hero._current_level = 4
+	_hero._current_xp = Hero._xp_required_for_level(5) - 1
+	var spy := EventBusSpy.new()
+	spy.watch(GEventBus.skill_tree_point_earned)
+	_hero._grant_xp(1)
+	assert_int(spy.count("skill_tree_point_earned")).is_equal(1)
+	var args: Array = (spy.emissions["skill_tree_point_earned"] as Array)[0] as Array
+	assert_str(args[0] as String).is_equal("support")
+	assert_int(args[1] as int).is_equal(Hero.LEVEL_DERIVED_SKILL_POINT_SOURCE_ID)
+	spy.disconnect_all()

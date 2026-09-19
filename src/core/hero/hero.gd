@@ -192,6 +192,22 @@ const KILL_XP_OUTER_BAND_RANGE_MULTIPLIER: float = 2.0
 const WAVE_COMPLETION_XP: int = 25
 const MISSION_COMPLETION_XP: int = 150
 
+## Section 3.4's placeholder class-bonus mapping. Keyed by the REAL runtime
+## values of _primary_class (lowercase tower-archetype strings), not the
+## aspirational display names in hero.md's Rule 22 table -- see this
+## const's own explicit "placeholder, not the real class catalogue" framing
+## in the governing spec. Each entry: [stat_name, amount].
+const CLASS_LEVEL_BONUS: Dictionary[StringName, Array] = {
+	&"physical": [&"physical_attack", 1.0],
+	&"ranged": [&"crit_chance", 0.005],
+	&"elemental": [&"magic_attack", 1.0],
+	&"support": [&"cdr", 0.01],
+}
+const SKILL_POINT_LEVEL_INTERVAL: int = 5
+## Reserved sentinel for a level-derived skill_tree_point_earned emission --
+## real tower ids from Tower Mastery's own emissions are always >= 0.
+const LEVEL_DERIVED_SKILL_POINT_SOURCE_ID: int = -1
+
 ## Formula L1: xp_required(level) = floor(100 * 1.15^(level-1)). Pure,
 ## static — no instance state, matching this file's established
 ## _diminishing_curve()/_apply_tower_affinity_bonus() precedent for
@@ -250,6 +266,18 @@ func _apply_level_up_rewards() -> void:
 	_base_stats[&"max_hp"] = _base_stats.get(&"max_hp", 0.0) + 10.0
 	_base_stats[&"physical_attack"] = _base_stats.get(&"physical_attack", 0.0) + 2.0
 	_base_stats[&"magic_attack"] = _base_stats.get(&"magic_attack", 0.0) + 2.0
+
+	if _current_level % SKILL_POINT_LEVEL_INTERVAL != 0:
+		return
+	if _primary_class == &"":
+		return
+	GEventBus.skill_tree_point_earned.emit(String(_primary_class), LEVEL_DERIVED_SKILL_POINT_SOURCE_ID)
+	var bonus_entry: Array = CLASS_LEVEL_BONUS.get(_primary_class, [])
+	if bonus_entry.is_empty():
+		return
+	var bonus_stat: StringName = bonus_entry[0] as StringName
+	var bonus_amount: float = bonus_entry[1] as float
+	_base_stats[bonus_stat] = _base_stats.get(bonus_stat, 0.0) + bonus_amount
 
 ## Stopgap values for apply_placeholder_base_stats() below — see that
 ## method's own doc comment. Deduplicated 2026-09-17 from two identical
