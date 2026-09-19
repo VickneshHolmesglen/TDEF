@@ -172,6 +172,25 @@ var _skill_cooldowns: Dictionary[StringName, float] = {}
 ## &"tower_affinity", &"crit_multiplier", &"luck".
 var _base_stats: Dictionary[StringName, float] = {}
 
+## Hero Leveling System (2026-09-19): persistent (cross-mission) level/XP —
+## see docs/superpowers/specs/2026-09-19-hero-leveling-design.md. Resets to
+## 1/0 only via reset_to_defaults() (called on a fresh/malformed save load,
+## which is also this project's own established "new adventure" reset
+## trigger — see that field's own doc comment precedent on _proximity_time).
+var _current_level: int = 1
+var _current_xp: int = 0
+
+## Level cap (Section 3.3 of the governing spec) — no further XP/levels
+## past this point; excess XP at the cap is discarded, never banked.
+const LEVEL_CAP: int = 50
+
+## Formula L1: xp_required(level) = floor(100 * 1.15^(level-1)). Pure,
+## static — no instance state, matching this file's established
+## _diminishing_curve()/_apply_tower_affinity_bonus() precedent for
+## formula helpers.
+static func _xp_required_for_level(level: int) -> int:
+	return int(floor(100.0 * pow(1.15, float(level - 1))))
+
 ## Stopgap values for apply_placeholder_base_stats() below — see that
 ## method's own doc comment. Deduplicated 2026-09-17 from two identical
 ## copies (the_gap.gd's and mission_scene.gd's own _set_hero_placeholder_
@@ -1135,6 +1154,8 @@ func get_save_data() -> Dictionary:
 		"primary_class": String(_primary_class),
 		"class_locked": _class_locked,
 		"skill_slots": slots,
+		"level": _current_level,
+		"xp": _current_xp,
 	}
 
 
@@ -1146,7 +1167,8 @@ func get_save_data() -> Dictionary:
 ## a rejected payload).
 func restore_save_data(data: Dictionary) -> bool:
 	if not (data.has("hp") and data.has("proximity_time") and data.has("primary_class")
-			and data.has("class_locked") and data.has("skill_slots")):
+			and data.has("class_locked") and data.has("skill_slots")
+			and data.has("level") and data.has("xp")):
 		return false
 
 	var hp_value: Variant = data["hp"]
@@ -1169,6 +1191,14 @@ func restore_save_data(data: Dictionary) -> bool:
 	if not (primary_class_raw is String):
 		return false
 
+	var level_raw: Variant = data["level"]
+	if not (level_raw is int) or (level_raw as int) < 1 or (level_raw as int) > LEVEL_CAP:
+		return false
+
+	var xp_raw: Variant = data["xp"]
+	if not (xp_raw is int) or (xp_raw as int) < 0:
+		return false
+
 	var restored_proximity: Dictionary[StringName, float] = {}
 	for key: Variant in (proximity_raw as Dictionary):
 		var value: Variant = (proximity_raw as Dictionary)[key]
@@ -1188,6 +1218,8 @@ func restore_save_data(data: Dictionary) -> bool:
 	_primary_class = StringName(primary_class_raw as String)
 	_class_locked = class_locked_raw as bool
 	_skill_slots = restored_slots
+	_current_level = level_raw as int
+	_current_xp = xp_raw as int
 	return true
 
 
@@ -1205,6 +1237,8 @@ func reset_to_defaults() -> void:
 	_class_locked = false
 	_skill_slots = [&"", &"", &"", &""]
 	_phase = HeroPhase.IDLE_SANCTUARY
+	_current_level = 1
+	_current_xp = 0
 
 
 ## Stopgap, unchanged in effect from the two identical call sites this
