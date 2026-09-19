@@ -204,16 +204,25 @@ const KILL_XP_OUTER_BAND_RANGE_MULTIPLIER: float = 2.0
 const WAVE_COMPLETION_XP: int = 25
 const MISSION_COMPLETION_XP: int = 150
 
-## Section 3.4's placeholder class-bonus mapping. Keyed by the REAL runtime
-## values of _primary_class (lowercase tower-archetype strings), not the
-## aspirational display names in hero.md's Rule 22 table -- see this
-## const's own explicit "placeholder, not the real class catalogue" framing
-## in the governing spec. Each entry: [stat_name, amount].
+## Retargeted 2026-09-20 to match design/gdd/hero-class-catalogue.md's real
+## Primary perk per class (the catalogue existed since 2026-08-27, predating
+## this mapping's original placeholder values, which were invented before
+## that catalogue was known/reconciled). Each class's PRIMARY perk was
+## chosen since this schema supports only one bonus per class per qualifying
+## level: physical -> Bulwark Stance (flat Armor), ranged -> Extended Reach
+## (Attack Range), elemental -> Arcane Attunement (Magic Attack, already
+## correctly targeted before this change), support -> Field Medic
+## (Lifesteal) -- support previously targeted CDR, which is that class's
+## SECONDARY perk (Efficient Casting), not Primary; switched to match.
+## Amounts are this system's own per-level increments (the catalogue's own
+## safe ranges are one-time totals, not per-level -- see each entry below
+## for how the chosen increment maps to the catalogue's stated range across
+## the 10 qualifying levels between 5 and 50). Each entry: [stat_name, amount].
 const CLASS_LEVEL_BONUS: Dictionary[StringName, Array] = {
-	&"physical": [&"physical_attack", 1.0],
-	&"ranged": [&"crit_chance", 0.005],
-	&"elemental": [&"magic_attack", 1.0],
-	&"support": [&"cdr", 0.01],
+	&"physical": [&"armor", 2.0],  ## Bulwark Stance; 10 levels -> +20, catalogue's own upper bound (+8 to +20)
+	&"ranged": [&"attack_range", 6.0],  ## Extended Reach; 10 levels -> +60 world units (~27% of the 220 placeholder base, within the catalogue's +15%-30% range)
+	&"elemental": [&"magic_attack", 1.0],  ## Arcane Attunement -- unchanged, already the right stat
+	&"support": [&"lifesteal", 0.01],  ## Field Medic; 10 levels -> +10% (within the catalogue's +8%-15% range)
 }
 const SKILL_POINT_LEVEL_INTERVAL: int = 5
 ## Reserved sentinel for a level-derived skill_tree_point_earned emission --

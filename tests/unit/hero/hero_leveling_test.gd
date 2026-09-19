@@ -288,6 +288,43 @@ func test_non_qualifying_level_skips_class_bonus_even_with_primary_class() -> vo
 	assert_float(_hero._base_stats[&"physical_attack"]).is_equal_approx(base_physical + 2.0, 0.0001)
 
 
+## Retargeted 2026-09-20 to match design/gdd/hero-class-catalogue.md's real
+## Primary perks (hero.gd's CLASS_LEVEL_BONUS doc comment has the full
+## rationale) -- these 3 tests prove each non-elemental class's new target
+## stat, mirroring test_level_five_with_primary_class_grants_class_bonus_stat's
+## existing elemental/magic_attack pattern above.
+
+func test_level_five_physical_class_grants_armor_bonus_bulwark_stance() -> void:
+	_hero._primary_class = &"physical"
+	_hero._current_level = 4
+	_hero._current_xp = Hero._xp_required_for_level(5) - 1
+	var base_armor: float = _hero._base_stats.get(&"armor", 0.0)
+	_hero._grant_xp(1)
+	assert_int(_hero._current_level).is_equal(5)
+	# physical has no universal-growth stake in armor -- the full +2.0 here is the class bonus alone
+	assert_float(_hero._base_stats[&"armor"]).is_equal_approx(base_armor + 2.0, 0.0001)
+
+
+func test_level_five_ranged_class_grants_attack_range_bonus_extended_reach() -> void:
+	_hero._primary_class = &"ranged"
+	_hero._current_level = 4
+	_hero._current_xp = Hero._xp_required_for_level(5) - 1
+	var base_range: float = _hero._base_stats.get(&"attack_range", 0.0)
+	_hero._grant_xp(1)
+	assert_int(_hero._current_level).is_equal(5)
+	assert_float(_hero._base_stats[&"attack_range"]).is_equal_approx(base_range + 6.0, 0.0001)
+
+
+func test_level_five_support_class_grants_lifesteal_bonus_field_medic() -> void:
+	_hero._primary_class = &"support"
+	_hero._current_level = 4
+	_hero._current_xp = Hero._xp_required_for_level(5) - 1
+	var base_lifesteal: float = _hero._base_stats.get(&"lifesteal", 0.0)
+	_hero._grant_xp(1)
+	assert_int(_hero._current_level).is_equal(5)
+	assert_float(_hero._base_stats[&"lifesteal"]).is_equal_approx(base_lifesteal + 0.01, 0.0001)
+
+
 func test_level_five_emits_skill_tree_point_earned_with_sentinel_source() -> void:
 	_hero._primary_class = &"support"
 	_hero._current_level = 4

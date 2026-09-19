@@ -49,7 +49,7 @@
 
 | Perk | Effect | Mechanism | Safe Range |
 |---|---|---|---|
-| **Primary — Arcane Attunement** | % Skill Power bonus | `additive_bonus_total` on Hero stat #7 (Skill Power) | +15% – +30% |
+| **Primary — Arcane Attunement** | % Magic Attack bonus | `additive_bonus_total` on Hero stat #7 (renamed Magic Attack, formerly Skill Power — Hero Combat & Stats Redesign, 2026-09-18) | +15% – +30% |
 | **Secondary — Elemental Ward** | Flat bonus, all 5 Elemental Resistances | `flat_bonus` on Hero stat #9 (Elemental Resistances), applied uniformly across fire/frost/poison/lightning/arcane | +5% – +12% each (respects the 75%-per-element cap already in `hero.md` Tuning Knobs) |
 
 ### `support` — Support
@@ -92,7 +92,7 @@ Matches `hero.md` Formula 1 exactly — class perks are just another `flat_bonus
 
 ## Open Items (honestly carried forward, not resolved here)
 
-1. **Perk magnitudes are first-draft, not calibrated** — same status as `hero.md` OQ-2 (base stats). Both should be set together at the same first-playable-mission balance pass, since class perks and base stats interact (a Warrior's Bulwark Stance is only meaningful relative to the base Armor value OQ-2 hasn't set yet).
+1. **Perk magnitudes are first-draft, not calibrated** — same status as `hero.md` OQ-2 (base stats). Both should be set together at the same first-playable-mission balance pass, since class perks and base stats interact (a Warrior's Bulwark Stance is only meaningful relative to the base Armor value OQ-2 hasn't set yet). **Partially consumed 2026-09-20**: the Hero Leveling System's every-5th-level class bonus (`hero.md` Rule 33, `hero.gd`'s `CLASS_LEVEL_BONUS`) now retargets each class's per-level reward to that class's own Primary perk identity from this catalogue (Bulwark Stance/Extended Reach/Arcane Attunement/Field Medic), rather than the ad-hoc placeholder stats that mechanism originally invented before this catalogue was reconciled against it. The perk MAGNITUDES used there are still this system's own placeholder per-level increments, not a calibrated value from this catalogue — that calibration pass remains open.
 2. **`hero.md`'s badge-asset naming is stale** vs. shipped `class_id` values — flagged above, not edited in `hero.md` by this catalogue (a `hero.md` revision, not a catalogue concern).
 3. **`assets/data/class_palettes.tres` and the 4 badge PNGs remain unauthored** — blocked on the Art Bible, per `hero.md`'s own existing dependency note. This catalogue pins the keys they'll need.
 4. Does **not** resolve `hero.md` OQ-9 (Tower Affinity vs. cost-efficiency tension) — that OQ is about the Tower Affinity *formula*, not class perk content, and remains a deliberately deferred design decision per the user's 2026-07-15 choice.
