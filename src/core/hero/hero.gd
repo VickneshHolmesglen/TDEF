@@ -184,12 +184,72 @@ var _current_xp: int = 0
 ## past this point; excess XP at the cap is discarded, never banked.
 const LEVEL_CAP: int = 50
 
+## Formula L2 (kill XP bands). Keys match MonsterResource.tier's own
+## 0/1/2 convention (STANDARD/ELITE/BOSS).
+const KILL_XP_BY_TIER: Dictionary[int, int] = {0: 5, 1: 15, 2: 100}
+const KILL_XP_OUTER_BAND_MULTIPLIER: float = 0.5
+const KILL_XP_OUTER_BAND_RANGE_MULTIPLIER: float = 2.0
+const WAVE_COMPLETION_XP: int = 25
+const MISSION_COMPLETION_XP: int = 150
+
 ## Formula L1: xp_required(level) = floor(100 * 1.15^(level-1)). Pure,
 ## static — no instance state, matching this file's established
 ## _diminishing_curve()/_apply_tower_affinity_bonus() precedent for
 ## formula helpers.
 static func _xp_required_for_level(level: int) -> int:
 	return int(floor(100.0 * pow(1.15, float(level - 1))))
+
+
+## Formula L2: resolves kill XP for one monster death by distance band.
+## Returns 0 if the death is outside both bands. Reads MonsterDiedEvent's
+## own world_position/tier fields directly -- never _monster_cache, which
+## _on_monster_died() erases the entry from before XP would resolve in
+## some call orderings.
+func _resolve_kill_xp_band(payload: MonsterDiedEvent) -> int:
+	var base_xp: int = KILL_XP_BY_TIER.get(payload.tier, 0)
+	if base_xp <= 0:
+		return 0
+	var attack_range: float = get_effective_stat(&"attack_range")
+	var distance: float = global_position.distance_to(payload.world_position)
+	if distance <= attack_range:
+		return base_xp
+	if distance <= attack_range * KILL_XP_OUTER_BAND_RANGE_MULTIPLIER:
+		return int(floor(float(base_xp) * KILL_XP_OUTER_BAND_MULTIPLIER))
+	return 0
+
+
+## Formula L3: single entry point for every XP source. Resolves every
+## level threshold crossed by this one grant (never just the first),
+## applying Task 1/3's flat growth per level and emitting
+## hero_xp_gained/hero_leveled_up. amount <= 0 is a silent no-op (a kill
+## outside both bands, or a not-yet-authored zero-XP source, must never
+## emit a spurious hero_xp_gained(0, ...)).
+func _grant_xp(amount: int) -> void:
+	if amount <= 0:
+		return
+	if _current_level >= LEVEL_CAP:
+		return
+	_current_xp += amount
+	GEventBus.hero_xp_gained.emit(amount, _current_level)
+	while _current_level < LEVEL_CAP and _current_xp >= _xp_required_for_level(_current_level + 1):
+		_current_xp -= _xp_required_for_level(_current_level + 1)
+		_current_level += 1
+		_apply_level_up_rewards()
+		GEventBus.hero_leveled_up.emit(_current_level)
+	if _current_level >= LEVEL_CAP:
+		_current_xp = 0
+
+
+## Flat per-level stat growth (Section 3.4's first bullet) -- applies
+## unconditionally, every level, regardless of Primary class designation.
+## Task 4 extends this same function with the every-5th-level Skill Tree
+## point + class bonus (gated on _current_level % 5 == 0), appended at the
+## end of this function's body, not a separate call site -- see Task 4's
+## own Step 1.
+func _apply_level_up_rewards() -> void:
+	_base_stats[&"max_hp"] = _base_stats.get(&"max_hp", 0.0) + 10.0
+	_base_stats[&"physical_attack"] = _base_stats.get(&"physical_attack", 0.0) + 2.0
+	_base_stats[&"magic_attack"] = _base_stats.get(&"magic_attack", 0.0) + 2.0
 
 ## Stopgap values for apply_placeholder_base_stats() below — see that
 ## method's own doc comment. Deduplicated 2026-09-17 from two identical
@@ -516,6 +576,8 @@ func _ready() -> void:
 	GEventBus.monster_spawned.connect(_on_monster_spawned)
 	GEventBus.monster_cell_entered.connect(_on_monster_cell_entered)
 	GEventBus.monster_died.connect(_on_monster_died)
+	GEventBus.monsters_died_batch.connect(_on_monsters_died_batch)
+	GEventBus.wave_completed.connect(_on_wave_completed)
 
 	GEventBus.tower_placed.connect(_on_tower_placed)
 	GEventBus.tower_removed.connect(_on_tower_removed)
@@ -556,6 +618,8 @@ func _exit_tree() -> void:
 	GEventBus.monster_spawned.disconnect(_on_monster_spawned)
 	GEventBus.monster_cell_entered.disconnect(_on_monster_cell_entered)
 	GEventBus.monster_died.disconnect(_on_monster_died)
+	GEventBus.monsters_died_batch.disconnect(_on_monsters_died_batch)
+	GEventBus.wave_completed.disconnect(_on_wave_completed)
 
 	GEventBus.tower_placed.disconnect(_on_tower_placed)
 	GEventBus.tower_removed.disconnect(_on_tower_removed)
@@ -713,7 +777,11 @@ func _on_mission_phase_changed(_previous_phase: String, new_phase: String,
 		"SANCTUARY":
 			_proximity_active = false
 			_phase = HeroPhase.IDLE_SANCTUARY
-		"DEFEAT", "MISSION_COMPLETE":
+		"MISSION_COMPLETE":
+			_proximity_active = false
+			_phase = HeroPhase.DEAD
+			_grant_xp(MISSION_COMPLETION_XP)
+		"DEFEAT":
 			_proximity_active = false
 			_phase = HeroPhase.DEAD
 		_:
@@ -826,8 +894,37 @@ func _on_monster_cell_entered(entity_id: int, grid_cell: Vector2i, path_step_ind
 
 
 ## Removes the monster from the cache — no longer a valid attack target.
+## Hero Leveling System (2026-09-19): also grants kill XP by distance band
+## (Formula L2) -- resolved BEFORE the cache erase line only in the sense
+## that both read payload's own fields, never _monster_cache, so ordering
+## between these two lines does not matter; kept in this order (XP first)
+## purely for readability (XP is this handler's newer, less structural
+## concern).
 func _on_monster_died(payload: MonsterDiedEvent) -> void:
+	_grant_xp(_resolve_kill_xp_band(payload))
 	_monster_cache.erase(payload.entity_id)
+
+
+## Hero Leveling System (2026-09-19): batched deaths (DEATH_BATCH_THRESHOLD
+## exceeded, monster_manager.gd) resolve kill XP identically to individual
+## monster_died -- Hero had no subscription to this signal before this
+## addition (it only ever needed per-entity cache cleanup, which
+## monsters_died_batch's own emitter does not require of subscribers).
+## Each entry resolved independently, matching ResourceEconomy's own
+## established "no shared/batched rounding state across a batch" precedent.
+func _on_monsters_died_batch(payloads: Array[MonsterDiedEvent]) -> void:
+	for payload: MonsterDiedEvent in payloads:
+		_grant_xp(_resolve_kill_xp_band(payload))
+		_monster_cache.erase(payload.entity_id)
+
+
+## Hero Leveling System (2026-09-19), Section 3.2: flat XP per wave clear.
+## was_boss_breached is ignored -- wave_completed fires once per wave clear
+## regardless of breach outcome, and this XP source is deliberately
+## unconditional per the governing spec (no partial-credit/breach-penalty
+## rule was specified).
+func _on_wave_completed(_wave_number: int, _enemies_remaining: int, _was_boss_breached: bool) -> void:
+	_grant_xp(WAVE_COMPLETION_XP)
 
 
 # ---------------------------------------------------------------------------

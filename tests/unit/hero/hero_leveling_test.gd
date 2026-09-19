@@ -108,3 +108,114 @@ func test_restore_save_data_rejects_negative_xp() -> void:
 	var data: Dictionary = _hero.get_save_data()
 	data["xp"] = -1
 	assert_bool(_hero.restore_save_data(data)).is_false()
+
+
+# ---------------------------------------------------------------------------
+# Formula L2: kill XP band resolution
+# ---------------------------------------------------------------------------
+
+func _make_died_event(tier: int, world_position: Vector2) -> MonsterDiedEvent:
+	var payload := MonsterDiedEvent.new()
+	payload.tier = tier
+	payload.world_position = world_position
+	return payload
+
+
+func test_kill_within_attack_range_grants_full_tier_xp() -> void:
+	_hero._base_stats[&"attack_range"] = 100.0
+	_hero.global_position = Vector2.ZERO
+	var payload := _make_died_event(1, Vector2(50, 0))  # ELITE, distance 50 <= 100
+	assert_int(_hero._resolve_kill_xp_band(payload)).is_equal(15)
+
+
+func test_kill_in_outer_band_grants_half_tier_xp_floored() -> void:
+	_hero._base_stats[&"attack_range"] = 100.0
+	_hero.global_position = Vector2.ZERO
+	var payload := _make_died_event(1, Vector2(150, 0))  # distance 150, in (100, 200]
+	assert_int(_hero._resolve_kill_xp_band(payload)).is_equal(7)  # floor(15 * 0.5)
+
+
+func test_kill_outside_both_bands_grants_zero_xp() -> void:
+	_hero._base_stats[&"attack_range"] = 100.0
+	_hero.global_position = Vector2.ZERO
+	var payload := _make_died_event(2, Vector2(500, 0))  # distance 500 > 200
+	assert_int(_hero._resolve_kill_xp_band(payload)).is_equal(0)
+
+
+func test_boss_outer_band_still_exceeds_standard_inner_band() -> void:
+	_hero._base_stats[&"attack_range"] = 100.0
+	_hero.global_position = Vector2.ZERO
+	var boss_outer := _make_died_event(2, Vector2(150, 0))
+	var standard_inner := _make_died_event(0, Vector2(50, 0))
+	assert_int(_hero._resolve_kill_xp_band(boss_outer)).is_greater(
+		_hero._resolve_kill_xp_band(standard_inner))
+
+
+# ---------------------------------------------------------------------------
+# Formula L3: level-up resolution loop
+# ---------------------------------------------------------------------------
+
+func test_grant_xp_zero_or_negative_is_a_no_op() -> void:
+	_hero._current_xp = 0
+	_hero._grant_xp(0)
+	assert_int(_hero._current_xp).is_equal(0)
+	_hero._grant_xp(-5)
+	assert_int(_hero._current_xp).is_equal(0)
+
+
+func test_grant_xp_below_threshold_accumulates_without_leveling() -> void:
+	_hero._current_level = 1
+	_hero._current_xp = 0
+	_hero._grant_xp(50)  # below xp_required(2) (~114, see Task 1's own tests)
+	assert_int(_hero._current_level).is_equal(1)
+	assert_int(_hero._current_xp).is_equal(50)
+
+
+func test_grant_xp_crossing_one_threshold_levels_up_once() -> void:
+	_hero._current_level = 1
+	_hero._current_xp = 0
+	var base_hp: float = _hero._base_stats.get(&"max_hp", 0.0)
+	var xp_for_level_two: int = Hero._xp_required_for_level(2)
+	_hero._grant_xp(xp_for_level_two)  # exactly the threshold, whatever it measures to
+	assert_int(_hero._current_level).is_equal(2)
+	assert_int(_hero._current_xp).is_equal(0)
+	assert_float(_hero._base_stats[&"max_hp"]).is_equal_approx(base_hp + 10.0, 0.0001)
+
+
+func test_grant_xp_crossing_multiple_thresholds_levels_up_each_one() -> void:
+	_hero._current_level = 1
+	_hero._current_xp = 0
+	# A grant of xp_required(2) + xp_required(3) exactly reaches level 3
+	# with 0 XP remaining -- calling the real formula (not a hand-derived
+	# constant) so this test is correct regardless of the exact
+	# floating-point value each threshold measures to.
+	var grant: int = Hero._xp_required_for_level(2) + Hero._xp_required_for_level(3)
+	_hero._grant_xp(grant)
+	assert_int(_hero._current_level).is_equal(3)
+	assert_int(_hero._current_xp).is_equal(0)
+	var base_hp: float = _hero._base_stats.get(&"max_hp", 0.0)
+	assert_float(base_hp).is_equal_approx(20.0, 0.0001)  # +10 per level, 2 levels
+
+
+func test_grant_xp_at_level_cap_discards_excess_and_never_levels_further() -> void:
+	_hero._current_level = Hero.LEVEL_CAP
+	_hero._current_xp = 0
+	_hero._grant_xp(999999)
+	assert_int(_hero._current_level).is_equal(Hero.LEVEL_CAP)
+	assert_int(_hero._current_xp).is_equal(0)
+
+
+func test_wave_completed_grants_flat_wave_xp() -> void:
+	_hero._current_level = 1
+	_hero._current_xp = 0
+	_hero._on_wave_completed(1, 0, false)
+	assert_int(_hero._current_xp).is_equal(Hero.WAVE_COMPLETION_XP)
+
+
+func test_mission_complete_grants_mission_xp_but_defeat_does_not() -> void:
+	_hero._current_level = 1
+	_hero._current_xp = 0
+	_hero._on_mission_phase_changed("WAVE_ACTIVE", "DEFEAT", 0.0)
+	assert_int(_hero._current_xp).is_equal(0)
+	_hero._on_mission_phase_changed("WAVE_ACTIVE", "MISSION_COMPLETE", 0.0)
+	assert_int(_hero._current_xp).is_equal(Hero.MISSION_COMPLETION_XP)
