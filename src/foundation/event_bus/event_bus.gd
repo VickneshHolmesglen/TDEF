@@ -176,6 +176,21 @@ signal hero_ultimate_activated()
 ## Key subscribers: Tower Mastery, Mission HUD, Audio.
 signal hero_class_unlocked(archetype: StringName, is_deep: bool)
 
+## Hero Leveling System (2026-09-19): fired every time Hero gains XP from
+## any source (kill/wave/mission). new_level includes the resulting level (not
+## a source label) directly on the signal itself, allowing a HUD to update its
+## XP bar's "toward next level" fraction without a second event round-trip.
+## Presentation-only (HUD/VFX), never consumed for gameplay logic.
+## Key subscribers: Mission HUD.
+signal hero_xp_gained(amount: int, new_level: int)
+
+## Fired once per level gained, including once per level crossed when a
+## single large XP grant crosses multiple thresholds in one resolution
+## (Formula L3's while loop) — never batched into one emission for a
+## multi-level grant.
+## Key subscribers: Mission HUD, Audio.
+signal hero_leveled_up(new_level: int)
+
 # =============================================================================
 # Tower System
 # =============================================================================
