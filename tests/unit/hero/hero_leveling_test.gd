@@ -205,6 +205,22 @@ func test_grant_xp_at_level_cap_discards_excess_and_never_levels_further() -> vo
 	assert_int(_hero._current_xp).is_equal(0)
 
 
+## Code review fix (2026-09-19): the cap-already-reached test above only
+## covers a hero already AT LEVEL_CAP when _grant_xp() is called. This
+## covers the separate mid-loop path -- a grant that CROSSES INTO the cap
+## with leftover XP -- which the while loop's own "if _current_level >=
+## LEVEL_CAP: _current_xp = 0" tail line exists specifically to handle.
+## Starting one level below cap with a grant far exceeding the final
+## threshold exercises that tail line, not just the early-return guard.
+func test_grant_xp_crossing_into_level_cap_discards_leftover_xp() -> void:
+	_hero._current_level = Hero.LEVEL_CAP - 1
+	_hero._current_xp = 0
+	var grant: int = Hero._xp_required_for_level(Hero.LEVEL_CAP) + 500
+	_hero._grant_xp(grant)
+	assert_int(_hero._current_level).is_equal(Hero.LEVEL_CAP)
+	assert_int(_hero._current_xp).is_equal(0)
+
+
 func test_wave_completed_grants_flat_wave_xp() -> void:
 	_hero._current_level = 1
 	_hero._current_xp = 0
@@ -212,10 +228,24 @@ func test_wave_completed_grants_flat_wave_xp() -> void:
 	assert_int(_hero._current_xp).is_equal(Hero.WAVE_COMPLETION_XP)
 
 
+## Code review fix (2026-09-19): the original version of this test started
+## at _current_level = 1 / _current_xp = 0 and asserted a MISSION_COMPLETE
+## grant of MISSION_COMPLETION_XP (150) left _current_xp == 150 exactly --
+## but Hero._xp_required_for_level(2) is ~114, well under 150, so
+## _grant_xp()'s while loop correctly consumes that threshold and levels
+## the hero up, leaving _current_xp well under 150 (not exactly 150). The
+## test's own arithmetic contradicted the level-up behavior this task
+## correctly implements. Fixed by starting at a level with enough XP
+## headroom (level 20; xp_required(21) is far above 150) that granting 150
+## XP cannot cross a threshold, so the plain-accumulation assertion holds
+## and _current_level is provably unchanged. The DEFEAT-grants-nothing half
+## is unchanged (it was already correct).
 func test_mission_complete_grants_mission_xp_but_defeat_does_not() -> void:
-	_hero._current_level = 1
+	_hero._current_level = 20
 	_hero._current_xp = 0
+	assert_int(Hero.MISSION_COMPLETION_XP).is_less(Hero._xp_required_for_level(21))
 	_hero._on_mission_phase_changed("WAVE_ACTIVE", "DEFEAT", 0.0)
 	assert_int(_hero._current_xp).is_equal(0)
 	_hero._on_mission_phase_changed("WAVE_ACTIVE", "MISSION_COMPLETE", 0.0)
 	assert_int(_hero._current_xp).is_equal(Hero.MISSION_COMPLETION_XP)
+	assert_int(_hero._current_level).is_equal(20)
