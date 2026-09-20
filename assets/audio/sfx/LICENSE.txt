@@ -20,3 +20,9 @@
 
 	Follow on Twitter for updates:
 	http://twitter.com/KenneyNL
+
+	Kenney "RPG Audio" and "Impact Sounds" packs (added 2026-09-20)
+	Created/distributed by Kenney (www.kenney.nl)
+	License: Creative Commons Zero, CC0 (http://creativecommons.org/publicdomain/zero/1.0/)
+	Sources: https://kenney.nl/assets/rpg-audio , https://kenney.nl/assets/impact-sounds
+	Credit is not mandatory; see SOURCES.md for the exact files used.
