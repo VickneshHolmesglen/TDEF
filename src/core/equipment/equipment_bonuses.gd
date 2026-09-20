@@ -78,6 +78,11 @@ static func compute(slot_contents: Array[Dictionary]) -> Dictionary:
 			flat[stat] = flat.get(stat, 0.0) + runes["flat"][stat]
 		for stat: StringName in runes["additive"]:
 			additive[stat] = additive.get(stat, 0.0) + runes["additive"][stat]
+	var sets: Dictionary = set_bonuses(slot_contents)
+	for stat: StringName in sets["flat"]:
+		flat[stat] = flat.get(stat, 0.0) + sets["flat"][stat]
+	for stat: StringName in sets["additive"]:
+		additive[stat] = additive.get(stat, 0.0) + sets["additive"][stat]
 	return {"flat": flat, "additive": additive}
 
 
@@ -90,6 +95,70 @@ static func _equipped_contents() -> Array[Dictionary]:
 
 static func compute_equipped() -> Dictionary:
 	return compute(_equipped_contents())
+
+
+## Public form of the equipped-slot list (10 entries in EQUIPMENT_SLOT_NAMES
+## order, {} for empty slots).
+static func equipped_contents() -> Array[Dictionary]:
+	return _equipped_contents()
+
+
+## The equipped list with `slot_name`'s entry replaced by `candidate_contents`
+## (used by preview_swap() and by the panel's would-be set counts).
+static func swapped_contents(slot_name: String, candidate_contents: Dictionary) -> Array[Dictionary]:
+	var current: Array[Dictionary] = _equipped_contents()
+	var swapped: Array[Dictionary] = []
+	for i: int in range(Inventory.EQUIPMENT_SLOT_NAMES.size()):
+		swapped.append(candidate_contents if Inventory.EQUIPMENT_SLOT_NAMES[i] == slot_name else current[i])
+	return swapped
+
+
+## Which set an item belongs to, or &"" (equipment-set-bonuses spec §3.4).
+static func set_id_for_item(item_id: StringName) -> StringName:
+	for set_res: EquipmentSetResource in GGameDataRegistry.get_all_equipment_sets().values():
+		if set_res.member_item_ids.has(item_id):
+			return set_res.set_id
+	return &""
+
+
+## {set_id: distinct equipped piece count} for sets with at least one piece
+## equipped. Two copies of the same item count once; items with no registered
+## definition are skipped, matching compute().
+static func set_piece_counts(slot_contents: Array[Dictionary]) -> Dictionary:
+	var equipped_ids: Dictionary = {}
+	for contents: Dictionary in slot_contents:
+		if contents.is_empty() or _definition_for(contents) == null:
+			continue
+		equipped_ids[StringName(contents.get("item_id", "") as String)] = true
+	var counts: Dictionary = {}
+	for set_res: EquipmentSetResource in GGameDataRegistry.get_all_equipment_sets().values():
+		var n: int = 0
+		for member: StringName in set_res.member_item_ids:
+			if equipped_ids.has(member):
+				n += 1
+		if n > 0:
+			counts[set_res.set_id] = n
+	return counts
+
+
+## Every earned set bonus (cumulative thresholds), folded with fold_stat_entry()
+## so additive_bonus_total fans out like every other source. Returns the same
+## {"flat","additive"} shape as compute().
+static func set_bonuses(slot_contents: Array[Dictionary]) -> Dictionary:
+	var flat: Dictionary[StringName, float] = {}
+	var additive: Dictionary[StringName, float] = {}
+	var counts: Dictionary = set_piece_counts(slot_contents)
+	for set_id: StringName in counts:
+		var set_res: EquipmentSetResource = GGameDataRegistry.get_equipment_set(set_id)
+		if set_res == null:
+			continue
+		for threshold: int in set_res.bonuses:
+			if (counts[set_id] as int) < threshold:
+				continue
+			var delta: Dictionary = set_res.bonuses[threshold]
+			for stat: Variant in delta:
+				fold_stat_entry(StringName(stat), float(delta[stat]), flat, additive)
+	return {"flat": flat, "additive": additive}
 
 
 static func _diff(after: Dictionary, before: Dictionary) -> Dictionary[StringName, float]:
@@ -109,12 +178,8 @@ static func _diff(after: Dictionary, before: Dictionary) -> Dictionary[StringNam
 ## Per-stat change in total equipment bonuses if `candidate_contents` replaced
 ## whatever is in `slot_name` (positive = gain). Zero differences omitted.
 static func preview_swap(slot_name: String, candidate_contents: Dictionary) -> Dictionary:
-	var current: Array[Dictionary] = _equipped_contents()
-	var swapped: Array[Dictionary] = []
-	for i: int in range(Inventory.EQUIPMENT_SLOT_NAMES.size()):
-		swapped.append(candidate_contents if Inventory.EQUIPMENT_SLOT_NAMES[i] == slot_name else current[i])
-	var before: Dictionary = compute(current)
-	var after: Dictionary = compute(swapped)
+	var before: Dictionary = compute(_equipped_contents())
+	var after: Dictionary = compute(swapped_contents(slot_name, candidate_contents))
 	return {
 		"flat": _diff(after["flat"], before["flat"]),
 		"additive": _diff(after["additive"], before["additive"]),

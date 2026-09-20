@@ -46,7 +46,7 @@ func test_item_stats_unregistered_item_is_empty() -> void:
 
 func test_compute_sums_two_items_sharing_a_stat() -> void:
 	var a: Dictionary = _contents("iron_helm", {&"max_hp": 10.0, &"armor": 4.0})
-	var b: Dictionary = _contents("iron_sword", {&"physical_attack": 6.0, &"armor": 3.0})
+	var b: Dictionary = _contents("lucky_charm_trinket", {&"physical_attack": 6.0, &"armor": 3.0})
 	var r: Dictionary = EquipmentBonuses.compute([a, b])
 	assert_float(r["flat"][&"armor"]).is_equal_approx(7.0, 0.0001)
 	assert_float(r["flat"][&"max_hp"]).is_equal_approx(10.0, 0.0001)
