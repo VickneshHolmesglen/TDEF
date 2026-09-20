@@ -432,6 +432,8 @@ matching the rarest, hardest-to-breed/lure species in the game.
 
 > **Update 2026-09-20:** rune magnitudes are now authored per rune (themed flat stats, two all-stats wildcards) — see `docs/superpowers/specs/2026-09-20-rune-variety-design.md`. The flat-rune path defined below is in use.
 
+> **Update 2026-09-20:** equipment now has set bonuses (nine item-family sets earning cumulative stat bonuses) — see `docs/superpowers/specs/2026-09-20-equipment-set-bonuses-design.md`.
+
 Deliberately **not derived from a clean expression** — hand-authored per
 rune within a guideline range, same precedent as Crafting's own Formula 2
 (Crafted Goods cost) and Defense Building's tech-cost table: not every

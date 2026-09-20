@@ -114,6 +114,24 @@ static func _stat_line(stat: StringName, value: float, suffix: String = "") -> S
 	return "%s %s%s" % [stat_label(stat), format_value(stat, value), suffix]
 
 
+## "Max HP +60, Armor +25" style text for a stat delta; additive_bonus_total
+## renders as "All stats +X%". Static, so it uses TranslationServer, not tr().
+static func _delta_text(delta: Dictionary) -> String:
+	var parts: Array[String] = []
+	for stat: StringName in ordered_stats(delta):
+		if stat == &"additive_bonus_total":
+			parts.append("%s +%.1f%%" % [TranslationServer.translate("INVENTORY_INFO_ALL_STATS"), float(delta[stat]) * 100.0])
+		else:
+			parts.append(_stat_line(stat, float(delta[stat])))
+	return ", ".join(parts)
+
+
+static func _additive_gain(additive_delta: Dictionary) -> bool:
+	for stat: Variant in additive_delta:
+		return float(additive_delta[stat]) > 0.0
+	return false
+
+
 # ---------------------------------------------------------------------------
 # States
 # ---------------------------------------------------------------------------
@@ -131,9 +149,37 @@ func show_bonuses() -> void:
 		additive_max = maxf(additive_max, float(result["additive"][stat]))
 	if additive_max > 0.0:
 		lines.append("%s +%.1f%%" % [tr("INVENTORY_INFO_ALL_STATS"), additive_max * 100.0])
+	var set_lines: Array[String] = _set_section_lines()
+	lines.append_array(set_lines)
 	if lines.is_empty():
 		lines.append(_colored(tr("INVENTORY_INFO_NO_BONUSES"), COLOR_MUTED))
 	_body.text = "\n".join(lines)
+
+
+## Set Bonuses section (spec §3.5): one header line per partially/fully
+## equipped set, then one line per threshold, earned thresholds normal and
+## unearned ones muted. Empty when no set piece is equipped.
+func _set_section_lines() -> Array[String]:
+	var lines: Array[String] = []
+	var counts: Dictionary = EquipmentBonuses.set_piece_counts(EquipmentBonuses.equipped_contents())
+	if counts.is_empty():
+		return lines
+	lines.append("")
+	lines.append(tr("INVENTORY_INFO_SET_BONUSES_HEADER"))
+	var ids: Array = counts.keys()
+	ids.sort()
+	for set_id: StringName in ids:
+		var set_res: EquipmentSetResource = GGameDataRegistry.get_equipment_set(set_id)
+		if set_res == null:
+			continue
+		var count: int = counts[set_id] as int
+		lines.append(tr("INVENTORY_INFO_SET_HEADER_LINE") % [set_res.display_name, count, set_res.member_item_ids.size()])
+		var thresholds: Array = set_res.bonuses.keys()
+		thresholds.sort()
+		for threshold: int in thresholds:
+			var text: String = "  %s %s" % [tr("INVENTORY_INFO_SET_THRESHOLD") % threshold, _delta_text(set_res.bonuses[threshold])]
+			lines.append(text if count >= threshold else _colored(text, COLOR_MUTED))
+	return lines
 
 
 ## `equipped_slot` non-empty => the item is currently equipped (no swap
@@ -149,6 +195,18 @@ func show_item(contents: Dictionary, equipped_slot: String = "") -> void:
 	if definition != null and definition.equipment_category != "":
 		lines.append(_colored(definition.equipment_category.capitalize(), COLOR_MUTED))
 
+	var set_id: StringName = EquipmentBonuses.set_id_for_item(StringName(item_id))
+	if set_id != &"":
+		var set_res: EquipmentSetResource = GGameDataRegistry.get_equipment_set(set_id)
+		var would_be: Array[Dictionary]
+		var target_slot: String = "" if definition == null else EquipmentBonuses.target_slot_for(definition.equipment_category)
+		if equipped_slot == "" and target_slot != "":
+			would_be = EquipmentBonuses.swapped_contents(target_slot, contents)
+		else:
+			would_be = EquipmentBonuses.equipped_contents()
+		var count: int = EquipmentBonuses.set_piece_counts(would_be).get(set_id, 0) as int
+		lines.append(tr("INVENTORY_INFO_SET_LINE") % [set_res.display_name, count, set_res.member_item_ids.size()])
+
 	var own: Dictionary[StringName, float] = EquipmentBonuses.item_stats(contents)
 	var preview: Dictionary = {"flat": {}, "additive": {}}
 	if equipped_slot == "" and definition != null:
@@ -160,10 +218,19 @@ func show_item(contents: Dictionary, equipped_slot: String = "") -> void:
 		lines.append(_colored(tr("INVENTORY_INFO_NO_STATS"), COLOR_MUTED))
 	for stat: StringName in ordered_stats(own):
 		lines.append(_stat_line(stat, own[stat], _delta_suffix(stat, preview["flat"].get(stat, 0.0))))
-	# Stats the swap would REMOVE: a loss in the preview that the candidate itself lacks.
+	# Stats the swap changes that the candidate itself lacks (a removed item's
+	# stat, or a set bonus completed/broken by the swap): gains and losses,
+	# signed, never color alone.
 	for stat: StringName in ordered_stats(preview["flat"]):
-		if not own.has(stat) and preview["flat"][stat] < 0.0:
-			lines.append(_colored(_stat_line(stat, preview["flat"][stat]), COLOR_LOSS))
+		if not own.has(stat) and absf(preview["flat"][stat]) > 0.00001:
+			var change: float = preview["flat"][stat]
+			lines.append(_colored(_stat_line(stat, change), COLOR_GAIN if change > 0.0 else COLOR_LOSS))
+	var additive_change: float = 0.0
+	for stat: Variant in preview["additive"]:
+		additive_change = maxf(additive_change, absf(float(preview["additive"][stat])))
+	if additive_change > 0.00001:
+		var sign_char: String = "+" if _additive_gain(preview["additive"]) else "-"
+		lines.append(_colored("%s %s%.1f%%" % [tr("INVENTORY_INFO_ALL_STATS"), sign_char, additive_change * 100.0], COLOR_GAIN if sign_char == "+" else COLOR_LOSS))
 
 	for rune_id: String in contents.get("imbued_runes", []):
 		var delta: Dictionary = EquipmentForge.resolve_rune_stat_delta(StringName(rune_id))

@@ -73,7 +73,8 @@ func test_card_for_equipped_item_shows_name_stats_and_no_delta() -> void:
 	var text: String = _panel.get_body_text()
 	assert_str(text).contains("+10")
 	assert_str(text).contains("+4")
-	assert_str(text).not_contains("(")
+	assert_str(text).not_contains("(+")
+	assert_str(text).not_contains("(-")
 
 
 func test_card_for_inventory_item_shows_swap_delta_with_sign() -> void:
