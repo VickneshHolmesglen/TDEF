@@ -76,6 +76,12 @@ const SLOT_LABEL: Dictionary[String, String] = {
 	"main_hand": "Main Hand", "neck": "Neck", "ring_1": "Ring 1", "ring_2": "Ring 2", "offhand": "Offhand",
 }
 
+## Hover only: the frames are non-focusable Panels (existing design). Gamepad/
+## keyboard reach the same equipped items through inventory_screen.gd's slot
+## grid, whose focus events drive the same info panel.
+signal slot_info_requested(slot_name: String)
+signal slot_info_cleared()
+
 var _slot_frames: Dictionary[String, Panel] = {}
 var _slot_icons: Dictionary[String, TextureRect] = {}
 var _slot_labels: Dictionary[String, Label] = {}
@@ -192,6 +198,8 @@ func _build_slot_frame(slot_name: String, tile_size: Vector2) -> Panel:
 	slot_style.set_corner_radius_all(ShellChromeStyle.CHAMFER_PX)
 	frame.add_theme_stylebox_override("panel", slot_style)
 	frame.mouse_filter = Control.MOUSE_FILTER_PASS  ## lets tooltip_text register on hover
+	frame.mouse_entered.connect(_on_frame_mouse_entered.bind(slot_name))
+	frame.mouse_exited.connect(_on_frame_mouse_exited)
 
 	var icon := TextureRect.new()
 	icon.name = "Icon"
@@ -231,6 +239,14 @@ func refresh_all() -> void:
 func _on_equipment_slot_changed(slot: String, _new_item_id: String, _previous_item_id: String) -> void:
 	if _slot_frames.has(slot):
 		_refresh_slot(slot)
+
+
+func _on_frame_mouse_entered(slot_name: String) -> void:
+	slot_info_requested.emit(slot_name)
+
+
+func _on_frame_mouse_exited() -> void:
+	slot_info_cleared.emit()
 
 
 func _refresh_slot(slot_name: String) -> void:

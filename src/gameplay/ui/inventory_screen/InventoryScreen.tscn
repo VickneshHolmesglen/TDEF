@@ -31,7 +31,10 @@ size_flags_stretch_ratio = 2.0
 [node name="TabStrip" type="HBoxContainer" parent="MainLayout/LeftPanel"]
 layout_mode = 2
 
-[node name="EquipmentPaperdoll" type="Control" parent="MainLayout/LeftPanel"]
+[node name="EquipmentRow" type="HBoxContainer" parent="MainLayout/LeftPanel"]
+layout_mode = 2
+
+[node name="EquipmentPaperdoll" type="Control" parent="MainLayout/LeftPanel/EquipmentRow"]
 layout_mode = 2
 size_flags_horizontal = 4
 script = ExtResource("3_paperdoll")

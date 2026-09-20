@@ -40,6 +40,8 @@ extends Control
 ## gamepad focus-neighbor rewiring per tab switch (inventory.md's own
 ## D-pad-wraps-to-cycle-tabs spec), drag-and-drop, and tooltips are all
 ## pre-existing gaps this change doesn't newly introduce or attempt to close.
+## Update: the Equipment tab's item detail is now the fixed EquipmentInfoPanel
+## (equipment-display spec); floating tooltips remain out of scope.
 ##
 ## Crafting panel's real content (2026-08-10, player-requested): AC-14's
 ## former "deferred — no Crafting GDD exists" note is stale — design/gdd/
@@ -67,6 +69,8 @@ extends Control
 ## panel relationship (both remain simultaneously visible), not sub-content
 ## within the right panel, which already had precedent in LeftPanel's own
 ## category TabStrip.
+
+const EquipmentInfoPanelScript := preload("res://src/gameplay/ui/inventory_screen/equipment_info_panel.gd")
 
 const GRID_COLUMNS: int = 5
 const SLOT_SIZE: Vector2 = Vector2(64, 64)
@@ -176,7 +180,8 @@ const TOWER_PREVIEW_TOP_COLOR: Color = Color(0.95, 0.85, 0.15, 0.45)
 ## _slot_grid on the Equipment tab, not instead of it — visible only while
 ## _active_tab == &"Equipment", toggled in _on_tab_pressed() next to
 ## _refresh_slot_visibility()'s own filtering.
-@onready var _equipment_paperdoll: Control = $MainLayout/LeftPanel/EquipmentPaperdoll
+@onready var _equipment_paperdoll: Control = $MainLayout/LeftPanel/EquipmentRow/EquipmentPaperdoll
+var _info_panel: PanelContainer
 ## "Bases"/"Shafts"/"Tops" subpanels (see TOWER_PART_SHAPES' own doc
 ## comment) -- built entirely in code in _build_tower_part_panel(), same
 ## reason EquipmentPaperdoll builds itself in code (equipment_paperdoll.gd's
@@ -333,10 +338,11 @@ func _ready() -> void:
 		tower_assembly = get_tree().get_first_node_in_group(&"tower_assembly") as TowerAssembly
 
 	_build_tab_strip()
+	_build_equipment_info_panel()
 	_build_slot_grid()
 	_wire_focus_neighbors()
 	_refresh_slot_visibility()
-	_equipment_paperdoll.visible = _active_tab == &"Equipment"
+	_set_equipment_widgets_visible(_active_tab == &"Equipment")
 	# Preview panel built BEFORE the 3 galleries -- each gallery entry wires
 	# its own toggled signal straight to the matching preview slot's icon
 	# (see _build_tower_part_panel's own doc comment), so the icon reference
@@ -417,8 +423,64 @@ func _build_tab_strip() -> void:
 func _on_tab_pressed(tab: StringName) -> void:
 	_active_tab = tab
 	_refresh_slot_visibility()
-	_equipment_paperdoll.visible = tab == &"Equipment"
+	_set_equipment_widgets_visible(tab == &"Equipment")
 	_tower_component_row.visible = tab == &"TowerComponent"
+
+
+## Adds the info panel next to the paperdoll (EquipmentRow, declared in the
+## .tscn so the paperdoll is never reparented -- reparenting would fire its
+## _exit_tree() and drop its equipment_slot_changed subscription) and
+## forwards the paperdoll's hover signals to it (equipment-display spec §3.3).
+func _build_equipment_info_panel() -> void:
+	_info_panel = EquipmentInfoPanelScript.new()
+	_info_panel.name = "EquipmentInfoPanel"
+	$MainLayout/LeftPanel/EquipmentRow.add_child(_info_panel)
+	_equipment_paperdoll.connect(&"slot_info_requested", _on_paperdoll_slot_info_requested)
+	_equipment_paperdoll.connect(&"slot_info_cleared", _on_slot_info_cleared)
+
+
+func _set_equipment_widgets_visible(shown: bool) -> void:
+	_equipment_paperdoll.visible = shown
+	if _info_panel != null:
+		_info_panel.visible = shown
+
+
+func _on_paperdoll_slot_info_requested(slot_name: String) -> void:
+	var contents: Dictionary = GInventory.get_equipped_item(slot_name)
+	if contents.is_empty():
+		_info_panel.show_bonuses()
+		return
+	_info_panel.show_item(contents, slot_name)
+
+
+## Slot-grid button hover/focus. Empty slots and non-equipment items fall
+## back to the Bonuses state; an item sitting in one of the 10 equipment
+## slot indices is treated as equipped (no swap preview).
+func _on_slot_info_requested(index: int) -> void:
+	if _info_panel == null:
+		return
+	var contents: Dictionary = inventory.get_slot_contents(index)
+	var item_id: String = contents.get("item_id", "") as String
+	if item_id == "":
+		_info_panel.show_bonuses()
+		return
+	var definition: ItemDefinitionResource = GGameDataRegistry.get_item_definition(StringName(item_id))
+	if definition == null or definition.equipment_category == "":
+		_info_panel.show_bonuses()
+		return
+	_info_panel.show_item(contents, _equipped_slot_name_for_index(index))
+
+
+func _on_slot_info_cleared() -> void:
+	if _info_panel != null:
+		_info_panel.show_bonuses()
+
+
+func _equipped_slot_name_for_index(index: int) -> String:
+	for slot_name: String in Inventory.EQUIPMENT_SLOT_INDEX:
+		if Inventory.EQUIPMENT_SLOT_INDEX[slot_name] == index:
+			return slot_name
+	return ""
 
 
 ## Rule 3: tabs filter ONE shared slot pool by item_type, not four separate
@@ -817,6 +879,13 @@ func _create_slot_button(index: int) -> Button:
 	# _ready(), not here; see _ready()'s comment for why).
 	button.focus_entered.connect(_on_slot_focus_changed.bind(button, focus_ring))
 	button.focus_exited.connect(_on_slot_focus_changed.bind(button, focus_ring))
+
+	# Equipment info panel (equipment-display spec §3.4): hover AND focus both
+	# drive it, so K/M and gamepad share one path.
+	button.mouse_entered.connect(_on_slot_info_requested.bind(index))
+	button.mouse_exited.connect(_on_slot_info_cleared)
+	button.focus_entered.connect(_on_slot_info_requested.bind(index))
+	button.focus_exited.connect(_on_slot_info_cleared)
 
 	return button
 
