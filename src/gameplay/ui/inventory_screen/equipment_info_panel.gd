@@ -1,0 +1,203 @@
+extends PanelContainer
+
+## Equipment info panel (equipment-display spec §3.3-3.6). Two states:
+## "Equipment Bonuses" (default) and an item detail card with a swap preview.
+## No class_name -- same class-cache-fragility reason as equipment_paperdoll.gd;
+## inventory_screen.gd loads it via preload().
+
+const STAT_DISPLAY_ORDER: Array[StringName] = [
+	&"max_hp", &"armor", &"physical_attack", &"magic_attack", &"move_speed",
+	&"attack_range", &"crit_chance", &"crit_multiplier", &"luck", &"cdr",
+	&"lifesteal", &"elemental_resist_fire", &"elemental_resist_frost",
+]
+const INTEGER_STATS: Array[StringName] = [&"max_hp", &"armor", &"move_speed", &"attack_range"]
+const PERCENT_STATS: Array[StringName] = [
+	&"crit_chance", &"crit_multiplier", &"luck", &"cdr", &"lifesteal",
+	&"elemental_resist_fire", &"elemental_resist_frost",
+]
+const COLOR_GAIN: String = "#5fd35f"
+const COLOR_LOSS: String = "#e5534b"
+const COLOR_MUTED: String = "#9aa3b2"
+
+enum State { BONUSES, ITEM }
+
+var _state: State = State.BONUSES
+var _shown_equipped_slot: String = ""
+var _header: Label
+var _body: RichTextLabel
+
+
+func _ready() -> void:
+	custom_minimum_size = Vector2(260, 0)
+	add_theme_stylebox_override("panel", ShellChromeStyle.chrome_panel_stylebox())
+	var column := VBoxContainer.new()
+	add_child(column)
+	_header = Label.new()
+	column.add_child(_header)
+	_body = RichTextLabel.new()
+	_body.bbcode_enabled = true
+	_body.fit_content = true
+	_body.scroll_active = false
+	_body.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_body.custom_minimum_size = Vector2(240, 0)
+	column.add_child(_body)
+	GEventBus.equipment_slot_changed.connect(_on_equipment_slot_changed)
+	GEventBus.item_rune_imbued.connect(_on_item_rune_imbued)
+	show_bonuses()
+
+
+func _exit_tree() -> void:
+	if GEventBus.equipment_slot_changed.is_connected(_on_equipment_slot_changed):
+		GEventBus.equipment_slot_changed.disconnect(_on_equipment_slot_changed)
+	if GEventBus.item_rune_imbued.is_connected(_on_item_rune_imbued):
+		GEventBus.item_rune_imbued.disconnect(_on_item_rune_imbued)
+
+
+func _on_equipment_slot_changed(_slot: String, _new_item_id: String, _previous_item_id: String) -> void:
+	refresh()
+
+
+func _on_item_rune_imbued(_item_id: String, _rune_id: String, _rune_source: String) -> void:
+	refresh()
+
+
+# ---------------------------------------------------------------------------
+# Formatting (static, unit-tested directly)
+# ---------------------------------------------------------------------------
+
+## Signed display string: integers for HP/armor/speed/range, percent (value
+## x 100, one decimal) for fractional stats, one decimal for everything else
+## (attack stats and any unknown key, so a content typo stays visible).
+static func format_value(stat: StringName, value: float) -> String:
+	var sign_char: String = "+" if value >= 0.0 else "-"
+	var magnitude: float = absf(value)
+	if INTEGER_STATS.has(stat):
+		return "%s%d" % [sign_char, int(roundf(magnitude))]
+	if PERCENT_STATS.has(stat):
+		return "%s%.1f%%" % [sign_char, magnitude * 100.0]
+	return "%s%.1f" % [sign_char, magnitude]
+
+
+static func stat_label(stat: StringName) -> String:
+	if STAT_DISPLAY_ORDER.has(stat):
+		return TranslationServer.translate("INVENTORY_STAT_%s" % String(stat).to_upper())
+	return String(stat)
+
+
+## STAT_DISPLAY_ORDER entries present in `stats`, then any other keys sorted.
+static func ordered_stats(stats: Dictionary) -> Array[StringName]:
+	var out: Array[StringName] = []
+	for stat: StringName in STAT_DISPLAY_ORDER:
+		if stats.has(stat):
+			out.append(stat)
+	var extras: Array[String] = []
+	for key: Variant in stats:
+		if not STAT_DISPLAY_ORDER.has(StringName(key)):
+			extras.append(String(key))
+	extras.sort()
+	for extra: String in extras:
+		out.append(StringName(extra))
+	return out
+
+
+static func _colored(text: String, color: String) -> String:
+	return "[color=%s]%s[/color]" % [color, text]
+
+
+static func _delta_suffix(stat: StringName, delta: float) -> String:
+	if absf(delta) < 0.00001:
+		return ""
+	return " " + _colored("(%s)" % format_value(stat, delta), COLOR_GAIN if delta > 0.0 else COLOR_LOSS)
+
+
+static func _stat_line(stat: StringName, value: float, suffix: String = "") -> String:
+	return "%s %s%s" % [stat_label(stat), format_value(stat, value), suffix]
+
+
+# ---------------------------------------------------------------------------
+# States
+# ---------------------------------------------------------------------------
+
+func show_bonuses() -> void:
+	_state = State.BONUSES
+	_shown_equipped_slot = ""
+	_header.text = tr("INVENTORY_INFO_BONUSES_HEADER")
+	var result: Dictionary = EquipmentBonuses.compute_equipped()
+	var lines: Array[String] = []
+	for stat: StringName in ordered_stats(result["flat"]):
+		lines.append(_stat_line(stat, result["flat"][stat]))
+	var additive_max: float = 0.0
+	for stat: Variant in result["additive"]:
+		additive_max = maxf(additive_max, float(result["additive"][stat]))
+	if additive_max > 0.0:
+		lines.append("%s +%.1f%%" % [tr("INVENTORY_INFO_ALL_STATS"), additive_max * 100.0])
+	if lines.is_empty():
+		lines.append(_colored(tr("INVENTORY_INFO_NO_BONUSES"), COLOR_MUTED))
+	_body.text = "\n".join(lines)
+
+
+## `equipped_slot` non-empty => the item is currently equipped (no swap
+## preview); empty => an inventory item (swap preview vs. its target slot).
+func show_item(contents: Dictionary, equipped_slot: String = "") -> void:
+	_state = State.ITEM
+	_shown_equipped_slot = equipped_slot
+	var item_id: String = contents.get("item_id", "") as String
+	var definition: ItemDefinitionResource = GGameDataRegistry.get_item_definition(StringName(item_id))
+	_header.text = definition.display_name if definition != null and definition.display_name != "" else item_id
+
+	var lines: Array[String] = []
+	if definition != null and definition.equipment_category != "":
+		lines.append(_colored(definition.equipment_category.capitalize(), COLOR_MUTED))
+
+	var own: Dictionary[StringName, float] = EquipmentBonuses.item_stats(contents)
+	var preview: Dictionary = {"flat": {}, "additive": {}}
+	if equipped_slot == "" and definition != null:
+		var target: String = EquipmentBonuses.target_slot_for(definition.equipment_category)
+		if target != "":
+			preview = EquipmentBonuses.preview_swap(target, contents)
+
+	if own.is_empty():
+		lines.append(_colored(tr("INVENTORY_INFO_NO_STATS"), COLOR_MUTED))
+	for stat: StringName in ordered_stats(own):
+		lines.append(_stat_line(stat, own[stat], _delta_suffix(stat, preview["flat"].get(stat, 0.0))))
+	# Stats the swap would REMOVE: a loss in the preview that the candidate itself lacks.
+	for stat: StringName in ordered_stats(preview["flat"]):
+		if not own.has(stat) and preview["flat"][stat] < 0.0:
+			lines.append(_colored(_stat_line(stat, preview["flat"][stat]), COLOR_LOSS))
+
+	for rune_id: String in contents.get("imbued_runes", []):
+		var delta: Dictionary = EquipmentForge.resolve_rune_stat_delta(StringName(rune_id))
+		if delta.is_empty():
+			lines.append("%s: %s" % [tr("INVENTORY_INFO_RUNE_LINE"), tr("INVENTORY_INFO_UNKNOWN_RUNE")])
+			continue
+		var parts: Array[String] = []
+		for stat: Variant in delta:
+			if StringName(stat) == &"additive_bonus_total":
+				parts.append("%s +%.1f%%" % [tr("INVENTORY_INFO_ALL_STATS"), float(delta[stat]) * 100.0])
+			else:
+				parts.append(_stat_line(StringName(stat), float(delta[stat])))
+		lines.append("%s: %s" % [tr("INVENTORY_INFO_RUNE_LINE"), ", ".join(parts)])
+
+	var total_slots: int = contents.get("rune_slot_count", 0) as int
+	if total_slots > 0:
+		var used: int = (contents.get("imbued_runes", []) as Array).size()
+		lines.append(_colored(tr("INVENTORY_INFO_RUNE_SLOTS") % [maxi(total_slots - used, 0), total_slots], COLOR_MUTED))
+	_body.text = "\n".join(lines)
+
+
+## Re-render after an equip/unequip/imbue. An equipped-item card is re-read
+## from live inventory (falling back to Bonuses if its slot emptied); an
+## inventory-item card falls back to Bonuses, since the item it described
+## has likely just moved -- the next hover/focus re-shows a fresh card.
+func refresh() -> void:
+	if _state == State.ITEM and _shown_equipped_slot != "":
+		var live: Dictionary = GInventory.get_equipped_item(_shown_equipped_slot)
+		if not live.is_empty():
+			show_item(live, _shown_equipped_slot)
+			return
+	show_bonuses()
+
+
+## Plain (BBCode-stripped) body text, for tests.
+func get_body_text() -> String:
+	return _body.get_parsed_text()
