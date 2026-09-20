@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="EquipmentSetResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/core/equipment/equipment_set_resource.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+set_id = &"set_warlord"
+display_name = "Warlord"
+member_item_ids = Array[StringName]([&"warlords_battleplate", &"warlords_greatblade", &"warlords_greaves", &"warlords_legguards", &"warlords_standard_amulet"])
+bonuses = Dictionary[int, Dictionary]({
+2: {&"physical_attack": 5.0},
+4: {&"max_hp": 80.0, &"armor": 15.0},
+5: {&"additive_bonus_total": 0.05}
+})

@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="EquipmentSetResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/core/equipment/equipment_set_resource.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+set_id = &"set_sentinel"
+display_name = "Sentinel"
+member_item_ids = Array[StringName]([&"sentinel_visor", &"sentinel_ward", &"sentinels_aegis", &"sentinels_lance", &"sentinels_striders"])
+bonuses = Dictionary[int, Dictionary]({
+2: {&"attack_range": 16.0},
+4: {&"cdr": 0.05, &"elemental_resist_fire": 0.06, &"elemental_resist_frost": 0.06}
+})

@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="EquipmentSetResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/core/equipment/equipment_set_resource.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+set_id = &"set_troll"
+display_name = "Troll"
+member_item_ids = Array[StringName]([&"troll_hide_mantle", &"trollhide_buckler", &"trollhide_striders", &"trollmarrow_band"])
+bonuses = Dictionary[int, Dictionary]({
+2: {&"max_hp": 60.0},
+4: {&"lifesteal": 0.02, &"max_hp": 80.0}
+})

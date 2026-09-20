@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="EquipmentSetResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/core/equipment/equipment_set_resource.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+set_id = &"set_iron"
+display_name = "Iron"
+member_item_ids = Array[StringName]([&"iron_sword", &"iron_helm", &"iron_greaves", &"iron_buckler", &"iron_band"])
+bonuses = Dictionary[int, Dictionary]({
+2: {&"armor": 8.0},
+4: {&"max_hp": 50.0, &"physical_attack": 3.0}
+})

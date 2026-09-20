@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="EquipmentSetResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/core/equipment/equipment_set_resource.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+set_id = &"set_goblin"
+display_name = "Goblin"
+member_item_ids = Array[StringName]([&"goblin_fang_circlet", &"goblin_claw_gauntlets", &"goblin_raider_leggings", &"goblin_signet"])
+bonuses = Dictionary[int, Dictionary]({
+2: {&"luck": 0.04},
+4: {&"crit_chance": 0.06, &"move_speed": 15.0}
+})

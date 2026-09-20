@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="EquipmentSetResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/core/equipment/equipment_set_resource.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+set_id = &"set_brute"
+display_name = "Brute"
+member_item_ids = Array[StringName]([&"brutes_war_helm", &"brutes_bulwark_plate", &"brute_gauntlets", &"brute_legguards", &"brute_core_band"])
+bonuses = Dictionary[int, Dictionary]({
+2: {&"max_hp": 60.0},
+4: {&"armor": 25.0},
+5: {&"max_hp": 100.0}
+})
