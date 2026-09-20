@@ -9,7 +9,7 @@ const CUE_MAP_PATH: String = "res://assets/data/audio/audio_cue_map.tres"
 const SFX_DIR: String = "res://assets/audio/sfx/"
 const SOURCES_PATH: String = "res://assets/audio/sfx/SOURCES.md"
 
-const SHIPPED_TIERS: Array[int] = [1]
+const SHIPPED_TIERS: Array[int] = [1, 2]
 
 const EXISTING: Array[StringName] = [
 	&"skill_unlocked", &"tower_mastery_proximity_entered", &"tower_mastery_proximity_exited",

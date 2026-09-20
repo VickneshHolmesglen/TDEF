@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="AudioCueEntry" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/core/audio/audio_cue_entry.gd" id="1"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/constellation_activated.wav" id="2"]
+
+[resource]
+script = ExtResource("1")
+event_name = &"constellation_activated"
+stream = ExtResource("2")
+bus = &"UI"
+polyphony_group = &"discovery_fanfare"
+volume_db_offset = -2
+spatial = false

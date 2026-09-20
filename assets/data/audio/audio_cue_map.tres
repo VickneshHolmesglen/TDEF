@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="AudioCueMap" load_steps=11 format=3]
+[gd_resource type="Resource" script_class="AudioCueMap" load_steps=17 format=3]
 
 [ext_resource type="Script" path="res://src/core/audio/audio_cue_map.gd" id="1"]
 [ext_resource type="Resource" path="res://assets/data/audio/cues/skill_unlocked.tres" id="2"]
@@ -10,7 +10,13 @@
 [ext_resource type="Resource" path="res://assets/data/audio/cues/tower_placed.tres" id="cue_tower_placed"]
 [ext_resource type="Resource" path="res://assets/data/audio/cues/wave_countdown_warning.tres" id="cue_wave_countdown_warning"]
 [ext_resource type="Resource" path="res://assets/data/audio/cues/boss_died.tres" id="cue_boss_died"]
+[ext_resource type="Resource" path="res://assets/data/audio/cues/component_crafted.tres" id="cue_component_crafted"]
+[ext_resource type="Resource" path="res://assets/data/audio/cues/hero_equipment_crafted.tres" id="cue_hero_equipment_crafted"]
+[ext_resource type="Resource" path="res://assets/data/audio/cues/component_repaired.tres" id="cue_component_repaired"]
+[ext_resource type="Resource" path="res://assets/data/audio/cues/sanctuary_structure_built.tres" id="cue_sanctuary_structure_built"]
+[ext_resource type="Resource" path="res://assets/data/audio/cues/structure_upgraded.tres" id="cue_structure_upgraded"]
+[ext_resource type="Resource" path="res://assets/data/audio/cues/constellation_activated.tres" id="cue_constellation_activated"]
 
 [resource]
 script = ExtResource("1")
-entries = [ExtResource("2"), ExtResource("3"), ExtResource("4"), ExtResource("cue_tower_attacked"), ExtResource("cue_hero_damage_taken"), ExtResource("cue_hero_skill_activated"), ExtResource("cue_tower_placed"), ExtResource("cue_wave_countdown_warning"), ExtResource("cue_boss_died")]
+entries = [ExtResource("2"), ExtResource("3"), ExtResource("4"), ExtResource("cue_tower_attacked"), ExtResource("cue_hero_damage_taken"), ExtResource("cue_hero_skill_activated"), ExtResource("cue_tower_placed"), ExtResource("cue_wave_countdown_warning"), ExtResource("cue_boss_died"), ExtResource("cue_component_crafted"), ExtResource("cue_hero_equipment_crafted"), ExtResource("cue_component_repaired"), ExtResource("cue_sanctuary_structure_built"), ExtResource("cue_structure_upgraded"), ExtResource("cue_constellation_activated")]
