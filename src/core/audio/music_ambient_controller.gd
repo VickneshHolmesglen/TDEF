@@ -46,6 +46,13 @@ const WAVE_ACTIVE_TO_INTERMISSION_DUCK_SECONDS: float = 0.4
 
 const AMBIENT_COMBAT_LAYER_FADE_OUT_SECONDS: float = 2.0
 
+## Music-ambient-stems spec §3.3/§4.
+const AMBIENT_COMBAT_LAYER_FADE_IN_SECONDS: float = 1.5
+const MUSIC_BUS: StringName = &"Music"
+const AMBIENT_BUS: StringName = &"Ambient"
+## Floor for level_to_volume_db() so a zero level maps to a very quiet finite dB (about -80 dB), not -inf.
+const MIN_AUDIBLE_LEVEL: float = 0.00000001
+
 enum MusicState { CONTEMPLATIVE, MEASURED, URGENT, MEASURED_URGENT }
 
 var _music_state: MusicState = MusicState.CONTEMPLATIVE
@@ -72,6 +79,14 @@ var _ambient_combat_layer_fade_out_remaining_seconds: float = 0.0
 ## `design/accessibility-requirements.md`'s "pausable at any frame, no
 ## penalty" commitment.
 var _paused: bool = false
+
+## Real playback state (music-ambient-stems spec §3.3). Keyed by MusicState
+## int. A stem with no stream has no entry (silent).
+var _stem_players: Dictionary[int, AudioStreamPlayer] = {}
+var _stem_levels: Dictionary[int, float] = {}
+var _ambient_base_player: AudioStreamPlayer = null
+var _ambient_combat_player: AudioStreamPlayer = null
+var _ambient_combat_level: float = 0.0
 
 
 func _ready() -> void:
@@ -111,6 +126,8 @@ func advance_time(delta: float) -> void:
 			_ambient_combat_layer_fading_out = false
 			_ambient_combat_layer_fade_out_remaining_seconds = 0.0
 			_ambient_combat_layer_active = false
+
+	_step_levels(delta)
 
 
 ## AC-5: identical previous/new phase never retriggers anything.
@@ -248,3 +265,171 @@ func is_frozen() -> bool:
 func force_finish_transition() -> void:
 	_transitioning = false
 	_crossfade_remaining_seconds = 0.0
+	_snap_stem_levels_to_targets()
+
+
+# ---------------------------------------------------------------------------
+# Real playback (music-ambient-stems spec §3.3). Everything below is inert
+# until set_stream_map() is called with a non-null map.
+# ---------------------------------------------------------------------------
+
+## Equal-power volume for a level in [0, 1]: linear levels that sum to 1
+## across a crossfade keep total power constant.
+static func level_to_volume_db(level: float) -> float:
+	return linear_to_db(sqrt(maxf(level, MIN_AUDIBLE_LEVEL)))
+
+
+## Assigns (or clears) every stream slot from `map`. Idempotent: existing
+## players are reused, and the ambient base bed is never restarted unless
+## its stream actually changed. A null map or null slot leaves that slot silent.
+func set_stream_map(map: MusicAmbientMap) -> void:
+	_assign_stem(MusicState.CONTEMPLATIVE, map.contemplative if map != null else null)
+	_assign_stem(MusicState.MEASURED, map.measured if map != null else null)
+	_assign_stem(MusicState.URGENT, map.urgent if map != null else null)
+	_assign_stem(MusicState.MEASURED_URGENT, map.measured_urgent if map != null else null)
+	_ambient_base_player = _assign_ambient(_ambient_base_player, map.ambient_base_bed if map != null else null)
+	_ambient_combat_player = _assign_ambient(_ambient_combat_player, map.ambient_combat_layer if map != null else null)
+	if _ambient_base_player != null and not _ambient_base_player.playing:
+		_ambient_base_player.play()
+	_apply_combat_player()
+
+
+func _make_player(bus: StringName) -> AudioStreamPlayer:
+	var player := AudioStreamPlayer.new()
+	player.bus = bus
+	player.process_mode = Node.PROCESS_MODE_ALWAYS
+	add_child(player)
+	return player
+
+
+## Makes `stream` loop at runtime, so no per-file .import loop settings are relied on.
+static func _make_loopable(stream: AudioStream) -> void:
+	if stream is AudioStreamOggVorbis:
+		(stream as AudioStreamOggVorbis).loop = true
+	elif stream is AudioStreamWAV:
+		var wav: AudioStreamWAV = stream as AudioStreamWAV
+		if wav.format == AudioStreamWAV.FORMAT_8_BITS or wav.format == AudioStreamWAV.FORMAT_16_BITS:
+			var bytes_per_frame: int = (2 if wav.format == AudioStreamWAV.FORMAT_16_BITS else 1) * (2 if wav.stereo else 1)
+			wav.loop_mode = AudioStreamWAV.LOOP_FORWARD
+			wav.loop_begin = 0
+			wav.loop_end = wav.data.size() / bytes_per_frame
+
+
+func _assign_stem(state: int, stream: AudioStream) -> void:
+	if stream == null:
+		if _stem_players.has(state):
+			_stem_players[state].queue_free()
+			_stem_players.erase(state)
+			_stem_levels.erase(state)
+		return
+	_make_loopable(stream)
+	var player: AudioStreamPlayer = _stem_players.get(state)
+	if player == null:
+		player = _make_player(MUSIC_BUS)
+		_stem_players[state] = player
+	if player.stream != stream:
+		player.stream = stream
+		player.stop()
+	_stem_levels[state] = 1.0 if state == _music_state else 0.0
+	_apply_stem_player(state)
+
+
+func _assign_ambient(player: AudioStreamPlayer, stream: AudioStream) -> AudioStreamPlayer:
+	if stream == null:
+		if player != null:
+			player.queue_free()
+		return null
+	_make_loopable(stream)
+	if player == null:
+		player = _make_player(AMBIENT_BUS)
+	if player.stream != stream:
+		player.stream = stream
+		player.stop()
+	return player
+
+
+func _apply_stem_player(state: int) -> void:
+	var player: AudioStreamPlayer = _stem_players[state]
+	var level: float = _stem_levels[state]
+	if level > 0.0:
+		player.volume_db = level_to_volume_db(level)
+		if not player.playing:
+			player.play()
+	elif player.playing:
+		player.stop()
+
+
+func _apply_combat_player() -> void:
+	if _ambient_combat_player == null:
+		return
+	if _ambient_combat_level > 0.0:
+		_ambient_combat_player.volume_db = level_to_volume_db(_ambient_combat_level)
+		if not _ambient_combat_player.playing:
+			_ambient_combat_player.play()
+	elif _ambient_combat_player.playing:
+		_ambient_combat_player.stop()
+
+
+## Slews every stem level toward its target (1.0 for the current state's
+## stem, 0.0 for the rest) at 1/duration per second, reusing the existing
+## transition duration verbatim; ramps the ambient combat layer up over
+## AMBIENT_COMBAT_LAYER_FADE_IN_SECONDS and down over the existing fade-out.
+## A transition interrupted mid-fade simply retargets from the current levels.
+func _step_levels(delta: float) -> void:
+	var step: float = delta / maxf(_last_transition_duration, 0.01)
+	for state: int in _stem_players:
+		var target: float = 1.0 if state == _music_state else 0.0
+		_stem_levels[state] = move_toward(_stem_levels[state], target, step)
+		_apply_stem_player(state)
+	if _ambient_combat_player != null:
+		var rising: bool = _ambient_combat_layer_active and not _ambient_combat_layer_fading_out
+		if rising:
+			_ambient_combat_level = move_toward(_ambient_combat_level, 1.0, delta / AMBIENT_COMBAT_LAYER_FADE_IN_SECONDS)
+		else:
+			_ambient_combat_level = move_toward(_ambient_combat_level, 0.0, delta / AMBIENT_COMBAT_LAYER_FADE_OUT_SECONDS)
+		_apply_combat_player()
+
+
+func _snap_stem_levels_to_targets() -> void:
+	for state: int in _stem_players:
+		_stem_levels[state] = 1.0 if state == _music_state else 0.0
+		_apply_stem_player(state)
+
+
+## Test/inspection accessors (music-ambient-stems spec §3.7).
+func get_stem_level(state: int) -> float:
+	return _stem_levels.get(state, 0.0)
+
+
+func is_stem_playing(state: int) -> bool:
+	var player: AudioStreamPlayer = _stem_players.get(state)
+	return player != null and player.playing
+
+
+func get_stem_volume_db(state: int) -> float:
+	var player: AudioStreamPlayer = _stem_players.get(state)
+	return player.volume_db if player != null else -80.0
+
+
+func get_stem_player(state: int) -> AudioStreamPlayer:
+	return _stem_players.get(state)
+
+
+func get_ambient_combat_level() -> float:
+	return _ambient_combat_level
+
+
+func is_ambient_combat_playing() -> bool:
+	return _ambient_combat_player != null and _ambient_combat_player.playing
+
+
+func is_ambient_base_playing() -> bool:
+	return _ambient_base_player != null and _ambient_base_player.playing
+
+
+func get_ambient_base_player() -> AudioStreamPlayer:
+	return _ambient_base_player
+
+
+func get_ambient_combat_player() -> AudioStreamPlayer:
+	return _ambient_combat_player

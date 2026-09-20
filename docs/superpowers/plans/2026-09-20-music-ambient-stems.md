@@ -288,8 +288,8 @@ extends Resource
 const AMBIENT_COMBAT_LAYER_FADE_IN_SECONDS: float = 1.5
 const MUSIC_BUS: StringName = &"Music"
 const AMBIENT_BUS: StringName = &"Ambient"
-## Floor for level_to_volume_db() so a zero level maps to a very quiet finite dB, not -inf.
-const MIN_AUDIBLE_LEVEL: float = 0.0001
+## Floor for level_to_volume_db() so a zero level maps to a very quiet finite dB (about -80 dB), not -inf.
+const MIN_AUDIBLE_LEVEL: float = 0.00000001
 ```
 
 After the `var _paused: bool = false` line add:
