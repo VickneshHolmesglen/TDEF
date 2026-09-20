@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="EquipmentSetResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/core/equipment/equipment_set_resource.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+set_id = &"set_bad"
+display_name = "Bad"
+member_item_ids = Array[StringName]([&"iron_sword", &"iron_helm"])
+bonuses = Dictionary[int, Dictionary]({
+1: {&"armor": 5.0}
+})
