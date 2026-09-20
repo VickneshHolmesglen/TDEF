@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="AudioCueEntry" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/core/audio/audio_cue_entry.gd" id="1"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/pre_placement_perk_activated.wav" id="2"]
+
+[resource]
+script = ExtResource("1")
+event_name = &"pre_placement_perk_activated"
+stream = ExtResource("2")
+bus = &"SFX"
+polyphony_group = &"activation_confirm"
+volume_db_offset = -6
+spatial = false

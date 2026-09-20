@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="AudioCueEntry" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/core/audio/audio_cue_entry.gd" id="1"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/game_unpaused.wav" id="2"]
+
+[resource]
+script = ExtResource("1")
+event_name = &"game_unpaused"
+stream = ExtResource("2")
+bus = &"UI"
+polyphony_group = &"ui_confirm_cancel"
+volume_db_offset = -8
+spatial = false

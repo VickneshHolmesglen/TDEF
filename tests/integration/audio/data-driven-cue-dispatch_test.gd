@@ -166,6 +166,10 @@ func test_event_with_no_map_entry_is_a_silent_no_op() -> void:
 
 
 func test_dispatch_with_empty_cue_map_never_errors() -> void:
+	# Inject a genuinely empty map: this test previously relied on the real
+	# cue map having no game_paused/game_unpaused entry, which stopped being
+	# true once real audio content shipped (audio-cue-list spec, tier 3).
+	_dispatcher.set_cue_map(AudioCueMap.new())
 	GEventBus.game_paused.emit()
 	GEventBus.game_unpaused.emit()
 

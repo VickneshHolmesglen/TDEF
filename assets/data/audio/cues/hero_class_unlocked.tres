@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="AudioCueEntry" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/core/audio/audio_cue_entry.gd" id="1"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/hero_class_unlocked.wav" id="2"]
+
+[resource]
+script = ExtResource("1")
+event_name = &"hero_class_unlocked"
+stream = ExtResource("2")
+bus = &"UI"
+polyphony_group = &"progress_blip"
+volume_db_offset = -4
+spatial = false
