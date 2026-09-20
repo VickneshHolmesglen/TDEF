@@ -274,7 +274,7 @@ tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
 mkdir -p "$tmp/cues"
 "$FFMPEG" -hide_banner -loglevel error -y -f lavfi -i "sine=frequency=440:duration=0.3" "$tmp/raw.wav"
 tools/audio/process_sound.sh "$tmp/raw.wav" "$tmp/out.wav" mono
-info=$("$FFMPEG" -hide_banner -i "$tmp/out.wav" 2>&1 | grep "Audio:")
+info=$("$FFMPEG" -hide_banner -i "$tmp/out.wav" 2>&1 | grep "Audio:" || true)
 echo "$info" | grep -q "44100 Hz, mono, s16" || { echo "FAIL format: $info"; exit 1; }
 vol=$("$FFMPEG" -hide_banner -nostats -i "$tmp/out.wav" -af volumedetect -f null - 2>&1 \
   | sed -n 's/.*max_volume: \(-\?[0-9.]*\) dB.*/\1/p' | tail -1)
