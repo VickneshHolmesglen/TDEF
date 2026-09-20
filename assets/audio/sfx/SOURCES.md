@@ -24,3 +24,9 @@ CC0 by default; a CC-BY source also needs its attribution in `LICENSE.txt`.
 | hero_class_unlocked | Kenney Interface Sounds | pluck_002.ogg (x3: unshifted, +4, +7 semitones) + glass_005.ogg | CC0 | https://kenney.nl/assets/interface-sounds | three ascending plucks 120 ms apart plus glass sparkle on the last, limited, converted/trimmed/normalized |
 | game_paused | Kenney Interface Sounds | minimize_003.ogg | CC0 | https://kenney.nl/assets/interface-sounds | converted/trimmed/normalized; matched with game_unpaused |
 | game_unpaused | Kenney Interface Sounds | maximize_003.ogg | CC0 | https://kenney.nl/assets/interface-sounds | converted/trimmed/normalized; matched with game_paused |
+| contemplative (music stem) | synthesized | tools/audio/synth_stems.sh | n/a (generated, no third-party material) | - | 16 s loop: detuned A-minor sine pad, 0.125 Hz swell, low-passed 800 Hz; PLACEHOLDER |
+| measured (music stem) | synthesized | tools/audio/synth_stems.sh | n/a (generated) | - | 16 s loop: pad plus 1 Hz gated tone; PLACEHOLDER |
+| urgent (music stem) | synthesized | tools/audio/synth_stems.sh | n/a (generated) | - | 16 s loop: 2 Hz and 4 Hz gated low/high tones; PLACEHOLDER |
+| measured_urgent (music stem) | synthesized | tools/audio/synth_stems.sh | n/a (generated) | - | 16 s loop: tense minor pad plus 1 Hz gated tone; PLACEHOLDER |
+| ambient_base_bed | synthesized | tools/audio/synth_stems.sh | n/a (generated) | - | 11 s loop (1 s crossfade seam): low pink-noise room tone plus faint band; PLACEHOLDER |
+| ambient_combat_layer | synthesized | tools/audio/synth_stems.sh | n/a (generated) | - | 11 s loop (1 s crossfade seam): 3 Hz gated mid noise over a rumble; PLACEHOLDER |

@@ -74,6 +74,11 @@ const DEFAULT_VOLUME_PERCENT: float = 80.0
 const AUDIO_SETTINGS_PATH: String = "user://audio_settings.cfg"
 const AUDIO_SETTINGS_SECTION: String = "buses"
 
+## Music/ambient stem map (music-ambient-stems spec §3.2). Loaded here, not
+## by MusicAmbientController, so controller tests stay content-free. Missing
+## file = silent, as before.
+const MUSIC_AMBIENT_MAP_PATH: String = "res://assets/data/audio/music_ambient_map.tres"
+
 ## Authoritative percent-volume state per player-facing bus, `[0, 100]`.
 ## AudioServer's own bus volume_db is a derived effect of this, never the
 ## other way around.
@@ -94,11 +99,15 @@ var pause_duck: PauseDuckController
 func _ready() -> void:
 	_configure_buses()
 	_load_settings_from_disk()
+	var created_music_ambient: bool = false
 	if music_ambient == null:
 		music_ambient = MusicAmbientController.new()
 		music_ambient.name = &"MusicAmbientController"
+		created_music_ambient = true
 	if music_ambient.get_parent() == null:
 		add_child(music_ambient)
+	if created_music_ambient and ResourceLoader.exists(MUSIC_AMBIENT_MAP_PATH):
+		music_ambient.set_stream_map(load(MUSIC_AMBIENT_MAP_PATH) as MusicAmbientMap)
 	if cue_dispatcher == null:
 		cue_dispatcher = AudioCueDispatcher.new()
 		cue_dispatcher.name = &"AudioCueDispatcher"

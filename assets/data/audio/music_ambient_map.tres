@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="MusicAmbientMap" load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://src/core/audio/music_ambient_map.gd" id="1"]
+[ext_resource type="AudioStream" path="res://assets/audio/music/contemplative.ogg" id="2"]
+[ext_resource type="AudioStream" path="res://assets/audio/music/measured.ogg" id="3"]
+[ext_resource type="AudioStream" path="res://assets/audio/music/urgent.ogg" id="4"]
+[ext_resource type="AudioStream" path="res://assets/audio/music/measured_urgent.ogg" id="5"]
+[ext_resource type="AudioStream" path="res://assets/audio/ambient/ambient_base_bed.ogg" id="6"]
+[ext_resource type="AudioStream" path="res://assets/audio/ambient/ambient_combat_layer.ogg" id="7"]
+
+[resource]
+script = ExtResource("1")
+contemplative = ExtResource("2")
+measured = ExtResource("3")
+urgent = ExtResource("4")
+measured_urgent = ExtResource("5")
+ambient_base_bed = ExtResource("6")
+ambient_combat_layer = ExtResource("7")

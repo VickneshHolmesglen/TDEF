@@ -28,3 +28,20 @@ not a victory sting), `wave_countdown_warning` (bell toll, not a horn), `tower_p
 | hero_class_unlocked | | | | |
 | game_paused | | | | |
 | game_unpaused | | | | |
+
+## Music and ambient stems (added 2026-09-20; ALL are synthesized placeholders)
+
+Confirm in the running game: each stem is audible and fits its state; crossfades
+(Sanctuary -> Scout -> Wave) feel smooth and the countdown crossfade lands with the
+first wave spawn; the wave-clear duck feels like "a held breath released"; the ambient
+base bed sits under everything; the combat layer swells in with the wave and recedes
+after; no loop click is audible on any stem; pausing ducks (not stops) music and ambient.
+
+| Stem | Audible | Fits its state | No loop click | Notes |
+|---|---|---|---|---|
+| contemplative | | | | |
+| measured | | | | |
+| urgent | | | | |
+| measured_urgent | | | | |
+| ambient_base_bed | | | | |
+| ambient_combat_layer | | | | |
