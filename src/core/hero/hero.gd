@@ -363,16 +363,9 @@ const PLACEHOLDER_BASE_STATS: Dictionary[StringName, float] = {
 	&"luck": 0.0,
 }
 
-## Every real _base_stats key, used for the `additive_bonus_total` fan-out
-## (equipment-stats-wiring spec §3.3). MAINTENANCE POINT: add any new Hero
-## stat here too -- Hero has no dynamic stat-name introspection. Enforced by
-## hero_equipment_stats_test.gd against PLACEHOLDER_BASE_STATS.
-const EQUIPMENT_FAN_OUT_STATS: Array[StringName] = [
-	&"max_hp", &"physical_attack", &"move_speed", &"cdr", &"crit_chance",
-	&"armor", &"magic_attack", &"attack_range", &"elemental_resist_fire",
-	&"elemental_resist_frost", &"lifesteal", &"tower_affinity",
-	&"crit_multiplier", &"luck",
-]
+## Alias kept for existing callers/tests; the list (and its maintenance
+## note) lives in EquipmentBonuses.FAN_OUT_STATS.
+const EQUIPMENT_FAN_OUT_STATS: Array[StringName] = EquipmentBonuses.FAN_OUT_STATS
 
 ## Flat (pre-multiplier) bonuses from gear, skills, etc.
 var _flat_bonuses: Dictionary[StringName, float] = {}
@@ -761,38 +754,16 @@ func _on_item_rune_imbued(_item_id: String, _rune_id: String, _rune_source: Stri
 ## disappears. stat_overrides (the item's real roll) wins per-stat over the
 ## definition's base_stats template.
 func _recompute_equipment_bonuses() -> void:
-	var new_flat: Dictionary[StringName, float] = {}
-	var new_additive: Dictionary[StringName, float] = {}
-	for slot_name: String in Inventory.EQUIPMENT_SLOT_NAMES:
-		var contents: Dictionary = GInventory.get_equipped_item(slot_name)
-		if contents.is_empty():
-			continue
-		var definition: ItemDefinitionResource = GGameDataRegistry.get_item_definition(StringName(contents["item_id"] as String))
-		if definition == null:
-			continue
-		var stats: Dictionary = definition.base_stats.duplicate()
-		var overrides: Dictionary = contents["stat_overrides"]
-		for stat: Variant in overrides:
-			stats[stat] = overrides[stat]
-		for stat: Variant in stats:
-			_fold_stat_entry(StringName(stat), float(stats[stat]), new_flat, new_additive)
-		for rune_id: String in contents["imbued_runes"]:
-			var delta: Dictionary = EquipmentForge.resolve_rune_stat_delta(StringName(rune_id))
-			for stat: Variant in delta:
-				_fold_stat_entry(StringName(stat), float(delta[stat]), new_flat, new_additive)
-	_flat_bonuses = new_flat
-	_additive_bonuses = new_additive
+	var result: Dictionary = EquipmentBonuses.compute_equipped()
+	_flat_bonuses = result["flat"]
+	_additive_bonuses = result["additive"]
 
 
 ## Spec §3.3 key-handling rule: `additive_bonus_total` fans out into the
 ## additive bucket of every real stat; any other key is a flat bonus to that
 ## named stat. Unknown stat names are stored but never read (inert).
 static func _fold_stat_entry(stat: StringName, value: float, new_flat: Dictionary[StringName, float], new_additive: Dictionary[StringName, float]) -> void:
-	if stat == &"additive_bonus_total":
-		for real_stat: StringName in EQUIPMENT_FAN_OUT_STATS:
-			new_additive[real_stat] = new_additive.get(real_stat, 0.0) + value
-	else:
-		new_flat[stat] = new_flat.get(stat, 0.0) + value
+	EquipmentBonuses.fold_stat_entry(stat, value, new_flat, new_additive)
 
 
 ## Rule 26: input polling happens in _process() per the control manifest (Core Layer
