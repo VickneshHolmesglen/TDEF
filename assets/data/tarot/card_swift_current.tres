@@ -15,5 +15,6 @@ card_id = &"swift_current"
 rarity = "Common"
 modifiers = [SubResource("Modifier_swift_current")]
 linked_rune_id = &"rune_swift_current"
+rune_stat_delta = {&"move_speed": 20.0, &"cdr": 0.02}
 unlock_tech_id = &""
 icon = ExtResource("3")

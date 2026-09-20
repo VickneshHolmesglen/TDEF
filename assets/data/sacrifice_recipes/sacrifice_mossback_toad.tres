@@ -9,4 +9,4 @@ required_species = &"mossback_toad"
 output_slot = "ring"
 output_base_item_id = &"warding_band"
 rune_id = &"rune_menagerie_mossback_toad"
-stat_delta = {&"additive_bonus_total": 0.02}
+stat_delta = {&"armor": 10.0, &"elemental_resist_frost": 0.045}

@@ -15,5 +15,6 @@ card_id = &"steady_hand"
 rarity = "Common"
 modifiers = [SubResource("Modifier_steady_hand")]
 linked_rune_id = &"rune_steady_hand"
+rune_stat_delta = {&"crit_chance": 0.04, &"attack_range": 16.0}
 unlock_tech_id = &""
 icon = ExtResource("3")

@@ -9,4 +9,4 @@ required_species = &"emberwing_moth"
 output_slot = "chest"
 output_base_item_id = &"reinforced_plate"
 rune_id = &"rune_menagerie_emberwing_moth"
-stat_delta = {&"additive_bonus_total": 0.05}
+stat_delta = {&"magic_attack": 7.5, &"elemental_resist_fire": 0.06}

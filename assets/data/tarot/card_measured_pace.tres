@@ -15,5 +15,6 @@ card_id = &"measured_pace"
 rarity = "Common"
 modifiers = [SubResource("Modifier_measured_pace")]
 linked_rune_id = &"rune_measured_pace"
+rune_stat_delta = {&"cdr": 0.03, &"armor": 10.0}
 unlock_tech_id = &""
 icon = ExtResource("3")

@@ -20,5 +20,6 @@ card_id = &"reckless_onslaught"
 rarity = "Rare"
 modifiers = [SubResource("Modifier_speed"), SubResource("Modifier_reward")]
 linked_rune_id = &"rune_reckless_onslaught"
+rune_stat_delta = {&"physical_attack": 6.25, &"crit_chance": 0.03}
 unlock_tech_id = &"tech_production_4"
 icon = ExtResource("3")

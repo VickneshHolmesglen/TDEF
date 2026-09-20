@@ -15,5 +15,6 @@ card_id = &"grim_resolve"
 rarity = "Rare"
 modifiers = [SubResource("Modifier_grim_resolve")]
 linked_rune_id = &"rune_grim_resolve"
+rune_stat_delta = {&"max_hp": 100.0, &"lifesteal": 0.01}
 unlock_tech_id = &"tech_production_3"
 icon = ExtResource("3")

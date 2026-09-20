@@ -15,5 +15,6 @@ card_id = &"bountiful_harvest"
 rarity = "Rare"
 modifiers = [SubResource("Modifier_bountiful_harvest")]
 linked_rune_id = &"rune_bountiful_harvest"
+rune_stat_delta = {&"luck": 0.06, &"max_hp": 50.0}
 unlock_tech_id = &"tech_production_2"
 icon = ExtResource("3")

@@ -9,4 +9,4 @@ required_species = &"duskfang_fox"
 output_slot = "weapon"
 output_base_item_id = &"steel_greatsword"
 rune_id = &"rune_menagerie_duskfang_fox"
-stat_delta = {&"additive_bonus_total": 0.05}
+stat_delta = {&"crit_chance": 0.05, &"move_speed": 10.0}

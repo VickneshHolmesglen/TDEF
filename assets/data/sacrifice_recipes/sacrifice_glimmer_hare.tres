@@ -9,4 +9,4 @@ required_species = &"glimmer_hare"
 output_slot = "neck"
 output_base_item_id = &"lucky_charm_trinket"
 rune_id = &"rune_menagerie_glimmer_hare"
-stat_delta = {&"additive_bonus_total": 0.02}
+stat_delta = {&"move_speed": 10.0, &"luck": 0.03}

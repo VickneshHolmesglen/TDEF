@@ -15,5 +15,6 @@ card_id = &"cautious_advance"
 rarity = "Common"
 modifiers = [SubResource("Modifier_cautious_advance")]
 linked_rune_id = &"rune_cautious_advance"
+rune_stat_delta = {&"armor": 15.0, &"move_speed": 5.0}
 unlock_tech_id = &""
 icon = ExtResource("3")

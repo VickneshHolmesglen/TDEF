@@ -15,6 +15,7 @@ card_id = &"lucky_charm"
 rarity = "Common"
 modifiers = [SubResource("Modifier_lucky_charm")]
 linked_rune_id = &"rune_lucky_charm"
+rune_stat_delta = {&"luck": 0.04, &"crit_chance": 0.03}
 unlock_tech_id = &""
 rune_bonus_flat = 0.05
 icon = ExtResource("3")

@@ -20,5 +20,6 @@ card_id = &"apex_predator"
 rarity = "Legendary"
 modifiers = [SubResource("Modifier_apex_speed"), SubResource("Modifier_apex_reward")]
 linked_rune_id = &"rune_apex_predator"
+rune_stat_delta = {&"crit_chance": 0.04, &"crit_multiplier": 0.10}
 unlock_tech_id = &"tech_structural_3"
 icon = ExtResource("3")
