@@ -178,6 +178,29 @@ func is_rune_id_known(rune_id: StringName) -> bool:
 	return false
 
 
+## Equipment-stats-wiring spec §3.4: resolves rune_id to the stat_delta it
+## contributes, on demand — nothing is persisted, since every rune source's
+## delta is a pure function of rune_id alone. Mirrors is_rune_id_known()'s
+## 3-way source matching (kept as a mirrored pair, not refactored, because
+## the return shapes differ). Static because EquipmentForge is not an
+## autoload — Hero has no instance to call. Returns {} for an unknown
+## (orphaned) rune_id, never an error.
+static func resolve_rune_stat_delta(rune_id: StringName) -> Dictionary:
+	if rune_id == &"":
+		return {}
+	var id_str: String = String(rune_id)
+	for shape_id: String in Constellation.SHAPE_N:
+		if id_str == "rune_%s" % shape_id:
+			return {"additive_bonus_total": RUNE_ADDITIVE_BONUS}
+	for card: TarotCardResource in GGameDataRegistry.get_all_tarot_cards().values():
+		if String(card.linked_rune_id) == id_str:
+			return {"additive_bonus_total": RUNE_ADDITIVE_BONUS}
+	for recipe: SacrificeRecipeResource in GGameDataRegistry.get_all_sacrifice_recipes().values():
+		if String(recipe.rune_id) == id_str:
+			return recipe.stat_delta.duplicate()
+	return {}
+
+
 ## Returns rune_id's ledger entry, or {} if not AVAILABLE (never discovered,
 ## or already imbued/consumed — Story 013's own scope removes it from here).
 func get_available_rune(rune_id: StringName) -> Dictionary:

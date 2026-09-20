@@ -363,6 +363,17 @@ const PLACEHOLDER_BASE_STATS: Dictionary[StringName, float] = {
 	&"luck": 0.0,
 }
 
+## Every real _base_stats key, used for the `additive_bonus_total` fan-out
+## (equipment-stats-wiring spec §3.3). MAINTENANCE POINT: add any new Hero
+## stat here too -- Hero has no dynamic stat-name introspection. Enforced by
+## hero_equipment_stats_test.gd against PLACEHOLDER_BASE_STATS.
+const EQUIPMENT_FAN_OUT_STATS: Array[StringName] = [
+	&"max_hp", &"physical_attack", &"move_speed", &"cdr", &"crit_chance",
+	&"armor", &"magic_attack", &"attack_range", &"elemental_resist_fire",
+	&"elemental_resist_frost", &"lifesteal", &"tower_affinity",
+	&"crit_multiplier", &"luck",
+]
+
 ## Flat (pre-multiplier) bonuses from gear, skills, etc.
 var _flat_bonuses: Dictionary[StringName, float] = {}
 
@@ -689,6 +700,13 @@ func _ready() -> void:
 	# clamping; D&S owns the heal-amount calculation").
 	GEventBus.hero_healed.connect(_on_hero_healed)
 
+	# Equipment-stats-wiring spec §3.1: Hero reads equipped gear passively
+	# via these two signals; the initial recompute covers gear equipped in
+	# the Sanctuary before this Hero existed (no signal fires for that).
+	GEventBus.equipment_slot_changed.connect(_on_equipment_slot_changed)
+	GEventBus.item_rune_imbued.connect(_on_item_rune_imbued)
+	_recompute_equipment_bonuses()
+
 	# Story-008 (ADR-0003): establish sane starting HP/state before this Hero
 	# is registered with SavePersistence, so a scene that never explicitly
 	# calls GSavePersistence.load_slot() (e.g. a quick mission start, or a
@@ -724,7 +742,57 @@ func _exit_tree() -> void:
 
 	GEventBus.hero_damage_taken.disconnect(_on_hero_damage_taken)
 	GEventBus.hero_healed.disconnect(_on_hero_healed)
+	GEventBus.equipment_slot_changed.disconnect(_on_equipment_slot_changed)
+	GEventBus.item_rune_imbued.disconnect(_on_item_rune_imbued)
 	GSavePersistence.unregister(self)
+
+
+func _on_equipment_slot_changed(_slot: String, _new_item_id: String, _previous_item_id: String) -> void:
+	_recompute_equipment_bonuses()
+
+
+func _on_item_rune_imbued(_item_id: String, _rune_id: String, _rune_source: String) -> void:
+	_recompute_equipment_bonuses()
+
+
+## Equipment-stats-wiring spec §3.2: fully re-derives _flat_bonuses/
+## _additive_bonuses from GInventory's currently-equipped slots. Full
+## replace, never incremental, so an unequipped item's contribution simply
+## disappears. stat_overrides (the item's real roll) wins per-stat over the
+## definition's base_stats template.
+func _recompute_equipment_bonuses() -> void:
+	var new_flat: Dictionary[StringName, float] = {}
+	var new_additive: Dictionary[StringName, float] = {}
+	for slot_name: String in Inventory.EQUIPMENT_SLOT_NAMES:
+		var contents: Dictionary = GInventory.get_equipped_item(slot_name)
+		if contents.is_empty():
+			continue
+		var definition: ItemDefinitionResource = GGameDataRegistry.get_item_definition(StringName(contents["item_id"] as String))
+		if definition == null:
+			continue
+		var stats: Dictionary = definition.base_stats.duplicate()
+		var overrides: Dictionary = contents["stat_overrides"]
+		for stat: Variant in overrides:
+			stats[stat] = overrides[stat]
+		for stat: Variant in stats:
+			_fold_stat_entry(StringName(stat), float(stats[stat]), new_flat, new_additive)
+		for rune_id: String in contents["imbued_runes"]:
+			var delta: Dictionary = EquipmentForge.resolve_rune_stat_delta(StringName(rune_id))
+			for stat: Variant in delta:
+				_fold_stat_entry(StringName(stat), float(delta[stat]), new_flat, new_additive)
+	_flat_bonuses = new_flat
+	_additive_bonuses = new_additive
+
+
+## Spec §3.3 key-handling rule: `additive_bonus_total` fans out into the
+## additive bucket of every real stat; any other key is a flat bonus to that
+## named stat. Unknown stat names are stored but never read (inert).
+static func _fold_stat_entry(stat: StringName, value: float, new_flat: Dictionary[StringName, float], new_additive: Dictionary[StringName, float]) -> void:
+	if stat == &"additive_bonus_total":
+		for real_stat: StringName in EQUIPMENT_FAN_OUT_STATS:
+			new_additive[real_stat] = new_additive.get(real_stat, 0.0) + value
+	else:
+		new_flat[stat] = new_flat.get(stat, 0.0) + value
 
 
 ## Rule 26: input polling happens in _process() per the control manifest (Core Layer
