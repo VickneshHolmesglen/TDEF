@@ -56,7 +56,7 @@ func test_bonuses_state_lists_equipped_totals() -> void:
 
 
 func test_bonuses_state_shows_all_stats_row_for_fan_out_rune() -> void:
-	var shape_id: String = Constellation.SHAPE_N.keys()[0]
+	var shape_id: String = "cross_plus"
 	GInventory.equip_item("helmet", load(HELM), {&"max_hp": 10.0, &"armor": 4.0})
 	# equip_item() creates the slot with 0 rune slots; give it 2 (test-only setup).
 	GInventory._slots[Inventory.EQUIPMENT_SLOT_INDEX["helmet"]].rune_slot_count = 2

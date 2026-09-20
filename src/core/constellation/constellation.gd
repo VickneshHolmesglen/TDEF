@@ -60,6 +60,18 @@ const SHAPE_COMPLEXITY_BONUS: Dictionary[String, float] = {
 	"cross_plus": 0.03,
 }
 
+## Equipment-Forge rune bonus per shape (rune-variety spec §3.1/§4), keyed by
+## SHAPE_N's keys. Read by EquipmentForge.resolve_rune_stat_delta() for
+## rune_id "rune_<shape_id>". Deliberately decoupled from BASE_UNIT_BONUS/
+## complexity above (constellation.md Core Rule 12). cross_plus is the
+## all-stats wildcard. A shape missing here falls back to the generic +5%.
+const SHAPE_RUNE_STAT_DELTA: Dictionary[String, Dictionary] = {
+	"triad_line": {&"physical_attack": 5.0},
+	"quad_line": {&"attack_range": 24.0, &"physical_attack": 2.5},
+	"l_corner": {&"magic_attack": 7.5},
+	"cross_plus": {&"additive_bonus_total": 0.05},
+}
+
 const BONUS_TYPE_PLACEHOLDER: String = "damage_pct"
 
 ## 4 axis directions per Core Rule 1: 0°(horizontal), 90°(vertical),

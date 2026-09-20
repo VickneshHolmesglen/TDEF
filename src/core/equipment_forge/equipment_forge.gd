@@ -184,21 +184,30 @@ func is_rune_id_known(rune_id: StringName) -> bool:
 ## 3-way source matching (kept as a mirrored pair, not refactored, because
 ## the return shapes differ). Static because EquipmentForge is not an
 ## autoload — Hero has no instance to call. Returns {} for an unknown
-## (orphaned) rune_id, never an error.
+## (orphaned) rune_id, never an error. Rune-variety spec: values now come
+## from data (Constellation/Tarot/Menagerie), with a generic fallback.
 static func resolve_rune_stat_delta(rune_id: StringName) -> Dictionary:
 	if rune_id == &"":
 		return {}
 	var id_str: String = String(rune_id)
 	for shape_id: String in Constellation.SHAPE_N:
 		if id_str == "rune_%s" % shape_id:
-			return {"additive_bonus_total": RUNE_ADDITIVE_BONUS}
+			return _rune_delta_or_fallback(Constellation.SHAPE_RUNE_STAT_DELTA.get(shape_id, {}))
 	for card: TarotCardResource in GGameDataRegistry.get_all_tarot_cards().values():
 		if String(card.linked_rune_id) == id_str:
-			return {"additive_bonus_total": RUNE_ADDITIVE_BONUS}
+			return _rune_delta_or_fallback(card.rune_stat_delta)
 	for recipe: SacrificeRecipeResource in GGameDataRegistry.get_all_sacrifice_recipes().values():
 		if String(recipe.rune_id) == id_str:
 			return recipe.stat_delta.duplicate()
 	return {}
+
+
+## A missing/empty authored rune value falls back to the original generic
+## +5% all-stats bonus rather than resolving to nothing (rune-variety spec §3.2).
+static func _rune_delta_or_fallback(delta: Dictionary) -> Dictionary:
+	if delta.is_empty():
+		return {"additive_bonus_total": RUNE_ADDITIVE_BONUS}
+	return delta.duplicate()
 
 
 ## Returns rune_id's ledger entry, or {} if not AVAILABLE (never discovered,

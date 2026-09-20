@@ -54,7 +54,7 @@ func test_compute_sums_two_items_sharing_a_stat() -> void:
 
 
 func test_compute_constellation_rune_fans_out_additive() -> void:
-	var shape_id: String = Constellation.SHAPE_N.keys()[0]
+	var shape_id: String = "cross_plus"
 	var c: Dictionary = _contents("iron_helm", {&"max_hp": 10.0, &"armor": 4.0}, ["rune_%s" % shape_id])
 	var r: Dictionary = EquipmentBonuses.compute([c])
 	assert_int((r["additive"] as Dictionary).size()).is_equal(14)

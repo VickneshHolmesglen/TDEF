@@ -20,6 +20,13 @@ extends Resource
 @export var modifiers: Array[TarotModifierEntry] = []
 @export var linked_rune_id: StringName = &""
 
+## Equipment-imbue bonus of this card's linked rune (rune-variety spec §3.1):
+## a themed flat stat delta, e.g. {&"luck": 0.08}, or {&"additive_bonus_total": 0.05}
+## for an all-stats wildcard. Only meaningful when linked_rune_id is non-empty.
+## DISTINCT from rune_bonus_flat below (Tarot's own in-mission Formula F5
+## bonus). Empty => EquipmentForge falls back to the generic +5% all-stats.
+@export var rune_stat_delta: Dictionary[StringName, float] = {}
+
 ## Defense Building tech node id gating this card's unlock (Tarot.is_card_unlocked()
 ## reads GDefenseBuilding.is_tech_unlocked(unlock_tech_id) — same pull-based pattern
 ## Crafting uses for recipe tiers). Empty string means unlocked from the start.

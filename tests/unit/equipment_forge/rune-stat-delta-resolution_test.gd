@@ -16,20 +16,43 @@ func after_test() -> void:
 	_forge = null
 
 
-func test_constellation_rune_resolves_to_fixed_additive_bonus() -> void:
-	var shape_id: String = Constellation.SHAPE_N.keys()[0]
-	var delta: Dictionary = EquipmentForge.resolve_rune_stat_delta(StringName("rune_%s" % shape_id))
-	assert_dict(delta).contains_key_value("additive_bonus_total", EquipmentForge.RUNE_ADDITIVE_BONUS)
+func test_constellation_themed_rune_resolves_to_flat_stats() -> void:
+	var delta: Dictionary = EquipmentForge.resolve_rune_stat_delta(&"rune_triad_line")
 	assert_int(delta.size()).is_equal(1)
+	assert_float(float(delta[&"physical_attack"])).is_equal_approx(5.0, 0.0001)
+	assert_bool(delta.has("additive_bonus_total")).is_false()
 
 
-func test_tarot_rune_resolves_to_fixed_additive_bonus() -> void:
+func test_constellation_wildcard_rune_resolves_to_additive_only() -> void:
+	var delta: Dictionary = EquipmentForge.resolve_rune_stat_delta(&"rune_cross_plus")
+	assert_int(delta.size()).is_equal(1)
+	assert_float(float(delta[&"additive_bonus_total"])).is_equal_approx(EquipmentForge.RUNE_ADDITIVE_BONUS, 0.0001)
+
+
+func test_tarot_rune_resolves_to_card_rune_stat_delta_or_fallback() -> void:
 	var cards: Dictionary = GGameDataRegistry.get_all_tarot_cards()
 	if cards.is_empty():
 		return
 	var card: TarotCardResource = cards.values()[0]
+	var expected: Dictionary = card.rune_stat_delta if not card.rune_stat_delta.is_empty() else {"additive_bonus_total": EquipmentForge.RUNE_ADDITIVE_BONUS}
 	var delta: Dictionary = EquipmentForge.resolve_rune_stat_delta(card.linked_rune_id)
-	assert_dict(delta).contains_key_value("additive_bonus_total", EquipmentForge.RUNE_ADDITIVE_BONUS)
+	assert_int(delta.size()).is_equal(expected.size())
+	for key: Variant in expected:
+		assert_float(float(delta[key])).is_equal_approx(float(expected[key]), 0.0001)
+
+
+func test_fallback_helper_returns_generic_bonus_for_empty_delta() -> void:
+	var delta: Dictionary = EquipmentForge._rune_delta_or_fallback({})
+	assert_int(delta.size()).is_equal(1)
+	assert_float(float(delta["additive_bonus_total"])).is_equal_approx(EquipmentForge.RUNE_ADDITIVE_BONUS, 0.0001)
+
+
+func test_fallback_helper_passes_through_and_copies_nonempty_delta() -> void:
+	var source: Dictionary = {&"armor": 10.0}
+	var delta: Dictionary = EquipmentForge._rune_delta_or_fallback(source)
+	assert_float(float(delta[&"armor"])).is_equal_approx(10.0, 0.0001)
+	delta[&"armor"] = 99.0
+	assert_float(float(source[&"armor"])).is_equal_approx(10.0, 0.0001)
 
 
 func test_menagerie_rune_resolves_to_recipe_stat_delta() -> void:
