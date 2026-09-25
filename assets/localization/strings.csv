@@ -58,3 +58,18 @@ INVENTORY_INFO_SET_BONUSES_HEADER,Set Bonuses
 INVENTORY_INFO_SET_LINE,Set: %s (%d/%d)
 INVENTORY_INFO_SET_HEADER_LINE,%s (%d/%d)
 INVENTORY_INFO_SET_THRESHOLD,%d pieces:
+SET_EFFECT_CAPSTONE_LINE,Capstone (%d pieces): %s - %s
+SET_EFFECT_ON_KILL_STACK_BUFF,Each nearby kill adds a stack of %s (up to %d stacks). Stacks last %s after the last kill.
+SET_EFFECT_ON_CRIT_STATUS,Critical hits inflict %s for %d%% of max HP over %s.
+SET_EFFECT_STATUS_BURN,burn
+SET_EFFECT_STATUS_POISON,poison
+SET_EFFECT_ON_WAVE_START_BUFF,At the start of each wave gain %s for %s.
+SET_EFFECT_ON_SKILL_CAST_BUFF,After casting a skill gain %s for %s.
+SET_EFFECT_PHASE_STATE,During %s: %s.
+SET_EFFECT_PHASE_IDLE,Idle
+SET_EFFECT_PHASE_SCOUT,Scout
+SET_EFFECT_PHASE_PRE_WAVE,Pre-wave
+SET_EFFECT_PHASE_WAVE_ACTIVE,Waves
+SET_EFFECT_PHASE_INTERMISSION,Intermission
+SET_EFFECT_PHASE_MISSION_COMPLETE,Mission complete
+SET_EFFECT_PHASE_DEFEAT,Defeat

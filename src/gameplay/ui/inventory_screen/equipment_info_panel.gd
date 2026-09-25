@@ -126,6 +126,50 @@ static func _delta_text(delta: Dictionary) -> String:
 	return ", ".join(parts)
 
 
+## "Physical Attack +35%, Attack Range +15%" for an effect's additive stats.
+static func _effect_stats_text(stats: Dictionary) -> String:
+	var parts: Array[String] = []
+	for stat: StringName in ordered_stats(stats):
+		parts.append("%s +%d%%" % [stat_label(stat), int(roundf(float(stats[stat]) * 100.0))])
+	return ", ".join(parts)
+
+
+## "6s" for whole seconds, "2.5s" otherwise (String.num(6.0) would give "6.0").
+static func _seconds_text(seconds: Variant) -> String:
+	var value: float = float(seconds)
+	if is_equal_approx(value, roundf(value)):
+		return "%ds" % int(roundf(value))
+	return "%ss" % String.num(value)
+
+
+## Player-facing description of one capstone effect ({&"name", &"type",
+## &"params"}). Lives here (UI layer) because it needs stat_label(); static, so
+## it uses TranslationServer rather than tr().
+static func describe_effect(effect: Dictionary) -> String:
+	var params: Dictionary = effect[&"params"]
+	match StringName(effect[&"type"]):
+		&"on_kill_stack_buff":
+			return TranslationServer.translate("SET_EFFECT_ON_KILL_STACK_BUFF") % [
+				_effect_stats_text(params[&"stats"]), int(params[&"max_stacks"]), _seconds_text(params[&"duration"])]
+		&"on_crit_status":
+			var status: String = TranslationServer.translate("SET_EFFECT_STATUS_%s" % String(params[&"effect_type"]).to_upper())
+			return TranslationServer.translate("SET_EFFECT_ON_CRIT_STATUS") % [
+				status, int(roundf(float(params[&"effect_value"]) * 100.0)), _seconds_text(params[&"effect_duration"])]
+		&"on_wave_start_buff":
+			return TranslationServer.translate("SET_EFFECT_ON_WAVE_START_BUFF") % [
+				_effect_stats_text(params[&"stats"]), _seconds_text(params[&"duration"])]
+		&"on_skill_cast_buff":
+			return TranslationServer.translate("SET_EFFECT_ON_SKILL_CAST_BUFF") % [
+				_effect_stats_text(params[&"stats"]), _seconds_text(params[&"duration"])]
+		&"phase_state":
+			var names: Array[String] = []
+			for phase: Variant in (params[&"phases"] as Array):
+				names.append(TranslationServer.translate("SET_EFFECT_PHASE_%s" % String(phase)))
+			return TranslationServer.translate("SET_EFFECT_PHASE_STATE") % [
+				" / ".join(names), _effect_stats_text(params[&"stats"])]
+	return String(effect.get(&"type", ""))
+
+
 static func _additive_gain(additive_delta: Dictionary) -> bool:
 	for stat: Variant in additive_delta:
 		return float(additive_delta[stat]) > 0.0
@@ -179,6 +223,13 @@ func _set_section_lines() -> Array[String]:
 		for threshold: int in thresholds:
 			var text: String = "  %s %s" % [tr("INVENTORY_INFO_SET_THRESHOLD") % threshold, _delta_text(set_res.bonuses[threshold])]
 			lines.append(text if count >= threshold else _colored(text, COLOR_MUTED))
+		var effect_thresholds: Array = SetEffectResolver.effects_for_set(set_id).keys()
+		effect_thresholds.sort()
+		for threshold: int in effect_thresholds:
+			var effect: Dictionary = set_res.effects[threshold]
+			var capstone: String = tr("SET_EFFECT_CAPSTONE_LINE") % [threshold, effect[&"name"], describe_effect(effect)]
+			var line: String = "  " + capstone
+			lines.append(line if count >= threshold else _colored(line, COLOR_MUTED))
 	return lines
 
 

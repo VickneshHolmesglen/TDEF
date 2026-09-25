@@ -85,3 +85,80 @@ func test_swap_preview_shows_a_lost_set_bonus_as_a_negative_row() -> void:
 	# Swapping the equipped helmet for a non-set helmet breaks the 2-piece bonus (-60 max_hp beyond stat swap).
 	_panel.show_item(_c("iron_helm"), "")
 	assert_str(_panel.get_body_text()).contains("-")
+
+
+# ---------------------------------------------------------------------------
+# Capstone lines (equipment-set-effects spec §3.7, AC-13)
+# ---------------------------------------------------------------------------
+
+func _fx(type: StringName, params: Dictionary) -> Dictionary:
+	return {&"name": "Test", &"type": type, &"params": params}
+
+
+func test_describe_kill_stack_buff_mentions_stat_stacks_and_duration() -> void:
+	var text: String = PanelScript.describe_effect(_fx(&"on_kill_stack_buff",
+		{&"stats": {&"physical_attack": 0.03}, &"max_stacks": 10, &"duration": 6.0}))
+	assert_str(text).contains(PanelScript.stat_label(&"physical_attack"))
+	assert_str(text).contains("3%")
+	assert_str(text).contains("10")
+	assert_str(text).contains("6s")
+
+
+func test_describe_crit_status_mentions_the_dot_and_its_size() -> void:
+	var text: String = PanelScript.describe_effect(_fx(&"on_crit_status",
+		{&"effect_type": "poison", &"effect_value": 0.06, &"effect_duration": 4.0}))
+	assert_str(text).contains(tr("SET_EFFECT_STATUS_POISON"))
+	assert_str(text).contains("6%")
+	assert_str(text).contains("4s")
+
+
+func test_describe_timed_buffs_mention_stats_and_duration() -> void:
+	var wave: String = PanelScript.describe_effect(_fx(&"on_wave_start_buff",
+		{&"stats": {&"physical_attack": 0.35, &"attack_range": 0.15}, &"duration": 10.0}))
+	assert_str(wave).contains("35%")
+	assert_str(wave).contains("15%")
+	assert_str(wave).contains("10s")
+	var skill: String = PanelScript.describe_effect(_fx(&"on_skill_cast_buff",
+		{&"stats": {&"attack_range": 0.2}, &"duration": 5.0}))
+	assert_str(skill).contains(PanelScript.stat_label(&"attack_range"))
+	assert_str(skill).contains("5s")
+
+
+func test_describe_phase_state_lists_every_phase() -> void:
+	var text: String = PanelScript.describe_effect(_fx(&"phase_state",
+		{&"stats": {&"move_speed": 0.3}, &"phases": ["SCOUT", "INTERMISSION"]}))
+	assert_str(text).contains(tr("SET_EFFECT_PHASE_SCOUT"))
+	assert_str(text).contains(tr("SET_EFFECT_PHASE_INTERMISSION"))
+	assert_str(text).contains("30%")
+
+
+## The exact line the panel renders for a set's capstone at `threshold`.
+## get_body_text() strips BBCode, so earned/muted styling is asserted on the
+## raw RichTextLabel text (_body.text) instead.
+func _capstone_line(set_id: StringName, threshold: int) -> String:
+	var effect: Dictionary = GGameDataRegistry.get_equipment_set(set_id).effects[threshold]
+	return "  " + tr("SET_EFFECT_CAPSTONE_LINE") % [threshold, effect[&"name"], PanelScript.describe_effect(effect)]
+
+
+func test_bonuses_state_shows_an_earned_capstone_unmuted() -> void:
+	_equip("gloves", "lurker_claw_gauntlets")
+	_equip("main_hand", "lurker_fang_blade")
+	_panel.show_bonuses()
+	var line: String = _capstone_line(&"set_lurker", 2)
+	assert_str(_panel.get_body_text()).contains("Venom Strike")
+	assert_str(_panel._body.text).contains(line)
+	assert_str(_panel._body.text).not_contains("[color=%s]%s[/color]" % [PanelScript.COLOR_MUTED, line])
+
+
+func test_bonuses_state_shows_an_unearned_capstone_muted() -> void:
+	_equip("helmet", "brutes_war_helm")
+	_equip("gloves", "brute_gauntlets")
+	_panel.show_bonuses()
+	var line: String = _capstone_line(&"set_brute", 5)
+	assert_str(_panel.get_body_text()).contains("Juggernaut")
+	assert_str(_panel._body.text).contains("[color=%s]%s[/color]" % [PanelScript.COLOR_MUTED, line])
+
+
+func test_a_set_with_no_pieces_equipped_shows_no_capstone() -> void:
+	_panel.show_bonuses()
+	assert_str(_panel.get_body_text()).not_contains("Juggernaut")
