@@ -65,3 +65,52 @@ func test_every_member_is_a_real_equipment_item_and_no_item_is_in_two_sets() -> 
 			assert_str(def.equipment_category).override_failure_message("%s is not equipment" % member).is_not_empty()
 			assert_bool(seen.has(member)).override_failure_message("%s is in two sets" % member).is_false()
 			seen[member] = set_res.set_id
+
+
+# ---------------------------------------------------------------------------
+# Capstone effects (equipment-set-effects spec §3.9/§4, AC-14)
+# ---------------------------------------------------------------------------
+
+const EXPECTED_EFFECTS: Dictionary[StringName, Dictionary] = {
+	&"set_troll": {"threshold": 4, "name": "Troll's Frenzy", "type": &"on_kill_stack_buff",
+		"params": {&"stats": {&"physical_attack": 0.03}, &"max_stacks": 10, &"duration": 6.0}},
+	&"set_lurker": {"threshold": 2, "name": "Venom Strike", "type": &"on_crit_status",
+		"params": {&"effect_type": "poison", &"effect_value": 0.06, &"effect_duration": 4.0}},
+	&"set_goblin": {"threshold": 4, "name": "Ember Raid", "type": &"on_crit_status",
+		"params": {&"effect_type": "burn", &"effect_value": 0.08, &"effect_duration": 3.0}},
+	&"set_brute": {"threshold": 5, "name": "Juggernaut", "type": &"on_wave_start_buff",
+		"params": {&"stats": {&"physical_attack": 0.35, &"attack_range": 0.15}, &"duration": 10.0}},
+	&"set_warlord": {"threshold": 5, "name": "Battle Cry", "type": &"on_wave_start_buff",
+		"params": {&"stats": {&"physical_attack": 0.20, &"magic_attack": 0.20}, &"duration": 15.0}},
+	&"set_iron": {"threshold": 4, "name": "Steel Reflex", "type": &"on_skill_cast_buff",
+		"params": {&"stats": {&"physical_attack": 0.15}, &"duration": 5.0}},
+	&"set_reinforced": {"threshold": 4, "name": "Braced Stance", "type": &"on_skill_cast_buff",
+		"params": {&"stats": {&"attack_range": 0.20}, &"duration": 6.0}},
+	&"set_sentinel": {"threshold": 4, "name": "Overwatch", "type": &"phase_state",
+		"params": {&"stats": {&"attack_range": 0.20}, &"phases": ["WAVE_ACTIVE"]}},
+	&"set_leather": {"threshold": 3, "name": "Fleet-Footed", "type": &"phase_state",
+		"params": {&"stats": {&"move_speed": 0.30}, &"phases": ["SCOUT", "INTERMISSION"]}},
+}
+
+
+func test_every_set_has_exactly_one_capstone_at_its_top_threshold() -> void:
+	for set_res: EquipmentSetResource in GGameDataRegistry.get_all_equipment_sets().values():
+		var sid: String = String(set_res.set_id)
+		assert_int(set_res.effects.size()).override_failure_message("%s effect count" % sid).is_equal(1)
+		var top: int = 0
+		for threshold: int in set_res.bonuses:
+			top = maxi(top, threshold)
+		assert_bool(set_res.effects.has(top)).override_failure_message("%s capstone not at top threshold %d" % [sid, top]).is_true()
+
+
+func test_capstones_match_the_spec_table_exactly() -> void:
+	assert_int(EXPECTED_EFFECTS.size()).is_equal(9)
+	for set_id: StringName in EXPECTED_EFFECTS:
+		var set_res: EquipmentSetResource = GGameDataRegistry.get_equipment_set(set_id)
+		var expected: Dictionary = EXPECTED_EFFECTS[set_id]
+		var threshold: int = expected["threshold"]
+		assert_bool(set_res.effects.has(threshold)).override_failure_message("%s threshold" % set_id).is_true()
+		var actual: Dictionary = set_res.effects[threshold]
+		assert_str(String(actual[&"name"])).override_failure_message("%s name" % set_id).is_equal(expected["name"])
+		assert_bool(actual[&"type"] == expected["type"]).override_failure_message("%s type" % set_id).is_true()
+		assert_bool(actual[&"params"] == expected["params"]).override_failure_message("%s params" % set_id).is_true()

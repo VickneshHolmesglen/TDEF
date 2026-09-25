@@ -11,3 +11,14 @@ bonuses = Dictionary[int, Dictionary]({
 2: {&"luck": 0.04},
 4: {&"crit_chance": 0.06, &"move_speed": 15.0}
 })
+effects = Dictionary[int, Dictionary]({
+4: {
+&"name": "Ember Raid",
+&"type": &"on_crit_status",
+&"params": {
+&"effect_type": "burn",
+&"effect_value": 0.08,
+&"effect_duration": 3.0
+}
+}
+})

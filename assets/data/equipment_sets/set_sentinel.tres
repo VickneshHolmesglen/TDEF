@@ -11,3 +11,13 @@ bonuses = Dictionary[int, Dictionary]({
 2: {&"attack_range": 16.0},
 4: {&"cdr": 0.05, &"elemental_resist_fire": 0.06, &"elemental_resist_frost": 0.06}
 })
+effects = Dictionary[int, Dictionary]({
+4: {
+&"name": "Overwatch",
+&"type": &"phase_state",
+&"params": {
+&"stats": {&"attack_range": 0.2},
+&"phases": ["WAVE_ACTIVE"]
+}
+}
+})

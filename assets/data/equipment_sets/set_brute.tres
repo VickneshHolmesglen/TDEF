@@ -12,3 +12,13 @@ bonuses = Dictionary[int, Dictionary]({
 4: {&"armor": 25.0},
 5: {&"max_hp": 100.0}
 })
+effects = Dictionary[int, Dictionary]({
+5: {
+&"name": "Juggernaut",
+&"type": &"on_wave_start_buff",
+&"params": {
+&"stats": {&"physical_attack": 0.35, &"attack_range": 0.15},
+&"duration": 10.0
+}
+}
+})

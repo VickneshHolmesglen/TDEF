@@ -12,3 +12,13 @@ bonuses = Dictionary[int, Dictionary]({
 4: {&"max_hp": 80.0, &"armor": 15.0},
 5: {&"additive_bonus_total": 0.05}
 })
+effects = Dictionary[int, Dictionary]({
+5: {
+&"name": "Battle Cry",
+&"type": &"on_wave_start_buff",
+&"params": {
+&"stats": {&"physical_attack": 0.2, &"magic_attack": 0.2},
+&"duration": 15.0
+}
+}
+})

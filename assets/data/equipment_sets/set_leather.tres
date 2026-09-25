@@ -11,3 +11,13 @@ bonuses = Dictionary[int, Dictionary]({
 2: {&"move_speed": 8.0},
 3: {&"luck": 0.03}
 })
+effects = Dictionary[int, Dictionary]({
+3: {
+&"name": "Fleet-Footed",
+&"type": &"phase_state",
+&"params": {
+&"stats": {&"move_speed": 0.3},
+&"phases": ["SCOUT", "INTERMISSION"]
+}
+}
+})

@@ -10,3 +10,14 @@ member_item_ids = Array[StringName]([&"lurker_claw_gauntlets", &"lurker_fang_bla
 bonuses = Dictionary[int, Dictionary]({
 2: {&"crit_chance": 0.05, &"lifesteal": 0.015}
 })
+effects = Dictionary[int, Dictionary]({
+2: {
+&"name": "Venom Strike",
+&"type": &"on_crit_status",
+&"params": {
+&"effect_type": "poison",
+&"effect_value": 0.06,
+&"effect_duration": 4.0
+}
+}
+})

@@ -11,3 +11,13 @@ bonuses = Dictionary[int, Dictionary]({
 2: {&"armor": 8.0},
 4: {&"max_hp": 50.0, &"physical_attack": 3.0}
 })
+effects = Dictionary[int, Dictionary]({
+4: {
+&"name": "Steel Reflex",
+&"type": &"on_skill_cast_buff",
+&"params": {
+&"stats": {&"physical_attack": 0.15},
+&"duration": 5.0
+}
+}
+})

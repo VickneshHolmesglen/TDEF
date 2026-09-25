@@ -11,3 +11,14 @@ bonuses = Dictionary[int, Dictionary]({
 2: {&"max_hp": 60.0},
 4: {&"lifesteal": 0.02, &"max_hp": 80.0}
 })
+effects = Dictionary[int, Dictionary]({
+4: {
+&"name": "Troll's Frenzy",
+&"type": &"on_kill_stack_buff",
+&"params": {
+&"stats": {&"physical_attack": 0.03},
+&"max_stacks": 10,
+&"duration": 6.0
+}
+}
+})
