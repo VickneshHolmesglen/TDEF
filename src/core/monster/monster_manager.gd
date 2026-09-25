@@ -48,6 +48,9 @@ const DEATH_BATCH_THRESHOLD := 20          ## ADR-0033 / event-bus.md Formula 2'
 
 ## damage-status.md Formula D5: tick interval for burn/poison DoT ticks.
 const STATUS_TICK_INTERVAL := 1.0          ## seconds
+## Equipment-set-effects spec §3.6: MonsterManager is a mission-scene child (not
+## an autoload), so SetEffectController finds it via this group.
+const GROUP_NAME: StringName = &"monster_manager"
 ## damage-status.md Rule I.3: the effect_type values Monster System
 ## recognizes as a DoT. Anything else is silently ignored by the DoT path
 ## (may still be a recognized slow — see RECOGNIZED_SLOW_EFFECTS). "bleed"
@@ -127,6 +130,7 @@ var _resource_table: Dictionary = {}     # StringName -> MonsterResource
 # ---------------------------------------------------------------------------
 
 func _ready() -> void:
+	add_to_group(GROUP_NAME)
 	_grid = GGrid
 	_pathfinding = GPathfindingSystem
 	if _resource_table.is_empty():
@@ -302,6 +306,15 @@ func _apply_dot_effect(target_monster_id: int, effect_type: String, effect_value
 	effect.tick_interval_remaining = STATUS_TICK_INTERVAL
 	effect.tick_damage = (effect_value * entity.scaled_hp) / float(num_ticks)
 	entity.active_status_effects.append(effect)
+
+
+## Public DoT entry for non-tower sources (e.g. equipment-set capstones).
+## Same stacking instance as a tower hit; unrecognized types are ignored.
+func apply_dot(target_monster_id: int, effect_type: String, effect_value: float,
+		effect_duration: float) -> void:
+	if not RECOGNIZED_DOT_EFFECTS.has(effect_type):
+		return
+	_apply_dot_effect(target_monster_id, effect_type, effect_value, effect_duration)
 
 
 ## damage-status.md Formula D6. speed_multiplier is 1.0 - effect_value, floored
