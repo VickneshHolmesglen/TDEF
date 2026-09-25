@@ -60,6 +60,7 @@ class _LocalBus extends Node:
 	signal boss_died(entity_id: int, monster_id: StringName, wave_index: int, cause: String)
 	signal boss_hp_changed(entity_id: int, current_hp: float, max_hp: float)
 	signal boss_tower_attack_attempted(boss_entity_id: int, target_tower_id: int, base_damage: float, wave_id: int)
+	signal monster_hero_attack_winding_up(entity_id: int, windup_seconds: float)
 	signal monster_cell_entered(entity_id: int, grid_cell: Vector2i, path_step_index: int)
 	# Pathfinding System
 	signal path_invalidated(affected_cells: Array)
@@ -70,7 +71,7 @@ class _LocalBus extends Node:
 	signal hero_healed(amount: int)
 	signal monster_hp_absorbed(entity_id: int, absorbed: int)
 	signal hero_damage_taken(amount: int, source_type: int)
-	signal hero_incoming_damage()
+	signal hero_incoming_damage(payload: HeroIncomingDamageEvent)
 	# Constellation System
 	signal constellation_activated(pattern_id: String, grid_origin: Vector2i, bonus_type: String, bonus_value: float)
 	signal constellation_deactivated(pattern_id: String, reason: String)
@@ -157,9 +158,10 @@ func test_bus_has_all_70_signals_declared() -> void:
 	# Subtract Node's built-in signals (robust to Godot version changes).
 	var node_signal_count: int = Node.new().get_signal_list().size()
 	var game_signal_count: int = signal_list.size() - node_signal_count
-	# Assert: live catalogue has 78 signals (70 original + 6 added during sprint 1
-	# UX/system design + 2 added by S4-01: scene_transition_started/completed).
-	assert_int(game_signal_count).is_equal(78)
+	# Assert: live catalogue has 79 signals (70 original + 6 added during sprint 1
+	# UX/system design + 2 added by S4-01: scene_transition_started/completed +
+	# 1 added by hero-damage: monster_hero_attack_winding_up).
+	assert_int(game_signal_count).is_equal(79)
 
 # ---------------------------------------------------------------------------
 # Zero-parameter signal (player_ready, hero_died)
@@ -442,18 +444,54 @@ func test_tower_wave_summary_delivers_resource_payload() -> void:
 # No-payload signals compile and emit correctly
 # ---------------------------------------------------------------------------
 
-func test_hero_incoming_damage_fires_with_no_params() -> void:
+func test_hero_incoming_damage_carries_a_resource_payload() -> void:
 	# Arrange
-	var state := {"fired": false}
-	var cb := func() -> void: state.fired = true
+	var state := {"got": null}
+	var cb := func(p: HeroIncomingDamageEvent) -> void: state.got = p
 	_bus.hero_incoming_damage.connect(cb)
+	var ev := HeroIncomingDamageEvent.new()
+	ev.amount = 45.0
+	ev.source_entity_id = 7
 
 	# Act
-	_bus.hero_incoming_damage.emit()
+	_bus.hero_incoming_damage.emit(ev)
 
 	# Assert
-	assert_bool(state.fired).is_true()
+	assert_object(state.got).is_not_null()
+	assert_float((state.got as HeroIncomingDamageEvent).amount).is_equal(45.0)
+	assert_int((state.got as HeroIncomingDamageEvent).source_entity_id).is_equal(7)
 	_bus.hero_incoming_damage.disconnect(cb)
+
+
+func test_monster_hero_attack_winding_up_carries_entity_and_seconds() -> void:
+	var state := {"id": -1, "secs": 0.0}
+	var cb := func(entity_id: int, windup_seconds: float) -> void:
+		state.id = entity_id
+		state.secs = windup_seconds
+	_bus.monster_hero_attack_winding_up.connect(cb)
+	_bus.monster_hero_attack_winding_up.emit(12, 0.9)
+	assert_int(state.id).is_equal(12)
+	assert_float(state.secs).is_equal_approx(0.9, 0.0001)
+	_bus.monster_hero_attack_winding_up.disconnect(cb)
+
+
+func test_hero_incoming_damage_event_defaults() -> void:
+	var ev := HeroIncomingDamageEvent.new()
+	assert_float(ev.amount).is_equal(0.0)
+	assert_str(ev.damage_type).is_equal("physical")
+	assert_int(ev.source_type).is_equal(0)
+	assert_int(ev.source_entity_id).is_equal(-1)
+
+
+## The mirror above must match the REAL autoload; this checks the two changed signals on it.
+func test_real_bus_declares_the_hero_damage_signals_with_the_right_arity() -> void:
+	var arity: Dictionary = {}
+	for sig: Dictionary in GEventBus.get_signal_list():
+		arity[sig["name"]] = (sig["args"] as Array).size()
+	assert_bool(arity.has("hero_incoming_damage")).is_true()
+	assert_int(arity["hero_incoming_damage"]).is_equal(1)
+	assert_bool(arity.has("monster_hero_attack_winding_up")).is_true()
+	assert_int(arity["monster_hero_attack_winding_up"]).is_equal(2)
 
 # ---------------------------------------------------------------------------
 # Disconnect enforcement — ADR-0001 Rule 6

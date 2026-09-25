@@ -469,15 +469,20 @@ signal hero_healed(amount: int)
 ## Key subscribers: Damage & Status (lifesteal resolution).
 signal monster_hp_absorbed(entity_id: int, absorbed: int)
 
-## Deferred one frame from hero_incoming_damage after D4 armor reduction applied.
-## MVP: no active attack sources exist — pipeline is scaffolding only.
+## Deferred one frame from hero_incoming_damage after armor/resist mitigation applied.
+## Sources: ELITE/BOSS attacks (hero-damage spec); see also the QA-only kill-hero key.
 ## Key subscribers: Hero System, Mission HUD, Audio.
 signal hero_damage_taken(amount: int, source_type: int)
 
-## Emitted by any future source that inflicts damage on the hero.
-## MVP: no sources exist. Payload TBD — defined by the future system's GDD.
-## Key subscribers: Damage & Status.
-signal hero_incoming_damage()
+## An attacker's hit lands on the Hero, BEFORE mitigation (hero-damage spec §4.3).
+## Resource payload (HeroIncomingDamageEvent). Emitted by Monster System when an
+## ELITE/BOSS wind-up completes with the Hero still in range.
+## Key subscribers: Damage & Status (armor/resist mitigation, then hero_damage_taken).
+signal hero_incoming_damage(payload: HeroIncomingDamageEvent)
+
+## An ELITE/BOSS locked the Hero and began its wind-up (hero-damage spec §4.3).
+## No subscriber yet: the wind-up presentation follow-up spec subscribes to this.
+signal monster_hero_attack_winding_up(entity_id: int, windup_seconds: float)
 
 # =============================================================================
 # Constellation System
