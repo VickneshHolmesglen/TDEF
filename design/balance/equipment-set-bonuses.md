@@ -30,4 +30,4 @@
 ## Open questions
 
 - **Cross-set stacking:** several 2-piece bonuses from different sets stack freely; combined with gear and rune stats this may outpace committing to one set. Revisit with playtest data.
-- **Sentinel's dual offhands** cap it at 4 usable pieces by slot geometry; whether a 5-item set with a mutually exclusive pair is intended is left to the content designer.
+- ~~**Sentinel's dual offhands**~~ **Resolved 2026-09-25 (user decision): intentional.** `sentinel_ward` and `sentinels_aegis` are a deliberate flavour choice for the single offhand slot (ward vs. aegis), so Sentinel is a 5-member set with 4 wearable pieces and 4 as its top threshold. This is not an authoring slip and should not be "fixed" by re-slotting a piece or adding a 5-piece threshold.
