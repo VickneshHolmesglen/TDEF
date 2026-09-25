@@ -1,7 +1,7 @@
 # Equipment Set Effects (Capstone Special Effects, 9 Sets)
 
 **Date**: 2026-09-25
-**Status**: Design approved by user in chat (vocabulary, architecture, data flow); one approved item amended during spec writing (see §2.1). Pending spec review and implementation plan. Plan: `docs/superpowers/plans/2026-09-25-equipment-set-effects.md`.
+**Status**: Design approved by user in chat (vocabulary, architecture, data flow); one approved item amended during spec writing (see §2.1). Implemented: all 11 plan tasks are complete and pushed (see the plan and session state). Plan: `docs/superpowers/plans/2026-09-25-equipment-set-effects.md`.
 **Scope**: Each of the nine equipment sets gains one **capstone effect** at its top threshold, drawn from a fixed five-type vocabulary. Builds on `2026-09-20-equipment-set-bonuses-design.md` (sets, thresholds, `EquipmentBonuses`), `2026-09-20-equipment-stats-wiring-design.md` (Hero recompute-on-equip) and `2026-09-20-equipment-display-design.md` (info panel). Stat bonuses are unchanged. Values are authoritative in §4; `design/balance/equipment-set-effects.md` is created alongside the implementation as the tuning mirror.
 
 ## 1. Overview

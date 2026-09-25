@@ -223,10 +223,11 @@ func _set_section_lines() -> Array[String]:
 		for threshold: int in thresholds:
 			var text: String = "  %s %s" % [tr("INVENTORY_INFO_SET_THRESHOLD") % threshold, _delta_text(set_res.bonuses[threshold])]
 			lines.append(text if count >= threshold else _colored(text, COLOR_MUTED))
-		var effect_thresholds: Array = SetEffectResolver.effects_for_set(set_id).keys()
+		var declared: Dictionary = SetEffectResolver.effects_for_set(set_id)
+		var effect_thresholds: Array = declared.keys()
 		effect_thresholds.sort()
 		for threshold: int in effect_thresholds:
-			var effect: Dictionary = set_res.effects[threshold]
+			var effect: Dictionary = declared[threshold]
 			var capstone: String = tr("SET_EFFECT_CAPSTONE_LINE") % [threshold, effect[&"name"], describe_effect(effect)]
 			var line: String = "  " + capstone
 			lines.append(line if count >= threshold else _colored(line, COLOR_MUTED))

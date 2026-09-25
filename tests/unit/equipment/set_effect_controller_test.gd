@@ -202,6 +202,16 @@ func test_mission_end_clears_every_modifier_including_timed_buffs() -> void:
 	assert_float(_atk()).is_equal_approx(100.0, 0.0001)
 
 
+func test_hero_death_clears_timed_buffs_but_keeps_current_phase_state() -> void:
+	_apply([_phase_effect(), _wave_buff()])
+	_ctl._on_mission_phase_changed("SCOUT", "WAVE_ACTIVE", 0.0)
+	_ctl._on_wave_started(1, 5, 1.0)
+	assert_float(_atk()).is_equal_approx(135.0, 0.0001)
+	_ctl._on_hero_died()
+	assert_float(_atk()).is_equal_approx(100.0, 0.0001)
+	assert_float(_range()).is_equal_approx(240.0, 0.0001)
+
+
 # ---------------------------------------------------------------------------
 # on_kill_stack_buff (spec §3.1, AC-3)
 # ---------------------------------------------------------------------------

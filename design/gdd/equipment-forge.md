@@ -434,7 +434,7 @@ matching the rarest, hardest-to-breed/lure species in the game.
 
 > **Update 2026-09-20:** equipment now has set bonuses (nine item-family sets earning cumulative stat bonuses) — see `docs/superpowers/specs/2026-09-20-equipment-set-bonuses-design.md`.
 
-> **Update 2026-09-25:** each set now also has one capstone effect at its top threshold (five effect types) — see docs/superpowers/specs/2026-09-25-equipment-set-effects-design.md.
+> **Update 2026-09-25:** each set now also has one capstone effect at its top threshold (five effect types) — see `docs/superpowers/specs/2026-09-25-equipment-set-effects-design.md`.
 
 Deliberately **not derived from a clean expression** — hand-authored per
 rune within a guideline range, same precedent as Crafting's own Formula 2

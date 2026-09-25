@@ -149,8 +149,13 @@ func _expire(key: StringName) -> void:
 	_hero.clear_effect_modifier(key)
 
 
+## Death drops timed buffs and kill stacks, but a phase_state effect whose phase
+## is still current must stay applied, so re-evaluate those against `_current_phase`.
 func _on_hero_died() -> void:
 	_clear_runtime()
+	for key: StringName in _active:
+		if _active[key][&"type"] == &"phase_state":
+			_refresh_phase_state(key)
 
 
 # ---------------------------------------------------------------------------

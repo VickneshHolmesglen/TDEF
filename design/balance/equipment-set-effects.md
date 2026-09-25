@@ -9,7 +9,7 @@
 - Each set has one capstone effect, at its highest `bonuses` threshold (top-threshold-only). Stat bonuses are unchanged.
 - Every `stats` value is an additive fraction (`0.20` = +20%) folded into Hero's additive bucket, inside the existing `clamp(1 + additive_total, -0.75, 3.0)`. Keys must be in `EquipmentBonuses.FAN_OUT_STATS`.
 - Timed buffs refresh, never stack (wave-start and skill-cast re-triggers reset the timer). Only kill-stack effects stack, up to `max_stacks`, and every qualifying kill refreshes the expiry of the whole stack.
-- Direct kill = a `monster_died` inside Hero's effective attack range whose `kill_source` is not `wave_end` (`Hero.is_direct_kill()`, the same inner band as kill XP).
+- Direct kill = a `monster_died` (or an entry in `monsters_died_batch`; the monster manager emits one or the other per frame, never both for the same death, and both are counted) inside Hero's effective attack range whose `kill_source` is not `wave_end` (`Hero.is_direct_kill()`, the same inner band as kill XP).
 - Crit status procs on the emitted crit flag of auto-attack and skill-hit events, before evasion is rolled.
 - Effects and their runtime state are derived, never saved.
 
@@ -40,3 +40,9 @@ Tower DoTs: poison `0.08` of target scaled HP over `4s` (`blueprint_venomdart_tu
 - **Controller created after the last phase event**: `phase_state` stays inactive until the next phase transition. If this proves real, add a phase getter on WaveManager for the controller's initial read.
 - **Cross-set stacking** remains open (see `equipment-set-bonuses.md`); top-threshold-only capstones limit it but do not remove it.
 - All numbers above are unplaytested.
+
+## Constraints for future capstones
+
+- **`max_hp` does not work as an effect stat.** Hero caches `_max_hp` and refreshes it only in `reset_to_defaults()` and on level-up (see the comment near `hero.gd:303`), and the HP bar and overheal clamp read that cache. A modifier on `max_hp` changes `get_effective_stat(&"max_hp")` but not the displayed or clamped HP. No shipped capstone uses it; avoid it (validation currently permits it).
+- **`attack_range` capstones also widen kill-XP bands.** Sentinel Overwatch, Reinforced Braced Stance and Brute Juggernaut deliberately widen the kill-XP inner band and the direct-kill radius too (both read `get_effective_stat(&"attack_range")`), which also widens Troll's Frenzy stacking radius. Kill XP is therefore no longer identical with those buffs active; this is intended.
+- **Direct kill counts both death signals.** See the Direct kill rule line above: both `monster_died` and `monsters_died_batch` are counted.
