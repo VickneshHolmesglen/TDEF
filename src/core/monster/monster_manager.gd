@@ -465,15 +465,33 @@ func _pass2_boss_logic(delta: float) -> void:
 func _boss_execute_scan(entity: MonsterEntity) -> void:
 	var boss_cell: Vector2i = _grid.world_to_cell(entity.global_position)
 	var towers: Array[int] = _grid.get_towers_in_range(boss_cell, entity.resource.boss_attack_range_cells)
-	if towers.is_empty():
+	var hero_in_range: bool = _hero_in_range(entity)
+	if towers.is_empty() and not hero_in_range:
 		return
-	# Only enter prepare phase when cooldown is clear and not already preparing
+	# Only enter a wind-up when the cooldown is clear and nothing is already in flight
+	# (a monster has at most one wind-up, tower or Hero: hero-damage spec §4.2).
 	if entity.boss_attack_cooldown_remaining > 0.0:
 		return
-	if entity.boss_attack_prepare_remaining > 0:
+	if entity.boss_attack_prepare_remaining > 0 or entity.hero_windup_remaining > 0.0:
+		return
+	# Closest target wins; the Hero only when STRICTLY closer than the closest tower (ties go to
+	# the tower), or when no tower is in range at all. With the Hero out of range this is the
+	# original tower-only behavior, unchanged.
+	if hero_in_range and (towers.is_empty()
+			or _hero_distance(entity) < _closest_tower_distance(boss_cell, entity.resource.boss_attack_range_cells)):
+		_begin_hero_windup(entity)
 		return
 	entity.boss_attack_prepare_remaining = BOSS_ATTACK_PREPARE_FRAMES
 	entity.boss_locked_target_id = towers[0]
+
+
+## Smallest Chebyshev radius (0..max_range) at which any tower is in range of `cell`, found with the
+## existing Grid API only (no tower-cell lookup exists). max_range + 1 when none is in range.
+func _closest_tower_distance(cell: Vector2i, max_range: int) -> int:
+	for radius: int in range(0, max_range + 1):
+		if not _grid.get_towers_in_range(cell, radius).is_empty():
+			return radius
+	return max_range + 1
 
 # ---------------------------------------------------------------------------
 # Pass 2b — Hero attacks (hero-damage spec §4.2)

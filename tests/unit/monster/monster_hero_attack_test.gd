@@ -225,3 +225,122 @@ func test_the_cooldown_ticks_down_for_elites() -> void:
 	elite.boss_attack_cooldown_remaining = 2.0
 	_mm._pass2b_hero_attacks(0.5)
 	assert_float(elite.boss_attack_cooldown_remaining).is_equal_approx(1.5, 0.0001)
+
+
+# ---------------------------------------------------------------------------
+# Boss targeting: closest of Hero or tower (spec §3, §4.2, AC-4)
+# ---------------------------------------------------------------------------
+
+func _boss() -> MonsterEntity:
+	return _spawn(_make_attacker(2, 60.0, 3.0, 3, 1.0))
+
+
+func test_boss_targets_the_hero_when_strictly_closer_than_the_closest_tower() -> void:
+	var boss := _boss()
+	_mm._hero_cell = Vector2i(1, 0)          # Hero distance 1
+	_grid.towers_at_distance = {42: 2}        # closest tower distance 2
+	_mm._pass2_boss_logic(1.0 / 60.0)
+	assert_int(boss.boss_locked_target_id).is_equal(MonsterManager.HERO_TARGET_ID)
+	assert_float(boss.hero_windup_remaining).is_equal_approx(1.0, 0.0001)
+	assert_int(boss.boss_attack_prepare_remaining).is_equal(0)
+	assert_int(_spy.count("monster_hero_attack_winding_up")).is_equal(1)
+
+
+func test_boss_targets_the_tower_when_it_is_closer_than_the_hero() -> void:
+	var boss := _boss()
+	_mm._hero_cell = Vector2i(2, 0)          # Hero distance 2
+	_grid.towers_at_distance = {42: 1}        # tower distance 1
+	_mm._pass2_boss_logic(1.0 / 60.0)
+	assert_int(boss.boss_locked_target_id).is_equal(42)
+	assert_int(boss.boss_attack_prepare_remaining).is_greater(0)
+	assert_float(boss.hero_windup_remaining).is_equal(0.0)
+
+
+func test_a_tie_goes_to_the_tower() -> void:
+	var boss := _boss()
+	_mm._hero_cell = Vector2i(2, 0)
+	_grid.towers_at_distance = {42: 2}
+	_mm._pass2_boss_logic(1.0 / 60.0)
+	assert_int(boss.boss_locked_target_id).is_equal(42)
+	assert_float(boss.hero_windup_remaining).is_equal(0.0)
+
+
+func test_boss_targets_the_hero_when_no_tower_is_in_range() -> void:
+	var boss := _boss()
+	_mm._hero_cell = Vector2i(2, 0)
+	_grid.towers_at_distance = {}
+	_mm._pass2_boss_logic(1.0 / 60.0)
+	assert_int(boss.boss_locked_target_id).is_equal(MonsterManager.HERO_TARGET_ID)
+
+
+func test_boss_targets_the_tower_when_the_hero_is_out_of_range() -> void:
+	var boss := _boss()
+	_mm._hero_cell = HERO_FAR
+	_grid.towers_at_distance = {42: 2}
+	_mm._pass2_boss_logic(1.0 / 60.0)
+	assert_int(boss.boss_locked_target_id).is_equal(42)
+	assert_float(boss.hero_windup_remaining).is_equal(0.0)
+
+
+func test_boss_ignores_a_dead_or_unknown_hero() -> void:
+	var boss := _boss()
+	_grid.towers_at_distance = {42: 2}
+	_mm._hero_alive = false
+	_mm._pass2_boss_logic(1.0 / 60.0)
+	assert_int(boss.boss_locked_target_id).is_equal(42)
+
+
+func test_boss_with_nothing_in_range_does_nothing() -> void:
+	var boss := _boss()
+	_mm._hero_cell = HERO_FAR
+	_grid.towers_at_distance = {}
+	_mm._pass2_boss_logic(1.0 / 60.0)
+	assert_int(boss.boss_locked_target_id).is_equal(-1)
+	assert_float(boss.hero_windup_remaining).is_equal(0.0)
+	assert_int(boss.boss_attack_prepare_remaining).is_equal(0)
+
+
+func test_boss_hero_attack_fires_with_the_boss_damage() -> void:
+	var boss := _boss()
+	_mm._hero_cell = Vector2i(1, 0)
+	_grid.towers_at_distance = {}
+	_mm._pass2_boss_logic(1.0 / 60.0)      # scan -> Hero locked
+	_mm._pass2b_hero_attacks(1.0)          # wind-up (1.0 s) completes
+	assert_int(_spy.count("hero_incoming_damage")).is_equal(1)
+	var ev: HeroIncomingDamageEvent = (_spy.emissions["hero_incoming_damage"] as Array)[0][0] as HeroIncomingDamageEvent
+	assert_float(ev.amount).is_equal_approx(60.0, 0.0001)
+	assert_int(ev.source_entity_id).is_equal(boss.entity_id)
+	assert_float(boss.boss_attack_cooldown_remaining).is_greater(0.0)
+
+
+func test_boss_hero_whiff_when_the_hero_leaves_range() -> void:
+	var boss := _boss()
+	_mm._hero_cell = Vector2i(1, 0)
+	_grid.towers_at_distance = {}
+	_mm._pass2_boss_logic(1.0 / 60.0)
+	_mm._hero_cell = HERO_FAR
+	_mm._pass2b_hero_attacks(1.0)
+	assert_int(_spy.count("hero_incoming_damage")).is_equal(0)
+	assert_float(boss.boss_attack_cooldown_remaining).is_greater(0.0)
+
+
+func test_only_one_windup_in_flight_a_hero_windup_blocks_a_tower_prepare() -> void:
+	var boss := _boss()
+	_mm._hero_cell = Vector2i(1, 0)
+	_grid.towers_at_distance = {42: 3}
+	_mm._pass2_boss_logic(1.0 / 60.0)      # Hero locked (distance 1 < 3)
+	boss.boss_scan_frames_remaining = 0    # force another scan next pass
+	_mm._pass2_boss_logic(1.0 / 60.0)
+	assert_int(boss.boss_attack_prepare_remaining).is_equal(0)
+	assert_int(boss.boss_locked_target_id).is_equal(MonsterManager.HERO_TARGET_ID)
+
+
+func test_a_tower_prepare_blocks_a_hero_windup() -> void:
+	var boss := _boss()
+	_mm._hero_cell = HERO_FAR
+	_grid.towers_at_distance = {42: 1}
+	_mm._pass2_boss_logic(1.0 / 60.0)      # tower prepare starts
+	_mm._hero_cell = Vector2i(1, 0)        # Hero now closer than nothing else, but a prepare is in flight
+	boss.boss_scan_frames_remaining = 0
+	_mm._pass2_boss_logic(1.0 / 60.0)
+	assert_float(boss.hero_windup_remaining).is_equal(0.0)
