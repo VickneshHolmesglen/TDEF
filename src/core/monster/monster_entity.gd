@@ -131,6 +131,11 @@ var boss_attack_cooldown_remaining: float = 0.0
 ## tower_id locked in when the prepare phase starts. -1 = no locked target.
 var boss_locked_target_id: int = -1
 
+## Seconds remaining in an in-flight Hero-targeted wind-up (hero-damage spec §4.2).
+## 0 = no Hero wind-up. A monster has at most one wind-up in flight (tower or Hero);
+## boss_locked_target_id holds MonsterManager.HERO_TARGET_ID while this is > 0.
+var hero_windup_remaining: float = 0.0
+
 ## Independent in-flight burn/poison DoT instances (design/gdd/damage-status.md
 ## Rule I.3 amendment; ADR-0006 5th pass). Stacks, does not refresh — see
 ## ActiveStatusEffect's own doc comment for why.

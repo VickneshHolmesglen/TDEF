@@ -40,6 +40,8 @@ const PATH_ARRIVAL_THRESHOLD := 4.0        ## world units
 const MAX_ACTIVE_MONSTERS := 150
 const BOSS_SCAN_INTERVAL_FRAMES := 6
 const BOSS_ATTACK_PREPARE_FRAMES := 4
+## Hero-damage spec §4.2: boss_locked_target_id sentinel meaning "the Hero" (tower ids are >= 0).
+const HERO_TARGET_ID := -2
 const HP_WAVE_GROWTH_RATE := 0.15
 const HP_DIFFICULTY_GROWTH_RATE := 0.35
 const SPEED_WAVE_GROWTH_RATE := 0.06
@@ -95,6 +97,11 @@ var _entity_lookup: Dictionary = {}      # entity_id(int) -> MonsterEntity
 var _entity_id_counter: int = 0
 var _current_wave_index: int = -1
 var _is_wave_active: bool = false
+## Hero-damage spec §4.2: the Hero's last known grid cell (from hero_position_changed) and
+## whether it can be targeted. The cell is deliberately NOT cleared on wave/mission reset:
+## Hero emits only when its cell changes, so clearing it would leave it unrefreshed.
+var _hero_cell: Vector2i = Vector2i(-1, -1)
+var _hero_alive: bool = false
 ## ADR-0036: F2's unclamped running multiplicative product across all
 ## equipped tarot_speed_scalar_mult cards -- reset to 1.0 on every mission's
 ## (and retry's) wave 1, since MonsterManager is a static MissionScene child,
@@ -142,6 +149,8 @@ func _ready() -> void:
 	GEventBus.path_invalidated.connect(_on_path_invalidated)
 	GEventBus.monster_damage_taken.connect(_on_monster_damage_taken)
 	GEventBus.tower_attacked.connect(_on_tower_attacked_status)
+	GEventBus.hero_position_changed.connect(_on_hero_position_changed)
+	GEventBus.hero_died.connect(_on_hero_died)
 
 
 ## Called by the owning scene controller (mission_scene.gd/the_gap.gd) once
@@ -160,6 +169,8 @@ func _exit_tree() -> void:
 	GEventBus.path_invalidated.disconnect(_on_path_invalidated)
 	GEventBus.monster_damage_taken.disconnect(_on_monster_damage_taken)
 	GEventBus.tower_attacked.disconnect(_on_tower_attacked_status)
+	GEventBus.hero_position_changed.disconnect(_on_hero_position_changed)
+	GEventBus.hero_died.disconnect(_on_hero_died)
 
 # ---------------------------------------------------------------------------
 # Main loop
@@ -171,6 +182,7 @@ func _physics_process(delta: float) -> void:
 	_pass1_damage()
 	_pass1b_status_effects(delta)
 	_pass2_boss_logic(delta)
+	_pass2b_hero_attacks(delta)
 	_pass3_movement(delta)
 	_pass3c_visual_sync(delta)
 	_pass4_death_and_absorbed_flush()
@@ -462,6 +474,100 @@ func _boss_execute_scan(entity: MonsterEntity) -> void:
 		return
 	entity.boss_attack_prepare_remaining = BOSS_ATTACK_PREPARE_FRAMES
 	entity.boss_locked_target_id = towers[0]
+
+# ---------------------------------------------------------------------------
+# Pass 2b — Hero attacks (hero-damage spec §4.2)
+# ---------------------------------------------------------------------------
+
+func _on_hero_position_changed(grid_position: Vector2i) -> void:
+	_hero_cell = grid_position
+
+
+func _on_hero_died() -> void:
+	_hero_alive = false
+	# Untyped loop variable on purpose: a typed one errors on an already-freed entity, so the
+	# is_instance_valid() guard must run first (same rationale as _pass1b_status_effects).
+	for entity in active_monsters:
+		if not is_instance_valid(entity):
+			continue
+		entity.hero_windup_remaining = 0.0
+		if entity.boss_locked_target_id == HERO_TARGET_ID:
+			entity.boss_locked_target_id = -1
+
+
+## True when the Hero can currently be targeted: alive and its cell is known.
+func _hero_targetable() -> bool:
+	return _hero_alive and _hero_cell.x >= 0 and _hero_cell.y >= 0
+
+
+## Chebyshev distance in grid cells from the monster's current cell to the Hero's cached cell.
+func _hero_distance(entity: MonsterEntity) -> int:
+	var cell: Vector2i = _grid.world_to_cell(entity.global_position)
+	return maxi(absi(cell.x - _hero_cell.x), absi(cell.y - _hero_cell.y))
+
+
+func _hero_in_range(entity: MonsterEntity) -> bool:
+	return _hero_targetable() and _hero_distance(entity) <= entity.resource.boss_attack_range_cells
+
+
+## Locks the Hero and starts the seconds-based wind-up; announces it for presentation/audio.
+func _begin_hero_windup(entity: MonsterEntity) -> void:
+	entity.boss_locked_target_id = HERO_TARGET_ID
+	entity.hero_windup_remaining = entity.resource.hero_attack_windup_seconds
+	GEventBus.monster_hero_attack_winding_up.emit(entity.entity_id, entity.resource.hero_attack_windup_seconds)
+
+
+## Counts the wind-up down; at 0 the cooldown restarts, the lock clears, and the hit lands only if
+## the Hero is STILL in range (otherwise a whiff: no damage, no event, cooldown still spent).
+func _hero_windup_tick(entity: MonsterEntity, delta: float) -> void:
+	entity.hero_windup_remaining -= delta
+	if entity.hero_windup_remaining > 0.0:
+		return
+	entity.hero_windup_remaining = 0.0
+	entity.boss_locked_target_id = -1
+	entity.boss_attack_cooldown_remaining = entity.resource.base_attack_interval
+	if not _hero_in_range(entity):
+		return
+	var ev := HeroIncomingDamageEvent.new()
+	ev.amount = entity.resource.base_damage
+	ev.damage_type = "physical"
+	ev.source_type = 0
+	ev.source_entity_id = entity.entity_id
+	GEventBus.hero_incoming_damage.emit(ev)
+
+
+## ELITE scan: locks the Hero when the cooldown is clear, no wind-up is in flight, and the Hero is
+## in range. Elites never target towers.
+func _elite_scan(entity: MonsterEntity) -> void:
+	if entity.boss_attack_cooldown_remaining > 0.0 or entity.hero_windup_remaining > 0.0:
+		return
+	if _hero_in_range(entity):
+		_begin_hero_windup(entity)
+
+
+## Runs after the boss pass. Handles Hero wind-ups for every attack-capable monster and the full
+## scan/cooldown loop for ELITEs (bosses scan and tick their cooldown in _pass2_boss_logic).
+## Order mirrors the boss pass: scan (elites only, when idle), then tick any wind-up in the SAME
+## frame it started, then tick the elite cooldown. Untyped loop variable on purpose (see
+## _on_hero_died): the is_instance_valid() guard must run before any member access.
+func _pass2b_hero_attacks(delta: float) -> void:
+	for entity in active_monsters:
+		if not is_instance_valid(entity):
+			continue
+		if entity.lifecycle_state == MonsterEntity.State.DEAD:
+			continue
+		if entity.resource.tier < 1 or entity.resource.base_damage <= 0.0:
+			continue
+		if entity.resource.tier == 1 and entity.hero_windup_remaining <= 0.0:
+			if entity.boss_scan_frames_remaining > 0:
+				entity.boss_scan_frames_remaining -= 1
+			if entity.boss_scan_frames_remaining <= 0:
+				_elite_scan(entity)
+				entity.boss_scan_frames_remaining = BOSS_SCAN_INTERVAL_FRAMES
+		if entity.hero_windup_remaining > 0.0:
+			_hero_windup_tick(entity, delta)
+		if entity.resource.tier == 1:
+			entity.boss_attack_cooldown_remaining = maxf(0.0, entity.boss_attack_cooldown_remaining - delta)
 
 # ---------------------------------------------------------------------------
 # Pass 3 — Movement
@@ -806,6 +912,7 @@ func _on_monster_spawn_requested(payload: MonsterSpawnRequest) -> void:
 
 
 func _on_wave_started(wave_number: int, _total_waves: int, _wave_difficulty: float) -> void:
+	_hero_alive = true
 	_current_wave_index = wave_number
 	_is_wave_active = true
 	if wave_number == 1:
