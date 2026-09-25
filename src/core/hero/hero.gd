@@ -255,10 +255,10 @@ func _resolve_kill_xp_band(payload: MonsterDiedEvent) -> int:
 	var base_xp: int = KILL_XP_BY_TIER.get(payload.tier, 0)
 	if base_xp <= 0:
 		return 0
+	if is_direct_kill(payload):
+		return base_xp
 	var attack_range: float = get_effective_stat(&"attack_range")
 	var distance: float = global_position.distance_to(payload.world_position)
-	if distance <= attack_range:
-		return base_xp
 	if distance <= attack_range * KILL_XP_OUTER_BAND_RANGE_MULTIPLIER:
 		return int(floor(float(base_xp) * KILL_XP_OUTER_BAND_MULTIPLIER))
 	return 0
@@ -373,6 +373,15 @@ var _flat_bonuses: Dictionary[StringName, float] = {}
 ## Additive percentage bonuses summed before the Formula 1 multiplier is applied
 ## (e.g. +0.10 means +10% before clamping).
 var _additive_bonuses: Dictionary[StringName, float] = {}
+
+## Equipment-set-effects spec §3.5: transient stat modifiers set by
+## SetEffectController (source key -> {stat: additive fraction}). Kept
+## separate from _additive_bonuses so _recompute_equipment_bonuses() (which
+## rebuilds that bucket wholesale) can never wipe a live buff. Never saved.
+var _effect_modifiers: Dictionary[StringName, Dictionary] = {}
+
+## Cached per-stat sum of _effect_modifiers, refolded only on set/clear.
+var _effect_additive: Dictionary[StringName, float] = {}
 
 ## Rule 28: last grid cell the hero occupied. Sentinel (-1, -1) guarantees the
 ## first _update_position_tracking() call always emits, since (-1, -1) is never
@@ -517,13 +526,51 @@ var _visual_companion: Node3D = null
 func get_effective_stat(stat_name: StringName) -> float:
 	var base: float = _base_stats.get(stat_name, 0.0)
 	var flat: float = _flat_bonuses.get(stat_name, 0.0)
-	var additive: float = _additive_bonuses.get(stat_name, 0.0)
+	var additive: float = _additive_bonuses.get(stat_name, 0.0) + _effect_additive.get(stat_name, 0.0)
 	var intermediate: float = maxf(0.0, base + flat)
 	var multiplier: float = 1.0 + clampf(additive, ADDITIVE_BONUS_FLOOR, ADDITIVE_BONUS_CAP)
 	var effective: float = maxf(0.0, intermediate * multiplier)
 	if stat_name == &"tower_affinity":
 		effective = _apply_tower_affinity_bonus(effective)
 	return _apply_stat_cap(stat_name, effective)
+
+
+## Equipment-set-effects spec §3.5. Replaces any modifier previously set under
+## `source_key`. `stat_additive` values are additive fractions (0.25 = +25%),
+## folded into the same clamp(1 + additive, floor, cap) as gear bonuses.
+func set_effect_modifier(source_key: StringName, stat_additive: Dictionary) -> void:
+	_effect_modifiers[source_key] = stat_additive.duplicate()
+	_refold_effect_modifiers()
+
+
+func clear_effect_modifier(source_key: StringName) -> void:
+	if _effect_modifiers.erase(source_key):
+		_refold_effect_modifiers()
+
+
+func clear_all_effect_modifiers() -> void:
+	if _effect_modifiers.is_empty():
+		return
+	_effect_modifiers.clear()
+	_refold_effect_modifiers()
+
+
+func _refold_effect_modifiers() -> void:
+	_effect_additive.clear()
+	for source_key: StringName in _effect_modifiers:
+		var modifier: Dictionary = _effect_modifiers[source_key]
+		for stat: Variant in modifier:
+			var key: StringName = StringName(stat)
+			_effect_additive[key] = _effect_additive.get(key, 0.0) + float(modifier[stat])
+
+
+## Equipment-set-effects spec §3.4: a kill counts as a "direct kill" when it is
+## a real kill (not a wave-end force-clear) inside Hero's effective attack
+## range -- the same inner band kill XP uses. One rule, two consumers.
+func is_direct_kill(payload: MonsterDiedEvent) -> bool:
+	if payload.kill_source == "wave_end":
+		return false
+	return global_position.distance_to(payload.world_position) <= get_effective_stat(&"attack_range")
 
 
 ## Hero Combat & Stats Redesign (2026-09-18), Section 3.4.2: Luck contributes
@@ -1485,6 +1532,7 @@ func reset_to_defaults() -> void:
 	_current_level = 1
 	_current_xp = 0
 	_accumulated_class_bonuses.clear()
+	clear_all_effect_modifiers()
 
 
 ## Stopgap, unchanged in effect from the two identical call sites this
