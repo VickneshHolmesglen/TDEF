@@ -203,6 +203,9 @@ const KILL_XP_OUTER_BAND_MULTIPLIER: float = 0.5
 const KILL_XP_OUTER_BAND_RANGE_MULTIPLIER: float = 2.0
 const WAVE_COMPLETION_XP: int = 25
 const MISSION_COMPLETION_XP: int = 150
+## Hero-damage spec §4.5: fraction of max HP recovered at each wave clear (first-pass tuning
+## knob, unplaytested). Lifesteal remains the way to sustain beyond this.
+const WAVE_CLEAR_HEAL_FRACTION: float = 0.25
 
 ## Retargeted 2026-09-20 to match design/gdd/hero-class-catalogue.md's real
 ## Primary perk per class (the catalogue existed since 2026-08-27, predating
@@ -1103,6 +1106,11 @@ func _on_monsters_died_batch(payloads: Array[MonsterDiedEvent]) -> void:
 ## rule was specified).
 func _on_wave_completed(_wave_number: int, _enemies_remaining: int, _was_boss_breached: bool) -> void:
 	_grant_xp(WAVE_COMPLETION_XP)
+	# Hero-damage spec §4.5: partial heal through the existing path, so the phase guard
+	# (a DEAD Hero is never healed) and the overheal clamp both apply.
+	var heal: int = roundi(_max_hp * WAVE_CLEAR_HEAL_FRACTION)
+	if heal > 0:
+		_on_hero_healed(heal)
 
 
 # ---------------------------------------------------------------------------
