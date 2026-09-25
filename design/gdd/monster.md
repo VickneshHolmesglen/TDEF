@@ -41,9 +41,10 @@ Monsters carry the stakes and the spoils. Their approach is what makes a tower p
    | `elemental_resistances` | `Dictionary` | **Added Tower Stats System Phase 1 (2026-08-16).** `StringName` element (`"fire"`/`"frost"`/`"poison"`/`"lightning"`/`"arcane"`, matching `WeaponComponent.element`) → `float` resist fraction `[0.0, 0.9]`. Missing key = `0.0` (no resistance) — fully backward-compatible, no data migration for existing monster content. Read by `TowerSystem`'s monster cache and applied in its damage-resolution formula (`tower.md` Formula 1b); physical hits (`element == ""`) never consult this. |
    | `base_hp` | `float` | HP at wave 1, difficulty Normal. Scaled at runtime. |
    | `base_speed` | `float` | Path traversal speed in grid-cells/second at wave 1. |
-   | `base_damage` | `float` | BOSS only: base damage per tower attack. Set to 0 for STANDARD/ELITE. |
-   | `base_attack_interval` | `float` | BOSS only: seconds between attack attempts. Set to 0 for STANDARD/ELITE. |
-   | `boss_attack_range_cells` | `float` | BOSS only: Chebyshev cell radius for tower targeting. Set to 0 for STANDARD/ELITE. |
+   | `base_damage` | `float` | Attack-capable tiers (ELITE, BOSS): base damage per attack (BOSS: per tower attack and per Hero attack; ELITE: per Hero attack). Set to 0 for STANDARD and for non-attacking ELITEs. |
+   | `base_attack_interval` | `float` | Attack-capable tiers (ELITE, BOSS): seconds between attack attempts (shared cooldown). Set to 0 for STANDARD and non-attacking ELITEs. |
+   | `boss_attack_range_cells` | `float` | Attack-capable tiers (ELITE, BOSS): Chebyshev cell radius for targeting (towers for BOSS, the Hero for ELITE and BOSS). Set to 0 for STANDARD and non-attacking ELITEs. |
+| `hero_attack_windup_seconds` | `float` | Attack-capable tiers (ELITE, BOSS), added 2026-09-25: wind-up in seconds before a Hero-targeted attack fires. Required > 0 when `base_damage > 0` on ELITE/BOSS. |
    | `drop_table_id` | `StringName` | References a Resource Economy drop table. Passed as-is in `monster_died`; Monster System does not read it. |
    | `menagerie_attraction_drop_chance` | `float` | 0.0–1.0. Chance this monster type drops a rare Menagerie-attraction material on death. Shared by all tiers; rarity scaling deferred to Resource Economy GDD. |
    | ~~`hero_damage_bonus_eligible`~~ | ~~`bool`~~ | **Deprecated — do not use.** D&S now derives the hero damage tier from the entity's `tier` field (0=STANDARD, 1=ELITE, 2=BOSS) at attack-roll time via `hero_bonus_tier: int` in `HeroAutoAttackEvent`. This field is dead weight and must not be read by any system. Retain in the schema for a migration window; remove after Hero GDD and EventBus GDD are updated. |
@@ -119,9 +120,11 @@ Monsters carry the stakes and the spoils. Their approach is what makes a tower p
 
 #### Group 4: Attack Behavior
 
+> **Update 2026-09-25:** Hero Damage ([spec](../../docs/superpowers/specs/2026-09-25-hero-damage-design.md)) changes rule 15 and adds Hero attacks (rule 19a) alongside rules 16-19. Rule 14 (STANDARD never attacks) is unchanged. Rule 25 (breach is not a damage event) is unchanged.
+
 14. **STANDARD monsters do not attack towers.** Movement toward GOAL cells is their only behavior. `base_damage`, `base_attack_interval`, and `boss_attack_range_cells` are set to 0 in the resource and never read at runtime.
 
-15. **ELITE monsters do not attack towers.** Behavior is identical to STANDARD regarding tower interaction. ELITE monsters differ from STANDARD in: higher HP/speed multipliers, `tier = 1` (ELITE) which causes D&S to apply the 150% hero damage multiplier via `hero_bonus_tier = 1` in the attack payload, and guaranteed rare material drop via `drop_table_id`.
+15. **ELITE monsters do not attack towers.** *(Update 2026-09-25: ELITEs with `base_damage > 0` attack the Hero only, never towers; see rule 19a. An ELITE with `base_damage == 0` stays a non-attacker.)* Behavior is identical to STANDARD regarding tower interaction. ELITE monsters differ from STANDARD in: higher HP/speed multipliers, `tier = 1` (ELITE) which causes D&S to apply the 150% hero damage multiplier via `hero_bonus_tier = 1` in the attack payload, and guaranteed rare material drop via `drop_table_id`.
 
 16. **BOSS monsters attack towers while walking.** A BOSS never stops moving to attack. Movement and attack logic run simultaneously in `_physics_process`. There is no exclusive "attacking" state that halts movement.
 
@@ -138,6 +141,10 @@ Monsters carry the stakes and the spoils. Their approach is what makes a tower p
 18. Monster System emits `boss_tower_attack_attempted` and does nothing further regarding tower damage. The Tower System subscribes to this event and applies `base_damage` directly to the target tower's HP (no mitigation, MVP decision). Boss attack damage must be designed within `tower_hp_boss_damage_provisional_range` [40–200 HP/hit]. **Scoping corrected 2026-07-15**: the "Tier 1 towers fall in 3–5 hits" target applies to **early-wave bosses only** (base_damage 15–25) — a final-wave boss (base_damage 55–80) always kills a Tier 1 tower in 1–2 hits at any legal authored value, since final-wave `base_damage` starts well above the range needed for a 3–5 hit kill against Tier 1's 80 HP; this was never actually achievable and the prose previously stated it without that scope. The "Tier 4 towers survive 8–15 hits" target applies to **final-wave bosses** (see Formula 3's calibration table).
 
 19. A BOSS will attempt to attack a tower even on the frame it breaches. Attack check executes before breach check in the same frame.
+
+19a. **Hero attacks (ELITE and BOSS)** *(added 2026-09-25)*: an attack-capable monster (ELITE with `base_damage > 0`, or BOSS) that finds the Hero within `boss_attack_range_cells` (Chebyshev, from the monster's cell to the Hero's cached cell) locks the Hero and starts a seconds-based wind-up (`hero_attack_windup_seconds`), emitting `monster_hero_attack_winding_up(entity_id, windup_seconds)`. ELITEs target the Hero only. A BOSS targets the closest of Hero or tower and chooses the Hero only when it is strictly closer than the closest tower (ties go to the tower; when only the Hero is in range, the Hero). The tower path (rules 17-18, the 4-frame prepare) is unchanged.
+    - At wind-up end the range is re-checked from the monster's current cell. Still in range: `hero_incoming_damage` is emitted (`amount = base_damage`, `damage_type "physical"`, `source_type 0`). Out of range (or Hero dead) is a whiff: no damage, no event. Either way the cooldown restarts and the lock clears. Leaving range during the wind-up is the dodge.
+    - A monster has at most one wind-up in flight (tower or Hero); ELITEs and BOSSes share the attack cooldown and scan throttle. Monsters keep walking while winding up; a monster killed mid-wind-up never fires; `hero_died` clears in-flight Hero wind-ups. No randomness anywhere in the path.
 
 ---
 

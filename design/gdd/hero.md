@@ -129,6 +129,10 @@ And sometimes the plan breaks. The boss is immune to fire and your entire kill c
 
 25. Lifesteal and healing skills apply before the HP-reaches-0 check; they cannot trigger on the killing hit to prevent it.
 
+> **Update 2026-09-25:** The incoming-damage source now exists ([spec](../../docs/superpowers/specs/2026-09-25-hero-damage-design.md)): ELITE and BOSS monsters hit the Hero through a telegraphed, dodgeable attack, mitigated by Damage & Status Rule V, so armor, max HP and lifesteal are no longer inert. Rule 24 is unchanged (HP 0 = immediate DEFEAT, no revival).
+
+25a. **Wave-clear recovery**: on `wave_completed` the Hero heals `roundi(max_hp × WAVE_CLEAR_HEAL_FRACTION)` (`WAVE_CLEAR_HEAL_FRACTION = 0.25`) through the existing heal path, so the phase guard and overheal clamp apply. A DEAD Hero is never healed. If the same wave clear also levels the Hero up, max HP rises before the heal is computed, so the heal is a quarter of the NEW max. Lifesteal remains the way to sustain beyond this.
+
 #### Group 7: Movement
 
 26. The hero moves in continuous world space, omnidirectionally. Keyboard/Mouse is the primary input; gamepad is supported. Velocity: `velocity = direction.normalized() × movement_speed` (instantaneous — no acceleration curve for MVP; feel pass deferred to Polish phase).
@@ -300,7 +304,7 @@ final_damage = 90 × 1.5 × 2.5 = 337.5 → 337  (D&S computes this; Hero never 
 
 ### Formula 5: Armor Damage Reduction (Reference Only — D&S Owns Implementation)
 
-*(Corrected 2026-07-15 — found while fixing Formula 4/6's ownership annotations, same disease: this formula duplicates the Damage & Status System's own incoming-hero-damage formula (`damage-status.md` Rule V) rather than deferring to it, and its "Incoming damage" variable wrongly cited "Formula 4 output" — Formula 4 is Hero's own OUTGOING auto-attack damage against monsters, not an incoming source. D&S's Rule V computes `effective_damage = max(1, floor(incoming × (100 / (hero_armor + 100))))` on the `hero_incoming_damage` event (scaffolding only at MVP — no active damage source exists yet) and emits `hero_damage_taken`; Hero System applies the result to its own HP but does not compute the reduction itself. D&S's version also has a `max(1, ...)` floor (no hit can be fully negated) that this formula previously omitted. Uses an asymptotic coefficient formula — armor approaches but never reaches 100% reduction. Prevents breakpoints where small armor increments produce outsized damage reduction.)*
+*(Corrected 2026-07-15 — found while fixing Formula 4/6's ownership annotations, same disease: this formula duplicates the Damage & Status System's own incoming-hero-damage formula (`damage-status.md` Rule V) rather than deferring to it, and its "Incoming damage" variable wrongly cited "Formula 4 output" — Formula 4 is Hero's own OUTGOING auto-attack damage against monsters, not an incoming source. D&S's Rule V computes `effective_damage = max(1, floor(incoming × (100 / (hero_armor + 100))))` on the `hero_incoming_damage` event (live as of 2026-09-25: ELITE/BOSS attacks are the source; physical uses this armor formula, fire/frost use the capped resist) and emits `hero_damage_taken`; Hero System applies the result to its own HP but does not compute the reduction itself. D&S's version also has a `max(1, ...)` floor (no hit can be fully negated) that this formula previously omitted. Uses an asymptotic coefficient formula — armor approaches but never reaches 100% reduction. Prevents breakpoints where small armor increments produce outsized damage reduction.)*
 
 ```
 effective_damage_taken = max(1, floor(incoming_damage × (ARMOR_COEFFICIENT / (armor + ARMOR_COEFFICIENT))))   [D&S computes this — Rule V, damage-status.md]
@@ -308,7 +312,7 @@ effective_damage_taken = max(1, floor(incoming_damage × (ARMOR_COEFFICIENT / (a
 
 | Variable | Symbol | Type | Range | Description | Owner |
 |----------|--------|------|-------|-------------|-------|
-| Incoming damage | `incoming_damage` | float | 0 – unbounded | Raw damage from a `hero_incoming_damage` event (any future monster/boss attack source — scaffolding only, no active source at MVP). **Not** Formula 4's output — Formula 4 is Hero's outgoing damage, unrelated to this formula. | Attack source (future) |
+| Incoming damage | `incoming_damage` | float | 0 – unbounded | Raw damage from a `hero_incoming_damage` event (ELITE/BOSS attacks, live as of 2026-09-25; payload is `HeroIncomingDamageEvent`). **Not** Formula 4's output — Formula 4 is Hero's outgoing damage, unrelated to this formula. | Attack source (future) |
 | Armor | `armor` | float | 0 – 500 (soft cap) | Hero's effective armor stat | Hero System |
 | Armor coefficient | `ARMOR_COEFFICIENT` | float | constant: 100 | Armor value at which the hero takes exactly 50% damage | Hero System (tunable, D&S reads it) |
 | Damage taken | `effective_damage_taken` | float | 1 – incoming_damage | HP deducted from hero. Floored at 1 — armor cannot fully negate a hit. | Damage & Status |
@@ -494,7 +498,8 @@ Where `tier_base_xp = {STANDARD: 5, ELITE: 15, BOSS: 100}`.
 
 | Parameter | Default | Safe Range | Too High | Too Low |
 |---|---|---|---|---|
-| Hero base health | (TBD at production) | 100–500 | Hero survives everything; DEFEAT feels impossible | Hero dies to 1–2 hits; DEFEAT feels punishing rather than meaningful |
+| Hero base health | (TBD at production; a 500 HP stopgap is in use, still unbalanced against the elite/boss attack values, Update 2026-09-25) | 100–500 | Hero survives everything; DEFEAT feels impossible | Hero dies to 1–2 hits; DEFEAT feels punishing rather than meaningful |
+| Wave-clear heal fraction | `WAVE_CLEAR_HEAL_FRACTION` = 0.25 (added 2026-09-25, unplaytested) | 0.10–0.50 | Waves stop being attritional; Hero damage loses meaning | Hero cannot recover between waves; lifesteal becomes mandatory |
 | Hero base damage | (TBD at production) | 20–100 | Hero trivialises elites/bosses without tower support | Hero contribution feels irrelevant vs towers |
 | Hero movement speed | (TBD at production) | 100–400 world units/sec | Hero crosses the field instantly; positioning decisions lose meaning | Hero too slow to plug gaps; body-blocking becomes impossible |
 | Attack range | (TBD at production) | 60–180 world units | Hero can attack from across the field; tactical positioning irrelevant | Hero must enter melee range; high-damage enemies feel impossible |

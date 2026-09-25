@@ -1,7 +1,7 @@
 # Hero Damage (Elite and Boss Attacks on the Hero)
 
 **Date**: 2026-09-25
-**Status**: Design approved by user in chat (threat scope, targeting, dodge rule, damage types, recovery, approach A, decomposition); pending spec review and implementation plan.
+**Status**: Design approved by user in chat (threat scope, targeting, dodge rule, damage types, recovery, approach A, decomposition); Implemented (plan: `docs/superpowers/plans/2026-09-25-hero-damage.md`, 8 tasks); live verification pending.
 **Scope**: Elites and bosses can hurt the Hero through a telegraphed, dodgeable attack. This spec covers the **simulation only**: attack logic in the Monster System, the Damage & Status incoming-damage pipeline, Hero recovery at wave clear, and data. The **visible wind-up indicator** is a separate follow-up spec (§10) and must land before playtesting. Builds on `design/gdd/hero.md` (Group 6 Hero Death, rule 24), `design/gdd/damage-status.md` Rule V, and `design/gdd/monster.md` Group 4.
 
 ## 1. Overview
