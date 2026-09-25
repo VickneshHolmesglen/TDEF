@@ -1,7 +1,7 @@
 # Equipment Set Effects (Capstone Special Effects, 9 Sets)
 
 **Date**: 2026-09-25
-**Status**: Design approved by user in chat (vocabulary, architecture, data flow); one approved item amended during spec writing (see §2.1). Pending spec review and implementation plan.
+**Status**: Design approved by user in chat (vocabulary, architecture, data flow); one approved item amended during spec writing (see §2.1). Pending spec review and implementation plan. Plan: `docs/superpowers/plans/2026-09-25-equipment-set-effects.md`.
 **Scope**: Each of the nine equipment sets gains one **capstone effect** at its top threshold, drawn from a fixed five-type vocabulary. Builds on `2026-09-20-equipment-set-bonuses-design.md` (sets, thresholds, `EquipmentBonuses`), `2026-09-20-equipment-stats-wiring-design.md` (Hero recompute-on-equip) and `2026-09-20-equipment-display-design.md` (info panel). Stat bonuses are unchanged. Values are authoritative in §4; `design/balance/equipment-set-effects.md` is created alongside the implementation as the tuning mirror.
 
 ## 1. Overview
@@ -48,9 +48,8 @@ New `src/core/equipment/set_effect_resolver.gd`, `class_name SetEffectResolver`,
 
 - `active_effects(slot_contents: Array[Dictionary]) -> Array[Dictionary]`: uses `EquipmentBonuses.set_piece_counts()`; returns one entry `{key, set_id, threshold, name, type, params}` per effect whose threshold is met. `key` is `&"<set_id>:<threshold>"`.
 - `effects_for_set(set_id: StringName) -> Dictionary[int, Dictionary]`: the set's declared effects, for the info panel's muted (unearned) rendering.
-- `describe(effect: Dictionary) -> String`: builds the player-facing description via `tr()` from a per-type key plus params (§3.7).
 
-The controller and the info panel both call the resolver, so the panel cannot disagree with combat.
+The controller and the info panel both call the resolver, so the panel cannot disagree with combat. The player-facing description is built by `EquipmentInfoPanel.describe_effect()` (UI layer), not the resolver.
 
 ### 3.4 `SetEffectController` (node under Hero)
 
@@ -60,8 +59,8 @@ New `src/core/equipment/set_effect_controller.gd`, added as a child node `SetEff
 - **Rebuild**: `_rebuild()` calls `SetEffectResolver.active_effects(EquipmentBonuses.equipped_contents())`. Effects no longer present have their modifier cleared immediately and their timer/stacks discarded; effects newly present are initialised (a `phase_state` effect is evaluated against the last seen phase at once). Effects present before and after keep their timers and stacks.
 - **Timers**: the controller owns all remaining-duration state in `_process(delta)` (processing is enabled only while a timed effect is live). Pausing therefore pauses buffs. Hero never sees durations.
 - **Modifier keys**: each effect owns exactly one modifier on Hero, keyed by its `key`.
-- **Direct kill** (used by `on_kill_stack_buff`): a `MonsterDiedEvent` counts if `kill_source != "wave_end"` and the distance from Hero to `world_position` is within Hero's effective `attack_range` (the same inner band as kill XP). This rule is exposed as a new `Hero.is_direct_kill(payload) -> bool`, and `_resolve_kill_xp_band()` is changed to call it for its own first two checks so the rule lives in one place (the `wave_end` filter has already been a review finding once). XP behaviour is unchanged.
-- **Crit status**: on a crit event, calls `MonsterManager.apply_dot(target_id, effect_type, effect_value, effect_duration)`. Both auto-attack and skill-hit events carry `is_crit`. The proc keys off the emitted crit flag, before Damage & Status rolls evasion, so an evaded crit can still proc (see §11).
+- **Direct kill** (used by `on_kill_stack_buff`): a `MonsterDiedEvent` counts if `kill_source != "wave_end"` and the distance from Hero to `world_position` is within Hero's effective `attack_range` (the same inner band as kill XP). This rule is exposed as a new `Hero.is_direct_kill(payload) -> bool`, and `_resolve_kill_xp_band()` is changed to call it for its inner-band comparison (the early `wave_end` return stays, since the outer band still needs it) so the rule lives in one place (the `wave_end` filter has already been a review finding once). XP behaviour is unchanged.
+- **Crit status**: on a crit event, resolves MonsterManager through the `monster_manager` group (`MonsterManager.GROUP_NAME`), with a `monster_manager` field as a test seam, and calls `apply_dot(target_id, effect_type, effect_value, effect_duration)` on it. Both auto-attack and skill-hit events carry `is_crit`. The proc keys off the emitted crit flag, before Damage & Status rolls evasion, so an evaded crit can still proc (see §11).
 - **Cascade**: the controller emits no EventBus signals, so it adds no cascade depth.
 - **Clearing**: the controller clears all modifiers on `hero_died`, on `mission_phase_changed` into `MISSION_COMPLETE`/`DEFEAT`, and in `_exit_tree()`.
 
@@ -77,11 +76,11 @@ Add to `hero.gd`:
 
 ### 3.6 MonsterManager: public DoT entry
 
-Add `apply_dot(target_monster_id: int, effect_type: String, effect_value: float, effect_duration: float) -> void`, a thin public wrapper over the existing private `_apply_dot_effect()` (which already guards null/dead targets). `_on_tower_attacked_status` keeps calling the private form. No behaviour change for towers.
+Add `apply_dot(target_monster_id: int, effect_type: String, effect_value: float, effect_duration: float) -> void`, a thin public wrapper over the existing private `_apply_dot_effect()` (which already guards null/dead targets). MonsterManager joins group `monster_manager` in `_ready()`. `_on_tower_attacked_status` keeps calling the private form. No behaviour change for towers.
 
 ### 3.7 UI and localization
 
-The equipment info panel's Set Bonuses section gains one line per set that has an effect: `Capstone (n pieces): <name> - <description>`. Earned uses the same styling as earned thresholds; unearned is muted. Description text comes from `SetEffectResolver.describe()` via new `strings.csv` keys, one template per type. Capstone `name` is rendered as-is, matching `display_name`'s convention. After editing `strings.csv`, run the editor-mode reimport before live verification (project gotcha). The item card and swap preview are unchanged (§10).
+The equipment info panel's Set Bonuses section gains one line per set that has an effect: `Capstone (n pieces): <name> - <description>`. Earned uses the same styling as earned thresholds; unearned is muted. Description text comes from `EquipmentInfoPanel.describe_effect()` via new `strings.csv` keys, one template per type. Capstone `name` is rendered as-is, matching `display_name`'s convention. After editing `strings.csv`, run the editor-mode reimport before live verification (project gotcha). The item card and swap preview are unchanged (§10).
 
 ### 3.8 Persistence
 
