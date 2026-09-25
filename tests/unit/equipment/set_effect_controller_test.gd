@@ -144,3 +144,123 @@ func test_processing_is_only_enabled_while_a_timer_is_live() -> void:
 	assert_bool(_ctl.is_processing()).is_true()
 	_ctl._process(11.0)
 	assert_bool(_ctl.is_processing()).is_false()
+
+
+# ---------------------------------------------------------------------------
+# phase_state (spec §3.1, AC-7)
+# ---------------------------------------------------------------------------
+
+func _phase_effect() -> Dictionary:
+	return _effect("set_phase:3", &"phase_state",
+		{&"stats": {&"attack_range": 0.20}, &"phases": ["WAVE_ACTIVE"]})
+
+
+func _range() -> float:
+	return _hero.get_effective_stat(&"attack_range")
+
+
+func test_phase_state_is_active_only_in_listed_phases() -> void:
+	_apply([_phase_effect()])
+	_ctl._on_mission_phase_changed("SCOUT", "WAVE_ACTIVE", 0.0)
+	assert_float(_range()).is_equal_approx(240.0, 0.0001)
+	_ctl._on_mission_phase_changed("WAVE_ACTIVE", "INTERMISSION", 0.0)
+	assert_float(_range()).is_equal_approx(200.0, 0.0001)
+
+
+func test_phase_state_applies_immediately_when_equipped_mid_phase() -> void:
+	_ctl._on_mission_phase_changed("SCOUT", "WAVE_ACTIVE", 0.0)
+	_apply([_phase_effect()])
+	assert_float(_range()).is_equal_approx(240.0, 0.0001)
+
+
+func test_phase_state_is_inactive_before_any_phase_is_seen() -> void:
+	_apply([_phase_effect()])
+	assert_float(_range()).is_equal_approx(200.0, 0.0001)
+
+
+func test_removing_a_phase_state_effect_clears_it() -> void:
+	_ctl._on_mission_phase_changed("SCOUT", "WAVE_ACTIVE", 0.0)
+	_apply([_phase_effect()])
+	_apply([])
+	assert_float(_range()).is_equal_approx(200.0, 0.0001)
+
+
+func test_mission_end_clears_every_modifier_including_timed_buffs() -> void:
+	_apply([_phase_effect(), _wave_buff()])
+	_ctl._on_mission_phase_changed("SCOUT", "WAVE_ACTIVE", 0.0)
+	_ctl._on_wave_started(1, 5, 1.0)
+	_ctl._on_mission_phase_changed("WAVE_ACTIVE", "MISSION_COMPLETE", 0.0)
+	assert_float(_range()).is_equal_approx(200.0, 0.0001)
+	assert_float(_atk()).is_equal_approx(100.0, 0.0001)
+
+
+# ---------------------------------------------------------------------------
+# on_kill_stack_buff (spec §3.1, AC-3)
+# ---------------------------------------------------------------------------
+
+func _frenzy() -> Dictionary:
+	return _effect("set_frenzy:4", &"on_kill_stack_buff",
+		{&"stats": {&"physical_attack": 0.03}, &"max_stacks": 10, &"duration": 6.0})
+
+
+func _kill(x: float, source: String = "") -> MonsterDiedEvent:
+	var payload := MonsterDiedEvent.new()
+	payload.world_position = Vector2(x, 0.0)
+	payload.kill_source = source
+	return payload
+
+
+func test_a_direct_kill_adds_one_stack() -> void:
+	_apply([_frenzy()])
+	_ctl._on_monster_died(_kill(50.0))
+	assert_float(_atk()).is_equal_approx(103.0, 0.0001)
+	_ctl._on_monster_died(_kill(60.0))
+	_ctl._on_monster_died(_kill(70.0))
+	assert_float(_atk()).is_equal_approx(109.0, 0.0001)
+
+
+func test_out_of_range_and_wave_end_kills_add_no_stacks() -> void:
+	_apply([_frenzy()])
+	_ctl._on_monster_died(_kill(900.0))
+	_ctl._on_monster_died(_kill(10.0, "wave_end"))
+	assert_float(_atk()).is_equal_approx(100.0, 0.0001)
+
+
+func test_a_batch_adds_one_stack_per_qualifying_death() -> void:
+	_apply([_frenzy()])
+	var batch: Array[MonsterDiedEvent] = [_kill(10.0), _kill(20.0), _kill(900.0), _kill(30.0, "wave_end")]
+	_ctl._on_monsters_died_batch(batch)
+	assert_float(_atk()).is_equal_approx(106.0, 0.0001)
+
+
+func test_stacks_are_capped() -> void:
+	_apply([_frenzy()])
+	var batch: Array[MonsterDiedEvent] = []
+	for i: int in range(25):
+		batch.append(_kill(10.0))
+	_ctl._on_monsters_died_batch(batch)
+	assert_float(_atk()).is_equal_approx(130.0, 0.0001)
+
+
+func test_stacks_expire_after_the_last_kill_and_kills_refresh() -> void:
+	_apply([_frenzy()])
+	_ctl._on_monster_died(_kill(10.0))
+	_ctl._process(5.0)
+	_ctl._on_monster_died(_kill(10.0))
+	_ctl._process(5.0)
+	assert_float(_atk()).is_equal_approx(106.0, 0.0001)
+	_ctl._process(1.5)
+	assert_float(_atk()).is_equal_approx(100.0, 0.0001)
+
+
+func test_a_new_stack_run_starts_from_zero_after_expiry() -> void:
+	_apply([_frenzy()])
+	_ctl._on_monster_died(_kill(10.0))
+	_ctl._process(7.0)
+	_ctl._on_monster_died(_kill(10.0))
+	assert_float(_atk()).is_equal_approx(103.0, 0.0001)
+
+
+func test_kills_do_nothing_when_no_kill_effect_is_active() -> void:
+	_ctl._on_monster_died(_kill(10.0))
+	assert_float(_atk()).is_equal_approx(100.0, 0.0001)

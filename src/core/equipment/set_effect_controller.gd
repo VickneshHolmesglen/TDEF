@@ -55,6 +55,9 @@ func _subscriptions() -> Array:
 		[GEventBus.wave_started, _on_wave_started],
 		[GEventBus.hero_skill_activated, _on_hero_skill_activated],
 		[GEventBus.hero_died, _on_hero_died],
+		[GEventBus.mission_phase_changed, _on_mission_phase_changed],
+		[GEventBus.monster_died, _on_monster_died],
+		[GEventBus.monsters_died_batch, _on_monsters_died_batch],
 	]
 
 
@@ -97,6 +100,8 @@ func apply_effects(effects: Array[Dictionary]) -> void:
 	for key: StringName in next:
 		if not _active.has(key):
 			_active[key] = next[key]
+			if next[key][&"type"] == &"phase_state":
+				_refresh_phase_state(key)
 	_update_processing()
 
 
@@ -139,6 +144,78 @@ func _expire(key: StringName) -> void:
 
 func _on_hero_died() -> void:
 	_clear_runtime()
+
+
+# ---------------------------------------------------------------------------
+# phase_state
+# ---------------------------------------------------------------------------
+
+func _on_mission_phase_changed(_previous_phase: String, new_phase: String, _timestamp: float) -> void:
+	_current_phase = new_phase
+	if new_phase == "MISSION_COMPLETE" or new_phase == "DEFEAT":
+		_clear_runtime()
+		return
+	for key: StringName in _active:
+		if _active[key][&"type"] == &"phase_state":
+			_refresh_phase_state(key)
+
+
+func _refresh_phase_state(key: StringName) -> void:
+	var params: Dictionary = _active[key][&"params"]
+	if (params[&"phases"] as Array).has(_current_phase):
+		_hero.set_effect_modifier(key, params[&"stats"])
+	else:
+		_hero.clear_effect_modifier(key)
+
+
+# ---------------------------------------------------------------------------
+# on_kill_stack_buff
+# ---------------------------------------------------------------------------
+
+func _on_monster_died(payload: MonsterDiedEvent) -> void:
+	if not _has_active(&"on_kill_stack_buff"):
+		return
+	_register_kills(1 if _hero.is_direct_kill(payload) else 0)
+
+
+## ADR-0001 Rule 5: large waves arrive batched, so this must count each entry.
+func _on_monsters_died_batch(payloads: Array[MonsterDiedEvent]) -> void:
+	if not _has_active(&"on_kill_stack_buff"):
+		return
+	var qualifying: int = 0
+	for payload: MonsterDiedEvent in payloads:
+		if _hero.is_direct_kill(payload):
+			qualifying += 1
+	_register_kills(qualifying)
+
+
+func _register_kills(count: int) -> void:
+	if count <= 0:
+		return
+	for key: StringName in _active:
+		var effect: Dictionary = _active[key]
+		if effect[&"type"] != &"on_kill_stack_buff":
+			continue
+		var params: Dictionary = effect[&"params"]
+		var stacks: int = mini(int(params[&"max_stacks"]), int(_stacks.get(key, 0)) + count)
+		_stacks[key] = stacks
+		_timers[key] = float(params[&"duration"])
+		_hero.set_effect_modifier(key, _scaled(params[&"stats"], stacks))
+	_update_processing()
+
+
+func _has_active(type: StringName) -> bool:
+	for key: StringName in _active:
+		if _active[key][&"type"] == type:
+			return true
+	return false
+
+
+static func _scaled(stats: Dictionary, factor: int) -> Dictionary:
+	var out: Dictionary = {}
+	for stat: Variant in stats:
+		out[stat] = float(stats[stat]) * float(factor)
+	return out
 
 
 ## Drops all timers, stacks and modifiers but keeps the active effect list.
