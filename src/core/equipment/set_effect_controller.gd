@@ -21,6 +21,11 @@ var _stacks: Dictionary[StringName, int] = {}
 ## Last phase name seen on mission_phase_changed ("" until the first one).
 var _current_phase: String = ""
 
+## Test seam. In production leave null: the controller finds MonsterManager
+## through its group (MonsterManager.GROUP_NAME) because it is a scene child,
+## not an autoload. Typed as Node so tests can inject a recording stub.
+var monster_manager: Node = null
+
 
 func _ready() -> void:
 	_hero = get_parent() as Hero
@@ -58,6 +63,8 @@ func _subscriptions() -> Array:
 		[GEventBus.mission_phase_changed, _on_mission_phase_changed],
 		[GEventBus.monster_died, _on_monster_died],
 		[GEventBus.monsters_died_batch, _on_monsters_died_batch],
+		[GEventBus.hero_auto_attacked, _on_hero_auto_attacked],
+		[GEventBus.hero_skill_attacked, _on_hero_skill_attacked],
 	]
 
 
@@ -228,3 +235,40 @@ func _clear_runtime() -> void:
 
 func _update_processing() -> void:
 	set_process(not _timers.is_empty())
+
+
+# ---------------------------------------------------------------------------
+# on_crit_status
+# ---------------------------------------------------------------------------
+
+## Keys off the crit flag on the emitted event, i.e. before Damage & Status
+## rolls evasion (spec §11: an evaded crit can still proc).
+func _on_hero_auto_attacked(payload: HeroAutoAttackEvent) -> void:
+	if payload.is_crit:
+		_apply_crit_status(payload.target_id)
+
+
+func _on_hero_skill_attacked(payload: HeroSkillAttackEvent) -> void:
+	if payload.is_crit:
+		_apply_crit_status(payload.target_id)
+
+
+func _apply_crit_status(target_id: int) -> void:
+	if not _has_active(&"on_crit_status"):
+		return
+	var manager: Node = _resolve_monster_manager()
+	if manager == null or not manager.has_method(&"apply_dot"):
+		return
+	for key: StringName in _active:
+		var effect: Dictionary = _active[key]
+		if effect[&"type"] != &"on_crit_status":
+			continue
+		var params: Dictionary = effect[&"params"]
+		manager.apply_dot(target_id, String(params[&"effect_type"]),
+				float(params[&"effect_value"]), float(params[&"effect_duration"]))
+
+
+func _resolve_monster_manager() -> Node:
+	if monster_manager != null and is_instance_valid(monster_manager):
+		return monster_manager
+	return get_tree().get_first_node_in_group(MonsterManager.GROUP_NAME)

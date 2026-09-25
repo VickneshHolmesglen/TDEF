@@ -65,9 +65,17 @@ func test_controller_subscribes_to_every_listed_signal() -> void:
 
 func test_controller_disconnects_everything_on_exit() -> void:
 	var baseline: int = GEventBus.equipment_slot_changed.get_connections().size()
+	var signals: Array[Signal] = []
+	var before: Array[int] = []
+	for pair: Array in _ctl._subscriptions():
+		var sig: Signal = pair[0]
+		signals.append(sig)
+		before.append(sig.get_connections().size())
 	_hero.remove_child(_ctl)
 	_ctl.free()
 	assert_int(GEventBus.equipment_slot_changed.get_connections().size()).is_equal(baseline - 1)
+	for i: int in signals.size():
+		assert_int(signals[i].get_connections().size()) 			.override_failure_message("signal '%s' still connected after exit" % signals[i].get_name()) 			.is_equal(before[i] - 1)
 	_ctl = null
 
 
@@ -263,4 +271,110 @@ func test_a_new_stack_run_starts_from_zero_after_expiry() -> void:
 
 func test_kills_do_nothing_when_no_kill_effect_is_active() -> void:
 	_ctl._on_monster_died(_kill(10.0))
+	assert_float(_atk()).is_equal_approx(100.0, 0.0001)
+
+
+# ---------------------------------------------------------------------------
+# on_crit_status (spec §3.1, AC-4)
+# ---------------------------------------------------------------------------
+
+class _StubMonsterManager extends Node:
+	var calls: Array[Array] = []
+
+	func apply_dot(target_id: int, effect_type: String, value: float, duration: float) -> void:
+		calls.append([target_id, effect_type, value, duration])
+
+
+var _stub: _StubMonsterManager
+
+
+func _install_stub() -> void:
+	_stub = _StubMonsterManager.new()
+	_ctl.monster_manager = _stub
+
+
+func _venom() -> Dictionary:
+	return _effect("set_venom:2", &"on_crit_status",
+		{&"effect_type": "poison", &"effect_value": 0.06, &"effect_duration": 4.0})
+
+
+func _ember() -> Dictionary:
+	return _effect("set_ember:4", &"on_crit_status",
+		{&"effect_type": "burn", &"effect_value": 0.08, &"effect_duration": 3.0})
+
+
+func _auto(is_crit: bool, target_id: int = 7) -> HeroAutoAttackEvent:
+	var payload := HeroAutoAttackEvent.new()
+	payload.is_crit = is_crit
+	payload.target_id = target_id
+	return payload
+
+
+func _skill_hit(is_crit: bool, target_id: int = 9) -> HeroSkillAttackEvent:
+	var payload := HeroSkillAttackEvent.new()
+	payload.is_crit = is_crit
+	payload.target_id = target_id
+	return payload
+
+
+func test_crit_auto_attack_applies_the_configured_dot() -> void:
+	_install_stub()
+	_apply([_venom()])
+	_ctl._on_hero_auto_attacked(_auto(true))
+	assert_int(_stub.calls.size()).is_equal(1)
+	assert_int(_stub.calls[0][0]).is_equal(7)
+	assert_str(_stub.calls[0][1]).is_equal("poison")
+	assert_float(_stub.calls[0][2]).is_equal_approx(0.06, 0.0001)
+	assert_float(_stub.calls[0][3]).is_equal_approx(4.0, 0.0001)
+	_stub.free()
+
+
+func test_crit_skill_hit_applies_the_configured_dot() -> void:
+	_install_stub()
+	_apply([_venom()])
+	_ctl._on_hero_skill_attacked(_skill_hit(true))
+	assert_int(_stub.calls.size()).is_equal(1)
+	assert_int(_stub.calls[0][0]).is_equal(9)
+	_stub.free()
+
+
+func test_a_non_crit_applies_nothing() -> void:
+	_install_stub()
+	_apply([_venom()])
+	_ctl._on_hero_auto_attacked(_auto(false))
+	_ctl._on_hero_skill_attacked(_skill_hit(false))
+	assert_int(_stub.calls.size()).is_equal(0)
+	_stub.free()
+
+
+func test_two_crit_effects_each_apply_their_own_dot() -> void:
+	_install_stub()
+	_apply([_venom(), _ember()])
+	_ctl._on_hero_auto_attacked(_auto(true))
+	assert_int(_stub.calls.size()).is_equal(2)
+	_stub.free()
+
+
+func test_no_crit_effect_active_means_no_dot() -> void:
+	_install_stub()
+	_apply([_wave_buff()])
+	_ctl._on_hero_auto_attacked(_auto(true))
+	assert_int(_stub.calls.size()).is_equal(0)
+	_stub.free()
+
+
+func test_falls_back_to_the_monster_manager_group() -> void:
+	_stub = _StubMonsterManager.new()
+	add_child(_stub)
+	_stub.add_to_group(MonsterManager.GROUP_NAME)
+	_apply([_venom()])
+	_ctl._on_hero_auto_attacked(_auto(true))
+	assert_int(_stub.calls.size()).is_equal(1)
+	remove_child(_stub)
+	_stub.free()
+
+
+func test_crit_with_no_monster_manager_available_is_a_safe_no_op() -> void:
+	_apply([_venom()])
+	_ctl._on_hero_auto_attacked(_auto(true))
 	assert_float(_atk()).is_equal_approx(100.0, 0.0001)
