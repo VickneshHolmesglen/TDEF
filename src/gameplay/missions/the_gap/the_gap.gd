@@ -146,6 +146,9 @@ func _ready() -> void:
 	# lookup from inside MonsterManager (src/CLAUDE.md's "prefer DI over
 	# singletons") — mirrors mission_scene.gd's identical injection.
 	_monster_manager.set_swarm_renderer(_monster_swarm_renderer)
+	# Hero-damage spec §4.4: Damage & Status reads the Hero's armor/resists through injection
+	# (same pattern as set_swarm_renderer above; no service-locator lookup).
+	($DamageStatus as DamageStatus).set_hero_stats(_hero)
 	_monsters_container = Node2D.new()
 	_monsters_container.name = "MonstersContainer"
 	add_child(_monsters_container)

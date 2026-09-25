@@ -151,6 +151,8 @@ func _ready() -> void:
 	# no _process()/_physics_process() and nothing calls into it until a
 	# monster actually spawns.
 	_monster_manager.set_swarm_renderer(_monster_swarm_renderer)
+	# Hero-damage spec §4.4: mirrors the_gap.gd's identical injection.
+	($GameplayRoot/DamageStatus as DamageStatus).set_hero_stats(_hero)
 	_gameplay_root.visible = false
 	_gameplay_root.set_process(false)
 	_gameplay_root.set_physics_process(false)
