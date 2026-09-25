@@ -17,3 +17,4 @@ menagerie_attraction_drop_chance = 0.5
 boss_attack_range_cells = 3
 base_damage = 60.0
 base_attack_interval = 3.0
+hero_attack_windup_seconds = 1.0

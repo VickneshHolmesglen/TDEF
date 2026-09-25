@@ -8,7 +8,9 @@ extends Resource
 ##
 ## tier values: 0=STANDARD  1=ELITE  2=BOSS
 ## archetype_tag: &"" (untagged, default) or &"armored" (50% tower damage mitigation).
-## base_damage / base_attack_interval / boss_attack_range_cells: BOSS-only; set 0 for others.
+## base_damage / base_attack_interval / boss_attack_range_cells / hero_attack_windup_seconds:
+## attack settings for the attack-capable tiers (hero-damage spec §4.1). ELITE attacks the
+## Hero only; BOSS attacks towers and the Hero. STANDARD must leave them at 0.
 
 @export_group("Identity")
 @export var monster_id: StringName = &""
@@ -53,10 +55,13 @@ extends Resource
 @export var drop_table_id: StringName = &""
 @export_range(0.0, 1.0, 0.01) var menagerie_attraction_drop_chance: float = 0.0
 
-@export_group("BOSS Settings")
+@export_group("Attack Settings (ELITE / BOSS)")
 @export var boss_attack_range_cells: int = 0
 @export var base_damage: float = 0.0
 @export var base_attack_interval: float = 0.0
+## Seconds between an attacker locking the Hero and the hit resolving (hero-damage spec §4.2).
+## The boss-to-tower wind-up is a separate fixed frame count in MonsterManager.
+@export var hero_attack_windup_seconds: float = 0.0
 
 
 ## Load-time validation. Called by GameDataRegistry at boot (ADR-0009).
@@ -81,6 +86,19 @@ func validate() -> Array[String]:
 			errors.append("BOSS tier requires base_attack_interval > 0")
 		if boss_attack_range_cells <= 0:
 			errors.append("BOSS tier requires boss_attack_range_cells > 0")
+		if hero_attack_windup_seconds <= 0.0:
+			errors.append("BOSS tier requires hero_attack_windup_seconds > 0")
+	if tier == 1 and base_damage > 0.0:  # ELITE attacker (base_damage == 0 is a valid non-attacker)
+		if base_attack_interval <= 0.0:
+			errors.append("ELITE attacker requires base_attack_interval > 0")
+		if boss_attack_range_cells <= 0:
+			errors.append("ELITE attacker requires boss_attack_range_cells > 0")
+		if hero_attack_windup_seconds <= 0.0:
+			errors.append("ELITE attacker requires hero_attack_windup_seconds > 0")
+	if tier == 0 and base_damage > 0.0:
+		errors.append("STANDARD tier must have base_damage == 0")
+	if hero_attack_windup_seconds < 0.0:
+		errors.append("hero_attack_windup_seconds must not be negative (got %.2f)" % hero_attack_windup_seconds)
 	for element: Variant in elemental_resistances:
 		var resistance: float = elemental_resistances[element] as float
 		if resistance < 0.0 or resistance > 0.9:
