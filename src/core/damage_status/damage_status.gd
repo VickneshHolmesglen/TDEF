@@ -20,6 +20,11 @@ const HERO_ARMOR_MITIGATION_LEVEL_SCALAR: float = 50.0
 const COMBAT_VARIANCE_MIN: float = 0.95
 const COMBAT_VARIANCE_MAX: float = 1.05
 
+## Hero-damage spec §4.4 (damage-status.md Rule V): incoming damage to the Hero.
+## Physical uses the armor coefficient; fire/frost use the resist stat, capped.
+const HERO_INCOMING_ARMOR_COEFFICIENT: float = 100.0
+const HERO_INCOMING_RESIST_CAP: float = 0.75
+
 
 ## Evasion roll (Section 3.5.1): true if the attack misses entirely.
 ## evasion_percent is MonsterResource.evasion, already in [0,100] units (not
@@ -73,6 +78,11 @@ static func _apply_combat_variance(damage: float) -> float:
 ## round-trip value is available when monster_hp_absorbed arrives next frame.
 var _lifesteal_pending: Dictionary[int, float] = {}
 
+## Injected stat provider for Rule V (exposes get_effective_stat(stat: StringName) -> float).
+## Set by the mission scene at assembly (same DI pattern as MonsterManager.set_swarm_renderer).
+## Null means armor and resists are treated as 0.
+var _hero_stats: Object = null
+
 
 func _ready() -> void:
 	GEventBus.tower_attacked.connect(_on_tower_attacked)
@@ -81,6 +91,7 @@ func _ready() -> void:
 	GEventBus.monster_hp_absorbed.connect(_on_monster_hp_absorbed)
 	GEventBus.wave_completed.connect(_on_wave_completed)
 	GEventBus.hero_died.connect(_on_hero_died)
+	GEventBus.hero_incoming_damage.connect(_on_hero_incoming_damage)
 
 
 func _exit_tree() -> void:
@@ -90,6 +101,7 @@ func _exit_tree() -> void:
 	GEventBus.monster_hp_absorbed.disconnect(_on_monster_hp_absorbed)
 	GEventBus.wave_completed.disconnect(_on_wave_completed)
 	GEventBus.hero_died.disconnect(_on_hero_died)
+	GEventBus.hero_incoming_damage.disconnect(_on_hero_incoming_damage)
 
 
 ## D1 formula: floor(raw_damage × mitigation). is_siege unused at MVP.
@@ -270,3 +282,46 @@ func _on_wave_completed(_wave_number: int, _enemies_remaining: int, _was_boss_br
 ## explanation if that guarantee is ever suspected broken.
 func _on_hero_died() -> void:
 	_lifesteal_pending.clear()
+
+
+
+## Hero-damage spec §4.4: DI seam for the Hero's armor and elemental resists.
+func set_hero_stats(provider: Object) -> void:
+	_hero_stats = provider
+
+
+func _hero_stat(stat: StringName) -> float:
+	if _hero_stats == null or not is_instance_valid(_hero_stats) or not _hero_stats.has_method(&"get_effective_stat"):
+		return 0.0
+	return float(_hero_stats.call(&"get_effective_stat", stat))
+
+
+## Pure Rule V mitigation (unit-tested directly). "physical": armor; "fire"/"frost": the
+## caller passes the matching resist fraction; any other type is unmitigated. Floored at 1
+## so no hit is ever fully negated.
+static func mitigate_hero_incoming(amount: float, damage_type: String, armor: float, resist: float) -> int:
+	var mitigated: float = amount
+	match damage_type:
+		"physical":
+			mitigated = amount * HERO_INCOMING_ARMOR_COEFFICIENT / (maxf(0.0, armor) + HERO_INCOMING_ARMOR_COEFFICIENT)
+		"fire", "frost":
+			mitigated = amount * (1.0 - clampf(resist, 0.0, HERO_INCOMING_RESIST_CAP))
+	return maxi(1, floori(mitigated))
+
+
+## Rule V: mitigate using the Hero's stats AT HIT TIME, defer one frame (same cascade budget as
+## monster_damage_taken, Rule V.2), then emit hero_damage_taken for Hero to apply. Hero itself owns
+## the phase guard (Rule 20) and DEFEAT at 0 HP.
+func _on_hero_incoming_damage(event: HeroIncomingDamageEvent) -> void:
+	var resist: float = 0.0
+	match event.damage_type:
+		"fire":
+			resist = _hero_stat(&"elemental_resist_fire")
+		"frost":
+			resist = _hero_stat(&"elemental_resist_frost")
+	var effective: int = mitigate_hero_incoming(event.amount, event.damage_type, _hero_stat(&"armor"), resist)
+	var source_type: int = event.source_type
+	await get_tree().process_frame
+	if not is_instance_valid(self):
+		return
+	GEventBus.hero_damage_taken.emit(effective, source_type)
