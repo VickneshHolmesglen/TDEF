@@ -1104,6 +1104,9 @@ func _on_monsters_died_batch(payloads: Array[MonsterDiedEvent]) -> void:
 ## regardless of breach outcome, and this XP source is deliberately
 ## unconditional per the governing spec (no partial-credit/breach-penalty
 ## rule was specified).
+## Also heals WAVE_CLEAR_HEAL_FRACTION of max HP through _on_hero_healed. The XP grant
+## runs FIRST, so a same-wave level-up that raises _max_hp makes the heal a quarter of
+## the NEW max (intended, player-favourable; hero.md rule 25a).
 func _on_wave_completed(_wave_number: int, _enemies_remaining: int, _was_boss_breached: bool) -> void:
 	_grant_xp(WAVE_COMPLETION_XP)
 	# Hero-damage spec §4.5: partial heal through the existing path, so the phase guard

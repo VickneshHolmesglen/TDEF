@@ -136,6 +136,7 @@ func test_elite_with_hero_in_range_starts_a_windup_and_announces_it() -> void:
 	_mm._pass2b_hero_attacks(0.1)
 	assert_float(elite.hero_windup_remaining).is_greater(0.0)
 	assert_int(elite.boss_locked_target_id).is_equal(MonsterManager.HERO_TARGET_ID)
+	await get_tree().process_frame  # emitted deferred (ADR-0001 Rule 2)
 	assert_int(_spy.count("monster_hero_attack_winding_up")).is_equal(1)
 	var args: Array = (_spy.emissions["monster_hero_attack_winding_up"] as Array)[0] as Array
 	assert_int(args[0]).is_equal(elite.entity_id)
@@ -147,6 +148,7 @@ func test_elite_does_not_wind_up_when_the_hero_is_out_of_range() -> void:
 	_mm._hero_cell = HERO_FAR
 	_mm._pass2b_hero_attacks(0.1)
 	assert_float(elite.hero_windup_remaining).is_equal(0.0)
+	await get_tree().process_frame  # emitted deferred (ADR-0001 Rule 2)
 	assert_int(_spy.count("monster_hero_attack_winding_up")).is_equal(0)
 
 
@@ -170,6 +172,7 @@ func test_standard_and_zero_damage_elites_never_wind_up() -> void:
 	var quiet := _spawn(quiet_res)
 	_mm._pass2b_hero_attacks(0.1)
 	assert_float(quiet.hero_windup_remaining).is_equal(0.0)
+	await get_tree().process_frame  # emitted deferred (ADR-0001 Rule 2)
 	assert_int(_spy.count("monster_hero_attack_winding_up")).is_equal(0)
 
 
@@ -243,6 +246,7 @@ func test_boss_targets_the_hero_when_strictly_closer_than_the_closest_tower() ->
 	assert_int(boss.boss_locked_target_id).is_equal(MonsterManager.HERO_TARGET_ID)
 	assert_float(boss.hero_windup_remaining).is_equal_approx(1.0, 0.0001)
 	assert_int(boss.boss_attack_prepare_remaining).is_equal(0)
+	await get_tree().process_frame  # emitted deferred (ADR-0001 Rule 2)
 	assert_int(_spy.count("monster_hero_attack_winding_up")).is_equal(1)
 
 

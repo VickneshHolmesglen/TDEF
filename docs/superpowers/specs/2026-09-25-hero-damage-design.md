@@ -63,7 +63,7 @@ State added to `MonsterEntity`: `hero_windup_remaining: float` (seconds, 0 means
 A monster has **at most one wind-up in flight** (tower or Hero). Each physics frame, for every ACTIVE, non-DEAD monster of tier 1 or 2:
 
 1. **Scan** (throttled by the existing `BOSS_SCAN_INTERVAL_FRAMES`), only when the cooldown is clear and no wind-up is in flight:
-   - ELITE (with `base_damage > 0`): if `_hero_alive` and the Hero is within `boss_attack_range_cells` (Chebyshev distance between `_grid.world_to_cell(entity.global_position)` and `_hero_cell`), lock the Hero: `boss_locked_target_id = HERO_TARGET_ID`, `hero_windup_remaining = hero_attack_windup_seconds`, and emit `monster_hero_attack_winding_up(entity_id, windup_seconds)`.
+   - ELITE (with `base_damage > 0`): if `_hero_alive` and the Hero is within `boss_attack_range_cells` (Chebyshev distance between `_grid.world_to_cell(entity.global_position)` and `_hero_cell`), lock the Hero: `boss_locked_target_id = HERO_TARGET_ID`, `hero_windup_remaining = hero_attack_windup_seconds`, and emit `monster_hero_attack_winding_up(entity_id, windup_seconds)` (emitted DEFERRED via `call_deferred`, ADR-0001 Rule 2).
    - BOSS: compute the closest tower (existing logic) and the Hero candidate (in range and `_hero_alive`). The Hero is chosen only when it is **strictly closer** than the closest tower; otherwise the existing tower path runs exactly as before. When no tower is in range but the Hero is, the Hero is chosen.
 2. **Wind-up countdown** (Hero path): `hero_windup_remaining -= delta`. At 0, **re-check** `_hero_alive` and range from the monster's *current* cell to `_hero_cell`. If both hold, emit `hero_incoming_damage` (§4.3). Either way the cooldown restarts (`boss_attack_cooldown_remaining = base_attack_interval`), the lock clears, and `hero_windup_remaining = 0`. Out of range at fire time is a **whiff**: no damage, no event, cooldown still spent.
 3. Monsters keep walking while winding up (existing rule for bosses). The attack pass runs before the movement pass, so a monster attacks on the frame it breaches (existing boss rule 19, now also for Hero attacks).
@@ -81,7 +81,7 @@ New Resource `src/foundation/event_bus/event_payloads/hero_incoming_damage_event
 - `@export var source_type: int = 0` — `0` = monster attack; `1` = status effect and `2` = environmental are reserved.
 - `@export var source_entity_id: int = -1` — the attacking monster's entity id.
 
-A second new event announces the telegraph: `signal monster_hero_attack_winding_up(entity_id: int, windup_seconds: float)`, emitted by `MonsterManager` when it locks the Hero (§4.2). It has **no subscriber in this spec**; it exists so the presentation follow-up (§10) and the tests can observe the wind-up without touching the attack logic. It is a cross-system event (Monster System to presentation and audio), so it belongs on the bus (ADR-0001 Rule 9).
+A second new event announces the telegraph: `signal monster_hero_attack_winding_up(entity_id: int, windup_seconds: float)`, emitted by `MonsterManager` when it locks the Hero (§4.2). It has **no subscriber in this spec**; it exists so the presentation follow-up (§10) and the tests can observe the wind-up without touching the attack logic. It is a cross-system event (Monster System to presentation and audio), so it belongs on the bus (ADR-0001 Rule 9). It is emitted **deferred** (`emit.call_deferred`, ADR-0001 Rule 2, physics caller) because its only intended subscriber is presentation, which mutates the scene tree; `hero_incoming_damage` stays synchronous because Damage & Status already defers its own work by a frame.
 
 ### 4.4 Damage & Status: Rule V, implemented
 
@@ -125,6 +125,8 @@ D&S then defers one frame (`await get_tree().process_frame`, with `is_instance_v
 
 All monster numbers in §4.1 (data). `WAVE_CLEAR_HEAL_FRACTION` (0.25). `HERO_INCOMING_ARMOR_COEFFICIENT` (100). Elite range vs Hero attack range (kiting margin). Hero base HP (500, still the unbalanced stopgap).
 
+**Effective attack period.** An attacker's cooldown starts at FIRE time, so the real attack period is `base_attack_interval + hero_attack_windup_seconds` (plus up to `BOSS_SCAN_INTERVAL_FRAMES` of scan latency), roughly 3.4-5.2 s rather than the authored 2.5-4.0 s; the data therefore reads about 25-30% gentler than it looks. An elite's cooldown is decremented in the same pass that sets it, so it is one frame's delta shorter than a boss's (sub-perceptual).
+
 ## 9. Acceptance Criteria
 
 1. `MonsterResource.validate()`: an ELITE with `base_damage > 0` requires interval, range and wind-up > 0; a STANDARD with `base_damage > 0` is rejected; a BOSS also requires `hero_attack_windup_seconds > 0`; an ELITE with `base_damage == 0` stays valid. All five shipped attackers validate.
@@ -143,6 +145,7 @@ All monster numbers in §4.1 (data). `WAVE_CLEAR_HEAL_FRACTION` (0.25). `HERO_IN
 - **Visible wind-up indicator** (a danger marker, attacker tint, or audio telegraph driven by `monster_hero_attack_winding_up`) and hit or whiff feedback. Follow-up spec; **required before playtesting**, since the dodge rule is unfair without it.
 - Elemental attackers and content (the pipeline supports them; none are authored), status effects on the Hero, environmental damage, and any revival.
 - A real `HeroResource` pipeline and a rebalance of Hero base HP or armor against the wave curve.
+- **Boss Hero wind-up and the existing boss telegraph:** a boss winding up on the Hero does not trigger the existing boss attack-telegraph visual, because `monster_manager.gd`'s `update_boss(...)` call passes only `boss_attack_prepare_remaining > 0` (the tower wind-up). The cheapest partial telegraph for the presentation follow-up is `... or entity.hero_windup_remaining > 0.0` there. Not changed now.
 - Changing the boss-to-tower 4-frame telegraph or the tower-side damage rules.
 - Any attack by STANDARD monsters.
 

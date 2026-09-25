@@ -529,10 +529,13 @@ func _hero_in_range(entity: MonsterEntity) -> bool:
 
 
 ## Locks the Hero and starts the seconds-based wind-up; announces it for presentation/audio.
+## `monster_hero_attack_winding_up` is emitted DEFERRED (ADR-0001 Rule 2, physics caller) because its
+## only intended subscriber is presentation, which mutates the scene tree; `hero_incoming_damage`
+## stays synchronous because Damage & Status already defers its own work by a frame.
 func _begin_hero_windup(entity: MonsterEntity) -> void:
 	entity.boss_locked_target_id = HERO_TARGET_ID
 	entity.hero_windup_remaining = entity.resource.hero_attack_windup_seconds
-	GEventBus.monster_hero_attack_winding_up.emit(entity.entity_id, entity.resource.hero_attack_windup_seconds)
+	GEventBus.monster_hero_attack_winding_up.emit.call_deferred(entity.entity_id, entity.resource.hero_attack_windup_seconds)
 
 
 ## Counts the wind-up down; at 0 the cooldown restarts, the lock clears, and the hit lands only if

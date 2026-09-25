@@ -224,6 +224,12 @@ func _on_wave_completed() -> void:
 
 > **Note on `hero_armor` read**: Formula D4 requires the hero's current armor stat. How D&S accesses this is an open question — options include carrying it in the `hero_incoming_damage` event payload (cleanest: Hero System pre-resolves) or reading a Hero System Autoload property (violates EventBus rule). The recommended resolution is extending the `hero_incoming_damage` event to carry `hero_armor: float` in its payload. This follow-up is tracked as an open question for the Hero GDD.
 
+> **Amendment (2026-09-25, Hero damage feature)**: supersedes the snippet and the `hero_armor` note above.
+>
+> 1. **`hero_armor` read resolved by dependency injection.** Damage & Status reads Hero stats through `DamageStatus.set_hero_stats(provider)`, with the Hero as the provider. It does NOT carry `hero_armor` in the `hero_incoming_damage` payload (the Hero GDD follow-up in the Migration Plan is withdrawn). Reasons: it matches the existing `MonsterManager.set_swarm_renderer` injection pattern; there is no service locator or autoload property read; and the stats are read at hit time, before the one-frame deferral, so the mitigation uses the armor/resist in force when the hit landed.
+> 2. **Shipped handler signature.** The `_on_hero_incoming_damage` snippet is now `_on_hero_incoming_damage(event: HeroIncomingDamageEvent)`. The payload fields are `amount`, `damage_type`, `source_type`, `source_entity_id`. The handler mitigates synchronously, then `await get_tree().process_frame` and the `is_instance_valid` guard precede the `hero_damage_taken` emission, as before.
+> 3. **Mitigation rules.** Physical: `max(1, floor(amount x 100 / (armor + 100)))`. Fire and frost: `max(1, floor(amount x (1 - clamp(resist, 0, 0.75))))`, i.e. resist is capped at 75%. Any other damage type is unmitigated. The result is floored at 1 in every case.
+
 ## Alternatives Considered
 
 ### Alternative 1: `call_deferred` for damage dispatch

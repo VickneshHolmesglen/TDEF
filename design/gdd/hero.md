@@ -312,7 +312,7 @@ effective_damage_taken = max(1, floor(incoming_damage × (ARMOR_COEFFICIENT / (a
 
 | Variable | Symbol | Type | Range | Description | Owner |
 |----------|--------|------|-------|-------------|-------|
-| Incoming damage | `incoming_damage` | float | 0 – unbounded | Raw damage from a `hero_incoming_damage` event (ELITE/BOSS attacks, live as of 2026-09-25; payload is `HeroIncomingDamageEvent`). **Not** Formula 4's output — Formula 4 is Hero's outgoing damage, unrelated to this formula. | Attack source (future) |
+| Incoming damage | `incoming_damage` | float | 0 – unbounded | Raw damage from a `hero_incoming_damage` event (ELITE/BOSS attacks, live as of 2026-09-25; payload is `HeroIncomingDamageEvent`). **Not** Formula 4's output — Formula 4 is Hero's outgoing damage, unrelated to this formula. | Monster System (ELITE/BOSS attacks) |
 | Armor | `armor` | float | 0 – 500 (soft cap) | Hero's effective armor stat | Hero System |
 | Armor coefficient | `ARMOR_COEFFICIENT` | float | constant: 100 | Armor value at which the hero takes exactly 50% damage | Hero System (tunable, D&S reads it) |
 | Damage taken | `effective_damage_taken` | float | 1 – incoming_damage | HP deducted from hero. Floored at 1 — armor cannot fully negate a hit. | Damage & Status |

@@ -130,7 +130,7 @@ func test_validate_evasion_within_range_is_valid() -> void:
 
 
 # ---------------------------------------------------------------------------
-# Hero attack settings (hero-damage spec Â§4.1, AC-1)
+# Hero attack settings (hero-damage spec section 4.1, AC-1)
 # ---------------------------------------------------------------------------
 
 func _make_valid_elite_attacker() -> MonsterResource:
