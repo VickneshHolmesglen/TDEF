@@ -3,9 +3,17 @@ extends GdUnitTestSuite
 ## Wind-up presentation Task 4: wind-up warning (rate-limited), whiff, and Hero death cues.
 
 var _dispatcher: AudioCueDispatcher
+var _original_mission_path: String
+var _original_sanctuary_path: String
 
 
 func before_test() -> void:
+	# hero_died also reaches the live GSceneManager: stub its paths and skip the death hold so the
+	# emit below cannot leave a delayed real Sanctuary transition behind.
+	_original_mission_path = GSceneManager._mission_scene_path
+	_original_sanctuary_path = GSceneManager._sanctuary_scene_path
+	GSceneManager._inject("res://tests/fixtures/scene_manager/StubScene.tscn", "res://tests/fixtures/scene_manager/StubScene.tscn")
+	GSceneManager._death_hold_seconds = 0.0
 	_dispatcher = AudioCueDispatcher.new()
 	add_child(_dispatcher)
 	var map := AudioCueMap.new()
@@ -18,6 +26,11 @@ func before_test() -> void:
 
 
 func after_test() -> void:
+	if GSceneManager._transition_in_progress:
+		await GEventBus.scene_transition_completed
+	GSceneManager._death_hold_seconds = GSceneManager.HERO_DEATH_HOLD_SECONDS
+	GSceneManager._inject(_original_mission_path, _original_sanctuary_path)
+	GSceneManager._transition_in_progress = false
 	if _dispatcher != null and is_instance_valid(_dispatcher):
 		_dispatcher.free()
 	_dispatcher = null

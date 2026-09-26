@@ -22,6 +22,7 @@ func before_test() -> void:
 	_original_mission_path = GSceneManager._mission_scene_path
 	_original_sanctuary_path = GSceneManager._sanctuary_scene_path
 	GSceneManager._inject(STUB_SCENE_PATH, STUB_SCENE_PATH)
+	GSceneManager._death_hold_seconds = 0.0
 
 	_spy = EventBusSpy.new()
 	_spy.watch(GEventBus.scene_transition_started)
@@ -36,6 +37,7 @@ func after_test() -> void:
 		await GEventBus.scene_transition_completed
 	_spy.disconnect_all()
 	_spy = null
+	GSceneManager._death_hold_seconds = GSceneManager.HERO_DEATH_HOLD_SECONDS
 	GSceneManager._inject(_original_mission_path, _original_sanctuary_path)
 	GSceneManager._transition_in_progress = false
 

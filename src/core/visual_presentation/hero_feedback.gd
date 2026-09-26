@@ -58,6 +58,7 @@ var _low_hp: bool = false
 var _vignette_fade: float = 0.0
 var _pulse_time: float = 0.0
 var _dead: bool = false
+var _death_tween: Tween = null
 
 
 ## True when a single hit removed strictly more than 25% of max HP. Unknown max never counts.
@@ -98,6 +99,8 @@ func _ready() -> void:
 	GEventBus.hero_incoming_damage.connect(_on_incoming_damage)
 	GEventBus.hero_damage_taken.connect(_on_damage_taken)
 	GEventBus.hero_health_changed.connect(_on_health_changed)
+	GEventBus.hero_died.connect(_on_hero_died)
+	GEventBus.wave_started.connect(_on_wave_started)
 	_layer = CanvasLayer.new()
 	_layer.layer = FEEDBACK_LAYER
 	add_child(_layer)
@@ -118,9 +121,20 @@ func _exit_tree() -> void:
 		GEventBus.hero_damage_taken.disconnect(_on_damage_taken)
 	if GEventBus.hero_health_changed.is_connected(_on_health_changed):
 		GEventBus.hero_health_changed.disconnect(_on_health_changed)
+	if GEventBus.hero_died.is_connected(_on_hero_died):
+		GEventBus.hero_died.disconnect(_on_hero_died)
+	if GEventBus.wave_started.is_connected(_on_wave_started):
+		GEventBus.wave_started.disconnect(_on_wave_started)
 	_kill_tween(_flash_tween)
 	_kill_tween(_flinch_tween)
 	_kill_tween(_shake_tween)
+	_kill_tween(_death_tween)
+	# Killed tweens leave the nodes wherever they stopped: put the cosmetic state back.
+	if _camera != null and is_instance_valid(_camera):
+		_camera.offset = Vector2.ZERO
+	if _sprite != null and is_instance_valid(_sprite):
+		_sprite.position = _sprite_rest_position
+		_sprite.modulate = Color.WHITE
 
 
 func _on_incoming_damage(payload: HeroIncomingDamageEvent) -> void:
@@ -220,7 +234,10 @@ func _play_flash(frames: int) -> void:
 	_sprite.modulate = FLASH_TINT
 	_flash_tween = create_tween()
 	_flash_tween.tween_method(func(v: float) -> void: _flash_material.set_shader_parameter("flash_amount", v), 1.0, 0.0, duration)
-	_flash_tween.parallel().tween_property(_sprite, "modulate", _resting_sprite_modulate(), duration)
+	# The resting tint is read when the flash ENDS so a low-HP tint set mid-flash is not lost.
+	_flash_tween.tween_callback(func() -> void:
+			if _sprite != null and is_instance_valid(_sprite) and not _dead:
+				_sprite.modulate = _resting_sprite_modulate())
 
 
 ## The resting tint: the low-HP tint while low, otherwise white.
@@ -285,3 +302,77 @@ func _play_shake() -> void:
 func _kill_tween(tween: Tween) -> void:
 	if tween != null and tween.is_valid():
 		tween.kill()
+
+
+## True once the death sequence has started (until a new wave resets it).
+func is_dead() -> bool:
+	return _dead
+
+
+func _on_hero_died() -> void:
+	if _dead:
+		return
+	_dead = true
+	_kill_tween(_flash_tween)
+	_kill_tween(_flinch_tween)
+	_kill_tween(_shake_tween)
+	if _camera != null and is_instance_valid(_camera):
+		_camera.offset = Vector2.ZERO
+	# The vignette freezes at maximum opacity; desaturation eases in over 0.5 s.
+	_apply_screen_fx(VIGNETTE_MAX, 0.0)
+	_death_tween = create_tween()
+	_death_tween.tween_method(func(v: float) -> void: _apply_screen_fx(VIGNETTE_MAX, v), 0.0, DEATH_DESATURATE, 0.5)
+	if _sprite != null:
+		_sprite.modulate = Color(1.0, 1.0, 1.0, 1.0)
+		if _flash_material != null:
+			_flash_material.set_shader_parameter("flash_amount", 1.0)
+		var flash_time: float = float(DEATH_FLASH_FRAMES) * FRAME_SECONDS
+		var fade_time: float = float(DEATH_FADE_FRAMES) * FRAME_SECONDS
+		var sprite_tween := create_tween()
+		sprite_tween.tween_interval(flash_time)
+		sprite_tween.tween_callback(func() -> void:
+				if _flash_material != null:
+					_flash_material.set_shader_parameter("flash_amount", 0.0))
+		sprite_tween.tween_property(_sprite, "modulate:a", 0.3, fade_time)
+		_flash_tween = sprite_tween  # killed on reset / exit
+	if not ReduceMotion.enabled():
+		_spawn_death_ring()
+
+
+func _spawn_death_ring() -> void:
+	var parent: Node = _hero.get_parent() if _hero != null else null
+	if parent == null:
+		return
+	var ring := _DeathRing.new()
+	ring.radius_target = DEATH_RING_RADIUS
+	parent.add_child(ring)
+	ring.global_position = _hero.global_position
+	var t := ring.create_tween()
+	t.tween_property(ring, "progress", 1.0, float(DEATH_RING_FRAMES) * FRAME_SECONDS)
+	t.tween_callback(ring.queue_free)
+
+
+## A new wave (Retry reuses the scene and Hero) clears the death state.
+func _on_wave_started(_wave_number: int, _total_waves: int, _wave_difficulty: float) -> void:
+	_dead = false
+	_low_hp = false
+	_vignette_fade = 0.0
+	_kill_tween(_death_tween)
+	_kill_tween(_flash_tween)
+	if _sprite != null:
+		_sprite.modulate = Color.WHITE
+	if _flash_material != null:
+		_flash_material.set_shader_parameter("flash_amount", 0.0)
+	_apply_screen_fx(0.0, 0.0)
+
+
+## Expanding shockwave ring for the death sequence (hero.md: 2x cell_size over 16 frames).
+class _DeathRing extends Node2D:
+	var progress: float = 0.0:
+		set(value):
+			progress = value
+			queue_redraw()
+	var radius_target: float = 128.0
+
+	func _draw() -> void:
+		draw_arc(Vector2.ZERO, radius_target * progress, 0.0, TAU, 48, Color(1.0, 1.0, 1.0, 1.0 - progress), 3.0)

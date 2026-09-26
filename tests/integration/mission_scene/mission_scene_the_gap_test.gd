@@ -169,6 +169,7 @@ func test_the_gap_full_mission_reaches_wave_active_with_a_real_visible_spawned_m
 func test_the_gap_debug_hero_kill_reaches_defeat_and_halts_wave_activity() -> void:
 	var original_sanctuary_path: String = GSceneManager._sanctuary_scene_path
 	GSceneManager._inject(GSceneManager._mission_scene_path, "res://tests/fixtures/scene_manager/StubScene.tscn")
+	GSceneManager._death_hold_seconds = 0.0
 
 	await get_tree().create_timer(1.2).timeout
 	GWaveManager._on_scout_timer_timeout()
@@ -191,6 +192,7 @@ func test_the_gap_debug_hero_kill_reaches_defeat_and_halts_wave_activity() -> vo
 
 	if GSceneManager._transition_in_progress:
 		await GEventBus.scene_transition_completed
+	GSceneManager._death_hold_seconds = GSceneManager.HERO_DEATH_HOLD_SECONDS
 	GSceneManager._inject(GSceneManager._mission_scene_path, original_sanctuary_path)
 
 # ---------------------------------------------------------------------------
@@ -361,6 +363,7 @@ func test_the_gap_real_hero_auto_attack_engages_real_spawned_monster_and_reduces
 func test_the_gap_full_six_wave_loop_reaches_mission_complete_on_real_wave_config() -> void:
 	var original_sanctuary_path: String = GSceneManager._sanctuary_scene_path
 	GSceneManager._inject(GSceneManager._mission_scene_path, "res://tests/fixtures/scene_manager/StubScene.tscn")
+	GSceneManager._death_hold_seconds = 0.0
 
 	var cfg: WaveConfig = load(WAVES_PATH)
 	var total_waves: int = cfg.wave_scripts.size()
@@ -392,4 +395,5 @@ func test_the_gap_full_six_wave_loop_reaches_mission_complete_on_real_wave_confi
 
 	if GSceneManager._transition_in_progress:
 		await GEventBus.scene_transition_completed
+	GSceneManager._death_hold_seconds = GSceneManager.HERO_DEATH_HOLD_SECONDS
 	GSceneManager._inject(GSceneManager._mission_scene_path, original_sanctuary_path)

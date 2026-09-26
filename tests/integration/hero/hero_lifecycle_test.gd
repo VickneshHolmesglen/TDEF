@@ -57,6 +57,7 @@ func before_test() -> void:
 	_original_mission_path = GSceneManager._mission_scene_path
 	_original_sanctuary_path = GSceneManager._sanctuary_scene_path
 	GSceneManager._inject(STUB_SCENE_PATH, STUB_SCENE_PATH)
+	GSceneManager._death_hold_seconds = 0.0
 	_original_current_scene = get_tree().current_scene
 
 
@@ -73,6 +74,7 @@ func after_test() -> void:
 	if GSceneManager._transition_in_progress:
 		await GEventBus.scene_transition_completed
 	var loaded_scene: Node = get_tree().current_scene
+	GSceneManager._death_hold_seconds = GSceneManager.HERO_DEATH_HOLD_SECONDS
 	GSceneManager._inject(_original_mission_path, _original_sanctuary_path)
 	GSceneManager._transition_in_progress = false
 	if is_instance_valid(_original_current_scene):

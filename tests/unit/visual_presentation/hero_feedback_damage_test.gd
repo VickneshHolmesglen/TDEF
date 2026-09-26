@@ -124,6 +124,7 @@ func test_a_big_hit_does_not_shake_under_reduced_motion() -> void:
 	ProjectSettings.set_setting(ReduceMotion.SETTING_KEY, true)
 	_fb._on_health_changed(200.0, 200.0)
 	_fb._on_damage_taken(60, 0)
+	assert_object(_fb._shake_tween).is_null()
 	for i in range(5):
 		await get_tree().process_frame
 		assert_vector(_camera.offset).is_equal(Vector2.ZERO)
@@ -132,6 +133,7 @@ func test_a_big_hit_does_not_shake_under_reduced_motion() -> void:
 func test_a_normal_hit_does_not_shake() -> void:
 	_fb._on_health_changed(200.0, 200.0)
 	_fb._on_damage_taken(50, 0)  # exactly 25%: not a big hit
+	assert_object(_fb._shake_tween).is_null()
 	for i in range(5):
 		await get_tree().process_frame
 		assert_vector(_camera.offset).is_equal(Vector2.ZERO)

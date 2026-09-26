@@ -60,6 +60,12 @@ var _main_menu_scene_path: String = DEFAULT_MAIN_MENU_SCENE_PATH
 
 var _transition_in_progress: bool = false
 
+## Wind-up presentation spec §5.4: how long the mission stays up after the Hero dies so the death
+## sequence can play before returning to the Sanctuary. Injectable (tests set 0).
+const HERO_DEATH_HOLD_SECONDS: float = 1.5
+var _death_hold_seconds: float = HERO_DEATH_HOLD_SECONDS
+var _death_exit_timer: SceneTreeTimer = null
+
 
 func _ready() -> void:
 	GEventBus.hero_died.connect(_on_hero_died)
@@ -67,6 +73,7 @@ func _ready() -> void:
 
 
 func _exit_tree() -> void:
+	_cancel_death_hold()
 	GEventBus.hero_died.disconnect(_on_hero_died)
 	GEventBus.mission_phase_changed.disconnect(_on_mission_phase_changed)
 
@@ -120,6 +127,7 @@ func transition_to_main_menu() -> void:
 # =============================================================================
 
 func _do_transition(target_context: String, mission_id: String, scene_path: String) -> void:
+	_cancel_death_hold()
 	if _transition_in_progress:
 		return
 	_transition_in_progress = true
@@ -160,10 +168,39 @@ func _do_transition(target_context: String, mission_id: String, scene_path: Stri
 # Terminal mission event handlers — the only trigger path for a transition
 # =============================================================================
 
+## True while a delayed Hero-death exit to the Sanctuary is waiting out the death hold.
+func is_death_exit_pending() -> bool:
+	return _death_exit_timer != null
+
+
 func _on_hero_died() -> void:
+	if _transition_in_progress or _death_exit_timer != null:
+		return
+	if _death_hold_seconds <= 0.0:
+		transition_to_sanctuary()
+		return
+	_death_exit_timer = get_tree().create_timer(_death_hold_seconds)
+	_death_exit_timer.timeout.connect(_on_death_hold_elapsed)
+
+
+func _on_death_hold_elapsed() -> void:
+	_death_exit_timer = null
 	transition_to_sanctuary()
 
 
+## SceneTreeTimers cannot be cancelled, so cancelling disconnects the callback and drops the reference.
+func _cancel_death_hold() -> void:
+	if _death_exit_timer == null:
+		return
+	if _death_exit_timer.timeout.is_connected(_on_death_hold_elapsed):
+		_death_exit_timer.timeout.disconnect(_on_death_hold_elapsed)
+	_death_exit_timer = null
+
+
 func _on_mission_phase_changed(_previous_phase: String, new_phase: String, _timestamp: float) -> void:
+	# A Retry reuses the scene and never calls _do_transition: its phase change out of DEFEAT is
+	# what cancels a pending death exit (wind-up presentation spec §5.4, edge case 1).
+	if new_phase != "DEFEAT" and new_phase != "MISSION_COMPLETE":
+		_cancel_death_hold()
 	if new_phase == "MISSION_COMPLETE":
 		transition_to_sanctuary()

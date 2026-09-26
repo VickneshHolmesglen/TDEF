@@ -93,3 +93,15 @@ func test_full_health_material_strength_is_zero() -> void:
 	_fb._on_health_changed(100.0, 100.0)
 	_fb.advance(0.3)
 	assert_float(float(_fb.get_screen_fx_material().get_shader_parameter("vignette_strength"))).is_equal(0.0)
+
+
+func test_vignette_strength_hits_peak_and_trough() -> void:
+	assert_float(HeroFeedback.vignette_strength(0.375, false)).is_equal_approx(HeroFeedback.VIGNETTE_MAX, 0.001)
+	assert_float(HeroFeedback.vignette_strength(1.125, false)).is_equal_approx(HeroFeedback.VIGNETTE_MIN, 0.001)
+
+
+func test_reduced_motion_drives_a_steady_vignette_through_advance() -> void:
+	ProjectSettings.set_setting(ReduceMotion.SETTING_KEY, true)
+	_fb._on_health_changed(15.0, 100.0)
+	_fb.advance(0.3)
+	assert_float(_fb.get_vignette_strength()).is_equal_approx(0.55, 0.001)
