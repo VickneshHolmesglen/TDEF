@@ -27,6 +27,8 @@ var _mode: Mode = Mode.NONE
 ## with it, so it never ticks through non-mission scenes.
 var _live: bool = false
 var _terminal_seen: bool = false
+## True after Retry is pressed until the relaunch resets state; ignores double presses.
+var _retry_requested: bool = false
 var _show_timer: SceneTreeTimer = null
 var _show_callback: Callable
 var _fade_tween: Tween = null
@@ -180,9 +182,12 @@ func _on_wave_started(wave_number: int, total_waves: int, difficulty: float) -> 
 
 
 func _on_retry_pressed() -> void:
-	_hide()
-	_terminal_seen = false
-	# Stats and _live restart when mission_launched arrives from the retry seam.
+	if _retry_requested:
+		return
+	# The panel stays up: a successful retry always delivers mission_launched (or a
+	# non-terminal phase change), which hides it, resets stats and _live, and clears
+	# the terminal flag. If the retry seam does nothing, Return still works.
+	_retry_requested = true
 	if _retry_action.is_valid():
 		_retry_action.call()
 
@@ -193,6 +198,7 @@ func _on_sanctuary_pressed() -> void:
 
 
 func _reset_attempt_state() -> void:
+	_retry_requested = false
 	_cancel_pending_show()
 	_terminal_seen = false
 	_hide()

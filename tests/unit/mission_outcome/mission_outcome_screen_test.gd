@@ -110,12 +110,37 @@ func test_non_terminal_phase_hides_showing_screen() -> void:
 	assert_int(_screen.get_mode()).is_equal(MissionOutcomeScreen.Mode.NONE)
 
 
-func test_retry_pressed_hides_and_invokes_once() -> void:
+func test_retry_pressed_invokes_once_and_hides_on_relaunch() -> void:
 	_screen._on_hero_died()
 	_btn("RetryButton").pressed.emit()
-	assert_bool(_screen.is_showing()).is_false()
 	assert_int(_retry_calls).is_equal(1)
 	assert_int(_sanctuary_calls).is_equal(0)
+	assert_bool(_screen.is_showing()).is_true()
+	_screen._on_mission_launched("m1", PackedStringArray(), 1)
+	assert_bool(_screen.is_showing()).is_false()
+
+
+func test_retry_hides_on_non_terminal_phase() -> void:
+	_screen._on_hero_died()
+	_btn("RetryButton").pressed.emit()
+	_screen._on_phase_changed("DEFEAT", "PRE_WAVE", 0.0)
+	assert_bool(_screen.is_showing()).is_false()
+
+
+func test_second_retry_press_before_relaunch_is_ignored() -> void:
+	_screen._on_hero_died()
+	_btn("RetryButton").pressed.emit()
+	_btn("RetryButton").pressed.emit()
+	assert_int(_retry_calls).is_equal(1)
+
+
+func test_failed_retry_keeps_panel_and_return_works() -> void:
+	_screen._retry_action = func() -> void: pass
+	_screen._on_hero_died()
+	_btn("RetryButton").pressed.emit()
+	assert_bool(_screen.is_showing()).is_true()
+	_btn("SanctuaryButton").pressed.emit()
+	assert_int(_sanctuary_calls).is_equal(1)
 
 
 func test_sanctuary_pressed_invokes_action() -> void:
