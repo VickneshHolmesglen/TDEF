@@ -51,6 +51,13 @@ var _shake_tween: Tween = null
 var _last_flash_msec: int = -MIN_FLASH_GAP_MSEC
 var _last_source_entity_id: int = -1
 var _max_hp: float = 0.0
+var _layer: CanvasLayer = null
+var _screen_rect: ColorRect = null
+var _screen_material: ShaderMaterial = null
+var _low_hp: bool = false
+var _vignette_fade: float = 0.0
+var _pulse_time: float = 0.0
+var _dead: bool = false
 
 
 ## True when a single hit removed strictly more than 25% of max HP. Unknown max never counts.
@@ -91,6 +98,17 @@ func _ready() -> void:
 	GEventBus.hero_incoming_damage.connect(_on_incoming_damage)
 	GEventBus.hero_damage_taken.connect(_on_damage_taken)
 	GEventBus.hero_health_changed.connect(_on_health_changed)
+	_layer = CanvasLayer.new()
+	_layer.layer = FEEDBACK_LAYER
+	add_child(_layer)
+	_screen_rect = ColorRect.new()
+	_screen_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_screen_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_screen_material = ShaderMaterial.new()
+	_screen_material.shader = preload("res://src/shaders/hero_screen_fx.gdshader")
+	_screen_rect.material = _screen_material
+	_screen_rect.visible = false
+	_layer.add_child(_screen_rect)
 
 
 func _exit_tree() -> void:
@@ -109,8 +127,11 @@ func _on_incoming_damage(payload: HeroIncomingDamageEvent) -> void:
 	_last_source_entity_id = payload.source_entity_id
 
 
-func _on_health_changed(_current: float, max_hp: float) -> void:
+func _on_health_changed(current: float, max_hp: float) -> void:
 	_max_hp = max_hp
+	_low_hp = is_low_hp(current, max_hp)
+	if _sprite != null and not _dead:
+		_sprite.modulate = _resting_sprite_modulate()
 
 
 func _on_damage_taken(amount: int, _source_type: int) -> void:
@@ -137,6 +158,54 @@ func _direction_to_source() -> Vector2:
 	return (source_pos - _hero.global_position).normalized()
 
 
+## Pulsing 0.4..0.7 opacity on a 1.5 s sine; a steady midpoint under reduced motion.
+static func vignette_strength(t: float, reduce: bool) -> float:
+	if reduce:
+		return (VIGNETTE_MIN + VIGNETTE_MAX) * 0.5
+	var s: float = 0.5 + 0.5 * sin(TAU * t / VIGNETTE_PERIOD)
+	return lerpf(VIGNETTE_MIN, VIGNETTE_MAX, s)
+
+
+## True while the Hero is below the low-HP threshold.
+func is_low_hp_active() -> bool:
+	return _low_hp
+
+
+## Vignette fade-in/out progress, 0..1.
+func get_vignette_fade() -> float:
+	return _vignette_fade
+
+
+## Current vignette_strength shader parameter.
+func get_vignette_strength() -> float:
+	return float(_screen_material.get_shader_parameter("vignette_strength"))
+
+
+## The full-screen effect material (vignette + death desaturation).
+func get_screen_fx_material() -> ShaderMaterial:
+	return _screen_material
+
+
+func _process(delta: float) -> void:
+	advance(delta)
+
+
+## Advances the vignette pulse and fade. The body of _process so tests can drive time directly.
+func advance(delta: float) -> void:
+	if _dead:
+		return  # Task 7: the vignette freezes at maximum opacity on death
+	var target: float = 1.0 if _low_hp else 0.0
+	_vignette_fade = move_toward(_vignette_fade, target, delta / VIGNETTE_FADE_SECONDS)
+	_pulse_time += delta
+	_apply_screen_fx(vignette_strength(_pulse_time, ReduceMotion.enabled()) * _vignette_fade, 0.0)
+
+
+func _apply_screen_fx(vignette: float, desaturate: float) -> void:
+	_screen_material.set_shader_parameter("vignette_strength", vignette)
+	_screen_material.set_shader_parameter("desaturate", desaturate)
+	_screen_rect.visible = vignette > 0.001 or desaturate > 0.001
+
+
 func _play_flash(frames: int) -> void:
 	if _sprite == null:
 		return
@@ -154,9 +223,9 @@ func _play_flash(frames: int) -> void:
 	_flash_tween.parallel().tween_property(_sprite, "modulate", _resting_sprite_modulate(), duration)
 
 
-## Task 6 overrides the resting tint while the low-HP state is active.
+## The resting tint: the low-HP tint while low, otherwise white.
 func _resting_sprite_modulate() -> Color:
-	return Color.WHITE
+	return LOW_HP_SPRITE_TINT if _low_hp else Color.WHITE
 
 
 func _spawn_particles(direction: Vector2) -> void:
