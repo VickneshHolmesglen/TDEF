@@ -42,6 +42,8 @@ func _check_scene(path: String) -> void:
 	screen._on_phase_changed("WAVE_ACTIVE", "DEFEAT", 0.0)
 	await get_tree().process_frame
 	assert_bool(screen.is_showing()).is_true()
+	# No MissionSelect-armed retry here (the scene self-launches), so Retry is hidden by design.
+	assert_bool((screen.find_child("RetryButton", true, false) as Button).visible).is_false()
 	assert_object(get_tree().current_scene).is_same(before_scene)
 	_scene.get_parent().remove_child(_scene)
 	_scene.free()

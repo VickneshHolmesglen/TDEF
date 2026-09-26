@@ -130,7 +130,7 @@ func test_retry_triggered_mission_launched_reaches_the_same_scout_mount_path() -
 # ---------------------------------------------------------------------------
 
 func test_retry_hidden_during_defeat_when_outcome_screen_is_in_the_tree() -> void:
-	var screen: MissionOutcomeScreen = (load("res://src/presentation/mission_outcome/MissionOutcomeScreen.tscn") as PackedScene).instantiate()
+	var screen: MissionOutcomeScreen = auto_free((load("res://src/presentation/mission_outcome/MissionOutcomeScreen.tscn") as PackedScene).instantiate())
 	add_child(screen)
 	_hud._on_mission_phase_changed("IDLE", "SCOUT", 0.0)
 	_hud._on_mission_phase_changed("SCOUT", "PRE_WAVE", 0.0)
@@ -140,4 +140,3 @@ func test_retry_hidden_during_defeat_when_outcome_screen_is_in_the_tree() -> voi
 
 	assert_bool(_hud._retry_button.visible).is_false()
 	remove_child(screen)
-	screen.free()

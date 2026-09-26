@@ -142,8 +142,11 @@ func is_terminal_auto_exit_enabled() -> bool:
 # Transition sequencing
 # =============================================================================
 
+## Belt-and-braces: always leaves the tree unpaused, so a terminal panel or pause menu can
+## never strand the next scene in a paused state.
 func _do_transition(target_context: String, mission_id: String, scene_path: String) -> void:
 	_cancel_death_hold()
+	get_tree().paused = false
 	if _transition_in_progress:
 		return
 	_transition_in_progress = true

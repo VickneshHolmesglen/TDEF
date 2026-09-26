@@ -19,6 +19,7 @@ func before_test() -> void:
 	_screen._victory_delay = 0.0
 	_screen._retry_action = func() -> void: _retry_calls += 1
 	_screen._sanctuary_action = func() -> void: _sanctuary_calls += 1
+	_screen._retry_available = func() -> bool: return true
 	add_child(_screen)
 
 
@@ -183,12 +184,53 @@ func test_paused_tree_does_not_tick_elapsed_time() -> void:
 	assert_float(_screen.get_stats().elapsed_seconds).is_equal(1.0)
 
 
-func test_ui_cancel_returns_to_sanctuary_only_while_showing() -> void:
+func _cancel_event() -> InputEventAction:
 	var cancel := InputEventAction.new()
 	cancel.action = &"ui_cancel"
 	cancel.pressed = true
-	_screen._unhandled_input(cancel)
+	return cancel
+
+
+func test_ui_cancel_returns_to_sanctuary_only_in_victory() -> void:
+	_screen._unhandled_input(_cancel_event())
 	assert_int(_sanctuary_calls).is_equal(0)
-	_screen._on_hero_died()
-	_screen._unhandled_input(cancel)
+	_screen._on_phase_changed("WAVE_ACTIVE", "MISSION_COMPLETE", 0.0)
+	_screen._unhandled_input(_cancel_event())
 	assert_int(_sanctuary_calls).is_equal(1)
+
+
+func test_ui_cancel_is_noop_in_defeat() -> void:
+	_screen._on_hero_died()
+	_screen._unhandled_input(_cancel_event())
+	assert_int(_sanctuary_calls).is_equal(0)
+
+
+func test_pause_action_consumed_only_while_showing() -> void:
+	var pause := InputEventAction.new()
+	pause.action = &"pause"
+	pause.pressed = true
+	_screen._unhandled_input(pause)
+	assert_bool(get_tree().paused).is_false()
+	_screen._on_hero_died()
+	_screen._unhandled_input(pause)
+	assert_bool(get_tree().paused).is_false()
+
+
+func test_sanctuary_and_retry_unpause_the_tree() -> void:
+	_screen._on_hero_died()
+	get_tree().paused = true
+	_btn("SanctuaryButton").pressed.emit()
+	assert_bool(get_tree().paused).is_false()
+	assert_int(_sanctuary_calls).is_equal(1)
+	get_tree().paused = true
+	_btn("RetryButton").pressed.emit()
+	assert_bool(get_tree().paused).is_false()
+	assert_int(_retry_calls).is_equal(1)
+
+
+func test_retry_unavailable_hides_retry_and_focuses_return() -> void:
+	_screen._retry_available = func() -> bool: return false
+	_screen._on_hero_died()
+	assert_bool(_btn("RetryButton").visible).is_false()
+	assert_bool(_btn("SanctuaryButton").has_focus()).is_true()
+	assert_array(MissionOutcomeScreen.buttons_for(MissionOutcomeScreen.Mode.DEFEAT)).is_equal([&"retry", &"sanctuary"])

@@ -1,7 +1,7 @@
 # Mission Outcome Screen (Victory / Defeat) — Design
 
 - **Date:** 2026-09-27
-- **Status:** Implemented 2026-09-27 (commits cecd334, ac89c52, 23250ab, 832f922, 3092890); live verification pending. Decisions taken autonomously with the recommended option at each choice (the user was away and asked for "always the recommended option"). Flag anything you would change.
+- **Status:** Implemented 2026-09-27 (commits cecd334, ac89c52, 23250ab, 832f922, 3092890, d26a127, f1a3f1a, 330ee11, 8b93b88, plus the final fix wave commit); live-verified 2026-09-27 via Godot MCP (see Deviations). Decisions taken autonomously with the recommended option at each choice (the user was away and asked for "always the recommended option"). Flag anything you would change.
 - **Follows:** `2026-09-26-windup-presentation-design.md` §1 (Retry/Outcome screen deferred as a separate later feature)
 - **Why now:** the wind-up presentation's 1.5 s death hold makes `SceneManager` leave the mission for the Sanctuary roughly 1.5 s after the Hero dies, so the Mission HUD's interim DEFEAT Retry button (mission-hud.md Rule 25) is effectively unusable, and MISSION_COMPLETE leaves instantly with no acknowledgement. `mission-hud.md` already says an "outcome screen takes over" in both terminal states; that screen was never built.
 
@@ -38,7 +38,7 @@
 - Joins group `mission_outcome_screen` in `_ready`.
 - `mission_phase_changed(_, "DEFEAT", _)` or `hero_died` → after `DEFEAT_SHOW_DELAY_SECONDS` show DEFEAT mode; `"MISSION_COMPLETE"` → after `VICTORY_SHOW_DELAY_SECONDS` show VICTORY mode. Only the first terminal event of an attempt counts (a `hero_died` followed by the DEFEAT phase change shows once).
 - Any non-terminal phase change or `mission_launched` (Retry) hides it and cancels a pending show-timer.
-- Layout: full-rect dimming `ColorRect` (mouse-blocking), centered `PanelContainer` with title, a stats grid (label/value rows), and a button row. Default focus: *Retry* in DEFEAT, *Return to Sanctuary* in VICTORY. Gamepad and keyboard reachable (`focus_neighbor`s set, ui_accept/ui_cancel: `ui_cancel` = Return to Sanctuary).
+- Layout: full-rect dimming `ColorRect` (mouse-blocking), centered `PanelContainer` with title, a stats grid (label/value rows), and a button row. Default focus: *Retry* in DEFEAT, *Return to Sanctuary* in VICTORY. Gamepad and keyboard reachable (`focus_neighbor`s set, ui_accept; `ui_cancel` = Return to Sanctuary in VICTORY only, a no-op in DEFEAT because Escape is also the `pause` action; the screen consumes `pause` while showing; Retry is shown only when MissionSelect holds an armed retry).
 - Buttons: *Retry* → hide, then `GMissionSelect.retry_current_mission()`; *Return to Sanctuary* → `GSceneManager.transition_to_sanctuary()`.
 - Reduced motion: the panel appears with a single fade (no scale/slide); the fade honors `ReduceMotion.enabled()` by appearing instantly.
 - Static helpers for testability: `static func title_key(mode) -> String`, `static func buttons_for(mode) -> Array[StringName]`.
@@ -85,4 +85,7 @@ Live (only when asked): kill the Hero → death sequence → after ~1.5 s the De
 - The screen is added under the scene root (next to the `HeroFeedback` block), not under `_gameplay_root`, because that root is hidden with processing off until launch.
 - Task 2 review fix: elapsed time does not tick while the tree is paused.
 - Implemented via a UID follow-up commit (3092890) for the new tests; no behavioral change.
-- Nothing has been live-verified yet.
+- Retry no longer hides the panel itself (live-found defect): the panel hides through `mission_launched` / a non-terminal phase change, with a double-press guard, so a no-op retry never leaves a dead screen (f1a3f1a).
+- Live-found and fixed: `HeroFeedback` death state persisted through Scout (330ee11); `MissionSelectScreen.disconnect_own_subscriptions` errored when Retry re-emitted `mission_launched` (8b93b88).
+- Final fix wave: Retry/Return unpause the tree first and `SceneManager._do_transition` forces `paused = false`; `ui_cancel` is Return only in VICTORY (Escape is also `pause`); `pause` is consumed while the panel shows; Retry is shown only when MissionSelect is `DORMANT_RETRY_ARMED` (`_retry_available` seam), so the_gap, which self-launches, shows Return only.
+- Live-verified 2026-09-27 (Godot MCP): Defeat panel with stats; Return to the Sanctuary with the opt-out restored; Retry on the real MissionSelect-armed path relaunching into SCOUT; Victory panel. Still unverified: gamepad focus, the pause interaction after the final fix wave, reduced motion, translation reimport on a fresh machine, review items I3/I4.

@@ -29,6 +29,7 @@ func before_test() -> void:
 
 
 func after_test() -> void:
+	get_tree().paused = false
 	# Wait for any in-flight transition triggered by this test to actually
 	# resolve before tearing down — a fixed frame-count guess here would risk
 	# a leftover coroutine emitting scene_transition_completed into the NEXT
@@ -122,3 +123,9 @@ func test_wave_manager_source_does_not_reference_scene_manager() -> void:
 	assert_bool(text.contains("GSceneManager")).is_false()
 	assert_bool(text.contains("SceneManager.")).is_false()
 	assert_bool(text.contains("SceneManager.new()")).is_false()
+
+
+func test_transition_forces_tree_unpaused() -> void:
+	get_tree().paused = true
+	GSceneManager.transition_to_sanctuary()
+	assert_bool(get_tree().paused).is_false()

@@ -20,6 +20,8 @@ var _defeat_delay: float = DEFEAT_SHOW_DELAY_SECONDS
 var _victory_delay: float = VICTORY_SHOW_DELAY_SECONDS
 var _retry_action: Callable
 var _sanctuary_action: Callable
+## Whether Retry can actually relaunch (default: MissionSelect holds an armed retry).
+var _retry_available: Callable
 
 var _stats: MissionOutcomeStats = MissionOutcomeStats.new()
 var _mode: Mode = Mode.NONE
@@ -76,6 +78,8 @@ func _ready() -> void:
 		_retry_action = GMissionSelect.retry_current_mission
 	if not _sanctuary_action.is_valid():
 		_sanctuary_action = GSceneManager.transition_to_sanctuary
+	if not _retry_available.is_valid():
+		_retry_available = _default_retry_available
 	_retry_button.pressed.connect(_on_retry_pressed)
 	_sanctuary_button.pressed.connect(_on_sanctuary_pressed)
 	_retry_button.focus_neighbor_right = _retry_button.get_path_to(_sanctuary_button)
@@ -118,7 +122,14 @@ func _process(delta: float) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if is_showing() and event.is_action_pressed(&"ui_cancel"):
+	if not is_showing():
+		return
+	# Escape is bound to both ui_cancel and pause: a finished mission has nothing to
+	# pause, so consume pause; ui_cancel is Return only in VICTORY, where it is the sole
+	# non-destructive action (in DEFEAT it stays unconsumed).
+	if event.is_action_pressed(&"pause"):
+		get_viewport().set_input_as_handled()
+	elif _mode == Mode.VICTORY and event.is_action_pressed(&"ui_cancel"):
 		get_viewport().set_input_as_handled()
 		_on_sanctuary_pressed()
 
@@ -184,6 +195,7 @@ func _on_wave_started(wave_number: int, total_waves: int, difficulty: float) -> 
 func _on_retry_pressed() -> void:
 	if _retry_requested:
 		return
+	_leave_paused_state()
 	# The panel stays up: a successful retry always delivers mission_launched (or a
 	# non-terminal phase change), which hides it, resets stats and _live, and clears
 	# the terminal flag. If the retry seam does nothing, Return still works.
@@ -193,8 +205,20 @@ func _on_retry_pressed() -> void:
 
 
 func _on_sanctuary_pressed() -> void:
+	_leave_paused_state()
 	if _sanctuary_action.is_valid():
 		_sanctuary_action.call()
+
+
+## Never hand control to a seam while the tree is paused (mirrors PauseMenu's unpause).
+func _leave_paused_state() -> void:
+	if get_tree().paused:
+		get_tree().paused = false
+		GEventBus.game_unpaused.emit()
+
+
+func _default_retry_available() -> bool:
+	return GMissionSelect.state == GMissionSelect.State.DORMANT_RETRY_ARMED
 
 
 func _reset_attempt_state() -> void:
@@ -235,7 +259,7 @@ func _show(mode: Mode) -> void:
 	_breaches_value.text = str(_stats.breaches)
 	_time_value.text = MissionOutcomeStats.format_time(_stats.elapsed_seconds)
 	var buttons: Array[StringName] = buttons_for(mode)
-	_retry_button.visible = buttons.has(&"retry")
+	_retry_button.visible = buttons.has(&"retry") and (not _retry_available.is_valid() or _retry_available.call())
 	_sanctuary_button.visible = buttons.has(&"sanctuary")
 	visible = true
 	if _retry_button.visible:
