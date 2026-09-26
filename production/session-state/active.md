@@ -1,3 +1,19 @@
+## Session Extract — Mission Outcome Screen (victory/defeat), implemented, NOT live-verified, 2026-09-27 (part 29)
+
+- Spec: `docs/superpowers/specs/2026-09-27-mission-outcome-screen-design.md`; plan: `docs/superpowers/plans/2026-09-27-mission-outcome-screen.md` (4 tasks, subagent-driven). Replaces the unusable interim HUD Retry (the 1.5 s death hold left the mission before it could be pressed) and gives MISSION_COMPLETE an acknowledgement screen.
+- **What shipped**: T1 `MissionOutcomeStats` run counters (cecd334); T2 `MissionOutcomeScreen` (.gd/.tscn, `OUTCOME_*` strings in `strings.csv`) (ac89c52) plus fix round (pause guard on the elapsed tick, ui_cancel test, orphan cleanup) (23250ab); T3 `SceneManager.set_terminal_auto_exit(enabled)` opt-out, HUD interim Retry suppression when the screen exists, and wiring into `mission_scene.gd` and `the_gap.gd` (832f922; uid follow-up 3092890); T4 docs (this commit). GDDs updated: `mission-hud.md`, `mission-select.md`; ADR-0002 amendment.
+- **Tests run (targeted suites only, per task)**: `mission_outcome_stats_test` 8/8, `mission_outcome_screen_test` 14/14, `scene_manager_terminal_exit_test` 7, `mission_outcome_wiring_test` 2, plus the related SceneManager, HUD Retry, hero-feedback wiring and mission-scene suites, all passing (see task reports in `.superpowers/sdd/2026-09-27-mission-outcome-screen/`). `exit-mission-select` shows 15 pre-existing orphans. No full-suite run.
+- **Rulings** (taken autonomously with the recommended option because the user was away): the interim HUD Retry is suppressed when the screen exists; `SceneManager` gets an opt-out (default true) rather than a new phase; the 1.5 s death hold still governs scenes without a screen; screen hosted under the scene root; no FocusRingFactory (consistent with Pause Menu).
+- **NOT live-verified**: the tasks ran headless gdUnit4 only, no Godot MCP verification. Live checklist:
+  - Defeat panel appears about 1.5 s after the death sequence, with plausible stats.
+  - Retry restarts the mission, hides the panel, and Hero feedback resets.
+  - Return goes to the Sanctuary.
+  - Victory panel appears after the final wave.
+  - HUD interim Retry button is absent.
+  - Gamepad/keyboard focus works and ui_cancel behaves.
+  - Pausing does not advance the elapsed time.
+  - `strings.csv` `OUTCOME_*` keys translate (run editor-mode reimport first).
+
 ## Session Extract — Wind-up Presentation (telegraph + resolve + Hero damage feedback + low-HP vignette + death sequence), implemented, NOT fully live-verified, 2026-09-27 (part 28)
 
 - **Live verification update (2026-09-27, the_gap via Godot MCP)**: telegraph, dashed 5x5 outline, progress bar, hit/whiff resolve, low-HP vignette (renders over the world, under the HUD; FEEDBACK_LAYER=0 ordering confirmed), Hero low-HP tint, death ring + vignette freeze + DEFEAT/Retry, and the 1.5 s hold -> SanctuaryScene all verified. A live check also caught a real bug headless tests missed: the screen shader used the invalid hint filtering_linear (must be filter_linear) and whited out the screen; fixed in 2626f69. STILL unverified live: audio cues, damage flash/particles/flinch/shake on a real hit, Retry-during-hold, death desaturation by eye, multi-attacker flash gate, boss overlay hint (3D path).

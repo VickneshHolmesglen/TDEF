@@ -1,7 +1,7 @@
 # Mission Outcome Screen (Victory / Defeat) — Design
 
 - **Date:** 2026-09-27
-- **Status:** Draft; decisions taken autonomously with the recommended option at each choice (the user was away and asked for "always the recommended option"). Flag anything you would change.
+- **Status:** Implemented 2026-09-27 (commits cecd334, ac89c52, 23250ab, 832f922, 3092890); live verification pending. Decisions taken autonomously with the recommended option at each choice (the user was away and asked for "always the recommended option"). Flag anything you would change.
 - **Follows:** `2026-09-26-windup-presentation-design.md` §1 (Retry/Outcome screen deferred as a separate later feature)
 - **Why now:** the wind-up presentation's 1.5 s death hold makes `SceneManager` leave the mission for the Sanctuary roughly 1.5 s after the Hero dies, so the Mission HUD's interim DEFEAT Retry button (mission-hud.md Rule 25) is effectively unusable, and MISSION_COMPLETE leaves instantly with no acknowledgement. `mission-hud.md` already says an "outcome screen takes over" in both terminal states; that screen was never built.
 
@@ -79,3 +79,10 @@ Live (only when asked): kill the Hero → death sequence → after ~1.5 s the De
 | `src/presentation/mission_hud/mission_hud.gd` | suppress interim Retry when the screen is present |
 | `src/scenes/mission_scene.gd`, `src/gameplay/missions/the_gap/the_gap.gd` | mount + opt out |
 | docs: `mission-hud.md`, `mission-select.md` note, ADR-0002 amendment, `active.md` | update |
+
+## Deviations (implementation, 2026-09-27)
+
+- The screen is added under the scene root (next to the `HeroFeedback` block), not under `_gameplay_root`, because that root is hidden with processing off until launch.
+- Task 2 review fix: elapsed time does not tick while the tree is paused.
+- Implemented via a UID follow-up commit (3092890) for the new tests; no behavioral change.
+- Nothing has been live-verified yet.

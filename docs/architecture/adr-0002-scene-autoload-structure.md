@@ -274,3 +274,13 @@ Greenfield project. Set Project Settings → Autoloads in this exact order befor
 - `design/gdd/game-concept.md` — States and Transitions table
 
 **Known staleness — RESOLVED 2026-08-12**: this ADR's own Autoload position table was previously last fully revised 2026-07-17 (through Autoload #13, HeroSkillBuild) and had never been updated for `AudioSystem` (#14, no dedicated ADR), `Encyclopedia` (#15, no dedicated ADR), or `Tarot` (#16, ADR-0035) — all three backfilled into this ADR's boot-order table, boundary table, architecture diagram, and every stale count reference (13→16) in this pass.
+
+
+## Amendment 2026-09-27 — SceneManager terminal auto-exit opt-out
+
+The mission outcome screen (`MissionOutcomeScreen`, spec `docs/superpowers/specs/2026-09-27-mission-outcome-screen-design.md`) needs the player to choose what happens after a mission ends, but SceneManager left the mission by itself (`MISSION_COMPLETE` immediately; `hero_died` after the 1.5 s death hold).
+
+- New API: `SceneManager.set_terminal_auto_exit(enabled: bool)` and `is_terminal_auto_exit_enabled()`. Default is `true`, so existing behavior is unchanged.
+- While `false`, `hero_died` handling (including arming the 1.5 s death hold) and the `MISSION_COMPLETE` auto-transition to the Sanctuary are skipped. The hold machinery and its cancel-on-phase-change logic are untouched and still govern any scene that does not host an outcome screen.
+- Scenes that host an outcome screen (`mission_scene.gd`, `the_gap.gd`) call `set_terminal_auto_exit(false)` when mounting it and restore `true` in `_exit_tree`, so the Sanctuary and other scenes get the default again.
+- Tests that boot a mission scene or emit the real terminal events must opt out (or call handlers directly) and restore state in `after_test`.
