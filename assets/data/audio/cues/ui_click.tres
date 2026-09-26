@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="AudioCueEntry" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://src/core/audio/audio_cue_entry.gd" id="1"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/ui_click_v1.wav" id="2"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/ui_click_v2.wav" id="3"]
+
+[sub_resource type="AudioStreamRandomizer" id="Randomizer_1"]
+random_pitch = 1.06
+random_volume_offset_db = 1.5
+streams_count = 2
+stream_0/stream = ExtResource("2")
+stream_0/weight = 1.0
+stream_1/stream = ExtResource("3")
+stream_1/weight = 1.0
+
+[resource]
+script = ExtResource("1")
+event_name = &"ui_click"
+stream = SubResource("Randomizer_1")
+bus = &"UI"
+polyphony_group = &"ui_confirm_cancel"
+volume_db_offset = -8
+spatial = false

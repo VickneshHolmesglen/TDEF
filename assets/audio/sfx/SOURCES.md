@@ -30,3 +30,7 @@ CC0 by default; a CC-BY source also needs its attribution in `LICENSE.txt`.
 | measured_urgent (music stem) | synthesized | tools/audio/synth_stems.sh | n/a (generated) | - | 16 s loop: tense minor pad plus 1 Hz gated tone; PLACEHOLDER |
 | ambient_base_bed | synthesized | tools/audio/synth_stems.sh | n/a (generated) | - | 11 s loop (1 s crossfade seam): low pink-noise room tone plus faint band; PLACEHOLDER |
 | ambient_combat_layer | synthesized | tools/audio/synth_stems.sh | n/a (generated) | - | 11 s loop (1 s crossfade seam): 3 Hz gated mid noise over a rumble; PLACEHOLDER |
+| ui_click | Kenney Interface Sounds | select_001.ogg + tick_004.ogg (two variants, AudioStreamRandomizer) | CC0 | https://kenney.nl/assets/interface-sounds | converted/trimmed/normalized (mono); 31 ms / 55 ms; PLACEHOLDER pending human listening pass |
+| ui_confirm | Kenney Interface Sounds | pluck_001.ogg | CC0 | https://kenney.nl/assets/interface-sounds | converted/trimmed/normalized (mono); 72 ms, bright (spectral centroid ~4.8 kHz); PLACEHOLDER pending human listening pass |
+| ui_cancel | Kenney Interface Sounds | back_002.ogg | CC0 | https://kenney.nl/assets/interface-sounds | converted/trimmed/normalized (mono); 62 ms, soft/low (centroid ~1.3 kHz); PLACEHOLDER pending human listening pass |
+| ui_denied | Kenney Interface Sounds | error_004.ogg | CC0 | https://kenney.nl/assets/interface-sounds | converted/trimmed/normalized (mono); 103 ms, lowest-centroid short error_* (~2.4 kHz); PLACEHOLDER pending human listening pass |

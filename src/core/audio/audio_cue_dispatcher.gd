@@ -57,6 +57,11 @@ const PLAYER_POOL_SIZE: int = 12
 const WINDUP_WARNING_MIN_GAP_MSEC: int = 250
 var _last_windup_warning_msec: int = -WINDUP_WARNING_MIN_GAP_MSEC
 
+## `tower_placement_blocked` can fire every frame while the cursor hovers a blocked cell; event-driven
+## `ui_denied` is limited to one per window (UI audio cues spec §3). Button-press denials are not limited.
+const DENIED_EVENT_MIN_GAP_MSEC: int = 300
+var _last_denied_event_msec: int = -DENIED_EVENT_MIN_GAP_MSEC
+
 var cue_map: AudioCueMap
 var _lookup: Dictionary[StringName, AudioCueEntry] = {}
 
@@ -97,6 +102,19 @@ func _ready() -> void:
 	_rebuild_lookup()
 	_connect_all_events()
 	_build_player_pool()
+	_create_ui_binder()
+
+
+## Auto-hooks every button in the tree for click/confirm/cancel/denial cues. `PROCESS_MODE_ALWAYS` so
+## the binder keeps working for always-processing Pause Menu buttons while the tree is paused.
+func _create_ui_binder() -> void:
+	if get_node_or_null("UiAudioBinder") != null:
+		return
+	var binder := UiAudioBinder.new()
+	binder.name = "UiAudioBinder"
+	binder.process_mode = Node.PROCESS_MODE_ALWAYS
+	add_child(binder)
+	binder.setup(dispatch_cue, get_tree())
 
 
 func _build_player_pool() -> void:
@@ -147,6 +165,14 @@ func _dispatch_windup_warning() -> void:
 	dispatch_cue(&"monster_windup_warning")
 
 
+func _dispatch_denied_event() -> void:
+	var now: int = Time.get_ticks_msec()
+	if now - _last_denied_event_msec < DENIED_EVENT_MIN_GAP_MSEC:
+		return
+	_last_denied_event_msec = now
+	dispatch_cue(UiAudioBinder.CUE_DENIED)
+
+
 func _connect_all_events() -> void:
 	if not _connected_signals.is_empty():
 		return
@@ -163,6 +189,8 @@ func _connect_all_events() -> void:
 	_wire(GEventBus.monster_hero_attack_resolved, func(_a: int, hit: bool) -> void:
 			if not hit:
 				dispatch_cue(&"monster_attack_whiff"))
+	_wire(GEventBus.tower_placement_blocked, func(_cells: Array, _cell: Vector2i) -> void: _dispatch_denied_event())
+	_wire(GEventBus.item_pickup_rejected, func(_a: String, _b: String, _c: int, _d: String) -> void: _dispatch_denied_event())
 	_wire(GEventBus.hero_died, func() -> void: dispatch_cue(&"hero_died"))
 	_wire(GEventBus.constellation_activated, func(_a: String, _b: Vector2i, _c: String, _d: float) -> void: dispatch_cue(&"constellation_activated"))
 	_wire(GEventBus.component_crafted, func(_a: String, _b: String, _c: int) -> void: dispatch_cue(&"component_crafted"))
@@ -268,6 +296,10 @@ func _play_stream(entry: AudioCueEntry, effective_volume: float) -> void:
 			break
 	_next_player_index = (_next_player_index + 1) % _players.size()
 
+	# A pooled AudioStreamPlayer pauses with its node while the tree is paused, so UI-bus cues (Pause Menu
+	# clicks, denials) need an always-processing player; gameplay cues still freeze with the tree (Core
+	# Rule 7). Set per play because the pool is shared.
+	player.process_mode = Node.PROCESS_MODE_ALWAYS if entry.bus == &"UI" else Node.PROCESS_MODE_INHERIT
 	player.stream = entry.stream
 	player.bus = entry.bus
 	player.volume_db = linear_to_db(effective_volume)

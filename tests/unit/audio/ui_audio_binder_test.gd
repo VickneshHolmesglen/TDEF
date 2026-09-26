@@ -8,12 +8,18 @@ var _binder: UiAudioBinder
 
 func before_test() -> void:
 	played.clear()
+	# The live autoload dispatcher owns a real binder that would hook test buttons first (hook flag is
+	# per-button); detach it for the duration of each test so this binder is the only one under test.
+	var live: Node = GAudioSystem.cue_dispatcher.get_node_or_null("UiAudioBinder")
+	if live != null:
+		live.free()
 
 
 func after_test() -> void:
 	if _binder != null and is_instance_valid(_binder):
 		_binder.free()
 	_binder = null
+	GAudioSystem.cue_dispatcher._create_ui_binder()
 
 
 func _record(cue: StringName) -> void:
