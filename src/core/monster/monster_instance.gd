@@ -50,6 +50,20 @@ const BOSS_BADGE_SIZE: float = 16.0
 const ELITE_BADGE_COLOR: Color = Color(0.784, 0.847, 0.909)  ## Silver / cold-white — GDD's own #C8D8E8 provisional value
 const BOSS_BADGE_COLOR: Color = Color(0.9, 0.75, 0.2)  ## gold crown
 
+## Wind-up telegraph (wind-up presentation spec §4.1). Mirrors MonsterManager.CELL_SIZE (a direct
+## reference would make the two scripts depend on each other at parse time).
+const CELL_SIZE: float = 64.0
+const TELEGRAPH_COLOR: Color = Color(0.878, 0.267, 0.18)
+const TELEGRAPH_PULSE_HZ: float = 2.0  ## at most 2 flashes per second (flash-safety limit is 3)
+const TELEGRAPH_TINT_STRENGTH: float = 0.55
+const TELEGRAPH_OUTLINE_WIDTH: float = 3.0
+const TELEGRAPH_DASH: float = 10.0
+const TELEGRAPH_BAR_SIZE: Vector2 = Vector2(40.0, 6.0)
+const TELEGRAPH_BAR_GAP: float = 6.0
+const RESOLVE_HIT_DURATION: float = 0.15
+const RESOLVE_WHIFF_DURATION: float = 0.3
+const RESOLVE_WHIFF_COLOR: Color = Color(0.72, 0.72, 0.72)
+
 ## design/gdd/monster.md: "Plus: floating display_name nameplate above
 ## sprite, Y-offset above bounding box top, using HUD font." No dedicated
 ## HUD font/theme resource exists yet anywhere in this project (checked —
@@ -80,6 +94,14 @@ const HIT_FLASH_SHADER: Shader = preload("res://src/shaders/hit_flash.gdshader")
 const HIT_FLASH_DURATION: float = 0.18
 var _hit_flash_material: ShaderMaterial = null
 var _hit_flash_tween: Tween = null
+var _telegraph_active: bool = false
+var _telegraph_progress: float = 0.0
+var _telegraph_range_cells: int = 0
+var _telegraph_center_offset: Vector2 = Vector2.ZERO
+var _telegraph_time: float = 0.0
+var _resolve_alpha: float = 0.0
+var _resolve_hit: bool = false
+var _resolve_tween: Tween = null
 
 @onready var _sprite: Sprite2D = $Sprite2D
 @onready var _nameplate: Label = $Nameplate
@@ -145,12 +167,132 @@ func configure(monster_id: StringName, tier: int = 0, display_name: String = "")
 	queue_redraw()
 
 
+func _exit_tree() -> void:
+	_kill_resolve_tween()
+
+
+## 0 at the start of the wind-up, 1 when it fires. A zero-length wind-up reads as complete.
+static func windup_progress(remaining: float, total: float) -> float:
+	if total <= 0.0:
+		return 1.0
+	return clampf(1.0 - remaining / total, 0.0, 1.0)
+
+
+## Half the side of the reach square: reach is Chebyshev distance, so it is a (2r+1)-cell square.
+static func reach_half_extent(range_cells: int) -> float:
+	return (float(range_cells) + 0.5) * CELL_SIZE
+
+
+## 0..1 pulse at TELEGRAPH_PULSE_HZ; a steady 0.5 under reduced motion.
+static func pulse_amount(elapsed: float) -> float:
+	if ReduceMotion.enabled():
+		return 0.5
+	return 0.5 + 0.5 * sin(TAU * TELEGRAPH_PULSE_HZ * elapsed)
+
+
+## Driven every frame by MonsterManager._pass3c_visual_sync while a Hero wind-up is in flight.
+## `center_offset` is the vector from this node to the CENTER of the monster's grid cell (the
+## Hero-hit range check is made from that cell), so the outline matches what the simulation judges.
+func set_windup_telegraph(progress: float, range_cells: int, center_offset: Vector2, delta: float) -> void:
+	if not _telegraph_active:
+		_telegraph_time = 0.0
+	_kill_resolve_tween()
+	_resolve_alpha = 0.0
+	_telegraph_active = true
+	_telegraph_progress = progress
+	_telegraph_range_cells = range_cells
+	_telegraph_center_offset = center_offset
+	_telegraph_time += delta
+	_sprite.modulate = Color.WHITE.lerp(TELEGRAPH_COLOR, pulse_amount(_telegraph_time) * TELEGRAPH_TINT_STRENGTH)
+	queue_redraw()
+
+
+## Ends the live telegraph. Deliberately leaves a running resolve fade alone: the wind-up state
+## clears in the same frame it resolves, and the hit/whiff confirmation must outlive it.
+func clear_windup_telegraph() -> void:
+	if not _telegraph_active:
+		return
+	_telegraph_active = false
+	_sprite.modulate = Color.WHITE
+	queue_redraw()
+
+
+## Hit: the outline flashes solid red then clears. Whiff: it fades to neutral grey (the player's
+## "I dodged it" confirmation). Reuses the geometry of the last telegraph.
+func play_windup_resolved(hit: bool) -> void:
+	_kill_resolve_tween()
+	_resolve_hit = hit
+	_resolve_alpha = 1.0
+	var duration: float = RESOLVE_HIT_DURATION if hit else RESOLVE_WHIFF_DURATION
+	_resolve_tween = create_tween()
+	_resolve_tween.tween_method(_set_resolve_alpha, 1.0, 0.0, duration)
+	queue_redraw()
+
+
+func is_windup_telegraph_active() -> bool:
+	return _telegraph_active
+
+
+func get_windup_progress() -> float:
+	return _telegraph_progress
+
+
+func get_resolve_alpha() -> float:
+	return _resolve_alpha
+
+
+func _set_resolve_alpha(value: float) -> void:
+	_resolve_alpha = value
+	queue_redraw()
+
+
+func _kill_resolve_tween() -> void:
+	if _resolve_tween != null and _resolve_tween.is_valid():
+		_resolve_tween.kill()
+	_resolve_tween = null
+
+
 func _draw() -> void:
 	match _tier:
 		1:
 			_draw_elite_badge()
 		2:
 			_draw_boss_badge()
+	if _telegraph_active:
+		_draw_reach_outline(TELEGRAPH_COLOR, 1.0, true)
+		_draw_progress_bar()
+	elif _resolve_alpha > 0.0:
+		if _resolve_hit:
+			_draw_reach_outline(TELEGRAPH_COLOR, _resolve_alpha, false)
+		else:
+			_draw_reach_outline(RESOLVE_WHIFF_COLOR, _resolve_alpha, true)
+
+
+## Outline of the reach square. Dashed while a wind-up is live (the shape is the non-color cue);
+## solid for the hit flash.
+func _draw_reach_outline(color: Color, alpha: float, dashed: bool) -> void:
+	var half: float = reach_half_extent(_telegraph_range_cells)
+	var c: Vector2 = _telegraph_center_offset
+	var corners := PackedVector2Array([
+		c + Vector2(-half, -half), c + Vector2(half, -half),
+		c + Vector2(half, half), c + Vector2(-half, half),
+	])
+	var draw_color := Color(color.r, color.g, color.b, alpha)
+	for i in range(4):
+		var from: Vector2 = corners[i]
+		var to: Vector2 = corners[(i + 1) % 4]
+		if dashed:
+			draw_dashed_line(from, to, draw_color, TELEGRAPH_OUTLINE_WIDTH, TELEGRAPH_DASH)
+		else:
+			draw_line(from, to, draw_color, TELEGRAPH_OUTLINE_WIDTH)
+
+
+## Countdown bar under the sprite (the second non-color cue): dark track, red fill, red border.
+func _draw_progress_bar() -> void:
+	var top_left := Vector2(-TELEGRAPH_BAR_SIZE.x * 0.5, _sprite_half_size.y + TELEGRAPH_BAR_GAP)
+	draw_rect(Rect2(top_left, TELEGRAPH_BAR_SIZE), Color(0.14, 0.12, 0.09), true)
+	draw_rect(Rect2(top_left, Vector2(TELEGRAPH_BAR_SIZE.x * _telegraph_progress, TELEGRAPH_BAR_SIZE.y)), TELEGRAPH_COLOR, true)
+	draw_rect(Rect2(top_left, TELEGRAPH_BAR_SIZE), TELEGRAPH_COLOR, false, 1.0)
 
 
 ## A single downward chevron — GDD's own first-listed option.

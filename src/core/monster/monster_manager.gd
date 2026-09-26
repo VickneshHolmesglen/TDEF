@@ -558,6 +558,8 @@ func _hero_windup_tick(entity: MonsterEntity, delta: float) -> void:
 	entity.boss_locked_target_id = -1
 	entity.boss_attack_cooldown_remaining = entity.resource.base_attack_interval
 	var hit: bool = _hero_in_range(entity)
+	if entity.monster_instance != null and is_instance_valid(entity.monster_instance):
+		entity.monster_instance.play_windup_resolved(hit)
 	GEventBus.monster_hero_attack_resolved.emit.call_deferred(entity.entity_id, hit)
 	if not hit:
 		return
@@ -742,6 +744,7 @@ func _pass3c_visual_sync(delta: float) -> void:
 		# rationale (live-caught 2026-08-26).
 		if not is_instance_valid(entity):
 			continue
+		_sync_windup_telegraph(entity, delta)
 		if entity.swarm_handle != null:
 			entity.hit_flash_remaining_seconds = maxf(0.0, entity.hit_flash_remaining_seconds - delta)
 			if _swarm_renderer != null:
@@ -782,6 +785,24 @@ func _pass3c_visual_sync(delta: float) -> void:
 		# legacy ADR-0037 monster_instance fallback that used to live here
 		# was removed along with _build_visual_companion()/
 		# sync_visual_companion_position() themselves (see monster_instance.gd).
+
+
+## Wind-up presentation spec §4.1: feeds the monster's 2D visual from the wind-up state each frame
+## (pull model: nothing to clean up if the monster dies or is freed mid-wind-up). The reach outline
+## is centered on the monster's grid CELL, the cell the Hero-hit range check is measured from.
+func _sync_windup_telegraph(entity: MonsterEntity, delta: float) -> void:
+	var inst: MonsterInstance = entity.monster_instance
+	if inst == null or not is_instance_valid(inst):
+		return
+	if entity.hero_windup_remaining <= 0.0:
+		inst.clear_windup_telegraph()
+		return
+	var cell: Vector2i = _grid.world_to_cell(entity.global_position)
+	var center_offset: Vector2 = _grid.cell_to_world(cell) - entity.global_position
+	inst.set_windup_telegraph(
+			MonsterInstance.windup_progress(entity.hero_windup_remaining, entity.resource.hero_attack_windup_seconds),
+			entity.resource.boss_attack_range_cells, center_offset, delta)
+
 
 # ---------------------------------------------------------------------------
 # Pass 4 — Death & Absorbed flush

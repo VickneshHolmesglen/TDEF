@@ -391,3 +391,15 @@ func test_get_monster_world_position_returns_the_entity_position_or_inf() -> voi
 	_mm._entity_lookup[elite.entity_id] = elite
 	assert_vector(_mm.get_monster_world_position(elite.entity_id)).is_equal(Vector2(128.0, 64.0))
 	assert_vector(_mm.get_monster_world_position(99999)).is_equal(Vector2.INF)
+
+
+func test_visual_sync_drives_the_telegraph_from_the_windup_state() -> void:
+	var elite := _elite()
+	_mm._pass2b_hero_attacks(0.4)  # starts the 1.0 s wind-up, ticks 0.4
+	_mm._pass3c_visual_sync(0.016)
+	assert_bool(elite.monster_instance.is_windup_telegraph_active()).is_true()
+	assert_float(elite.monster_instance.get_windup_progress()).is_equal_approx(0.4, 0.001)
+	_mm._pass2b_hero_attacks(0.7)  # completes
+	_mm._pass3c_visual_sync(0.016)
+	assert_bool(elite.monster_instance.is_windup_telegraph_active()).is_false()
+	assert_float(elite.monster_instance.get_resolve_alpha()).is_greater(0.0)
