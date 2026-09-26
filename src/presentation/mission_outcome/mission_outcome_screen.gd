@@ -23,6 +23,8 @@ var _sanctuary_action: Callable
 
 var _stats: MissionOutcomeStats = MissionOutcomeStats.new()
 var _mode: Mode = Mode.NONE
+## True once a mission is running. The screen is a child of the mission scene and is freed
+## with it, so it never ticks through non-mission scenes.
 var _live: bool = false
 var _terminal_seen: bool = false
 var _show_timer: SceneTreeTimer = null
@@ -107,6 +109,8 @@ func _exit_tree() -> void:
 
 
 func _process(delta: float) -> void:
+	if get_tree().paused:
+		return
 	if _live and not _terminal_seen:
 		_stats.tick(delta)
 
@@ -178,6 +182,7 @@ func _on_wave_started(wave_number: int, total_waves: int, difficulty: float) -> 
 func _on_retry_pressed() -> void:
 	_hide()
 	_terminal_seen = false
+	# Stats and _live restart when mission_launched arrives from the retry seam.
 	if _retry_action.is_valid():
 		_retry_action.call()
 

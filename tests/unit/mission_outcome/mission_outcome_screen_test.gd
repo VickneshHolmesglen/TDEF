@@ -23,6 +23,7 @@ func before_test() -> void:
 
 
 func after_test() -> void:
+	get_tree().paused = false
 	if is_instance_valid(_screen):
 		if _screen.get_parent() != null:
 			_screen.get_parent().remove_child(_screen)
@@ -138,7 +139,31 @@ func test_stats_feed_through_real_signals() -> void:
 
 func test_exit_tree_disconnects_bus_signals() -> void:
 	remove_child(_screen)
-	assert_bool(GEventBus.mission_phase_changed.is_connected(_screen._on_phase_changed)).is_false()
-	assert_bool(GEventBus.hero_died.is_connected(_screen._on_hero_died)).is_false()
-	assert_bool(GEventBus.mission_launched.is_connected(_screen._on_mission_launched)).is_false()
-	assert_bool(GEventBus.wave_started.is_connected(_screen._on_wave_started)).is_false()
+	var screen: MissionOutcomeScreen = _screen
+	_screen = null
+	assert_bool(GEventBus.mission_phase_changed.is_connected(screen._on_phase_changed)).is_false()
+	assert_bool(GEventBus.hero_died.is_connected(screen._on_hero_died)).is_false()
+	assert_bool(GEventBus.mission_launched.is_connected(screen._on_mission_launched)).is_false()
+	assert_bool(GEventBus.wave_started.is_connected(screen._on_wave_started)).is_false()
+	screen.free()
+
+
+func test_paused_tree_does_not_tick_elapsed_time() -> void:
+	_screen._on_mission_launched("m1", PackedStringArray(), 1)
+	_screen._process(1.0)
+	assert_float(_screen.get_stats().elapsed_seconds).is_equal(1.0)
+	get_tree().paused = true
+	_screen._process(1.0)
+	get_tree().paused = false
+	assert_float(_screen.get_stats().elapsed_seconds).is_equal(1.0)
+
+
+func test_ui_cancel_returns_to_sanctuary_only_while_showing() -> void:
+	var cancel := InputEventAction.new()
+	cancel.action = &"ui_cancel"
+	cancel.pressed = true
+	_screen._unhandled_input(cancel)
+	assert_int(_sanctuary_calls).is_equal(0)
+	_screen._on_hero_died()
+	_screen._unhandled_input(cancel)
+	assert_int(_sanctuary_calls).is_equal(1)
