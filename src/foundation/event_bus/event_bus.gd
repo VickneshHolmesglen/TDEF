@@ -484,6 +484,12 @@ signal hero_incoming_damage(payload: HeroIncomingDamageEvent)
 ## No subscriber yet: the wind-up presentation follow-up spec subscribes to this.
 signal monster_hero_attack_winding_up(entity_id: int, windup_seconds: float)
 
+## An ELITE/BOSS Hero wind-up completed (wind-up presentation spec §4.2). `hit` is true when
+## `hero_incoming_damage` was emitted, false when the Hero had left range (a whiff). Emitted
+## DEFERRED (ADR-0001 Rule 2, physics caller). Announcement only: no simulation code branches on it.
+## Subscribers: Audio (whiff cue).
+signal monster_hero_attack_resolved(entity_id: int, hit: bool)
+
 # =============================================================================
 # Constellation System
 # =============================================================================

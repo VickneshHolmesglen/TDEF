@@ -61,6 +61,7 @@ class _LocalBus extends Node:
 	signal boss_hp_changed(entity_id: int, current_hp: float, max_hp: float)
 	signal boss_tower_attack_attempted(boss_entity_id: int, target_tower_id: int, base_damage: float, wave_id: int)
 	signal monster_hero_attack_winding_up(entity_id: int, windup_seconds: float)
+	signal monster_hero_attack_resolved(entity_id: int, hit: bool)
 	signal monster_cell_entered(entity_id: int, grid_cell: Vector2i, path_step_index: int)
 	# Pathfinding System
 	signal path_invalidated(affected_cells: Array)
@@ -158,10 +159,11 @@ func test_bus_has_all_70_signals_declared() -> void:
 	# Subtract Node's built-in signals (robust to Godot version changes).
 	var node_signal_count: int = Node.new().get_signal_list().size()
 	var game_signal_count: int = signal_list.size() - node_signal_count
-	# Assert: live catalogue has 79 signals (70 original + 6 added during sprint 1
+	# Assert: live catalogue has 80 signals (70 original + 6 added during sprint 1
 	# UX/system design + 2 added by S4-01: scene_transition_started/completed +
-	# 1 added by hero-damage: monster_hero_attack_winding_up).
-	assert_int(game_signal_count).is_equal(79)
+	# 1 added by hero-damage: monster_hero_attack_winding_up
+	# + 1 added by wind-up presentation: monster_hero_attack_resolved).
+	assert_int(game_signal_count).is_equal(80)
 
 # ---------------------------------------------------------------------------
 # Zero-parameter signal (player_ready, hero_died)

@@ -55,6 +55,7 @@ func before_test() -> void:
 	_spy = EventBusSpy.new()
 	_spy.watch(GEventBus.hero_incoming_damage)
 	_spy.watch(GEventBus.monster_hero_attack_winding_up)
+	_spy.watch(GEventBus.monster_hero_attack_resolved)
 
 
 func after_test() -> void:
@@ -348,3 +349,45 @@ func test_a_tower_prepare_blocks_a_hero_windup() -> void:
 	boss.boss_scan_frames_remaining = 0
 	_mm._pass2_boss_logic(1.0 / 60.0)
 	assert_float(boss.hero_windup_remaining).is_equal(0.0)
+
+
+# --- resolve signal (wind-up presentation spec §4.2) ------------------------
+
+func test_a_completed_windup_that_lands_emits_resolved_with_hit_true() -> void:
+	var elite := _elite()
+	_mm._pass2b_hero_attacks(0.5)
+	_mm._pass2b_hero_attacks(0.5)
+	await get_tree().process_frame  # emitted deferred
+	assert_int(_spy.count("monster_hero_attack_resolved")).is_equal(1)
+	var args: Array = (_spy.emissions["monster_hero_attack_resolved"] as Array)[0] as Array
+	assert_int(args[0]).is_equal(elite.entity_id)
+	assert_bool(args[1]).is_true()
+
+
+func test_a_whiff_emits_resolved_with_hit_false() -> void:
+	_elite()
+	_mm._pass2b_hero_attacks(0.5)
+	_mm._hero_cell = HERO_FAR
+	_mm._pass2b_hero_attacks(0.5)
+	await get_tree().process_frame
+	assert_int(_spy.count("monster_hero_attack_resolved")).is_equal(1)
+	assert_bool((_spy.emissions["monster_hero_attack_resolved"] as Array)[0][1]).is_false()
+
+
+func test_resolved_is_not_emitted_before_the_windup_completes_or_for_a_monster_killed_mid_windup() -> void:
+	var elite := _elite()
+	_mm._pass2b_hero_attacks(0.5)
+	await get_tree().process_frame
+	assert_int(_spy.count("monster_hero_attack_resolved")).is_equal(0)
+	elite.lifecycle_state = MonsterEntity.State.DEAD
+	_mm._pass2b_hero_attacks(0.6)
+	await get_tree().process_frame
+	assert_int(_spy.count("monster_hero_attack_resolved")).is_equal(0)
+
+
+func test_get_monster_world_position_returns_the_entity_position_or_inf() -> void:
+	var elite := _elite()
+	elite.global_position = Vector2(128.0, 64.0)
+	_mm._entity_lookup[elite.entity_id] = elite
+	assert_vector(_mm.get_monster_world_position(elite.entity_id)).is_equal(Vector2(128.0, 64.0))
+	assert_vector(_mm.get_monster_world_position(99999)).is_equal(Vector2.INF)

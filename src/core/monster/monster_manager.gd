@@ -518,6 +518,15 @@ func _hero_targetable() -> bool:
 	return _hero_alive and _hero_cell.x >= 0 and _hero_cell.y >= 0
 
 
+## World position of a live monster, or Vector2.INF when the id is unknown or freed. Lets
+## presentation (HeroFeedback) resolve a damage source without touching private state.
+func get_monster_world_position(entity_id: int) -> Vector2:
+	var entity: MonsterEntity = _entity_lookup.get(entity_id) as MonsterEntity
+	if entity == null or not is_instance_valid(entity):
+		return Vector2.INF
+	return entity.global_position
+
+
 ## Chebyshev distance in grid cells from the monster's current cell to the Hero's cached cell.
 func _hero_distance(entity: MonsterEntity) -> int:
 	var cell: Vector2i = _grid.world_to_cell(entity.global_position)
@@ -539,7 +548,8 @@ func _begin_hero_windup(entity: MonsterEntity) -> void:
 
 
 ## Counts the wind-up down; at 0 the cooldown restarts, the lock clears, and the hit lands only if
-## the Hero is STILL in range (otherwise a whiff: no damage, no event, cooldown still spent).
+## the Hero is STILL in range (otherwise a whiff: no damage, no event, cooldown still spent), and
+## announces the outcome through the deferred `monster_hero_attack_resolved`.
 func _hero_windup_tick(entity: MonsterEntity, delta: float) -> void:
 	entity.hero_windup_remaining -= delta
 	if entity.hero_windup_remaining > 0.0:
@@ -547,7 +557,9 @@ func _hero_windup_tick(entity: MonsterEntity, delta: float) -> void:
 	entity.hero_windup_remaining = 0.0
 	entity.boss_locked_target_id = -1
 	entity.boss_attack_cooldown_remaining = entity.resource.base_attack_interval
-	if not _hero_in_range(entity):
+	var hit: bool = _hero_in_range(entity)
+	GEventBus.monster_hero_attack_resolved.emit.call_deferred(entity.entity_id, hit)
+	if not hit:
 		return
 	var ev := HeroIncomingDamageEvent.new()
 	ev.amount = entity.resource.base_damage
@@ -761,7 +773,8 @@ func _pass3c_visual_sync(delta: float) -> void:
 				# "attack_prepare... the player's only warning before
 				# boss_tower_attack_attempted emits" — Pass 2 (_pass2_boss_logic())
 				# already owns this countdown; this pass only reads it.
-				_swarm_renderer.update_boss(entity.boss_presenter_handle, world_transform, entity.boss_attack_prepare_remaining > 0, delta)
+				# Hero wind-ups also drive the existing prepare/attack overlay (wind-up presentation spec §4.3).
+				_swarm_renderer.update_boss(entity.boss_presenter_handle, world_transform, entity.boss_attack_prepare_remaining > 0 or entity.hero_windup_remaining > 0.0, delta)
 			continue
 		# ADR-0038, Epic 16 Story 10: neither handle set means presentation
 		# registration failed or was never attempted (no renderer injected,
