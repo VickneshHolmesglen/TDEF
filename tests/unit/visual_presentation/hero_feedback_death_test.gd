@@ -74,3 +74,25 @@ func test_a_new_wave_clears_the_death_state() -> void:
 	assert_bool(_fb.is_dead()).is_false()
 	assert_float(_sprite.modulate.a).is_equal(1.0)
 	assert_float(float(_fb.get_screen_fx_material().get_shader_parameter("desaturate"))).is_equal(0.0)
+
+
+func test_a_later_wave_keeps_low_hp_feedback_on_a_live_hero() -> void:
+	_fb._on_health_changed(15.0, 100.0)
+	_fb.advance(0.3)
+	GEventBus.wave_started.emit(2, 5, 1.0)
+	assert_bool(_fb.is_low_hp_active()).is_true()
+	assert_float(_fb.get_vignette_fade()).is_equal_approx(1.0, 0.001)
+	assert_object(_sprite.modulate).is_equal(HeroFeedback.LOW_HP_SPRITE_TINT)
+
+
+func test_wave_one_clears_low_hp_state_on_a_live_hero() -> void:
+	_fb._on_health_changed(15.0, 100.0)
+	_fb.advance(0.3)
+	GEventBus.wave_started.emit(1, 5, 1.0)
+	assert_bool(_fb.is_low_hp_active()).is_false()
+	assert_float(_fb.get_vignette_fade()).is_equal(0.0)
+
+
+func test_death_with_no_prior_hit_still_white_flashes() -> void:
+	_fb._on_hero_died()
+	assert_float(float(_fb._flash_material.get_shader_parameter("flash_amount"))).is_greater(0.0)

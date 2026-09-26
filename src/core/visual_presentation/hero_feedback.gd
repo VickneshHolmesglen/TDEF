@@ -223,21 +223,28 @@ func _apply_screen_fx(vignette: float, desaturate: float) -> void:
 func _play_flash(frames: int) -> void:
 	if _sprite == null:
 		return
-	if _flash_material == null:
-		_flash_material = ShaderMaterial.new()
-		_flash_material.shader = HIT_FLASH_SHADER
-		if _sprite.material == null:
-			_sprite.material = _flash_material
+	_ensure_flash_material()
 	_kill_tween(_flash_tween)
 	var duration: float = float(frames) * FRAME_SECONDS
 	_flash_material.set_shader_parameter("flash_amount", 1.0)
 	_sprite.modulate = FLASH_TINT
 	_flash_tween = create_tween()
 	_flash_tween.tween_method(func(v: float) -> void: _flash_material.set_shader_parameter("flash_amount", v), 1.0, 0.0, duration)
+	_flash_tween.parallel().tween_property(_sprite, "modulate", _resting_sprite_modulate(), duration)
 	# The resting tint is read when the flash ENDS so a low-HP tint set mid-flash is not lost.
 	_flash_tween.tween_callback(func() -> void:
 			if _sprite != null and is_instance_valid(_sprite) and not _dead:
 				_sprite.modulate = _resting_sprite_modulate())
+
+
+## Lazily creates the hit-flash material shared by the damage flash and the death flash.
+func _ensure_flash_material() -> void:
+	if _flash_material != null or _sprite == null:
+		return
+	_flash_material = ShaderMaterial.new()
+	_flash_material.shader = HIT_FLASH_SHADER
+	if _sprite.material == null:
+		_sprite.material = _flash_material
 
 
 ## The resting tint: the low-HP tint while low, otherwise white.
@@ -324,6 +331,7 @@ func _on_hero_died() -> void:
 	_death_tween.tween_method(func(v: float) -> void: _apply_screen_fx(VIGNETTE_MAX, v), 0.0, DEATH_DESATURATE, 0.5)
 	if _sprite != null:
 		_sprite.modulate = Color(1.0, 1.0, 1.0, 1.0)
+		_ensure_flash_material()
 		if _flash_material != null:
 			_flash_material.set_shader_parameter("flash_amount", 1.0)
 		var flash_time: float = float(DEATH_FLASH_FRAMES) * FRAME_SECONDS
@@ -352,8 +360,11 @@ func _spawn_death_ring() -> void:
 	t.tween_callback(ring.queue_free)
 
 
-## A new wave (Retry reuses the scene and Hero) clears the death state.
-func _on_wave_started(_wave_number: int, _total_waves: int, _wave_difficulty: float) -> void:
+## A Retry after death (the scene and Hero are reused) or a fresh attempt at wave 1 clears all
+## feedback state. Later waves of a live attempt leave it alone so low-HP feedback persists.
+func _on_wave_started(wave_number: int, _total_waves: int, _wave_difficulty: float) -> void:
+	if not _dead and wave_number != 1:
+		return
 	_dead = false
 	_low_hp = false
 	_vignette_fade = 0.0

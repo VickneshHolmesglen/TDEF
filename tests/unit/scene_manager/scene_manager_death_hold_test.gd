@@ -63,6 +63,7 @@ func test_the_defeat_phase_change_does_not_cancel_the_hold() -> void:
 func test_mission_complete_during_the_hold_transitions_once_and_cancels_the_pending_exit() -> void:
 	GEventBus.hero_died.emit()
 	GEventBus.mission_phase_changed.emit("WAVE", "MISSION_COMPLETE", 0.0)
+	assert_bool(GSceneManager.is_death_exit_pending()).is_false()
 	await get_tree().create_timer(0.35).timeout
 	assert_int(_spy.count("scene_transition_started")).is_equal(1)
 
