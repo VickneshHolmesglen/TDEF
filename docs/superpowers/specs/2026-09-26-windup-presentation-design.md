@@ -1,7 +1,7 @@
 # Wind-up Presentation (Hero Damage Legibility) — Design
 
 - **Date:** 2026-09-26
-- **Status:** Draft, pending user review
+- **Status:** Approved; implemented 2026-09-27 (live verification partial, see the session-state extract, part 28)
 - **Follows:** `2026-09-25-hero-damage-design.md` (§10 names this as REQUIRED before any playtest)
 - **Pillar:** 1 — difficulty must be diagnosable. A player who takes damage must be able to see what hit them, and a player who dodges must be able to see that they dodged.
 - **Scope rule:** presentation only. No change to attack timing, targeting, damage or the wind-up/fire rules. The single simulation-side addition is one new, gameplay-inert signal (§4.2).
@@ -56,7 +56,7 @@ SceneManager
 | `src/core/monster/monster_instance.gd` | Add `set_windup_telegraph(progress: float, range_cells: int)` / `clear_windup_telegraph()`; draw pulse tint, dashed reach outline, progress bar in `_draw()` |
 | `src/core/monster/monster_manager.gd` | `_pass3c_visual_sync` computes progress and calls the above; boss hint (§4.3); emit `monster_hero_attack_resolved` (§4.2) |
 | `src/core/visual_presentation/hero_feedback.gd` (+ `.tscn` if it needs a child layer) | New. All Hero-side feedback and the death sequence |
-| `src/core/presentation/reduce_motion.gd` | New tiny static helper, `ReduceMotion.enabled() -> bool`, reading project setting `accessibility/reduce_motion` (default `false`) |
+| `src/core/visual_presentation/reduce_motion.gd` | New tiny static helper, `ReduceMotion.enabled() -> bool`, reading project setting `accessibility/reduce_motion` (default `false`) |
 | `src/core/scene_manager.gd` | Hold before leaving on `hero_died` (§5.4) |
 | `src/core/audio/audio_cue_dispatcher.gd` + `assets/data/audio/cues/*.tres` | New cue entries (§7) |
 | `src/scenes/mission_scene.gd`, `src/gameplay/missions/the_gap/the_gap.gd` | Add the `HeroFeedback` node (one line each) |
@@ -184,3 +184,15 @@ Each phase is shippable on its own:
 ## 13. Open questions
 
 None blocking. Values in §5 are first-pass from `hero.md` and unplaytested. The exact Hero-attack range field name and the `_pass2b_hero_attacks` emit point are confirmed during plan writing, not guessed here.
+
+## 14. Implementation rulings (deviations from this spec, recorded 2026-09-27)
+
+The plan (`docs/superpowers/plans/2026-09-26-windup-presentation.md`, "Rulings / deviations") overrides this spec where they differ. Five deviations:
+
+1. **`ReduceMotion` location.** It lives at `src/core/visual_presentation/reduce_motion.gd`; the `src/core/presentation/` directory named in §3 does not exist.
+2. **Resolve visual is a direct call.** The hit/whiff outline is driven by `entity.monster_instance.play_windup_resolved(hit)` called synchronously from `_hero_windup_tick` (ordering-safe); the deferred `monster_hero_attack_resolved` signal exists for Audio and other subscribers.
+3. **Low-HP sprite treatment is a modulate tint.** `LOW_HP_SPRITE_TINT` (steady, not part of the pulse) replaces the sprite shader uniform from §5.2; `hero_screen_fx.gdshader` carries only the vignette and death desaturation.
+4. **Heartbeat cue and 40% combat duck deferred.** `hero_low_hp_heartbeat` and the 1 s duck of other combat SFX on death (§7) are enhancement-only and have no asset; the visual signals are the primary channel. The three shipped cues reuse existing Kenney-derived wavs as placeholders.
+5. **SceneManager cancels the death hold on any phase change that is not DEFEAT or MISSION_COMPLETE.** A Retry reuses the scene and never calls `_do_transition`, so cancelling on `mission_phase_changed` is how the pending exit is dropped (§5.4 edge case 1).
+
+Execution notes: `HeroFeedback._on_wave_started` fully resets only when the Hero is dead or `wave_number == 1` (a new attempt); otherwise it is a no-op, because the Hero may legitimately be low on HP between waves. `FEEDBACK_LAYER = 0` layer ordering versus the HUD and world is not yet verified live (the vignette must sit over the world and under the HUD).

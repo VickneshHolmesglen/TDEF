@@ -149,6 +149,11 @@ func _ready() -> void:
 	# Hero-damage spec §4.4: Damage & Status reads the Hero's armor/resists through injection
 	# (same pattern as set_swarm_renderer above; no service-locator lookup).
 	($DamageStatus as DamageStatus).set_hero_stats(_hero)
+	# Wind-up presentation spec §3: Hero-side combat feedback (flash, vignette, death sequence).
+	var hero_feedback := HeroFeedback.new()
+	hero_feedback.name = "HeroFeedback"
+	hero_feedback.setup(_hero, _camera, _monster_manager.get_monster_world_position)
+	self.add_child(hero_feedback)
 	_monsters_container = Node2D.new()
 	_monsters_container.name = "MonstersContainer"
 	add_child(_monsters_container)

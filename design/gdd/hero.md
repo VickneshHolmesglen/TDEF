@@ -551,6 +551,8 @@ Where `tier_base_xp = {STANDARD: 5, ELITE: 15, BOSS: 100}`.
 | **Tower Affinity bonus active** | Looping gold outline on hero sprite (1–2px). Opacity scales linearly with `tower_affinity_bonus`: 0.0 = invisible, 2.0 = 80% max. Shader uniform driven. Updates on `tower_placed`/`tower_destroyed`, not per-frame. | None. | None — passive persistent bonus; audio would cause listener fatigue. |
 | **Lifesteal heal** | 3–5 green-white motes arc from enemy to hero over 0.3s (4–6px sprites). 2-frame green flash on hero on arrival. If heal pushes HP above 20%: vignette/tint fade out over 0.3s. | None. | Soft absorption chime (0.15s, single note), 3D at hero, `SFX_Combat_Heal`. Volume: 40% of normal hit. Audio cooldown: 0.3s between chime triggers (VFX still plays every proc). |
 
+> **Implementation note (2026-09-27, wind-up presentation, not yet fully live-verified):** the **Hero takes damage**, **Hero low HP (< 20%)** and **Hero death** rows are implemented by `HeroFeedback` (`src/core/visual_presentation/hero_feedback.gd`, hosted by both `the_gap` and `MissionScene`). Deviations: the low-HP sprite treatment is a steady modulate tint rather than a shader uniform; the low-HP heartbeat and the 40% combat duck on death are deferred (no asset; the visuals are the primary signal); the death exit is held 1.5 s by `SceneManager` (`HERO_DEATH_HOLD_SECONDS`). `ReduceMotion.enabled()` (project setting `accessibility/reduce_motion`, default false) turns off the big-hit shake and the death ring and makes the vignette pulse steady. Spec: `docs/superpowers/specs/2026-09-26-windup-presentation-design.md`.
+
 ---
 
 ### Hero Idle Visual Identity

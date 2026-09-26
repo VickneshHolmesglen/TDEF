@@ -142,10 +142,10 @@ All monster numbers in §4.1 (data). `WAVE_CLEAR_HEAL_FRACTION` (0.25). `HERO_IN
 
 ## 10. Out of Scope
 
-- **Visible wind-up indicator** (a danger marker, attacker tint, or audio telegraph driven by `monster_hero_attack_winding_up`) and hit or whiff feedback. Follow-up spec; **required before playtesting**, since the dodge rule is unfair without it.
+- **Visible wind-up indicator** (a danger marker, attacker tint, or audio telegraph driven by `monster_hero_attack_winding_up`) and hit or whiff feedback. **Now specified and implemented** in `2026-09-26-windup-presentation-design.md` (2026-09-27; not yet fully live-verified). It was required before playtesting, since the dodge rule is unfair without it.
 - Elemental attackers and content (the pipeline supports them; none are authored), status effects on the Hero, environmental damage, and any revival.
 - A real `HeroResource` pipeline and a rebalance of Hero base HP or armor against the wave curve.
-- **Boss Hero wind-up and the existing boss telegraph:** a boss winding up on the Hero does not trigger the existing boss attack-telegraph visual, because `monster_manager.gd`'s `update_boss(...)` call passes only `boss_attack_prepare_remaining > 0` (the tower wind-up). The cheapest partial telegraph for the presentation follow-up is `... or entity.hero_windup_remaining > 0.0` there. Not changed now.
+- **Boss Hero wind-up and the existing boss telegraph:** a boss winding up on the Hero does not trigger the existing boss attack-telegraph visual, because `monster_manager.gd`'s `update_boss(...)` call passes only `boss_attack_prepare_remaining > 0` (the tower wind-up). The cheapest partial telegraph for the presentation follow-up is `... or entity.hero_windup_remaining > 0.0` there. Not changed now. **Update 2026-09-27:** the boss hint landed with the wind-up presentation work: `update_boss` now also receives true when `hero_windup_remaining > 0.0` (it only plays under the dormant 3D path; the 2D path shows the new telegraph).
 - Changing the boss-to-tower 4-frame telegraph or the tower-side damage rules.
 - Any attack by STANDARD monsters.
 

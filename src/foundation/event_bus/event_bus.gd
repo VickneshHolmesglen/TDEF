@@ -481,7 +481,8 @@ signal hero_damage_taken(amount: int, source_type: int)
 signal hero_incoming_damage(payload: HeroIncomingDamageEvent)
 
 ## An ELITE/BOSS locked the Hero and began its wind-up (hero-damage spec §4.3).
-## No subscriber yet: the wind-up presentation follow-up spec subscribes to this.
+## Subscribers: Audio (wind-up warning cue). The wind-up presentation (telegraph) reads the
+## monster's state directly instead of subscribing.
 signal monster_hero_attack_winding_up(entity_id: int, windup_seconds: float)
 
 ## An ELITE/BOSS Hero wind-up completed (wind-up presentation spec §4.2). `hit` is true when
