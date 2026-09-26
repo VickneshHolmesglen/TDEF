@@ -84,9 +84,13 @@ func _exit_tree() -> void:
 	disconnect_own_subscriptions()
 
 
+## Idempotent: mission_scene.gd calls this from every mission_launched, and a Retry re-emits
+## mission_launched, so the second call must not error on already-disconnected signals.
 func disconnect_own_subscriptions() -> void:
-	GEventBus.mission_selected.disconnect(_on_mission_selected)
-	GEventBus.run_modifier_selected.disconnect(_on_run_modifier_selected)
+	if GEventBus.mission_selected.is_connected(_on_mission_selected):
+		GEventBus.mission_selected.disconnect(_on_mission_selected)
+	if GEventBus.run_modifier_selected.is_connected(_on_run_modifier_selected):
+		GEventBus.run_modifier_selected.disconnect(_on_run_modifier_selected)
 
 
 func _on_mission_selected(_mission_id: String) -> void:
