@@ -517,6 +517,10 @@ func _on_hero_died() -> void:
 		entity.hero_windup_remaining = 0.0
 		if entity.boss_locked_target_id == HERO_TARGET_ID:
 			entity.boss_locked_target_id = -1
+		# The visual sync pass stops with the mission on DEFEAT, so clear the telegraph here or a
+		# monster that was mid wind-up would keep a frozen outline behind the outcome panel.
+		if entity.monster_instance != null and is_instance_valid(entity.monster_instance):
+			entity.monster_instance.clear_windup_telegraph()
 
 
 ## True when the Hero can currently be targeted: alive and its cell is known.

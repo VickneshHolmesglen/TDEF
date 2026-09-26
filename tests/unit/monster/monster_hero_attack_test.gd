@@ -114,10 +114,14 @@ func test_hero_died_clears_windups_and_stops_targeting() -> void:
 	var elite := _elite()
 	_mm._pass2b_hero_attacks(0.1)  # starts a wind-up
 	assert_float(elite.hero_windup_remaining).is_greater(0.0)
+	_mm._pass3c_visual_sync(0.016)
+	assert_bool(elite.monster_instance.is_windup_telegraph_active()).is_true()
 	_mm._on_hero_died()
 	assert_bool(_mm._hero_alive).is_false()
 	assert_float(elite.hero_windup_remaining).is_equal(0.0)
 	assert_int(elite.boss_locked_target_id).is_equal(-1)
+	# The telegraph must clear immediately: the visual sync no longer runs once the mission ends.
+	assert_bool(elite.monster_instance.is_windup_telegraph_active()).is_false()
 
 
 func test_new_subscriptions_are_disconnected_on_exit() -> void:
