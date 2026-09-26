@@ -5,7 +5,7 @@ shader_type canvas_item;
 // The vignette is a plain alpha overlay that never samples the screen, so a missing or empty
 // backbuffer degrades to "no vignette" instead of a black screen. Only the death desaturation
 // (desaturate > 0) needs the screen texture.
-uniform sampler2D screen_tex : hint_screen_texture, filtering_linear, repeat_disable;
+uniform sampler2D screen_tex : hint_screen_texture, filter_linear, repeat_disable;
 uniform float vignette_strength : hint_range(0.0, 1.0) = 0.0;
 uniform float desaturate : hint_range(0.0, 1.0) = 0.0;
 uniform float inset : hint_range(0.01, 0.5) = 0.15;

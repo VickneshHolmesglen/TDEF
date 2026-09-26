@@ -108,6 +108,9 @@ func _ready() -> void:
 	_screen_rect = ColorRect.new()
 	_screen_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_screen_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# Transparent by default: if the shader ever fails to compile the rect falls back to drawing
+	# this color, and it must degrade to "no effect" instead of an opaque white screen.
+	_screen_rect.color = Color(0.0, 0.0, 0.0, 0.0)
 	_screen_material = ShaderMaterial.new()
 	_screen_material.shader = preload("res://src/shaders/hero_screen_fx.gdshader")
 	_screen_rect.material = _screen_material
