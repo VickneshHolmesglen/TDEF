@@ -81,6 +81,7 @@ func _ready() -> void:
 	if not _retry_available.is_valid():
 		_retry_available = _default_retry_available
 	_retry_button.pressed.connect(_on_retry_pressed)
+	_retry_button.set_meta(UiAudioBinder.META_KEY, UiAudioBinder.KIND_CONFIRM)
 	_sanctuary_button.pressed.connect(_on_sanctuary_pressed)
 	_retry_button.focus_neighbor_right = _retry_button.get_path_to(_sanctuary_button)
 	_sanctuary_button.focus_neighbor_left = _sanctuary_button.get_path_to(_retry_button)

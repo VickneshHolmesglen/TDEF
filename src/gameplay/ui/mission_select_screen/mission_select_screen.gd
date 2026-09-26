@@ -61,7 +61,9 @@ func _ready() -> void:
 
 	_input_mode_tracker.input_mode_changed.connect(_on_input_mode_changed)
 	_back_button.pressed.connect(_on_back_pressed)
+	_back_button.set_meta(UiAudioBinder.META_KEY, UiAudioBinder.KIND_CANCEL)
 	_launch_button.pressed.connect(_on_launch_pressed)
+	_launch_button.set_meta(UiAudioBinder.META_KEY, UiAudioBinder.KIND_CONFIRM)
 	for tier: int in [1, 2, 3]:
 		_tier_buttons[tier] = _create_tier_button(tier)
 	for modifier_id: StringName in RUN_MODIFIER_STEPS.keys():

@@ -1,7 +1,7 @@
 # UI Click / Confirm / Cancel / Denial Audio Cues — Design
 
 - **Date:** 2026-09-27
-- **Status:** Draft; decisions taken with the recommended option at each choice, on the user's instruction ("pick the recommended options and go ahead").
+- **Status:** Implemented (2026-09-27; not live-verified); decisions taken with the recommended option at each choice, on the user's instruction ("pick the recommended options and go ahead").
 - **Closes:** the audio follow-up "UI-click and denial cue hooks" (audio-cue-list spec §9, session state backlog).
 - **GDD:** `design/gdd/audio-system.md` Core Rules 3-5 (families #3 Denial/Rejection, #4 Activation/Deactivation Confirm, #5 UI Confirm/Cancel; `UI` bus with the UI→Music+SFX sidechain duck).
 

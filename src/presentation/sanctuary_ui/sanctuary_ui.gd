@@ -175,6 +175,7 @@ func _ready() -> void:
 	set_active_state(OVERVIEW_STATE)
 	_tab_strip.tab_target_selected.connect(_on_tab_target_selected)
 	_launch_mission_button.pressed.connect(confirm_launch_depart)
+	_launch_mission_button.set_meta(UiAudioBinder.META_KEY, UiAudioBinder.KIND_CONFIRM)
 	GEventBus.scene_transition_completed.connect(_on_scene_transition_completed)
 	GEventBus.sanctuary_structure_built.connect(_on_sanctuary_structure_built)
 

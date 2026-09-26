@@ -1170,6 +1170,7 @@ func _create_recipe_row(recipe: RecipeResource, owned_totals: Dictionary) -> Con
 	craft_button.focus_mode = Control.FOCUS_ALL
 	craft_button.add_theme_stylebox_override("normal", ShellChromeStyle.chrome_button_stylebox(craftable))
 	craft_button.pressed.connect(_on_craft_button_pressed.bind(recipe.recipe_id))
+	craft_button.set_meta(UiAudioBinder.META_KEY, UiAudioBinder.KIND_NONE)
 	# Craft button focus doubles as this row's "selected" state for keyboard/
 	# gamepad users (UI Requirements: "Focus rendering: same visible
 	# non-color highlight ... applied identically to recipe rows") -- full
@@ -1379,6 +1380,7 @@ func _create_repair_row(contents: Dictionary, quality_tier: int, owned_common: i
 	repair_button.focus_mode = Control.FOCUS_ALL
 	repair_button.add_theme_stylebox_override("normal", ShellChromeStyle.chrome_button_stylebox(sufficient))
 	repair_button.pressed.connect(_on_repair_button_pressed.bind(instance_id))
+	repair_button.set_meta(UiAudioBinder.META_KEY, UiAudioBinder.KIND_NONE)
 	title_row.add_child(repair_button)
 
 	var cost_label := Label.new()

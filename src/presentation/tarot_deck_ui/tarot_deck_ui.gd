@@ -205,3 +205,4 @@ func _configure_return_to_sanctuary_button() -> void:
 	_return_to_sanctuary_button.add_theme_color_override("font_color", ShellChromeStyle.UI_PARCHMENT)
 	_return_to_sanctuary_button.focus_mode = Control.FOCUS_ALL
 	_return_to_sanctuary_button.pressed.connect(confirm_return_to_sanctuary)
+	_return_to_sanctuary_button.set_meta(UiAudioBinder.META_KEY, UiAudioBinder.KIND_CANCEL)

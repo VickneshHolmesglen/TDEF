@@ -175,6 +175,7 @@ func _ready() -> void:
 	GEventBus.tower_placement_blocked.connect(_on_tower_placement_blocked)
 	GEventBus.tower_placed.connect(_on_tower_placed)
 	_ready_button.pressed.connect(_on_ready_pressed)
+	_ready_button.set_meta(UiAudioBinder.META_KEY, UiAudioBinder.KIND_CONFIRM)
 	_build_ready_focus_ring()
 	_ready_button.focus_entered.connect(_update_ready_focus_ring)
 	_ready_button.focus_exited.connect(_update_ready_focus_ring)

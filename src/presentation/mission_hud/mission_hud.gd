@@ -208,6 +208,7 @@ func _ready() -> void:
 	GEventBus.skill_unlocked.connect(_on_skill_unlocked)
 	_build_skill_slots()
 	_retry_button.pressed.connect(_on_retry_pressed)
+	_retry_button.set_meta(UiAudioBinder.META_KEY, UiAudioBinder.KIND_CONFIRM)
 	_build_retry_focus_ring()
 	_retry_button.focus_entered.connect(_update_retry_focus_ring)
 	_retry_button.focus_exited.connect(_update_retry_focus_ring)

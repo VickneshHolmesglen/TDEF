@@ -29,6 +29,20 @@ not a victory sting), `wave_countdown_warning` (bell toll, not a horn), `tower_p
 | game_paused | | | | |
 | game_unpaused | | | | |
 
+## UI cues (added 2026-09-27; ALL are placeholders chosen by measurement, never auditioned)
+
+Audition in the running game (click across Sanctuary, HUD, Mission Select, Pause Menu). Known caveats:
+`ui_confirm` is about 0.3-0.45 s against the < 0.25 s target for the UI Confirm/Cancel family, so judge
+whether it feels sluggish on repeated primary actions; `ui_click` has only 2 variants, so judge whether
+repetition is fatiguing at typical click rates.
+
+| Cue | Audible | Distinct in family | Not fatiguing | Notes |
+|---|---|---|---|---|
+| ui_click | | | | |
+| ui_confirm | | | | |
+| ui_cancel | | | | |
+| ui_denied | | | | |
+
 ## Music and ambient stems (added 2026-09-20; ALL are synthesized placeholders)
 
 Confirm in the running game: each stem is audible and fits its state; crossfades

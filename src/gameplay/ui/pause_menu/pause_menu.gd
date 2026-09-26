@@ -91,9 +91,12 @@ func _ready() -> void:
 	_quit_to_sanctuary_button.pressed.connect(_on_quit_to_sanctuary_pressed)
 	_quit_to_main_menu_button.pressed.connect(_on_quit_to_main_menu_pressed)
 	_settings_back_button.pressed.connect(_on_settings_back_pressed)
+	_settings_back_button.set_meta(UiAudioBinder.META_KEY, UiAudioBinder.KIND_CANCEL)
 	_objective_back_button.pressed.connect(_on_objective_back_pressed)
+	_objective_back_button.set_meta(UiAudioBinder.META_KEY, UiAudioBinder.KIND_CANCEL)
 	_quit_confirm_yes_button.pressed.connect(_on_quit_confirm_yes_pressed)
 	_quit_confirm_cancel_button.pressed.connect(_on_quit_confirm_cancel_pressed)
+	_quit_confirm_cancel_button.set_meta(UiAudioBinder.META_KEY, UiAudioBinder.KIND_CANCEL)
 	GEventBus.mission_launched.connect(_on_mission_launched)
 
 	for row_name: String in ["MusicRow", "SfxRow", "VoiceRow", "UiRow"]:
