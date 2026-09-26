@@ -145,4 +145,5 @@ func test_signals_are_disconnected_on_exit() -> void:
 	assert_bool(GEventBus.hero_damage_taken.is_connected(_fb._on_damage_taken)).is_false()
 	assert_bool(GEventBus.hero_incoming_damage.is_connected(_fb._on_incoming_damage)).is_false()
 	assert_bool(GEventBus.hero_health_changed.is_connected(_fb._on_health_changed)).is_false()
+	assert_bool(GEventBus.mission_launched.is_connected(_fb._on_mission_launched)).is_false()
 	add_child(_fb)  # after_test frees it through the normal path

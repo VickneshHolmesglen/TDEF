@@ -125,3 +125,31 @@ func test_wave_one_after_death_resets_a_flinched_sprite_position() -> void:
 	GEventBus.wave_started.emit(1, 5, 1.0)
 	assert_vector(_sprite.position).is_equal(Vector2(5.0, 5.0))
 	assert_bool(_fb._flinch_tween == null or not _fb._flinch_tween.is_valid()).is_true()
+
+
+func test_mission_launched_after_death_fully_resets_feedback() -> void:
+	_fb._on_hero_died()
+	_settle_death_tweens()
+	_sprite.position = Vector2(9.0, 9.0)
+	_fb._on_mission_launched("the_gap", PackedStringArray(), 1)
+	assert_bool(_fb.is_dead()).is_false()
+	assert_float(_sprite.modulate.a).is_equal(1.0)
+	assert_vector(_sprite.position).is_equal(Vector2.ZERO)
+	var mat: ShaderMaterial = _fb.get_screen_fx_material()
+	assert_float(float(mat.get_shader_parameter("desaturate"))).is_equal(0.0)
+	assert_float(_fb.get_vignette_strength()).is_equal(0.0)
+	assert_bool(_fb._screen_rect.visible).is_false()
+	assert_bool(_fb.is_low_hp_active()).is_false()
+
+
+func test_mission_launched_resets_a_low_hp_but_alive_hero() -> void:
+	_fb._on_health_changed(15.0, 100.0)
+	_fb.advance(0.3)
+	_fb._on_mission_launched("the_gap", PackedStringArray(), 1)
+	assert_bool(_fb.is_low_hp_active()).is_false()
+	assert_float(_fb.get_vignette_fade()).is_equal(0.0)
+	assert_object(_sprite.modulate).is_equal(Color.WHITE)
+
+
+func test_mission_launched_is_connected_in_ready() -> void:
+	assert_bool(GEventBus.mission_launched.is_connected(_fb._on_mission_launched)).is_true()

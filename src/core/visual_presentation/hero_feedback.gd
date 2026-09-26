@@ -102,6 +102,7 @@ func _ready() -> void:
 	GEventBus.hero_health_changed.connect(_on_health_changed)
 	GEventBus.hero_died.connect(_on_hero_died)
 	GEventBus.wave_started.connect(_on_wave_started)
+	GEventBus.mission_launched.connect(_on_mission_launched)
 	_layer = CanvasLayer.new()
 	_layer.layer = FEEDBACK_LAYER
 	add_child(_layer)
@@ -127,6 +128,8 @@ func _exit_tree() -> void:
 		GEventBus.hero_health_changed.disconnect(_on_health_changed)
 	if GEventBus.hero_died.is_connected(_on_hero_died):
 		GEventBus.hero_died.disconnect(_on_hero_died)
+	if GEventBus.mission_launched.is_connected(_on_mission_launched):
+		GEventBus.mission_launched.disconnect(_on_mission_launched)
 	if GEventBus.wave_started.is_connected(_on_wave_started):
 		GEventBus.wave_started.disconnect(_on_wave_started)
 	_kill_tween(_flash_tween)
@@ -371,6 +374,16 @@ func _spawn_death_ring() -> void:
 func _on_wave_started(wave_number: int, _total_waves: int, _wave_difficulty: float) -> void:
 	if not _dead and wave_number != 1:
 		return
+	_reset_feedback_state()
+
+
+## A (re)launched mission (Retry reuses the scene and Hero and starts in SCOUT, long before wave 1)
+## always clears all feedback state.
+func _on_mission_launched(_mission_id: String, _modifiers: PackedStringArray, _difficulty_tier: int) -> void:
+	_reset_feedback_state()
+
+
+func _reset_feedback_state() -> void:
 	_dead = false
 	_low_hp = false
 	_vignette_fade = 0.0
