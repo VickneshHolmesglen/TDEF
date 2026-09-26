@@ -16,7 +16,8 @@ const FLASH_FRAMES: int = 2
 const BIG_FLASH_FRAMES: int = 4
 const BIG_HIT_FRACTION: float = 0.25
 const LOW_HP_FRACTION: float = 0.20
-const MIN_FLASH_GAP_MSEC: int = 200
+## 334 ms keeps damage flashes at 3 per second or fewer (WCAG 2.3.1 general flash threshold).
+const MIN_FLASH_GAP_MSEC: int = 334
 const PARTICLE_COUNT: int = 5
 const PARTICLE_LIFETIME: float = 0.3
 const PARTICLE_SPEED_MIN: float = 90.0
@@ -149,6 +150,8 @@ func _on_health_changed(current: float, max_hp: float) -> void:
 
 
 func _on_damage_taken(amount: int, _source_type: int) -> void:
+	if _dead:
+		return  # Hero emits hero_died before this handler runs on a killing blow; do not cancel the death sequence
 	if _hero == null or not is_instance_valid(_hero):
 		return
 	var direction: Vector2 = _direction_to_source()
@@ -370,6 +373,13 @@ func _on_wave_started(wave_number: int, _total_waves: int, _wave_difficulty: flo
 	_vignette_fade = 0.0
 	_kill_tween(_death_tween)
 	_kill_tween(_flash_tween)
+	_pulse_time = 0.0
+	_kill_tween(_flinch_tween)
+	_kill_tween(_shake_tween)
+	if _camera != null and is_instance_valid(_camera):
+		_camera.offset = Vector2.ZERO
+	if _sprite != null and is_instance_valid(_sprite):
+		_sprite.position = _sprite_rest_position
 	if _sprite != null:
 		_sprite.modulate = Color.WHITE
 	if _flash_material != null:

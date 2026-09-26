@@ -8,6 +8,6 @@ script = ExtResource("1")
 event_name = &"hero_died"
 stream = ExtResource("2")
 bus = &"SFX"
-polyphony_group = &"combat_impact"
+polyphony_group = &"hero_death"
 volume_db_offset = -2
 spatial = false

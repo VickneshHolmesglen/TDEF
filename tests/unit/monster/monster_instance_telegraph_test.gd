@@ -85,3 +85,9 @@ func test_freeing_mid_resolve_does_not_error() -> void:
 	_inst = null
 	await get_tree().process_frame
 	assert_bool(true).is_true()
+
+
+func test_play_windup_resolved_outside_the_tree_is_a_safe_no_op() -> void:
+	var m: MonsterInstance = auto_free(SCENE.instantiate() as MonsterInstance)
+	m.play_windup_resolved(true)
+	assert_bool(m.is_inside_tree()).is_false()

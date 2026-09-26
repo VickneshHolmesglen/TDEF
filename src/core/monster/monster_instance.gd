@@ -52,6 +52,7 @@ const BOSS_BADGE_COLOR: Color = Color(0.9, 0.75, 0.2)  ## gold crown
 
 ## Wind-up telegraph (wind-up presentation spec §4.1). Mirrors MonsterManager.CELL_SIZE (a direct
 ## reference would make the two scripts depend on each other at parse time).
+## Assumes GridConfig.cell_size == 64 (same assumption as MonsterManager.CELL_SIZE).
 const CELL_SIZE: float = 64.0
 const TELEGRAPH_COLOR: Color = Color(0.878, 0.267, 0.18)
 const TELEGRAPH_PULSE_HZ: float = 2.0  ## at most 2 flashes per second (flash-safety limit is 3)
@@ -220,6 +221,8 @@ func clear_windup_telegraph() -> void:
 ## Hit: the outline flashes solid red then clears. Whiff: it fades to neutral grey (the player's
 ## "I dodged it" confirmation). Reuses the geometry of the last telegraph.
 func play_windup_resolved(hit: bool) -> void:
+	if not is_inside_tree():
+		return
 	_kill_resolve_tween()
 	_resolve_hit = hit
 	_resolve_alpha = 1.0

@@ -51,7 +51,7 @@ func test_windup_warning_is_rate_limited_to_one_per_gap() -> void:
 	GEventBus.monster_hero_attack_winding_up.emit(2, 0.5)
 	assert_int(_dispatcher.get_dispatch_count()).is_equal(1)
 	assert_that(_dispatcher.get_last_played_event()).is_equal(&"monster_windup_warning")
-	OS.delay_msec(AudioCueDispatcher.WINDUP_WARNING_MIN_GAP_MSEC + 50)
+	_dispatcher._last_windup_warning_msec = Time.get_ticks_msec() - AudioCueDispatcher.WINDUP_WARNING_MIN_GAP_MSEC - 1
 	GEventBus.monster_hero_attack_winding_up.emit(3, 0.5)
 	assert_int(_dispatcher.get_dispatch_count()).is_equal(2)
 

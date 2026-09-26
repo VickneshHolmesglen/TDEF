@@ -25,6 +25,7 @@ const DEFAULT_FAMILY_CAPS: Dictionary[StringName, int] = {
 	&"activation_confirm": 4,
 	&"ui_confirm_cancel": 6,
 	&"combat_impact": 12,
+	&"hero_death": 2,
 }
 
 const DUCK_COEFFICIENT: float = 0.05  ## Formula F1's `k`

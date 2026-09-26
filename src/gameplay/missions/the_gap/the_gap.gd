@@ -150,6 +150,8 @@ func _ready() -> void:
 	# (same pattern as set_swarm_renderer above; no service-locator lookup).
 	($DamageStatus as DamageStatus).set_hero_stats(_hero)
 	# Wind-up presentation spec §3: Hero-side combat feedback (flash, vignette, death sequence).
+	# Hosted at the scene root (mission_scene hosts it under GameplayRoot); harmless because its
+	# screen rect starts hidden and only draws while low-HP or dead.
 	var hero_feedback := HeroFeedback.new()
 	hero_feedback.name = "HeroFeedback"
 	hero_feedback.setup(_hero, _camera, _monster_manager.get_monster_world_position)

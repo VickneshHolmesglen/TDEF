@@ -15,7 +15,7 @@
 - Presentation only. Do NOT change attack timing, targeting, damage, `hero_incoming_damage` (stays synchronous), Damage & Status, or any authored data. The only simulation-side addition is the resolve signal + a direct `MonsterInstance` call at the moment a wind-up completes.
 - Typed GDScript everywhere; doc comments on public members; constants at the top of the script, not scattered literals. Comment density and naming match the surrounding files.
 - ADR-0001: physics-pass emissions of presentation-only signals are `emit.call_deferred(...)`; every `GEventBus` connection made in `_ready`/`_enter_tree` is disconnected in `_exit_tree` (Rule 6, guard with `is_connected`).
-- Flash safety: no looping pulse above 2 Hz; damage flashes may restart at most once per `MIN_FLASH_GAP_SECONDS = 0.2`.
+- Flash safety: no looping pulse above 2 Hz; damage flashes may restart at most once per `MIN_FLASH_GAP_MSEC = 334` (<= 3 per second).
 - No color-only signals: dashed outline + progress bar (telegraph); flash + particles + flinch (damage); vignette + sprite tint (low HP).
 - `ReduceMotion.enabled()` (default false) turns big-hit shake off, low-HP pulse steady, telegraph pulse steady, death shockwave off.
 - No `#` comment lines inside `.tscn`/`.tres` blocks (VERSION.md: silent corruption). No `Viewport.use_hdr_2d`.
@@ -814,7 +814,7 @@ const FLASH_FRAMES: int = 2
 const BIG_FLASH_FRAMES: int = 4
 const BIG_HIT_FRACTION: float = 0.25
 const LOW_HP_FRACTION: float = 0.20
-const MIN_FLASH_GAP_MSEC: int = 200
+const MIN_FLASH_GAP_MSEC: int = 334
 const PARTICLE_COUNT: int = 5
 const PARTICLE_LIFETIME: float = 0.3
 const PARTICLE_SPEED_MIN: float = 90.0

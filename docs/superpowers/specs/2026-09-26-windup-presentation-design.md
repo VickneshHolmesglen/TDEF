@@ -144,7 +144,7 @@ Audio is enhancement only; every signal above has a fully visual equivalent.
 ## 8. Accessibility checklist
 
 - No color-only signal: dashed outline (shape), progress bar (shape/position), Hero flash plus particles plus flinch, low-HP vignette plus sprite desaturation.
-- Flash limit: telegraph pulse ≤ 2 Hz; damage flashes are 2-4 frames and cannot overlap-stack above 3 per second because the Hero's incoming attacks are period-gated (≥ 3.4 s per attacker); multi-attacker overlap is bounded by a minimum 0.2 s gap between Hero flash restarts.
+- Flash limit: telegraph pulse ≤ 2 Hz; damage flashes are 2-4 frames and cannot overlap-stack above 3 per second because the Hero's incoming attacks are period-gated (≥ 3.4 s per attacker); multi-attacker overlap is bounded by a minimum 334 ms gap between Hero flash restarts (<= 3 per second).
 - Reduced motion per §6.
 - Low-HP state is legible with sound off (§5.2).
 
@@ -168,7 +168,7 @@ Unit (gdUnit4, targeted suites only):
 - Telegraph progress math and clamping; `MonsterInstance` clears when `hero_windup_remaining == 0`; the resolve Tween is killed on re-telegraph and on free (no null refs on a freed attacker).
 - `monster_hero_attack_resolved` emits exactly once per wind-up, `hit` matches whether `hero_incoming_damage` fired, emitted deferred, and never emitted for a monster killed mid-wind-up.
 - Boss hint: `update_boss` receives true when only `hero_windup_remaining > 0`.
-- `HeroFeedback`: vignette on at 19.9%, off at 20%, fades on heal; big-hit threshold at exactly 25%; shake skipped under reduced motion; ≥0.2 s gap between flash restarts; disconnect in `_exit_tree` (ADR-0001 Rule 6).
+- `HeroFeedback`: vignette on at 19.9%, off at 20%, fades on heal; big-hit threshold at exactly 25%; shake skipped under reduced motion; ≥334 ms gap between flash restarts; disconnect in `_exit_tree` (ADR-0001 Rule 6).
 - `SceneManager`: hold timer, and the three edge cases in §5.4.
 - `ReduceMotion.enabled()` default false, honors the setting.
 

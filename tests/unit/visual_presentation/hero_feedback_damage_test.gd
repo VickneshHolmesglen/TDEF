@@ -55,12 +55,13 @@ func test_flash_frames_are_two_normally_four_for_a_big_hit() -> void:
 	assert_int(HeroFeedback.flash_frames(true)).is_equal(4)
 
 
-func test_flash_restarts_are_gated_to_one_per_200ms() -> void:
+func test_flash_restarts_are_gated_to_one_per_334ms() -> void:
 	var fb := HeroFeedback.new()
 	auto_free(fb)
 	assert_bool(fb.can_restart_flash(1000)).is_true()
 	assert_bool(fb.can_restart_flash(1100)).is_false()
-	assert_bool(fb.can_restart_flash(1200)).is_true()
+	assert_bool(fb.can_restart_flash(1300)).is_false()
+	assert_bool(fb.can_restart_flash(1334)).is_true()
 
 
 func test_a_hit_flashes_the_sprite_and_spawns_particles_toward_the_source() -> void:
