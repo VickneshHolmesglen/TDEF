@@ -52,6 +52,11 @@ const DEFAULT_CUE_MAP_PATH: String = "res://assets/data/audio/audio_cue_map.tres
 ## rather than silently dropping the newest sound.
 const PLAYER_POOL_SIZE: int = 12
 
+## A pack of elites can wind up in the same frame; one warning per window keeps it from becoming a
+## wall of sound (wind-up presentation spec §7).
+const WINDUP_WARNING_MIN_GAP_MSEC: int = 250
+var _last_windup_warning_msec: int = -WINDUP_WARNING_MIN_GAP_MSEC
+
 var cue_map: AudioCueMap
 var _lookup: Dictionary[StringName, AudioCueEntry] = {}
 
@@ -134,6 +139,14 @@ func _rebuild_lookup() -> void:
 		_lookup[entry.event_name] = entry
 
 
+func _dispatch_windup_warning() -> void:
+	var now: int = Time.get_ticks_msec()
+	if now - _last_windup_warning_msec < WINDUP_WARNING_MIN_GAP_MSEC:
+		return
+	_last_windup_warning_msec = now
+	dispatch_cue(&"monster_windup_warning")
+
+
 func _connect_all_events() -> void:
 	if not _connected_signals.is_empty():
 		return
@@ -146,6 +159,11 @@ func _connect_all_events() -> void:
 	_wire(GEventBus.pre_placement_perk_activated, func(_a: int, _b: String) -> void: dispatch_cue(&"pre_placement_perk_activated"))
 	_wire(GEventBus.boss_died, func(_a: int, _b: StringName, _c: int, _d: String) -> void: dispatch_cue(&"boss_died"))
 	_wire(GEventBus.hero_damage_taken, func(_a: int, _b: int) -> void: dispatch_cue(&"hero_damage_taken"))
+	_wire(GEventBus.monster_hero_attack_winding_up, func(_a: int, _b: float) -> void: _dispatch_windup_warning())
+	_wire(GEventBus.monster_hero_attack_resolved, func(_a: int, hit: bool) -> void:
+			if not hit:
+				dispatch_cue(&"monster_attack_whiff"))
+	_wire(GEventBus.hero_died, func() -> void: dispatch_cue(&"hero_died"))
 	_wire(GEventBus.constellation_activated, func(_a: String, _b: Vector2i, _c: String, _d: float) -> void: dispatch_cue(&"constellation_activated"))
 	_wire(GEventBus.component_crafted, func(_a: String, _b: String, _c: int) -> void: dispatch_cue(&"component_crafted"))
 	_wire(GEventBus.component_repaired, func(_a: String, _b: String) -> void: dispatch_cue(&"component_repaired"))
