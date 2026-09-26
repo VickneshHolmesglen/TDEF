@@ -362,9 +362,20 @@ func _enter_phase(new_phase: Phase) -> void:
 		Phase.INTERMISSION:
 			_enter_intermission()
 		Phase.MISSION_COMPLETE:
-			pass  # Transition mechanics only (Story 001) — entry side effects (reward/summary payloads) are a future story's job
+			_enter_terminal()
 		Phase.DEFEAT:
-			pass  # Transition mechanics only (Story 001) — entry side effects (loss UI/reward payloads) are a future story's job
+			_enter_terminal()
+
+
+## Shared entry for the two terminal phases (DEFEAT / MISSION_COMPLETE).
+## The Mission Outcome Screen keeps the mission scene alive until the player
+## chooses Retry / Return, so progression must stop here rather than rely on
+## the scene being unloaded: every phase/watchdog timer is stopped and no
+## further spawns can fire (the spawn coroutine's `_spawn_active` guard).
+## `_reset_all_state()` (mission_launched -> SCOUT on Retry) restarts everything.
+func _enter_terminal() -> void:
+	_spawn_active = false
+	_stop_phase_timers()
 
 
 func _enter_idle() -> void:

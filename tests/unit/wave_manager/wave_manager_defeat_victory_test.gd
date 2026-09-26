@@ -270,3 +270,61 @@ func test_hero_died_mid_spawn_coroutine_await_stops_further_spawns() -> void:
 
 	assert_int(_spy.count("monster_spawn_requested")).is_equal(0)
 	assert_int(_wm._phase).is_equal(WaveManager.Phase.DEFEAT)
+
+# ---------------------------------------------------------------------------
+# Terminal phases stop all progression (Mission Outcome Screen keeps the scene
+# alive behind the panel): every phase/watchdog timer is stopped and no
+# further phase changes occur; a relaunch (_reset_all_state -> SCOUT) works.
+# ---------------------------------------------------------------------------
+
+func _start_all_timers() -> void:
+	_wm._scout_timer.start()
+	_wm._pre_wave_timer.start()
+	_wm._intermission_timer.start()
+	_wm._watchdog_stall_timer.start()
+	_wm._watchdog_force_timer.start()
+	_wm._phase_tick_timer.start()
+
+
+func _all_timers_stopped() -> bool:
+	return _wm._scout_timer.is_stopped() and _wm._pre_wave_timer.is_stopped() 			and _wm._intermission_timer.is_stopped() and _wm._watchdog_stall_timer.is_stopped() 			and _wm._watchdog_force_timer.is_stopped() and _wm._phase_tick_timer.is_stopped()
+
+
+func test_entering_defeat_stops_all_phase_timers_and_spawning() -> void:
+	_wm._phase = WaveManager.Phase.WAVE_ACTIVE
+	_wm._spawn_active = true
+	_start_all_timers()
+	_wm._enter_phase(WaveManager.Phase.DEFEAT)
+	assert_bool(_all_timers_stopped()).is_true()
+	assert_bool(_wm._spawn_active).is_false()
+
+
+func test_entering_mission_complete_stops_all_phase_timers_and_spawning() -> void:
+	_wm._phase = WaveManager.Phase.WAVE_ACTIVE
+	_wm._spawn_active = true
+	_start_all_timers()
+	_wm._enter_phase(WaveManager.Phase.MISSION_COMPLETE)
+	assert_bool(_all_timers_stopped()).is_true()
+	assert_bool(_wm._spawn_active).is_false()
+
+
+func test_no_phase_change_after_defeat_over_a_simulated_wait() -> void:
+	_wm._phase = WaveManager.Phase.SCOUT
+	_wm._scout_timer.wait_time = 0.05
+	_wm._scout_timer.start()
+	_wm._on_hero_died()
+	assert_int(_wm._phase).is_equal(WaveManager.Phase.DEFEAT)
+	await get_tree().create_timer(0.15).timeout
+	assert_int(_wm._phase).is_equal(WaveManager.Phase.DEFEAT)
+	assert_bool(_all_timers_stopped()).is_true()
+
+
+func test_progression_resumes_after_reset_following_terminal_phase() -> void:
+	_wm._phase = WaveManager.Phase.WAVE_ACTIVE
+	_wm._on_hero_died()
+	assert_int(_wm._phase).is_equal(WaveManager.Phase.DEFEAT)
+	_wm._reset_all_state()
+	_wm._transition_to(WaveManager.Phase.SCOUT)
+	assert_int(_wm._phase).is_equal(WaveManager.Phase.SCOUT)
+	assert_bool(_wm._scout_timer.is_stopped()).is_false()
+	assert_bool(_wm._phase_tick_timer.is_stopped()).is_false()

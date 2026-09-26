@@ -151,6 +151,8 @@ func _ready() -> void:
 	GEventBus.tower_attacked.connect(_on_tower_attacked_status)
 	GEventBus.hero_position_changed.connect(_on_hero_position_changed)
 	GEventBus.hero_died.connect(_on_hero_died)
+	GEventBus.mission_launched.connect(_on_mission_launched)
+	GEventBus.mission_phase_changed.connect(_on_mission_phase_changed)
 
 
 ## Called by the owning scene controller (mission_scene.gd/the_gap.gd) once
@@ -171,6 +173,10 @@ func _exit_tree() -> void:
 	GEventBus.tower_attacked.disconnect(_on_tower_attacked_status)
 	GEventBus.hero_position_changed.disconnect(_on_hero_position_changed)
 	GEventBus.hero_died.disconnect(_on_hero_died)
+	if GEventBus.mission_launched.is_connected(_on_mission_launched):
+		GEventBus.mission_launched.disconnect(_on_mission_launched)
+	if GEventBus.mission_phase_changed.is_connected(_on_mission_phase_changed):
+		GEventBus.mission_phase_changed.disconnect(_on_mission_phase_changed)
 
 # ---------------------------------------------------------------------------
 # Main loop
@@ -1012,24 +1018,59 @@ func _on_wave_completed(_wave_number: int, _enemies_remaining: int, _was_boss_br
 		ev.kill_source = &"wave_end"
 		ev.wave_reward_scalar = entity.spawn_wave_reward_scalar
 		GEventBus.monster_died.emit(ev)
-		if entity.swarm_handle != null and _swarm_renderer != null:
-			_swarm_renderer.unregister_creature(entity.swarm_handle)
-			entity.swarm_handle = null
-		if entity.boss_presenter_handle != null and _swarm_renderer != null:
-			_swarm_renderer.unregister_boss(entity.boss_presenter_handle)
-			entity.boss_presenter_handle = null
-		entity.queue_free()
+	clear_all_entities()
+
+
+## Releases and frees every live monster entity WITHOUT emitting monster_died /
+## boss_died (no rewards, no kill credit): unregisters swarm/boss presenter
+## handles, queue_free()s each entity (active and still-spawning), and empties
+## active_monsters / spawning_entities / _entity_lookup. Used by
+## _on_wave_completed() after it has emitted its wave_end deaths, and by
+## _on_mission_launched() so a Retry after a mid-wave DEFEAT (where
+## wave_completed never fires) does not leave the failed attempt's monsters
+## orphaned in the scene.
+func clear_all_entities() -> void:
+	for entity in active_monsters:
+		if not is_instance_valid(entity):
+			continue
+		_release_entity(entity)
 	active_monsters.clear()
 	for entity in spawning_entities:
-		if entity.swarm_handle != null and _swarm_renderer != null:
-			_swarm_renderer.unregister_creature(entity.swarm_handle)
-			entity.swarm_handle = null
-		if entity.boss_presenter_handle != null and _swarm_renderer != null:
-			_swarm_renderer.unregister_boss(entity.boss_presenter_handle)
-			entity.boss_presenter_handle = null
-		entity.queue_free()
+		if not is_instance_valid(entity):
+			continue
+		_release_entity(entity)
 	spawning_entities.clear()
 	_entity_lookup.clear()
+
+
+## Unregisters an entity's presenter handles and queue_free()s it.
+func _release_entity(entity: MonsterEntity) -> void:
+	if entity.swarm_handle != null and _swarm_renderer != null:
+		_swarm_renderer.unregister_creature(entity.swarm_handle)
+		entity.swarm_handle = null
+	if entity.boss_presenter_handle != null and _swarm_renderer != null:
+		_swarm_renderer.unregister_boss(entity.boss_presenter_handle)
+		entity.boss_presenter_handle = null
+	entity.queue_free()
+
+
+## mission_launched (fresh launch OR Retry re-emit): frees any leftover
+## entities from a previous attempt. Wave state is re-armed by wave_started.
+func _on_mission_launched(_mission_id: String, _modifiers: PackedStringArray, _difficulty_tier: int) -> void:
+	_is_wave_active = false
+	_pending_absorbed.clear()
+	_pending_damage.clear()
+	_pending_deaths.clear()
+	clear_all_entities()
+
+
+## Terminal phases (DEFEAT / MISSION_COMPLETE): the Mission Outcome Screen keeps
+## the scene alive, so stop simulating -- no marching, breaching or attacks.
+## Entities stay visible (frozen) behind the panel; Retry's mission_launched
+## frees them and wave_started re-arms _is_wave_active.
+func _on_mission_phase_changed(_previous_phase: String, new_phase: String, _timestamp: float) -> void:
+	if new_phase == "DEFEAT" or new_phase == "MISSION_COMPLETE":
+		_is_wave_active = false
 
 
 ## ADR-0036: F2/F4 -- Formula F2's multiplicative running product across all
