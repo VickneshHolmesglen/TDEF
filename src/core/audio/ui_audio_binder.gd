@@ -22,6 +22,11 @@ const CUE_CONFIRM: StringName = &"ui_confirm"
 const CUE_CANCEL: StringName = &"ui_cancel"
 const CUE_DENIED: StringName = &"ui_denied"
 
+## Lazy prune: sweep entries of destroyed buttons once `_hooks` has grown by
+## this many since the last sweep (buttons leaving the tree keep their hook,
+## so pruning is keyed on real destruction, not tree exit).
+const PRUNE_INTERVAL: int = 64
+
 const _HOOKED_META: StringName = &"_ui_audio_hooked"
 
 var _dispatch: Callable
@@ -29,6 +34,7 @@ var _tree: SceneTree
 ## button instance id -> [pressed Callable, gui_input Callable], kept so
 ## `_exit_tree()` disconnects exactly what was connected (EventBus Rule 6).
 var _hooks: Dictionary[int, Array] = {}
+var _last_pruned_size: int = 0
 
 
 ## Maps a button's `ui_audio` meta value to a cue name. `none` -> `&""`
@@ -75,6 +81,16 @@ func _hook(button: BaseButton) -> void:
 	button.pressed.connect(on_pressed)
 	button.gui_input.connect(on_input)
 	_hooks[button.get_instance_id()] = [on_pressed, on_input]
+	if _hooks.size() > _last_pruned_size + PRUNE_INTERVAL:
+		_prune()
+
+
+## Erases entries whose button has been freed.
+func _prune() -> void:
+	for id: int in _hooks.keys():
+		if not is_instance_valid(instance_from_id(id)):
+			_hooks.erase(id)
+	_last_pruned_size = _hooks.size()
 
 
 func _on_pressed(button: BaseButton) -> void:
@@ -97,6 +113,15 @@ func _on_node_added(node: Node) -> void:
 
 
 func _exit_tree() -> void:
+	_cleanup()
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_PREDELETE:
+		_cleanup()
+
+
+func _cleanup() -> void:
 	if _tree != null and _tree.node_added.is_connected(_on_node_added):
 		_tree.node_added.disconnect(_on_node_added)
 	for id: int in _hooks:
@@ -104,6 +129,8 @@ func _exit_tree() -> void:
 		if obj == null or not is_instance_valid(obj):
 			continue
 		var button: BaseButton = obj as BaseButton
+		if button == null:
+			continue
 		var pair: Array = _hooks[id]
 		if button.pressed.is_connected(pair[0]):
 			button.pressed.disconnect(pair[0])
@@ -111,3 +138,4 @@ func _exit_tree() -> void:
 			button.gui_input.disconnect(pair[1])
 		button.remove_meta(_HOOKED_META)
 	_hooks.clear()
+	_last_pruned_size = 0
