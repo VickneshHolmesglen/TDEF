@@ -32,7 +32,7 @@
 ```
 MonsterManager._pass3c_visual_sync (per frame, already walks every monster)
    └─ for each entity with hero_windup_remaining > 0:
-        MonsterInstance.set_windup_telegraph(progress, range_cells)
+        MonsterInstance.set_windup_telegraph(progress, range_cells, center_offset, delta)
       else: MonsterInstance.clear_windup_telegraph()
 
 HeroFeedback (new Node, attached once per mission scene)
@@ -53,7 +53,7 @@ SceneManager
 
 | File | Change |
 |---|---|
-| `src/core/monster/monster_instance.gd` | Add `set_windup_telegraph(progress: float, range_cells: int)` / `clear_windup_telegraph()`; draw pulse tint, dashed reach outline, progress bar in `_draw()` |
+| `src/core/monster/monster_instance.gd` | Add `set_windup_telegraph(progress: float, range_cells: int, center_offset: Vector2, delta: float)` / `clear_windup_telegraph()`; draw pulse tint, dashed reach outline, progress bar in `_draw()` |
 | `src/core/monster/monster_manager.gd` | `_pass3c_visual_sync` computes progress and calls the above; boss hint (§4.3); emit `monster_hero_attack_resolved` (§4.2) |
 | `src/core/visual_presentation/hero_feedback.gd` (+ `.tscn` if it needs a child layer) | New. All Hero-side feedback and the death sequence |
 | `src/core/visual_presentation/reduce_motion.gd` | New tiny static helper, `ReduceMotion.enabled() -> bool`, reading project setting `accessibility/reduce_motion` (default `false`) |
