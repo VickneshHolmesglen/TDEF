@@ -333,7 +333,8 @@ func _enter_terminal(new_phase: String) -> void:
 	_terminal = true
 	if new_phase == "DEFEAT":
 		_combat_cluster.visible = false
-		_retry_button.visible = true
+		# The MissionOutcomeScreen owns Retry when a mission scene hosts one.
+		_retry_button.visible = get_tree().get_first_node_in_group(MissionOutcomeScreen.GROUP_NAME) == null
 	else:
 		visible = false
 

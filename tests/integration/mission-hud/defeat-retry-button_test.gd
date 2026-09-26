@@ -123,3 +123,21 @@ func test_retry_triggered_mission_launched_reaches_the_same_scout_mount_path() -
 	_hud._on_mission_phase_changed("DEFEAT", "SCOUT", 0.0)
 
 	assert_int(_hud._breach_count).is_equal(0)  # Rule-4 reset ran, same as an initial launch
+
+
+# ---------------------------------------------------------------------------
+# Mission outcome screen: interim Retry suppressed when the outcome screen owns DEFEAT
+# ---------------------------------------------------------------------------
+
+func test_retry_hidden_during_defeat_when_outcome_screen_is_in_the_tree() -> void:
+	var screen: MissionOutcomeScreen = (load("res://src/presentation/mission_outcome/MissionOutcomeScreen.tscn") as PackedScene).instantiate()
+	add_child(screen)
+	_hud._on_mission_phase_changed("IDLE", "SCOUT", 0.0)
+	_hud._on_mission_phase_changed("SCOUT", "PRE_WAVE", 0.0)
+	_hud._on_mission_phase_changed("PRE_WAVE", "WAVE_ACTIVE", 0.0)
+
+	_hud._on_mission_phase_changed("WAVE_ACTIVE", "DEFEAT", 0.0)
+
+	assert_bool(_hud._retry_button.visible).is_false()
+	remove_child(screen)
+	screen.free()
