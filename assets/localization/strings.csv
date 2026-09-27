@@ -160,3 +160,7 @@ MISSION_SELECT_BACK,Back
 HUD_SELL,Sell
 HUD_ULTIMATE,Ultimate
 HUD_RETRY,Retry
+HUD_READY,Ready
+HUD_SKIP_COUNTDOWN,Skip Countdown
+SKILL_TREE_VISIT_AVAILABLE,1 purchase available this visit
+SKILL_TREE_VISIT_SPENT,Spent this visit — more available after your next mission

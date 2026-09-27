@@ -16,7 +16,7 @@ position = Vector2(880, 240)
 
 [node name="ReadyButton" type="Button" parent="."]
 position = Vector2(880, 560)
-text = "Ready"
+text = "HUD_READY"
 
 [node name="SellButton" type="Button" parent="."]
 position = Vector2(880, 596)

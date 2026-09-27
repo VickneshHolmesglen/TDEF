@@ -116,7 +116,7 @@ func _rebuild_visit_spend_label() -> void:
 	if hero_skill_tree == null:
 		_visit_spend_label.text = ""
 		return
-	_visit_spend_label.text = "1 purchase available this visit" if hero_skill_tree.visit_spend_count == 0 else "Spent this visit — more available after your next mission"
+	_visit_spend_label.text = tr(&"SKILL_TREE_VISIT_AVAILABLE") if hero_skill_tree.visit_spend_count == 0 else tr(&"SKILL_TREE_VISIT_SPENT")
 
 
 # ---------------------------------------------------------------------------

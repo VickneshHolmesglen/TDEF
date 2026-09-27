@@ -34,10 +34,6 @@ const ALLOWED_LITERALS: Dictionary = {
 	"Hero HP: --": "runtime-overwritten HUD placeholder",
 	"Breaches: 0": "runtime-overwritten HUD placeholder",
 	"0": "runtime-overwritten numeric readout (gold counter)",
-	# Ready button text is reassigned from planning_cluster.gd's READY_LABEL/SKIP_LABEL constants.
-	"Ready": "runtime-overwritten by planning_cluster.gd (READY_LABEL / SKIP_LABEL literals)",
-	# hero_skill_tree_screen.gd assigns this label's text on every refresh (literal, not yet tr()).
-	"1 purchase available this visit": "runtime-overwritten by hero_skill_tree_screen.gd",
 }
 
 

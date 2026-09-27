@@ -151,8 +151,8 @@ var _exit_tree_fired: bool = false
 var _input_mode_tracker: InputModeTracker = null
 var _ready_focus_ring: Panel = null
 
-const READY_LABEL: String = "Ready"
-const SKIP_LABEL: String = "Skip Countdown"  ## AC-42 — exact copy is a UX Spec concern, this is a placeholder
+const READY_LABEL: StringName = &"HUD_READY"
+const SKIP_LABEL: StringName = &"HUD_SKIP_COUNTDOWN"  ## AC-42 — exact copy is a UX Spec concern, this is a placeholder
 
 ## Story 010: -1 = no tower currently inspected (sentinel, matches this
 ## story's own Implementation Notes). Tower Info Panel selection mechanics
@@ -416,7 +416,7 @@ func _clear_composition_preview_host() -> void:
 ## interactive by construction (never called with is_pre_wave=false
 ## explicitly — a new instance simply never enters this state).
 func set_pre_wave_interactivity(is_pre_wave: bool) -> void:
-	_ready_button.text = SKIP_LABEL if is_pre_wave else READY_LABEL  # AC-42
+	_ready_button.text = tr(SKIP_LABEL) if is_pre_wave else tr(READY_LABEL)  # AC-42
 	_is_pre_wave = is_pre_wave
 	_update_sell_button_existence()  # AC-52 — Sell disappears during PRE_WAVE regardless of selection
 	for child: Node in _non_ready_controls.get_children():
