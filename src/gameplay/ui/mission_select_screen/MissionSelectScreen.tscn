@@ -60,7 +60,7 @@ layout_mode = 2
 
 [node name="BackButton" type="Button" parent="MainLayout/TopRow/ConfigPanel"]
 layout_mode = 2
-text = "Back"
+text = "MISSION_SELECT_BACK"
 
 [node name="LaunchBar" type="HBoxContainer" parent="MainLayout"]
 layout_mode = 2
@@ -72,4 +72,4 @@ autowrap_mode = 3
 
 [node name="LaunchButton" type="Button" parent="MainLayout/LaunchBar"]
 layout_mode = 2
-text = "Launch"
+text = "MISSION_SELECT_LAUNCH"

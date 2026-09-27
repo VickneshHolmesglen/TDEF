@@ -21,7 +21,7 @@ text = "Ready"
 [node name="SellButton" type="Button" parent="."]
 position = Vector2(880, 596)
 visible = false
-text = "Sell"
+text = "HUD_SELL"
 
 [node name="TowerStatsPanel" type="PanelContainer" parent="."]
 position = Vector2(8, 480)

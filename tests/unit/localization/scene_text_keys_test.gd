@@ -13,12 +13,6 @@ const SCAN_ROOT: String = "res://src"
 const SKIPPED_SCENES: Array[String] = [
 	# QA scaffolding scene, never shown to players.
 	"res://src/gameplay/missions/the_gap/the_gap.tscn",
-	# TEMP-PENDING (removed when its stage lands)
-	"res://src/gameplay/ui/hero_skill_tree_screen/HeroSkillTreeScreen.tscn",
-	"res://src/gameplay/ui/mission_select_screen/MissionSelectScreen.tscn",
-	"res://src/presentation/mission_hud/planning_cluster.tscn",
-	"res://src/presentation/sanctuary_ui/SanctuaryUI.tscn",
-	"res://src/scenes/MissionScene.tscn",
 ]
 
 ## Literal values that may stay as static scene text. Each has a reason.
@@ -40,6 +34,10 @@ const ALLOWED_LITERALS: Dictionary = {
 	"Hero HP: --": "runtime-overwritten HUD placeholder",
 	"Breaches: 0": "runtime-overwritten HUD placeholder",
 	"0": "runtime-overwritten numeric readout (gold counter)",
+	# Ready button text is reassigned from planning_cluster.gd's READY_LABEL/SKIP_LABEL constants.
+	"Ready": "runtime-overwritten by planning_cluster.gd (READY_LABEL / SKIP_LABEL literals)",
+	# hero_skill_tree_screen.gd assigns this label's text on every refresh (literal, not yet tr()).
+	"1 purchase available this visit": "runtime-overwritten by hero_skill_tree_screen.gd",
 }
 
 
@@ -130,7 +128,6 @@ func test_keys_used_by_scenes_have_english_values() -> void:
 
 
 func test_allowlist_has_no_dead_entries() -> void:
-	return  # TEMP-PENDING
 	var used: Dictionary = {}
 	for item in _scan_static_texts():
 		used[item[3]] = true

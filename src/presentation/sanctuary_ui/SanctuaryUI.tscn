@@ -30,7 +30,7 @@ script = ExtResource("4_rmh")
 
 [node name="LaunchMissionButton" type="Button" parent="."]
 layout_mode = 1
-text = "Launch Mission"
+text = "SANCTUARY_LAUNCH_MISSION_BUTTON"
 
 [node name="EquipmentForge" type="Node" parent="."]
 script = ExtResource("5_ef")
