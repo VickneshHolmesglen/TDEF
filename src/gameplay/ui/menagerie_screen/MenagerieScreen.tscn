@@ -49,15 +49,15 @@ layout_mode = 2
 
 [node name="TendButton" type="Button" parent="MainLayout/DetailPanel/ActionRow"]
 layout_mode = 2
-text = "Tend"
+text = "MENAGERIE_TEND"
 
 [node name="BreedSelectButton" type="Button" parent="MainLayout/DetailPanel/ActionRow"]
 layout_mode = 2
-text = "Select for Breeding"
+text = "MENAGERIE_SELECT_FOR_BREEDING"
 
 [node name="SacrificeButton" type="Button" parent="MainLayout/DetailPanel/ActionRow"]
 layout_mode = 2
-text = "Sacrifice"
+text = "MENAGERIE_SACRIFICE"
 
 [node name="BreedRow" type="HBoxContainer" parent="MainLayout/DetailPanel"]
 layout_mode = 2
@@ -66,12 +66,12 @@ layout_mode = 2
 layout_mode = 2
 visible = false
 disabled = true
-text = "Confirm Breeding"
+text = "MENAGERIE_CONFIRM_BREEDING"
 
 [node name="CancelSelectionButton" type="Button" parent="MainLayout/DetailPanel/BreedRow"]
 layout_mode = 2
 visible = false
-text = "Cancel Selection"
+text = "MENAGERIE_CANCEL_SELECTION"
 
 [node name="SacrificeConfirmDialog" type="ConfirmationDialog" parent="."]
-title = "Confirm Sacrifice"
+title = "MENAGERIE_SACRIFICE_CONFIRM_TITLE"

@@ -84,19 +84,19 @@ layout_mode = 2
 size_flags_horizontal = 3
 toggle_mode = true
 button_pressed = true
-text = "Recipes"
+text = "INVENTORY_TAB_RECIPES"
 
 [node name="AssembleTabButton" type="Button" parent="MainLayout/RightPanel/RightPanelContent/CraftingTabStrip"]
 layout_mode = 2
 size_flags_horizontal = 3
 toggle_mode = true
-text = "Assemble Towers"
+text = "FORGE_TAB_ASSEMBLE"
 
 [node name="RepairTabButton" type="Button" parent="MainLayout/RightPanel/RightPanelContent/CraftingTabStrip"]
 layout_mode = 2
 size_flags_horizontal = 3
 toggle_mode = true
-text = "Repair"
+text = "INVENTORY_TAB_REPAIR"
 
 [node name="RecipeScroll" type="ScrollContainer" parent="MainLayout/RightPanel/RightPanelContent"]
 layout_mode = 2
@@ -119,7 +119,7 @@ theme_override_constants/separation = 12
 
 [node name="RepairEmptyLabel" type="Label" parent="MainLayout/RightPanel/RightPanelContent/RepairView/RepairListHost"]
 layout_mode = 2
-text = "No damaged components."
+text = "INVENTORY_REPAIR_EMPTY"
 
 [node name="AssembleView" type="VBoxContainer" parent="MainLayout/RightPanel/RightPanelContent"]
 visible = false
@@ -136,43 +136,43 @@ layout_mode = 2
 size_flags_horizontal = 3
 toggle_mode = true
 button_pressed = true
-text = "Foundation"
+text = "INVENTORY_SLOT_FOUNDATION"
 
 [node name="WeaponTabButton" type="Button" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/AssembleSlotTabStrip"]
 layout_mode = 2
 size_flags_horizontal = 3
 toggle_mode = true
-text = "Weapon"
+text = "INVENTORY_SLOT_WEAPON"
 
 [node name="FocusTabButton" type="Button" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/AssembleSlotTabStrip"]
 layout_mode = 2
 size_flags_horizontal = 3
 toggle_mode = true
-text = "Focus"
+text = "INVENTORY_SLOT_FOCUS"
 
 [node name="PowerTabButton" type="Button" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/AssembleSlotTabStrip"]
 layout_mode = 2
 size_flags_horizontal = 3
 toggle_mode = true
-text = "Power"
+text = "INVENTORY_SLOT_POWER"
 
 [node name="ShaftTabButton" type="Button" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/AssembleSlotTabStrip"]
 layout_mode = 2
 size_flags_horizontal = 3
 toggle_mode = true
-text = "Shaft"
+text = "INVENTORY_SLOT_SHAFT"
 
 [node name="TopTabButton" type="Button" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/AssembleSlotTabStrip"]
 layout_mode = 2
 size_flags_horizontal = 3
 toggle_mode = true
-text = "Top"
+text = "INVENTORY_SLOT_TOP"
 
 [node name="AssembledTabButton" type="Button" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/AssembleSlotTabStrip"]
 layout_mode = 2
 size_flags_horizontal = 3
 toggle_mode = true
-text = "Assembled"
+text = "INVENTORY_TAB_ASSEMBLED"
 
 [node name="FoundationColumn" type="VBoxContainer" parent="MainLayout/RightPanel/RightPanelContent/AssembleView"]
 layout_mode = 2
@@ -180,7 +180,7 @@ size_flags_vertical = 3
 
 [node name="FoundationLabel" type="Label" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/FoundationColumn"]
 layout_mode = 2
-text = "Foundation"
+text = "INVENTORY_SLOT_FOUNDATION"
 
 [node name="FoundationScroll" type="ScrollContainer" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/FoundationColumn"]
 layout_mode = 2
@@ -197,7 +197,7 @@ size_flags_vertical = 3
 
 [node name="WeaponLabel" type="Label" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/WeaponColumn"]
 layout_mode = 2
-text = "Weapon"
+text = "INVENTORY_SLOT_WEAPON"
 
 [node name="WeaponScroll" type="ScrollContainer" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/WeaponColumn"]
 layout_mode = 2
@@ -214,7 +214,7 @@ size_flags_vertical = 3
 
 [node name="FocusLabel" type="Label" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/FocusColumn"]
 layout_mode = 2
-text = "Focus"
+text = "INVENTORY_SLOT_FOCUS"
 
 [node name="FocusScroll" type="ScrollContainer" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/FocusColumn"]
 layout_mode = 2
@@ -231,7 +231,7 @@ size_flags_vertical = 3
 
 [node name="PowerLabel" type="Label" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/PowerColumn"]
 layout_mode = 2
-text = "Power"
+text = "INVENTORY_SLOT_POWER"
 
 [node name="PowerScroll" type="ScrollContainer" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/PowerColumn"]
 layout_mode = 2
@@ -248,7 +248,7 @@ size_flags_vertical = 3
 
 [node name="ShaftLabel" type="Label" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/ShaftColumn"]
 layout_mode = 2
-text = "Shaft"
+text = "INVENTORY_SLOT_SHAFT"
 
 [node name="ShaftScroll" type="ScrollContainer" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/ShaftColumn"]
 layout_mode = 2
@@ -265,7 +265,7 @@ size_flags_vertical = 3
 
 [node name="TopLabel" type="Label" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/TopColumn"]
 layout_mode = 2
-text = "Top"
+text = "INVENTORY_SLOT_TOP"
 
 [node name="TopScroll" type="ScrollContainer" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/TopColumn"]
 layout_mode = 2
@@ -282,7 +282,7 @@ size_flags_vertical = 3
 
 [node name="AssembledLabel" type="Label" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/AssembledColumn"]
 layout_mode = 2
-text = "Assembled Towers"
+text = "INVENTORY_ASSEMBLED_HEADER"
 
 [node name="AssembledScroll" type="ScrollContainer" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/AssembledColumn"]
 layout_mode = 2
@@ -299,11 +299,11 @@ theme_override_constants/separation = 8
 [node name="AssembleNameEdit" type="LineEdit" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/AssembleFooter"]
 layout_mode = 2
 size_flags_horizontal = 3
-placeholder_text = "Tower Name"
+placeholder_text = "FORGE_ASSEMBLE_NAME_PLACEHOLDER"
 
 [node name="AssembleButton" type="Button" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/AssembleFooter"]
 layout_mode = 2
-text = "Assemble Tower"
+text = "FORGE_ASSEMBLE_BUTTON"
 
 [node name="AssembleConfirmDialog" type="ConfirmationDialog" parent="."]
-title = "Confirm Assembly"
+title = "FORGE_ASSEMBLE_CONFIRM_TITLE"

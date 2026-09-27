@@ -27,15 +27,15 @@ layout_mode = 2
 
 [node name="CraftTabButton" type="Button" parent="MainLayout/HeaderRow"]
 layout_mode = 2
-text = "Craft"
+text = "FORGE_TAB_CRAFT"
 
 [node name="ImbueTabButton" type="Button" parent="MainLayout/HeaderRow"]
 layout_mode = 2
-text = "Imbue"
+text = "FORGE_TAB_IMBUE"
 
 [node name="UpgradeTabButton" type="Button" parent="MainLayout/HeaderRow"]
 layout_mode = 2
-text = "Upgrade Buildings"
+text = "FORGE_TAB_UPGRADE"
 
 [node name="CraftView" type="PanelContainer" parent="MainLayout"]
 layout_mode = 2
@@ -60,7 +60,7 @@ layout_mode = 2
 [node name="CancelSelectionButton" type="Button" parent="MainLayout/ImbueView/ItemColumn"]
 layout_mode = 2
 visible = false
-text = "Cancel Selection"
+text = "FORGE_CANCEL_SELECTION"
 
 [node name="RuneColumn" type="VBoxContainer" parent="MainLayout/ImbueView"]
 layout_mode = 2
@@ -78,7 +78,7 @@ size_flags_vertical = 3
 layout_mode = 2
 
 [node name="ImbueConfirmDialog" type="ConfirmationDialog" parent="."]
-title = "Confirm Imbue"
+title = "FORGE_IMBUE_CONFIRM_TITLE"
 
 [node name="UpgradeConfirmDialog" type="ConfirmationDialog" parent="."]
-title = "Confirm Upgrade"
+title = "FORGE_UPGRADE_CONFIRM_TITLE"

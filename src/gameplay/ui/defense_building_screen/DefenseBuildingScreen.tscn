@@ -27,7 +27,7 @@ layout_mode = 2
 
 [node name="ViewSwitchButton" type="Button" parent="MainLayout/HeaderRow"]
 layout_mode = 2
-text = "Switch View"
+text = "DEFENSE_BUILDING_SWITCH_VIEW"
 
 [node name="TechTreeView" type="PanelContainer" parent="MainLayout"]
 layout_mode = 2

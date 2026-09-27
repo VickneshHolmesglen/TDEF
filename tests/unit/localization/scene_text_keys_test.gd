@@ -14,13 +14,7 @@ const SKIPPED_SCENES: Array[String] = [
 	# QA scaffolding scene, never shown to players.
 	"res://src/gameplay/missions/the_gap/the_gap.tscn",
 	# TEMP-PENDING (removed when its stage lands)
-	"res://src/gameplay/ui/defense_building_screen/DefenseBuildingScreen.tscn",
-	"res://src/gameplay/ui/equipment_forge_screen/EquipmentForgeScreen.tscn",
-	"res://src/gameplay/ui/hero_skills_room/HeroSkillsRoom.tscn",
-	"res://src/gameplay/ui/hero_skill_build_screen/HeroSkillBuildScreen.tscn",
 	"res://src/gameplay/ui/hero_skill_tree_screen/HeroSkillTreeScreen.tscn",
-	"res://src/gameplay/ui/inventory_screen/InventoryScreen.tscn",
-	"res://src/gameplay/ui/menagerie_screen/MenagerieScreen.tscn",
 	"res://src/gameplay/ui/mission_select_screen/MissionSelectScreen.tscn",
 	"res://src/presentation/mission_hud/planning_cluster.tscn",
 	"res://src/presentation/sanctuary_ui/SanctuaryUI.tscn",
