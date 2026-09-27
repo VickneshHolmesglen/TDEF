@@ -487,7 +487,7 @@ func _on_tower_damaged(tower_id: int, _damage_dealt: float, current_hp: float, m
 		label = Label.new()
 		_tower_hp_bars_host.add_child(label)
 		_tower_hp_bar_labels[tower_id] = label
-	label.text = "Tower %d: %d/%d" % [tower_id, roundi(current_hp), roundi(max_hp)]
+	label.text = tr("HUD_TOWER_HP") % [tower_id, roundi(current_hp), roundi(max_hp)]
 
 
 func _clear_tower_hp_bar_labels() -> void:
@@ -653,7 +653,7 @@ func _update_ultimate_focus_ring(_arg: Variant = null) -> void:
 func _on_hero_health_changed(current_health: float, max_health: float) -> void:
 	if _terminal:
 		return
-	_hero_hp_label.text = "Hero HP: %d/%d" % [roundi(current_health), roundi(max_health)]
+	_hero_hp_label.text = tr("HUD_HERO_HP") % [roundi(current_health), roundi(max_health)]
 
 
 ## Builds the 4 skill-slot icon tiles (Pattern 12): a base ColorRect face
@@ -742,7 +742,7 @@ func _render_boss_bar() -> void:
 		_boss_bar_label.visible = false
 		return
 	_boss_bar_label.visible = true
-	_boss_bar_label.text = "BOSS %s: %d/%d" % [_boss_state["display_name"], roundi(_boss_state["current_hp"] as float), roundi(_boss_state["max_hp"] as float)]
+	_boss_bar_label.text = tr("HUD_BOSS_BAR") % [_boss_state["display_name"], roundi(_boss_state["current_hp"] as float), roundi(_boss_state["max_hp"] as float)]
 
 
 ## AC-60 (update half)/AC-66: a boss_hp_changed for a non-matching or already-
@@ -762,7 +762,7 @@ func _on_boss_hp_changed(entity_id: int, current_hp: float, max_hp: float) -> vo
 
 ## AC-59.
 func _on_breach_count_changed_display() -> void:
-	_breach_counter_label.text = "Breaches: %d" % _breach_count
+	_breach_counter_label.text = tr("HUD_BREACHES") % _breach_count
 
 
 ## monster.md "Breach counter pulses (scale pop 1.2x, 0.3s)". Restarts on
@@ -871,7 +871,7 @@ func _on_monster_damage_number_requested(_entity_id: int, world_position: Vector
 
 ## AC-63 (PC-4, wave half).
 func _on_wave_started(wave_number: int, total_waves: int, _wave_difficulty: float) -> void:
-	_wave_label.text = "Wave: %d/%d" % [wave_number, total_waves]
+	_wave_label.text = tr("HUD_WAVE_PROGRESS") % [wave_number, total_waves]
 
 
 ## AC-63 (PC-4, timer half).
@@ -882,7 +882,7 @@ func _on_phase_timer_tick(phase: String, seconds_remaining: float) -> void:
 ## AC-63 (PC-4, countdown-warning half) — distinct payload shape from
 ## phase_timer_tick (int seconds, no phase name), same display target.
 func _on_wave_countdown_warning(seconds_remaining: int) -> void:
-	_phase_timer_label.text = "Wave incoming: %ds" % seconds_remaining
+	_phase_timer_label.text = tr("HUD_WAVE_INCOMING") % seconds_remaining
 
 
 ## AC-64 (materials half): accumulates the running per-mission tally —
@@ -978,7 +978,7 @@ func _on_item_removed(item_id: String, _item_type: String, quantity: int) -> voi
 
 
 func _on_item_pickup_rejected(item_id: String, _item_type: String, quantity: int, reason: String) -> void:
-	_show_toast("Could not pick up %dx %s (%s)" % [quantity, item_id, reason])
+	_show_toast(tr("HUD_TOAST_PICKUP_REJECTED") % [quantity, item_id, reason])
 
 
 # ---------------------------------------------------------------------------
@@ -1022,7 +1022,7 @@ func _on_skill_unlocked(skill_id: String, _source_tower_id: int) -> void:
 		return
 	var definition: SkillDefinitionResource = GGameDataRegistry.get_skill_definition(StringName(skill_id))
 	var label: String = definition.display_name if definition != null else skill_id
-	_show_toast("Skill Learned: %s" % label)
+	_show_toast(tr("HUD_TOAST_SKILL_LEARNED") % label)
 
 
 func _show_toast(text: String) -> void:

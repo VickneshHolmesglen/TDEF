@@ -406,7 +406,7 @@ func _on_new_game_pressed() -> void:
 		GSceneManager.transition_to_sanctuary()
 		return
 	_pending_overwrite_slot = 0
-	_overwrite_message_label.text = "This will overwrite Slot %d. Continue?" % (_pending_overwrite_slot + 1)
+	_overwrite_message_label.text = tr("MAIN_MENU_OVERWRITE_CONFIRM") % (_pending_overwrite_slot + 1)
 	_overwrite_confirm_panel.visible = true
 	_set_nav_buttons_focusable(false)
 	_overwrite_yes_button.grab_focus()
@@ -441,7 +441,7 @@ func _refresh_load_game_slots() -> void:
 	for slot: int in range(SAVE_SLOT_COUNT):
 		var button: Button = _slot_buttons[slot]
 		var exists: bool = _slot_exists(slot)
-		button.text = "Slot %d — %s" % [slot + 1, "Occupied" if exists else "Empty"]
+		button.text = tr("MAIN_MENU_SLOT_LABEL") % [slot + 1, tr("MAIN_MENU_SLOT_OCCUPIED") if exists else tr("MAIN_MENU_SLOT_EMPTY")]
 		button.disabled = not exists
 		button.focus_mode = Control.FOCUS_ALL if exists else Control.FOCUS_NONE
 

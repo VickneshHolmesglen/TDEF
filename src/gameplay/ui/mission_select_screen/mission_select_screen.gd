@@ -293,7 +293,7 @@ func _on_back_pressed() -> void:
 func _disarm_launch() -> void:
 	_launch_armed = false
 	_launch_recap_label.text = ""
-	_launch_button.text = "Launch"
+	_launch_button.text = tr("MISSION_SELECT_LAUNCH")
 
 
 func _on_launch_pressed() -> void:
@@ -302,7 +302,7 @@ func _on_launch_pressed() -> void:
 			return  # disabled/no-op until both a mission and tier are selected
 		_launch_armed = true
 		_launch_recap_label.text = _build_recap_text()
-		_launch_button.text = "Confirm Launch"
+		_launch_button.text = tr("MISSION_SELECT_CONFIRM_LAUNCH")
 		return
 
 	# Second press: commit.

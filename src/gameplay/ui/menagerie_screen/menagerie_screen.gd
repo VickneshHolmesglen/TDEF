@@ -273,7 +273,7 @@ func _refresh_detail_panel() -> void:
 
 	_detail_species_label.text = String(creature.species)
 	_detail_state_label.text = CreatureInstance.CreatureState.keys()[creature.state]
-	_detail_happiness_label.text = "H: %d" % int(creature.happiness)
+	_detail_happiness_label.text = tr("MENAGERIE_HAPPINESS_SHORT") % int(creature.happiness)
 	_tend_button.disabled = creature.state != CreatureInstance.CreatureState.HABITAT
 	_sacrifice_button.disabled = creature.state == CreatureInstance.CreatureState.BREEDING_PEN \
 		or creature.state == CreatureInstance.CreatureState.SACRIFICED

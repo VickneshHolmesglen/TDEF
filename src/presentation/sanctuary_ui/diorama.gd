@@ -370,7 +370,7 @@ func _refresh_habitat_label() -> void:
 	for creature: CreatureInstance in menagerie.get_all_creatures():
 		if creature.state == CreatureInstance.CreatureState.HABITAT:
 			count += 1
-	_habitat_label.text = "Habitat: %d" % count
+	_habitat_label.text = tr("DIORAMA_HABITAT_COUNT") % count
 
 
 ## DEPARTING beat (GDD Visual/Audio Requirements, Tuning Knobs' 60/40 split):

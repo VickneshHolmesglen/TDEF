@@ -181,9 +181,9 @@ func _queue_connector_redraw() -> void:
 
 func _rebuild_ultimate_label() -> void:
 	if hero_skill_build == null:
-		_ultimate_label.text = "Ultimate: —"
+		_ultimate_label.text = tr("SKILL_BUILD_ULTIMATE_NONE")
 		return
-	_ultimate_label.text = "Ultimate: %s" % hero_skill_build.get_all_slot_bindings()["U"]
+	_ultimate_label.text = tr("SKILL_BUILD_ULTIMATE") % hero_skill_build.get_all_slot_bindings()["U"]
 
 
 ## UI Requirements' "deliberate pedagogical surface": one letter-glyph badge

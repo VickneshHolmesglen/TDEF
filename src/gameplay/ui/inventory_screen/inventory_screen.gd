@@ -1377,7 +1377,7 @@ func _create_repair_row(contents: Dictionary, quality_tier: int, owned_common: i
 	title_row.add_child(name_label)
 
 	var repair_button := Button.new()
-	repair_button.text = "Repair"
+	repair_button.text = tr("INVENTORY_REPAIR_BUTTON")
 	repair_button.disabled = not sufficient
 	repair_button.focus_mode = Control.FOCUS_ALL
 	repair_button.add_theme_stylebox_override("normal", ShellChromeStyle.chrome_button_stylebox(sufficient))
@@ -1386,7 +1386,7 @@ func _create_repair_row(contents: Dictionary, quality_tier: int, owned_common: i
 	title_row.add_child(repair_button)
 
 	var cost_label := Label.new()
-	cost_label.text = "Common %d/%d" % [owned_common, cost]
+	cost_label.text = tr("INVENTORY_REPAIR_COST") % [owned_common, cost]
 	cost_label.add_theme_color_override("font_color", ShellChromeStyle.UI_PARCHMENT if sufficient else ShellChromeStyle.UI_WARNING_ORANGE)
 	content.add_child(cost_label)
 
