@@ -986,6 +986,10 @@ func _on_mission_phase_changed(_previous_phase: String, new_phase: String,
 ## re-validated after the target is chosen, so this callback never aborts a swing
 ## once a target has been selected.
 func _on_attack_timer_timeout() -> void:
+	# DEAD covers a finished mission (DEFEAT or MISSION_COMPLETE): the monsters stay cached and frozen
+	# behind the outcome panel until Retry, and a dead Hero must not keep striking them.
+	if _phase == HeroPhase.DEAD:
+		return
 	var target_id: int = _select_target()
 	if target_id == -1:
 		return
@@ -1207,6 +1211,8 @@ func _on_ultimate_skill_changed(ultimate_id: String) -> void:
 ## comment below) — damage-status.md Rule IX/Formula D7 now exists and is
 ## wired here as the emitting side.
 func activate_skill(slot_index: int) -> void:
+	if _phase == HeroPhase.DEAD:
+		return  # mission over (DEFEAT/MISSION_COMPLETE): no casts behind the outcome panel
 	var skill_id: StringName = _skill_slots[slot_index]
 	if skill_id == &"":
 		return

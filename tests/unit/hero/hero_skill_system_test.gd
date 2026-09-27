@@ -87,6 +87,18 @@ func test_skill_slots_default_to_empty() -> void:
 	assert_array(_hero._skill_slots).is_equal([&"", &"", &"", &""])
 
 
+## A dead Hero (mission over) must not cast: no cooldown started, no events (the outcome panel is up and
+## the monsters are frozen).
+func test_activate_skill_does_nothing_while_the_hero_is_dead() -> void:
+	_seed_skill_cooldowns()
+	GEventBus.active_skill_equipped.emit(0, String(SKILL_FIREBALL))
+	_hero._phase = Hero.HeroPhase.DEAD
+
+	_hero.activate_skill(0)
+
+	assert_bool(_hero._skill_cooldown_timers[0].is_stopped()).is_true()
+
+
 func test_active_skill_equipped_assigns_only_the_targeted_slot() -> void:
 	GEventBus.active_skill_equipped.emit(1, String(SKILL_FROST_NOVA))
 

@@ -185,6 +185,30 @@ func test_attack_timeout_boss_tier_sets_hero_bonus_tier_2() -> void:
 	assert_int(payload.hero_bonus_tier).is_equal(2)  # BOSS
 
 
+## A mission that has ended (DEFEAT or MISSION_COMPLETE) puts the Hero in DEAD, but the monsters stay
+## cached (frozen) behind the outcome panel until Retry: the Hero must stop attacking them.
+func test_attack_timeout_does_nothing_while_the_hero_is_dead() -> void:
+	_hero._base_stats[&"attack_range"] = 1000.0
+	_hero._monster_cache[1] = {"cell": Vector2i(0, 0), "hp": 100.0, "tier": 0, "path_step": 0}
+	_watch_auto_attacked()
+	_hero._phase = Hero.HeroPhase.DEAD
+
+	_hero._on_attack_timer_timeout()
+
+	assert_int(_spy.count("hero_auto_attacked")).is_equal(0)
+
+
+func test_attack_timeout_still_fires_in_combat_phase_with_a_target() -> void:
+	_hero._base_stats[&"attack_range"] = 1000.0
+	_hero._monster_cache[1] = {"cell": Vector2i(0, 0), "hp": 100.0, "tier": 0, "path_step": 0}
+	_watch_auto_attacked()
+	_hero._phase = Hero.HeroPhase.COMBAT
+
+	_hero._on_attack_timer_timeout()
+
+	assert_int(_spy.count("hero_auto_attacked")).is_equal(1)
+
+
 func test_attack_timeout_no_target_in_range_emits_no_event() -> void:
 	# Edge case: no monster in cache at all
 	_hero._base_stats[&"attack_range"] = 1000.0
