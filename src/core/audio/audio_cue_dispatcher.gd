@@ -325,7 +325,9 @@ func _play_stream(entry: AudioCueEntry, effective_volume: float) -> void:
 ## A player is busy while it plays or holds a live playback. `playing` alone reads false for an
 ## INHERIT player frozen mid-cue by a paused tree, so the live playback object is also checked.
 func _is_player_busy(player: AudioStreamPlayer) -> bool:
-	return player.playing or player.get_stream_playback() != null
+	# has_stream_playback() (not get_stream_playback()) — the latter logs an engine error for a player
+	# that has never called play().
+	return player.playing or player.has_stream_playback()
 
 
 ## Formula F2 — World-Space Distance Attenuation (spatial cues only).

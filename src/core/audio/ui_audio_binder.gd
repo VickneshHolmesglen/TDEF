@@ -94,7 +94,9 @@ func _prune() -> void:
 
 
 func _on_pressed(button: BaseButton) -> void:
-	var cue: StringName = cue_for(button.get_meta(META_KEY, null))
+	# get_meta() with a null default still logs an engine error for a missing key, so test has_meta first.
+	var kind: Variant = button.get_meta(META_KEY) if button.has_meta(META_KEY) else null
+	var cue: StringName = cue_for(kind)
 	if cue != &"" and _dispatch.is_valid():
 		_dispatch.call(cue)
 

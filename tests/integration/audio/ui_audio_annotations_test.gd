@@ -12,7 +12,8 @@ const MISSION_SELECT_SCENE: String = "res://src/gameplay/ui/mission_select_scree
 
 
 func _meta(button: BaseButton) -> Variant:
-	return button.get_meta(UiAudioBinder.META_KEY, null)
+	# has_meta first: get_meta() with a null default still logs an engine error for a missing key.
+	return button.get_meta(UiAudioBinder.META_KEY) if button.has_meta(UiAudioBinder.META_KEY) else null
 
 
 ## Returns the body text of `func_name` in the script at `path` ("" if absent).
