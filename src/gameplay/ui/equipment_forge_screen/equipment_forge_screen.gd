@@ -115,7 +115,11 @@ func _ready() -> void:
 	_imbue_cancel_button.pressed.connect(_on_cancel_item_selection_pressed)
 	_imbue_cancel_button.set_meta(UiAudioBinder.META_KEY, UiAudioBinder.KIND_CANCEL)
 	_imbue_confirm_dialog.confirmed.connect(_on_imbue_confirmed)
+	_imbue_confirm_dialog.get_cancel_button().set_meta(UiAudioBinder.META_KEY, UiAudioBinder.KIND_CANCEL)
+	_imbue_confirm_dialog.get_ok_button().set_meta(UiAudioBinder.META_KEY, UiAudioBinder.KIND_CONFIRM)
 	_upgrade_confirm_dialog.confirmed.connect(_on_upgrade_confirmed)
+	_upgrade_confirm_dialog.get_cancel_button().set_meta(UiAudioBinder.META_KEY, UiAudioBinder.KIND_CANCEL)
+	_upgrade_confirm_dialog.get_ok_button().set_meta(UiAudioBinder.META_KEY, UiAudioBinder.KIND_NONE)
 	_input_mode_tracker.input_mode_changed.connect(_on_input_mode_changed)
 
 	GEventBus.recipe_discovered.connect(_on_forge_state_changed)
@@ -209,7 +213,6 @@ func _create_recipe_button(recipe: EquipmentRecipeResource) -> Button:
 	button.clip_text = true
 	button.text = _recipe_entry_text(recipe)
 	button.pressed.connect(_on_recipe_pressed.bind(recipe.recipe_id))
-	button.set_meta(UiAudioBinder.META_KEY, UiAudioBinder.KIND_NONE)
 	_wire_focus_ring(button)
 	return button
 

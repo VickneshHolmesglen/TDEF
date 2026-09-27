@@ -92,6 +92,8 @@ func _ready() -> void:
 	_cancel_selection_button.pressed.connect(_on_cancel_selection_pressed)
 	_cancel_selection_button.set_meta(UiAudioBinder.META_KEY, UiAudioBinder.KIND_CANCEL)
 	_sacrifice_confirm_dialog.confirmed.connect(_on_sacrifice_confirmed)
+	_sacrifice_confirm_dialog.get_cancel_button().set_meta(UiAudioBinder.META_KEY, UiAudioBinder.KIND_CANCEL)
+	_sacrifice_confirm_dialog.get_ok_button().set_meta(UiAudioBinder.META_KEY, UiAudioBinder.KIND_CONFIRM)
 	_input_mode_tracker.input_mode_changed.connect(_on_input_mode_changed)
 
 	GEventBus.creature_acquired.connect(_on_roster_changed)

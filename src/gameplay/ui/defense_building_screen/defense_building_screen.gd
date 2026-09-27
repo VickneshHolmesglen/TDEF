@@ -208,7 +208,6 @@ func _create_structure_button(structure: StructureResource) -> Button:
 	button.clip_text = true
 	button.text = _structure_entry_text(structure)
 	button.pressed.connect(_on_structure_pressed.bind(structure.structure_id))
-	button.set_meta(UiAudioBinder.META_KEY, UiAudioBinder.KIND_NONE)
 	_wire_focus_ring(button)
 	return button
 

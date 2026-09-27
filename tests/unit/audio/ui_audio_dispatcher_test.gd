@@ -16,6 +16,7 @@ func before_test() -> void:
 
 
 func after_test() -> void:
+	get_tree().paused = false
 	if _dispatcher != null and is_instance_valid(_dispatcher):
 		_dispatcher.free()
 	_dispatcher = null
@@ -109,3 +110,55 @@ func test_real_map_has_the_four_ui_cues() -> void:
 func test_voice_limiter_has_the_three_ui_families() -> void:
 	for family: StringName in [&"ui_confirm_cancel", &"activation_confirm", &"denial_rejection"]:
 		assert_bool(VoiceLimiter.DEFAULT_FAMILY_CAPS.has(family)).is_true()
+
+
+func _stream_entry(event_name: StringName, bus: StringName) -> AudioCueEntry:
+	var entry: AudioCueEntry = _entry(event_name, bus)
+	entry.stream = load("res://assets/audio/sfx/ui_denied.wav") as AudioStream
+	return entry
+
+
+func test_ui_cue_while_paused_does_not_arm_the_ui_sidechain() -> void:
+	# Music/SFX are already ducked by the pause controller; a UI duck armed while paused could not
+	# advance until unpause and would dip the mix after resume.
+	get_tree().paused = true
+	_dispatcher.dispatch_cue(&"ui_denied")
+	get_tree().paused = false
+	assert_int(_dispatcher.voice_limiter.get_sidechain_state(VoiceLimiter.UI_TO_MUSIC_AND_SFX)).is_equal(VoiceLimiter.SidechainState.RESTING)
+
+
+func test_ui_cue_while_unpaused_still_arms_the_ui_sidechain() -> void:
+	_dispatcher.dispatch_cue(&"ui_denied")
+	assert_int(_dispatcher.voice_limiter.get_sidechain_state(VoiceLimiter.UI_TO_MUSIC_AND_SFX)).is_not_equal(VoiceLimiter.SidechainState.RESTING)
+
+
+func test_paused_ui_cue_never_steals_a_frozen_inherit_player() -> void:
+	var map := AudioCueMap.new()
+	map.entries = [_stream_entry(&"ui_denied", &"UI"), _stream_entry(&"tower_attacked", &"SFX")]
+	_dispatcher.set_cue_map(map)
+	var players: Array = _dispatcher._players
+	var last_index: int = players.size() - 1
+	for i in range(last_index):
+		var player: AudioStreamPlayer = players[i]
+		player.process_mode = Node.PROCESS_MODE_INHERIT
+		player.stream = map.entries[1].stream
+		player.play()
+	_dispatcher._next_player_index = 0
+	get_tree().paused = true
+	_dispatcher.dispatch_cue(&"ui_denied")
+	get_tree().paused = false
+	for i in range(last_index):
+		var player: AudioStreamPlayer = players[i]
+		assert_int(player.process_mode).is_equal(Node.PROCESS_MODE_INHERIT)
+		assert_bool(player.stream == map.entries[1].stream).is_true()
+	var used: AudioStreamPlayer = players[last_index]
+	assert_int(used.process_mode).is_equal(Node.PROCESS_MODE_ALWAYS)
+	assert_bool(used.stream == map.entries[0].stream).is_true()
+
+
+func test_recreating_the_binder_revives_a_dead_one() -> void:
+	var binder: UiAudioBinder = _dispatcher.get_node("UiAudioBinder") as UiAudioBinder
+	binder._dispatch = Callable()
+	_dispatcher._create_ui_binder()
+	assert_int(_dispatcher.get_children().filter(func(n: Node) -> bool: return n is UiAudioBinder).size()).is_equal(1)
+	assert_bool(binder._dispatch.is_valid()).is_true()

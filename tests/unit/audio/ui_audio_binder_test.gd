@@ -4,22 +4,28 @@ extends GdUnitTestSuite
 
 var played: Array[StringName] = []
 var _binder: UiAudioBinder
+## Buttons already hooked when the binder was set up (the runner tree may not be empty): assert deltas.
+var _baseline: int = 0
 
 
 func before_test() -> void:
 	played.clear()
 	# The live autoload dispatcher owns a real binder that would hook test buttons first (hook flag is
 	# per-button); detach it for the duration of each test so this binder is the only one under test.
-	var live: Node = GAudioSystem.cue_dispatcher.get_node_or_null("UiAudioBinder")
-	if live != null:
-		live.free()
+	# NOTE: an interrupted run (crash / abort between here and after_test) leaves the live binder freed;
+	# after_test recreates it, and the dispatcher recreates it on its next _ready otherwise.
+	if GAudioSystem != null and GAudioSystem.cue_dispatcher != null:
+		var live: Node = GAudioSystem.cue_dispatcher.get_node_or_null("UiAudioBinder")
+		if live != null:
+			live.free()
 
 
 func after_test() -> void:
 	if _binder != null and is_instance_valid(_binder):
 		_binder.free()
 	_binder = null
-	GAudioSystem.cue_dispatcher._create_ui_binder()
+	if GAudioSystem != null and GAudioSystem.cue_dispatcher != null:
+		GAudioSystem.cue_dispatcher._create_ui_binder()
 
 
 func _record(cue: StringName) -> void:
@@ -30,6 +36,7 @@ func _make_binder() -> UiAudioBinder:
 	_binder = UiAudioBinder.new()
 	add_child(_binder)
 	_binder.setup(_record, get_tree())
+	_baseline = _binder.hooked_count()
 	return _binder
 
 
@@ -59,7 +66,7 @@ func test_button_added_after_setup_is_hooked() -> void:
 	_make_binder()
 	var b: Button = auto_free(_button())
 	add_child(b)
-	assert_int(_binder.hooked_count()).is_equal(1)
+	assert_int(_binder.hooked_count()).is_equal(_baseline + 1)
 	b.pressed.emit()
 	assert_array(played).is_equal([&"ui_click"])
 
@@ -197,7 +204,7 @@ func test_prune_drops_freed_buttons() -> void:
 	for b: Button in doomed:
 		b.free()
 	_binder._prune()
-	assert_int(_binder.hooked_count()).is_equal(1)
+	assert_int(_binder.hooked_count()).is_equal(_baseline + 1)
 
 
 func test_hook_growth_is_bounded_automatically() -> void:
@@ -206,7 +213,7 @@ func test_hook_growth_is_bounded_automatically() -> void:
 		var b: Button = _button()
 		add_child(b)
 		b.free()
-	assert_int(_binder.hooked_count()).is_less_equal(UiAudioBinder.PRUNE_INTERVAL + 1)
+	assert_int(_binder.hooked_count()).is_less_equal(_baseline + UiAudioBinder.PRUNE_INTERVAL + 1)
 
 
 func test_binder_freed_outside_tree_cleans_up() -> void:
@@ -219,3 +226,16 @@ func test_binder_freed_outside_tree_cleans_up() -> void:
 	assert_bool(b.has_meta(&"_ui_audio_hooked")).is_false()
 	b.pressed.emit()
 	assert_array(played).is_empty()
+
+
+func test_accept_dialog_buttons_existing_before_setup_are_hooked() -> void:
+	var dialog: ConfirmationDialog = auto_free(ConfirmationDialog.new())
+	add_child(dialog)
+	_make_binder()
+	assert_bool(dialog.get_ok_button().has_meta(&"_ui_audio_hooked")).is_true()
+	assert_bool(dialog.get_cancel_button().has_meta(&"_ui_audio_hooked")).is_true()
+	dialog.get_ok_button().set_meta(UiAudioBinder.META_KEY, UiAudioBinder.KIND_NONE)
+	dialog.get_cancel_button().set_meta(UiAudioBinder.META_KEY, UiAudioBinder.KIND_CANCEL)
+	dialog.get_ok_button().pressed.emit()
+	dialog.get_cancel_button().pressed.emit()
+	assert_array(played).is_equal([&"ui_cancel"])

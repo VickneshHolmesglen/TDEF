@@ -68,7 +68,7 @@ func hooked_count() -> int:
 func _hook_existing(node: Node) -> void:
 	if node is BaseButton:
 		_hook(node as BaseButton)
-	for child: Node in node.get_children():
+	for child: Node in node.get_children(true):
 		_hook_existing(child)
 
 

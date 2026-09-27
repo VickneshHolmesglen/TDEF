@@ -359,6 +359,8 @@ func _ready() -> void:
 	_repair_tab_button.pressed.connect(_on_repair_tab_pressed)
 	_assemble_button.pressed.connect(_on_assemble_button_pressed)
 	_assemble_confirm_dialog.confirmed.connect(_on_assemble_confirmed)
+	_assemble_confirm_dialog.get_cancel_button().set_meta(UiAudioBinder.META_KEY, UiAudioBinder.KIND_CANCEL)
+	_assemble_confirm_dialog.get_ok_button().set_meta(UiAudioBinder.META_KEY, UiAudioBinder.KIND_CONFIRM)
 	for slot: String in _assemble_slot_tab_buttons:
 		_assemble_slot_tab_buttons[slot].pressed.connect(_on_assemble_slot_tab_pressed.bind(slot))
 	_rebuild_assemble_lists()

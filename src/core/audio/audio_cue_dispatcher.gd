@@ -108,7 +108,10 @@ func _ready() -> void:
 ## Auto-hooks every button in the tree for click/confirm/cancel/denial cues. `PROCESS_MODE_ALWAYS` so
 ## the binder keeps working for always-processing Pause Menu buttons while the tree is paused.
 func _create_ui_binder() -> void:
-	if get_node_or_null("UiAudioBinder") != null:
+	var existing: UiAudioBinder = get_node_or_null("UiAudioBinder") as UiAudioBinder
+	if existing != null:
+		# Re-entered dispatcher: make sure the surviving binder is live (setup is idempotent).
+		existing.setup(dispatch_cue, get_tree())
 		return
 	var binder := UiAudioBinder.new()
 	binder.name = "UiAudioBinder"
@@ -259,7 +262,9 @@ func dispatch_cue(event_name: StringName, distance: float = 0.0) -> void:
 
 	if entry.bus == &"SFX":
 		voice_limiter.trigger_sidechain(VoiceLimiter.SFX_TO_AMBIENT)
-	elif entry.bus == &"UI":
+	elif entry.bus == &"UI" and not get_tree().paused:
+		# While paused the duck envelope cannot advance (_process is frozen) and Music/SFX are already
+		# ducked by the pause controller, so arming it would only dip the mix after resume.
 		voice_limiter.trigger_sidechain(VoiceLimiter.UI_TO_MUSIC_AND_SFX)
 
 	_last_played_event = event_name
@@ -289,11 +294,22 @@ func _play_stream(entry: AudioCueEntry, effective_volume: float) -> void:
 		return  # _build_player_pool() hasn't run yet (e.g. a test that never add_child()s this node) — dispatch_cue() still ran its real routing/ducking math above, only playback is skipped.
 
 	var player: AudioStreamPlayer = _players[_next_player_index]
+	var found_idle: bool = false
 	for offset in range(_players.size()):
 		var candidate_index: int = (_next_player_index + offset) % _players.size()
-		if not _players[candidate_index].playing:
+		if not _is_player_busy(_players[candidate_index]):
 			player = _players[candidate_index]
+			found_idle = true
 			break
+	if not found_idle and get_tree().paused:
+		# While paused, INHERIT players are frozen mid-cue: stealing one would cut a gameplay cue that
+		# resumes on unpause. Prefer an always-processing (UI) player; fall back to the cursor player
+		# only if none exists.
+		for offset in range(_players.size()):
+			var candidate_index: int = (_next_player_index + offset) % _players.size()
+			if _players[candidate_index].process_mode == Node.PROCESS_MODE_ALWAYS:
+				player = _players[candidate_index]
+				break
 	_next_player_index = (_next_player_index + 1) % _players.size()
 
 	# A pooled AudioStreamPlayer pauses with its node while the tree is paused, so UI-bus cues (Pause Menu
@@ -304,6 +320,12 @@ func _play_stream(entry: AudioCueEntry, effective_volume: float) -> void:
 	player.bus = entry.bus
 	player.volume_db = linear_to_db(effective_volume)
 	player.play()
+
+
+## A player is busy while it plays or holds a live playback. `playing` alone reads false for an
+## INHERIT player frozen mid-cue by a paused tree, so the live playback object is also checked.
+func _is_player_busy(player: AudioStreamPlayer) -> bool:
+	return player.playing or player.get_stream_playback() != null
 
 
 ## Formula F2 — World-Space Distance Attenuation (spatial cues only).
