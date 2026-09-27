@@ -209,6 +209,12 @@ func test_continue_loads_the_most_recently_modified_occupied_slot() -> void:
 			best_time = modified_time
 			expected_slot = slot
 
+	if GSavePersistence.has_pending_checkpoint(expected_slot):
+		# A crash-recovery checkpoint routes Continue to the recovery-choice panel instead of loading
+		# (main_menu.gd _load_or_offer_recovery), so no scene transition is coming; that branch has its own
+		# tests on a dedicated slot. Awaiting scene_transition_completed here would hang the runner.
+		return
+
 	var received: Array = []
 	var handler := func(target: String, mission_id: String) -> void:
 		received.append([target, mission_id])
@@ -249,6 +255,9 @@ func test_clicking_an_occupied_slot_loads_it_and_transitions() -> void:
 		if _slot_exists(slot):
 			occupied_slot = slot
 			break
+
+	if GSavePersistence.has_pending_checkpoint(occupied_slot):
+		return  # recovery-choice panel intercepts the load; see test_continue_loads_the_most_recently_modified_occupied_slot
 
 	var received: Array = []
 	var handler := func(target: String, mission_id: String) -> void:
