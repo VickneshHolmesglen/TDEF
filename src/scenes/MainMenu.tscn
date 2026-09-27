@@ -37,7 +37,7 @@ offset_top = 48.0
 offset_right = 900.0
 offset_bottom = 160.0
 theme_override_font_sizes/font_size = 64
-text = "Sanctuary Defenders"
+text = "MAIN_MENU_TITLE"
 
 [node name="Buttons" type="VBoxContainer" parent="."]
 layout_mode = 0
@@ -99,7 +99,7 @@ offset_top = 20.0
 offset_right = 900.0
 offset_bottom = 68.0
 theme_override_font_sizes/font_size = 40
-text = "Settings"
+text = "MAIN_MENU_SETTINGS"
 
 [node name="VolumeSliders" type="VBoxContainer" parent="SettingsPanel/SettingsContent"]
 layout_mode = 0
@@ -117,7 +117,7 @@ theme_override_constants/separation = 16
 custom_minimum_size = Vector2(140, 0)
 layout_mode = 2
 theme_override_font_sizes/font_size = 24
-text = "Music"
+text = "MAIN_MENU_BUS_MUSIC"
 
 [node name="Slider" type="HSlider" parent="SettingsPanel/SettingsContent/VolumeSliders/MusicRow"]
 custom_minimum_size = Vector2(320, 0)
@@ -142,7 +142,7 @@ theme_override_constants/separation = 16
 custom_minimum_size = Vector2(140, 0)
 layout_mode = 2
 theme_override_font_sizes/font_size = 24
-text = "SFX"
+text = "MAIN_MENU_BUS_SFX"
 
 [node name="Slider" type="HSlider" parent="SettingsPanel/SettingsContent/VolumeSliders/SfxRow"]
 custom_minimum_size = Vector2(320, 0)
@@ -167,7 +167,7 @@ theme_override_constants/separation = 16
 custom_minimum_size = Vector2(140, 0)
 layout_mode = 2
 theme_override_font_sizes/font_size = 24
-text = "Voice"
+text = "MAIN_MENU_BUS_VOICE"
 
 [node name="Slider" type="HSlider" parent="SettingsPanel/SettingsContent/VolumeSliders/VoiceRow"]
 custom_minimum_size = Vector2(320, 0)
@@ -192,7 +192,7 @@ theme_override_constants/separation = 16
 custom_minimum_size = Vector2(140, 0)
 layout_mode = 2
 theme_override_font_sizes/font_size = 24
-text = "UI"
+text = "MAIN_MENU_BUS_UI"
 
 [node name="Slider" type="HSlider" parent="SettingsPanel/SettingsContent/VolumeSliders/UiRow"]
 custom_minimum_size = Vector2(320, 0)
@@ -225,7 +225,7 @@ theme_override_constants/separation = 16
 custom_minimum_size = Vector2(140, 0)
 layout_mode = 2
 theme_override_font_sizes/font_size = 24
-text = "Resolution"
+text = "MAIN_MENU_RESOLUTION"
 
 [node name="OptionButton" type="OptionButton" parent="SettingsPanel/SettingsContent/DisplaySettings/ResolutionRow"]
 custom_minimum_size = Vector2(320, 0)
@@ -240,7 +240,7 @@ theme_override_constants/separation = 16
 custom_minimum_size = Vector2(140, 0)
 layout_mode = 2
 theme_override_font_sizes/font_size = 24
-text = "Fullscreen"
+text = "MAIN_MENU_FULLSCREEN"
 
 [node name="CheckButton" type="CheckButton" parent="SettingsPanel/SettingsContent/DisplaySettings/FullscreenRow"]
 layout_mode = 2
@@ -253,7 +253,7 @@ theme_override_constants/separation = 16
 custom_minimum_size = Vector2(140, 0)
 layout_mode = 2
 theme_override_font_sizes/font_size = 24
-text = "UI Scale"
+text = "MAIN_MENU_UI_SCALE"
 
 [node name="Slider" type="HSlider" parent="SettingsPanel/SettingsContent/DisplaySettings/UiScaleRow"]
 custom_minimum_size = Vector2(320, 0)
@@ -276,7 +276,7 @@ offset_left = 96.0
 offset_top = 418.0
 offset_right = 296.0
 offset_bottom = 466.0
-text = "Back"
+text = "MAIN_MENU_BACK"
 
 [node name="LoadGamePanel" type="ColorRect" parent="."]
 anchors_preset = 15
@@ -295,7 +295,7 @@ offset_top = 60.0
 offset_right = 900.0
 offset_bottom = 120.0
 theme_override_font_sizes/font_size = 40
-text = "Load Game"
+text = "MAIN_MENU_LOAD_GAME"
 
 [node name="Slots" type="VBoxContainer" parent="LoadGamePanel/LoadGameContent"]
 layout_mode = 0
@@ -329,7 +329,7 @@ offset_left = 96.0
 offset_top = 400.0
 offset_right = 296.0
 offset_bottom = 448.0
-text = "Back"
+text = "MAIN_MENU_BACK"
 
 [node name="OverwriteConfirmPanel" type="ColorRect" parent="."]
 anchors_preset = 15
@@ -362,13 +362,13 @@ theme_override_constants/separation = 20
 custom_minimum_size = Vector2(160, 54)
 layout_mode = 2
 theme_override_font_sizes/font_size = 26
-text = "Yes"
+text = "MAIN_MENU_YES"
 
 [node name="CancelButton" type="Button" parent="OverwriteConfirmPanel/OverwriteContent/ConfirmButtons"]
 custom_minimum_size = Vector2(160, 54)
 layout_mode = 2
 theme_override_font_sizes/font_size = 26
-text = "Cancel"
+text = "MAIN_MENU_CANCEL"
 
 [node name="RecoveryChoicePanel" type="ColorRect" parent="."]
 anchors_preset = 15
@@ -388,7 +388,7 @@ offset_top = 240.0
 offset_right = 1100.0
 offset_bottom = 340.0
 theme_override_font_sizes/font_size = 28
-text = "A checkpoint from an interrupted mission was found. Load your last Sanctuary save, or restore from the checkpoint?"
+text = "MAIN_MENU_CHECKPOINT_PROMPT"
 autowrap_mode = 3
 
 [node name="ChoiceButtons" type="HBoxContainer" parent="RecoveryChoicePanel/RecoveryContent"]
@@ -403,13 +403,13 @@ theme_override_constants/separation = 20
 custom_minimum_size = Vector2(280, 54)
 layout_mode = 2
 theme_override_font_sizes/font_size = 24
-text = "Load Last Sanctuary Save"
+text = "MAIN_MENU_LOAD_LAST_SAVE"
 
 [node name="RestoreCheckpointButton" type="Button" parent="RecoveryChoicePanel/RecoveryContent/ChoiceButtons"]
 custom_minimum_size = Vector2(240, 54)
 layout_mode = 2
 theme_override_font_sizes/font_size = 24
-text = "Restore From Checkpoint"
+text = "MAIN_MENU_RESTORE_CHECKPOINT"
 
 [node name="SaveWarningPanel" type="ColorRect" parent="."]
 anchors_preset = 15
@@ -429,7 +429,7 @@ offset_top = 260.0
 offset_right = 1100.0
 offset_bottom = 340.0
 theme_override_font_sizes/font_size = 28
-text = "Your save could not be loaded and the game has started fresh."
+text = "MAIN_MENU_SAVE_WARNING_DEFAULT"
 autowrap_mode = 3
 
 [node name="OkButton" type="Button" parent="SaveWarningPanel/SaveWarningContent"]
@@ -439,4 +439,4 @@ offset_top = 360.0
 offset_right = 256.0
 offset_bottom = 414.0
 theme_override_font_sizes/font_size = 26
-text = "OK"
+text = "MAIN_MENU_OK"

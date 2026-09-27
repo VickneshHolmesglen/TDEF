@@ -30,23 +30,23 @@ alignment = 1
 
 [node name="ResumeButton" type="Button" parent="ButtonStack"]
 layout_mode = 2
-text = "Resume"
+text = "PAUSE_RESUME"
 
 [node name="SettingsButton" type="Button" parent="ButtonStack"]
 layout_mode = 2
-text = "Settings"
+text = "PAUSE_SETTINGS"
 
 [node name="ObjectiveButton" type="Button" parent="ButtonStack"]
 layout_mode = 2
-text = "Objective"
+text = "PAUSE_OBJECTIVE"
 
 [node name="QuitToSanctuaryButton" type="Button" parent="ButtonStack"]
 layout_mode = 2
-text = "Quit to Sanctuary"
+text = "PAUSE_QUIT_TO_SANCTUARY"
 
 [node name="QuitToMainMenuButton" type="Button" parent="ButtonStack"]
 layout_mode = 2
-text = "Quit to Main Menu"
+text = "PAUSE_QUIT_TO_MAIN_MENU"
 
 [node name="SettingsPanel" type="ColorRect" parent="."]
 anchors_preset = 15
@@ -66,7 +66,7 @@ offset_top = 140.0
 offset_right = 800.0
 offset_bottom = 180.0
 theme_override_font_sizes/font_size = 28
-text = "Settings"
+text = "PAUSE_SETTINGS"
 
 [node name="VolumeSliders" type="VBoxContainer" parent="SettingsPanel/SettingsContent"]
 layout_mode = 0
@@ -82,7 +82,7 @@ layout_mode = 2
 [node name="Label" type="Label" parent="SettingsPanel/SettingsContent/VolumeSliders/MusicRow"]
 layout_mode = 2
 custom_minimum_size = Vector2(80, 0)
-text = "Music"
+text = "PAUSE_BUS_MUSIC"
 
 [node name="Slider" type="HSlider" parent="SettingsPanel/SettingsContent/VolumeSliders/MusicRow"]
 layout_mode = 2
@@ -102,7 +102,7 @@ layout_mode = 2
 [node name="Label" type="Label" parent="SettingsPanel/SettingsContent/VolumeSliders/SfxRow"]
 layout_mode = 2
 custom_minimum_size = Vector2(80, 0)
-text = "SFX"
+text = "PAUSE_BUS_SFX"
 
 [node name="Slider" type="HSlider" parent="SettingsPanel/SettingsContent/VolumeSliders/SfxRow"]
 layout_mode = 2
@@ -122,7 +122,7 @@ layout_mode = 2
 [node name="Label" type="Label" parent="SettingsPanel/SettingsContent/VolumeSliders/VoiceRow"]
 layout_mode = 2
 custom_minimum_size = Vector2(80, 0)
-text = "Voice"
+text = "PAUSE_BUS_VOICE"
 
 [node name="Slider" type="HSlider" parent="SettingsPanel/SettingsContent/VolumeSliders/VoiceRow"]
 layout_mode = 2
@@ -142,7 +142,7 @@ layout_mode = 2
 [node name="Label" type="Label" parent="SettingsPanel/SettingsContent/VolumeSliders/UiRow"]
 layout_mode = 2
 custom_minimum_size = Vector2(80, 0)
-text = "UI"
+text = "PAUSE_BUS_UI"
 
 [node name="Slider" type="HSlider" parent="SettingsPanel/SettingsContent/VolumeSliders/UiRow"]
 layout_mode = 2
@@ -162,7 +162,7 @@ offset_left = 480.0
 offset_top = 420.0
 offset_right = 600.0
 offset_bottom = 460.0
-text = "Back"
+text = "PAUSE_BACK"
 
 [node name="ObjectivePanel" type="ColorRect" parent="."]
 anchors_preset = 15
@@ -182,7 +182,7 @@ offset_top = 200.0
 offset_right = 900.0
 offset_bottom = 240.0
 theme_override_font_sizes/font_size = 28
-text = "Objective"
+text = "PAUSE_OBJECTIVE"
 
 [node name="ObjectiveTextLabel" type="Label" parent="ObjectivePanel/ObjectiveContent"]
 layout_mode = 0
@@ -199,7 +199,7 @@ offset_left = 380.0
 offset_top = 400.0
 offset_right = 500.0
 offset_bottom = 440.0
-text = "Back"
+text = "PAUSE_BACK"
 
 [node name="QuitToMainMenuConfirmPanel" type="ColorRect" parent="."]
 anchors_preset = 15
@@ -219,7 +219,7 @@ offset_top = 260.0
 offset_right = 900.0
 offset_bottom = 340.0
 theme_override_font_sizes/font_size = 26
-text = "You'll lose progress in this attempt. Continue?"
+text = "PAUSE_QUIT_CONFIRM"
 autowrap_mode = 3
 
 [node name="ConfirmButtons" type="HBoxContainer" parent="QuitToMainMenuConfirmPanel/ConfirmContent"]
@@ -233,9 +233,9 @@ theme_override_constants/separation = 20
 [node name="YesButton" type="Button" parent="QuitToMainMenuConfirmPanel/ConfirmContent/ConfirmButtons"]
 custom_minimum_size = Vector2(160, 54)
 layout_mode = 2
-text = "Yes"
+text = "PAUSE_YES"
 
 [node name="CancelButton" type="Button" parent="QuitToMainMenuConfirmPanel/ConfirmContent/ConfirmButtons"]
 custom_minimum_size = Vector2(160, 54)
 layout_mode = 2
-text = "Cancel"
+text = "PAUSE_CANCEL"

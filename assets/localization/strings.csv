@@ -101,3 +101,34 @@ MAIN_MENU_OVERWRITE_CONFIRM,This will overwrite Slot %d. Continue?
 MAIN_MENU_SLOT_LABEL,Slot %d — %s
 MAIN_MENU_SLOT_OCCUPIED,Occupied
 MAIN_MENU_SLOT_EMPTY,Empty
+MAIN_MENU_TITLE,Sanctuary Defenders
+MAIN_MENU_SETTINGS,Settings
+MAIN_MENU_BUS_MUSIC,Music
+MAIN_MENU_BUS_SFX,SFX
+MAIN_MENU_BUS_VOICE,Voice
+MAIN_MENU_BUS_UI,UI
+MAIN_MENU_RESOLUTION,Resolution
+MAIN_MENU_FULLSCREEN,Fullscreen
+MAIN_MENU_UI_SCALE,UI Scale
+MAIN_MENU_BACK,Back
+MAIN_MENU_LOAD_GAME,Load Game
+MAIN_MENU_YES,Yes
+MAIN_MENU_CANCEL,Cancel
+MAIN_MENU_CHECKPOINT_PROMPT,"A checkpoint from an interrupted mission was found. Load your last Sanctuary save, or restore from the checkpoint?"
+MAIN_MENU_LOAD_LAST_SAVE,Load Last Sanctuary Save
+MAIN_MENU_RESTORE_CHECKPOINT,Restore From Checkpoint
+MAIN_MENU_SAVE_WARNING_DEFAULT,Your save could not be loaded and the game has started fresh.
+MAIN_MENU_OK,OK
+PAUSE_RESUME,Resume
+PAUSE_SETTINGS,Settings
+PAUSE_OBJECTIVE,Objective
+PAUSE_QUIT_TO_SANCTUARY,Quit to Sanctuary
+PAUSE_QUIT_TO_MAIN_MENU,Quit to Main Menu
+PAUSE_BUS_MUSIC,Music
+PAUSE_BUS_SFX,SFX
+PAUSE_BUS_VOICE,Voice
+PAUSE_BUS_UI,UI
+PAUSE_BACK,Back
+PAUSE_QUIT_CONFIRM,You'll lose progress in this attempt. Continue?
+PAUSE_YES,Yes
+PAUSE_CANCEL,Cancel
