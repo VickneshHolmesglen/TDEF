@@ -130,7 +130,6 @@ Rules:
 
 ### 7. Questions for me
 
-- `G:\Zodiac` (plus `G:\Zodiac-backup-20260825-221705` and `G:\Zodiac-pre-art-20260828-025249`) is another game project on the same drive — should that be surveyed for the portfolio too, or is this repo the only one that matters right now?
 - `G:\MTD\project.godot` actually names itself `"Godot MCP"`, not a game — is that folder a stray/misnamed leftover, or a real second project worth a separate look?
 - Your Desktop has two folders named `Godot Mcp` / `Godot-Mcp`, separate from this repo's vendored `addons/godot_ai` plugin (which is a third-party addon, not something built here). Did you build a custom Godot MCP server in one of those? That would be a materially stronger portfolio point ("built an MCP server") than "configured and kept a third-party one updated," which is what this repo shows on its own.
 - Is `github.com/VickneshHolmesglen/TDEF` public right now? If it's going in front of anyone, the README/LICENSE gap above should probably be fixed first.
