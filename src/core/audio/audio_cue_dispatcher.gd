@@ -201,10 +201,25 @@ func _dispatch_denied_event() -> void:
 ## that narrow window is the same "full volume" fallback this dispatcher already used everywhere
 ## before this change, not a new failure mode.
 func _dispatch_spatial(event_name: StringName, source_cell: Vector2i) -> void:
-	var distance: float = 0.0
-	if _hero_cell != UNKNOWN_CELL:
-		distance = Vector2(source_cell - _hero_cell).length()
-	dispatch_cue(event_name, distance)
+	dispatch_cue(event_name, _hero_distance_to(source_cell))
+
+
+## Formula F2 distance from `cell` to the Hero, or 0.0 before the first hero_position_changed of
+## a mission — the same full-volume fallback this dispatcher always used before this gap closed.
+func _hero_distance_to(cell: Vector2i) -> float:
+	if _hero_cell == UNKNOWN_CELL:
+		return 0.0
+	return Vector2(cell - _hero_cell).length()
+
+
+## Audio follow-up (per-element/per-skill variants): dispatches `variant_name` when an
+## AudioCueEntry exists for it, otherwise the generic `fallback_name` every such event already
+## has. Lets content give one specific skill or status effect a distinct sound with no code
+## change — author the variant's cue entry under that exact name and it is picked up
+## automatically on the next load. No variants are authored yet (OQ-2: content, not mechanism),
+## so every skill/effect still plays its shared generic cue until one is.
+func _dispatch_with_variant(variant_name: StringName, fallback_name: StringName, distance: float = 0.0) -> void:
+	dispatch_cue(variant_name if variant_name != &"" and _lookup.has(variant_name) else fallback_name, distance)
 
 
 func _connect_all_events() -> void:
@@ -212,7 +227,8 @@ func _connect_all_events() -> void:
 		return
 	_wire(GEventBus.mission_phase_changed, func(_a: String, _b: String, _c: float) -> void: dispatch_cue(&"mission_phase_changed"))
 	_wire(GEventBus.wave_countdown_warning, func(_a: int) -> void: dispatch_cue(&"wave_countdown_warning"))
-	_wire(GEventBus.hero_skill_activated, func(_a: String, _b: Vector2) -> void: dispatch_cue(&"hero_skill_activated"))
+	_wire(GEventBus.hero_skill_activated, func(skill_id: String, _b: Vector2) -> void:
+			_dispatch_with_variant(StringName("hero_skill_activated_%s" % skill_id), &"hero_skill_activated"))
 	_wire(GEventBus.hero_class_unlocked, func(_a: StringName, _b: bool) -> void: dispatch_cue(&"hero_class_unlocked"))
 	_wire(GEventBus.mission_launched, _on_mission_launched)
 	_wire(GEventBus.hero_position_changed, func(cell: Vector2i) -> void: _hero_cell = cell)
@@ -220,8 +236,10 @@ func _connect_all_events() -> void:
 			_tower_cells[payload.tower_id] = payload.grid_position
 			_dispatch_spatial(&"tower_placed", payload.grid_position))
 	_wire(GEventBus.tower_removed, func(tower_id: int, _b: Vector2i, _c: String, _d: String) -> void: _tower_cells.erase(tower_id))
-	_wire(GEventBus.tower_attacked, func(tower_id: int, _b: int, _c: float, _d: bool, _e: bool, _f: String, _g: float, _h: float, _i: float, _j: bool) -> void:
-			_dispatch_spatial(&"tower_attacked", _tower_cells.get(tower_id, _hero_cell)))
+	_wire(GEventBus.tower_attacked, func(tower_id: int, _b: int, _c: float, _d: bool, _e: bool, effect_type: String, _g: float, _h: float, _i: float, _j: bool) -> void:
+			var distance: float = _hero_distance_to(_tower_cells.get(tower_id, _hero_cell))
+			var variant: StringName = StringName("tower_attacked_%s" % effect_type) if not effect_type.is_empty() else &""
+			_dispatch_with_variant(variant, &"tower_attacked", distance))
 	_wire(GEventBus.pre_placement_perk_activated, func(_a: int, _b: String) -> void: dispatch_cue(&"pre_placement_perk_activated"))
 	_wire(GEventBus.boss_died, func(_a: int, _b: StringName, _c: int, _d: String) -> void: dispatch_cue(&"boss_died"))
 	_wire(GEventBus.hero_damage_taken, func(_a: int, _b: int) -> void: dispatch_cue(&"hero_damage_taken"))
