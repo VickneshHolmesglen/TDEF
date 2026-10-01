@@ -64,6 +64,42 @@ func test_defeat_phase_shows_with_retry_focused() -> void:
 	assert_str(_label("TitleLabel").text).is_equal("Defeat")
 
 
+func test_hiding_restores_focus_to_whatever_had_it_before_showing() -> void:
+	var background_button := Button.new()
+	background_button.focus_mode = Control.FOCUS_ALL
+	add_child(background_button)
+	background_button.grab_focus()
+
+	_screen._on_phase_changed("WAVE_ACTIVE", "DEFEAT", 0.0)
+	assert_bool(_btn("RetryButton").has_focus()).is_true()
+
+	_screen._on_phase_changed("DEFEAT", "SCOUT", 0.0)  # non-terminal: _reset_attempt_state() -> _hide()
+	assert_bool(_screen.is_showing()).is_false()
+	assert_bool(background_button.has_focus()).is_true()
+
+	background_button.free()
+
+
+func test_hiding_with_nothing_previously_focused_grabs_nothing_and_does_not_error() -> void:
+	_screen._on_phase_changed("WAVE_ACTIVE", "DEFEAT", 0.0)
+	_screen._on_phase_changed("DEFEAT", "SCOUT", 0.0)
+	assert_bool(_screen.is_showing()).is_false()
+
+
+func test_hiding_does_not_restore_focus_to_a_control_freed_in_the_meantime() -> void:
+	var background_button := Button.new()
+	background_button.focus_mode = Control.FOCUS_ALL
+	add_child(background_button)
+	background_button.grab_focus()
+
+	_screen._on_phase_changed("WAVE_ACTIVE", "DEFEAT", 0.0)
+	background_button.free()
+	await get_tree().process_frame
+
+	_screen._on_phase_changed("DEFEAT", "SCOUT", 0.0)
+	assert_bool(_screen.is_showing()).is_false()  # no error from the stale reference
+
+
 func test_hero_died_first_event_wins() -> void:
 	_screen._on_hero_died()
 	assert_int(_screen.get_mode()).is_equal(MissionOutcomeScreen.Mode.DEFEAT)

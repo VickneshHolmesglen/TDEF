@@ -160,7 +160,6 @@ func _ready() -> void:
 	var outcome_screen: MissionOutcomeScreen = (load("res://src/presentation/mission_outcome/MissionOutcomeScreen.tscn") as PackedScene).instantiate() as MissionOutcomeScreen
 	outcome_screen.name = "MissionOutcomeScreen"
 	self.add_child(outcome_screen)
-	GSceneManager.set_terminal_auto_exit(false)
 	_monsters_container = Node2D.new()
 	_monsters_container.name = "MonstersContainer"
 	add_child(_monsters_container)
@@ -232,8 +231,6 @@ func _ready() -> void:
 
 
 func _exit_tree() -> void:
-	if is_instance_valid(GSceneManager):
-		GSceneManager.set_terminal_auto_exit(true)
 	GEventBus.monster_spawned.disconnect(_on_monster_spawned)
 	GEventBus.mission_phase_changed.disconnect(_on_mission_phase_changed)
 	GEventBus.wave_started.disconnect(_on_wave_started)

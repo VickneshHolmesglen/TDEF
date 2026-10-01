@@ -24,6 +24,10 @@ var _sanctuary_action: Callable
 var _retry_available: Callable
 
 var _stats: MissionOutcomeStats = MissionOutcomeStats.new()
+## Whatever had keyboard/gamepad focus right before the panel showed, so _hide() can hand it
+## back — otherwise a hidden Retry/Sanctuary button simply drops focus and a keyboard/gamepad
+## player is left with no focused control once the underlying scene (e.g. after a Retry) resumes.
+var _focus_before_show: Control = null
 var _mode: Mode = Mode.NONE
 ## True once a mission is running. The screen is a child of the mission scene and is freed
 ## with it, so it never ticks through non-mission scenes.
@@ -242,11 +246,15 @@ func _hide() -> void:
 	_fade_tween = null
 	_mode = Mode.NONE
 	visible = false
+	if _focus_before_show != null and is_instance_valid(_focus_before_show) and _focus_before_show.is_visible_in_tree():
+		_focus_before_show.grab_focus()
+	_focus_before_show = null
 
 
 func _show(mode: Mode) -> void:
 	_show_timer = null
 	_show_callback = Callable()
+	_focus_before_show = get_viewport().gui_get_focus_owner()
 	_mode = mode
 	_title_label.text = tr(title_key(mode))
 	_waves_name.text = tr("OUTCOME_STAT_WAVES")

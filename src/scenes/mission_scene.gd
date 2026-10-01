@@ -162,7 +162,6 @@ func _ready() -> void:
 	var outcome_screen: MissionOutcomeScreen = (load("res://src/presentation/mission_outcome/MissionOutcomeScreen.tscn") as PackedScene).instantiate() as MissionOutcomeScreen
 	outcome_screen.name = "MissionOutcomeScreen"
 	self.add_child(outcome_screen)
-	GSceneManager.set_terminal_auto_exit(false)
 	_gameplay_root.visible = false
 	_gameplay_root.set_process(false)
 	_gameplay_root.set_physics_process(false)
@@ -205,8 +204,6 @@ func _apply_presentation_mode() -> void:
 
 
 func _exit_tree() -> void:
-	if is_instance_valid(GSceneManager):
-		GSceneManager.set_terminal_auto_exit(true)
 	GEventBus.grid_initialized.disconnect(_on_grid_initialized)
 	GEventBus.mission_launched.disconnect(_on_mission_launched)
 	GEventBus.monster_spawned.disconnect(_on_monster_spawned)

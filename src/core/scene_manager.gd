@@ -66,10 +66,6 @@ const HERO_DEATH_HOLD_SECONDS: float = 1.5
 var _death_hold_seconds: float = HERO_DEATH_HOLD_SECONDS
 var _death_exit_timer: SceneTreeTimer = null
 
-## Mission outcome screen spec §4 (ADR-0002): when false, SceneManager ignores hero_died and the
-## MISSION_COMPLETE phase change so a mission scene's MissionOutcomeScreen owns the mission-end
-## exit. Mission scenes flip it in _ready and restore true in _exit_tree.
-var _terminal_auto_exit: bool = true
 
 
 func _ready() -> void:
@@ -127,16 +123,14 @@ func transition_to_tarot_deck_ui() -> void:
 func transition_to_main_menu() -> void:
 	_do_transition("MAIN_MENU", "", _main_menu_scene_path)
 
-## Opt in/out of the automatic terminal-event exit to the Sanctuary (hero_died, MISSION_COMPLETE).
-## Default true. A scene that presents its own outcome screen calls set_terminal_auto_exit(false)
-## while mounted and restores true on exit. Usage: GSceneManager.set_terminal_auto_exit(false)
-func set_terminal_auto_exit(enabled: bool) -> void:
-	_terminal_auto_exit = enabled
-
-
-## True when SceneManager itself returns to the Sanctuary on hero_died / MISSION_COMPLETE.
-func is_terminal_auto_exit_enabled() -> bool:
-	return _terminal_auto_exit
+## Mission outcome screen spec §4 (ADR-0002): true when a MissionOutcomeScreen is mounted
+## anywhere in the live tree, in which case it — not SceneManager — owns the mission-end exit
+## (hero_died, MISSION_COMPLETE). Derived from the tree every call, not a manually toggled flag:
+## the screen adds itself to its own group in _ready() and the engine clears that membership
+## automatically the moment it's freed, so a mission scene needs no explicit opt-in/opt-out call
+## at all — mounting or freeing the screen IS the opt-out.
+func is_mission_outcome_screen_present() -> bool:
+	return get_tree().get_first_node_in_group(MissionOutcomeScreen.GROUP_NAME) != null
 
 # =============================================================================
 # Transition sequencing
@@ -193,7 +187,7 @@ func is_death_exit_pending() -> bool:
 
 
 func _on_hero_died() -> void:
-	if not _terminal_auto_exit:
+	if is_mission_outcome_screen_present():
 		return
 	if _transition_in_progress or _death_exit_timer != null:
 		return
@@ -223,5 +217,5 @@ func _on_mission_phase_changed(_previous_phase: String, new_phase: String, _time
 	# what cancels a pending death exit (wind-up presentation spec §5.4, edge case 1).
 	if new_phase != "DEFEAT" and new_phase != "MISSION_COMPLETE":
 		_cancel_death_hold()
-	if new_phase == "MISSION_COMPLETE" and _terminal_auto_exit:
+	if new_phase == "MISSION_COMPLETE" and not is_mission_outcome_screen_present():
 		transition_to_sanctuary()
