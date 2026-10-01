@@ -25,13 +25,16 @@ extends Node
 ## against it, per this class's own tests) but produces no sound, which is
 ## the correct behavior for an unauthored cue, not a bug.
 ##
-## World-space distance attenuation (Formula F2) needs a real distance value
-## from a "camera focus point" concept this project has not built yet (no
-## scrolling camera exists — fixed top-down viewport). `dispatch_cue()`
-## accepts `distance` directly so Formula F2's own math is fully real and
-## testable; the signal-driven wiring below passes `distance = 0.0` for
-## spatial events pending that future camera-focus integration — honestly
-## flagged as a real, separate gap, not silently faked.
+## World-space distance attenuation (Formula F2) needs a real distance value. The project has no
+## scrolling/following camera (fixed top-down viewport showing the whole grid), so "camera focus
+## point" is read as the Hero's position — the player's actual point of reference. `dispatch_cue()`
+## accepts `distance` directly so Formula F2's own math is fully real and testable. The
+## signal-driven wiring below computes a real cell-distance for the two cues whose source is away
+## from the Hero (`tower_placed`, `tower_attacked`), tracked purely through existing EventBus
+## signals — no new signal, no cross-scene node reference. `hero_damage_taken` and
+## `hero_skill_activated` originate AT the Hero (the listener), so `distance = 0.0` for those two
+## is not a placeholder — it's correct: a cue that happens at the listener's own position is
+## always full volume under Formula F2's clamp.
 
 const MAX_AUDIBLE_RADIUS: float = 15.0  ## Tuning Knobs default (Formula F2, R)
 
@@ -61,6 +64,15 @@ var _last_windup_warning_msec: int = -WINDUP_WARNING_MIN_GAP_MSEC
 ## `ui_denied` is limited to one per window (UI audio cues spec §3). Button-press denials are not limited.
 const DENIED_EVENT_MIN_GAP_MSEC: int = 300
 var _last_denied_event_msec: int = -DENIED_EVENT_MIN_GAP_MSEC
+
+## Sentinel for "no hero_position_changed observed yet this mission" — distinct from any real cell.
+const UNKNOWN_CELL: Vector2i = Vector2i(-1, -1)
+## Formula F2's "camera focus point": the Hero's last known grid cell, tracked via the existing
+## hero_position_changed signal (no new signal, no cross-scene reference).
+var _hero_cell: Vector2i = UNKNOWN_CELL
+## tower_id -> grid_position, populated from tower_placed and erased on tower_removed — the same
+## "cache from one event, read from another" pattern MonsterManager's own _entity_lookup uses.
+var _tower_cells: Dictionary[int, Vector2i] = {}
 
 var cue_map: AudioCueMap
 var _lookup: Dictionary[StringName, AudioCueEntry] = {}
@@ -168,12 +180,31 @@ func _dispatch_windup_warning() -> void:
 	dispatch_cue(&"monster_windup_warning")
 
 
+## Every attempt (first launch or a Retry) starts the spatial cache clean — a tower cell or Hero
+## position cached from a previous attempt must never leak into the next one.
+func _on_mission_launched(_mission_id: String, _modifiers: PackedStringArray, _difficulty_tier: int) -> void:
+	_hero_cell = UNKNOWN_CELL
+	_tower_cells.clear()
+
+
 func _dispatch_denied_event() -> void:
 	var now: int = Time.get_ticks_msec()
 	if now - _last_denied_event_msec < DENIED_EVENT_MIN_GAP_MSEC:
 		return
 	_last_denied_event_msec = now
 	dispatch_cue(UiAudioBinder.CUE_DENIED)
+
+
+## Dispatches a spatial cue whose source sits at `source_cell`, with the real distance to the
+## Hero (Formula F2's "camera focus point" — see this file's header doc). `_hero_cell` is unknown
+## (sentinel) before the first hero_position_changed of a mission; dispatching at distance 0 in
+## that narrow window is the same "full volume" fallback this dispatcher already used everywhere
+## before this change, not a new failure mode.
+func _dispatch_spatial(event_name: StringName, source_cell: Vector2i) -> void:
+	var distance: float = 0.0
+	if _hero_cell != UNKNOWN_CELL:
+		distance = Vector2(source_cell - _hero_cell).length()
+	dispatch_cue(event_name, distance)
 
 
 func _connect_all_events() -> void:
@@ -183,8 +214,14 @@ func _connect_all_events() -> void:
 	_wire(GEventBus.wave_countdown_warning, func(_a: int) -> void: dispatch_cue(&"wave_countdown_warning"))
 	_wire(GEventBus.hero_skill_activated, func(_a: String, _b: Vector2) -> void: dispatch_cue(&"hero_skill_activated"))
 	_wire(GEventBus.hero_class_unlocked, func(_a: StringName, _b: bool) -> void: dispatch_cue(&"hero_class_unlocked"))
-	_wire(GEventBus.tower_placed, func(_a: TowerPlacedEvent) -> void: dispatch_cue(&"tower_placed"))
-	_wire(GEventBus.tower_attacked, func(_a: int, _b: int, _c: float, _d: bool, _e: bool, _f: String, _g: float, _h: float, _i: float, _j: bool) -> void: dispatch_cue(&"tower_attacked"))
+	_wire(GEventBus.mission_launched, _on_mission_launched)
+	_wire(GEventBus.hero_position_changed, func(cell: Vector2i) -> void: _hero_cell = cell)
+	_wire(GEventBus.tower_placed, func(payload: TowerPlacedEvent) -> void:
+			_tower_cells[payload.tower_id] = payload.grid_position
+			_dispatch_spatial(&"tower_placed", payload.grid_position))
+	_wire(GEventBus.tower_removed, func(tower_id: int, _b: Vector2i, _c: String, _d: String) -> void: _tower_cells.erase(tower_id))
+	_wire(GEventBus.tower_attacked, func(tower_id: int, _b: int, _c: float, _d: bool, _e: bool, _f: String, _g: float, _h: float, _i: float, _j: bool) -> void:
+			_dispatch_spatial(&"tower_attacked", _tower_cells.get(tower_id, _hero_cell)))
 	_wire(GEventBus.pre_placement_perk_activated, func(_a: int, _b: String) -> void: dispatch_cue(&"pre_placement_perk_activated"))
 	_wire(GEventBus.boss_died, func(_a: int, _b: StringName, _c: int, _d: String) -> void: dispatch_cue(&"boss_died"))
 	_wire(GEventBus.hero_damage_taken, func(_a: int, _b: int) -> void: dispatch_cue(&"hero_damage_taken"))
