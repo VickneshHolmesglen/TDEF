@@ -946,6 +946,7 @@ func _on_mission_phase_changed(_previous_phase: String, new_phase: String,
 		"WAVE_ACTIVE":
 			_proximity_active = true
 			_phase = HeroPhase.COMBAT
+			_broadcast_health()
 		"INTERMISSION":
 			_proximity_active = true
 			_phase = HeroPhase.INTERMISSION
@@ -954,6 +955,7 @@ func _on_mission_phase_changed(_previous_phase: String, new_phase: String,
 			if _primary_class != &"":
 				_class_locked = true
 			_phase = HeroPhase.SCOUT
+			_broadcast_health()
 		"SANCTUARY":
 			_proximity_active = false
 			_phase = HeroPhase.IDLE_SANCTUARY
@@ -966,6 +968,14 @@ func _on_mission_phase_changed(_previous_phase: String, new_phase: String,
 			_phase = HeroPhase.DEAD
 		_:
 			_proximity_active = false
+
+
+## HUD's Hero HP readout only ever updated on damage/heal, so it read "--"
+## for the whole mission until the hero was first hit (2026-10-04 smoke
+## check). Announce the current value on mission start and each wave start.
+func _broadcast_health() -> void:
+	if _max_hp > 0.0:
+		GEventBus.hero_health_changed.emit(_current_hp, _max_hp)
 
 
 # ---------------------------------------------------------------------------
@@ -1586,6 +1596,10 @@ func apply_placeholder_base_stats() -> void:
 	_current_level = saved_level
 	_current_xp = saved_xp
 	_accumulated_class_bonuses = saved_class_bonuses
+	# HP was just re-derived; the SCOUT-phase broadcast can land before this runs
+	# (it fires on mission_phase_changed, this on mission_launched), which showed a
+	# gear-only Max HP in the HUD -- announce the real value now too.
+	_broadcast_health()
 
 
 # ---------------------------------------------------------------------------

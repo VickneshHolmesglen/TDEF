@@ -119,7 +119,7 @@ func test_discovered_recipe_is_listed_with_craftable_state() -> void:
 
 	var button: Button = _screen.call("get_recipe_button", RECIPE_IRON_SWORD)
 	assert_object(button).is_not_null()
-	assert_str(button.text).contains("CRAFTABLE")
+	assert_str(button.text).contains(tr("FORGE_RECIPE_CRAFTABLE"))
 
 
 func test_discovered_recipe_without_materials_shows_missing_materials() -> void:
@@ -127,7 +127,7 @@ func test_discovered_recipe_without_materials_shows_missing_materials() -> void:
 	_rebuild_all()
 
 	var button: Button = _screen.call("get_recipe_button", RECIPE_IRON_SWORD)
-	assert_str(button.text).contains("MISSING_MATERIALS")
+	assert_str(button.text).contains(tr("FORGE_RECIPE_MISSING"))
 
 
 func test_pressing_a_craftable_recipe_crafts_it() -> void:

@@ -216,7 +216,7 @@ func test_damage_number_spawns_at_the_monster_world_position() -> void:
 func test_mission_phase_changed_updates_phase_label() -> void:
 	_hud._on_mission_phase_changed("IDLE", "SCOUT", 0.0)
 
-	assert_str(_hud._phase_label.text).is_equal("Phase: SCOUT")
+	assert_str(_hud._phase_label.text).is_equal(tr("HUD_PHASE") % tr("HUD_PHASE_NAME_SCOUT"))
 
 
 func test_wave_started_updates_wave_label() -> void:
@@ -228,7 +228,7 @@ func test_wave_started_updates_wave_label() -> void:
 func test_phase_timer_tick_updates_timer_label() -> void:
 	GEventBus.phase_timer_tick.emit("PRE_WAVE", 4.2)
 
-	assert_str(_hud._phase_timer_label.text).is_equal("PRE_WAVE: 4.2s")
+	assert_str(_hud._phase_timer_label.text).is_equal(tr("HUD_PHASE_TIMER") % [tr("HUD_PHASE_NAME_PRE_WAVE"), 4.2])
 
 
 # ---------------------------------------------------------------------------
@@ -275,6 +275,23 @@ func test_materials_earned_accumulates_a_running_tally() -> void:
 	assert_str(quantity_label.text).is_equal("wood x8")
 
 
+## Regression (2026-10-04 smoke check): a pickup the inventory rejected as full
+## must not stay counted as earned in the mission tally.
+func test_mission_hud_rejected_pickup_is_removed_from_materials_tally() -> void:
+	GEventBus.materials_earned.emit("wood", 5, "monster_drop")
+	GEventBus.item_pickup_rejected.emit("wood", "material", 2, "inventory_full")
+
+	assert_int(_hud._materials_tally["wood"]).is_equal(3)
+
+
+func test_mission_hud_fully_rejected_material_drops_its_chip() -> void:
+	GEventBus.materials_earned.emit("wood", 4, "monster_drop")
+	GEventBus.item_pickup_rejected.emit("wood", "material", 4, "inventory_full")
+
+	assert_bool(_hud._materials_tally.has("wood")).is_false()
+	assert_int(_hud._materials_row.get_child_count()).is_equal(0)
+
+
 # ---------------------------------------------------------------------------
 # AC-65: Inventory toasts
 # ---------------------------------------------------------------------------
@@ -283,19 +300,19 @@ func test_item_added_shows_a_toast() -> void:
 	GEventBus.item_added.emit("wood", "material", 5)
 
 	assert_int(_hud._toast_host.get_child_count()).is_equal(1)
-	assert_str((_hud._toast_host.get_child(0) as Label).text).is_equal("+5 wood")
+	assert_str((_hud._toast_host.get_child(0) as Label).text).is_equal("+5 Wood")
 
 
 func test_item_pickup_rejected_shows_a_toast_with_reason() -> void:
 	GEventBus.item_pickup_rejected.emit("wood", "material", 5, "inventory_full")
 
-	assert_str((_hud._toast_host.get_child(0) as Label).text).is_equal("Could not pick up 5x wood (inventory_full)")
+	assert_str((_hud._toast_host.get_child(0) as Label).text).is_equal("Could not pick up 5x Wood (inventory full)")
 
 
 func test_item_removed_shows_a_toast() -> void:
 	GEventBus.item_removed.emit("wood", "material", 3)
 
-	assert_str((_hud._toast_host.get_child(0) as Label).text).is_equal("-3 wood")
+	assert_str((_hud._toast_host.get_child(0) as Label).text).is_equal("-3 Wood")
 
 
 # ---------------------------------------------------------------------------
@@ -322,7 +339,7 @@ func test_toast_overflow_evicts_oldest_first() -> void:
 	# the most recent MAX_VISIBLE_TOASTS, oldest-to-newest top-to-bottom.
 	var first_surviving: int = 3
 	for i in range(MissionHud.MAX_VISIBLE_TOASTS):
-		var expected_text: String = "+%d wood" % (first_surviving + i)
+		var expected_text: String = "+%d Wood" % (first_surviving + i)
 		assert_str((_hud._toast_host.get_child(i) as Label).text).is_equal(expected_text)
 
 

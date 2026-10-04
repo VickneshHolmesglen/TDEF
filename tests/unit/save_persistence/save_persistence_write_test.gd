@@ -8,10 +8,10 @@ extends GdUnitTestSuite
 
 const TEST_SLOT: int = 99
 const TEST_SLOT_B: int = 98
-const TEST_DIR: String = "user://saves/"
-const TEST_DAT: String = "user://saves/save_slot_99.dat"
-const TEST_TMP: String = "user://saves/save_slot_99.tmp"
-const TEST_CHECKPOINT: String = "user://saves/save_slot_99_checkpoint.dat"
+var TEST_DIR: String = UserDataPaths.root() + "saves/"
+var TEST_DAT: String = UserDataPaths.root() + "saves/save_slot_99.dat"
+var TEST_TMP: String = UserDataPaths.root() + "saves/save_slot_99.tmp"
+var TEST_CHECKPOINT: String = UserDataPaths.root() + "saves/save_slot_99_checkpoint.dat"
 
 var _sp: SavePersistence
 
@@ -25,7 +25,7 @@ func before_test() -> void:
 func after_test() -> void:
 	# Remove any files written during this test.
 	for path: String in [TEST_DAT, TEST_TMP, TEST_CHECKPOINT,
-			"user://saves/save_slot_98.dat", "user://saves/save_slot_98.tmp"]:
+			UserDataPaths.root() + "saves/save_slot_98.dat", UserDataPaths.root() + "saves/save_slot_98.tmp"]:
 		if FileAccess.file_exists(path):
 			DirAccess.remove_absolute(path)
 	_sp.free()
@@ -81,7 +81,7 @@ func test_write_slot_tmp_file_absent_after_successful_write() -> void:
 
 func test_read_slot_returns_empty_when_version_newer_than_current() -> void:
 	# Write a file with a version number far in the future.
-	var tmp_path: String = "user://saves/save_slot_99.tmp"
+	var tmp_path: String = UserDataPaths.root() + "saves/save_slot_99.tmp"
 	var file := FileAccess.open(tmp_path, FileAccess.WRITE)
 	file.store_32(9999)  # version 9999 > CURRENT_FORMAT_VERSION
 	file.store_var({"data": "whatever"}, false)
@@ -100,7 +100,7 @@ func test_read_slot_returns_empty_when_version_newer_than_current() -> void:
 
 func test_read_slot_returns_empty_on_corrupt_payload() -> void:
 	# Write a valid header but store an Array instead of a Dictionary.
-	var tmp_path: String = "user://saves/save_slot_99.tmp"
+	var tmp_path: String = UserDataPaths.root() + "saves/save_slot_99.tmp"
 	var file := FileAccess.open(tmp_path, FileAccess.WRITE)
 	file.store_32(1)
 	file.store_var([1, 2, 3], false)  # wrong type on purpose

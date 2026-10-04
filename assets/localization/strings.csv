@@ -164,3 +164,57 @@ HUD_READY,Ready
 HUD_SKIP_COUNTDOWN,Skip Countdown
 SKILL_TREE_VISIT_AVAILABLE,1 purchase available this visit
 SKILL_TREE_VISIT_SPENT,Spent this visit — more available after your next mission
+MENAGERIE_ROSTER_EMPTY,"No creatures yet. Spend Menagerie Lures, found on missions, to lure one."
+MENAGERIE_LURE_HEADER,Lure a Creature
+MENAGERIE_LURE_OWNED,Lures owned: %d
+MENAGERIE_LURE_BUTTON,Lure %s (%d lures)
+INVENTORY_RECIPES_EMPTY,"No recipes discovered yet. Research tech in Defense Building and collect new materials on missions to discover recipes."
+DEFENSE_ENTRY_FORMAT,%s  ·  %s  ·  %d gold
+DEFENSE_TECH_STATE_UNLOCKED,Unlocked
+DEFENSE_TECH_STATE_AVAILABLE,Available
+DEFENSE_TECH_STATE_LOCKED,Locked (needs previous tier)
+DEFENSE_STRUCTURE_BUILT,Built
+DEFENSE_STRUCTURE_UNBUILT,Not built
+DEFENSE_STRUCTURE_GATE,  ·  Requires %s
+FORGE_RECIPE_CRAFTABLE,Ready to craft
+FORGE_RECIPE_MISSING,Missing materials
+FORGE_ITEM_SLOTS_FREE,%s (%d/%d rune slots free)
+FORGE_RECIPES_EMPTY,"No equipment recipes discovered yet. Research tech in Defense Building and collect materials on missions to discover them."
+FORGE_IMBUE_ITEMS_EMPTY,"No equipment with a free rune slot. Craft equipment here first, then imbue it with runes."
+FORGE_UPGRADES_EMPTY,"No buildings to upgrade yet. Build structures in Defense Building to unlock their upgrades."
+SKILL_BUILD_SLOT_EMPTY,(empty)
+SKILL_BUILD_PASSIVES_NONE,Passives: —
+SKILL_BUILD_PASSIVES,Passives: %d/%d (cycle)
+SKILL_BUILD_TAG_LOCKED,(Locked)
+SKILL_BUILD_TAG_ACTIVE,(Equipped)
+TAROT_TAG_LOCKED,(Locked)
+TAROT_TAG_EQUIPPED,(Equipped)
+TAROT_TAG_AVAILABLE,(Available)
+TAROT_TAG_CONFLICT,(Conflicts: %s)
+MAIN_MENU_SLOT_SAVED_AT,saved %s
+MISSION_SELECT_TIER_TIME,%s: %s
+MISSION_SELECT_TIER_UNCLEARED,—
+MISSION_SELECT_NOT_CLEARED,Not yet cleared
+MISSION_SELECT_TIER_SELECTED,(selected)
+MISSION_SELECT_TIER_NORMAL,Normal
+MISSION_SELECT_TIER_HARD,Hard
+MISSION_SELECT_TIER_BRUTAL,Brutal
+MISSION_SELECT_TIER_GENERIC,Tier %d
+MISSION_SELECT_STEP_OFF,Off
+MISSION_SELECT_STEP_LOW,Low
+MISSION_SELECT_STEP_HIGH,High
+MISSION_SELECT_MODIFIERS_NONE,no modifiers
+MISSION_SELECT_RECAP,%s  ·  %s  ·  %s
+HUD_PHASE,Phase: %s
+HUD_PHASE_TIMER,%s: %.1fs
+HUD_PHASE_NAME_SCOUT,Scouting
+HUD_PHASE_NAME_PRE_WAVE,Get Ready
+HUD_PHASE_NAME_WAVE_ACTIVE,Wave in Progress
+HUD_PHASE_NAME_INTERMISSION,Intermission
+HUD_PHASE_NAME_MISSION_COMPLETE,Victory
+HUD_PHASE_NAME_DEFEAT,Defeat
+HUD_PREVIEW_TIER_COUNT,%d %s
+HUD_TIER_STANDARD,Standard
+HUD_TIER_ELITE,Elite
+HUD_TIER_BOSS,Boss
+HUD_REJECT_REASON_INVENTORY_FULL,inventory full

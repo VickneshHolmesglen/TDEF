@@ -11,7 +11,7 @@
 ## `GSavePersistence.load_slot()` -- not a mock.
 extends GdUnitTestSuite
 
-const TEST_SETTINGS_PATH: String = "user://audio_settings.cfg"
+var TEST_SETTINGS_PATH: String = UserDataPaths.root() + "audio_settings.cfg"
 
 var _audio: AudioSystem
 var _pre_existing_settings_backup: PackedByteArray = PackedByteArray()

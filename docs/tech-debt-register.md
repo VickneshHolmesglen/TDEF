@@ -2475,3 +2475,54 @@ A fork-subagent survey (dispatched to hunt for "GDD says X, code does Y" bugs in
 ### Resolution
 - [x] Fixed 2026-09-05 — HP-reset mechanic and `tower_wave_summary` emission both implemented and wired together, matching Rule 23's bundled contract.
 - [x] Regression tests added `tests/unit/tower/tower_wave_summary_test.gd` covering: HP reset after damage, counter accuracy (`shots_fired`/`idle_ticks`/`damage_dealt`), counter reset on the next `wave_started`, AURA/SCATTER-specific fields, and one-summary-per-active-tower.
+
+---
+
+## TD-test-008 — Running the test suite overwrote the player's real save slot and settings (fixed)
+
+**Logged**: 2026-10-04 (found during the full smoke check, fixed same session)
+**Severity**: High for developers/playtesters — every full gdUnit4 run silently rewrote `user://saves/save_slot_0.dat` (shown in-game as Slot 1) and `user://audio_settings.cfg`/`display_settings.cfg` in the real game profile, because `SavePersistence`, `AudioSystem` and `MainMenu` built their paths from hardcoded `user://` constants that tests shared.
+**Area**: `src/foundation/user_data_paths.gd` (new), `save_persistence.gd`, `audio_system.gd`, `main_menu.gd`, 7 test files
+
+### Fix
+New `UserDataPaths.root()` returns `user://` normally and `user://test_sandbox/` when the process was launched by a gdUnit4 runner (detected from the command line: local runner, CI `GdUnitCmdTool.gd`, editor panel). The path constants became `static var`s with unchanged names, so every `SavePersistence.SAVE_PATH % slot` caller compiles unchanged. Tests that hardcoded `"user://saves/..."` now build paths from the same root. Verified: a 304-test save/audio/main-menu run left the real profile byte-for-byte untouched and wrote only under `test_sandbox/`.
+
+---
+
+## TD-menag-007 — Every Lure charged its cost twice; crafting could consume Menagerie Lures as generic Material (fixed)
+
+**Logged**: 2026-10-04 (found live during the smoke check, fixed same session)
+**Severity**: High — economy. (1) `Menagerie.lure_creature()` called `GInventory.consume_stackable()` AND emitted `materials_spent`, which `Inventory._on_materials_spent()` also consumes on — live: 11 lures minus two Tier-1 lures (3 each) left 2, not 5. (2) `menagerie_lure` shares `item_type = "Material"`, so `has_items()`/`consume_by_type()` counted and consumed lures for any `"Material": N` recipe, though `menagerie.md` Rule 2 reserves them for the Lure action. (3) The Lure action itself had no UI caller anywhere — the backend was tested but a player could never acquire a creature.
+**Area**: `menagerie.gd`, `inventory.gd`, `item_definition_resource.gd`, `menagerie_lure.tres`, `menagerie_screen.gd`, `inventory_screen.gd`
+
+### Fix
+(1) Removed the direct consume — `materials_spent` is the consume step, as `materials_wiring_test` already pinned. (2) New data flag `ItemDefinitionResource.excluded_from_type_costs`, set on `menagerie_lure.tres`, honored by `has_items()`, `consume_by_type()`, the crafting panel's owned totals and its craft-preview highlight. (3) Menagerie screen gained a Lure panel (one button per species with its Formula 4 cost, disabled when unaffordable) plus an empty-roster hint. Regression tests: `reserved_item_type_cost_test.gd`, `lure_acquisition_test.gd::test_lure_creature_charges_the_cost_exactly_once`. `mixed_vocabulary_recipe_inputs_test.gd` used lures as its "rarity-less Material" fixture; switched to an injected synthetic material.
+
+---
+
+## TD-tower-011 — `TowerMissionState.top` defaulted to null; `_try_attack()` reads it unguarded (fixed)
+
+**Logged**: 2026-10-04 (the only failing test in the full smoke-check suite run)
+**Severity**: Medium — `combat_loop_test.gd` built its state directly and crashed with 10 script errors per run; any future restore path that builds a state outside `place_tower()` would crash the same way. `shaft`/`top` now default to inert `ShaftComponent.new()`/`TopComponent.new()`; `place_tower()` still overwrites both.
+
+---
+
+## TD-test-009 — `hero_damage_chain_test.gd` errors ("Trying to cast a freed object") only when run after `tests/unit/visual_presentation` (open)
+
+**Logged**: 2026-10-04
+**Severity**: Low — test hygiene, not a product bug. Order-dependent: 3 errors raised inside gdUnit4's `GdUnitOrphanNodesMonitor.gd:202` when this suite runs after the visual-presentation unit suites; 0 errors in isolation, and reproduced identically with all 2026-10-04 changes stashed (pre-existing). Likely cause: its `after_test()` frees `MonsterEntity` nodes directly while another structure still references them. Not seen in the default full-suite ordering.
+
+---
+
+## TD-perf-002 — Texture memory is ~850 MB because generated art ships at native generation resolution (open, advisory)
+
+**Logged**: 2026-10-04 (live `Performance` sample during The Gap: `RENDER_TEXTURE_MEM_USED` 847 MB of 894 MB VRAM; static RAM ~100 MB; 60 FPS; 84 draw calls)
+**Severity**: Low today — fits the reference GPUs (6–8 GB) and the 1 GB budget is a RAM ceiling — but it grows with every new asset. Sprites displayed at ~64 px are uploaded at 1000–1500 px (e.g. `hero_warden_smith.png` 1024×1536, tower parts ~1000 px, `mission_frame_background.png` 1672×941). `animation-pipeline.md` §4 deliberately keeps Lossless/no-mipmaps, so GPU compression is not the lever.
+**Suggested fix**: add a downscale-to-~2×-display-size step to Claude Code's art processing pass (the alpha-cut step already owns `assets/art/`), and re-derive the one hand-tuned Sprite2D scale (`Hero.tscn`, `0.052083 = 80/1536`). Code that sizes by `texture.get_height()` (12 sites) adapts automatically.
+
+---
+
+## TD-ui-003 — Main-menu modal overlays (Settings, Load Game, overwrite/recovery confirms) use unthemed default controls (open)
+
+**Logged**: 2026-10-04
+**Severity**: Low — functional and legible (96%-opaque dim), but plain default buttons/sliders over a dark dim read as unfinished next to the painted menu buttons. Deferred to a UI theme pass because the visual direction for UI chrome is not locked (`CLAUDE.md` Asset Generation); not invented ad hoc.

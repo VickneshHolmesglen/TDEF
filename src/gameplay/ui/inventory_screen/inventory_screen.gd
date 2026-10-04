@@ -938,7 +938,9 @@ func _apply_slot_visual(button: Button, rarity_frame: RarityFrame, item_icon: Te
 		item_icon.texture = definition.icon
 		item_icon.visible = true
 		quantity_label.text = "x%d" % quantity
-		quantity_label.visible = true
+		# Unique instances are cap-1 by definition -- an "x1" badge on every
+		# equipment tile is noise (2026-10-04 smoke check).
+		quantity_label.visible = not definition.is_unique_instance
 	else:
 		button.text = "%s x%d" % [item_id, quantity]
 		item_icon.texture = null
@@ -1092,6 +1094,16 @@ func _refresh_crafting_panel() -> void:
 		for recipe: RecipeResource in recipes_in_category:
 			_recipe_list_host.add_child(_create_recipe_row(recipe, owned_totals))
 
+	# Nothing discovered yet: explain how discovery works instead of leaving
+	# a silent blank column (2026-10-04 smoke check).
+	if _recipe_list_host.get_child_count() == 0:
+		var empty_label := Label.new()
+		empty_label.name = "RecipesEmptyLabel"
+		empty_label.text = tr("INVENTORY_RECIPES_EMPTY")
+		empty_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		empty_label.custom_minimum_size = Vector2(200, 0)
+		_recipe_list_host.add_child(empty_label)
+
 
 func _is_recipe_ready_first(a: RecipeResource, b: RecipeResource) -> bool:
 	var a_ready: bool = crafting.is_craftable(a.recipe_id)
@@ -1124,7 +1136,8 @@ func _compute_owned_totals() -> Dictionary:
 		if definition == null:
 			continue
 		var quantity: int = contents["quantity"] as int
-		by_item_type[definition.item_type] = by_item_type.get(definition.item_type, 0) + quantity
+		if not definition.excluded_from_type_costs:  # mirrors Inventory.has_items()
+			by_item_type[definition.item_type] = by_item_type.get(definition.item_type, 0) + quantity
 		if definition.rarity != "":
 			var rarity_key := StringName(definition.rarity)
 			by_rarity[rarity_key] = by_rarity.get(rarity_key, 0) + quantity
@@ -1140,7 +1153,12 @@ func _compute_owned_totals() -> Dictionary:
 func _create_recipe_row(recipe: RecipeResource, owned_totals: Dictionary) -> Control:
 	var row := PanelContainer.new()
 	row.name = "Recipe_%s" % String(recipe.recipe_id)
-	row.add_theme_stylebox_override("panel", ShellChromeStyle.chrome_panel_stylebox())
+	# Inner padding so the Craft button no longer sits flush against the
+	# viewport's right edge (read as clipped -- 2026-10-04 smoke check).
+	var row_box: StyleBoxFlat = ShellChromeStyle.chrome_panel_stylebox()
+	row_box.set_content_margin_all(6.0)
+	row_box.content_margin_right = 12.0
+	row.add_theme_stylebox_override("panel", row_box)
 
 	var content := VBoxContainer.new()
 	row.add_child(content)
@@ -1248,7 +1266,7 @@ func _slots_matching_cost(cost: Dictionary) -> Array[int]:
 		if definition == null:
 			continue
 		for key: StringName in cost:
-			var is_match: bool = StringName(definition.rarity) == key if RecipeResource.VALID_RARITIES.has(key) else definition.item_type == key
+			var is_match: bool = StringName(definition.rarity) == key if RecipeResource.VALID_RARITIES.has(key) else (definition.item_type == key and not definition.excluded_from_type_costs)
 			if is_match:
 				matches.append(i)
 				break

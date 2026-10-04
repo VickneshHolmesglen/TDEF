@@ -12,10 +12,15 @@
 ## (see recipe_discovery_state_machine_test.gd's _on_tech_unlocked()/
 ## _on_item_added() calls).
 ##
-## Seeds the REAL GInventory Autoload with genuinely registered items:
-## menagerie_lure (item_type=Material, rarity="" — satisfies the item_type
-## half without ALSO counting toward any rarity total) and common_scrap
-## (item_type=Material, rarity=Common — satisfies the rarity half). Using two
+## Seeds the REAL GInventory Autoload with registry-resolvable items: a
+## synthetic plain Material (item_type=Material, rarity="" -- satisfies the
+## item_type half without ALSO counting toward any rarity total), injected into
+## GGameDataRegistry for the test and removed afterward, and common_scrap
+## (item_type=Material, rarity=Common -- satisfies the rarity half). This used
+## to be menagerie_lure, the only real rarity-less Material, but since
+## 2026-10-04 lures are excluded_from_type_costs (crafting must never eat them)
+## so they no longer satisfy an item_type cost at all.
+## Using two
 ## items that don't share both axes avoids a separate, out-of-scope edge case
 ## (a single item counted toward both an item_type total AND a rarity total
 ## from the same recipe, which no real content does today — has_items()/
@@ -29,11 +34,19 @@
 ## currency_dual_gate_test.gd's class doc comment).
 extends GdUnitTestSuite
 
+const PLAIN_MATERIAL_ID: StringName = &"test_plain_material"
+
 var _crafting: Crafting
 
 
 func before_test() -> void:
 	_crafting = Crafting.new()
+	var plain := ItemDefinitionResource.new()
+	plain.item_id = PLAIN_MATERIAL_ID
+	plain.item_type = &"Material"
+	plain.display_name = "Test Plain Material"
+	plain.is_unique_instance = false
+	GGameDataRegistry._item_definitions[PLAIN_MATERIAL_ID] = plain
 	GInventory.reset_to_defaults()
 
 
@@ -42,10 +55,11 @@ func after_test() -> void:
 		_crafting.free()
 	_crafting = null
 	GInventory.reset_to_defaults()
+	GGameDataRegistry._item_definitions.erase(PLAIN_MATERIAL_ID)
 
 
 func test_has_recipe_inputs_true_when_both_item_type_and_rarity_halves_satisfied() -> void:
-	var lure_def: ItemDefinitionResource = GGameDataRegistry.get_item_definition(&"menagerie_lure")
+	var lure_def: ItemDefinitionResource = GGameDataRegistry.get_item_definition(PLAIN_MATERIAL_ID)
 	var common_def: ItemDefinitionResource = GGameDataRegistry.get_item_definition(&"common_scrap")
 	GInventory.add_stackable(lure_def, 5)    # item_type=Material, rarity=""
 	GInventory.add_stackable(common_def, 8)  # rarity=Common
@@ -55,7 +69,7 @@ func test_has_recipe_inputs_true_when_both_item_type_and_rarity_halves_satisfied
 
 
 func test_has_recipe_inputs_false_when_rarity_half_insufficient() -> void:
-	var lure_def: ItemDefinitionResource = GGameDataRegistry.get_item_definition(&"menagerie_lure")
+	var lure_def: ItemDefinitionResource = GGameDataRegistry.get_item_definition(PLAIN_MATERIAL_ID)
 	var common_def: ItemDefinitionResource = GGameDataRegistry.get_item_definition(&"common_scrap")
 	GInventory.add_stackable(lure_def, 5)
 	GInventory.add_stackable(common_def, 7)  # one short of the 8 required below
@@ -69,7 +83,7 @@ func test_has_recipe_inputs_false_when_item_type_half_insufficient() -> void:
 	# so the Material requirement must exceed lure+common_scrap COMBINED to
 	# isolate a genuine item_type-half failure — 20 exceeds 1+8=9, while
 	# Common:8 stays exactly satisfied by common_scrap alone.
-	var lure_def: ItemDefinitionResource = GGameDataRegistry.get_item_definition(&"menagerie_lure")
+	var lure_def: ItemDefinitionResource = GGameDataRegistry.get_item_definition(PLAIN_MATERIAL_ID)
 	var common_def: ItemDefinitionResource = GGameDataRegistry.get_item_definition(&"common_scrap")
 	GInventory.add_stackable(lure_def, 1)
 	GInventory.add_stackable(common_def, 8)
@@ -79,7 +93,7 @@ func test_has_recipe_inputs_false_when_item_type_half_insufficient() -> void:
 
 
 func test_consume_recipe_inputs_deducts_both_halves_correctly() -> void:
-	var lure_def: ItemDefinitionResource = GGameDataRegistry.get_item_definition(&"menagerie_lure")
+	var lure_def: ItemDefinitionResource = GGameDataRegistry.get_item_definition(PLAIN_MATERIAL_ID)
 	var common_def: ItemDefinitionResource = GGameDataRegistry.get_item_definition(&"common_scrap")
 	GInventory.add_stackable(lure_def, 5)
 	GInventory.add_stackable(common_def, 10)

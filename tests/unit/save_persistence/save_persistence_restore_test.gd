@@ -165,7 +165,7 @@ func test_mission_launched_handler_saves_checkpoint_for_active_slot() -> void:
 	# Act
 	sp._on_mission_launched("forest_01", PackedStringArray([]), 1)
 	# Assert
-	var checkpoint_path: String = "user://saves/save_slot_97_checkpoint.dat"
+	var checkpoint_path: String = UserDataPaths.root() + "saves/save_slot_97_checkpoint.dat"
 	assert_bool(FileAccess.file_exists(checkpoint_path)).is_true()
 	# Cleanup
 	DirAccess.remove_absolute(checkpoint_path)
@@ -201,7 +201,7 @@ func test_mission_launched_signal_wired_after_ready_triggers_checkpoint() -> voi
 	GEventBus.mission_launched.emit("forest_01", PackedStringArray([]), 1)
 	# Assert — immediately, before any other Autoload's reaction to this same
 	# signal can race back around and delete the checkpoint (see doc comment).
-	var checkpoint_path: String = "user://saves/save_slot_96_checkpoint.dat"
+	var checkpoint_path: String = UserDataPaths.root() + "saves/save_slot_96_checkpoint.dat"
 	assert_bool(FileAccess.file_exists(checkpoint_path)).is_true()
 	# Cleanup: remove_child disconnects _exit_tree (which removes EventBus connections)
 	remove_child(sp)
@@ -224,7 +224,7 @@ func test_scene_transition_completed_sanctuary_saves_slot_and_unpauses_autosave(
 	add_child(sp)
 	await get_tree().process_frame
 	sp._autosave_timer.paused = true  # simulate having been paused during a mission
-	var save_path: String = "user://saves/save_slot_95.dat"
+	var save_path: String = UserDataPaths.root() + "saves/save_slot_95.dat"
 	# Act — no post-emit await needed: .emit() invokes connected handlers
 	# synchronously (see the sibling mission_launched test's doc comment for
 	# the race this avoids elsewhere in this file).

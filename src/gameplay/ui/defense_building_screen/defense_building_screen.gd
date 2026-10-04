@@ -157,12 +157,14 @@ func _tech_display_name(node: TechNodeResource) -> String:
 func _tech_entry_text(node: TechNodeResource) -> String:
 	var state_tag: String
 	if defense_building.is_tech_unlocked(node.tech_id):
-		state_tag = "UNLOCKED"
+		state_tag = tr("DEFENSE_TECH_STATE_UNLOCKED")
 	elif defense_building.can_unlock_tech(node.tech_id):
-		state_tag = "AVAILABLE"
+		state_tag = tr("DEFENSE_TECH_STATE_AVAILABLE")
 	else:
-		state_tag = "LOCKED_PREREQ"
-	return "%s (%s) gold:%d" % [_tech_display_name(node), state_tag, node.gold_cost]
+		state_tag = tr("DEFENSE_TECH_STATE_LOCKED")
+	# Localized player-facing tags (2026-10-04 smoke check) -- previously raw
+	# enum-style "LOCKED_PREREQ" / "gold:90" debug text.
+	return tr("DEFENSE_ENTRY_FORMAT") % [_tech_display_name(node), state_tag, node.gold_cost]
 
 
 ## GDD: "confirm on a locked/unaffordable target opens a context tooltip
@@ -223,13 +225,13 @@ func _structure_display_name(structure: StructureResource) -> String:
 ## GDD: built/unbuilt status glyph + tech-gate read-only reference so the
 ## player never has to alt-tab between views to see why a structure is locked.
 func _structure_entry_text(structure: StructureResource) -> String:
-	var status_tag: String = "BUILT" if defense_building.is_structure_built(structure.structure_id) else "UNBUILT"
+	var status_tag: String = tr("DEFENSE_STRUCTURE_BUILT") if defense_building.is_structure_built(structure.structure_id) else tr("DEFENSE_STRUCTURE_UNBUILT")
 	var gate_tag: String = ""
 	if structure.tech_gate != &"":
 		var gate_node: TechNodeResource = GGameDataRegistry.get_all_tech_nodes().get(structure.tech_gate)
 		var gate_label: String = _tech_display_name(gate_node) if gate_node != null else String(structure.tech_gate)
-		gate_tag = " gated:%s" % gate_label
-	return "%s (%s) gold:%d%s" % [_structure_display_name(structure), status_tag, structure.gold_cost, gate_tag]
+		gate_tag = tr("DEFENSE_STRUCTURE_GATE") % gate_label
+	return (tr("DEFENSE_ENTRY_FORMAT") % [_structure_display_name(structure), status_tag, structure.gold_cost]) + gate_tag
 
 
 func _on_structure_pressed(structure_id: StringName) -> void:

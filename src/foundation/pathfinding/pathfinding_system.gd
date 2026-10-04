@@ -110,6 +110,9 @@ func is_templates_ready() -> bool:
 	return _templates_built
 
 
+var _warned_nonstandard_tier: bool = false
+
+
 ## Returns remaining path from from_cell to GOAL (from_cell excluded).
 ## Two-value contract: [] means GOAL arrival, unreachable, or fallback cap exhausted.
 ## Never returns null. O(1) template lookup + O(k) slice. Thread-unsafe — main thread only.
@@ -118,7 +121,10 @@ func find_path(from_cell: Vector2i, tier: int) -> Array[Vector2i]:
 		push_error("PathfindingSystem.find_path: called before templates_ready — returning [].")
 		return []
 
-	if tier != STANDARD_TIER:
+	# Warn once per session, not per spawn: every non-STANDARD monster hit this, so
+	# a single wave flooded the log with full-backtrace warnings (2026-10-04 smoke check).
+	if tier != STANDARD_TIER and not _warned_nonstandard_tier:
+		_warned_nonstandard_tier = true
 		push_warning("PathfindingSystem.find_path: tier parameter reserved for MVP. Proceeding with STANDARD routing.")
 
 	# Template lookup via spawn assignment.

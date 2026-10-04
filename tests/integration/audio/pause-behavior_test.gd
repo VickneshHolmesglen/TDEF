@@ -191,7 +191,7 @@ func test_repeated_pause_without_intervening_unpause_does_not_re_duck_an_already
 # ---------------------------------------------------------------------------
 
 func test_persisted_preference_is_never_touched_while_paused_even_across_a_save() -> void:
-	const SETTINGS_PATH: String = "user://audio_settings.cfg"
+	var SETTINGS_PATH: String = UserDataPaths.root() + "audio_settings.cfg"
 	var had_pre_existing: bool = FileAccess.file_exists(SETTINGS_PATH)
 	var backup: PackedByteArray = FileAccess.get_file_as_bytes(SETTINGS_PATH) if had_pre_existing else PackedByteArray()
 

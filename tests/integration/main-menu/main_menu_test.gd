@@ -33,7 +33,7 @@ const SAVE_SLOT_COUNT: int = 3
 const RESOLUTIONS: Array[Vector2i] = [
 	Vector2i(1280, 720), Vector2i(1600, 900), Vector2i(1920, 1080), Vector2i(2560, 1440),
 ]
-const DISPLAY_SETTINGS_PATH: String = "user://display_settings.cfg"
+var DISPLAY_SETTINGS_PATH: String = UserDataPaths.root() + "display_settings.cfg"
 const DISPLAY_SETTINGS_SECTION: String = "display"
 const UI_SCALE_DEFAULT: float = 100.0
 
@@ -96,7 +96,7 @@ func after_test() -> void:
 		restore_config.set_value(DISPLAY_SETTINGS_SECTION, "ui_scale", _original_ui_scale)
 		restore_config.save(DISPLAY_SETTINGS_PATH)
 	elif FileAccess.file_exists(DISPLAY_SETTINGS_PATH):
-		DirAccess.open("user://").remove("display_settings.cfg")
+		DirAccess.open(UserDataPaths.root()).remove("display_settings.cfg")
 
 	if _original_fullscreen:
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
@@ -399,7 +399,7 @@ func test_display_settings_are_loaded_from_a_persisted_config_on_mount() -> void
 
 func test_display_settings_default_to_first_resolution_windowed_with_no_config() -> void:
 	if FileAccess.file_exists(DISPLAY_SETTINGS_PATH):
-		DirAccess.open("user://").remove("display_settings.cfg")
+		DirAccess.open(UserDataPaths.root()).remove("display_settings.cfg")
 
 	var fresh_runner: GdUnitSceneRunner = scene_runner("res://src/scenes/MainMenu.tscn")
 	var fresh_menu: Control = fresh_runner.scene() as Control
@@ -479,7 +479,7 @@ func _ui_scale_value_label() -> Label:
 
 func test_ui_scale_slider_defaults_to_100_with_no_config() -> void:
 	if FileAccess.file_exists(DISPLAY_SETTINGS_PATH):
-		DirAccess.open("user://").remove("display_settings.cfg")
+		DirAccess.open(UserDataPaths.root()).remove("display_settings.cfg")
 
 	var fresh_runner: GdUnitSceneRunner = scene_runner("res://src/scenes/MainMenu.tscn")
 	var fresh_menu: Control = fresh_runner.scene() as Control

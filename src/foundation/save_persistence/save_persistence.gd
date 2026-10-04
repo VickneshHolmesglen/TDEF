@@ -45,11 +45,14 @@ extends Node
 ## separately-scoped follow-up.
 
 const CURRENT_FORMAT_VERSION: int = 1
-const SAVE_DIR: String = "user://saves/"
-const SAVE_PATH: String = "user://saves/save_slot_%d.dat"
-const TMP_PATH: String = "user://saves/save_slot_%d.tmp"
-const CHECKPOINT_PATH: String = "user://saves/save_slot_%d_checkpoint.dat"
-const CORRUPT_PATH: String = "user://saves/save_slot_%d.corrupt"
+## Rooted at UserDataPaths.root() (2026-10-04) so gdUnit4 runs write to a
+## sandbox, never the real profile. static var, not const, because the root is
+## resolved at runtime; names kept UPPER_CASE so existing callers are unchanged.
+static var SAVE_DIR: String = UserDataPaths.root() + "saves/"
+static var SAVE_PATH: String = SAVE_DIR + "save_slot_%d.dat"
+static var TMP_PATH: String = SAVE_DIR + "save_slot_%d.tmp"
+static var CHECKPOINT_PATH: String = SAVE_DIR + "save_slot_%d_checkpoint.dat"
+static var CORRUPT_PATH: String = SAVE_DIR + "save_slot_%d.corrupt"
 const AUTOSAVE_INTERVAL: float = 300.0
 
 ## Outcome of load_slot()/restore_from_checkpoint() — richer than a bool so

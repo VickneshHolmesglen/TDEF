@@ -32,7 +32,7 @@ projectile_type = "AURA"
 element = ""
 aura_effect_type = "damage_buff"
 aura_effect_value = 0.30
-aura_radius_cells = 6
+aura_radius_cells = 4
 aoe_radius_cells = 0
 damaged = false
 

@@ -71,7 +71,8 @@ const DEFAULT_VOLUME_PERCENT: float = 80.0
 ## progress — it lives in its own small `ConfigFile`, entirely outside
 ## `GSavePersistence`/`SaveRestorer` (Core Rule 6's own explicit boundary,
 ## enforced by this class simply never registering with that system).
-const AUDIO_SETTINGS_PATH: String = "user://audio_settings.cfg"
+## Rooted at UserDataPaths.root() so gdUnit4 runs never touch real settings.
+static var AUDIO_SETTINGS_PATH: String = UserDataPaths.root() + "audio_settings.cfg"
 const AUDIO_SETTINGS_SECTION: String = "buses"
 
 ## Music/ambient stem map (music-ambient-stems spec §3.2). Loaded here, not

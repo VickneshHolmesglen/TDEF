@@ -82,6 +82,14 @@ const CARD_TEXTURES: Dictionary[StringName, Texture2D] = {
 	&"grim_resolve": preload("res://assets/art/tarot/death.png"),
 	&"apex_predator": preload("res://assets/art/tarot/strength.png"),
 	&"steady_hand": preload("res://assets/art/tarot/temperance.png"),
+	# 2026-10-04 smoke check: three cards rendered with no art while 12 arcana
+	# sat unused. Fits: The Tower (sudden upheaval) for the double-or-nothing
+	# reckless_onslaught, Wheel of Fortune (spinning motion) for the pure speed
+	# swift_current, The Devil (a bargain: more reward for escalating torment)
+	# for grinding_gauntlet.
+	&"reckless_onslaught": preload("res://assets/art/tarot/the_tower.png"),
+	&"swift_current": preload("res://assets/art/tarot/wheel_of_fortune.png"),
+	&"grinding_gauntlet": preload("res://assets/art/tarot/the_devil.png"),
 }
 const CARD_ICON_MAX_WIDTH: int = 32
 
@@ -182,6 +190,7 @@ func _apply_card_icon(button: Button, card_id: StringName) -> void:
 	if texture == null:
 		return
 	button.icon = texture
+	button.alignment = HORIZONTAL_ALIGNMENT_LEFT  # keep the thumbnail beside its name
 	button.expand_icon = true
 	button.add_theme_constant_override("icon_max_width", CARD_ICON_MAX_WIDTH)
 
@@ -191,8 +200,8 @@ func _apply_card_icon(button: Button, card_id: StringName) -> void:
 func _deck_entry_text(card_id: StringName) -> String:
 	var conflicts: Array[String] = _get_card_conflicts(card_id)
 	if conflicts.is_empty():
-		return String(card_id)
-	return "%s [CONFLICT: %s]" % [String(card_id), ", ".join(conflicts)]
+		return _card_display_name(card_id)
+	return "%s %s" % [_card_display_name(card_id), tr("TAROT_TAG_CONFLICT") % ", ".join(conflicts)]
 
 
 ## Every distinct Mission Select modifier_id any of this card's modifier
@@ -259,10 +268,16 @@ func _create_pool_button(card_id: StringName) -> Button:
 
 func _pool_entry_text(card_id: StringName) -> String:
 	if not tarot.is_card_unlocked(card_id):
-		return "%s [LOCKED]" % String(card_id)
+		return "%s %s" % [_card_display_name(card_id), tr("TAROT_TAG_LOCKED")]
 	if tarot.get_current_deck().has(card_id):
-		return "%s [EQUIPPED]" % String(card_id)
-	return "%s [AVAILABLE]" % String(card_id)
+		return "%s %s" % [_card_display_name(card_id), tr("TAROT_TAG_EQUIPPED")]
+	return "%s %s" % [_card_display_name(card_id), tr("TAROT_TAG_AVAILABLE")]
+
+
+## TarotCardResource has no display name; derive one rather than showing the
+## raw id ("swift_current") -- 2026-10-04 smoke check.
+static func _card_display_name(card_id: StringName) -> String:
+	return String(card_id).capitalize()
 
 
 ## GDD: confirm on a locked card opens a context tooltip explaining the

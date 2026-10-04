@@ -26,7 +26,52 @@ const EXPECTED_PLACEHOLDERS: Dictionary = {
 	"DIORAMA_HABITAT_COUNT": 1,
 	"MAIN_MENU_OVERWRITE_CONFIRM": 1,
 	"MAIN_MENU_SLOT_LABEL": 2,
+	# 2026-10-04 smoke check: empty states, Lure panel, localized tags.
+	"MENAGERIE_ROSTER_EMPTY": 0,
+	"MENAGERIE_LURE_HEADER": 0,
+	"MENAGERIE_LURE_OWNED": 1,
+	"MENAGERIE_LURE_BUTTON": 2,
+	"INVENTORY_RECIPES_EMPTY": 0,
+	"DEFENSE_ENTRY_FORMAT": 3,
+	"DEFENSE_TECH_STATE_UNLOCKED": 0,
+	"DEFENSE_TECH_STATE_AVAILABLE": 0,
+	"DEFENSE_TECH_STATE_LOCKED": 0,
+	"DEFENSE_STRUCTURE_BUILT": 0,
+	"DEFENSE_STRUCTURE_UNBUILT": 0,
+	"DEFENSE_STRUCTURE_GATE": 1,
+	"FORGE_RECIPE_CRAFTABLE": 0,
+	"FORGE_RECIPE_MISSING": 0,
+	"FORGE_ITEM_SLOTS_FREE": 3,
+	"FORGE_RECIPES_EMPTY": 0,
+	"FORGE_IMBUE_ITEMS_EMPTY": 0,
+	"FORGE_UPGRADES_EMPTY": 0,
+	"SKILL_BUILD_SLOT_EMPTY": 0,
+	"SKILL_BUILD_PASSIVES_NONE": 0,
+	"SKILL_BUILD_PASSIVES": 2,
+	"SKILL_BUILD_TAG_LOCKED": 0,
+	"SKILL_BUILD_TAG_ACTIVE": 0,
+	"TAROT_TAG_LOCKED": 0,
+	"TAROT_TAG_EQUIPPED": 0,
+	"TAROT_TAG_AVAILABLE": 0,
+	"TAROT_TAG_CONFLICT": 1,
 	"MAIN_MENU_SLOT_OCCUPIED": 0,
+	"MAIN_MENU_SLOT_SAVED_AT": 1,
+	"MISSION_SELECT_TIER_TIME": 2,
+	"MISSION_SELECT_TIER_UNCLEARED": 0,
+	"MISSION_SELECT_NOT_CLEARED": 0,
+	"MISSION_SELECT_TIER_SELECTED": 0,
+	"MISSION_SELECT_TIER_NORMAL": 0,
+	"MISSION_SELECT_TIER_HARD": 0,
+	"MISSION_SELECT_TIER_BRUTAL": 0,
+	"MISSION_SELECT_TIER_GENERIC": 1,
+	"MISSION_SELECT_STEP_OFF": 0,
+	"MISSION_SELECT_STEP_LOW": 0,
+	"MISSION_SELECT_STEP_HIGH": 0,
+	"MISSION_SELECT_MODIFIERS_NONE": 0,
+	"MISSION_SELECT_RECAP": 3,
+	"HUD_PHASE": 1,
+	"HUD_PHASE_TIMER": 2,
+	"HUD_PREVIEW_TIER_COUNT": 2,
 	"MAIN_MENU_SLOT_EMPTY": 0,
 }
 
@@ -36,11 +81,23 @@ const REMOVED_LITERALS: Dictionary = {
 		"\"Tower %d: %d/%d\"", "\"Hero HP: %d/%d\"", "\"BOSS %s: %d/%d\"", "\"Breaches: %d\"",
 		"\"Wave: %d/%d\"", "\"Wave incoming: %ds\"", "\"Could not pick up", "\"Skill Learned: %s\"",
 	],
-	"res://src/gameplay/ui/hero_skill_build_screen/hero_skill_build_screen.gd": ["\"Ultimate: "],
+	"res://src/gameplay/ui/hero_skill_build_screen/hero_skill_build_screen.gd": [
+		"\"Ultimate: ", "\"(empty)\"", "\"[ACTIVE]\"",
+	],
 	"res://src/gameplay/ui/inventory_screen/inventory_screen.gd": ["text = \"Repair\"", "\"Common %d/%d\""],
 	"res://src/gameplay/ui/menagerie_screen/menagerie_screen.gd": ["\"H: %d\""],
 	"res://src/gameplay/ui/mission_select_screen/mission_select_screen.gd": ["text = \"Launch\"", "text = \"Confirm Launch\""],
 	"res://src/presentation/sanctuary_ui/diorama.gd": ["\"Habitat: %d\""],
+	"res://src/gameplay/ui/defense_building_screen/defense_building_screen.gd": [
+		"\"UNLOCKED\"", "\"AVAILABLE\"", "gold:%d", "\" gated:%s\"",
+	],
+	"res://src/gameplay/ui/equipment_forge_screen/equipment_forge_screen.gd": [
+		"\"CRAFTABLE\"", "\"MISSING_MATERIALS\"", "slots free)\"",
+	],
+	"res://src/presentation/mission_hud/planning_cluster.gd": ["label.text = \"%d %s\" % [totals"],
+	"res://src/gameplay/ui/tarot_screen/tarot_screen.gd": [
+		"\"%s [LOCKED]\"", "\"%s [EQUIPPED]\"", "\"%s [AVAILABLE]\"", "\"%s [CONFLICT: %s]\"",
+	],
 	"res://src/scenes/main_menu.gd": ["\"This will overwrite Slot", "\"Slot %d", "\"Occupied\"", "\"Empty\""],
 }
 
@@ -72,8 +129,10 @@ func _count_placeholders(value: String) -> int:
 			if nxt == "%":
 				i += 2
 				continue
-			if nxt == "d" or nxt == "s":
+			if nxt == "d" or nxt == "s" or nxt == "f":
 				count += 1
+			elif nxt == "." and i + 3 < value.length() and value[i + 3] == "f":
+				count += 1  # precision float, e.g. %.1f
 		i += 1
 	return count
 

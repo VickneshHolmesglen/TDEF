@@ -204,6 +204,8 @@ func _rebuild_recipe_list() -> void:
 		var button: Button = _create_recipe_button(recipe)
 		_recipe_list.add_child(button)
 		_recipe_buttons[recipe_id] = button
+	if _recipe_buttons.is_empty():
+		_add_empty_label(_recipe_list, tr("FORGE_RECIPES_EMPTY"))
 
 
 func _create_recipe_button(recipe: EquipmentRecipeResource) -> Button:
@@ -217,9 +219,26 @@ func _create_recipe_button(recipe: EquipmentRecipeResource) -> Button:
 	return button
 
 
+## Display name from the output item, localized craftable tag (2026-10-04
+## smoke check -- previously "iron_sword_recipe [MISSING_MATERIALS]").
 func _recipe_entry_text(recipe: EquipmentRecipeResource) -> String:
-	var craftable_tag: String = "CRAFTABLE" if equipment_forge.is_craftable(recipe.recipe_id) else "MISSING_MATERIALS"
-	return "%s [%s]" % [String(recipe.recipe_id), craftable_tag]
+	var craftable_tag: String = tr("FORGE_RECIPE_CRAFTABLE") if equipment_forge.is_craftable(recipe.recipe_id) else tr("FORGE_RECIPE_MISSING")
+	return "%s  ·  %s" % [_item_display_name(recipe.output_item_id), craftable_tag]
+
+
+static func _item_display_name(item_id: StringName) -> String:
+	var definition: ItemDefinitionResource = GGameDataRegistry.get_item_definition(item_id)
+	return definition.display_name if definition != null and definition.display_name != "" else String(item_id).capitalize()
+
+
+## Empty list: say why instead of a silent blank column.
+static func _add_empty_label(list: VBoxContainer, text: String) -> void:
+	var label := Label.new()
+	label.name = "EmptyLabel"
+	label.text = text
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.custom_minimum_size = Vector2(240, 0)
+	list.add_child(label)
 
 
 ## GDD: single-confirm, matching Crafting's own convention. resolve_craft()
@@ -250,6 +269,8 @@ func _rebuild_item_list() -> void:
 		var button: Button = _create_item_button(instance_id, contents)
 		_item_list.add_child(button)
 		_item_buttons[instance_id] = button
+	if _item_buttons.is_empty():
+		_add_empty_label(_item_list, tr("FORGE_IMBUE_ITEMS_EMPTY"))
 
 
 func _create_item_button(instance_id: int, contents: Dictionary) -> Button:
@@ -259,7 +280,7 @@ func _create_item_button(instance_id: int, contents: Dictionary) -> Button:
 	button.clip_text = true
 	var rune_slot_count: int = contents.get("rune_slot_count", 0) as int
 	var imbued_count: int = (contents.get("imbued_runes", []) as Array).size()
-	button.text = "%s (%d/%d slots free)" % [contents["item_id"], rune_slot_count - imbued_count, rune_slot_count]
+	button.text = tr("FORGE_ITEM_SLOTS_FREE") % [_item_display_name(StringName(contents["item_id"])), rune_slot_count - imbued_count, rune_slot_count]
 	button.pressed.connect(_on_item_pressed.bind(instance_id))
 	_wire_focus_ring(button)
 	return button
@@ -360,6 +381,8 @@ func _rebuild_upgrade_list() -> void:
 		var upgrade: BuildingUpgradeResource = all_upgrades[upgrade_id]
 		var row: VBoxContainer = _create_upgrade_row(upgrade)
 		_upgrade_list.add_child(row)
+	if _upgrade_list.get_children().all(func(c: Node) -> bool: return c.is_queued_for_deletion()):
+		_add_empty_label(_upgrade_list, tr("FORGE_UPGRADES_EMPTY"))
 
 
 ## Rule 2a/AC-6/AC-6b: each upgrade renders as a header purchase Button

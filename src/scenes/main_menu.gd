@@ -132,7 +132,8 @@ const RESOLUTIONS: Array[Vector2i] = [
 	Vector2i(1920, 1080),
 	Vector2i(2560, 1440),
 ]
-const DISPLAY_SETTINGS_PATH: String = "user://display_settings.cfg"
+## Rooted at UserDataPaths.root() so gdUnit4 runs never touch real settings.
+static var DISPLAY_SETTINGS_PATH: String = UserDataPaths.root() + "display_settings.cfg"
 const DISPLAY_SETTINGS_SECTION: String = "display"
 
 const UI_SCALE_MIN: float = 75.0
@@ -371,6 +372,14 @@ func _most_recent_occupied_slot() -> int:
 	return best_slot
 
 
+## Local "YYYY-MM-DD HH:MM" of the slot's .dat modification time.
+func _slot_saved_at_text(slot: int) -> String:
+	var unix_utc: int = FileAccess.get_modified_time(SavePersistence.SAVE_PATH % slot)
+	var bias_minutes: int = int(Time.get_time_zone_from_system().get("bias", 0))
+	var t: Dictionary = Time.get_datetime_dict_from_unix_time(unix_utc + bias_minutes * 60)
+	return "%04d-%02d-%02d %02d:%02d" % [t.year, t.month, t.day, t.hour, t.minute]
+
+
 func _first_empty_slot() -> int:
 	for slot: int in range(SAVE_SLOT_COUNT):
 		if not _slot_exists(slot):
@@ -441,7 +450,12 @@ func _refresh_load_game_slots() -> void:
 	for slot: int in range(SAVE_SLOT_COUNT):
 		var button: Button = _slot_buttons[slot]
 		var exists: bool = _slot_exists(slot)
-		button.text = tr("MAIN_MENU_SLOT_LABEL") % [slot + 1, tr("MAIN_MENU_SLOT_OCCUPIED") if exists else tr("MAIN_MENU_SLOT_EMPTY")]
+		# Occupied slots also show when they were saved, so three identical rows
+		# are distinguishable (2026-10-04 smoke check).
+		var status: String = tr("MAIN_MENU_SLOT_EMPTY")
+		if exists:
+			status = "%s  ·  %s" % [tr("MAIN_MENU_SLOT_OCCUPIED"), tr("MAIN_MENU_SLOT_SAVED_AT") % _slot_saved_at_text(slot)]
+		button.text = tr("MAIN_MENU_SLOT_LABEL") % [slot + 1, status]
 		button.disabled = not exists
 		button.focus_mode = Control.FOCUS_ALL if exists else Control.FOCUS_NONE
 

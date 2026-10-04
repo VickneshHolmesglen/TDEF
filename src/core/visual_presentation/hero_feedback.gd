@@ -39,6 +39,17 @@ const VIGNETTE_FADE_SECONDS: float = 0.3
 const LOW_HP_SPRITE_TINT: Color = Color(1.0, 0.75, 0.75)
 const FLASH_TINT: Color = Color(1.0, 0.55, 0.55)
 const HIT_FLASH_SHADER: Shader = preload("res://src/shaders/hit_flash.gdshader")
+## Idle breathing (hero-visual-profile.md §5, 2026-10-04 smoke check -- the spec existed
+## but the Hero sprite was fully static): one 3.6s cycle of inhale, exhale, then a
+## single weight-shift micro-action, then stillness. Animates scale/skew only --
+## flinch owns position and flash/death own modulate, so nothing overlaps. A 1.2%
+## breath on the ~64px sprite moves the silhouette well under the 4px budget.
+const IDLE_INHALE_SECONDS: float = 1.2
+const IDLE_EXHALE_SECONDS: float = 1.2
+const IDLE_SHIFT_SECONDS: float = 0.5
+const IDLE_HOLD_SECONDS: float = 0.2
+const IDLE_BREATH_FRACTION: float = 0.012
+const IDLE_WEIGHT_SHIFT_SKEW: float = 0.025
 
 var _hero: Node2D = null
 var _camera: Camera2D = null
@@ -60,6 +71,8 @@ var _vignette_fade: float = 0.0
 var _pulse_time: float = 0.0
 var _dead: bool = false
 var _death_tween: Tween = null
+var _idle_tween: Tween = null
+var _sprite_rest_scale: Vector2 = Vector2.ONE
 
 
 ## True when a single hit removed strictly more than 25% of max HP. Unknown max never counts.
@@ -94,6 +107,7 @@ func setup(hero: Node2D, camera: Camera2D, source_position_provider: Callable) -
 	_sprite = hero.get_node_or_null("Sprite2D") as Sprite2D
 	if _sprite != null:
 		_sprite_rest_position = _sprite.position
+		_sprite_rest_scale = _sprite.scale
 
 
 func _ready() -> void:
@@ -117,6 +131,7 @@ func _ready() -> void:
 	_screen_rect.material = _screen_material
 	_screen_rect.visible = false
 	_layer.add_child(_screen_rect)
+	start_idle()
 
 
 func _exit_tree() -> void:
@@ -315,6 +330,33 @@ func _play_shake() -> void:
 	_shake_tween.tween_property(_camera, "offset", Vector2.ZERO, FRAME_SECONDS)
 
 
+## (Re)starts the looping idle cycle from the rest pose. Safe to call repeatedly.
+func start_idle() -> void:
+	stop_idle()
+	if _sprite == null or not is_instance_valid(_sprite) or not is_inside_tree() or ReduceMotion.enabled():
+		return
+	var breath_scale := Vector2(_sprite_rest_scale.x, _sprite_rest_scale.y * (1.0 + IDLE_BREATH_FRACTION))
+	_idle_tween = create_tween().set_loops().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	_idle_tween.tween_property(_sprite, "scale", breath_scale, IDLE_INHALE_SECONDS)
+	_idle_tween.tween_property(_sprite, "scale", _sprite_rest_scale, IDLE_EXHALE_SECONDS)
+	_idle_tween.tween_property(_sprite, "skew", IDLE_WEIGHT_SHIFT_SKEW, IDLE_SHIFT_SECONDS * 0.5)
+	_idle_tween.tween_property(_sprite, "skew", 0.0, IDLE_SHIFT_SECONDS * 0.5)
+	_idle_tween.tween_interval(IDLE_HOLD_SECONDS)
+
+
+## Stops the idle cycle and returns the sprite to its exact rest pose.
+func stop_idle() -> void:
+	_kill_tween(_idle_tween)
+	_idle_tween = null
+	if _sprite != null and is_instance_valid(_sprite):
+		_sprite.scale = _sprite_rest_scale
+		_sprite.skew = 0.0
+
+
+func is_idle_playing() -> bool:
+	return _idle_tween != null and _idle_tween.is_valid()
+
+
 func _kill_tween(tween: Tween) -> void:
 	if tween != null and tween.is_valid():
 		tween.kill()
@@ -332,6 +374,7 @@ func _on_hero_died() -> void:
 	_kill_tween(_flash_tween)
 	_kill_tween(_flinch_tween)
 	_kill_tween(_shake_tween)
+	stop_idle()
 	if _camera != null and is_instance_valid(_camera):
 		_camera.offset = Vector2.ZERO
 	# The vignette freezes at maximum opacity; desaturation eases in over 0.5 s.
@@ -401,6 +444,7 @@ func _reset_feedback_state() -> void:
 	if _flash_material != null:
 		_flash_material.set_shader_parameter("flash_amount", 0.0)
 	_apply_screen_fx(0.0, 0.0)
+	start_idle()
 
 
 ## Expanding shockwave ring for the death sequence (hero.md: 2x cell_size over 16 frames).

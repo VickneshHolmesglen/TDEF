@@ -464,6 +464,8 @@ func has_items(cost: Dictionary) -> bool:
 		var definition: ItemDefinitionResource = GGameDataRegistry.get_item_definition(slot.item_id)
 		if definition == null:
 			continue
+		if definition.excluded_from_type_costs:
+			continue  # reserved item (e.g. menagerie_lure) -- see its resource field
 		totals_by_item_type[definition.item_type] = totals_by_item_type.get(definition.item_type, 0) + slot.quantity
 
 	for item_type: Variant in cost:
@@ -943,7 +945,7 @@ func consume_by_type(item_type: String, quantity: int, emit_events: bool = true)
 		if slot == null or slot.instance_id != -1 or slot.locked:
 			continue
 		var definition: ItemDefinitionResource = GGameDataRegistry.get_item_definition(slot.item_id)
-		if definition == null or String(definition.item_type) != item_type:
+		if definition == null or String(definition.item_type) != item_type or definition.excluded_from_type_costs:
 			continue
 		var take: int = mini(slot.quantity, remaining)
 		slot.quantity -= take

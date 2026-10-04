@@ -122,7 +122,10 @@ func lure_creature(species_id: StringName) -> int:
 	var lure_definition: ItemDefinitionResource = GGameDataRegistry.get_item_definition(&"menagerie_lure")
 	if lure_definition == null:
 		return -1
-	GInventory.consume_stackable(lure_definition, cost)
+	# materials_spent IS the consume step: Inventory._on_materials_spent()
+	# deducts the stack (menagerie.md Rule 2, materials_wiring_test). A direct
+	# consume_stackable() here as well charged every Lure twice -- found live
+	# in the 2026-10-04 smoke check (11 lures - 2 Tier-1 lures left 2, not 5).
 	GEventBus.materials_spent.emit("menagerie_lure", cost, "lure")
 
 	var creature := CreatureInstance.new()

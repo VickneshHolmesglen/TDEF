@@ -34,7 +34,10 @@ const SCREEN_SCENES: Dictionary[StringName, PackedScene] = {
 const HERO_SKILL_BUILD_STATE: StringName = &"HERO_SKILL_BUILD"
 const TAROT_DECK_STATE: StringName = &"TAROT_DECK"
 
-const TAB_STRIP_WIDTH: float = 72.0
+## 160, not 72 (2026-10-04 smoke check): "Hero Skill Build" measures ~126px,
+## so a 72px strip overflowed 54px into ScreenHost and drew over its rows.
+const TAB_STRIP_WIDTH: float = 160.0
+const RETURN_BAR_HEIGHT: float = 72.0
 
 @onready var _screen_host: ScreenHost = $ScreenHost
 @onready var _tab_strip: DeckTabStrip = $Chrome/TabStrip
@@ -149,6 +152,9 @@ func get_tab_strip_for_test() -> DeckTabStrip:
 
 func _configure_chrome_layout() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	# Chrome was a 0x0 Control, so TabStrip's anchor_bottom=1.0 resolved against
+	# zero height -- give it the full rect so the strip spans the screen.
+	($Chrome as Control).set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 	_tab_strip.anchor_left = 0.0
 	_tab_strip.anchor_top = 0.0
@@ -166,7 +172,9 @@ func _configure_chrome_layout() -> void:
 	_screen_host.offset_left = TAB_STRIP_WIDTH
 	_screen_host.offset_top = 0.0
 	_screen_host.offset_right = 0.0
-	_screen_host.offset_bottom = 0.0
+	# Leave room for ReturnToSanctuaryButton (40px tall, 24px inset) so it no
+	# longer floats over the bottom rows of the hosted screen (2026-10-04).
+	_screen_host.offset_bottom = -RETURN_BAR_HEIGHT
 
 
 func _on_tab_target_selected(target_state: StringName) -> void:

@@ -10,11 +10,11 @@ extends GdUnitTestSuite
 ## test fixtures). Cleans up all written files in after_test().
 
 const TEST_SLOT: int = 97
-const TEST_DIR: String = "user://saves/"
-const TEST_DAT: String = "user://saves/save_slot_97.dat"
-const TEST_TMP: String = "user://saves/save_slot_97.tmp"
-const TEST_CHECKPOINT: String = "user://saves/save_slot_97_checkpoint.dat"
-const TEST_CORRUPT: String = "user://saves/save_slot_97.corrupt"
+var TEST_DIR: String = UserDataPaths.root() + "saves/"
+var TEST_DAT: String = UserDataPaths.root() + "saves/save_slot_97.dat"
+var TEST_TMP: String = UserDataPaths.root() + "saves/save_slot_97.tmp"
+var TEST_CHECKPOINT: String = UserDataPaths.root() + "saves/save_slot_97_checkpoint.dat"
+var TEST_CORRUPT: String = UserDataPaths.root() + "saves/save_slot_97.corrupt"
 
 var _sp: SavePersistence
 

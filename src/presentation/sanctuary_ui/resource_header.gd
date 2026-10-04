@@ -85,14 +85,21 @@ func _ready() -> void:
 	_materials_label.clip_contents = true
 	_materials_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
+	_seed_from_inventory()
 	_refresh_label()
 	GEventBus.materials_earned.connect(_on_materials_earned)
 	GEventBus.materials_spent.connect(_on_materials_spent)
+	GEventBus.item_added.connect(_on_inventory_changed)
+	GEventBus.item_removed.connect(_on_inventory_changed)
 
 
 func _exit_tree() -> void:
 	GEventBus.materials_earned.disconnect(_on_materials_earned)
 	GEventBus.materials_spent.disconnect(_on_materials_spent)
+	if GEventBus.item_added.is_connected(_on_inventory_changed):
+		GEventBus.item_added.disconnect(_on_inventory_changed)
+	if GEventBus.item_removed.is_connected(_on_inventory_changed):
+		GEventBus.item_removed.disconnect(_on_inventory_changed)
 
 
 ## Test/inspection accessor -- current locally-accumulated quantity for one
@@ -125,8 +132,39 @@ func _play_scale_pop() -> void:
 		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 
 
+## Starts from what the player actually owns (2026-10-04 smoke check): the header
+## used to begin empty on every Sanctuary load and only accumulate deltas, so a
+## Lure showed "menagerie_lure -6" rather than the real remaining count. Inventory
+## is the ledger of record (class doc comment); deltas still apply on top.
+func _seed_from_inventory() -> void:
+	_materials.clear()
+	for i: int in range(GInventory.get_slot_count()):
+		var contents: Dictionary = GInventory.get_slot_contents(i)
+		if contents.is_empty() or contents.get("instance_id", -1) != -1:
+			continue
+		var item_id: String = String(contents.get("item_id", ""))
+		var quantity: int = int(contents.get("quantity", 0))
+		var definition: ItemDefinitionResource = GGameDataRegistry.get_item_definition(StringName(item_id))
+		if item_id.is_empty() or quantity <= 0 or definition == null or definition.item_type != &"Material":
+			continue
+		_materials[item_id] = int(_materials.get(item_id, 0)) + quantity
+
+
+## Crafting consumes by type without emitting materials_spent, so also resync
+## from the ledger whenever Inventory itself reports a change.
+func _on_inventory_changed(_item_id: String, _item_type: String, _quantity: int) -> void:
+	_seed_from_inventory()
+	_refresh_label()
+
+
 func _refresh_label() -> void:
 	var parts: PackedStringArray = []
 	for material_type: String in _materials:
-		parts.append("%s %d" % [material_type, _materials[material_type]])
+		parts.append("%s %d" % [_material_label(material_type), _materials[material_type]])
 	_materials_label.text = " · ".join(parts)
+
+
+## Registry display name ("Menagerie Lure"); unknown ids are shown as-is.
+static func _material_label(material_type: String) -> String:
+	var definition: ItemDefinitionResource = GGameDataRegistry.get_item_definition(StringName(material_type))
+	return definition.display_name if definition != null and definition.display_name != "" else material_type

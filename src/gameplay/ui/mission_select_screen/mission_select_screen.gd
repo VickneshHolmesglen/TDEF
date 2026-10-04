@@ -166,12 +166,18 @@ func _build_mission_row(entry: MissionEntry, button: Button) -> HBoxContainer:
 
 ## GDD: "fully covered on the mission card itself" — 3-tier best-time summary,
 ## plain text (no mini-table art, see class doc comment).
+## Readable form (2026-10-04 smoke check; was "The Gap (T1:-- T2:-- T3:--)"):
+## "Not yet cleared" until any tier is beaten, then per-tier best times.
 func _mission_entry_text(entry: MissionEntry) -> String:
 	var parts: Array[String] = []
+	var any_completed: bool = false
 	for tier: int in [1, 2, 3]:
 		var record: MissionCompletionRecord = mission_select.get_completion_record(entry.mission_id, tier)
-		parts.append("T%d:%s" % [tier, ("%.1fs" % record.best_time_seconds) if record.completed else "--"])
-	return "%s (%s)" % [entry.display_name, " ".join(parts)]
+		any_completed = any_completed or record.completed
+		var time_text: String = ("%.1fs" % record.best_time_seconds) if record.completed else tr("MISSION_SELECT_TIER_UNCLEARED")
+		parts.append(tr("MISSION_SELECT_TIER_TIME") % [_tier_display_name(tier), time_text])
+	var summary: String = "   ".join(parts) if any_completed else tr("MISSION_SELECT_NOT_CLEARED")
+	return "%s  ·  %s" % [entry.display_name, summary]
 
 
 func _on_mission_pressed(mission_id: String) -> void:
@@ -218,16 +224,16 @@ func _create_tier_button(tier: int) -> Button:
 func _refresh_tier_button_labels() -> void:
 	for tier: int in _tier_buttons.keys():
 		var button: Button = _tier_buttons[tier]
-		var selected_tag: String = " [SELECTED]" if mission_select.difficulty_tier == tier else ""
+		var selected_tag: String = " " + tr("MISSION_SELECT_TIER_SELECTED") if mission_select.difficulty_tier == tier else ""
 		button.text = "%s%s" % [_tier_display_name(tier), selected_tag]
 
 
 func _tier_display_name(tier: int) -> String:
 	match tier:
-		1: return "Normal"
-		2: return "Hard"
-		3: return "Brutal"
-		_: return "Tier %d" % tier
+		1: return tr("MISSION_SELECT_TIER_NORMAL")
+		2: return tr("MISSION_SELECT_TIER_HARD")
+		3: return tr("MISSION_SELECT_TIER_BRUTAL")
+		_: return tr("MISSION_SELECT_TIER_GENERIC") % tier
 
 
 func _on_tier_pressed(tier: int) -> void:
@@ -256,15 +262,20 @@ func _refresh_modifier_button_labels() -> void:
 		var step_index: int = steps.find(current_value)
 		if step_index == -1:
 			step_index = 0
-		button.text = "%s: %s" % [String(modifier_id), _step_label(step_index)]
+		button.text = "%s: %s" % [_modifier_display_name(modifier_id), _step_label(step_index)]
 
 
 func _step_label(step_index: int) -> String:
 	match step_index:
-		0: return "OFF"
-		1: return "LOW"
-		2: return "HIGH"
+		0: return tr("MISSION_SELECT_STEP_OFF")
+		1: return tr("MISSION_SELECT_STEP_LOW")
+		2: return tr("MISSION_SELECT_STEP_HIGH")
 		_: return "?"
+
+
+## Readable modifier name ("Extend Waves") instead of the raw id.
+static func _modifier_display_name(modifier_id: StringName) -> String:
+	return String(modifier_id).capitalize()
 
 
 func _on_modifier_pressed(modifier_id: StringName) -> void:
@@ -317,9 +328,10 @@ func _build_recap_text() -> String:
 	for modifier_id: StringName in RUN_MODIFIER_STEPS.keys():
 		var value: float = mission_select.get_run_modifier_value(modifier_id)
 		if value != 0.0:
-			modifier_parts.append("%s=%s" % [String(modifier_id), value])
-	var modifier_text: String = ", ".join(modifier_parts) if not modifier_parts.is_empty() else "none"
-	return "%s / %s / modifiers: %s" % [mission_name, _tier_display_name(mission_select.difficulty_tier), modifier_text]
+			var step_index: int = (RUN_MODIFIER_STEPS[modifier_id] as Array).find(value)
+			modifier_parts.append("%s: %s" % [_modifier_display_name(modifier_id), _step_label(step_index) if step_index != -1 else str(value)])
+	var modifier_text: String = ", ".join(modifier_parts) if not modifier_parts.is_empty() else tr("MISSION_SELECT_MODIFIERS_NONE")
+	return tr("MISSION_SELECT_RECAP") % [mission_name, _tier_display_name(mission_select.difficulty_tier), modifier_text]
 
 
 func is_launch_armed() -> bool:

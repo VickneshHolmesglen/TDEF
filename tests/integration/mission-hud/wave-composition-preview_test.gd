@@ -86,8 +86,8 @@ func test_intermission_mount_renders_tier_bucketed_totals() -> void:
 
 	var host: VBoxContainer = _hud._planning_cluster._composition_preview_host
 	assert_int(host.get_child_count()).is_equal(2)  # only 2 non-zero buckets, no BOSS line
-	assert_str((host.get_child(0) as Label).text).is_equal("3 STANDARD")
-	assert_str((host.get_child(1) as Label).text).is_equal("1 ELITE")
+	assert_str((host.get_child(0) as Label).text).is_equal(tr("HUD_PREVIEW_TIER_COUNT") % [3, tr("HUD_TIER_STANDARD")])
+	assert_str((host.get_child(1) as Label).text).is_equal(tr("HUD_PREVIEW_TIER_COUNT") % [1, tr("HUD_TIER_ELITE")])
 
 
 # ---------------------------------------------------------------------------
@@ -108,7 +108,7 @@ func test_same_payload_renders_differently_by_mount_phase_alone() -> void:
 
 	assert_int(scout_line_count).is_equal(2)  # full breakdown: 1 line per monster type
 	assert_int(intermission_host.get_child_count()).is_equal(2)  # tier-bucketed: 1 line per tier
-	assert_str((intermission_host.get_child(0) as Label).text).is_equal("3 STANDARD")
+	assert_str((intermission_host.get_child(0) as Label).text).is_equal(tr("HUD_PREVIEW_TIER_COUNT") % [3, tr("HUD_TIER_STANDARD")])
 
 
 # ---------------------------------------------------------------------------

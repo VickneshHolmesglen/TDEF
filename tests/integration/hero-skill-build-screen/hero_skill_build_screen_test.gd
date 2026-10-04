@@ -137,7 +137,7 @@ func test_ultimate_readout_reflects_a_full_pure_build() -> void:
 	GHeroSkillBuild.set_active_slot(3, "phys_bulwark")
 	_rebuild_all()
 
-	assert_str(_screen.call("get_ultimate_label_text")).contains("physical_ascendant")
+	assert_str(_screen.call("get_ultimate_label_text")).contains("Physical Ascendant")
 
 
 # ---------------------------------------------------------------------------

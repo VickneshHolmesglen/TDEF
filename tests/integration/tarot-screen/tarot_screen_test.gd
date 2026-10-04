@@ -78,14 +78,14 @@ func test_locked_card_shows_locked_state() -> void:
 	_rebuild_all()
 	var button: Button = _screen.call("get_pool_button", CARD_LOCKED_BY_DEFAULT)
 	assert_object(button).is_not_null()
-	assert_str(button.text).contains("LOCKED")
+	assert_str(button.text).contains(tr("TAROT_TAG_LOCKED"))
 
 
 func test_unlocked_unequipped_card_shows_available_state() -> void:
 	_unlock(CARD_IRON_RESOLVE)
 	_rebuild_all()
 	var button: Button = _screen.call("get_pool_button", CARD_IRON_RESOLVE)
-	assert_str(button.text).contains("AVAILABLE")
+	assert_str(button.text).contains(tr("TAROT_TAG_AVAILABLE"))
 
 
 func test_pressing_an_unlocked_card_equips_it() -> void:
@@ -157,7 +157,7 @@ func test_no_conflict_tag_when_no_run_modifier_is_active() -> void:
 	_rebuild_all()
 
 	var button: Button = _screen.call("get_deck_button", CARD_IRON_RESOLVE)
-	assert_str(button.text).not_contains("CONFLICT")
+	assert_str(button.text).not_contains("Conflicts")
 	assert_bool(_screen.call("has_conflict", CARD_IRON_RESOLVE)).is_false()
 
 
@@ -169,7 +169,7 @@ func test_conflict_tag_appears_when_a_mapped_run_modifier_is_active() -> void:
 	GEventBus.run_modifier_selected.emit("difficulty_growth_boost", 0.03)
 
 	var button: Button = _screen.call("get_deck_button", CARD_IRON_RESOLVE)
-	assert_str(button.text).contains("CONFLICT")
+	assert_str(button.text).contains("Conflicts")
 	assert_bool(_screen.call("has_conflict", CARD_IRON_RESOLVE)).is_true()
 
 
@@ -183,7 +183,7 @@ func test_conflict_tag_clears_when_mission_selected_resets_modifiers() -> void:
 	GEventBus.mission_selected.emit("some_other_mission")
 
 	var button: Button = _screen.call("get_deck_button", CARD_IRON_RESOLVE)
-	assert_str(button.text).not_contains("CONFLICT")
+	assert_str(button.text).not_contains("Conflicts")
 
 
 func test_conflict_tag_never_blocks_unequipping_the_card() -> void:
@@ -208,7 +208,7 @@ func test_unmapped_modifier_type_never_shows_a_conflict_tag() -> void:
 	GEventBus.run_modifier_selected.emit("extend_waves", 1.0)
 
 	var button: Button = _screen.call("get_deck_button", CARD_LUCKY_CHARM)
-	assert_str(button.text).not_contains("CONFLICT")
+	assert_str(button.text).not_contains("Conflicts")
 
 
 # ---------------------------------------------------------------------------
@@ -240,14 +240,24 @@ func test_pool_button_icon_is_capped_to_the_card_icon_max_width() -> void:
 	assert_int(button.get_theme_constant(&"icon_max_width")).is_equal(32)
 
 
-## reckless_onslaught has no art-mapping entry yet (2 of 12 cards remain
-## text-only, see CARD_TEXTURES's own doc comment) -- confirms the
-## fallback is a plain unmapped button, not an error or a placeholder icon.
+## Every shipped card is art-mapped since 2026-10-04, so the fallback is
+## exercised directly with an id absent from CARD_TEXTURES -- confirms it is
+## a plain unmapped button, not an error or a placeholder icon.
 func test_unmapped_card_has_no_icon() -> void:
-	_unlock(&"reckless_onslaught")
-	_rebuild_all()
-	var button: Button = _screen.call("get_pool_button", &"reckless_onslaught")
+	var button := Button.new()
+	@warning_ignore("unsafe_method_access")
+	_screen.call("_apply_card_icon", button, &"not_a_real_card")
 	assert_object(button.icon).is_null()
+	button.free()
+
+
+func test_previously_unmapped_cards_now_show_art() -> void:
+	for card_id: StringName in [&"reckless_onslaught", &"swift_current", &"grinding_gauntlet"]:
+		_unlock(card_id)
+	_rebuild_all()
+	for card_id: StringName in [&"reckless_onslaught", &"swift_current", &"grinding_gauntlet"]:
+		var pool_button: Button = _screen.call("get_pool_button", card_id)
+		assert_object(pool_button.icon).override_failure_message("no art for %s" % card_id).is_not_null()
 
 
 func test_grim_resolve_shows_an_icon_now_that_it_is_mapped() -> void:

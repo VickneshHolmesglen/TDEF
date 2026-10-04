@@ -51,6 +51,7 @@ extends Control
 
 const HERO_PORTRAIT: Texture2D = preload("res://assets/art/characters/hero_warden_smith.png")
 const SLOT_SIZE: Vector2 = Vector2(44, 44)  ## smaller than the old 48px tile -- 6 slots must fit one column's height
+const FALLBACK_LABEL_FONT_SIZE: int = 10  ## fits "Main Hand"/"Offhand" inside SLOT_SIZE (see _build_slot_frame)
 const PORTRAIT_SIZE: Vector2 = Vector2(160, 320)
 
 ## Left column top-to-bottom, right column top-to-bottom -- player-specified
@@ -218,8 +219,14 @@ func _build_slot_frame(slot_name: String, tile_size: Vector2) -> Panel:
 	fallback_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	fallback_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	fallback_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	fallback_label.autowrap_mode = TextServer.AUTOWRAP_WORD
-	fallback_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_KEEP_SIZE, 4)
+	fallback_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	# The default ~16px theme font overflowed the 44px tile ("Main Hand",
+	# "Offhand", "Ring 1" spilled past the frame -- 2026-10-04 smoke check).
+	# 10px fits every slot name in at most two lines; clip_text guards long
+	# item display_names that also land in this label.
+	fallback_label.add_theme_font_size_override("font_size", FALLBACK_LABEL_FONT_SIZE)
+	fallback_label.clip_text = true
+	fallback_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_KEEP_SIZE, 2)
 	frame.add_child(fallback_label)
 	_slot_labels[slot_name] = fallback_label
 

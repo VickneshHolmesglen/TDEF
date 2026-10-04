@@ -85,6 +85,17 @@ func test_lure_creature_success_full_flow() -> void:
 	assert_that(creature.species).is_equal(GLIMMER_HARE)
 
 
+## Regression (2026-10-04 smoke check): a Lure must charge its cost exactly
+## once. It used to consume directly AND emit materials_spent, which Inventory
+## also consumes on -- seeding the exact cost hid the double charge.
+func test_lure_creature_charges_the_cost_exactly_once() -> void:
+	_seed_lure(10)
+	_menagerie.lure_creature(GLIMMER_HARE)  # Tier 1, cost 3
+
+	assert_bool(GInventory.has_item_quantity(&"menagerie_lure", 7)).is_true()
+	assert_bool(GInventory.has_item_quantity(&"menagerie_lure", 8)).is_false()
+
+
 # ---------------------------------------------------------------------------
 # AC-3: insufficient materials -> rejected, zero state change, no
 # materials_spent.

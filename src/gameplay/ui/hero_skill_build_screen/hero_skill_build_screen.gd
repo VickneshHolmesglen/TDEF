@@ -183,7 +183,10 @@ func _rebuild_ultimate_label() -> void:
 	if hero_skill_build == null:
 		_ultimate_label.text = tr("SKILL_BUILD_ULTIMATE_NONE")
 		return
-	_ultimate_label.text = tr("SKILL_BUILD_ULTIMATE") % hero_skill_build.get_all_slot_bindings()["U"]
+	# "EMPTY" is the data-layer sentinel, never player text (2026-10-04 smoke
+	# check showed the raw sentinel on screen); a real id gets its display label.
+	var ultimate_id: String = hero_skill_build.get_all_slot_bindings()["U"]
+	_ultimate_label.text = tr("SKILL_BUILD_ULTIMATE_NONE") if ultimate_id == "EMPTY" or ultimate_id.is_empty() else tr("SKILL_BUILD_ULTIMATE") % _ultimate_display_name(ultimate_id)
 
 
 ## UI Requirements' "deliberate pedagogical surface": one letter-glyph badge
@@ -238,7 +241,7 @@ func _rebuild_active_slots() -> void:
 		slot_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		slot_button.size_flags_stretch_ratio = 3.0
 		var bound: String = bindings[i] if i < bindings.size() else ""
-		var slot_text: String = "%s: %s" % [ACTIVE_SLOT_LABELS[i], _skill_label(bound) if not bound.is_empty() else "(empty)"]
+		var slot_text: String = "%s: %s" % [ACTIVE_SLOT_LABELS[i], _skill_label(bound) if not bound.is_empty() else tr("SKILL_BUILD_SLOT_EMPTY")]
 		_build_button_content(slot_button, _skill_icon(bound), slot_text)
 		_apply_archetype_style(slot_button, bound)
 		slot_button.pressed.connect(_on_active_slot_pressed.bind(i))
@@ -321,6 +324,13 @@ func _build_button_content(button: Button, texture: Texture2D, label_text: Strin
 ## itself if no SkillDefinitionResource resolves (an orphaned/unrecognized
 ## skill_id — see hero-skill-build.md's own AC-21/AC-22 orphan handling;
 ## this screen still needs to show SOMETHING for it, not a blank button).
+## Ultimates have no SkillDefinitionResource, so _skill_label() would echo
+## the raw id ("physical_ascendant") -- derive a readable name instead.
+func _ultimate_display_name(ultimate_id: String) -> String:
+	var label: String = _skill_label(ultimate_id)
+	return ultimate_id.capitalize() if label == ultimate_id else label
+
+
 func _skill_label(skill_id: String) -> String:
 	if skill_id.is_empty():
 		return skill_id
@@ -440,13 +450,13 @@ func _global_center_in_local(control: Control) -> Vector2:
 
 func _passive_summary_text(skill_id: String) -> String:
 	if skill_id.is_empty() or hero_skill_build == null:
-		return "Passives: —"
+		return tr("SKILL_BUILD_PASSIVES_NONE")
 	var loadout: Array[String] = hero_skill_build.get_effective_passive_loadout(skill_id)
 	var filled: int = 0
 	for item_id: String in loadout:
 		if not item_id.is_empty():
 			filled += 1
-	return "Passives: %d/%d (cycle)" % [filled, loadout.size()]
+	return tr("SKILL_BUILD_PASSIVES") % [filled, loadout.size()]
 
 
 ## GDD (simplified, see class doc comment): pressing an occupied active slot
@@ -562,7 +572,7 @@ func _rebuild_library() -> void:
 		button.focus_mode = Control.FOCUS_ALL
 		button.clip_text = true
 		var is_active: bool = hero_skill_build.get_active_slots().has(skill_id)
-		var suffix: String = "[LOCKED]" if is_locked else ("[ACTIVE]" if is_active else "")
+		var suffix: String = tr("SKILL_BUILD_TAG_LOCKED") if is_locked else (tr("SKILL_BUILD_TAG_ACTIVE") if is_active else "")
 		var library_text: String = "%s %s" % [_skill_label(skill_id), suffix] if not suffix.is_empty() else _skill_label(skill_id)
 		_build_button_content(button, _skill_icon(skill_id), library_text)
 		_apply_archetype_style(button, skill_id)

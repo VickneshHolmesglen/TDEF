@@ -26,8 +26,13 @@ var power: PowerComponent = null
 ## inert ShaftComponent.new()/TopComponent.new() substituted at that point
 ## (see place_tower()'s own comment), so every consumer downstream of
 ## placement can assume non-null here.
-var shaft: ShaftComponent = null
-var top: TopComponent = null
+##
+## Defaulted to inert components (2026-10-04 smoke check) rather than null so a
+## state built directly (tests, any future restore path) can never crash
+## _try_attack()'s unguarded state.top.bonus_type read; place_tower() still
+## overwrites both with the blueprint's own duplicated components.
+var shaft: ShaftComponent = ShaftComponent.new()
+var top: TopComponent = TopComponent.new()
 var grid_position: Vector2i = Vector2i.ZERO
 var current_hp: float = 0.0
 var max_hp: float = 0.0

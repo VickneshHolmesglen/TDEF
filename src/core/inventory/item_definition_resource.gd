@@ -43,6 +43,12 @@ extends Resource
 ## accessory_a/accessory_b precedent this replaces). Every other category
 ## maps 1:1 to its own named slot.
 @export var equipment_category: String = ""  ## "" | weapon | offhand | helmet | chest | gloves | pants | boots | neck | ring
+## 2026-10-04 smoke check: true = this item is never counted toward, or
+## consumed by, an item_type-keyed cost (has_items()/consume_by_type()). Set on
+## menagerie_lure, which shares item_type "Material" but is reserved for the
+## Menagerie Lure action (menagerie.md Rule 2: consumed ONLY by that action) --
+## without it any "Material: N" recipe silently ate the player's lures.
+@export var excluded_from_type_costs: bool = false
 ## 2026-08-06 (design/quick-specs/inventory-slot-icons-2026-08-06.md): a
 ## real, data-driven home for slot art. Null = no icon authored yet (the
 ## slot falls back to its pre-existing text rendering, "mechanism real,

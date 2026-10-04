@@ -365,7 +365,8 @@ func _render_tier_bucketed(composition: Array) -> void:
 	for tier_name: String in TIER_NAMES:
 		if totals[tier_name] > 0:
 			var label := Label.new()
-			label.text = "%d %s" % [totals[tier_name], tier_name]
+			# Localized tier word (was the raw "STANDARD"/"ELITE" enum -- 2026-10-04 smoke check).
+			label.text = tr("HUD_PREVIEW_TIER_COUNT") % [totals[tier_name], tr("HUD_TIER_" + tier_name)]
 			_composition_preview_host.add_child(label)
 
 

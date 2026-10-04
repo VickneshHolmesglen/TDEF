@@ -11,3 +11,4 @@ display_name = "Menagerie Lure"
 is_unique_instance = false
 base_stats = {}
 icon = ExtResource("2")
+excluded_from_type_costs = true

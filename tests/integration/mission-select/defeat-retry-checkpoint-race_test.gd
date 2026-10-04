@@ -54,8 +54,8 @@
 extends GdUnitTestSuite
 
 const TEST_SLOT: int = 96
-const TEST_DAT: String = "user://saves/save_slot_96.dat"
-const TEST_CHECKPOINT: String = "user://saves/save_slot_96_checkpoint.dat"
+var TEST_DAT: String = UserDataPaths.root() + "saves/save_slot_96.dat"
+var TEST_CHECKPOINT: String = UserDataPaths.root() + "saves/save_slot_96_checkpoint.dat"
 
 var _mission_select: MissionSelect
 var _original_active_slot: int

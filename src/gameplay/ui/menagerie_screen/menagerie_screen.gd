@@ -79,6 +79,12 @@ var _focused_creature_id: int = -1
 ## semantically distinct from mere focus/highlight.
 var _breeding_selection: Array[int] = []
 var _pending_sacrifice_id: int = -1
+## Lure panel + roster empty state (2026-10-04 smoke check): the Lure action
+## (menagerie.md Core Rule 2) had a tested backend but no UI caller anywhere,
+## so a player could never acquire a creature. Built in code, not the .tscn.
+var _lure_count_label: Label
+var _lure_buttons: Dictionary[StringName, Button] = {}
+var _roster_empty_label: Label
 
 
 func _ready() -> void:
@@ -103,6 +109,7 @@ func _ready() -> void:
 	GEventBus.creature_moved_to_breeding_pen.connect(_on_roster_changed)
 	GEventBus.creature_returned_from_breeding_pen.connect(_on_roster_changed)
 
+	_build_lure_panel()
 	_rebuild_roster()
 	_refresh_detail_panel()
 
@@ -145,6 +152,19 @@ func _rebuild_roster() -> void:
 	_breeding_selection = _breeding_selection.filter(
 		func(id: int) -> bool: return _roster_buttons.has(id)
 	)
+
+	# Empty roster: say why and what to do instead of a silent blank panel.
+	if _roster_buttons.is_empty():
+		_roster_empty_label = Label.new()
+		_roster_empty_label.name = "RosterEmptyLabel"
+		_roster_empty_label.text = tr("MENAGERIE_ROSTER_EMPTY")
+		_roster_empty_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		_roster_empty_label.custom_minimum_size = Vector2(240, 0)
+		_roster_list.add_child(_roster_empty_label)
+	# Breeding needs a pair -- entering select mode with fewer than two
+	# roster creatures could never be confirmed.
+	_breed_select_button.disabled = _roster_buttons.size() < 2
+	_refresh_lure_panel()
 
 
 func _create_roster_button(creature: CreatureInstance) -> Button:
@@ -205,7 +225,83 @@ func _species_texture(species_id: StringName) -> Texture2D:
 func _roster_entry_text(creature: CreatureInstance) -> String:
 	var state_tag: String = CreatureInstance.CreatureState.keys()[creature.state]
 	var selected_tag: String = " [selected]" if _breeding_selection.has(creature.creature_id) else ""
-	return "%s (%s) H:%d%s" % [String(creature.species), state_tag, int(creature.happiness), selected_tag]
+	return "%s (%s) H:%d%s" % [_species_display_name(creature.species), state_tag, int(creature.happiness), selected_tag]
+
+
+## SpeciesResource carries no display name (menagerie.md Rule 1 names are
+## placeholders), so derive one rather than showing the raw id.
+static func _species_display_name(species_id: StringName) -> String:
+	return String(species_id).capitalize()
+
+
+# ---------------------------------------------------------------------------
+# Lure panel -- menagerie.md Core Rule 2 / Formula 4
+# ---------------------------------------------------------------------------
+
+func _build_lure_panel() -> void:
+	var detail_panel: VBoxContainer = $MainLayout/DetailPanel
+	var header := Label.new()
+	header.name = "LureHeader"
+	header.text = tr("MENAGERIE_LURE_HEADER")
+	header.add_theme_color_override("font_color", ShellChromeStyle.UI_PARCHMENT)
+	detail_panel.add_child(header)
+
+	_lure_count_label = Label.new()
+	_lure_count_label.name = "LureCountLabel"
+	detail_panel.add_child(_lure_count_label)
+
+	var registry_species: Dictionary[StringName, SpeciesResource] = GGameDataRegistry.get_all_species()
+	var species_ids: Array[StringName] = registry_species.keys()
+	# Cheapest first: tier, then id for a stable order within a tier.
+	species_ids.sort_custom(func(a: StringName, b: StringName) -> bool:
+		var ta: int = registry_species[a].species_tier
+		var tb: int = registry_species[b].species_tier
+		return ta < tb if ta != tb else String(a) < String(b))
+	for species_id: StringName in species_ids:
+		var button := Button.new()
+		button.name = "Lure_%s" % species_id
+		button.focus_mode = Control.FOCUS_ALL
+		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		button.icon = _species_texture(species_id)
+		button.expand_icon = true
+		button.add_theme_constant_override("icon_max_width", ROSTER_ICON_MAX_WIDTH)
+		button.text = tr("MENAGERIE_LURE_BUTTON") % [
+			_species_display_name(species_id),
+			Menagerie.lure_cost(registry_species[species_id].species_tier)]
+		button.pressed.connect(_on_lure_pressed.bind(species_id))
+		detail_panel.add_child(button)
+		_lure_buttons[species_id] = button
+	_refresh_lure_panel()
+
+
+func _refresh_lure_panel() -> void:
+	if _lure_count_label == null:
+		return  # _rebuild_roster() runs once before the panel exists
+	var owned: int = _owned_lure_count()
+	_lure_count_label.text = tr("MENAGERIE_LURE_OWNED") % owned
+	for species_id: StringName in _lure_buttons.keys():
+		var species: SpeciesResource = GGameDataRegistry.get_species(species_id)
+		_lure_buttons[species_id].disabled = species == null \
+			or owned < Menagerie.lure_cost(species.species_tier)
+
+
+func _owned_lure_count() -> int:
+	var total: int = 0
+	for i: int in range(GInventory.get_slot_count()):
+		var contents: Dictionary = GInventory.get_slot_contents(i)
+		if contents.get("item_id", &"") == &"menagerie_lure":
+			total += int(contents.get("quantity", 0))
+	return total
+
+
+func _on_lure_pressed(species_id: StringName) -> void:
+	var creature_id: int = menagerie.lure_creature(species_id)
+	if creature_id != -1:
+		_focused_creature_id = creature_id
+	# creature_acquired already rebuilt the roster; the lure count changed
+	# even if the press was rejected, so refresh explicitly either way.
+	_refresh_lure_panel()
+	_refresh_detail_panel()
 
 
 func _on_roster_changed(_a: Variant = null, _b: Variant = null, _c: Variant = null) -> void:
@@ -271,7 +367,7 @@ func _refresh_detail_panel() -> void:
 		_sacrifice_button.disabled = true
 		return
 
-	_detail_species_label.text = String(creature.species)
+	_detail_species_label.text = _species_display_name(creature.species)
 	_detail_state_label.text = CreatureInstance.CreatureState.keys()[creature.state]
 	_detail_happiness_label.text = tr("MENAGERIE_HAPPINESS_SHORT") % int(creature.happiness)
 	_tend_button.disabled = creature.state != CreatureInstance.CreatureState.HABITAT

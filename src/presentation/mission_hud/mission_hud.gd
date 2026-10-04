@@ -296,7 +296,7 @@ func _on_mission_launched_show_combat_cluster(_mission_id: String, _modifiers: P
 ## Cluster's re-instantiate/teardown/partial-interactivity lifecycle.
 func _on_mission_phase_changed(previous_phase: String, new_phase: String, _timestamp: float) -> void:
 	_current_phase = new_phase
-	_phase_label.text = "Phase: %s" % new_phase  # AC-63 (PC-4)
+	_phase_label.text = tr("HUD_PHASE") % phase_display_name(new_phase)  # AC-63 (PC-4)
 	# Story 012 (AC-70) fix: originally gated on previous_phase == "IDLE"
 	# specifically — but WaveManager never resets its own _phase back to IDLE
 	# before re-emitting mission_launched on a DEFEAT retry (_reset_all_state()
@@ -314,6 +314,7 @@ func _on_mission_phase_changed(previous_phase: String, new_phase: String, _times
 			_enter_pre_wave()
 		"WAVE_ACTIVE":
 			_teardown_planning_cluster()  # AC-9
+			_phase_timer_label.text = ""  # the PRE_WAVE countdown is over -- do not leave "0.0s" up
 		"INTERMISSION":
 			_enter_intermission()
 
@@ -876,7 +877,16 @@ func _on_wave_started(wave_number: int, total_waves: int, _wave_difficulty: floa
 
 ## AC-63 (PC-4, timer half).
 func _on_phase_timer_tick(phase: String, seconds_remaining: float) -> void:
-	_phase_timer_label.text = "%s: %.1fs" % [phase, seconds_remaining]
+	_phase_timer_label.text = tr("HUD_PHASE_TIMER") % [phase_display_name(phase), seconds_remaining]
+
+
+## Player-facing name for a WaveManager phase id (2026-10-04 smoke check: the
+## HUD showed raw ids like "PRE_WAVE: 0.0s"). Unknown ids fall back to a
+## capitalized form rather than a missing-key string.
+static func phase_display_name(phase: String) -> String:
+	var key: String = "HUD_PHASE_NAME_" + phase
+	var translated: String = TranslationServer.translate(key)
+	return phase.capitalize() if translated == key else translated
 
 
 ## AC-63 (PC-4, countdown-warning half) — distinct payload shape from
@@ -970,15 +980,38 @@ func _on_resources_changed(_gold: int, _source: StringName) -> void:
 ## since Inventory's own screen is inaccessible mid-mission per the AC's own
 ## text; a separate persistent numeric counter would just duplicate it).
 func _on_item_added(item_id: String, _item_type: String, quantity: int) -> void:
-	_show_toast("+%d %s" % [quantity, item_id])
+	_show_toast("+%d %s" % [quantity, item_display_name(item_id)])
 
 
 func _on_item_removed(item_id: String, _item_type: String, quantity: int) -> void:
-	_show_toast("-%d %s" % [quantity, item_id])
+	_show_toast("-%d %s" % [quantity, item_display_name(item_id)])
 
 
 func _on_item_pickup_rejected(item_id: String, _item_type: String, quantity: int, reason: String) -> void:
-	_show_toast(tr("HUD_TOAST_PICKUP_REJECTED") % [quantity, item_id, reason])
+	_show_toast(tr("HUD_TOAST_PICKUP_REJECTED") % [quantity, item_display_name(item_id), _reject_reason_text(reason)])
+	# The drop was already tallied by _on_materials_earned(); a rejected pickup never
+	# reached the inventory, so take it back out of the mission tally (2026-10-04
+	# smoke check: a full inventory still showed every rejected drop as earned).
+	if _materials_tally.has(item_id):
+		_materials_tally[item_id] = maxi(0, _materials_tally[item_id] - quantity)
+		if _materials_tally[item_id] == 0:
+			_materials_tally.erase(item_id)
+		_rebuild_materials_row()
+
+
+## Registry display name for toasts (was the raw item_id, e.g. "goblin_hide");
+## unknown ids fall back to a capitalized form.
+static func item_display_name(item_id: String) -> String:
+	var definition: ItemDefinitionResource = GGameDataRegistry.get_item_definition(StringName(item_id))
+	if definition != null and definition.display_name != "":
+		return definition.display_name
+	return item_id.capitalize()
+
+
+func _reject_reason_text(reason: String) -> String:
+	var key: String = "HUD_REJECT_REASON_" + reason.to_upper()
+	var translated: String = tr(key)
+	return reason.capitalize() if translated == key else translated
 
 
 # ---------------------------------------------------------------------------
