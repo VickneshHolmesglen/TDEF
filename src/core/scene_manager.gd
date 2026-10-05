@@ -72,6 +72,7 @@ var _death_exit_timer: SceneTreeTimer = null
 const FADE_IN_SECONDS: float = 0.3
 var _fade_in_seconds: float = FADE_IN_SECONDS
 const _FADE_LAYER: int = 128
+const FADE_HOLD_FRAMES: int = 2
 var _fade_layer: CanvasLayer = null
 var _fade_rect: ColorRect = null
 var _fade_tween: Tween = null
@@ -222,6 +223,12 @@ func _play_fade_in() -> void:
 		_fade_tween.kill()
 	_fade_rect.color = Color.BLACK
 	_fade_layer.visible = true
+	# Hold black through the new scene's first frames: those carry its load/_ready hitch, and a
+	# tween stepped with that one huge delta would skip almost the whole fade (seen live).
+	for i in FADE_HOLD_FRAMES:
+		await get_tree().process_frame
+		if not is_instance_valid(self) or not _fade_layer.visible:
+			return
 	_fade_tween = create_tween()
 	_fade_tween.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
 	_fade_tween.tween_property(_fade_rect, "color:a", 0.0, _fade_in_seconds) 		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)

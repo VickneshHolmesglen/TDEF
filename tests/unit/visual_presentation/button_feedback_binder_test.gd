@@ -85,3 +85,17 @@ func test_button_feedback_disabled_button_never_scales() -> void:
 	await await_millis(120)
 
 	assert_vector(button.scale).is_equal(Vector2.ONE)
+
+
+func test_button_feedback_wide_button_growth_is_capped_in_pixels() -> void:
+	var wide: Vector2 = ButtonFeedbackBinder.rest_scale(true, Vector2(1900, 40))
+	var small: Vector2 = ButtonFeedbackBinder.rest_scale(true, Vector2(100, 40))
+
+	assert_float(wide.x * 1900.0 - 1900.0).is_less_equal(ButtonFeedbackBinder.MAX_HOVER_GROWTH_PX + 0.01)
+	assert_float(small.x).is_equal_approx(ButtonFeedbackBinder.HOVER_SCALE, 0.0001)
+
+
+func test_button_feedback_wide_button_press_shrink_is_capped_in_pixels() -> void:
+	var wide: Vector2 = ButtonFeedbackBinder.press_scale(Vector2(1900, 40))
+
+	assert_float(1900.0 - wide.x * 1900.0).is_less_equal(ButtonFeedbackBinder.MAX_PRESS_SHRINK_PX + 0.01)
