@@ -65,6 +65,11 @@ var _last_windup_warning_msec: int = -WINDUP_WARNING_MIN_GAP_MSEC
 const DENIED_EVENT_MIN_GAP_MSEC: int = 300
 var _last_denied_event_msec: int = -DENIED_EVENT_MIN_GAP_MSEC
 
+## A tower volley can kill a whole cluster in one frame; one death cue per window keeps deaths from
+## stealing every combat_impact voice from tower hits (2026-10-05 placeholder cue pass).
+const MONSTER_DIED_MIN_GAP_MSEC: int = 70
+var _last_monster_died_msec: int = -MONSTER_DIED_MIN_GAP_MSEC
+
 ## Sentinel for "no hero_position_changed observed yet this mission" — distinct from any real cell.
 const UNKNOWN_CELL: Vector2i = Vector2i(-1, -1)
 ## Formula F2's "camera focus point": the Hero's last known grid cell, tracked via the existing
@@ -180,6 +185,15 @@ func _dispatch_windup_warning() -> void:
 	dispatch_cue(&"monster_windup_warning")
 
 
+## Collapses a burst of monster deaths (individual or batched) into one death cue per window.
+func _dispatch_monster_died() -> void:
+	var now: int = Time.get_ticks_msec()
+	if now - _last_monster_died_msec < MONSTER_DIED_MIN_GAP_MSEC:
+		return
+	_last_monster_died_msec = now
+	dispatch_cue(&"monster_died")
+
+
 ## Every attempt (first launch or a Retry) starts the spatial cache clean — a tower cell or Hero
 ## position cached from a previous attempt must never leak into the next one.
 func _on_mission_launched(_mission_id: String, _modifiers: PackedStringArray, _difficulty_tier: int) -> void:
@@ -216,8 +230,8 @@ func _hero_distance_to(cell: Vector2i) -> float:
 ## AudioCueEntry exists for it, otherwise the generic `fallback_name` every such event already
 ## has. Lets content give one specific skill or status effect a distinct sound with no code
 ## change — author the variant's cue entry under that exact name and it is picked up
-## automatically on the next load. No variants are authored yet (OQ-2: content, not mechanism),
-## so every skill/effect still plays its shared generic cue until one is.
+## automatically on the next load. Placeholder variants exist for every shipped skill and Power
+## effect_type (2026-10-05); anything unauthored still falls back to the shared generic cue.
 func _dispatch_with_variant(variant_name: StringName, fallback_name: StringName, distance: float = 0.0) -> void:
 	dispatch_cue(variant_name if variant_name != &"" and _lookup.has(variant_name) else fallback_name, distance)
 
@@ -225,7 +239,10 @@ func _dispatch_with_variant(variant_name: StringName, fallback_name: StringName,
 func _connect_all_events() -> void:
 	if not _connected_signals.is_empty():
 		return
-	_wire(GEventBus.mission_phase_changed, func(_a: String, _b: String, _c: float) -> void: dispatch_cue(&"mission_phase_changed"))
+	# The generic mission_phase_changed stays deliberately unmapped (music owns phase changes);
+	# only the per-phase variants that carry a sting (MISSION_COMPLETE, DEFEAT) make a sound.
+	_wire(GEventBus.mission_phase_changed, func(_a: String, new_phase: String, _c: float) -> void:
+			_dispatch_with_variant(StringName("mission_phase_changed_%s" % new_phase), &"mission_phase_changed"))
 	_wire(GEventBus.wave_countdown_warning, func(_a: int) -> void: dispatch_cue(&"wave_countdown_warning"))
 	_wire(GEventBus.hero_skill_activated, func(skill_id: String, _b: Vector2) -> void:
 			_dispatch_with_variant(StringName("hero_skill_activated_%s" % skill_id), &"hero_skill_activated"))
@@ -236,6 +253,9 @@ func _connect_all_events() -> void:
 			_tower_cells[payload.tower_id] = payload.grid_position
 			_dispatch_spatial(&"tower_placed", payload.grid_position))
 	_wire(GEventBus.tower_removed, func(tower_id: int, _b: Vector2i, _c: String, _d: String) -> void: _tower_cells.erase(tower_id))
+	_wire(GEventBus.tower_destroyed, func(tower_id: int, grid_position: Vector2i, _c: String, _d: Array, _e: String) -> void:
+			_tower_cells.erase(tower_id)
+			_dispatch_spatial(&"tower_destroyed", grid_position))
 	_wire(GEventBus.tower_attacked, func(tower_id: int, _b: int, _c: float, _d: bool, _e: bool, effect_type: String, _g: float, _h: float, _i: float, _j: bool) -> void:
 			var distance: float = _hero_distance_to(_tower_cells.get(tower_id, _hero_cell))
 			var variant: StringName = StringName("tower_attacked_%s" % effect_type) if not effect_type.is_empty() else &""
@@ -272,6 +292,27 @@ func _connect_all_events() -> void:
 	# -- reuses this exact mechanism (AC-10a's no-op-if-unmapped guarantee),
 	# same precedent as structure_upgraded above.
 	_wire(GEventBus.skill_unlocked, func(_a: String, _b: int) -> void: dispatch_cue(&"skill_unlocked"))
+	# 2026-10-05 placeholder cue pass: events that had no cue at all. Each is a plain forward into
+	# dispatch_cue(); the sound itself is data (assets/data/audio/cues/<event>.tres).
+	_wire(GEventBus.wave_started, func(_a: int, _b: int, _c: float) -> void: dispatch_cue(&"wave_started"))
+	_wire(GEventBus.wave_completed, func(_a: int, _b: int, _c: bool) -> void: dispatch_cue(&"wave_completed"))
+	_wire(GEventBus.monster_died, func(_a: MonsterDiedEvent) -> void: _dispatch_monster_died())
+	_wire(GEventBus.monsters_died_batch, func(_a: Array) -> void: _dispatch_monster_died())
+	_wire(GEventBus.monster_breached, func(_a: int, _b: StringName, _c: int) -> void: dispatch_cue(&"monster_breached"))
+	_wire(GEventBus.hero_ultimate_activated, func() -> void: dispatch_cue(&"hero_ultimate_activated"))
+	_wire(GEventBus.hero_leveled_up, func(_a: int) -> void: dispatch_cue(&"hero_leveled_up"))
+	_wire(GEventBus.tower_sell_requested, func(_a: int) -> void: dispatch_cue(&"tower_sell_requested"))
+	_wire(GEventBus.recipe_discovered, func(_a: String, _b: String) -> void: dispatch_cue(&"recipe_discovered"))
+	_wire(GEventBus.tarot_rune_discovered, func(_a: String, _b: String) -> void: dispatch_cue(&"tarot_rune_discovered"))
+	_wire(GEventBus.constellation_rune_discovered, func(_a: String, _b: String) -> void: dispatch_cue(&"constellation_rune_discovered"))
+	_wire(GEventBus.constellation_deactivated, func(_a: String, _b: String) -> void: dispatch_cue(&"constellation_deactivated"))
+	_wire(GEventBus.creature_acquired, func(_a: int, _b: String) -> void: dispatch_cue(&"creature_acquired"))
+	_wire(GEventBus.creature_bred, func(_a: int, _b: String) -> void: dispatch_cue(&"creature_bred"))
+	_wire(GEventBus.creature_sacrificed, func(_a: int, _b: int) -> void: dispatch_cue(&"creature_sacrificed"))
+	_wire(GEventBus.tech_unlocked, func(_a: String, _b: String) -> void: dispatch_cue(&"tech_unlocked"))
+	_wire(GEventBus.item_rune_imbued, func(_a: String, _b: String, _c: String) -> void: dispatch_cue(&"item_rune_imbued"))
+	_wire(GEventBus.tower_assembled, func(_a: String, _b: String) -> void: dispatch_cue(&"tower_assembled"))
+	_wire(GEventBus.equipment_slot_changed, func(_a: String, _b: String, _c: String) -> void: dispatch_cue(&"equipment_slot_changed"))
 	# The enter-range-tick/pause-descending-tone pair (2026-08-13): now
 	# wireable since tower_mastery_proximity_changed's discrete edge-detection
 	# signal exists (see event_bus.gd's own doc comment for why

@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="AudioCueEntry" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/core/audio/audio_cue_entry.gd" id="1"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/tower_attacked_slow.wav" id="2"]
+
+[resource]
+script = ExtResource("1")
+event_name = &"tower_attacked_slow"
+stream = ExtResource("2")
+bus = &"SFX"
+polyphony_group = &"combat_impact"
+volume_db_offset = -9
+spatial = true

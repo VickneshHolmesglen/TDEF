@@ -105,10 +105,22 @@ func test_tower_attacked_with_no_effect_type_dispatches_the_generic_cue() -> voi
 	assert_that(_dispatcher.get_last_played_event()).is_equal(&"tower_attacked")
 
 
-func test_real_cue_map_has_no_variant_entries_yet_so_real_skills_and_effects_share_the_generic_cue() -> void:
-	# Honest content status (OQ-2): the mechanism exists, but no per-skill/per-effect-type
-	# variant has been authored. If this starts failing, update the session notes, not this test.
+func test_real_cue_map_authors_a_variant_for_every_shipped_skill_and_status_effect() -> void:
+	# 2026-10-05 placeholder cue pass: every skill_id in assets/data/skills/ and every Power
+	# effect_type that can proc on a tower hit has its own (placeholder) variant cue.
 	var real_map: AudioCueMap = load("res://assets/data/audio/audio_cue_map.tres")
+	var names: Array[String] = []
 	for entry: AudioCueEntry in real_map.entries:
-		assert_str(String(entry.event_name)).is_not_equal("hero_skill_activated_fireball")
-		assert_str(String(entry.event_name)).is_not_equal("tower_attacked_burn")
+		names.append(String(entry.event_name))
+	for skill: String in ["fireball", "frost_nova", "chain_lightning", "earth_slam", "shield_bash"]:
+		assert_bool(names.has("hero_skill_activated_" + skill)).override_failure_message("missing variant for %s" % skill).is_true()
+	for effect: String in ["burn", "poison", "slow"]:
+		assert_bool(names.has("tower_attacked_" + effect)).override_failure_message("missing variant for %s" % effect).is_true()
+
+
+func test_real_cue_map_routes_fireball_to_its_variant() -> void:
+	_dispatcher.set_cue_map(load("res://assets/data/audio/audio_cue_map.tres"))
+
+	GEventBus.hero_skill_activated.emit("fireball", Vector2.ZERO)
+
+	assert_that(_dispatcher.get_last_played_event()).is_equal(&"hero_skill_activated_fireball")

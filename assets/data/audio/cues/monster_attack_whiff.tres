@@ -1,7 +1,7 @@
 [gd_resource type="Resource" script_class="AudioCueEntry" load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://src/core/audio/audio_cue_entry.gd" id="1"]
-[ext_resource type="AudioStream" path="res://assets/audio/sfx/tower_attacked_v2.wav" id="2"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/monster_attack_whiff.wav" id="2"]
 
 [resource]
 script = ExtResource("1")
