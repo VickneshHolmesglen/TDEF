@@ -525,6 +525,9 @@ func _build_tower_list() -> void:
 		button.focus_mode = Control.FOCUS_ALL
 		button.toggle_mode = true
 		button.button_group = _build_button_group
+		# Runs its own placement pulse on scale (_on_tower_placed) -- keep the global hover/press
+		# feedback off it so the two tweens never fight over the same property.
+		button.set_meta(ButtonFeedbackBinder.META_KEY, ButtonFeedbackBinder.KIND_NONE)
 		button.pressed.connect(_on_tower_button_pressed.bind(blueprint_id))
 		_build_list.add_child(button)
 		_build_buttons[blueprint_id] = button

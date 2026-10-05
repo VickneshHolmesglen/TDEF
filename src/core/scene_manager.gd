@@ -66,9 +66,20 @@ const HERO_DEATH_HOLD_SECONDS: float = 1.5
 var _death_hold_seconds: float = HERO_DEATH_HOLD_SECONDS
 var _death_exit_timer: SceneTreeTimer = null
 
+## Fade-in from black after every scene swap (2026-10-05 polish pass), so transitions read as a
+## deliberate cut instead of a hard pop. Purely visual and non-blocking: the swap itself and
+## scene_transition_completed keep their exact timing. 0 disables it (tests may set that).
+const FADE_IN_SECONDS: float = 0.3
+var _fade_in_seconds: float = FADE_IN_SECONDS
+const _FADE_LAYER: int = 128
+var _fade_layer: CanvasLayer = null
+var _fade_rect: ColorRect = null
+var _fade_tween: Tween = null
+
 
 
 func _ready() -> void:
+	_create_button_feedback()
 	GEventBus.hero_died.connect(_on_hero_died)
 	GEventBus.mission_phase_changed.connect(_on_mission_phase_changed)
 
@@ -175,7 +186,51 @@ func _do_transition(target_context: String, mission_id: String, scene_path: Stri
 	# waiting for a completion signal that would never come. Confirmed by a
 	# real 5-minute test timeout during code review before this fix.
 	_transition_in_progress = false
+	_play_fade_in()
 	GEventBus.scene_transition_completed.emit(target_context, mission_id)
+
+
+## Hosts the global button hover/press feedback here because SceneManager lives for the whole
+## session and owns "what a screen change looks like" -- the same lifetime UiAudioBinder gets
+## from the audio autoload.
+func _create_button_feedback() -> void:
+	if get_node_or_null("ButtonFeedbackBinder") != null:
+		return
+	var binder := ButtonFeedbackBinder.new()
+	binder.name = "ButtonFeedbackBinder"
+	binder.process_mode = Node.PROCESS_MODE_ALWAYS
+	add_child(binder)
+	binder.setup(get_tree())
+
+
+## Covers the freshly swapped-in scene with black and fades it out. The overlay ignores the
+## mouse, so input is never blocked even mid-fade.
+func _play_fade_in() -> void:
+	if _fade_in_seconds <= 0.0:
+		return
+	if _fade_layer == null:
+		_fade_layer = CanvasLayer.new()
+		_fade_layer.name = "SceneFade"
+		_fade_layer.layer = _FADE_LAYER
+		_fade_layer.process_mode = Node.PROCESS_MODE_ALWAYS
+		_fade_rect = ColorRect.new()
+		_fade_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_fade_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
+		_fade_layer.add_child(_fade_rect)
+		add_child(_fade_layer)
+	if _fade_tween != null and _fade_tween.is_valid():
+		_fade_tween.kill()
+	_fade_rect.color = Color.BLACK
+	_fade_layer.visible = true
+	_fade_tween = create_tween()
+	_fade_tween.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+	_fade_tween.tween_property(_fade_rect, "color:a", 0.0, _fade_in_seconds) 		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	_fade_tween.tween_callback(func() -> void: _fade_layer.visible = false)
+
+
+## True while the post-transition fade overlay is still visible.
+func is_fade_in_playing() -> bool:
+	return _fade_layer != null and _fade_layer.visible
 
 # =============================================================================
 # Terminal mission event handlers — the only trigger path for a transition

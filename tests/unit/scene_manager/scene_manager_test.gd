@@ -129,3 +129,21 @@ func test_transition_forces_tree_unpaused() -> void:
 	get_tree().paused = true
 	GSceneManager.transition_to_sanctuary()
 	assert_bool(get_tree().paused).is_false()
+
+
+# ---------------------------------------------------------------------------
+# 2026-10-05 polish pass: post-transition fade-in and global button feedback
+# ---------------------------------------------------------------------------
+
+func test_scene_manager_transition_starts_a_fade_in_that_ignores_the_mouse() -> void:
+	GSceneManager.transition_to_sanctuary()
+	await GEventBus.scene_transition_completed
+
+	assert_bool(GSceneManager.is_fade_in_playing()).is_true()
+	assert_int(GSceneManager._fade_rect.mouse_filter).is_equal(Control.MOUSE_FILTER_IGNORE)
+	await await_millis(int(GSceneManager.FADE_IN_SECONDS * 1000.0) + 150)
+	assert_bool(GSceneManager.is_fade_in_playing()).is_false()
+
+
+func test_scene_manager_hosts_the_button_feedback_binder() -> void:
+	assert_object(GSceneManager.get_node_or_null("ButtonFeedbackBinder")).is_not_null()
