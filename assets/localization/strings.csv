@@ -218,3 +218,10 @@ HUD_TIER_STANDARD,Standard
 HUD_TIER_ELITE,Elite
 HUD_TIER_BOSS,Boss
 HUD_REJECT_REASON_INVENTORY_FULL,inventory full
+HUD_PHASE_NOT_LAUNCHED,Phase: (not launched)
+HUD_WAVE_IDLE,Wave: -
+HUD_WAVE_CLEARED,Wave %d cleared (%d remaining)
+HUD_TIMER,Timer: %.1fs
+HUD_TIMER_IDLE,Timer: --
+GAP_HELP_CONTROLS,SPACE = ready-up | Left-click = place tower
+GAP_HELP_DEBUG_KILL, | K = debug-kill hero (QA only)

@@ -209,12 +209,12 @@ func _ready() -> void:
 	GEventBus.tower_destroyed.connect(_on_tower_destroyed)
 	GEventBus.tower_blueprint_selected.connect(_on_tower_blueprint_selected)
 
-	_hud_phase_label.text = "Phase: (not launched)"
-	_hud_wave_label.text = "Wave: -"
-	_hud_timer_label.text = "Timer: --"
-	_hud_help_label.text = "SPACE = ready-up | Left-click = place tower"
+	_hud_phase_label.text = tr("HUD_PHASE_NOT_LAUNCHED")
+	_hud_wave_label.text = tr("HUD_WAVE_IDLE")
+	_hud_timer_label.text = tr("HUD_TIMER_IDLE")
+	_hud_help_label.text = tr("GAP_HELP_CONTROLS")
 	if debug_controls_enabled:
-		_hud_help_label.text += " | K = debug-kill hero (QA only)"
+		_hud_help_label.text += tr("GAP_HELP_DEBUG_KILL")
 
 	set_process(true)
 
@@ -504,15 +504,15 @@ func _free_tower_visual(tower_id: int) -> void:
 # ---------------------------------------------------------------------------
 
 func _on_mission_phase_changed(_previous_phase: String, new_phase: String, _timestamp: float) -> void:
-	_hud_phase_label.text = "Phase: %s" % new_phase
+	_hud_phase_label.text = tr("HUD_PHASE") % MissionHud.phase_display_name(new_phase)
 
 
 func _on_wave_started(wave_number: int, total_waves: int, _wave_difficulty: float) -> void:
-	_hud_wave_label.text = "Wave: %d / %d" % [wave_number, total_waves]
+	_hud_wave_label.text = tr("HUD_WAVE_PROGRESS") % [wave_number, total_waves]
 
 
 func _on_wave_completed(wave_number: int, enemies_remaining: int, _was_boss_breached: bool) -> void:
-	_hud_wave_label.text = "Wave %d cleared (%d remaining)" % [wave_number, enemies_remaining]
+	_hud_wave_label.text = tr("HUD_WAVE_CLEARED") % [wave_number, enemies_remaining]
 
 
 func _process(_delta: float) -> void:
@@ -525,6 +525,6 @@ func _process(_delta: float) -> void:
 		WaveManager.Phase.INTERMISSION:
 			remaining = GWaveManager._intermission_timer.time_left
 	if remaining >= 0.0:
-		_hud_timer_label.text = "Timer: %.1fs" % remaining
+		_hud_timer_label.text = tr("HUD_TIMER") % remaining
 	else:
-		_hud_timer_label.text = "Timer: --"
+		_hud_timer_label.text = tr("HUD_TIMER_IDLE")
