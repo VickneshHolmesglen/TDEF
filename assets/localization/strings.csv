@@ -195,6 +195,26 @@ SKILL_BUILD_PASSIVES_NONE,Passives: —
 SKILL_BUILD_PASSIVES,Passives: %d/%d (cycle)
 SKILL_BUILD_TAG_LOCKED,(Locked)
 SKILL_BUILD_TAG_ACTIVE,(Equipped)
+SKILL_DETAIL_PROMPT,Hover or select a skill to see what it does.
+SKILL_DETAIL_STATS,%s · Cooldown %s · Power x%s
+SKILL_EFFECT_LINE,Effect: %s
+SKILL_EFFECT_DOT_BURN,Burns for %s%% of the target's HP over %s.
+SKILL_EFFECT_DOT_POISON,Poisons for %s%% of the target's HP over %s.
+SKILL_EFFECT_DOT_BLEED,Adds %d bleed stack(s) - %s%% of the target's HP per stack over %s (up to %d stacks).
+SKILL_EFFECT_DOT_HAEMORRHAGE,"Adds %d bleed stack(s) - %s%% of the target's HP per stack over %s. At %d stacks the bleed ruptures for %sx its remaining damage."
+SKILL_EFFECT_SLOW,Slows the target by %s%% for %s.
+SKILL_EFFECT_STUN,Stuns the target for %s (half as long on bosses).
+SKILL_EFFECT_ARMOR_SHRED,The target takes %s%% more damage for %s.
+SKILL_EFFECT_KNOCKBACK,Knocks the target back %s cells (bosses are immune).
+SKILL_EFFECT_CHAIN,Chains to %d more enemies within %s cells at %s%% power.
+SKILL_EFFECT_LIFESTEAL_BONUS,On cast: +%s%% lifesteal for %s.
+SKILL_DAMAGE_TYPE_PHYSICAL,Physical
+SKILL_DAMAGE_TYPE_FIRE,Fire
+SKILL_DAMAGE_TYPE_ICE,Ice
+SKILL_DAMAGE_TYPE_POISON,Poison
+SKILL_DAMAGE_TYPE_LIGHTNING,Lightning
+SKILL_DAMAGE_TYPE_ARCANE,Arcane
+SKILL_DAMAGE_TYPE_SUPPORT,Support
 TAROT_TAG_LOCKED,(Locked)
 TAROT_TAG_EQUIPPED,(Equipped)
 TAROT_TAG_AVAILABLE,(Available)

@@ -196,3 +196,31 @@ func test_disconnect_own_subscriptions_is_safe_to_call() -> void:
 	@warning_ignore("unsafe_method_access")
 	_screen.call("disconnect_own_subscriptions")
 	assert_bool(true).is_true()
+
+
+# ---------------------------------------------------------------------------
+# Skill detail panel (skill effect UI, 2026-10-07)
+# ---------------------------------------------------------------------------
+
+func test_detail_panel_starts_with_a_prompt_and_sits_under_the_active_slots() -> void:
+	var panel: Node = _screen.find_child("SkillDetail", true, false)
+	assert_object(panel).is_not_null()
+	assert_int(panel.get_index()).is_equal(_screen.get_node("MainLayout/AssemblyArea").get_index() + 1)
+	assert_str(_screen.get_skill_detail_text()).is_equal("Hover or select a skill to see what it does.")
+
+
+func test_focusing_a_library_skill_shows_its_stats_and_effect() -> void:
+	var button: Button = _screen.get_library_button("elem_frostbolt")
+	button.focus_entered.emit()
+	var text: String = _screen.get_skill_detail_text()
+	assert_str(text).contains("Frostbolt")
+	assert_str(text).contains("Ice")
+	assert_str(text).contains("Cooldown 4s")
+	assert_str(text).contains("Effect: Slows the target by 30% for 2s.")
+
+
+func test_hovering_a_locked_skill_still_shows_its_detail() -> void:
+	var button: Button = _screen.get_library_button("elem_absolute_zero")
+	assert_bool(button.disabled).is_true()
+	button.mouse_entered.emit()
+	assert_str(_screen.get_skill_detail_text()).contains("Absolute Zero")

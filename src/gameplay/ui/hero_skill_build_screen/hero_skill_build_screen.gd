@@ -135,6 +135,12 @@ const ARCHETYPE_GLYPHS: Dictionary[String, String] = {
 ## project's own "Path of Exile in complexity" framing for this system.
 @onready var _connector_lines: Control = $ConnectorLines
 
+## Skill detail panel (skill effect UI, 2026-10-07): shows the focused or
+## hovered skill's type, cooldown, power and secondary effect. Built in code
+## under the active slots. Focus as well as hover, so gamepad players see it
+## too (no hover-only information, per technical-preferences.md).
+var _skill_detail_label: Label = null
+
 var _active_slot_buttons: Dictionary[int, Button] = {}
 var _passive_cycle_buttons: Dictionary[int, Button] = {}
 var _library_buttons: Dictionary[String, Button] = {}
@@ -149,6 +155,7 @@ func _ready() -> void:
 	GEventBus.ultimate_skill_changed.connect(_on_build_changed)
 	_connector_lines.draw.connect(_on_connector_lines_draw)
 	resized.connect(_queue_connector_redraw)
+	_build_skill_detail_panel()
 
 	_rebuild_everything()
 
@@ -244,6 +251,8 @@ func _rebuild_active_slots() -> void:
 		var slot_text: String = "%s: %s" % [ACTIVE_SLOT_LABELS[i], _skill_label(bound) if not bound.is_empty() else tr("SKILL_BUILD_SLOT_EMPTY")]
 		_build_button_content(slot_button, _skill_icon(bound), slot_text)
 		_apply_archetype_style(slot_button, bound)
+		if not bound.is_empty():
+			_wire_skill_detail(slot_button, bound)
 		slot_button.pressed.connect(_on_active_slot_pressed.bind(i))
 		_wire_focus_ring(slot_button)
 		row.add_child(slot_button)
@@ -580,6 +589,7 @@ func _rebuild_library() -> void:
 			button.disabled = true
 			button.modulate = Color(1.0, 1.0, 1.0, 0.45)
 		button.pressed.connect(_on_library_skill_pressed.bind(skill_id))
+		_wire_skill_detail(button, skill_id)
 		_wire_focus_ring(button)
 		_library_list.add_child(button)
 		_library_buttons[skill_id] = button
@@ -604,6 +614,36 @@ func _on_library_skill_pressed(skill_id: String) -> void:
 		if bindings[i].is_empty():
 			hero_skill_build.set_active_slot(i, skill_id)
 			return
+
+
+# ---------------------------------------------------------------------------
+# Skill detail panel (skill effect UI, 2026-10-07)
+# ---------------------------------------------------------------------------
+
+func _build_skill_detail_panel() -> void:
+	var panel := PanelContainer.new()
+	panel.name = "SkillDetail"
+	_skill_detail_label = Label.new()
+	_skill_detail_label.name = "SkillDetailLabel"
+	_skill_detail_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_skill_detail_label.custom_minimum_size = Vector2(0, 108)  # 4 lines: name, stats, and an effect that may wrap once -- keeps the library from jumping as focus moves
+	_skill_detail_label.text = tr("SKILL_DETAIL_PROMPT")
+	panel.add_child(_skill_detail_label)
+	var layout: Node = _active_slot_list.get_parent().get_parent()
+	layout.add_child(panel)
+	layout.move_child(panel, _active_slot_list.get_parent().get_index() + 1)
+
+
+func _wire_skill_detail(button: Button, skill_id: String) -> void:
+	button.focus_entered.connect(_show_skill_detail.bind(skill_id))
+	button.mouse_entered.connect(_show_skill_detail.bind(skill_id))
+
+
+func _show_skill_detail(skill_id: String) -> void:
+	if _skill_detail_label == null:
+		return
+	var skill: SkillDefinitionResource = GGameDataRegistry.get_skill_definition(StringName(skill_id))
+	_skill_detail_label.text = SkillEffectText.describe_skill(skill) if skill != null else tr("SKILL_DETAIL_PROMPT")
 
 
 # ---------------------------------------------------------------------------
@@ -658,6 +698,11 @@ func get_passive_cycle_button(slot_index: int) -> Button:
 
 func get_library_button(skill_id: String) -> Button:
 	return _library_buttons.get(skill_id)
+
+
+## Text currently shown in the skill detail panel.
+func get_skill_detail_text() -> String:
+	return _skill_detail_label.text if _skill_detail_label != null else ""
 
 
 func get_ultimate_label_text() -> String:

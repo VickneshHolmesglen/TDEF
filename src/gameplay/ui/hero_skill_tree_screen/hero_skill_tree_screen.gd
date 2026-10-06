@@ -238,11 +238,20 @@ func _build_choice_candidates_panel(archetype: String, node_index: int) -> Contr
 	panel.name = "CandidatesPanel"
 	for skill_id: String in hero_skill_tree.get_tier_skill_ids(archetype, node_index):
 		var candidate_button := Button.new()
-		candidate_button.text = _skill_label(skill_id)
+		candidate_button.text = _candidate_text(skill_id)
 		candidate_button.focus_mode = Control.FOCUS_ALL
 		candidate_button.pressed.connect(_on_candidate_pressed.bind(archetype, node_index, skill_id))
 		panel.add_child(candidate_button)
 	return panel
+
+
+## Skill effect UI (2026-10-07): the choice shows the skill name and, on a
+## second line, its secondary effect, so the player sees what they're picking.
+func _candidate_text(skill_id: String) -> String:
+	var skill: SkillDefinitionResource = GGameDataRegistry.get_skill_definition(StringName(skill_id))
+	var effect: String = SkillEffectText.describe_effect(skill.effect_data) if skill != null else ""
+	return _skill_label(skill_id) if effect.is_empty() else "%s
+%s" % [_skill_label(skill_id), effect]
 
 
 func _on_candidate_pressed(archetype: String, node_index: int, skill_id: String) -> void:
