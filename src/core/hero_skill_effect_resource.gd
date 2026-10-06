@@ -48,6 +48,27 @@ extends Resource
 @export var bleed_duration: float = 0.0
 @export var bleed_stacks: int = 0
 
+## Skill secondary effects spec (2026-10-07): parameters for every other
+## secondary_effect, applied on hit (monster effects by MonsterManager, chain
+## and lifesteal_bonus by Hero). Meaning per effect:
+##   dot_burn / dot_poison: secondary_value = fraction of target HP over secondary_duration s
+##   slow:            secondary_value = slow fraction (0.3 = 30% slower) for secondary_duration s
+##   stun:            secondary_duration = seconds stunned (halved on bosses)
+##   armor_shred:     secondary_value = extra damage taken (0.2 = +20%) for secondary_duration s
+##   knockback:       secondary_value = cells pushed back along the path (bosses immune)
+##   chain:           secondary_count = extra targets, secondary_value = power per jump (0.6 = 60%)
+##   lifesteal_bonus: secondary_value = flat lifesteal added for secondary_duration s (on cast)
+@export var secondary_value: float = 0.0
+@export var secondary_duration: float = 0.0
+@export var secondary_count: int = 0
+
+## Which of secondary_value / secondary_duration / secondary_count each effect requires.
+const SECONDARY_PARAM_RULES: Dictionary = {
+	"dot_burn": ["value", "duration"], "dot_poison": ["value", "duration"],
+	"slow": ["value", "duration"], "stun": ["duration"], "armor_shred": ["value", "duration"],
+	"knockback": ["value"], "chain": ["value", "count"], "lifesteal_bonus": ["value", "duration"],
+}
+
 ## Two independent tag families share this one array (both consumed by
 ## hero-skill-build.md Rule 13's typed passive-slot skill-modifier
 ## compatibility check, `requires_tag`):
@@ -118,6 +139,16 @@ func validate() -> Array[String]:
 			errors.append("bleed_duration must be > 0 for %s (got %s)" % [secondary_effect, bleed_duration])
 		if bleed_stacks < 1:
 			errors.append("bleed_stacks must be >= 1 for %s (got %d)" % [secondary_effect, bleed_stacks])
+	if SECONDARY_PARAM_RULES.has(secondary_effect):
+		var needed: Array = SECONDARY_PARAM_RULES[secondary_effect]
+		if needed.has("value") and secondary_value <= 0.0:
+			errors.append("secondary_value must be > 0 for %s" % secondary_effect)
+		if needed.has("duration") and secondary_duration <= 0.0:
+			errors.append("secondary_duration must be > 0 for %s" % secondary_effect)
+		if needed.has("count") and secondary_count < 1:
+			errors.append("secondary_count must be >= 1 for %s" % secondary_effect)
+		if secondary_effect in ["dot_burn", "dot_poison", "slow", "chain"] and secondary_value > 1.0:
+			errors.append("secondary_value must be <= 1 for %s" % secondary_effect)
 	for tag: String in tags:
 		if not VALID_TAGS.has(tag):
 			errors.append("tags entry '%s' is not one of %s" % [tag, VALID_TAGS])

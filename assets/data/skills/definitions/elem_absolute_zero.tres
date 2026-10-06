@@ -10,6 +10,8 @@ damage_type = "ice"
 delivery = "aoe_zone"
 skill_power_coefficient = 1.8
 secondary_effect = "slow"
+secondary_value = 0.5
+secondary_duration = 3.0
 tags = Array[String](["Area", "Advanced", "Elemental", "DifferentDamage"])
 
 [resource]

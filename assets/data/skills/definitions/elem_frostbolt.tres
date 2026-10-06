@@ -10,6 +10,8 @@ damage_type = "ice"
 delivery = "projectile_pierce"
 skill_power_coefficient = 1.2
 secondary_effect = "slow"
+secondary_value = 0.3
+secondary_duration = 2.0
 tags = Array[String](["Projectile", "Advanced", "Elemental", "DifferentDamage"])
 
 [resource]

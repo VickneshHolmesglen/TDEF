@@ -73,6 +73,9 @@ const BLEED_MAX_STACKS: int = 5
 ## BLEED_MAX_STACKS, the bleed's remaining damage x this lands instantly and
 ## the bleed ends.
 const HAEMORRHAGE_RUPTURE_MULTIPLIER: float = 1.5
+## Skill secondary effects spec (2026-10-07): bosses take this fraction of a
+## stun's duration and ignore knockback entirely.
+const BOSS_STUN_DURATION_SCALE: float = 0.5
 ## Hero skill secondary_effect values that apply bleed (HeroSkillEffectResource).
 const SKILL_BLEED_EFFECT: String = "dot_bleed"
 const SKILL_HAEMORRHAGE_EFFECT: String = "dot_haemorrhage"
@@ -221,7 +224,7 @@ func _pass1_damage() -> void:
 		if entity == null or not is_instance_valid(entity) or entity.lifecycle_state == MonsterEntity.State.DEAD:
 			continue
 		var pre_hit_hp: float = entity.current_hp
-		entity.current_hp -= float(dmg.amount)
+		entity.current_hp -= float(dmg.amount) * _vulnerability_multiplier(entity)
 		entity.last_hit_source = &"hero" if dmg.source_type == 1 else &"tower"
 		# Player-reported 2026-08-16: floating damage numbers rendered near the
 		# boss bar instead of on the hit monster (Mission HUD's own KNOWN GAP
@@ -327,9 +330,9 @@ func _on_tower_attacked_status(_tower_id: int, target_monster_id: int, _damage_a
 
 
 func _apply_dot_effect(target_monster_id: int, effect_type: String, effect_value: float,
-		effect_duration: float) -> void:
+		effect_duration: float, source: StringName = &"tower") -> void:
 	if effect_type == "bleed":
-		apply_bleed(target_monster_id, effect_value, effect_duration, 1, false, &"tower")
+		apply_bleed(target_monster_id, effect_value, effect_duration, 1, false, source)
 		return
 	var entity: MonsterEntity = _entity_lookup.get(target_monster_id) as MonsterEntity
 	if entity == null or entity.lifecycle_state == MonsterEntity.State.DEAD:
@@ -340,21 +343,84 @@ func _apply_dot_effect(target_monster_id: int, effect_type: String, effect_value
 	effect.ticks_remaining = num_ticks
 	effect.tick_interval_remaining = STATUS_TICK_INTERVAL
 	effect.tick_damage = (effect_value * entity.scaled_hp) / float(num_ticks)
+	effect.source = source
 	entity.active_status_effects.append(effect)
 
 
-## Bleed/haemorrhage spec: hero skills whose effect_data.secondary_effect is
-## dot_bleed / dot_haemorrhage apply bleed on hit. Mirrors the tower status
-## path above: keyed off the emitted hit, before Damage & Status rolls evasion.
+## Hero skill secondary effects (bleed/haemorrhage spec 2026-10-06, skill
+## secondary effects spec 2026-10-07): applies the cast skill's on-hit
+## secondary effect to the struck monster. Mirrors the tower status path:
+## keyed off the emitted hit, before Damage & Status rolls evasion. chain and
+## lifesteal_bonus are Hero-side and ignored here.
 func _on_hero_skill_attacked_status(payload: HeroSkillAttackEvent) -> void:
 	var skill: SkillDefinitionResource = GGameDataRegistry.get_skill_definition(payload.skill_id)
 	if skill == null or skill.effect_data == null:
 		return
 	var data: HeroSkillEffectResource = skill.effect_data
-	if data.secondary_effect != SKILL_BLEED_EFFECT and data.secondary_effect != SKILL_HAEMORRHAGE_EFFECT:
+	var target: int = payload.target_id
+	match data.secondary_effect:
+		SKILL_BLEED_EFFECT, SKILL_HAEMORRHAGE_EFFECT:
+			apply_bleed(target, data.bleed_value, data.bleed_duration, data.bleed_stacks,
+					data.secondary_effect == SKILL_HAEMORRHAGE_EFFECT, &"hero")
+		"dot_burn":
+			_apply_dot_effect(target, "burn", data.secondary_value, data.secondary_duration, &"hero")
+		"dot_poison":
+			_apply_dot_effect(target, "poison", data.secondary_value, data.secondary_duration, &"hero")
+		"slow":
+			_apply_slow_effect(target, data.secondary_value, data.secondary_duration)
+		"stun":
+			apply_stun(target, data.secondary_duration)
+		"armor_shred":
+			apply_vulnerability(target, data.secondary_value, data.secondary_duration)
+		"knockback":
+			apply_knockback(target, data.secondary_value)
+
+
+## Stops the monster (movement, attack scans, wind-ups) for `duration` seconds,
+## scaled by BOSS_STUN_DURATION_SCALE on bosses. Never shortens an existing stun.
+## Example: `apply_stun(entity_id, 1.0)`
+func apply_stun(target_monster_id: int, duration: float) -> void:
+	var entity: MonsterEntity = _live_entity(target_monster_id)
+	if entity == null or duration <= 0.0:
 		return
-	apply_bleed(payload.target_id, data.bleed_value, data.bleed_duration, data.bleed_stacks,
-			data.secondary_effect == SKILL_HAEMORRHAGE_EFFECT, &"hero")
+	if entity.resource.tier == 2:
+		duration *= BOSS_STUN_DURATION_SCALE
+	entity.stun_remaining = maxf(entity.stun_remaining, duration)
+
+
+## Armor shred: the monster takes (1 + bonus) x damage from every source for
+## `duration` seconds. A new shred refreshes the timer and keeps the larger bonus.
+func apply_vulnerability(target_monster_id: int, bonus: float, duration: float) -> void:
+	var entity: MonsterEntity = _live_entity(target_monster_id)
+	if entity == null or bonus <= 0.0 or duration <= 0.0:
+		return
+	entity.vulnerability_bonus = maxf(entity.vulnerability_bonus if entity.vulnerability_remaining > 0.0 else 0.0, bonus)
+	entity.vulnerability_remaining = maxf(entity.vulnerability_remaining, duration)
+
+
+## Pushes the monster `cells` cells back along its own path (never past its
+## start). Bosses are immune.
+func apply_knockback(target_monster_id: int, cells: float) -> void:
+	var entity: MonsterEntity = _live_entity(target_monster_id)
+	if entity == null or cells <= 0.0 or entity.resource.tier == 2:
+		return
+	var budget: float = cells * CELL_SIZE
+	while budget > 0.0 and entity.path_step_index > 0:
+		var back_world: Vector2 = _grid.cell_to_world(entity.current_path[entity.path_step_index - 1])
+		var dist: float = entity.global_position.distance_to(back_world)
+		if budget < dist:
+			entity.global_position = entity.global_position.move_toward(back_world, budget)
+			return
+		entity.global_position = back_world
+		budget -= dist
+		entity.path_step_index -= 1
+
+
+func _live_entity(target_monster_id: int) -> MonsterEntity:
+	var entity: MonsterEntity = _entity_lookup.get(target_monster_id) as MonsterEntity
+	if entity == null or not is_instance_valid(entity) or entity.lifecycle_state == MonsterEntity.State.DEAD:
+		return null
+	return entity
 
 
 ## Adds `stacks_added` bleed stacks to the target (capped at BLEED_MAX_STACKS)
@@ -433,6 +499,8 @@ func _apply_slow_effect(target_monster_id: int, effect_value: float, effect_dura
 ## active) — the multiplicative-stacking combination rule from Formula D6.
 ## Never mutates entity.scaled_speed itself.
 func _effective_speed(entity: MonsterEntity) -> float:
+	if entity.stun_remaining > 0.0:
+		return 0.0
 	var multiplier: float = 1.0
 	for slow: ActiveSlowEffect in entity.active_slow_effects:
 		multiplier *= slow.speed_multiplier
@@ -473,6 +541,11 @@ func _pass1b_status_effects(delta: float) -> void:
 		if entity.lifecycle_state == MonsterEntity.State.DEAD:
 			continue  # a DoT tick just killed this entity — skip its slow decay too
 		_decay_slow_instances(entity, delta)
+		# Skill secondary effects (2026-10-07): stun and armor-shred timers.
+		if entity.stun_remaining > 0.0:
+			entity.stun_remaining = maxf(0.0, entity.stun_remaining - delta)
+		if entity.vulnerability_remaining > 0.0:
+			entity.vulnerability_remaining = maxf(0.0, entity.vulnerability_remaining - delta)
 
 
 func _tick_dot_instances(entity: MonsterEntity, delta: float) -> void:
@@ -492,10 +565,16 @@ func _tick_dot_instances(entity: MonsterEntity, delta: float) -> void:
 		i -= 1
 
 
+## 1 + the monster's live armor-shred bonus (1.0 when not shredded).
+func _vulnerability_multiplier(entity: MonsterEntity) -> float:
+	return 1.0 + entity.vulnerability_bonus if entity.vulnerability_remaining > 0.0 else 1.0
+
+
 ## Shared by DoT ticks and haemorrhage rupture: subtracts `amount`, attributes
 ## the hit to `source`, handles death and boss-bar/absorb bookkeeping.
 ## Returns true if the monster died.
 func _apply_status_damage(entity: MonsterEntity, amount: float, source: StringName) -> bool:
+	amount *= _vulnerability_multiplier(entity)
 	var pre_hp: float = entity.current_hp
 	entity.current_hp -= amount
 	entity.last_hit_source = source
@@ -537,6 +616,8 @@ func _pass2_boss_logic(delta: float) -> void:
 			continue
 		if entity.resource.tier != 2:
 			continue
+		if entity.stun_remaining > 0.0:
+			continue  # stunned: scans, prepares and wind-ups freeze where they are
 		# Step 1: decrement scan throttle (if > 0), then check scan
 		if entity.boss_scan_frames_remaining > 0:
 			entity.boss_scan_frames_remaining -= 1
@@ -693,6 +774,8 @@ func _pass2b_hero_attacks(delta: float) -> void:
 			continue
 		if entity.resource.tier < 1 or entity.resource.base_damage <= 0.0:
 			continue
+		if entity.stun_remaining > 0.0:
+			continue  # stunned: Hero wind-ups freeze (resume when the stun ends)
 		if entity.resource.tier == 1 and entity.hero_windup_remaining <= 0.0:
 			if entity.boss_scan_frames_remaining > 0:
 				entity.boss_scan_frames_remaining -= 1

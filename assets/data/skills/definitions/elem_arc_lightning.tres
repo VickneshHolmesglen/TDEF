@@ -10,6 +10,8 @@ damage_type = "lightning"
 delivery = "beam"
 skill_power_coefficient = 1.1
 secondary_effect = "chain"
+secondary_value = 0.7
+secondary_count = 3
 tags = Array[String](["Projectile", "Advanced", "Elemental", "DifferentDamage"])
 
 [resource]

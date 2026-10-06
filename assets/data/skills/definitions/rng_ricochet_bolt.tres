@@ -10,6 +10,8 @@ damage_type = "physical"
 delivery = "projectile_pierce"
 skill_power_coefficient = 1.1
 secondary_effect = "chain"
+secondary_value = 0.6
+secondary_count = 2
 tags = Array[String](["Projectile"])
 
 [resource]

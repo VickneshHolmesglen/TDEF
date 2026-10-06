@@ -10,6 +10,8 @@ damage_type = "physical"
 delivery = "projectile_pierce"
 skill_power_coefficient = 1.0
 secondary_effect = "armor_shred"
+secondary_value = 0.25
+secondary_duration = 6.0
 tags = Array[String](["Projectile"])
 
 [resource]

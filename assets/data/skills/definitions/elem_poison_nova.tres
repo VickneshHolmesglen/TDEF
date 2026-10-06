@@ -10,6 +10,8 @@ damage_type = "poison"
 delivery = "aoe_zone"
 skill_power_coefficient = 0.9
 secondary_effect = "dot_poison"
+secondary_value = 0.08
+secondary_duration = 4.0
 tags = Array[String](["Area", "Poison", "Basic", "Elemental", "DifferentDamage"])
 
 [resource]

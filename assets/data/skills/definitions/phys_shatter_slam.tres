@@ -10,6 +10,7 @@ damage_type = "physical"
 delivery = "melee_arc"
 skill_power_coefficient = 2.0
 secondary_effect = "stun"
+secondary_duration = 1.25
 tags = Array[String](["Melee", "Area"])
 
 [resource]

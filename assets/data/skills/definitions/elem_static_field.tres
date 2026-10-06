@@ -10,6 +10,7 @@ damage_type = "lightning"
 delivery = "aoe_zone"
 skill_power_coefficient = 0.5
 secondary_effect = "stun"
+secondary_duration = 0.75
 tags = Array[String](["Area", "Duration", "Buff", "Advanced", "Elemental", "DifferentDamage"])
 
 [resource]

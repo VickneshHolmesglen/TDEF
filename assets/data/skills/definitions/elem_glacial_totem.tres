@@ -10,6 +10,8 @@ damage_type = "ice"
 delivery = "totem"
 skill_power_coefficient = 0.7
 secondary_effect = "slow"
+secondary_value = 0.25
+secondary_duration = 2.0
 tags = Array[String](["Totem", "Area", "Advanced", "Elemental", "DifferentDamage"])
 
 [resource]

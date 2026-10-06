@@ -146,3 +146,11 @@ var active_status_effects: Array[ActiveStatusEffect] = []
 ## ActiveSlowEffect's own doc comment for why. Read by Monster System's movement
 ## pass to compute effective speed; never mutates scaled_speed itself.
 var active_slow_effects: Array[ActiveSlowEffect] = []
+
+## Skill secondary effects spec (2026-10-07). Seconds left stunned: no movement,
+## and attack scans/wind-ups are frozen until it reaches 0.
+var stun_remaining: float = 0.0
+## Armor shred as vulnerability: while vulnerability_remaining > 0, every hit
+## and DoT tick on this monster is multiplied by (1 + vulnerability_bonus).
+var vulnerability_remaining: float = 0.0
+var vulnerability_bonus: float = 0.0

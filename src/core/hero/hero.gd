@@ -386,6 +386,14 @@ var _effect_modifiers: Dictionary[StringName, Dictionary] = {}
 ## Cached per-stat sum of _effect_modifiers, refolded only on set/clear.
 var _effect_additive: Dictionary[StringName, float] = {}
 
+## Skill secondary effects spec (2026-10-07): timed FLAT stat buffs from skill
+## casts (lifesteal_bonus), key -> {&"stats": {stat: flat}, &"remaining": s}.
+## Flat, not additive: an additive fraction on a 0-base stat like lifesteal
+## would do nothing. Ticked in _physics_process(); never saved.
+var _timed_flat_buffs: Dictionary[StringName, Dictionary] = {}
+## Chain: extra targets must sit within this many cells of the previous one.
+const CHAIN_RADIUS_CELLS: float = 3.0
+
 ## Set defensive effects spec §3.5: damage-absorbing shields by source key
 ## (SetEffectController owns durations). Absorbed before HP in
 ## _on_hero_damage_taken(), in insertion order. Never saved.
@@ -533,7 +541,7 @@ var _visual_companion: Node3D = null
 ## after the Formula 1 result, per story-001 Tuning Knobs.
 func get_effective_stat(stat_name: StringName) -> float:
 	var base: float = _base_stats.get(stat_name, 0.0)
-	var flat: float = _flat_bonuses.get(stat_name, 0.0)
+	var flat: float = _flat_bonuses.get(stat_name, 0.0) + _timed_flat_total(stat_name)
 	var additive: float = _additive_bonuses.get(stat_name, 0.0) + _effect_additive.get(stat_name, 0.0)
 	var intermediate: float = maxf(0.0, base + flat)
 	var multiplier: float = 1.0 + clampf(additive, ADDITIVE_BONUS_FLOOR, ADDITIVE_BONUS_CAP)
@@ -895,6 +903,7 @@ func _physics_process(delta: float) -> void:
 	_handle_movement()
 	_update_position_tracking()
 	_update_class_proximity(delta)
+	_tick_timed_flat_buffs(delta)
 	# Epic 15 Story 005 (ADR-0037): the one line this story adds to Hero's
 	# EXISTING _physics_process() — no new callback. Runs last so the
 	# companion syncs against this frame's fully-resolved global_position
@@ -1302,7 +1311,50 @@ func activate_skill(slot_index: int) -> void:
 	# — not "hero_skill_used" (that signal does not exist). String, not
 	# StringName — cast at emit time.
 	GEventBus.hero_skill_activated.emit(String(skill_id), global_position)
+	_apply_cast_buff(skill_id)
 	_resolve_skill_hit(skill_id)
+
+
+## Skill secondary effects spec: lifesteal_bonus grants a timed flat lifesteal
+## buff on cast (most such skills are self_buff and strike nothing). Re-casting
+## refreshes, never stacks.
+func _apply_cast_buff(skill_id: StringName) -> void:
+	var skill: SkillDefinitionResource = GGameDataRegistry.get_skill_definition(skill_id)
+	if skill == null or skill.effect_data == null or skill.effect_data.secondary_effect != "lifesteal_bonus":
+		return
+	add_timed_flat_buff(StringName("skill:%s" % skill_id), {&"lifesteal": skill.effect_data.secondary_value},
+			skill.effect_data.secondary_duration)
+
+
+## Adds (or refreshes) a timed flat stat buff under `key`.
+## Example: `hero.add_timed_flat_buff(&"skill:phys_last_stand", {&"lifesteal": 0.1}, 6.0)`
+func add_timed_flat_buff(key: StringName, stats: Dictionary, duration: float) -> void:
+	if duration <= 0.0:
+		return
+	_timed_flat_buffs[key] = {&"stats": stats.duplicate(), &"remaining": duration}
+
+
+## True while a timed flat buff is live under `key`.
+func has_timed_flat_buff(key: StringName) -> bool:
+	return _timed_flat_buffs.has(key)
+
+
+func _timed_flat_total(stat_name: StringName) -> float:
+	var total: float = 0.0
+	for key: StringName in _timed_flat_buffs:
+		total += float((_timed_flat_buffs[key][&"stats"] as Dictionary).get(stat_name, 0.0))
+	return total
+
+
+func _tick_timed_flat_buffs(delta: float) -> void:
+	if _timed_flat_buffs.is_empty():
+		return
+	for key: StringName in _timed_flat_buffs.keys():
+		var left: float = float(_timed_flat_buffs[key][&"remaining"]) - delta
+		if left <= 0.0:
+			_timed_flat_buffs.erase(key)
+		else:
+			_timed_flat_buffs[key][&"remaining"] = left
 
 
 ## TD-hero-001 (Skill Power implementation, 2026-08-26): resolves the single
@@ -1337,6 +1389,37 @@ func _resolve_skill_hit(skill_id: StringName) -> void:
 	var skill: SkillDefinitionResource = GGameDataRegistry.get_skill_definition(skill_id)
 	if skill == null or skill.effect_data == null:
 		return
+	GEventBus.hero_skill_attacked.emit(_build_skill_payload(skill, skill_id, target_id, 1.0))
+	if skill.effect_data.secondary_effect == "chain":
+		_resolve_chain(skill, skill_id, target_id)
+
+
+## Skill secondary effects spec: chain jumps from the struck monster to up to
+## secondary_count further monsters, each the nearest unhit one within
+## CHAIN_RADIUS_CELLS of the previous target, at secondary_value of the power.
+func _resolve_chain(skill: SkillDefinitionResource, skill_id: StringName, first_target: int) -> void:
+	var hit: Array[int] = [first_target]
+	var from_cell: Vector2i = (_monster_cache[first_target] as Dictionary).get("cell", Vector2i.ZERO)
+	for jump: int in skill.effect_data.secondary_count:
+		var best: int = -1
+		var best_dist: float = CHAIN_RADIUS_CELLS + 0.001
+		for entity_id: int in _monster_cache:
+			if hit.has(entity_id):
+				continue
+			var d: float = Vector2(((_monster_cache[entity_id] as Dictionary).get("cell", Vector2i.ZERO) as Vector2i) - from_cell).length()
+			if d < best_dist:
+				best_dist = d
+				best = entity_id
+		if best == -1:
+			return
+		hit.append(best)
+		from_cell = (_monster_cache[best] as Dictionary).get("cell", Vector2i.ZERO)
+		GEventBus.hero_skill_attacked.emit(_build_skill_payload(skill, skill_id, best, skill.effect_data.secondary_value))
+
+
+## One skill hit's payload against `target_id`; `power_scale` scales the skill's
+## coefficient (1.0 for the main hit, the chain fraction for jumps).
+func _build_skill_payload(skill: SkillDefinitionResource, skill_id: StringName, target_id: int, power_scale: float) -> HeroSkillAttackEvent:
 	var entry: Dictionary = _monster_cache[target_id] as Dictionary
 	# "" (non-damage support/buff skill) normalizes to "physical" here —
 	# matches this codebase's existing behavior of always emitting a real
@@ -1355,7 +1438,7 @@ func _resolve_skill_hit(skill_id: StringName) -> void:
 	# (1 + tower_affinity_bonus) — identical shape to
 	# _on_attack_timer_timeout()'s base_damage line.
 	payload.skill_power = get_effective_stat(attack_stat) * (1.0 + get_effective_stat(&"tower_affinity"))
-	payload.skill_power_coefficient = skill.effect_data.skill_power_coefficient
+	payload.skill_power_coefficient = skill.effect_data.skill_power_coefficient * power_scale
 	payload.is_crit = randf() < _effective_crit_chance()
 	# CRIT_MULTIPLIER_BASE is now folded into get_effective_stat() itself
 	# (Hero Combat & Stats Redesign, 2026-09-18, _apply_stat_cap()).
@@ -1366,7 +1449,7 @@ func _resolve_skill_hit(skill_id: StringName) -> void:
 	payload.target_evasion = entry.get("evasion", 0.0) as float
 	payload.target_elemental_resist = elemental_resistances.get(damage_type, 0.0) as float
 	payload.hero_level = _current_level
-	GEventBus.hero_skill_attacked.emit(payload)
+	return payload
 
 
 ## Rule 8: starts (restarting if already running) the given slot's dedicated
@@ -1641,6 +1724,7 @@ func reset_to_defaults() -> void:
 	_accumulated_class_bonuses.clear()
 	clear_all_effect_modifiers()
 	clear_all_shields()
+	_timed_flat_buffs.clear()
 
 
 ## Stopgap, unchanged in effect from the two identical call sites this

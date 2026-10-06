@@ -10,6 +10,8 @@ damage_type = "fire"
 delivery = "aoe_zone"
 skill_power_coefficient = 1.6
 secondary_effect = "dot_burn"
+secondary_value = 0.15
+secondary_duration = 4.0
 tags = Array[String](["Area", "Fire", "Basic", "Elemental", "DifferentDamage"])
 
 [resource]
