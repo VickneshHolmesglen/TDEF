@@ -928,6 +928,12 @@ func _pass3c_visual_sync(delta: float) -> void:
 		if not is_instance_valid(entity):
 			continue
 		_sync_windup_telegraph(entity, delta)
+		# 2026-10-07: the visible 2D sprite plays its sheet's walk/idle/prepare
+		# clips (MonsterInstance.advance_animation), driven from this pass so
+		# monsters keep no per-instance _process (ADR-0006).
+		if entity.monster_instance != null and is_instance_valid(entity.monster_instance):
+			entity.monster_instance.advance_animation(delta,
+					entity.boss_attack_prepare_remaining > 0 or entity.hero_windup_remaining > 0.0)
 		if entity.swarm_handle != null:
 			entity.hit_flash_remaining_seconds = maxf(0.0, entity.hit_flash_remaining_seconds - delta)
 			if _swarm_renderer != null:

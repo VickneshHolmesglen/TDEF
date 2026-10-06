@@ -104,6 +104,23 @@ var _resolve_alpha: float = 0.0
 var _resolve_hit: bool = false
 var _resolve_tween: Tween = null
 
+## Walk animation (2026-10-07, player-reported "no movement animation";
+## animation-pipeline.md §2 allows per-monster frame animation where the walk
+## tell is worth the asset cost -- these sheets already exist). The visible 2D
+## sprite plays the monster's CreatureAtlasMapping clips from its sprite sheet:
+## "walk" while it is actually moving, "idle" when it stands still (stunned,
+## attacking, waiting), "attack_prepare" during a boss wind-up when the sheet
+## has one. Sheets face right, so the sprite flips while walking left. A
+## monster without a usable sheet keeps its static image (MONSTER_TEXTURES).
+## Driven by MonsterManager (advance_animation), never a per-monster _process.
+var _clips: Dictionary[StringName, CreatureAnimationClip] = {}
+var _anim_clip: StringName = &""
+var _anim_time: float = 0.0
+var _last_position: Vector2 = Vector2.ZERO
+var _has_last_position: bool = false
+## Below this many world units of travel per frame the monster counts as standing still.
+const WALK_MOVE_EPSILON: float = 0.05
+
 @onready var _sprite: Sprite2D = $Sprite2D
 @onready var _nameplate: Label = $Nameplate
 
@@ -137,6 +154,9 @@ func play_hit_flash() -> void:
 ## sprite empty if no art exists for that id yet.
 func configure(monster_id: StringName, tier: int = 0, display_name: String = "") -> void:
 	_tier = tier
+	if _configure_sheet(monster_id, tier):
+		_configure_nameplate(display_name)
+		return
 	var texture: Texture2D = MONSTER_TEXTURES.get(monster_id, null)
 	if texture == null:
 		push_warning("[MonsterInstance] no art authored for monster_id '%s'" % monster_id)
@@ -151,7 +171,13 @@ func configure(monster_id: StringName, tier: int = 0, display_name: String = "")
 	_sprite.scale = Vector2(uniform_scale, uniform_scale)
 	_sprite_half_size = Vector2(texture.get_width(), texture.get_height()) * uniform_scale * 0.5
 
-	if tier == 2:
+	_configure_nameplate(display_name)
+	queue_redraw()
+
+
+## BOSS nameplate above the sprite (STANDARD/ELITE get none at MVP).
+func _configure_nameplate(display_name: String) -> void:
+	if _tier == 2:
 		_nameplate.text = display_name
 		_nameplate.visible = true
 		# get_minimum_size() (not .size) — recomputes synchronously from font
@@ -166,6 +192,80 @@ func configure(monster_id: StringName, tier: int = 0, display_name: String = "")
 		_nameplate.visible = false
 
 	queue_redraw()
+
+
+## Uses the monster's sprite sheet (CreatureAtlasMapping) when it has a walk
+## clip. Returns false (caller falls back to the static image) when there is no
+## mapping, no sheet texture, or the sheet would slice into implausible frames.
+func _configure_sheet(monster_id: StringName, tier: int) -> bool:
+	var mapping: CreatureAtlasMappingResource = GGameDataRegistry.get_creature_atlas_mapping(monster_id)
+	if mapping == null or mapping.atlas_texture == null or mapping.get_animation_clip(&"walk") == null:
+		return false
+	var columns: int = maxi(mapping.atlas_columns, 1)
+	var rows: int = maxi(mapping.atlas_rows, 1)
+	var frame_size := Vector2(mapping.atlas_texture.get_width() / float(columns), mapping.atlas_texture.get_height() / float(rows))
+	# A single painting mislabelled as a strip would slice into slivers.
+	if frame_size.x < 16.0 or frame_size.y < 16.0 or frame_size.x / frame_size.y > 3.0 or frame_size.y / frame_size.x > 3.0:
+		return false
+	_clips.clear()
+	for clip: CreatureAnimationClip in mapping.animation_clips:
+		_clips[clip.clip_name] = clip
+	_sprite.texture = mapping.atlas_texture
+	_sprite.hframes = columns
+	_sprite.vframes = rows
+	var uniform_scale: float = TARGET_LONG_EDGE_BY_TIER.get(tier, 64.0) / maxf(frame_size.x, frame_size.y)
+	_sprite.scale = Vector2(uniform_scale, uniform_scale)
+	_sprite_half_size = frame_size * uniform_scale * 0.5
+	_anim_time = 0.0
+	_has_last_position = false
+	_show_clip(&"idle" if _clips.has(&"idle") else &"walk", 0.0)
+	return true
+
+
+## True when this monster animates from a sprite sheet.
+func is_sheet_animated() -> bool:
+	return not _clips.is_empty()
+
+
+## Called once per frame by MonsterManager._pass3c_visual_sync() -- monsters
+## never run their own _process (ADR-0006 per_monster_physics_process rule).
+## Walking vs standing and facing come from how far this instance actually
+## moved since the last call; `preparing` (an attack wind-up) shows the
+## sheet's attack_prepare clip when it has one.
+func advance_animation(delta: float, preparing: bool = false) -> void:
+	if _clips.is_empty():
+		return
+	var moved: Vector2 = global_position - _last_position if _has_last_position else Vector2.ZERO
+	_last_position = global_position
+	_has_last_position = true
+	if absf(moved.x) > WALK_MOVE_EPSILON:
+		_sprite.flip_h = moved.x < 0.0  # sheets face right
+	var clip_name: StringName = &"idle"
+	if preparing and _clips.has(&"attack_prepare"):
+		clip_name = &"attack_prepare"
+	elif moved.length() > WALK_MOVE_EPSILON:
+		clip_name = &"walk"
+	_show_clip(clip_name if _clips.has(clip_name) else &"walk", delta)
+
+
+## Advances (or switches to) `clip_name` and sets the sprite's frame.
+func _show_clip(clip_name: StringName, delta: float) -> void:
+	if clip_name != _anim_clip:
+		_anim_clip = clip_name
+		_anim_time = 0.0
+	else:
+		_anim_time += delta
+	var clip: CreatureAnimationClip = _clips.get(clip_name)
+	if clip == null:
+		return
+	var step: int = int(_anim_time * clip.fps)
+	var offset: int = step % maxi(clip.frame_count, 1) if clip.loop else mini(step, clip.frame_count - 1)
+	_sprite.frame = clampi(clip.start_frame + offset, 0, _sprite.hframes * _sprite.vframes - 1)
+
+
+## Name of the clip currently shown (for tests).
+func get_current_clip() -> StringName:
+	return _anim_clip
 
 
 func _exit_tree() -> void:

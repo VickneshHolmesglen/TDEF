@@ -40,7 +40,9 @@ func test_configure_unknown_monster_id_leaves_sprite_texture_null() -> void:
 func test_configure_scales_standard_tier_sprite_to_fit_one_cell() -> void:
 	_instance.configure(&"goblin_runner", 0)
 	var texture := _instance._sprite.texture
-	var longest_edge := maxf(texture.get_width(), texture.get_height())
+	# One animation frame, not the whole sprite-sheet strip (walk animation, 2026-10-07).
+	var frame_size := Vector2(texture.get_width() / float(_instance._sprite.hframes), texture.get_height() / float(_instance._sprite.vframes))
+	var longest_edge := maxf(frame_size.x, frame_size.y)
 	var scaled_edge := longest_edge * _instance._sprite.scale.x
 	assert_float(scaled_edge).is_between(63.9, 64.1)
 
@@ -48,7 +50,8 @@ func test_configure_scales_standard_tier_sprite_to_fit_one_cell() -> void:
 func test_configure_scales_boss_tier_sprite_larger_than_standard() -> void:
 	_instance.configure(&"rift_sentinel_boss", 2)
 	var texture := _instance._sprite.texture
-	var longest_edge := maxf(texture.get_width(), texture.get_height())
+	var frame_size := Vector2(texture.get_width() / float(_instance._sprite.hframes), texture.get_height() / float(_instance._sprite.vframes))
+	var longest_edge := maxf(frame_size.x, frame_size.y)
 	var scaled_edge := longest_edge * _instance._sprite.scale.x
 	assert_float(scaled_edge).is_between(111.9, 112.1)
 
@@ -119,3 +122,53 @@ func test_play_hit_flash_called_twice_kills_the_prior_tween_without_error() -> v
 	_instance.play_hit_flash()
 	var material := _instance._sprite.material as ShaderMaterial
 	assert_float(material.get_shader_parameter("flash_amount")).is_equal_approx(1.0, 0.001)
+
+
+
+# ---------------------------------------------------------------------------
+# Walk animation from the sprite sheet (2026-10-07)
+# ---------------------------------------------------------------------------
+
+func test_a_monster_with_a_sheet_animates_from_it() -> void:
+	_instance.configure(&"goblin_runner", 0)
+	assert_bool(_instance.is_sheet_animated()).is_true()
+	assert_int(_instance._sprite.hframes).is_equal(5)
+
+
+func test_moving_plays_the_walk_clip_and_cycles_frames() -> void:
+	_instance.configure(&"goblin_runner", 0)
+	_instance.advance_animation(0.0)
+	var seen: Dictionary = {}
+	for i: int in 12:
+		_instance.position.x += 2.0
+		_instance.advance_animation(1.0 / 30.0)
+		seen[_instance._sprite.frame] = true
+	assert_str(String(_instance.get_current_clip())).is_equal("walk")
+	assert_int(seen.size()).is_greater(1)
+	for frame: int in seen:
+		assert_int(frame).is_between(1, 4)
+
+
+func test_standing_still_shows_the_idle_frame() -> void:
+	_instance.configure(&"goblin_runner", 0)
+	_instance.advance_animation(0.1)
+	_instance.advance_animation(0.1)
+	assert_str(String(_instance.get_current_clip())).is_equal("idle")
+	assert_int(_instance._sprite.frame).is_equal(0)
+
+
+func test_walking_left_flips_the_sprite() -> void:
+	_instance.configure(&"goblin_runner", 0)
+	_instance.advance_animation(0.0)
+	_instance.position.x -= 3.0
+	_instance.advance_animation(0.03)
+	assert_bool(_instance._sprite.flip_h).is_true()
+	_instance.position.x += 3.0
+	_instance.advance_animation(0.03)
+	assert_bool(_instance._sprite.flip_h).is_false()
+
+
+func test_iron_colossus_shows_its_sheet_instead_of_nothing() -> void:
+	_instance.configure(&"iron_colossus_elite", 1)
+	assert_object(_instance._sprite.texture).is_not_null()
+	assert_bool(_instance.is_sheet_animated()).is_true()
