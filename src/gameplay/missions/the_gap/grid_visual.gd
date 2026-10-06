@@ -152,12 +152,9 @@ const PROP_DENSITY: float = 0.18
 ## a placed tower or a blocking obstacle.
 const PROP_SCALE: float = 0.55
 
-## Cell-boundary outline width, kept from the flat-color-fill era — real
-## terrain texture is visually busier than a flat fill, so a visible seam
-## still matters for tower-placement readability (art bible 3.2's
-## figure/ground discipline: "the terrain is too tall/busy" test).
-const OUTLINE_COLOR: Color = Color(0.0, 0.0, 0.0)
-const OUTLINE_WIDTH_PX: int = 1
+## No cell-boundary outlines (removed 2026-10-06 at the user's request): the
+## terrain reads as continuous ground. Placement readability comes from the
+## placement preview's footprint highlight instead of permanent gridlines.
 
 var _texture: ImageTexture = null
 
@@ -232,12 +229,6 @@ func _build_grid_texture(mission_id: String, rng: RandomNumberGenerator) -> Imag
 			if cell_type == 0 and not scaled_props.is_empty() and rng.randf() < PROP_DENSITY:
 				var prop: Image = scaled_props[rng.randi_range(0, scaled_props.size() - 1)]
 				image.blend_rect(prop, Rect2i(0, 0, prop_px, prop_px), Vector2i(origin_x + prop_offset, origin_y + prop_offset))
-			# Thin border strips keep cell boundaries readable against busy
-			# real terrain texture — art bible 3.2's figure/ground discipline.
-			image.fill_rect(Rect2i(origin_x, origin_y, cell_px, OUTLINE_WIDTH_PX), OUTLINE_COLOR)
-			image.fill_rect(Rect2i(origin_x, origin_y + cell_px - OUTLINE_WIDTH_PX, cell_px, OUTLINE_WIDTH_PX), OUTLINE_COLOR)
-			image.fill_rect(Rect2i(origin_x, origin_y, OUTLINE_WIDTH_PX, cell_px), OUTLINE_COLOR)
-			image.fill_rect(Rect2i(origin_x + cell_px - OUTLINE_WIDTH_PX, origin_y, OUTLINE_WIDTH_PX, cell_px), OUTLINE_COLOR)
 	return ImageTexture.create_from_image(image)
 
 
