@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SanctuaryBuildingResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/core/sanctuary/sanctuary_building_resource.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+building_id = &"keep"
+name_key = "SANCTUARY_BUILDING_KEEP"
+hint_key = "SANCTUARY_BUILDING_KEEP_HINT"
+target_state = &"ROOM_DEFENSE_BUILDING"
+position = Vector2(300, 595)
+footprint = Vector2(130, 130)
+placeholder_color = Color(0.5, 0.5, 0.52, 1)
+tier_textures = Array[Texture2D]([null, null, null, null, null])

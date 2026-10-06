@@ -174,6 +174,9 @@ func _ready() -> void:
 	_configure_launch_mission_button()
 	set_active_state(OVERVIEW_STATE)
 	_tab_strip.tab_target_selected.connect(_on_tab_target_selected)
+	# Town buildings (2026-10-07): a building click selects its tab exactly like the side panel.
+	if _diorama.has_signal(&"building_selected"):
+		_diorama.connect(&"building_selected", _tab_strip.select_target)
 	_launch_mission_button.pressed.connect(confirm_launch_depart)
 	_launch_mission_button.set_meta(UiAudioBinder.META_KEY, UiAudioBinder.KIND_CONFIRM)
 	GEventBus.scene_transition_completed.connect(_on_scene_transition_completed)

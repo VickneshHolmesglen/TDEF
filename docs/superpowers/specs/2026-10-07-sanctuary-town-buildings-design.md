@@ -16,9 +16,9 @@ The Sanctuary stops being an empty panel and becomes a small town that grows wit
 | Armoury | Inventory & Crafting (`ROOM_INVENTORY_CRAFTING`) | 0.5 x inventory expansion tier / max tier + 0.5 x crafting recipes discovered / total |
 | Menagerie | Menagerie (`ROOM_MENAGERIE`) | 0.5 x min(1, creatures kept / 12) + 0.5 x distinct species kept / total species |
 | Keep | Defense Building (`ROOM_DEFENSE_BUILDING`) | (techs unlocked + structures built) / (all techs + all structures) |
-| Blacksmith | Forge (`ROOM_EQUIPMENT_FORGE`) | 0.5 x equipment recipes discovered / total + 0.5 x runes known / total runes |
+| Blacksmith | Forge (`ROOM_EQUIPMENT_FORGE`) | 0.5 x equipment recipes discovered / total + 0.5 x min(1, runes known / 8) (runes are discovered, there is no fixed rune catalogue) |
 | Training Hall | Skills (`ROOM_HERO_SKILLS`) | 0.6 x skill-tree nodes unlocked / all nodes + 0.4 x skills learned / all skills |
-| Seer's Tower | Loadout (`DEPARTING_TO_LOADOUT`) | 0.6 x tarot cards unlocked / all cards + 0.4 x mean card mastery tier / max mastery tier |
+| Seer's Tower | Loadout (`DEPARTING_TO_LOADOUT`) | 0.6 x tarot cards unlocked / all cards + 0.4 x mean mastery tier of unlocked cards / 4 (the top mastery tier) |
 
 A missing system (e.g. no Crafting instance in a test scene) contributes 0 to its term, never an error. All scores are computed by `SanctuaryProgress` (pure, static), which reads the real systems.
 

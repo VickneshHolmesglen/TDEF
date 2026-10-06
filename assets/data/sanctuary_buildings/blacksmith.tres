@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SanctuaryBuildingResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/core/sanctuary/sanctuary_building_resource.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+building_id = &"blacksmith"
+name_key = "SANCTUARY_BUILDING_BLACKSMITH"
+hint_key = "SANCTUARY_BUILDING_BLACKSMITH_HINT"
+target_state = &"ROOM_EQUIPMENT_FORGE"
+position = Vector2(360, 450)
+footprint = Vector2(130, 120)
+placeholder_color = Color(0.62, 0.36, 0.26, 1)
+tier_textures = Array[Texture2D]([null, null, null, null, null])

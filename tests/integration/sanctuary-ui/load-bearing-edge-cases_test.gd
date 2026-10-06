@@ -128,8 +128,11 @@ func test_diorama_has_no_structure_click_mechanism_yet_confirmed_not_assumed() -
 	# which concrete Control subclass renders. What matters, unchanged, is
 	# that the real node has zero gui_input connections.
 	GEventBus.sanctuary_structure_built.emit("habitat_expansion_tier_1", "habitat_expansion")
+	# 2026-10-07: the click-to-enter-a-room path now exists via the town buildings
+	# (TownBuildingView, a separate "Town" layer at world child 0); built
+	# structures themselves stay non-clickable, which is what this checks.
 	var world: Node2D = _shell.get_diorama().call("get_world")
-	var structure: Node = world.get_child(0)
+	var structure: Node = world.find_child("Structure_habitat_expansion", true, false)
 	assert_bool(structure is Control).is_true()  # a real rendered structure, not a click-through no-op
 	# No click/room-entry handler is wired to it at all -- confirmed by its
 	# gui_input signal having zero connections, not merely "it's a Control."

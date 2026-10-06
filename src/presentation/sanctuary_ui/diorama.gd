@@ -46,24 +46,14 @@ extends Control
 ## = closer to the viewer" matches this diorama's own existing Y-ordering
 ## convention (structures further "back" render smaller/higher).
 const STRUCTURE_POSITIONS: Dictionary[String, Vector2] = {
-	"castle": Vector2(220, 80),
 	"watchtower": Vector2(120, 150),
 	"habitat_expansion": Vector2(320, 150),
 }
 
 const STRUCTURE_SIZE: Vector2 = Vector2(64, 64)
 
-## Castle (2026-08-21, player-requested): the town's decorative centerpiece
-## landmark -- explicitly NOT a real gameplay structure (no StructureResource,
-## no tech-tree entry, no tier/upgrade path, never fires sanctuary_structure_
-## built). No art has been generated for it, so it renders as a plain bordered
-## placeholder shape, same "no art exists yet, be honest about it" convention
-## this file used for watchtower/habitat_expansion before their real art
-## arrived (see this file's own header comment). Sized larger than the other
-## two structures -- a town's castle should read as the biggest, most central
-## building, not a same-size peer.
-const CASTLE_SIZE: Vector2 = Vector2(80, 96)
-const CASTLE_LABEL: String = "Castle"
+## The Castle centerpiece is now a town building (TOWN_BUILDING_PATHS,
+## castle.tres) that grows with overall progress; its old text card is gone.
 
 ## Real watchtower_tier_1 art (2026-07-31). Source: user-provided reference
 ## image, color-keyed from a flat opaque background to real transparency
@@ -123,6 +113,28 @@ const HABITAT_DISPLAY_HEIGHT: float = 64.0  ## matches STRUCTURE_SIZE.y, same re
 
 @onready var _world: Node2D = $World
 
+## Town buildings (sanctuary town buildings spec, 2026-10-07): one building per
+## side-panel tab plus the Castle, each growing through 5 tiers with that
+## tab's progress (SanctuaryProgress). Data in assets/data/sanctuary_buildings/.
+## Drawn beneath the built-structure sprites; replaces the old Castle card.
+const TOWN_BUILDING_PATHS: Array[String] = [
+	"res://assets/data/sanctuary_buildings/castle.tres",
+	"res://assets/data/sanctuary_buildings/seers_tower.tres",
+	"res://assets/data/sanctuary_buildings/armoury.tres",
+	"res://assets/data/sanctuary_buildings/blacksmith.tres",
+	"res://assets/data/sanctuary_buildings/training_hall.tres",
+	"res://assets/data/sanctuary_buildings/menagerie.tres",
+	"res://assets/data/sanctuary_buildings/keep.tres",
+]
+## Emitted when a clickable building is pressed; SanctuaryUI routes it through
+## the tab strip so the room switch matches a side-panel click exactly.
+signal building_selected(target_state: StringName)
+
+var _town_views: Dictionary[StringName, TownBuildingView] = {}
+var _town_info_label: Label = null
+## Progress events that can raise a building's tier (spec §4).
+var _town_refresh_signals: Array[Signal] = []
+
 ## Injectable for tests; defaults to the real GMenagerie Autoload (unlike
 ## Tarot/EquipmentForge, Menagerie is a real Autoload, not scene-instanced --
 ## matches menagerie_screen.gd's own identical default).
@@ -145,7 +157,7 @@ var _habitat_tier: int = 0
 func _ready() -> void:
 	if menagerie == null:
 		menagerie = GMenagerie
-	_render_castle()
+	_build_town()
 	GEventBus.sanctuary_structure_built.connect(_on_sanctuary_structure_built)
 	GEventBus.creature_acquired.connect(_on_habitat_composition_changed)
 	GEventBus.creature_happiness_changed.connect(_on_creature_happiness_changed)
@@ -153,6 +165,9 @@ func _ready() -> void:
 
 
 func _exit_tree() -> void:
+	for sig: Signal in _town_refresh_signals:
+		if sig.is_connected(_on_town_progress_event):
+			sig.disconnect(_on_town_progress_event)
 	GEventBus.sanctuary_structure_built.disconnect(_on_sanctuary_structure_built)
 	GEventBus.creature_acquired.disconnect(_on_habitat_composition_changed)
 	GEventBus.creature_happiness_changed.disconnect(_on_creature_happiness_changed)
@@ -234,36 +249,93 @@ func _build_shadow_for(structure_center: Vector2, sprite_display_size: Vector2, 
 	return shadow
 
 
-## Renders the Castle placeholder once, unconditionally, at _ready() -- unlike
-## every other structure here, it never waits for sanctuary_structure_built
-## (it isn't a real structure, see CASTLE_SIZE's own doc comment) and is
-## always present as soon as the diorama mounts, matching a town's landmark
-## always being "just there" rather than something the player unlocks.
-func _render_castle() -> void:
-	var visual: Panel = _build_castle_placeholder()
-	_world.add_child(_build_shadow_for(STRUCTURE_POSITIONS["castle"], CASTLE_SIZE, "castle"))  # underneath, same convention as the other structures
-	_world.add_child(visual)
+# ---------------------------------------------------------------------------
+# Town buildings (sanctuary town buildings spec, 2026-10-07)
+# ---------------------------------------------------------------------------
+
+func _build_town() -> void:
+	var town := Node2D.new()
+	town.name = "Town"
+	_world.add_child(town)
+	_world.move_child(town, 0)  # beneath every built-structure sprite/shadow
+	for path: String in TOWN_BUILDING_PATHS:
+		var res: SanctuaryBuildingResource = load(path) as SanctuaryBuildingResource
+		if res == null:
+			continue
+		var view := TownBuildingView.new()
+		view.setup(res)
+		view.pressed.connect(_on_town_building_pressed.bind(res.building_id))
+		view.mouse_entered.connect(_show_town_info.bind(res.building_id))
+		view.focus_entered.connect(_show_town_info.bind(res.building_id))
+		view.mouse_exited.connect(_show_town_prompt)
+		view.focus_exited.connect(_show_town_prompt)
+		town.add_child(view)
+		_town_views[res.building_id] = view
+	_town_info_label = Label.new()
+	_town_info_label.name = "TownInfo"
+	_town_info_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_town_info_label.add_theme_color_override("font_color", ShellChromeStyle.UI_PARCHMENT)
+	_town_info_label.anchor_top = 1.0
+	_town_info_label.anchor_bottom = 1.0
+	_town_info_label.offset_left = 16.0
+	_town_info_label.offset_top = -36.0
+	_town_info_label.offset_bottom = -12.0
+	add_child(_town_info_label)
+	_show_town_prompt()
+	_town_refresh_signals = [
+		GEventBus.slot_expansion_completed, GEventBus.recipe_discovered, GEventBus.creature_acquired,
+		GEventBus.creature_bred, GEventBus.creature_sacrificed, GEventBus.tech_unlocked,
+		GEventBus.item_rune_imbued, GEventBus.hero_equipment_crafted, GEventBus.skill_tree_node_unlocked,
+		GEventBus.tarot_deck_changed, GEventBus.sanctuary_structure_built,
+	]
+	for sig: Signal in _town_refresh_signals:
+		sig.connect(_on_town_progress_event)
+	visibility_changed.connect(_on_town_visibility_changed)
+	refresh_town(false)
 
 
-## Plain bordered placeholder + centered label -- see CASTLE_SIZE's own doc
-## comment for why there is no real art to render here yet.
-func _build_castle_placeholder() -> Panel:
-	var panel := Panel.new()
-	panel.name = "Structure_castle"
-	panel.size = CASTLE_SIZE
-	panel.position = STRUCTURE_POSITIONS["castle"] - CASTLE_SIZE / 2.0
-	panel.add_theme_stylebox_override("panel", ShellChromeStyle.chrome_button_stylebox(false))
-	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE  # see _build_watchtower_sprite()'s identical note -- no click handler exists for diorama structures yet
+## Re-scores every building. With `animate`, a building whose tier rose plays
+## its pop (first build and loads never pop -- spec §6).
+func refresh_town(animate: bool = true) -> void:
+	var scores: Dictionary[StringName, float] = SanctuaryProgress.scores(get_tree())
+	for id: StringName in _town_views:
+		var rose: bool = _town_views[id].set_progress(scores.get(id, 0.0))
+		if rose and animate:
+			_town_views[id].play_tier_up()
 
-	var label := Label.new()
-	label.text = CASTLE_LABEL
-	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_KEEP_SIZE, 4)
-	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	panel.add_child(label)
 
-	return panel
+## Events carry varied payloads; any of them just means "re-score".
+func _on_town_progress_event(_a: Variant = null, _b: Variant = null, _c: Variant = null) -> void:
+	refresh_town()
+
+
+func _on_town_visibility_changed() -> void:
+	if is_visible_in_tree():
+		refresh_town()
+
+
+func _on_town_building_pressed(building_id: StringName) -> void:
+	var view: TownBuildingView = _town_views.get(building_id)
+	if view != null and view.building.target_state != &"":
+		building_selected.emit(view.building.target_state)
+
+
+func _show_town_info(building_id: StringName) -> void:
+	var view: TownBuildingView = _town_views.get(building_id)
+	if view == null or _town_info_label == null:
+		return
+	_town_info_label.text = tr("SANCTUARY_BUILDING_INFO") % [tr(view.building.name_key), view.tier,
+		roundi(view.score * 100.0), tr(view.building.hint_key)]
+
+
+func _show_town_prompt() -> void:
+	if _town_info_label != null:
+		_town_info_label.text = tr("SANCTUARY_BUILDING_PROMPT")
+
+
+## The town building views by id (for tests and the shell).
+func get_town_building(building_id: StringName) -> TownBuildingView:
+	return _town_views.get(building_id)
 
 
 ## Real art path (2026-07-31) -- see WATCHTOWER_TEXTURE's own doc comment.

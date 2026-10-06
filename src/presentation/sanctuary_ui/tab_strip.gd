@@ -252,6 +252,15 @@ static func reset_onboarding_flag_for_tests() -> void:
 	_has_shown_onboarding_this_session = false
 
 
+## Selects the tab for `target_state` exactly as a click on it would (styling,
+## badge clear, tab_target_selected). Used by the Overview's town buildings.
+## Unknown targets are ignored. Example: `tab_strip.select_target(&"ROOM_MENAGERIE")`
+func select_target(target_state: StringName) -> void:
+	var index: int = TAB_TARGETS.find(target_state)
+	if index != -1:
+		_select_index(index)
+
+
 func _select_index(index: int) -> void:
 	_current_index = index
 	_refresh_active_tab_styling()

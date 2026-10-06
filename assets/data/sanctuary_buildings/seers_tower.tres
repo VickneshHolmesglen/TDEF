@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SanctuaryBuildingResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/core/sanctuary/sanctuary_building_resource.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+building_id = &"seers_tower"
+name_key = "SANCTUARY_BUILDING_SEERS_TOWER"
+hint_key = "SANCTUARY_BUILDING_SEERS_TOWER_HINT"
+target_state = &"DEPARTING_TO_LOADOUT"
+position = Vector2(840, 250)
+footprint = Vector2(110, 170)
+placeholder_color = Color(0.48, 0.36, 0.62, 1)
+tier_textures = Array[Texture2D]([null, null, null, null, null])

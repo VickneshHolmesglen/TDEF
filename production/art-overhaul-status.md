@@ -185,6 +185,25 @@ rationale in `design/art/missing-assets-audit-2026-08-29.md` §6.
 
 ---
 
+**Sanctuary town buildings batch, opened 2026-10-07** — user-approved in chat
+("Codex art + placeholders now"). The Sanctuary OVERVIEW now shows 7 town
+buildings that grow through 5 tiers with each tab's progress; until art lands
+they render as growing placeholder blocks (code shipped, no art dependency).
+Prompts, shared rules (flat `#FF00FF` background, fixed camera, same ground
+line per tier) and hand-off paths: `design/art/sanctuary-town-buildings-prompts.md`.
+Spec: `docs/superpowers/specs/2026-10-07-sanctuary-town-buildings-design.md`.
+Placeholder-replacement art, not ship-final (§1 pilot gate still applies).
+
+| Item | Category | Status | Owner | Notes |
+|---|---|---|---|---|
+| Town building: Castle — 5 tiers | sanctuary | `backlog` | Codex → Claude Code | Prompt §2 of the prompts doc. Raw: `assets/source/sanctuary/town/sanctuary_castle_tier<1-5>.png`. Wire into `assets/data/sanctuary_buildings/castle.tres` `tier_textures`. |
+| Town building: Armoury — 5 tiers | sanctuary | `backlog` | Codex → Claude Code | Prompt §2 of the prompts doc. Raw: `assets/source/sanctuary/town/sanctuary_armoury_tier<1-5>.png`. Wire into `assets/data/sanctuary_buildings/armoury.tres` `tier_textures`. |
+| Town building: Menagerie — 5 tiers | sanctuary | `backlog` | Codex → Claude Code | Prompt §2 of the prompts doc. Raw: `assets/source/sanctuary/town/sanctuary_menagerie_tier<1-5>.png`. Wire into `assets/data/sanctuary_buildings/menagerie.tres` `tier_textures`. |
+| Town building: Keep — 5 tiers | sanctuary | `backlog` | Codex → Claude Code | Prompt §2 of the prompts doc. Raw: `assets/source/sanctuary/town/sanctuary_keep_tier<1-5>.png`. Wire into `assets/data/sanctuary_buildings/keep.tres` `tier_textures`. |
+| Town building: Blacksmith — 5 tiers | sanctuary | `backlog` | Codex → Claude Code | Prompt §2 of the prompts doc. Raw: `assets/source/sanctuary/town/sanctuary_blacksmith_tier<1-5>.png`. Wire into `assets/data/sanctuary_buildings/blacksmith.tres` `tier_textures`. |
+| Town building: Training Hall — 5 tiers | sanctuary | `backlog` | Codex → Claude Code | Prompt §2 of the prompts doc. Raw: `assets/source/sanctuary/town/sanctuary_training_hall_tier<1-5>.png`. Wire into `assets/data/sanctuary_buildings/training_hall.tres` `tier_textures`. |
+| Town building: Seer's Tower — 5 tiers | sanctuary | `backlog` | Codex → Claude Code | Prompt §2 of the prompts doc. Raw: `assets/source/sanctuary/town/sanctuary_seers_tower_tier<1-5>.png`. Wire into `assets/data/sanctuary_buildings/seers_tower.tres` `tier_textures`. |
+
 ## Known layout gaps (from `production/Issues.PNG` / `UI Changes.PNG`)
 
 | Gap | Status | Notes |

@@ -1,5 +1,21 @@
 keys,en
 SANCTUARY_TAB_OVERVIEW,Overview
+SANCTUARY_BUILDING_PROMPT,"Your sanctuary grows with you. Hover or select a building to see its progress, click to go there."
+SANCTUARY_BUILDING_INFO,%s · Tier %d/5 · %d%% · %s
+SANCTUARY_BUILDING_CASTLE,Castle
+SANCTUARY_BUILDING_CASTLE_HINT,grows with everything you build
+SANCTUARY_BUILDING_ARMOURY,Armoury
+SANCTUARY_BUILDING_ARMOURY_HINT,grows with inventory expansions and recipes discovered
+SANCTUARY_BUILDING_MENAGERIE,Menagerie
+SANCTUARY_BUILDING_MENAGERIE_HINT,grows with the creatures you keep and their variety
+SANCTUARY_BUILDING_KEEP,Keep
+SANCTUARY_BUILDING_KEEP_HINT,grows with techs unlocked and structures built
+SANCTUARY_BUILDING_BLACKSMITH,Blacksmith
+SANCTUARY_BUILDING_BLACKSMITH_HINT,grows with equipment recipes discovered and runes known
+SANCTUARY_BUILDING_TRAINING_HALL,Training Hall
+SANCTUARY_BUILDING_TRAINING_HALL_HINT,grows with skill tree nodes and skills learned
+SANCTUARY_BUILDING_SEERS_TOWER,Seer's Tower
+SANCTUARY_BUILDING_SEERS_TOWER_HINT,grows with tarot cards unlocked and their mastery
 SANCTUARY_TAB_INVENTORY_CRAFTING,Inventory & Crafting
 SANCTUARY_TAB_MENAGERIE,Menagerie
 SANCTUARY_TAB_DEFENSE_BUILDING,Defense Building
