@@ -38,7 +38,10 @@ extends Control
 ## same shared pool per inventory.md Rule 5) -- this component is purely an
 ## additional, friendlier visualization of the exact same underlying state.
 ##
-## Read-only visualization only -- no click-to-unequip. Inventory.unequip_
+## Originally read-only (no click-to-unequip) for the data-safety reason below;
+## 2026-10-07: double-click now REQUESTS an unequip via slot_unequip_requested,
+## and the screen performs it with Inventory.unequip_to_bag(), an intact move
+## that keeps stat_overrides/runes (unequip_item() is still never called). Inventory.unequip_
 ## item() wipes InventorySlot.stat_overrides as part of clearing the slot
 ## (inventory.gd line ~305) and returns bool, not the cleared state, before
 ## the caller gets any chance to preserve it -- there is no established,
@@ -82,6 +85,10 @@ const SLOT_LABEL: Dictionary[String, String] = {
 ## grid, whose focus events drive the same info panel.
 signal slot_info_requested(slot_name: String)
 signal slot_info_cleared()
+## Double-click on an equipped frame (2026-10-07). The paperdoll stays
+## data-read-only: the owning screen performs the intact move
+## (Inventory.unequip_to_bag), never this component.
+signal slot_unequip_requested(slot_name: String)
 
 var _slot_frames: Dictionary[String, Panel] = {}
 var _slot_icons: Dictionary[String, TextureRect] = {}
@@ -200,6 +207,7 @@ func _build_slot_frame(slot_name: String, tile_size: Vector2) -> Panel:
 	frame.add_theme_stylebox_override("panel", slot_style)
 	frame.mouse_filter = Control.MOUSE_FILTER_PASS  ## lets tooltip_text register on hover
 	frame.mouse_entered.connect(_on_frame_mouse_entered.bind(slot_name))
+	frame.gui_input.connect(_on_frame_gui_input.bind(slot_name))
 	frame.mouse_exited.connect(_on_frame_mouse_exited)
 
 	var icon := TextureRect.new()
@@ -283,3 +291,9 @@ func _refresh_slot(slot_name: String) -> void:
 		icon.visible = false
 
 	frame.tooltip_text = definition.display_name if definition != null else item_id
+
+
+func _on_frame_gui_input(event: InputEvent, slot_name: String) -> void:
+	var mb: InputEventMouseButton = event as InputEventMouseButton
+	if mb != null and mb.double_click and mb.pressed and mb.button_index == MOUSE_BUTTON_LEFT:
+		slot_unequip_requested.emit(slot_name)

@@ -294,6 +294,7 @@ func equip_item(slot_name: String, definition: ItemDefinitionResource, stat_over
 	if slot.item_id != &"":
 		return false
 	slot.item_id = definition.item_id
+	slot.quantity = 1  # a unique item is one item (was left 0, so a later unequip hid it from the grid)
 	slot.instance_id = _next_instance_id
 	_next_instance_id += 1
 	slot.stat_overrides = stat_overrides.duplicate()
@@ -323,6 +324,122 @@ func unequip_item(slot_name: String) -> bool:
 	slot.locked = true
 	GEventBus.equipment_slot_changed.emit(slot_name, "", previous_item_id)
 	return true
+
+
+## Double-click equip/unequip (2026-10-07): equip_item()/unequip_item() create
+## and destroy an occupant rather than MOVING one (rolled stat_overrides, runes
+## and the instance_id would be duplicated or lost), so the inventory UI uses
+## these two moves instead. Both carry the whole InventorySlot across intact.
+
+## Moves the equipment item in bag slot `slot_index` into its equipment slot:
+## the first empty slot of its category, otherwise the first one, swapping the
+## previous occupant back into `slot_index` (an exact swap, so it never needs
+## free space). Rejected (false, no change) for a non-bag index, an empty or
+## stackable slot, a locked (installed) item, or a non-equipment item.
+## Emits equipment_slot_changed. Example: `GInventory.equip_from_slot(3)`
+func equip_from_slot(slot_index: int) -> bool:
+	if slot_index < 0 or slot_index >= _slots.size() or is_equipment_slot_index(slot_index):
+		return false
+	var source: InventorySlot = _slots[slot_index]
+	if source == null or source.item_id == &"" or source.instance_id < 0 or source.locked:
+		return false  # empty bag slots are null by convention (is_slot_empty)
+	var definition: ItemDefinitionResource = GGameDataRegistry.get_item_definition(source.item_id)
+	if definition == null or definition.equipment_category.is_empty():
+		return false
+	var target_name: String = ""
+	for slot_name: String in EQUIPMENT_SLOT_NAMES:
+		if EQUIPMENT_SLOT_CATEGORY[slot_name] != definition.equipment_category:
+			continue
+		if target_name.is_empty():
+			target_name = slot_name
+		if _slots[EQUIPMENT_SLOT_INDEX[slot_name]].item_id == &"":
+			target_name = slot_name
+			break
+	if target_name.is_empty():
+		return false
+	var target: InventorySlot = _slots[EQUIPMENT_SLOT_INDEX[target_name]]
+	var previous_item_id: String = String(target.item_id)
+	_swap_slot_contents(source, target)
+	target.locked = true  # equipment slots are always locked placeholders
+	if previous_item_id.is_empty():
+		_slots[slot_index] = null  # nothing came back: the bag slot is empty again
+	else:
+		source.locked = false  # the swapped-out item is ordinary bag storage now
+	GEventBus.equipment_slot_changed.emit(target_name, String(target.item_id), previous_item_id)
+	return true
+
+
+## Moves the item equipped in `slot_name` into the first empty (null) bag slot,
+## intact. Returns that bag index, or -1 (no change) for an unknown/empty
+## equipment slot or a full bag. Emits equipment_slot_changed.
+## Example: `GInventory.unequip_to_bag("helmet")`
+func unequip_to_bag(slot_name: String) -> int:
+	if not EQUIPMENT_SLOT_INDEX.has(slot_name):
+		return -1
+	var source: InventorySlot = _slots[EQUIPMENT_SLOT_INDEX[slot_name]]
+	if source.item_id == &"":
+		return -1
+	for i: int in range(_slots.size()):
+		if is_equipment_slot_index(i) or _slots[i] != null:
+			continue
+		var previous_item_id: String = String(source.item_id)
+		var bag_slot := InventorySlot.new()
+		_swap_slot_contents(source, bag_slot)  # source is left as an empty placeholder
+		bag_slot.locked = false
+		source.locked = true
+		_slots[i] = bag_slot
+		GEventBus.equipment_slot_changed.emit(slot_name, "", previous_item_id)
+		return i
+	return -1
+
+
+## True for the 10 fixed Hero equipment slot indices.
+func is_equipment_slot_index(slot_index: int) -> bool:
+	return EQUIPMENT_SLOT_INDEX.values().has(slot_index)
+
+
+## Equipment slot name for an equipment slot index, or "".
+func get_equipment_slot_name(slot_index: int) -> String:
+	for slot_name: String in EQUIPMENT_SLOT_INDEX:
+		if EQUIPMENT_SLOT_INDEX[slot_name] == slot_index:
+			return slot_name
+	return ""
+
+
+## Exchanges every piece of item state between two slots (not `locked`, which
+## the caller sets per slot role).
+func _swap_slot_contents(a: InventorySlot, b: InventorySlot) -> void:
+	var item_id: StringName = a.item_id
+	var quantity: int = a.quantity
+	var instance_id: int = a.instance_id
+	var stat_overrides: Dictionary[StringName, float] = a.stat_overrides
+	var damaged: bool = a.damaged
+	var rune_slot_count: int = a.rune_slot_count
+	var imbued_runes: Array[StringName] = a.imbued_runes
+	a.item_id = b.item_id
+	a.quantity = b.quantity
+	a.instance_id = b.instance_id
+	a.stat_overrides = b.stat_overrides
+	a.damaged = b.damaged
+	a.rune_slot_count = b.rune_slot_count
+	a.imbued_runes = b.imbued_runes
+	_normalize_unique_quantity(a)
+	b.item_id = item_id
+	b.quantity = quantity
+	b.instance_id = instance_id
+	b.stat_overrides = stat_overrides
+	b.damaged = damaged
+	b.rune_slot_count = rune_slot_count
+	b.imbued_runes = imbued_runes
+	_normalize_unique_quantity(b)
+
+
+## A unique (instance_id >= 0) item is exactly one item. Items equipped through
+## equip_item() before 2026-10-07 carry quantity 0, which the inventory grid
+## treats as empty; moving them out repairs that.
+func _normalize_unique_quantity(slot: InventorySlot) -> void:
+	if slot.instance_id >= 0 and slot.item_id != &"":
+		slot.quantity = 1
 
 
 ## Resolves an item's tab membership from its item_type (AC-7, Story 002). Pure
@@ -1299,6 +1416,11 @@ func restore_save_data(data: Dictionary) -> bool:
 		restored_slots[i] = slot
 
 	_slots = restored_slots
+	# Self-repair (2026-10-07): unique items saved with quantity 0 (equip_item()
+	# never set it before) would otherwise be invisible in the inventory grid.
+	for slot: InventorySlot in _slots:
+		if slot != null:
+			_normalize_unique_quantity(slot)
 	_next_instance_id = next_id_raw as int
 	_slot_tier = slot_tier
 	return true

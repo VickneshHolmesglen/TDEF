@@ -369,6 +369,7 @@ func _ready() -> void:
 	GEventBus.recipe_discovered.connect(_on_recipe_discovered)
 	GEventBus.item_added.connect(_on_inventory_item_changed)
 	GEventBus.item_removed.connect(_on_inventory_item_changed)
+	GEventBus.equipment_slot_changed.connect(_on_equipment_slot_changed_refresh)
 	GEventBus.component_crafted.connect(_on_component_crafted)
 	GEventBus.tower_assembled.connect(_on_tower_assembled)
 	GEventBus.component_repaired.connect(_on_component_repaired)
@@ -396,6 +397,8 @@ func disconnect_own_subscriptions() -> void:
 		GEventBus.item_added.disconnect(_on_inventory_item_changed)
 	if GEventBus.item_removed.is_connected(_on_inventory_item_changed):
 		GEventBus.item_removed.disconnect(_on_inventory_item_changed)
+	if GEventBus.equipment_slot_changed.is_connected(_on_equipment_slot_changed_refresh):
+		GEventBus.equipment_slot_changed.disconnect(_on_equipment_slot_changed_refresh)
 	if GEventBus.component_crafted.is_connected(_on_component_crafted):
 		GEventBus.component_crafted.disconnect(_on_component_crafted)
 	if GEventBus.tower_assembled.is_connected(_on_tower_assembled):
@@ -439,6 +442,7 @@ func _build_equipment_info_panel() -> void:
 	$MainLayout/LeftPanel/EquipmentRow.add_child(_info_panel)
 	_equipment_paperdoll.connect(&"slot_info_requested", _on_paperdoll_slot_info_requested)
 	_equipment_paperdoll.connect(&"slot_info_cleared", _on_slot_info_cleared)
+	_equipment_paperdoll.connect(&"slot_unequip_requested", _on_paperdoll_unequip_requested)
 
 
 func _set_equipment_widgets_visible(shown: bool) -> void:
@@ -884,6 +888,7 @@ func _create_slot_button(index: int) -> Button:
 
 	# Equipment info panel (equipment-display spec §3.4): hover AND focus both
 	# drive it, so K/M and gamepad share one path.
+	button.gui_input.connect(_on_slot_gui_input.bind(index))
 	button.mouse_entered.connect(_on_slot_info_requested.bind(index))
 	button.mouse_exited.connect(_on_slot_info_cleared)
 	button.focus_entered.connect(_on_slot_info_requested.bind(index))
@@ -1022,6 +1027,49 @@ func _on_recipe_discovered(_recipe_id: String, _recipe_category: String) -> void
 ## correct regardless of source, and re-checking craftability on every
 ## material change is exactly Rule 4's own "craftability flickers on and off
 ## with the player's current material stock" requirement.
+## Double-click equip/unequip (2026-10-07): a double-click on an equipped slot
+## moves the item back to the bag; on a bag item with an equipment category it
+## equips it (swapping with whatever held that slot). Both use Inventory's
+## intact-move operations, never equip_item()/unequip_item(), which would
+## duplicate or destroy the item's rolled stats and runes.
+func _on_slot_gui_input(event: InputEvent, index: int) -> void:
+	var mb: InputEventMouseButton = event as InputEventMouseButton
+	if mb == null or not mb.double_click or not mb.pressed or mb.button_index != MOUSE_BUTTON_LEFT:
+		return
+	toggle_equip_at(index)
+
+
+## Equips or unequips the item at grid `index`. Returns true when something
+## moved. A full bag (nowhere to put an unequipped item) plays the denial cue.
+func toggle_equip_at(index: int) -> bool:
+	if inventory == null:
+		return false
+	if inventory.is_equipment_slot_index(index):
+		var slot_name: String = inventory.get_equipment_slot_name(index)
+		if inventory.get_equipped_item(slot_name).is_empty():
+			return false
+		if inventory.unequip_to_bag(slot_name) == -1:
+			_play_denied_cue()
+			return false
+		return true
+	return inventory.equip_from_slot(index)
+
+
+func _play_denied_cue() -> void:
+	var audio: Node = get_node_or_null(^"/root/GAudioSystem")
+	if audio != null and audio.get(&"cue_dispatcher") != null:
+		audio.cue_dispatcher.dispatch_cue(UiAudioBinder.CUE_DENIED)
+
+
+func _on_paperdoll_unequip_requested(slot_name: String) -> void:
+	if inventory != null and inventory.EQUIPMENT_SLOT_INDEX.has(slot_name):
+		toggle_equip_at(inventory.EQUIPMENT_SLOT_INDEX[slot_name])
+
+
+func _on_equipment_slot_changed_refresh(_slot: String, _new_item_id: String, _previous_item_id: String) -> void:
+	_refresh_all_slot_visuals()
+
+
 func _on_inventory_item_changed(_item_id: String, _item_type: String, _quantity: int) -> void:
 	_refresh_crafting_panel()
 	_refresh_all_slot_visuals()

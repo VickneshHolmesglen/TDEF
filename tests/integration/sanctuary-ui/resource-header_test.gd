@@ -79,5 +79,13 @@ func test_gold_is_not_displayed_or_tracked() -> void:
 func test_materials_text_updates_and_scale_pop_still_works() -> void:
 	GEventBus.materials_earned.emit("wood", 4, &"test_source")
 
-	var materials_label: Label = _header.get_node("ResourceRow/MaterialsLabel")
+	var materials_label: Label = _header.get_node("MaterialsLabel")
 	assert_str(materials_label.text).contains("wood 4")
+
+
+## 2026-10-07: the readout no longer shares the 320 px plaque with the title
+## (only one material fit); it sits in the strip to the plaque's right.
+func test_materials_readout_sits_right_of_the_plaque_not_inside_it() -> void:
+	var materials_label: Label = _header.get_node("MaterialsLabel")
+	assert_object(_header.get_node_or_null("ResourceRow/MaterialsLabel")).is_null()
+	assert_float(materials_label.position.x).is_greater_equal(_header.size.x)

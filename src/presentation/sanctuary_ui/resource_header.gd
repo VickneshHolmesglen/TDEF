@@ -67,7 +67,11 @@ func _ready() -> void:
 	_title_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 
 	_materials_label.name = &"MaterialsLabel"
-	_row.add_child(_materials_label)
+	# 2026-10-07 (player-reported): inside the 320 px title plaque there was only
+	# room for one material ("Goblin Hide 219 · ..."), the rest ellipsized away.
+	# The plaque now carries just its title, and the readout sits in the empty
+	# top strip to the plaque's right, sized to the window (see _layout_materials()).
+	add_child(_materials_label)
 	_materials_label.add_theme_color_override("font_color", ShellChromeStyle.UI_PARCHMENT)
 	_materials_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	# Pre-existing overflow, only exposed visually now that the Chrome
@@ -83,7 +87,10 @@ func _ready() -> void:
 	_materials_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	_materials_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_materials_label.clip_contents = true
-	_materials_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_materials_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	resized.connect(_layout_materials)
+	get_viewport().size_changed.connect(_layout_materials)
+	_layout_materials()
 
 	_seed_from_inventory()
 	_refresh_label()
@@ -93,7 +100,21 @@ func _ready() -> void:
 	GEventBus.item_removed.connect(_on_inventory_changed)
 
 
+## Gap between the plaque's right edge and the materials readout.
+const MATERIALS_GAP: float = 16.0
+
+
+## Places the materials readout right of the plaque, spanning the rest of the
+## window's width (the header Control itself is only the plaque's 320 px).
+func _layout_materials() -> void:
+	var available: float = get_viewport_rect().size.x - global_position.x - size.x - MATERIALS_GAP * 2.0
+	_materials_label.position = Vector2(size.x + MATERIALS_GAP, 0.0)
+	_materials_label.size = Vector2(maxf(available, 0.0), size.y)
+
+
 func _exit_tree() -> void:
+	if get_viewport() != null and get_viewport().size_changed.is_connected(_layout_materials):
+		get_viewport().size_changed.disconnect(_layout_materials)
 	GEventBus.materials_earned.disconnect(_on_materials_earned)
 	GEventBus.materials_spent.disconnect(_on_materials_spent)
 	if GEventBus.item_added.is_connected(_on_inventory_changed):
