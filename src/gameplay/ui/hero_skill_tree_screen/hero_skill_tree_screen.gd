@@ -164,7 +164,9 @@ func _build_node_row(archetype: String, node_index: int) -> Control:
 	var button := Button.new()
 	button.name = "Node_%s_%d" % [archetype, node_index]
 	button.focus_mode = Control.FOCUS_ALL
-	button.clip_text = true
+	# Wrap instead of clip (2026-10-07): "Choice III (Capstone) [LOCKED]" was cut
+	# off at the column edge; wrapping also covers longer translations and 150% UI scale.
+	button.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	button.custom_minimum_size.y = 36.0
 	button.text = _node_button_text(archetype, node_index, node_state, unlocked, is_choice)
 	button.disabled = not (purchasable or (is_choice and _expanded_choice_key == "%s:%d" % [archetype, node_index]))
