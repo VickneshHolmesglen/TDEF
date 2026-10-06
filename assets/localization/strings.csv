@@ -87,6 +87,10 @@ OUTCOME_BUTTON_RETRY,Retry
 OUTCOME_BUTTON_SANCTUARY,Return to Sanctuary
 HUD_TOWER_HP,Tower %d: %d/%d
 HUD_HERO_HP,Hero HP: %d/%d
+HUD_EFFECT_SHIELD,%s: shield %d (%ds)
+HUD_EFFECT_STACKS,%s x%d (%ds)
+HUD_EFFECT_TIMED,%s (%ds)
+HUD_EFFECT_STATE,%s
 HUD_BOSS_BAR,BOSS %s: %d/%d
 HUD_BREACHES,Breaches: %d
 HUD_WAVE_PROGRESS,Wave: %d/%d

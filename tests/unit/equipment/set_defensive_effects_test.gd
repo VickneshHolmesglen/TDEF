@@ -243,3 +243,55 @@ func test_validation_rejects_fractions_out_of_range_and_max_hp_in_low_hp_state()
 	var bad_state: Dictionary = {&"name": "N", &"type": &"low_hp_state",
 		&"params": {&"hp_fraction": 0.3, &"stats": {&"max_hp": 0.2}}}
 	assert_array(_set_with(bad_state).validate()).is_not_empty()
+
+
+# ---------------------------------------------------------------------------
+# HUD read model and line format (set-effect HUD indicator)
+# ---------------------------------------------------------------------------
+
+func _kinds() -> Dictionary:
+	var out: Dictionary = {}
+	for entry: Dictionary in _ctl.get_hud_entries():
+		out[entry[&"name"]] = entry
+	return out
+
+
+func test_hud_entries_list_only_effects_that_are_visibly_on() -> void:
+	var frenzy: Dictionary = _effect("set_frenzy:4", &"on_kill_stack_buff",
+		{&"stats": {&"physical_attack": 0.03}, &"max_stacks": 10, &"duration": 6.0})
+	frenzy[&"name"] = "Frenzy"
+	var shield: Dictionary = _shield_effect()
+	shield[&"name"] = "Hide"
+	var stand: Dictionary = _last_stand()
+	stand[&"name"] = "Stand"
+	_apply([frenzy, shield, stand, _heal_effect()])
+	assert_array(_ctl.get_hud_entries()).is_empty()
+
+	_ctl._on_monster_died(_kill(10.0))
+	_ctl._on_monster_died(_kill(10.0))
+	_ctl._on_hero_damage_taken(40, 0)
+	await await_idle_frame()
+	_ctl._on_hero_health_changed(100.0, 600.0)
+	var shown: Dictionary = _kinds()
+
+	assert_int(shown.size()).is_equal(3)
+	assert_str(String(shown["Frenzy"][&"kind"])).is_equal("stacks")
+	assert_int(int(shown["Frenzy"][&"stacks"])).is_equal(2)
+	assert_str(String(shown["Hide"][&"kind"])).is_equal("shield")
+	assert_int(int(shown["Hide"][&"amount"])).is_equal(48)
+	assert_str(String(shown["Stand"][&"kind"])).is_equal("state")
+
+
+func test_hud_entry_disappears_when_the_shield_is_used_up() -> void:
+	_apply([_shield_effect()])
+	_ctl._on_hero_damage_taken(40, 0)
+	await await_idle_frame()
+	_hero._on_hero_damage_taken(100, 0)
+	assert_array(_ctl.get_hud_entries()).is_empty()
+
+
+func test_hud_line_format_per_kind() -> void:
+	assert_str(MissionHud.format_effect_entry({&"name": "Iron Hide", &"kind": "shield", &"amount": 76, &"remaining": 3.2})).is_equal("Iron Hide: shield 76 (4s)")
+	assert_str(MissionHud.format_effect_entry({&"name": "Frenzy", &"kind": "stacks", &"stacks": 3, &"remaining": 5.0})).is_equal("Frenzy x3 (5s)")
+	assert_str(MissionHud.format_effect_entry({&"name": "Juggernaut", &"kind": "timed", &"remaining": 9.1})).is_equal("Juggernaut (10s)")
+	assert_str(MissionHud.format_effect_entry({&"name": "Last Stand", &"kind": "state", &"remaining": -1.0})).is_equal("Last Stand")

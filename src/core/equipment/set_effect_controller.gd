@@ -7,6 +7,9 @@ extends Node
 ## here; Hero only holds the resulting modifiers (Hero.set_effect_modifier).
 ## Every subscription is disconnected in _exit_tree() (ADR-0001 Rule 6).
 
+## The HUD finds this node through this group to read get_hud_entries().
+const GROUP_NAME: StringName = &"set_effect_controller"
+
 var _hero: Hero = null
 
 ## Active effects by key (&"<set_id>:<threshold>").
@@ -36,6 +39,7 @@ func _ready() -> void:
 	if _hero == null:
 		push_error("[SetEffectController] must be a direct child of Hero")
 		return
+	add_to_group(GROUP_NAME)
 	for pair: Array in _subscriptions():
 		var sig: Signal = pair[0]
 		var handler: Callable = pair[1]
@@ -348,3 +352,46 @@ func _refresh_low_hp_state(key: StringName, current_health: float, max_health: f
 		_hero.set_effect_modifier(key, params[&"stats"])
 	else:
 		_hero.clear_effect_modifier(key)
+
+
+# ---------------------------------------------------------------------------
+# HUD read model (set-effect HUD indicator, 2026-10-06)
+# ---------------------------------------------------------------------------
+
+## What is visibly "on" right now, for the Mission HUD's effect list. Read-only;
+## the HUD polls it, so the controller still emits no EventBus signals. One entry
+## per live effect: {name, kind, remaining, stacks, amount}. kind is "shield",
+## "stacks", "timed" or "state"; remaining is seconds (-1 for untimed states).
+## Passive procs (on_crit_status, on_kill_heal) have nothing to show between
+## procs and are omitted.
+func get_hud_entries() -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	if _hero == null or not is_instance_valid(_hero):
+		return out
+	for key: StringName in _active:
+		var effect: Dictionary = _active[key]
+		var entry: Dictionary = {&"name": String(effect[&"name"]), &"remaining": float(_timers.get(key, -1.0)),
+			&"stacks": 0, &"amount": 0}
+		match StringName(effect[&"type"]):
+			&"on_hurt_shield":
+				entry[&"amount"] = _hero.get_shield(key)
+				if int(entry[&"amount"]) <= 0:
+					continue
+				entry[&"kind"] = "shield"
+			&"on_kill_stack_buff":
+				entry[&"stacks"] = int(_stacks.get(key, 0))
+				if int(entry[&"stacks"]) <= 0:
+					continue
+				entry[&"kind"] = "stacks"
+			&"on_wave_start_buff", &"on_skill_cast_buff":
+				if not _timers.has(key):
+					continue
+				entry[&"kind"] = "timed"
+			&"phase_state", &"low_hp_state":
+				if not _hero.has_effect_modifier(key):
+					continue
+				entry[&"kind"] = "state"
+			_:
+				continue
+		out.append(entry)
+	return out

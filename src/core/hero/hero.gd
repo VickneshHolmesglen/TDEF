@@ -551,6 +551,11 @@ func set_effect_modifier(source_key: StringName, stat_additive: Dictionary) -> v
 	_refold_effect_modifiers()
 
 
+## True while a modifier is set under `source_key`. For the HUD effect list.
+func has_effect_modifier(source_key: StringName) -> bool:
+	return _effect_modifiers.has(source_key)
+
+
 func clear_effect_modifier(source_key: StringName) -> void:
 	if _effect_modifiers.erase(source_key):
 		_refold_effect_modifiers()
@@ -583,6 +588,11 @@ func set_shield(source_key: StringName, amount: int) -> void:
 
 func clear_shield(source_key: StringName) -> void:
 	_shields.erase(source_key)
+
+
+## Remaining shield under `source_key` (0 when none). For the HUD effect list.
+func get_shield(source_key: StringName) -> int:
+	return _shields.get(source_key, 0)
 
 
 func clear_all_shields() -> void:

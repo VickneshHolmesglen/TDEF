@@ -157,6 +157,18 @@ var _boss_telegraph_cell: Vector2i = Vector2i(-1, -1)
 ## Rule-4 mutation handler for the rest of this instance's life.
 var _terminal: bool = false
 
+## Set-effect indicator (2026-10-06): a list under the Hero HP line showing
+## active set-effect shields and buffs. Built in code so both mission scenes
+## (the_gap.tscn, MissionScene.tscn) get it without editing either scene. It
+## polls SetEffectController.get_hud_entries() a few times a second instead of
+## listening for a signal, so the controller stays signal-free.
+const EFFECT_POLL_SECONDS: float = 0.25
+const EFFECT_COLOR_SHIELD: Color = Color(0.55, 0.82, 1.0)
+const EFFECT_COLOR_BUFF: Color = Color(1.0, 0.85, 0.45)
+var _effect_list: VBoxContainer = null
+var _effect_poll: Timer = null
+var _effect_signature: String = ""
+
 ## Story 003 (Rules 9-11, PC-1): outer-root-owned so it survives every
 ## Planning Cluster re-instantiation cycle — handed to whichever instance is
 ## currently live (or the next one spawned, if none is live yet) so
@@ -233,6 +245,7 @@ func _ready() -> void:
 	# too.
 	_combat_cluster.visible = false
 	GEventBus.mission_launched.connect(_on_mission_launched_show_combat_cluster)
+	_build_effect_list()
 
 
 func _exit_tree() -> void:
@@ -655,6 +668,66 @@ func _on_hero_health_changed(current_health: float, max_health: float) -> void:
 	if _terminal:
 		return
 	_hero_hp_label.text = tr("HUD_HERO_HP") % [roundi(current_health), roundi(max_health)]
+
+
+## Places the effect list directly under the Hero HP line and starts polling.
+func _build_effect_list() -> void:
+	_effect_list = VBoxContainer.new()
+	_effect_list.name = "SetEffectList"
+	_effect_list.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_effect_list.add_theme_constant_override("separation", 0)
+	_effect_list.visible = false
+	var chrome: Node = _hero_hp_label.get_parent()
+	chrome.add_child(_effect_list)
+	chrome.move_child(_effect_list, _hero_hp_label.get_index() + 1)
+	_effect_poll = Timer.new()
+	_effect_poll.name = "SetEffectPoll"
+	_effect_poll.wait_time = EFFECT_POLL_SECONDS
+	_effect_poll.timeout.connect(_refresh_effect_list)
+	add_child(_effect_poll)
+	_effect_poll.start()
+
+
+## One HUD line for a SetEffectController.get_hud_entries() entry.
+## Example: {name "Iron Hide", kind "shield", amount 76, remaining 3.2} -> "Iron Hide: shield 76 (4s)"
+static func format_effect_entry(entry: Dictionary) -> String:
+	var seconds: int = ceili(float(entry.get(&"remaining", -1.0)))
+	var effect_name: String = String(entry.get(&"name", ""))
+	match String(entry.get(&"kind", "")):
+		"shield":
+			return TranslationServer.translate("HUD_EFFECT_SHIELD") % [effect_name, int(entry[&"amount"]), seconds]
+		"stacks":
+			return TranslationServer.translate("HUD_EFFECT_STACKS") % [effect_name, int(entry[&"stacks"]), seconds]
+		"timed":
+			return TranslationServer.translate("HUD_EFFECT_TIMED") % [effect_name, seconds]
+	return TranslationServer.translate("HUD_EFFECT_STATE") % effect_name
+
+
+## Rebuilds the list only when its text changes (most polls change nothing).
+func _refresh_effect_list() -> void:
+	var entries: Array[Dictionary] = []
+	var controller: Node = get_tree().get_first_node_in_group(SetEffectController.GROUP_NAME)
+	if controller != null and not _terminal:
+		entries = (controller as SetEffectController).get_hud_entries()
+	var lines: Array[String] = []
+	for entry: Dictionary in entries:
+		lines.append(format_effect_entry(entry))
+	var signature: String = "
+".join(lines)
+	if signature == _effect_signature:
+		return
+	_effect_signature = signature
+	for child: Node in _effect_list.get_children():
+		_effect_list.remove_child(child)
+		child.queue_free()
+	for i: int in entries.size():
+		var label := Label.new()
+		label.text = lines[i]
+		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		label.add_theme_color_override("font_color",
+				EFFECT_COLOR_SHIELD if String(entries[i][&"kind"]) == "shield" else EFFECT_COLOR_BUFF)
+		_effect_list.add_child(label)
+	_effect_list.visible = not entries.is_empty()
 
 
 ## Builds the 4 skill-slot icon tiles (Pattern 12): a base ColorRect face
