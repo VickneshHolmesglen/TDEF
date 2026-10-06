@@ -39,3 +39,6 @@
 	  "Heartfelt Battle" by request
 	  "Determined Pursuit (epic orchestra loop)" by Emma_MA
 	Credit is not required; see SOURCES.md for URLs and processing.
+
+	Ambient beds (added 2026-10-07): "Wind Whoosh Loop" by SketchMan3 (OpenGameArt.org, CC0), and
+	Kenney Impact Sounds / RPG Audio (CC0, above). Credit is not required; see SOURCES.md.

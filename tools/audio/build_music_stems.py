@@ -1,6 +1,6 @@
 """Builds the four Music Energy stems from CC0 OpenGameArt loops (2026-10-07).
 
-Replaces the synthesized placeholder stems (tools/audio/synth_stems.sh) in
+Replaces the synthesized placeholder stems (tools/audio/synth_stems.sh, removed 2026-10-07) in
 assets/audio/music/. For each stem: download the CC0 source, decode to 48 kHz
 stereo, make the loop seam click-free with a short end->start crossfade,
 loudness-normalize to TARGET_LUFS, and encode Ogg Vorbis (~q5). Looping itself

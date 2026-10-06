@@ -1,6 +1,7 @@
 # Music and Ambient Stems (Playback + Synthesized Placeholder Content)
 
 **Date**: 2026-09-20
+**Content update (2026-10-07)**: the §3.4 synthesized placeholder content is fully replaced by real CC0 audio (music: tools/audio/build_music_stems.py; ambient: tools/audio/build_ambient_beds.py; sources in assets/audio/sfx/SOURCES.md) and synth_stems.sh is removed. The playback design below is unchanged.
 **Status**: Approved by user (design presented and approved in chat), pending spec review and implementation plan
 **Scope**: Give `MusicAmbientController` real audio playback (it is currently a pure state machine with no `AudioStreamPlayer` at all) and author placeholder stems for it. Implements the playback half of `design/gdd/audio-system.md` Core Rule 2 (state-driven Music and Ambient) and follows `2026-09-20-audio-cue-list-design.md` §9 follow-up #1. Content is SYNTHESIZED PLACEHOLDERS generated with ffmpeg (user decision, 2026-09-20: Kenney has no music-loop pack, and picking real music without listening risks setting the wrong mood); real music later replaces them by editing one data file, with no code change.
 
