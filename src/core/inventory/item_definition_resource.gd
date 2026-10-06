@@ -119,7 +119,8 @@ const VALID_REQUIRES_DAMAGE_TYPES: Array[String] = ["physical", "fire", "ice", "
 ## Mirrors HeroSkillEffectResource.VALID_SECONDARY_EFFECTS (excluding
 ## "none" for the same reason "" is excluded from damage types above).
 const VALID_REQUIRES_SECONDARY_EFFECTS: Array[String] = [
-	"slow", "knockback", "armor_shred", "dot_burn", "dot_poison", "chain", "fork", "stun", "lifesteal_bonus",
+	"slow", "knockback", "armor_shred", "dot_burn", "dot_poison", "dot_bleed", "dot_haemorrhage",
+	"chain", "fork", "stun", "lifesteal_bonus",
 ]
 
 

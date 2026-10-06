@@ -35,9 +35,18 @@ extends Resource
 ## comment for why this duplicates SkillResource's own field of the same name.
 @export var skill_power_coefficient: float = 1.0
 
-## slow | knockback | armor_shred | dot_burn | dot_poison | chain | fork |
-## stun | lifesteal_bonus | none
+## slow | knockback | armor_shred | dot_burn | dot_poison | dot_bleed |
+## dot_haemorrhage | chain | fork | stun | lifesteal_bonus | none
 @export var secondary_effect: String = "none"
+
+## Bleed/haemorrhage spec (2026-10-06): only read when secondary_effect is
+## dot_bleed or dot_haemorrhage (applied on hit by MonsterManager). bleed_value
+## is the fraction of the target's HP each stack deals over bleed_duration;
+## bleed_stacks is how many stacks one hit adds (capped per monster at
+## MonsterManager.BLEED_MAX_STACKS). dot_haemorrhage also ruptures at max stacks.
+@export var bleed_value: float = 0.0
+@export var bleed_duration: float = 0.0
+@export var bleed_stacks: int = 0
 
 ## Two independent tag families share this one array (both consumed by
 ## hero-skill-build.md Rule 13's typed passive-slot skill-modifier
@@ -56,7 +65,8 @@ const VALID_DELIVERIES: Array[String] = [
 	"melee_arc", "projectile_pierce", "projectile_spread", "beam", "aoe_zone", "self_buff", "totem", "channel",
 ]
 const VALID_SECONDARY_EFFECTS: Array[String] = [
-	"slow", "knockback", "armor_shred", "dot_burn", "dot_poison", "chain", "fork", "stun", "lifesteal_bonus", "none",
+	"slow", "knockback", "armor_shred", "dot_burn", "dot_poison", "dot_bleed", "dot_haemorrhage",
+	"chain", "fork", "stun", "lifesteal_bonus", "none",
 ]
 ## Damage-classification tags (2026-09-04, player-directed reclassification
 ## pass — `docs/tech-debt-register.md` TD-hero-skill-003 has the full history).
@@ -101,6 +111,13 @@ func validate() -> Array[String]:
 		errors.append("skill_power_coefficient must be in [0.5, 3.0] (got %.2f)" % skill_power_coefficient)
 	if not VALID_SECONDARY_EFFECTS.has(secondary_effect):
 		errors.append("secondary_effect must be one of %s (got '%s')" % [VALID_SECONDARY_EFFECTS, secondary_effect])
+	if secondary_effect == "dot_bleed" or secondary_effect == "dot_haemorrhage":
+		if bleed_value <= 0.0 or bleed_value > 1.0:
+			errors.append("bleed_value must be in (0, 1] for %s (got %s)" % [secondary_effect, bleed_value])
+		if bleed_duration <= 0.0:
+			errors.append("bleed_duration must be > 0 for %s (got %s)" % [secondary_effect, bleed_duration])
+		if bleed_stacks < 1:
+			errors.append("bleed_stacks must be >= 1 for %s (got %d)" % [secondary_effect, bleed_stacks])
 	for tag: String in tags:
 		if not VALID_TAGS.has(tag):
 			errors.append("tags entry '%s' is not one of %s" % [tag, VALID_TAGS])

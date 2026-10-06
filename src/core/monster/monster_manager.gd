@@ -64,6 +64,18 @@ const GROUP_NAME: StringName = &"monster_manager"
 ## isn't" is not yet a real distinction, see design/gdd/damage-status.md's
 ## Phase 1 addendum.
 const RECOGNIZED_DOT_EFFECTS: Array[String] = ["burn", "poison", "bleed"]
+
+## Bleed/haemorrhage spec (2026-10-06, damage-status.md amendment): bleed is
+## the one DoT that stacks in intensity -- one instance per monster, up to
+## this many stacks, each stack adding the same per-stack tick damage.
+const BLEED_MAX_STACKS: int = 5
+## Haemorrhage rupture: when a haemorrhage hit leaves a monster at
+## BLEED_MAX_STACKS, the bleed's remaining damage x this lands instantly and
+## the bleed ends.
+const HAEMORRHAGE_RUPTURE_MULTIPLIER: float = 1.5
+## Hero skill secondary_effect values that apply bleed (HeroSkillEffectResource).
+const SKILL_BLEED_EFFECT: String = "dot_bleed"
+const SKILL_HAEMORRHAGE_EFFECT: String = "dot_haemorrhage"
 ## damage-status.md Formula D6: the only effect_type value Monster System
 ## recognizes as a slow. Kept as an array (not a single constant) for the
 ## same extensibility reason RECOGNIZED_DOT_EFFECTS is one.
@@ -149,6 +161,7 @@ func _ready() -> void:
 	GEventBus.path_invalidated.connect(_on_path_invalidated)
 	GEventBus.monster_damage_taken.connect(_on_monster_damage_taken)
 	GEventBus.tower_attacked.connect(_on_tower_attacked_status)
+	GEventBus.hero_skill_attacked.connect(_on_hero_skill_attacked_status)
 	GEventBus.hero_position_changed.connect(_on_hero_position_changed)
 	GEventBus.hero_died.connect(_on_hero_died)
 	GEventBus.mission_launched.connect(_on_mission_launched)
@@ -171,6 +184,7 @@ func _exit_tree() -> void:
 	GEventBus.path_invalidated.disconnect(_on_path_invalidated)
 	GEventBus.monster_damage_taken.disconnect(_on_monster_damage_taken)
 	GEventBus.tower_attacked.disconnect(_on_tower_attacked_status)
+	GEventBus.hero_skill_attacked.disconnect(_on_hero_skill_attacked_status)
 	GEventBus.hero_position_changed.disconnect(_on_hero_position_changed)
 	GEventBus.hero_died.disconnect(_on_hero_died)
 	if GEventBus.mission_launched.is_connected(_on_mission_launched):
@@ -314,6 +328,9 @@ func _on_tower_attacked_status(_tower_id: int, target_monster_id: int, _damage_a
 
 func _apply_dot_effect(target_monster_id: int, effect_type: String, effect_value: float,
 		effect_duration: float) -> void:
+	if effect_type == "bleed":
+		apply_bleed(target_monster_id, effect_value, effect_duration, 1, false, &"tower")
+		return
 	var entity: MonsterEntity = _entity_lookup.get(target_monster_id) as MonsterEntity
 	if entity == null or entity.lifecycle_state == MonsterEntity.State.DEAD:
 		return
@@ -324,6 +341,70 @@ func _apply_dot_effect(target_monster_id: int, effect_type: String, effect_value
 	effect.tick_interval_remaining = STATUS_TICK_INTERVAL
 	effect.tick_damage = (effect_value * entity.scaled_hp) / float(num_ticks)
 	entity.active_status_effects.append(effect)
+
+
+## Bleed/haemorrhage spec: hero skills whose effect_data.secondary_effect is
+## dot_bleed / dot_haemorrhage apply bleed on hit. Mirrors the tower status
+## path above: keyed off the emitted hit, before Damage & Status rolls evasion.
+func _on_hero_skill_attacked_status(payload: HeroSkillAttackEvent) -> void:
+	var skill: SkillDefinitionResource = GGameDataRegistry.get_skill_definition(payload.skill_id)
+	if skill == null or skill.effect_data == null:
+		return
+	var data: HeroSkillEffectResource = skill.effect_data
+	if data.secondary_effect != SKILL_BLEED_EFFECT and data.secondary_effect != SKILL_HAEMORRHAGE_EFFECT:
+		return
+	apply_bleed(payload.target_id, data.bleed_value, data.bleed_duration, data.bleed_stacks,
+			data.secondary_effect == SKILL_HAEMORRHAGE_EFFECT, &"hero")
+
+
+## Adds `stacks_added` bleed stacks to the target (capped at BLEED_MAX_STACKS)
+## and refreshes the bleed's duration. `value_per_stack` is a fraction of the
+## monster's scaled HP dealt per stack over `duration`. With `can_rupture`
+## (haemorrhage), a target left at max stacks takes the bleed's remaining
+## damage x HAEMORRHAGE_RUPTURE_MULTIPLIER at once and the bleed ends.
+## Example: `apply_bleed(entity_id, 0.04, 8.0, 2, true, &"hero")`
+func apply_bleed(target_monster_id: int, value_per_stack: float, duration: float, stacks_added: int,
+		can_rupture: bool, source: StringName = &"tower") -> void:
+	var entity: MonsterEntity = _entity_lookup.get(target_monster_id) as MonsterEntity
+	if entity == null or not is_instance_valid(entity) or entity.lifecycle_state == MonsterEntity.State.DEAD:
+		return
+	if value_per_stack <= 0.0 or stacks_added <= 0:
+		return
+	var num_ticks: int = maxi(roundi(duration / STATUS_TICK_INTERVAL), 1)
+	var bleed: ActiveStatusEffect = _find_bleed(entity)
+	if bleed == null:
+		bleed = ActiveStatusEffect.new()
+		bleed.effect_type = "bleed"
+		bleed.stacks = 0
+		bleed.tick_interval_remaining = STATUS_TICK_INTERVAL
+		entity.active_status_effects.append(bleed)
+	bleed.stacks = mini(BLEED_MAX_STACKS, bleed.stacks + stacks_added)
+	bleed.per_stack_tick = (value_per_stack * entity.scaled_hp) / float(num_ticks)
+	bleed.tick_damage = bleed.per_stack_tick * float(bleed.stacks)
+	bleed.ticks_remaining = num_ticks
+	bleed.source = source
+	if can_rupture and bleed.stacks >= BLEED_MAX_STACKS:
+		var burst: float = bleed.tick_damage * float(bleed.ticks_remaining) * HAEMORRHAGE_RUPTURE_MULTIPLIER
+		entity.active_status_effects.erase(bleed)
+		GEventBus.monster_damage_number_requested.emit(entity.entity_id, entity.global_position, roundi(burst), true)
+		_apply_status_damage(entity, burst, source)
+
+
+## Current bleed stacks on a monster (0 when none). For tests and UI.
+func get_bleed_stacks(target_monster_id: int) -> int:
+	var entity: MonsterEntity = _entity_lookup.get(target_monster_id) as MonsterEntity
+	if entity == null or not is_instance_valid(entity):
+		return 0
+	var bleed: ActiveStatusEffect = _find_bleed(entity)
+	return bleed.stacks if bleed != null else 0
+
+
+## The monster's single bleed instance, or null.
+func _find_bleed(entity: MonsterEntity) -> ActiveStatusEffect:
+	for effect: ActiveStatusEffect in entity.active_status_effects:
+		if effect.effect_type == "bleed":
+			return effect
+	return null
 
 
 ## Public DoT entry for non-tower sources (e.g. equipment-set capstones).
@@ -404,22 +485,31 @@ func _tick_dot_instances(entity: MonsterEntity, delta: float) -> void:
 		if effect.tick_interval_remaining <= 0.0:
 			effect.tick_interval_remaining += STATUS_TICK_INTERVAL
 			effect.ticks_remaining -= 1
-			var pre_tick_hp: float = entity.current_hp
-			entity.current_hp -= effect.tick_damage
-			entity.last_hit_source = &"tower"
-			if entity.current_hp <= 0.0:
-				entity.current_hp = 0.0
-				entity.lifecycle_state = MonsterEntity.State.DEAD
-				_pending_absorbed.erase(entity.entity_id)
-				_emit_death(entity, &"tower")
+			if _apply_status_damage(entity, effect.tick_damage, effect.source):
 				return
-			if entity.resource.tier == 2:
-				GEventBus.boss_hp_changed.emit(entity.entity_id, entity.current_hp, entity.scaled_hp)
-			var absorbed: float = minf(effect.tick_damage, pre_tick_hp)
-			_pending_absorbed[entity.entity_id] = (_pending_absorbed.get(entity.entity_id, 0.0) as float) + absorbed
 		if effect.ticks_remaining <= 0:
 			entity.active_status_effects.remove_at(i)
 		i -= 1
+
+
+## Shared by DoT ticks and haemorrhage rupture: subtracts `amount`, attributes
+## the hit to `source`, handles death and boss-bar/absorb bookkeeping.
+## Returns true if the monster died.
+func _apply_status_damage(entity: MonsterEntity, amount: float, source: StringName) -> bool:
+	var pre_hp: float = entity.current_hp
+	entity.current_hp -= amount
+	entity.last_hit_source = source
+	if entity.current_hp <= 0.0:
+		entity.current_hp = 0.0
+		entity.lifecycle_state = MonsterEntity.State.DEAD
+		_pending_absorbed.erase(entity.entity_id)
+		_emit_death(entity, source)
+		return true
+	if entity.resource.tier == 2:
+		GEventBus.boss_hp_changed.emit(entity.entity_id, entity.current_hp, entity.scaled_hp)
+	var absorbed: float = minf(amount, pre_hp)
+	_pending_absorbed[entity.entity_id] = (_pending_absorbed.get(entity.entity_id, 0.0) as float) + absorbed
+	return false
 
 
 func _decay_slow_instances(entity: MonsterEntity, delta: float) -> void:

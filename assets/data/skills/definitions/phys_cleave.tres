@@ -9,8 +9,11 @@ script = ExtResource("2_effect_script")
 damage_type = "physical"
 delivery = "melee_arc"
 skill_power_coefficient = 1.2
-secondary_effect = "none"
-tags = Array[String](["Melee", "Area"])
+secondary_effect = "dot_bleed"
+bleed_value = 0.04
+bleed_duration = 8.0
+bleed_stacks = 1
+tags = Array[String](["Melee", "Area", "Physical", "DoT"])
 
 [resource]
 script = ExtResource("1_def")
