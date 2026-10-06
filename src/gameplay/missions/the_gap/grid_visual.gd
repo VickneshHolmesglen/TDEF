@@ -155,6 +155,35 @@ const PROP_SCALE: float = 0.55
 ## No cell-boundary outlines (removed 2026-10-06 at the user's request): the
 ## terrain reads as continuous ground. Placement readability comes from the
 ## placement preview's footprint highlight instead of permanent gridlines.
+##
+## Seamless open ground (2026-10-06): every mission's PLACEABLE tile art is
+## 8-15% darker at its rim than its center and its opposite edges don't
+## match, so one-tile-per-cell still drew a faint lattice once the outlines
+## were gone (seen live on all four missions). PLACEABLE cells are now cut
+## from one continuous ground layer instead: the tile's interior (rim cropped
+## by GROUND_EDGE_INSET), made tileable so every repeat's edges match exactly,
+## at GROUND_TILE_CELLS cells per repeat so what little repetition remains
+## never lines up with the cell grid. BLOCKED keeps per-cell tiles (wall art).
+##
+## Continuous lanes (2026-10-06): each PATH tile is one straight lane segment
+## with its edging (brick kerbs, river banks) baked onto two fixed sides, so
+## turns and perpendicular runs showed that edging cutting across the lane at
+## every cell. PATH cells now draw the tile's border-free middle as one
+## seamless lane surface, and the tile's own edging strip only on the sides
+## where the lane meets non-lane ground, rotated to face outward.
+const GROUND_EDGE_INSET: float = 0.12
+const GROUND_TILE_CELLS: float = 2.7
+## How far in from a tile edge (as a fraction of its size) the cross-fade to the shifted copy runs.
+const GROUND_BLEND_FRACTION: float = 0.3
+## Which pair of sides carries each lane tile's edging ("horizontal" = top and
+## bottom bands, "vertical" = left and right) and how thick that band is, as a
+## fraction of the tile. Measured from the art's luminance profile 2026-10-06.
+const PATH_EDGING_DEFAULT: Dictionary = {"axis": "horizontal", "band": 0.17}
+const PATH_EDGING_BY_MISSION: Dictionary[String, Dictionary] = {
+	"the_narrows": {"axis": "vertical", "band": 0.22},
+}
+## Cell types a lane flows into without edging between them: PATH, SPAWN, GOAL.
+const LANE_CELL_TYPES: Array[int] = [1, 2, 3]
 
 var _texture: ImageTexture = null
 
@@ -207,6 +236,12 @@ func _build_grid_texture(mission_id: String, rng: RandomNumberGenerator) -> Imag
 			source_image.convert(Image.FORMAT_RGBA8)
 		scaled_by_type[cell_type] = source_image
 
+	var ground_source: Image = (texture_by_type[0] as Texture2D).get_image()
+	var ground_layer: Image = build_seamless_ground(ground_source, px_width, px_height, int(cell_px * GROUND_TILE_CELLS))
+	var edging: Dictionary = PATH_EDGING_BY_MISSION.get(mission_id, PATH_EDGING_DEFAULT)
+	var lane: Dictionary = build_lane_parts((texture_by_type[1] as Texture2D).get_image(), String(edging["axis"]),
+			float(edging["band"]), px_width, px_height, cell_px, int(cell_px * GROUND_TILE_CELLS))
+
 	var prop_pool: Array = PROP_TEXTURES_BY_MISSION.get(mission_id, [])
 	var prop_px: int = int(cell_size * PROP_SCALE)
 	var prop_offset: int = int((cell_px - prop_px) / 2.0)
@@ -222,14 +257,137 @@ func _build_grid_texture(mission_id: String, rng: RandomNumberGenerator) -> Imag
 		for col: int in range(cols):
 			var cell := Vector2i(col, row)
 			var cell_type: int = cells.get(cell, 4)  # BLOCKED default, matches Grid.get_cell_type()
-			var tile: Image = scaled_by_type.get(cell_type, scaled_by_type[4])
 			var origin_x: int = col * cell_px
 			var origin_y: int = row * cell_px
-			image.blit_rect(tile, Rect2i(0, 0, cell_px, cell_px), Vector2i(origin_x, origin_y))
+			if cell_type == 0:
+				image.blit_rect(ground_layer, Rect2i(origin_x, origin_y, cell_px, cell_px), Vector2i(origin_x, origin_y))
+			elif cell_type == 1:
+				_draw_lane_cell(image, lane, cell, cell_px)
+			else:
+				var tile: Image = scaled_by_type.get(cell_type, scaled_by_type[4])
+				image.blit_rect(tile, Rect2i(0, 0, cell_px, cell_px), Vector2i(origin_x, origin_y))
 			if cell_type == 0 and not scaled_props.is_empty() and rng.randf() < PROP_DENSITY:
 				var prop: Image = scaled_props[rng.randi_range(0, scaled_props.size() - 1)]
 				image.blend_rect(prop, Rect2i(0, 0, prop_px, prop_px), Vector2i(origin_x + prop_offset, origin_y + prop_offset))
 	return ImageTexture.create_from_image(image)
+
+
+## Draws one PATH cell: the seamless lane surface, plus the edging strip on
+## every side whose neighbour is not part of the lane.
+func _draw_lane_cell(image: Image, lane: Dictionary, cell: Vector2i, cell_px: int) -> void:
+	var origin := Vector2i(cell.x * cell_px, cell.y * cell_px)
+	image.blit_rect(lane["surface"], Rect2i(origin, Vector2i(cell_px, cell_px)), origin)
+	var thickness: int = int(lane["thickness"])
+	var sides: Dictionary = {
+		Vector2i.UP: Vector2i.ZERO,
+		Vector2i.DOWN: Vector2i(0, cell_px - thickness),
+		Vector2i.LEFT: Vector2i.ZERO,
+		Vector2i.RIGHT: Vector2i(cell_px - thickness, 0),
+	}
+	for dir: Vector2i in sides:
+		if LANE_CELL_TYPES.has(int(cells.get(cell + dir, 4))):
+			continue
+		var strip: Image = lane[dir]
+		image.blit_rect(strip, Rect2i(Vector2i.ZERO, strip.get_size()), origin + (sides[dir] as Vector2i))
+
+
+## Splits a straight-lane tile into its parts: a `width` x `height` seamless
+## "surface" layer from the border-free middle, and one edging strip per side
+## (keyed by Vector2i.UP/DOWN/LEFT/RIGHT, each `cell_px` long and "thickness"
+## thick, oriented with the outer edge facing that side). `axis` names which
+## sides of the tile carry the edging ("horizontal" = top/bottom).
+## Example: `build_lane_parts(path_tile.get_image(), "horizontal", 0.17, 1280, 960, 80, 216)`
+static func build_lane_parts(source: Image, axis: String, band: float, width: int, height: int, cell_px: int, tile_px: int) -> Dictionary:
+	if source.is_compressed():
+		source = source.duplicate()
+		source.decompress()
+	if source.get_format() != Image.FORMAT_RGBA8:
+		source = source.duplicate()
+		source.convert(Image.FORMAT_RGBA8)
+	var size: Vector2i = source.get_size()
+	var thickness: int = maxi(int(cell_px * band), 1)
+	var parts: Dictionary = {"thickness": thickness}
+	var middle: Image
+	var first: Image
+	var second: Image
+	if axis == "vertical":
+		var bw: int = int(size.x * band)
+		middle = source.get_region(Rect2i(bw, 0, size.x - bw * 2, size.y))
+		first = source.get_region(Rect2i(0, 0, bw, size.y))  # left edging
+		second = source.get_region(Rect2i(size.x - bw, 0, bw, size.y))  # right edging
+		first.resize(thickness, cell_px, Image.INTERPOLATE_LANCZOS)
+		second.resize(thickness, cell_px, Image.INTERPOLATE_LANCZOS)
+		parts[Vector2i.LEFT] = first
+		parts[Vector2i.RIGHT] = second
+		parts[Vector2i.UP] = _rotated(first, CLOCKWISE)  # left -> top
+		parts[Vector2i.DOWN] = _rotated(second, CLOCKWISE)  # right -> bottom
+	else:
+		var bh: int = int(size.y * band)
+		middle = source.get_region(Rect2i(0, bh, size.x, size.y - bh * 2))
+		first = source.get_region(Rect2i(0, 0, size.x, bh))  # top edging
+		second = source.get_region(Rect2i(0, size.y - bh, size.x, bh))  # bottom edging
+		first.resize(cell_px, thickness, Image.INTERPOLATE_LANCZOS)
+		second.resize(cell_px, thickness, Image.INTERPOLATE_LANCZOS)
+		parts[Vector2i.UP] = first
+		parts[Vector2i.DOWN] = second
+		parts[Vector2i.LEFT] = _rotated(first, COUNTERCLOCKWISE)  # top -> left
+		parts[Vector2i.RIGHT] = _rotated(second, COUNTERCLOCKWISE)  # bottom -> right
+	parts["surface"] = _tiled_layer(middle, width, height, tile_px)
+	return parts
+
+
+static func _rotated(img: Image, direction: ClockDirection) -> Image:
+	var copy: Image = img.duplicate()
+	copy.rotate_90(direction)
+	return copy
+
+
+## Resizes `tile` to `tile_px` square, makes it tileable and repeats it over a `width` x `height` layer.
+static func _tiled_layer(tile: Image, width: int, height: int, tile_px: int) -> Image:
+	if tile.get_format() != Image.FORMAT_RGBA8:
+		tile.convert(Image.FORMAT_RGBA8)
+	tile_px = maxi(tile_px, 2)
+	tile.resize(tile_px, tile_px, Image.INTERPOLATE_LANCZOS)
+	var seamless: Image = make_tileable(tile)
+	var layer := Image.create(width, height, false, Image.FORMAT_RGBA8)
+	var whole := Rect2i(0, 0, tile_px, tile_px)
+	for ty: int in range(ceili(float(height) / tile_px)):
+		for tx: int in range(ceili(float(width) / tile_px)):
+			layer.blit_rect(seamless, whole, Vector2i(tx * tile_px, ty * tile_px))
+	return layer
+
+
+## A `width` x `height` RGBA8 image of `source`'s interior (rim trimmed by
+## GROUND_EDGE_INSET), made tileable and repeated every `tile_px` pixels.
+## Tileable via the offset-blend method: the tile is cross-faded with a copy of
+## itself shifted by half its size. The copy's edges are the original's
+## interior, so they wrap continuously; the copy's own seam lands in the middle,
+## where the fade shows the untouched original instead. No mirroring, so the
+## ground never shows kaleidoscope symmetry (seen live with a mirror-tile pass).
+## Example: `build_seamless_ground(tile.get_image(), 1280, 960, 216)`
+static func build_seamless_ground(source: Image, width: int, height: int, tile_px: int) -> Image:
+	if source.is_compressed():
+		source = source.duplicate()
+		source.decompress()
+	var size: Vector2i = source.get_size()
+	var inset := Vector2i(int(size.x * GROUND_EDGE_INSET), int(size.y * GROUND_EDGE_INSET))
+	var tile: Image = source.get_region(Rect2i(inset, size - inset * 2))
+	return _tiled_layer(tile, width, height, tile_px)
+
+
+## Returns a copy of square `tile` whose opposite edges match (see build_seamless_ground()).
+static func make_tileable(tile: Image) -> Image:
+	var n: int = tile.get_width()
+	var half: int = n / 2
+	var fade: float = maxf(n * GROUND_BLEND_FRACTION, 1.0)
+	var out := Image.create(n, n, false, Image.FORMAT_RGBA8)
+	for y: int in range(n):
+		var edge_y: float = minf(y, n - 1 - y)
+		for x: int in range(n):
+			var weight: float = clampf(minf(minf(x, n - 1 - x), edge_y) / fade, 0.0, 1.0)
+			var shifted: Color = tile.get_pixel((x + half) % n, (y + half) % n)
+			out.set_pixel(x, y, shifted.lerp(tile.get_pixel(x, y), weight))
+	return out
 
 
 func _draw() -> void:
