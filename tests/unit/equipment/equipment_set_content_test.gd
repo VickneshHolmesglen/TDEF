@@ -93,14 +93,45 @@ const EXPECTED_EFFECTS: Dictionary[StringName, Dictionary] = {
 }
 
 
-func test_every_set_has_exactly_one_capstone_at_its_top_threshold() -> void:
+## Set defensive effects spec §3.3: one capstone at the top threshold, plus at
+## most one second-tier effect at a lower bonuses threshold.
+func test_every_set_has_one_capstone_on_top_and_at_most_one_lower_tier_effect() -> void:
 	for set_res: EquipmentSetResource in GGameDataRegistry.get_all_equipment_sets().values():
 		var sid: String = String(set_res.set_id)
-		assert_int(set_res.effects.size()).override_failure_message("%s effect count" % sid).is_equal(1)
 		var top: int = 0
 		for threshold: int in set_res.bonuses:
 			top = maxi(top, threshold)
 		assert_bool(set_res.effects.has(top)).override_failure_message("%s capstone not at top threshold %d" % [sid, top]).is_true()
+		assert_int(set_res.effects.size()).override_failure_message("%s effect count" % sid).is_between(1, 2)
+		for threshold: int in set_res.effects:
+			assert_bool(set_res.bonuses.has(threshold)).override_failure_message("%s effect at non-bonus threshold %d" % [sid, threshold]).is_true()
+
+
+const EXPECTED_TIER_EFFECTS: Dictionary[StringName, Dictionary] = {
+	&"set_troll": {"threshold": 2, "name": "Troll Blood", "type": &"on_kill_heal",
+		"params": {&"heal_fraction": 0.015}},
+	&"set_brute": {"threshold": 4, "name": "Iron Hide", "type": &"on_hurt_shield",
+		"params": {&"shield_fraction": 0.08, &"duration": 4.0, &"cooldown": 8.0}},
+	&"set_reinforced": {"threshold": 2, "name": "Last Stand", "type": &"low_hp_state",
+		"params": {&"hp_fraction": 0.3, &"stats": {&"armor": 0.5, &"physical_attack": 0.2}}},
+}
+
+
+func test_second_tier_effects_match_the_spec_table_exactly() -> void:
+	var with_tier: int = 0
+	for set_res: EquipmentSetResource in GGameDataRegistry.get_all_equipment_sets().values():
+		if set_res.effects.size() > 1:
+			with_tier += 1
+	assert_int(with_tier).is_equal(EXPECTED_TIER_EFFECTS.size())
+	for set_id: StringName in EXPECTED_TIER_EFFECTS:
+		var expected: Dictionary = EXPECTED_TIER_EFFECTS[set_id]
+		var set_res: EquipmentSetResource = GGameDataRegistry.get_equipment_set(set_id)
+		var threshold: int = expected["threshold"]
+		assert_bool(set_res.effects.has(threshold)).override_failure_message("%s tier threshold" % set_id).is_true()
+		var actual: Dictionary = set_res.effects[threshold]
+		assert_str(String(actual[&"name"])).override_failure_message("%s tier name" % set_id).is_equal(expected["name"])
+		assert_bool(actual[&"type"] == expected["type"]).override_failure_message("%s tier type" % set_id).is_true()
+		assert_bool(actual[&"params"] == expected["params"]).override_failure_message("%s tier params" % set_id).is_true()
 
 
 func test_capstones_match_the_spec_table_exactly() -> void:

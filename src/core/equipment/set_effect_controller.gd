@@ -18,6 +18,10 @@ var _timers: Dictionary[StringName, float] = {}
 ## Current stack count for on_kill_stack_buff effects.
 var _stacks: Dictionary[StringName, int] = {}
 
+## Remaining seconds before an on_hurt_shield effect may grant again. Kept apart
+## from _timers because a shield's duration and its cooldown run independently.
+var _cooldowns: Dictionary[StringName, float] = {}
+
 ## Last phase name seen on mission_phase_changed ("" until the first one).
 var _current_phase: String = ""
 
@@ -49,6 +53,7 @@ func _exit_tree() -> void:
 			sig.disconnect(handler)
 	if _hero != null and is_instance_valid(_hero):
 		_hero.clear_all_effect_modifiers()
+		_hero.clear_all_shields()
 
 
 ## Every EventBus subscription this node holds, as [signal, handler] pairs.
@@ -65,6 +70,8 @@ func _subscriptions() -> Array:
 		[GEventBus.monsters_died_batch, _on_monsters_died_batch],
 		[GEventBus.hero_auto_attacked, _on_hero_auto_attacked],
 		[GEventBus.hero_skill_attacked, _on_hero_skill_attacked],
+		[GEventBus.hero_damage_taken, _on_hero_damage_taken],
+		[GEventBus.hero_health_changed, _on_hero_health_changed],
 	]
 
 
@@ -75,6 +82,12 @@ func _process(delta: float) -> void:
 			_expire(key)
 		else:
 			_timers[key] = remaining
+	for key: StringName in _cooldowns.keys():
+		var left: float = _cooldowns[key] - delta
+		if left <= 0.0:
+			_cooldowns.erase(key)
+		else:
+			_cooldowns[key] = left
 	_update_processing()
 
 
@@ -109,6 +122,8 @@ func apply_effects(effects: Array[Dictionary]) -> void:
 			_active[key] = next[key]
 			if next[key][&"type"] == &"phase_state":
 				_refresh_phase_state(key)
+			elif next[key][&"type"] == &"low_hp_state":
+				_refresh_low_hp_state(key, _hero.get_current_hp(), _hero.get_max_hp())
 	_update_processing()
 
 
@@ -116,7 +131,9 @@ func _drop_effect(key: StringName) -> void:
 	_active.erase(key)
 	_timers.erase(key)
 	_stacks.erase(key)
+	_cooldowns.erase(key)
 	_hero.clear_effect_modifier(key)
+	_hero.clear_shield(key)
 
 
 # ---------------------------------------------------------------------------
@@ -147,6 +164,7 @@ func _expire(key: StringName) -> void:
 	_timers.erase(key)
 	_stacks.erase(key)
 	_hero.clear_effect_modifier(key)
+	_hero.clear_shield(key)
 
 
 ## Death drops timed buffs and kill stacks, but a phase_state effect whose phase
@@ -185,14 +203,14 @@ func _refresh_phase_state(key: StringName) -> void:
 # ---------------------------------------------------------------------------
 
 func _on_monster_died(payload: MonsterDiedEvent) -> void:
-	if not _has_active(&"on_kill_stack_buff"):
+	if not _has_active(&"on_kill_stack_buff") and not _has_active(&"on_kill_heal"):
 		return
 	_register_kills(1 if _hero.is_direct_kill(payload) else 0)
 
 
 ## ADR-0001 Rule 5: large waves arrive batched, so this must count each entry.
 func _on_monsters_died_batch(payloads: Array[MonsterDiedEvent]) -> void:
-	if not _has_active(&"on_kill_stack_buff"):
+	if not _has_active(&"on_kill_stack_buff") and not _has_active(&"on_kill_heal"):
 		return
 	var qualifying: int = 0
 	for payload: MonsterDiedEvent in payloads:
@@ -206,6 +224,11 @@ func _register_kills(count: int) -> void:
 		return
 	for key: StringName in _active:
 		var effect: Dictionary = _active[key]
+		if effect[&"type"] == &"on_kill_heal":
+			var heal: int = roundi(float(effect[&"params"][&"heal_fraction"]) * _hero.get_effective_stat(&"max_hp"))
+			for i: int in count:
+				_hero.apply_heal(heal)
+			continue
 		if effect[&"type"] != &"on_kill_stack_buff":
 			continue
 		var params: Dictionary = effect[&"params"]
@@ -230,16 +253,18 @@ static func _scaled(stats: Dictionary, factor: int) -> Dictionary:
 	return out
 
 
-## Drops all timers, stacks and modifiers but keeps the active effect list.
+## Drops all timers, stacks, cooldowns, shields and modifiers but keeps the active effect list.
 func _clear_runtime() -> void:
 	_timers.clear()
 	_stacks.clear()
+	_cooldowns.clear()
 	_hero.clear_all_effect_modifiers()
+	_hero.clear_all_shields()
 	_update_processing()
 
 
 func _update_processing() -> void:
-	set_process(not _timers.is_empty())
+	set_process(not _timers.is_empty() or not _cooldowns.is_empty())
 
 
 # ---------------------------------------------------------------------------
@@ -277,3 +302,49 @@ func _resolve_monster_manager() -> Node:
 	if monster_manager != null and is_instance_valid(monster_manager):
 		return monster_manager
 	return get_tree().get_first_node_in_group(MonsterManager.GROUP_NAME)
+
+
+# ---------------------------------------------------------------------------
+# on_hurt_shield (set defensive effects spec §3.4)
+# ---------------------------------------------------------------------------
+
+## This node is a child of Hero, so its _ready() connects before Hero's own and
+## this handler runs before Hero applies the hit. Granting synchronously would let
+## the new shield soak the very hit that triggered it, so the grant is deferred.
+func _on_hero_damage_taken(amount: int, _source_type: int) -> void:
+	if amount <= 0 or not _has_active(&"on_hurt_shield"):
+		return
+	for key: StringName in _active:
+		if _active[key][&"type"] == &"on_hurt_shield" and not _cooldowns.has(key):
+			# Claim the cooldown now so a second hit in the same frame cannot double-grant.
+			_cooldowns[key] = float(_active[key][&"params"][&"cooldown"])
+			_grant_shield.call_deferred(key)
+	_update_processing()
+
+
+func _grant_shield(key: StringName) -> void:
+	if not _active.has(key) or _hero == null or not is_instance_valid(_hero):
+		return
+	var params: Dictionary = _active[key][&"params"]
+	_hero.set_shield(key, roundi(float(params[&"shield_fraction"]) * _hero.get_effective_stat(&"max_hp")))
+	_timers[key] = float(params[&"duration"])
+	_update_processing()
+
+
+# ---------------------------------------------------------------------------
+# low_hp_state (set defensive effects spec §3.4)
+# ---------------------------------------------------------------------------
+
+func _on_hero_health_changed(current_health: float, max_health: float) -> void:
+	for key: StringName in _active:
+		if _active[key][&"type"] == &"low_hp_state":
+			_refresh_low_hp_state(key, current_health, max_health)
+
+
+## Active while 0 < hp / max_hp <= hp_fraction (a dead Hero never shows it).
+func _refresh_low_hp_state(key: StringName, current_health: float, max_health: float) -> void:
+	var params: Dictionary = _active[key][&"params"]
+	if max_health > 0.0 and current_health > 0.0 and current_health / max_health <= float(params[&"hp_fraction"]):
+		_hero.set_effect_modifier(key, params[&"stats"])
+	else:
+		_hero.clear_effect_modifier(key)

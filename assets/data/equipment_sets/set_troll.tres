@@ -12,6 +12,13 @@ bonuses = Dictionary[int, Dictionary]({
 4: {&"lifesteal": 0.02, &"max_hp": 80.0}
 })
 effects = Dictionary[int, Dictionary]({
+2: {
+&"name": "Troll Blood",
+&"type": &"on_kill_heal",
+&"params": {
+&"heal_fraction": 0.015
+}
+},
 4: {
 &"name": "Troll's Frenzy",
 &"type": &"on_kill_stack_buff",

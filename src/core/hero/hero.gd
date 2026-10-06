@@ -386,6 +386,11 @@ var _effect_modifiers: Dictionary[StringName, Dictionary] = {}
 ## Cached per-stat sum of _effect_modifiers, refolded only on set/clear.
 var _effect_additive: Dictionary[StringName, float] = {}
 
+## Set defensive effects spec §3.5: damage-absorbing shields by source key
+## (SetEffectController owns durations). Absorbed before HP in
+## _on_hero_damage_taken(), in insertion order. Never saved.
+var _shields: Dictionary[StringName, int] = {}
+
 ## Rule 28: last grid cell the hero occupied. Sentinel (-1, -1) guarantees the
 ## first _update_position_tracking() call always emits, since (-1, -1) is never
 ## a valid on-grid cell.
@@ -565,6 +570,57 @@ func _refold_effect_modifiers() -> void:
 		for stat: Variant in modifier:
 			var key: StringName = StringName(stat)
 			_effect_additive[key] = _effect_additive.get(key, 0.0) + float(modifier[stat])
+
+
+## Set defensive effects spec §3.5: replaces any shield previously set under `source_key`.
+## Example: `hero.set_shield(&"set_brute:4", 56)`
+func set_shield(source_key: StringName, amount: int) -> void:
+	if amount <= 0:
+		_shields.erase(source_key)
+		return
+	_shields[source_key] = amount
+
+
+func clear_shield(source_key: StringName) -> void:
+	_shields.erase(source_key)
+
+
+func clear_all_shields() -> void:
+	_shields.clear()
+
+
+## Total damage the current shields can still absorb.
+func get_total_shield() -> int:
+	var total: int = 0
+	for key: StringName in _shields:
+		total += _shields[key]
+	return total
+
+
+## Takes up to `amount` out of the shields (oldest first, emptied ones removed)
+## and returns how much damage is left over for HP.
+func _absorb_with_shields(amount: int) -> int:
+	var remaining: int = amount
+	for key: StringName in _shields.keys():
+		if remaining <= 0:
+			break
+		var absorbed: int = mini(remaining, _shields[key])
+		remaining -= absorbed
+		_shields[key] -= absorbed
+		if _shields[key] <= 0:
+			_shields.erase(key)
+	return remaining
+
+
+## Current HP (public read for SetEffectController's low_hp_state check).
+func get_current_hp() -> float:
+	return _current_hp
+
+
+## The max HP the HP bar and heal clamp use (cached; refreshed on reset and level-up),
+## so low_hp_state reads the same ratio the player sees.
+func get_max_hp() -> float:
+	return _max_hp
 
 
 ## Equipment-set-effects spec §3.4: a kill counts as a "direct kill" when it is
@@ -1398,7 +1454,11 @@ func _on_cooldown_broadcast_timeout() -> void:
 func _on_hero_damage_taken(amount: int, _source_type: int) -> void:
 	if _phase != HeroPhase.COMBAT and _phase != HeroPhase.INTERMISSION:
 		return  # Rule 20: hero cannot be attacked in IDLE_SANCTUARY/SCOUT/DEAD
-	_current_hp = maxf(0.0, _current_hp - float(amount))
+	# Set defensive effects spec §3.5: shields soak the (already mitigated) hit first.
+	var to_hp: int = _absorb_with_shields(amount)
+	if to_hp <= 0:
+		return
+	_current_hp = maxf(0.0, _current_hp - float(to_hp))
 	GEventBus.hero_health_changed.emit(_current_hp, _max_hp)
 	if _current_hp <= 0.0:
 		_phase = HeroPhase.DEAD
@@ -1418,6 +1478,16 @@ func _on_hero_damage_taken(amount: int, _source_type: int) -> void:
 ## hero_health_changed instead, matching _on_hero_damage_taken()'s existing
 ## precedent for HP-change observability (Mission HUD's HP bar).
 func _on_hero_healed(amount: int) -> void:
+	apply_heal(amount)
+
+
+## Set defensive effects spec §3.5: the one heal path, shared by Damage & Status
+## lifesteal (_on_hero_healed) and set effects (SetEffectController on_kill_heal).
+## Same Rule 20 phase guard and max-HP clamp; never emits hero_healed.
+## Example: `hero.apply_heal(9)`
+func apply_heal(amount: int) -> void:
+	if amount <= 0:
+		return
 	if _phase != HeroPhase.COMBAT and _phase != HeroPhase.INTERMISSION:
 		return
 	_current_hp = minf(_current_hp + float(amount), _max_hp)
@@ -1560,6 +1630,7 @@ func reset_to_defaults() -> void:
 	_current_xp = 0
 	_accumulated_class_bonuses.clear()
 	clear_all_effect_modifiers()
+	clear_all_shields()
 
 
 ## Stopgap, unchanged in effect from the two identical call sites this

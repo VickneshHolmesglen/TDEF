@@ -85,6 +85,12 @@ func _params(type: StringName) -> Dictionary:
 			return {&"stats": {&"attack_range": 0.2}, &"duration": 5.0}
 		&"phase_state":
 			return {&"stats": {&"attack_range": 0.2}, &"phases": ["WAVE_ACTIVE"]}
+		&"on_kill_heal":
+			return {&"heal_fraction": 0.015}
+		&"on_hurt_shield":
+			return {&"shield_fraction": 0.08, &"duration": 4.0, &"cooldown": 8.0}
+		&"low_hp_state":
+			return {&"hp_fraction": 0.3, &"stats": {&"armor": 0.5}}
 	return {}
 
 

@@ -59,6 +59,7 @@ INVENTORY_INFO_SET_LINE,Set: %s (%d/%d)
 INVENTORY_INFO_SET_HEADER_LINE,%s (%d/%d)
 INVENTORY_INFO_SET_THRESHOLD,%d pieces:
 SET_EFFECT_CAPSTONE_LINE,Capstone (%d pieces): %s - %s
+SET_EFFECT_TIER_LINE,Set effect (%d pieces): %s - %s
 SET_EFFECT_ON_KILL_STACK_BUFF,Each nearby kill adds a stack of %s (up to %d stacks). Stacks last %s after the last kill.
 SET_EFFECT_ON_CRIT_STATUS,Critical hits inflict %s for %d%% of max HP over %s.
 SET_EFFECT_STATUS_BURN,burn
@@ -73,6 +74,9 @@ SET_EFFECT_PHASE_WAVE_ACTIVE,Waves
 SET_EFFECT_PHASE_INTERMISSION,Intermission
 SET_EFFECT_PHASE_MISSION_COMPLETE,Mission complete
 SET_EFFECT_PHASE_DEFEAT,Defeat
+SET_EFFECT_ON_KILL_HEAL,Each nearby kill heals %s%% of max HP.
+SET_EFFECT_ON_HURT_SHIELD,"When hit, gain a shield worth %s%% of max HP for %s (once every %s)."
+SET_EFFECT_LOW_HP_STATE,Below %s%% HP: %s.
 OUTCOME_TITLE_DEFEAT,Defeat
 OUTCOME_TITLE_VICTORY,Mission Complete
 OUTCOME_STAT_WAVES,Waves cleared

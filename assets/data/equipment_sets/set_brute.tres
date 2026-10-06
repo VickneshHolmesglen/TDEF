@@ -13,6 +13,15 @@ bonuses = Dictionary[int, Dictionary]({
 5: {&"max_hp": 100.0}
 })
 effects = Dictionary[int, Dictionary]({
+4: {
+&"name": "Iron Hide",
+&"type": &"on_hurt_shield",
+&"params": {
+&"shield_fraction": 0.08,
+&"duration": 4.0,
+&"cooldown": 8.0
+}
+},
 5: {
 &"name": "Juggernaut",
 &"type": &"on_wave_start_buff",

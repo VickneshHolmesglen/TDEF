@@ -167,7 +167,23 @@ static func describe_effect(effect: Dictionary) -> String:
 				names.append(TranslationServer.translate("SET_EFFECT_PHASE_%s" % String(phase)))
 			return TranslationServer.translate("SET_EFFECT_PHASE_STATE") % [
 				" / ".join(names), _effect_stats_text(params[&"stats"])]
+		&"on_kill_heal":
+			return TranslationServer.translate("SET_EFFECT_ON_KILL_HEAL") % _percent_text(params[&"heal_fraction"])
+		&"on_hurt_shield":
+			return TranslationServer.translate("SET_EFFECT_ON_HURT_SHIELD") % [
+				_percent_text(params[&"shield_fraction"]), _seconds_text(params[&"duration"]), _seconds_text(params[&"cooldown"])]
+		&"low_hp_state":
+			return TranslationServer.translate("SET_EFFECT_LOW_HP_STATE") % [
+				_percent_text(params[&"hp_fraction"]), _effect_stats_text(params[&"stats"])]
 	return String(effect.get(&"type", ""))
+
+
+## A fraction as a percentage without a trailing ".0": 0.08 -> "8", 0.015 -> "1.5".
+static func _percent_text(fraction: Variant) -> String:
+	var pct: float = snappedf(float(fraction) * 100.0, 0.1)
+	if is_equal_approx(pct, roundf(pct)):
+		return str(int(roundf(pct)))
+	return String.num(pct, 1)
 
 
 static func _additive_gain(additive_delta: Dictionary) -> bool:
@@ -226,10 +242,14 @@ func _set_section_lines() -> Array[String]:
 		var declared: Dictionary = SetEffectResolver.effects_for_set(set_id)
 		var effect_thresholds: Array = declared.keys()
 		effect_thresholds.sort()
+		var top: int = 0
+		for threshold: int in set_res.bonuses:
+			top = maxi(top, threshold)
 		for threshold: int in effect_thresholds:
 			var effect: Dictionary = declared[threshold]
-			var capstone: String = tr("SET_EFFECT_CAPSTONE_LINE") % [threshold, effect[&"name"], describe_effect(effect)]
-			var line: String = "  " + capstone
+			# Set defensive effects spec §3.6: the top threshold is the capstone; a lower one is a second-tier effect.
+			var label_key: String = "SET_EFFECT_CAPSTONE_LINE" if threshold >= top else "SET_EFFECT_TIER_LINE"
+			var line: String = "  " + tr(label_key) % [threshold, effect[&"name"], describe_effect(effect)]
 			lines.append(line if count >= threshold else _colored(line, COLOR_MUTED))
 	return lines
 

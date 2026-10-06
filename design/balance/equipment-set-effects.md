@@ -27,7 +27,19 @@
 | Sentinel | 4 | Overwatch | `phase_state` | `stats {attack_range: 0.20}`, `phases ["WAVE_ACTIVE"]` |
 | Leather | 3 | Fleet-Footed | `phase_state` | `stats {move_speed: 0.30}`, `phases ["SCOUT","INTERMISSION"]` |
 
-Troll's capstone is a kill-stack damage buff rather than a heal: nothing can damage the Hero today, so a heal would be inert (see open questions).
+Troll's capstone is a kill-stack damage buff rather than a heal: when capstones were designed nothing could damage the Hero. Hero damage has since shipped, so the heal now lives on as Troll's second-tier effect (below).
+
+## Second-tier effects (2026-10-06, `docs/superpowers/specs/2026-10-06-equipment-set-defensive-effects-design.md`)
+
+One capstone stays at each set's top threshold; three defensive sets also carry one effect at a lower threshold.
+
+| Set | Threshold | Name | Type | Params |
+|---|---|---|---|---|
+| Troll | 2 | Troll Blood | `on_kill_heal` | `heal_fraction 0.015` (of effective max HP, per direct kill) |
+| Brute | 4 | Iron Hide | `on_hurt_shield` | `shield_fraction 0.08`, `duration 4.0`, `cooldown 8.0` |
+| Reinforced | 2 | Last Stand | `low_hp_state` | `hp_fraction 0.30`, `stats {armor: 0.50, physical_attack: 0.20}` |
+
+Scale: elite/boss hits are 20-70 before armor every 2.2-4.0 s; Hero base max HP 500. Live check 2026-10-06 (944 max HP, 99 armor): a 50 hit landed as 25, granted a 76 shield next frame, which then absorbed the following two hits. Shields absorb after armor/resist, so the two multiply.
 
 ## DoT scale reference
 
@@ -35,7 +47,7 @@ Tower DoTs: poison `0.08` of target scaled HP over `4s` (`blueprint_venomdart_tu
 
 ## Open questions
 
-- **Inert defensive stats**: `armor`, `max_hp`, `lifesteal` and elemental resists (from gear, runes and set bonuses) do nothing while the Hero cannot be damaged. Needs a design decision on whether/when monsters can hurt the Hero. NOT addressed here.
+- **Defensive stats** (`armor`, `max_hp`, `lifesteal`, resists) are live since Hero damage shipped (elite/boss telegraphed attacks); the second-tier effects above build on that.
 - **Evaded crits**: crit status procs before evasion, so an evaded crit can still apply its DoT. If that feels wrong, move the trigger to the post-mitigation `monster_damage_taken`.
 - **Controller created after the last phase event**: `phase_state` stays inactive until the next phase transition. If this proves real, add a phase getter on WaveManager for the controller's initial read.
 - **Cross-set stacking** remains open (see `equipment-set-bonuses.md`); top-threshold-only capstones limit it but do not remove it.

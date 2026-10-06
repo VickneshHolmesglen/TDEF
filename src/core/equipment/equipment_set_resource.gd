@@ -16,6 +16,8 @@ extends Resource
 const EFFECT_TYPES: Array[StringName] = [
 	&"on_kill_stack_buff", &"on_crit_status", &"on_wave_start_buff",
 	&"on_skill_cast_buff", &"phase_state",
+	# Set defensive effects spec §3.1 (second-tier effects, live since Hero damage shipped).
+	&"on_kill_heal", &"on_hurt_shield", &"low_hp_state",
 ]
 ## MAINTENANCE POINT: must equal WaveManager.Phase.keys(); a test enforces it.
 ## Kept here (not read from WaveManager) so core data never depends on gameplay code.
@@ -29,10 +31,17 @@ const REQUIRED_PARAMS: Dictionary = {
 	&"on_wave_start_buff": [&"stats", &"duration"],
 	&"on_skill_cast_buff": [&"stats", &"duration"],
 	&"phase_state": [&"stats", &"phases"],
+	&"on_kill_heal": [&"heal_fraction"],
+	&"on_hurt_shield": [&"shield_fraction", &"duration", &"cooldown"],
+	&"low_hp_state": [&"hp_fraction", &"stats"],
 }
+## Params that are fractions of the Hero's max HP: must be in (0, 1].
+const FRACTION_PARAMS: Array[StringName] = [&"heal_fraction", &"shield_fraction", &"hp_fraction"]
 
-## Capstone effects: pieces_required -> {&"name": String, &"type": StringName,
-## &"params": Dictionary}. Empty is valid (a set with no capstone).
+## Set effects: pieces_required -> {&"name": String, &"type": StringName,
+## &"params": Dictionary}. Empty is valid (a set with no effects). By content
+## convention (set defensive effects spec §3.3) the top threshold holds the
+## capstone and at most one lower threshold holds a second-tier effect.
 @export var effects: Dictionary[int, Dictionary] = {}
 
 
@@ -102,9 +111,15 @@ static func _validate_effect(threshold: int, effect: Dictionary) -> Array[String
 		var stacks: Variant = params[&"max_stacks"]
 		if typeof(stacks) != TYPE_INT or int(stacks) < 1:
 			errors.append(prefix + "max_stacks must be an int >= 1")
-	for key: StringName in [&"duration", &"effect_value", &"effect_duration"]:
+	for key: StringName in [&"duration", &"effect_value", &"effect_duration", &"cooldown"]:
 		if params.has(key) and not _is_positive_number(params[key]):
 			errors.append(prefix + "%s must be a number > 0" % key)
+	for key: StringName in FRACTION_PARAMS:
+		if params.has(key) and (not _is_positive_number(params[key]) or float(params[key]) > 1.0):
+			errors.append(prefix + "%s must be a number in (0, 1]" % key)
+	# Raising max HP lowers the HP fraction, so a low-HP state that grants max_hp could flicker.
+	if type == &"low_hp_state" and params.get(&"stats") is Dictionary and (params[&"stats"] as Dictionary).has(&"max_hp"):
+		errors.append(prefix + "low_hp_state stats must not include max_hp")
 	if params.has(&"effect_type") and not CRIT_STATUS_EFFECT_TYPES.has(String(params[&"effect_type"])):
 		errors.append(prefix + "effect_type must be burn or poison")
 	if params.has(&"phases"):

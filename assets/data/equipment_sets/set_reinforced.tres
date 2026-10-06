@@ -12,6 +12,14 @@ bonuses = Dictionary[int, Dictionary]({
 4: {&"armor": 12.0, &"physical_attack": 4.0}
 })
 effects = Dictionary[int, Dictionary]({
+2: {
+&"name": "Last Stand",
+&"type": &"low_hp_state",
+&"params": {
+&"hp_fraction": 0.3,
+&"stats": {&"armor": 0.5, &"physical_attack": 0.2}
+}
+},
 4: {
 &"name": "Braced Stance",
 &"type": &"on_skill_cast_buff",

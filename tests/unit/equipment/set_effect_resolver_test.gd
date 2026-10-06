@@ -35,14 +35,19 @@ func test_lurker_capstone_activates_at_two_pieces() -> void:
 	assert_float(float((effect[&"params"] as Dictionary)[&"effect_value"])).is_equal_approx(0.06, 0.0001)
 
 
+## Brute: second-tier Iron Hide at 4 pieces (set defensive effects spec §4),
+## capstone Juggernaut only at 5.
 func test_capstone_is_only_at_the_top_threshold() -> void:
 	var four: Array[String] = ["brutes_war_helm", "brutes_bulwark_plate", "brute_gauntlets", "brute_legguards"]
-	assert_array(SetEffectResolver.active_effects(_list(four))).is_empty()
+	var at_four: Array[Dictionary] = SetEffectResolver.active_effects(_list(four))
+	assert_int(at_four.size()).is_equal(1)
+	assert_bool(at_four[0][&"key"] == &"set_brute:4").is_true()
 	var five: Array[String] = four.duplicate()
 	five.append("brute_core_band")
 	var effects: Array[Dictionary] = SetEffectResolver.active_effects(_list(five))
-	assert_int(effects.size()).is_equal(1)
-	assert_bool(effects[0][&"key"] == &"set_brute:5").is_true()
+	assert_int(effects.size()).is_equal(2)
+	var keys: Array = [effects[0][&"key"], effects[1][&"key"]]
+	assert_bool(keys.has(&"set_brute:5") and keys.has(&"set_brute:4")).is_true()
 
 
 func test_identical_items_count_once() -> void:
@@ -66,8 +71,8 @@ func test_effect_key_format() -> void:
 
 func test_effects_for_set_returns_declared_effects() -> void:
 	var declared: Dictionary = SetEffectResolver.effects_for_set(&"set_brute")
-	assert_int(declared.size()).is_equal(1)
-	assert_bool(declared.has(5)).is_true()
+	assert_int(declared.size()).is_equal(2)
+	assert_bool(declared.has(4) and declared.has(5)).is_true()
 
 
 func test_effects_for_unknown_set_is_empty() -> void:

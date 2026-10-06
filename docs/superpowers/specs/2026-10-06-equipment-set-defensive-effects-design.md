@@ -1,7 +1,7 @@
 # Equipment Set Defensive Effects (Second-Tier Set Effects)
 
 **Date**: 2026-10-06
-**Status**: Draft, awaiting user review. Scope decision made by the user in chat: "Add as 2nd-tier effects" (keep all nine capstones; give defensive sets a second effect at a lower threshold).
+**Status**: Approved by the user 2026-10-06 and implemented the same day (live-verified: shield, kill heal, low-HP state, info panel). Scope decision made by the user in chat: "Add as 2nd-tier effects" (keep all nine capstones; give defensive sets a second effect at a lower threshold).
 **Scope**: Builds the three effect types that `2026-09-25-equipment-set-effects-design.md` §10 designed but shelved because nothing could damage the Hero: `on_kill_heal`, `on_hurt_shield`, `low_hp_state`. Hero damage has since shipped (`3f562cd`..`2693b97`: elite and boss telegraphed attacks, armor/resist mitigation in Damage & Status Rule V), so all three now have live triggers. Three sets gain one **second-tier effect** each, at a threshold below their capstone. Capstones and stat bonuses are unchanged. Values are authoritative in §4; `design/balance/equipment-set-effects.md` is updated as the tuning mirror.
 
 ## 1. Overview
@@ -22,7 +22,7 @@ Three new types join the five in the 2026-09-25 spec §3.1. Same shape: `{name: 
 |---|---|---|---|
 | `on_kill_heal` | `monster_died`, `monsters_died_batch` | `heal_fraction: float` | Each **direct kill** (`Hero.is_direct_kill()`, same rule as `on_kill_stack_buff`) heals `heal_fraction` of the Hero's effective `max_hp`. A batch heals once per qualifying entry. Clamped at max HP. |
 | `on_hurt_shield` | `hero_damage_taken` with `amount > 0` | `shield_fraction: float`, `duration: float`, `cooldown: float` | Grants a damage-absorbing shield of `shield_fraction` x effective `max_hp` for `duration` seconds. Cannot re-trigger until `cooldown` seconds after the last grant. The shield never absorbs the hit that triggered it (§3.4). Re-grant replaces (never stacks). |
-| `low_hp_state` | `hero_health_changed` | `hp_fraction: float`, `stats: {StringName: float}` | Modifier is active while `0 < current_hp / max_hp <= hp_fraction`. No timer. |
+| `low_hp_state` | `hero_health_changed` | `hp_fraction: float`, `stats: {StringName: float}` | Modifier is active while `0 < current_hp / max_hp <= hp_fraction`, using Hero's cached max HP (`get_max_hp()`, the value the HP bar shows). No timer. |
 
 `stats` follows the existing rule: additive fractions in Hero's additive bucket, keys in `EquipmentBonuses.FAN_OUT_STATS`, `additive_bonus_total` not permitted. **New restriction for `low_hp_state`:** `max_hp` is not a permitted stat key. Raising max HP would lower the HP fraction and could toggle the state on and off every frame.
 
