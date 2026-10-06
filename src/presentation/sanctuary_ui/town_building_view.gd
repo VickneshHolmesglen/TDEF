@@ -27,6 +27,11 @@ var score: float = 0.0
 var _art: TextureRect = null
 var _name_label: Label = null
 var _pop_tween: Tween = null
+## Visible (non-transparent) part of the current tier art, in local coords.
+## Tier art shares one padded canvas per building so tiers keep their relative
+## size; low tiers leave most of the footprint empty, so hover, clicks and
+## the name follow this rect instead of the whole footprint.
+var _art_rect: Rect2 = Rect2()
 
 
 func setup(res: SanctuaryBuildingResource) -> void:
@@ -101,11 +106,37 @@ func _apply_tier_visual() -> void:
 		return
 	_art.texture = building.tier_textures[tier - 1] if has_tier_art() else null
 	_art.visible = _art.texture != null
-	# Name sits just under the building's top so it never floats in empty air.
-	var top: float = 0.0 if has_tier_art() else size.y - placeholder_height()
-	_name_label.position = Vector2(0.0, top + 4.0)
+	_art_rect = _visible_art_rect() if has_tier_art() else Rect2()
 	_name_label.size = Vector2(size.x, 18.0)
+	if has_tier_art():
+		# Under the base: real art has no flat roof band to sit on.
+		_name_label.position = Vector2(0.0, size.y + 2.0)
+	else:
+		# Just under the placeholder's top so it never floats in empty air.
+		_name_label.position = Vector2(0.0, size.y - placeholder_height() + 4.0)
 	queue_redraw()
+
+
+## Where the art's opaque pixels land once aspect-fit into the footprint
+## (mirrors TextureRect STRETCH_KEEP_ASPECT_CENTERED). Runs on tier change only.
+func _visible_art_rect() -> Rect2:
+	var tex: Texture2D = _art.texture
+	var image: Image = tex.get_image()
+	if image == null:
+		return Rect2(Vector2.ZERO, size)
+	if image.is_compressed():
+		image.decompress()
+	var tex_size := Vector2(tex.get_size())
+	var fit: float = minf(size.x / tex_size.x, size.y / tex_size.y)
+	var offset: Vector2 = (size - tex_size * fit) * 0.5
+	var used := Rect2(image.get_used_rect())
+	return Rect2(offset + used.position * fit, used.size * fit)
+
+
+func _has_point(point: Vector2) -> bool:
+	if has_tier_art():
+		return _art_rect.has_point(point)
+	return Rect2(Vector2.ZERO, size).has_point(point)
 
 
 func _draw() -> void:
@@ -130,7 +161,8 @@ func _draw() -> void:
 			else:
 				draw_arc(c, PIP_RADIUS, 0.0, TAU, 12, Color(1, 1, 1, 0.55), 1.0)
 	if focus_highlight:
-		draw_rect(Rect2(Vector2.ZERO, size), Color(1.0, 0.9, 0.55, 0.9), false, 2.0)
+		var outline: Rect2 = _art_rect.grow(3.0) if has_tier_art() else Rect2(Vector2.ZERO, size)
+		draw_rect(outline, Color(1.0, 0.9, 0.55, 0.9), false, 2.0)
 
 
 func _notification(what: int) -> void:

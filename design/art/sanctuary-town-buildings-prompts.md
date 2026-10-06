@@ -103,13 +103,15 @@ Accent: deep violet and silver, starlight glow.
 
 ## 3. Deliverables and hand-off
 
-- Codex drops raw output in `assets/source/sanctuary/town/` as
-  `sanctuary_<building_id>_tier<n>.png` (for example `sanctuary_seers_tower_tier3.png`).
-  One file per tier, not a combined sheet. A combined sheet is acceptable only if the 5 tiers are
-  separated by clear magenta gaps.
+- **Preferred format (proven on the Castle, 2026-10-07):** one landscape sheet per
+  building with all 5 tiers left to right (tier 1 to 5), each building on its own patch of ground,
+  on flat `#FF00FF`, saved as
+  `assets/source/sanctuary/town/sanctuary_<building_id>_sheet.png`. Cut with
+  `python tools/asset-pipeline/cut_town_sheet.py <sheet> <building_id>`. Ground shadows
+  tinted magenta are expected and handled by the script.
 - Then set that building's status row to `generated, awaiting processing`.
 - Claude Code alpha-cuts (colour-distance from #FF00FF, then a flood-fill from the border if any
-  magenta fringe remains), trims to a shared bottom-centre ground line per building, and writes
+  magenta fringe remains), pads every tier onto one shared canvas per building (bottom-centre, same ground line), and writes
   `assets/art/sanctuary/town/<building_id>_tier_<n>.png`, matching the existing
   `habitat_tier_<n>.png` naming in `assets/art/sanctuary/`. It then fills the
   `tier_textures` slots of `assets/data/sanctuary_buildings/<building_id>.tres` and

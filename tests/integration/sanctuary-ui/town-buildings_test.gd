@@ -193,3 +193,19 @@ func test_info_line_follows_hover_then_returns_to_prompt() -> void:
 	assert_str(info.text).contains(tr("SANCTUARY_BUILDING_BLACKSMITH"))
 	_town_view(&"blacksmith").mouse_exited.emit()
 	assert_str(info.text).is_equal(prompt)
+
+
+func test_tier_art_hit_area_and_name_follow_the_visible_building() -> void:
+	# 10x10 art, only the bottom-centre 4x4 opaque (a small low-tier building
+	# on the shared padded canvas).
+	var res := _make_resource()
+	res.footprint = Vector2(100, 100)
+	var image := Image.create(10, 10, false, Image.FORMAT_RGBA8)
+	image.fill_rect(Rect2i(3, 6, 4, 4), Color.WHITE)
+	res.tier_textures[0] = ImageTexture.create_from_image(image)
+	var view := _make_view(res)
+	view.set_progress(0.0)
+	assert_bool(view._has_point(Vector2(50, 80))).is_true()
+	assert_bool(view._has_point(Vector2(5, 5))).is_false()  # transparent sky above it
+	var label: Label = view.get_node("NameLabel")
+	assert_float(label.position.y).is_greater_equal(view.size.y)

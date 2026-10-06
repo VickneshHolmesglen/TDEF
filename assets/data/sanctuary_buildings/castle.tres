@@ -1,6 +1,11 @@
-[gd_resource type="Resource" script_class="SanctuaryBuildingResource" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="SanctuaryBuildingResource" load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://src/core/sanctuary/sanctuary_building_resource.gd" id="1"]
+[ext_resource type="Texture2D" path="res://assets/art/sanctuary/town/castle_tier_1.png" id="2"]
+[ext_resource type="Texture2D" path="res://assets/art/sanctuary/town/castle_tier_2.png" id="3"]
+[ext_resource type="Texture2D" path="res://assets/art/sanctuary/town/castle_tier_3.png" id="4"]
+[ext_resource type="Texture2D" path="res://assets/art/sanctuary/town/castle_tier_4.png" id="5"]
+[ext_resource type="Texture2D" path="res://assets/art/sanctuary/town/castle_tier_5.png" id="6"]
 
 [resource]
 script = ExtResource("1")
@@ -8,7 +13,7 @@ building_id = &"castle"
 name_key = "SANCTUARY_BUILDING_CASTLE"
 hint_key = "SANCTUARY_BUILDING_CASTLE_HINT"
 target_state = &""
-position = Vector2(560, 230)
-footprint = Vector2(170, 180)
+position = Vector2(560, 300)
+footprint = Vector2(159, 260)
 placeholder_color = Color(0.62, 0.58, 0.52, 1)
-tier_textures = Array[Texture2D]([null, null, null, null, null])
+tier_textures = Array[Texture2D]([ExtResource("2"), ExtResource("3"), ExtResource("4"), ExtResource("5"), ExtResource("6")])
