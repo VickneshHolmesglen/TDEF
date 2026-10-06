@@ -10,7 +10,8 @@
 	License: (Creative Commons Zero, CC0)
 	http://creativecommons.org/publicdomain/zero/1.0/
 
-	This content is free to use in personal, educational and commercial projects.
+	This content is free to use in personal, educational and commercial projects.
+
 	Support us by crediting Kenney or www.kenney.nl (this is not mandatory)
 
 			------------------------------
@@ -32,3 +33,9 @@
 	License: Creative Commons Zero, CC0 (http://creativecommons.org/publicdomain/zero/1.0/)
 	Sources: https://kenney.nl/assets/music-jingles , https://kenney.nl/assets/sci-fi-sounds , https://kenney.nl/assets/digital-audio
 	Credit is not mandatory; see SOURCES.md for the exact files used.
+
+	Music stems (added 2026-10-07), all CC0 / public domain from OpenGameArt.org:
+	  "A Brand New Wisdom" and "Winter Dust" by hernandack (Short Loops Background Music Pack)
+	  "Heartfelt Battle" by request
+	  "Determined Pursuit (epic orchestra loop)" by Emma_MA
+	Credit is not required; see SOURCES.md for URLs and processing.

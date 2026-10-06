@@ -21,11 +21,13 @@ func test_real_map_has_all_six_slots_filled_with_loopable_length_streams() -> vo
 		assert_float(stream.get_length()).override_failure_message("%s is under 8 s" % field).is_greater_equal(8.0)
 
 
-func test_sources_log_records_every_stem_as_synthesized() -> void:
+## Music stems are CC0 loops (2026-10-07); the two ambient beds are still synthesized.
+func test_sources_log_records_every_stem() -> void:
 	var sources: String = FileAccess.get_file_as_string(SOURCES_PATH)
 	for field: StringName in STEM_FIELDS:
 		assert_str(sources).override_failure_message("%s not in SOURCES.md" % field).contains(String(field))
-	assert_str(sources).contains("synthesized")
+	assert_str(sources).contains("synthesized")  # ambient beds
+	assert_str(sources).contains("CC0 | https://opengameart.org")  # music stems
 
 
 func test_audio_system_applies_the_real_map_to_the_controller_it_creates() -> void:
