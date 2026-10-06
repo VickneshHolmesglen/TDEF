@@ -172,3 +172,11 @@ func test_iron_colossus_shows_its_sheet_instead_of_nothing() -> void:
 	_instance.configure(&"iron_colossus_elite", 1)
 	assert_object(_instance._sprite.texture).is_not_null()
 	assert_bool(_instance.is_sheet_animated()).is_true()
+
+
+func test_a_boss_wind_up_plays_the_attack_prepare_clip() -> void:
+	_instance.configure(&"rift_sentinel_boss", 2)
+	for i: int in 4:
+		_instance.advance_animation(0.1, true)
+	assert_str(String(_instance.get_current_clip())).is_equal("attack_prepare")
+	assert_int(_instance._sprite.frame).is_between(5, 8)

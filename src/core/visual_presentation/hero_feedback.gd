@@ -74,6 +74,22 @@ var _death_tween: Tween = null
 var _idle_tween: Tween = null
 var _sprite_rest_scale: Vector2 = Vector2.ONE
 
+## Walk motion (2026-10-07, player-requested; animation-pipeline.md §2: the Hero
+## uses procedural motion, frame animation is deferred to the planned 3D model).
+## While the Hero moves: a footstep bob on Sprite2D.offset, a sway on rotation
+## and a small footfall squash on scale, facing the move direction (the art
+## faces right). offset/rotation are channels nothing else animates (flinch owns
+## position, flash/death own modulate); the idle breathing (scale/skew) is
+## paused while walking and restarted on stopping. ReduceMotion keeps only the
+## facing flip.
+const WALK_SPEED_THRESHOLD: float = 5.0   ## px/s below which the Hero counts as standing
+const WALK_STEPS_PER_SECOND: float = 3.2
+const WALK_BOB_PIXELS: float = 2.5        ## on-screen bob height (world px, ~64 px sprite)
+const WALK_SWAY_RADIANS: float = 0.06     ## ~3.4 degrees each way
+const WALK_SQUASH: float = 0.035
+var _walking: bool = false
+var _walk_time: float = 0.0
+
 
 ## True when a single hit removed strictly more than 25% of max HP. Unknown max never counts.
 static func is_big_hit(amount: int, max_hp: float) -> bool:
@@ -232,6 +248,7 @@ func _process(delta: float) -> void:
 func advance(delta: float) -> void:
 	if _dead:
 		return  # Task 7: the vignette freezes at maximum opacity on death
+	_update_walk(delta)
 	var target: float = 1.0 if _low_hp else 0.0
 	_vignette_fade = move_toward(_vignette_fade, target, delta / VIGNETTE_FADE_SECONDS)
 	_pulse_time += delta
@@ -330,6 +347,53 @@ func _play_shake() -> void:
 	_shake_tween.tween_property(_camera, "offset", Vector2.ZERO, FRAME_SECONDS)
 
 
+## Per-frame walk motion; see WALK_* above. Reads the Hero's real velocity
+## (CharacterBody2D), so it reacts to actual movement, not input alone.
+func _update_walk(delta: float) -> void:
+	if _sprite == null or not is_instance_valid(_sprite) or _hero == null or not is_instance_valid(_hero):
+		return
+	var velocity: Vector2 = _hero.get(&"velocity") if _hero.get(&"velocity") is Vector2 else Vector2.ZERO
+	var moving: bool = velocity.length() > WALK_SPEED_THRESHOLD
+	if absf(velocity.x) > WALK_SPEED_THRESHOLD:
+		_sprite.flip_h = velocity.x < 0.0
+	if moving and not _walking:
+		_walking = true
+		_walk_time = 0.0
+		stop_idle()
+	elif not moving and _walking:
+		_walking = false
+		_reset_walk_pose()
+		start_idle()
+	if not _walking or ReduceMotion.enabled():
+		return
+	_walk_time += delta
+	# One full sine half-cycle per footstep: |sin| peaks mid-stride, touches 0 at each footfall.
+	var phase: float = _walk_time * WALK_STEPS_PER_SECOND * PI
+	var lift: float = absf(sin(phase))
+	_sprite.offset = Vector2(0.0, -lift * WALK_BOB_PIXELS / maxf(_sprite_rest_scale.y, 0.0001))
+	_sprite.rotation = sin(phase) * WALK_SWAY_RADIANS
+	var squash: float = (1.0 - lift) * WALK_SQUASH
+	_sprite.scale = Vector2(_sprite_rest_scale.x * (1.0 + squash), _sprite_rest_scale.y * (1.0 - squash))
+
+
+## Ends any walk motion and returns the walk channels to rest (death, relaunch).
+func _stop_walk() -> void:
+	_walking = false
+	if _sprite != null and is_instance_valid(_sprite):
+		_reset_walk_pose()
+
+
+func _reset_walk_pose() -> void:
+	_sprite.offset = Vector2.ZERO
+	_sprite.rotation = 0.0
+	_sprite.scale = _sprite_rest_scale
+
+
+## True while the walk motion is playing.
+func is_walking() -> bool:
+	return _walking
+
+
 ## (Re)starts the looping idle cycle from the rest pose. Safe to call repeatedly.
 func start_idle() -> void:
 	stop_idle()
@@ -375,6 +439,7 @@ func _on_hero_died() -> void:
 	_kill_tween(_flinch_tween)
 	_kill_tween(_shake_tween)
 	stop_idle()
+	_stop_walk()
 	if _camera != null and is_instance_valid(_camera):
 		_camera.offset = Vector2.ZERO
 	# The vignette freezes at maximum opacity; desaturation eases in over 0.5 s.
@@ -439,6 +504,7 @@ func _reset_feedback_state() -> void:
 		_camera.offset = Vector2.ZERO
 	if _sprite != null and is_instance_valid(_sprite):
 		_sprite.position = _sprite_rest_position
+	_stop_walk()
 	if _sprite != null:
 		_sprite.modulate = Color.WHITE
 	if _flash_material != null:
