@@ -32,15 +32,16 @@ extends Control
 ##   model where the data layer has no pick-up/place primitive to bind a
 ##   2-step flow to" precedent.
 ## - LOCKED_OUT siblings (Edge Cases: the unchosen options of an already-
-##   resolved Choice node) are surfaced as a small "(locked out: X, Y)" text
+##   resolved Choice node) are surfaced as a small locked-out line (SKILL_TREE_LOCKED_OUT, e.g. (locked out: X, Y))
 ##   line under an already-purchased node, not a distinct visual treatment —
 ##   informative, not a separate interaction surface.
 ##
 ## Root is a plain Control. No class_name — matches the other room/screen
 ## scripts' TD-workflow-001 precedent.
 
-const NODE_LABELS: Array[String] = ["Minor", "Choice I", "Choice II", "Choice III"]
-const NODE_TIER_LABELS: Dictionary[int, String] = {1: "Opener", 2: "Core", 3: "Capstone"}
+## strings.csv keys (localized 2026-10-07; previously hardcoded English).
+const NODE_LABELS: Array[String] = ["SKILL_TREE_NODE_MINOR", "SKILL_TREE_NODE_CHOICE_1", "SKILL_TREE_NODE_CHOICE_2", "SKILL_TREE_NODE_CHOICE_3"]
+const NODE_TIER_LABELS: Dictionary[int, String] = {1: "SKILL_TREE_TIER_OPENER", 2: "SKILL_TREE_TIER_CORE", 3: "SKILL_TREE_TIER_CAPSTONE"}
 
 ## Injectable for tests; defaults to the real GHeroSkillTree Autoload.
 @export var hero_skill_tree: HeroSkillTree
@@ -98,7 +99,7 @@ func _rebuild_pool_row() -> void:
 		return
 	for archetype: String in HeroSkillTree.ARCHETYPES:
 		_pool_row.add_child(_make_pool_label(archetype, hero_skill_tree.skill_tree_points.get(archetype, 0)))
-	_pool_row.add_child(_make_pool_label("", hero_skill_tree.overflow_points, "Overflow"))
+	_pool_row.add_child(_make_pool_label("", hero_skill_tree.overflow_points, tr("SKILL_TREE_OVERFLOW")))
 
 
 func _make_pool_label(category: String, count: int, override_text: String = "") -> Control:
@@ -107,7 +108,7 @@ func _make_pool_label(category: String, count: int, override_text: String = "") 
 	if not category.is_empty():
 		row.add_child(_make_glyph_badge(category, 18))
 	var label := Label.new()
-	label.text = "%s: %d" % [override_text if not override_text.is_empty() else category.capitalize(), count]
+	label.text = tr("SKILL_TREE_POOL") % [override_text if not override_text.is_empty() else _archetype_name(category), count]
 	row.add_child(label)
 	return row
 
@@ -140,7 +141,7 @@ func _rebuild_chains() -> void:
 		var header := HBoxContainer.new()
 		header.add_child(_make_glyph_badge(archetype, 20))
 		var header_label := Label.new()
-		header_label.text = archetype.capitalize()
+		header_label.text = _archetype_name(archetype)
 		header.add_child(header_label)
 		column.add_child(header)
 
@@ -179,7 +180,7 @@ func _build_node_row(archetype: String, node_index: int) -> Control:
 			for skill_id: String in locked_out:
 				names.append(_skill_label(skill_id))
 			var locked_out_label := Label.new()
-			locked_out_label.text = "(locked out: %s)" % ", ".join(names)
+			locked_out_label.text = tr("SKILL_TREE_LOCKED_OUT") % ", ".join(names)
 			locked_out_label.add_theme_font_size_override("font_size", 11)
 			wrapper.add_child(locked_out_label)
 
@@ -190,13 +191,19 @@ func _build_node_row(archetype: String, node_index: int) -> Control:
 
 
 func _node_button_text(archetype: String, node_index: int, node_state: Dictionary, unlocked: bool, is_choice: bool) -> String:
+	var node_name: String = tr(NODE_LABELS[node_index])
 	if not is_choice:
-		return "%s %s" % [NODE_LABELS[node_index], "[UNLOCKED]" if unlocked else "[LOCKED]"]
+		return tr("SKILL_TREE_NODE_STATE") % [node_name, tr("SKILL_TREE_TAG_UNLOCKED") if unlocked else tr("SKILL_TREE_TAG_LOCKED")]
 	if unlocked:
 		var chosen: String = node_state.get("chosen_skill_id", "") as String
-		return "%s: %s" % [NODE_LABELS[node_index], _skill_label(chosen)]
-	var tier_label: String = NODE_TIER_LABELS.get(node_index, "")
-	return "%s (%s) [LOCKED]" % [NODE_LABELS[node_index], tier_label]
+		return tr("SKILL_TREE_NODE_CHOSEN") % [node_name, _skill_label(chosen)]
+	var tier_label: String = tr(NODE_TIER_LABELS.get(node_index, ""))
+	return tr("SKILL_TREE_NODE_TIER_LOCKED") % [node_name, tier_label, tr("SKILL_TREE_TAG_LOCKED")]
+
+
+## "physical" -> "Physical" via strings.csv (SKILL_TREE_ARCHETYPE_*).
+func _archetype_name(archetype: String) -> String:
+	return tr("SKILL_TREE_ARCHETYPE_%s" % archetype.to_upper())
 
 
 func _style_node_button(button: Button, unlocked: bool, purchasable: bool) -> void:

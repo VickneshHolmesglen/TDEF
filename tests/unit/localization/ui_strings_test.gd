@@ -99,6 +99,10 @@ const REMOVED_LITERALS: Dictionary = {
 		"\"%s [LOCKED]\"", "\"%s [EQUIPPED]\"", "\"%s [AVAILABLE]\"", "\"%s [CONFLICT: %s]\"",
 	],
 	"res://src/scenes/main_menu.gd": ["\"This will overwrite Slot", "\"Slot %d", "\"Occupied\"", "\"Empty\""],
+	"res://src/gameplay/ui/hero_skill_tree_screen/hero_skill_tree_screen.gd": [
+		"\"[LOCKED]\"", "\"[UNLOCKED]\"", "\"(locked out:", "\"Overflow\"", "\"Minor\"", "\"Opener\"",
+		"archetype.capitalize()",
+	],
 }
 
 
