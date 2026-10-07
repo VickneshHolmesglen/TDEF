@@ -1,8 +1,9 @@
-[gd_scene load_steps=4 format=3 uid="uid://hero0scene0the0gap"]
+[gd_scene load_steps=5 format=3 uid="uid://hero0scene0the0gap"]
 
 [ext_resource type="Script" path="res://src/core/hero/hero.gd" id="1_hero"]
 [ext_resource type="Texture2D" path="res://assets/art/characters/hero_warden_smith.png" id="2_hero_sprite"]
 [ext_resource type="Script" path="res://src/core/equipment/set_effect_controller.gd" id="3_seteffects"]
+[ext_resource type="Script" path="res://src/core/visual_presentation/hero_appearance.gd" id="4_appearance"]
 
 [node name="Hero" type="CharacterBody2D"]
 script = ExtResource("1_hero")
@@ -10,6 +11,9 @@ script = ExtResource("1_hero")
 [node name="Sprite2D" type="Sprite2D" parent="."]
 texture = ExtResource("2_hero_sprite")
 scale = Vector2(0.052083, 0.052083)
+
+[node name="HeroAppearance" type="Node2D" parent="Sprite2D"]
+script = ExtResource("4_appearance")
 
 [node name="SetEffectController" type="Node" parent="."]
 script = ExtResource("3_seteffects")

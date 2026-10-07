@@ -55,6 +55,11 @@ extends Resource
 ## content placeholder") -- never hardcoded as a UI-side item_id->texture
 ## lookup table, matching this project's own data-driven-values rule.
 @export var icon: Texture2D = null
+## Equipment worn on the hero (hero equipment appearance spec, 2026-10-07):
+## a transparent overlay on the SAME canvas as HeroAppearanceResource.
+## base_texture, drawn full-canvas over the body, so it lines up with no
+## offsets. Null = HeroAppearance pins `icon` to the slot's anchor instead.
+@export var worn_texture: Texture2D = null
 ## Tower Assembly (2026-08-11, player-requested, design/quick-specs/
 ## tower-assembly-2026-08-11.md): path to a standalone `.tres` whose root
 ## resource is a real FoundationComponent/WeaponComponent/FocusComponent/

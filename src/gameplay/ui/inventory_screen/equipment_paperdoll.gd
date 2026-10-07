@@ -141,6 +141,10 @@ func _build_portrait() -> void:
 	portrait.position = Vector2(-PORTRAIT_SIZE.x / 2.0, 24.0)
 	portrait.size = PORTRAIT_SIZE
 	add_child(portrait)
+	# Worn gear drawn on the hero (2026-10-07); also swaps in the base body.
+	var appearance := HeroAppearance.new()
+	appearance.name = "HeroAppearance"
+	portrait.add_child(appearance)
 
 
 const COLUMN_SEPARATION: float = 8.0

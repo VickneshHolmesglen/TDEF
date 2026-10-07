@@ -206,6 +206,25 @@ Placeholder-replacement art, not ship-final (§1 pilot gate still applies).
 | Town building: Training Hall — 5 tiers | sanctuary | `done` | Codex | 2026-10-07 Codex: raw assets/source/sanctuary/town/sanctuary_training_hall_sheet.png; five transparent tiers cut with cut_town_sheet.py to assets/art/sanctuary/town/training_hall_tier_1..5.png, shared 629x648 bottom-centred canvas; tier_textures wired; footprint 116x120 preserves canvas aspect. Cutouts inspected on green. Live-verified at all five tiers through real SanctuaryUI/TownBuildingView on Godot 4.6.2; no runtime errors (the MCP bridge emits a shutdown warning on quit). Uncommitted. **Claude Code review 2026-10-07**: cutouts re-inspected on green (clean). The town was re-laid on three rows with larger footprints (150 tall; Seer's Tower 210, Castle 260), keeping each canvas aspect, because the 120-tall footprints made tier 1 tiny. Live-verified at the real-save tiers and with all buildings forced to tier 5 (no overlaps). `cut_violet_town_sheet.py` was folded into `cut_town_sheet.py --distance-key` (pixel-identical output). |
 | Town building: Seer's Tower — 5 tiers | sanctuary | `done` | Codex | 2026-10-07 Codex: raw assets/source/sanctuary/town/sanctuary_seers_tower_sheet.png; five transparent tiers cut with cut_violet_town_sheet.py (colour-distance key preserves violet roofs and glow) to assets/art/sanctuary/town/seers_tower_tier_1..5.png, shared 452x730 bottom-centred canvas; tier_textures wired; footprint 105x170 preserves canvas aspect. Cutouts inspected on green. Live-verified at all five tiers through real SanctuaryUI/TownBuildingView on Godot 4.6.2; no runtime errors (the MCP bridge emits a shutdown warning on quit). Uncommitted. **Claude Code review 2026-10-07**: cutouts re-inspected on green (clean). The town was re-laid on three rows with larger footprints (150 tall; Seer's Tower 210, Castle 260), keeping each canvas aspect, because the 120-tall footprints made tier 1 tiny. Live-verified at the real-save tiers and with all buildings forced to tier 5 (no overlaps). `cut_violet_town_sheet.py` was folded into `cut_town_sheet.py --distance-key` (pixel-identical output). |
 
+**Hero worn-gear overlays batch, opened 2026-10-07**: user-approved in chat
+("fitted overlays", shown in both the paperdoll and missions). Code shipped: `HeroAppearance`
+layers each equipped item's `worn_texture` over the base body, falling back to
+its icon pinned at the slot anchor until the overlay exists. Prompts and the
+edit-based workflow are in `design/art/hero-equipment-overlay-prompts.md`; the extractor is
+`tools/asset-pipeline/extract_worn_overlay.py`. **The base body gates everything else.** Get
+user approval on it before generating any item edit.
+
+| Item | Category | Status | Owner | Notes |
+|---|---|---|---|---|
+| Hero base body (no gear, empty hands) | characters | `backlog` | Codex → user approval → Claude Code | Prompt §1. Raw: `assets/source/characters/hero_base_body_raw.png`. Blocks every row below. |
+| Worn overlays: helmet (5) | characters | `backlog` | Codex → Claude Code | Prompt §2. Edits: `assets/source/characters/gear/<item_id>_edit.png` for `brutes_war_helm`, `goblin_fang_circlet`, `iron_helm`, `reinforced_helm`, `sentinel_visor`. |
+| Worn overlays: chest (5) | characters | `backlog` | Codex → Claude Code | Prompt §2. Edits: `assets/source/characters/gear/<item_id>_edit.png` for `brutes_bulwark_plate`, `leather_jerkin`, `reinforced_plate`, `troll_hide_mantle`, `warlords_battleplate`. |
+| Worn overlays: gloves (5) | characters | `backlog` | Codex → Claude Code | Prompt §2. Edits: `assets/source/characters/gear/<item_id>_edit.png` for `brute_gauntlets`, `goblin_claw_gauntlets`, `leather_gloves`, `lurker_claw_gauntlets`, `reinforced_gauntlets`. |
+| Worn overlays: pants (5) | characters | `backlog` | Codex → Claude Code | Prompt §2. Edits: `assets/source/characters/gear/<item_id>_edit.png` for `brute_legguards`, `goblin_raider_leggings`, `iron_greaves`, `leather_leggings`, `warlords_legguards`. |
+| Worn overlays: boots (5) | characters | `backlog` | Codex → Claude Code | Prompt §2. Edits: `assets/source/characters/gear/<item_id>_edit.png` for `reinforced_boots`, `sentinels_striders`, `traveler_boots`, `trollhide_striders`, `warlords_greaves`. |
+| Worn overlays: weapon (5) | characters | `backlog` | Codex → Claude Code | Prompt §2. Edits: `assets/source/characters/gear/<item_id>_edit.png` for `iron_sword`, `lurker_fang_blade`, `sentinels_lance`, `steel_greatsword`, `warlords_greatblade`. |
+| Worn overlays: offhand (5) | characters | `backlog` | Codex → Claude Code | Prompt §2. Edits: `assets/source/characters/gear/<item_id>_edit.png` for `iron_buckler`, `sentinel_ward`, `sentinels_aegis`, `trollhide_buckler`, `wooden_buckler`. |
+
 ## Known layout gaps (from `production/Issues.PNG` / `UI Changes.PNG`)
 
 | Gap | Status | Notes |

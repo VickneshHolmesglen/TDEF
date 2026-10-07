@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="HeroAppearanceResource" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/core/hero/hero_appearance_resource.gd" id="1"]
+[ext_resource type="Texture2D" path="res://assets/art/characters/hero_warden_smith.png" id="2"]
+
+[resource]
+script = ExtResource("1")
+base_texture = ExtResource("2")
+layer_order = Array[String](["boots", "pants", "chest", "gloves", "helmet", "offhand", "main_hand"])
+icon_anchors = Dictionary[String, Vector2]({
+"boots": Vector2(0.5, 0.9),
+"chest": Vector2(0.52, 0.37),
+"gloves": Vector2(0.77, 0.5),
+"helmet": Vector2(0.49, 0.155),
+"main_hand": Vector2(0.22, 0.52),
+"offhand": Vector2(0.8, 0.5),
+"pants": Vector2(0.51, 0.66)
+})
+icon_heights = Dictionary[String, float]({
+"boots": 0.12,
+"chest": 0.26,
+"gloves": 0.1,
+"helmet": 0.16,
+"main_hand": 0.3,
+"offhand": 0.22,
+"pants": 0.2
+})
