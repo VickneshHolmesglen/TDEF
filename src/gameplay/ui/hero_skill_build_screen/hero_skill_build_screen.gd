@@ -108,6 +108,9 @@ const ARCHETYPE_GLYPHS: Dictionary[String, String] = {
 
 ## Injectable for tests; defaults to the real GHeroSkillBuild Autoload.
 @export var hero_skill_build: HeroSkillBuild
+## Injectable for tests; defaults to the real GHeroSkillTree Autoload. Read
+## only for a locked skill's unlock conditions in the detail panel.
+@export var hero_skill_tree: HeroSkillTree
 
 @onready var _input_mode_tracker: InputModeTracker = $InputModeTracker
 @onready var _ultimate_label: Label = $MainLayout/UltimateLabel
@@ -149,6 +152,8 @@ var _library_buttons: Dictionary[String, Button] = {}
 func _ready() -> void:
 	if hero_skill_build == null:
 		hero_skill_build = GHeroSkillBuild
+	if hero_skill_tree == null:
+		hero_skill_tree = GHeroSkillTree
 
 	_input_mode_tracker.input_mode_changed.connect(_on_input_mode_changed)
 	GEventBus.active_skill_equipped.connect(_on_build_changed)
@@ -626,7 +631,7 @@ func _build_skill_detail_panel() -> void:
 	_skill_detail_label = Label.new()
 	_skill_detail_label.name = "SkillDetailLabel"
 	_skill_detail_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_skill_detail_label.custom_minimum_size = Vector2(0, 108)  # 4 lines: name, stats, and an effect that may wrap once -- keeps the library from jumping as focus moves
+	_skill_detail_label.custom_minimum_size = Vector2(0, 160)  # 6 lines: name, stats, effect, and a locked skill's unlock conditions -- keeps the library from jumping as focus moves
 	_skill_detail_label.text = tr("SKILL_DETAIL_PROMPT")
 	panel.add_child(_skill_detail_label)
 	var layout: Node = _active_slot_list.get_parent().get_parent()
@@ -643,7 +648,47 @@ func _show_skill_detail(skill_id: String) -> void:
 	if _skill_detail_label == null:
 		return
 	var skill: SkillDefinitionResource = GGameDataRegistry.get_skill_definition(StringName(skill_id))
-	_skill_detail_label.text = SkillEffectText.describe_skill(skill) if skill != null else tr("SKILL_DETAIL_PROMPT")
+	if skill == null:
+		_skill_detail_label.text = tr("SKILL_DETAIL_PROMPT")
+		return
+	var text: String = SkillEffectText.describe_skill(skill)
+	if hero_skill_build != null and not hero_skill_build.get_assignable_skills().has(skill_id):
+		var conditions: String = _unlock_conditions_text(skill)
+		if not conditions.is_empty():
+			text += "\n" + conditions
+	_skill_detail_label.text = text
+
+
+## Unlock conditions for a not-yet-learned skill. Skills are learned only by
+## picking them at their archetype chain's Choice node in the Skill Tree
+## (Tower Mastery just earns the points), so this reads that node: which one,
+## whether an earlier node must come first, whether a point is available, or
+## whether a sibling was already chosen (permanently locked out).
+func _unlock_conditions_text(skill: SkillDefinitionResource) -> String:
+	if hero_skill_tree == null:
+		return ""
+	var archetype: String = skill.category
+	var node_index: int = -1
+	for index: int in HeroSkillTree.TIER_FOR_CHOICE_NODE:
+		if HeroSkillTree.TIER_FOR_CHOICE_NODE[index] == skill.tier:
+			node_index = index
+	if node_index < 0 or not HeroSkillTree.ARCHETYPES.has(archetype):
+		return ""
+	var archetype_name: String = tr("SKILL_TREE_ARCHETYPE_%s" % archetype.to_upper())
+	var node_name: String = tr("SKILL_TREE_NODE_CHOICE_%d" % node_index)
+	var state: Dictionary = hero_skill_tree.get_node_state(archetype, node_index)
+	if state.get("unlocked", false) as bool:
+		var chosen: String = state.get("chosen_skill_id", "") as String
+		return tr("SKILL_UNLOCK_LOCKED_OUT") % [_skill_label(chosen), archetype_name, node_name]
+
+	var lines: Array[String] = [tr("SKILL_UNLOCK_HEADER") % [archetype_name, node_name]]
+	var first_locked: int = hero_skill_tree.get_first_locked_node_index(archetype)
+	if first_locked >= 0 and first_locked < node_index:
+		var prior_name: String = tr("SKILL_TREE_NODE_MINOR") if first_locked == 0 else tr("SKILL_TREE_NODE_CHOICE_%d" % first_locked)
+		lines.append(tr("SKILL_UNLOCK_REQUIRES_NODE") % [archetype_name, prior_name])
+	var points: int = hero_skill_tree.skill_tree_points.get(archetype, 0) + hero_skill_tree.overflow_points
+	lines.append(tr("SKILL_UNLOCK_POINTS") % [archetype_name, points, archetype_name])
+	return "\n".join(lines)
 
 
 # ---------------------------------------------------------------------------

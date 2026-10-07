@@ -232,6 +232,10 @@ SKILL_BUILD_TAG_LOCKED,(Locked)
 SKILL_BUILD_TAG_ACTIVE,(Equipped)
 SKILL_DETAIL_PROMPT,Hover or select a skill to see what it does.
 SKILL_DETAIL_STATS,%s · Cooldown %s · Power x%s
+SKILL_UNLOCK_HEADER,"Unlock: Skill Tree, %s %s"
+SKILL_UNLOCK_REQUIRES_NODE,Requires %s %s first
+SKILL_UNLOCK_POINTS,"Costs 1 %s skill point (you have %d), earned by fighting near %s towers"
+SKILL_UNLOCK_LOCKED_OUT,"Locked out: you chose %s at %s %s"
 SKILL_EFFECT_LINE,Effect: %s
 SKILL_EFFECT_DOT_BURN,Burns for %s%% of the target's HP over %s.
 SKILL_EFFECT_DOT_POISON,Poisons for %s%% of the target's HP over %s.
