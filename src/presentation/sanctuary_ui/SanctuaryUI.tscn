@@ -1,4 +1,4 @@
-[gd_scene load_steps=10 format=3 uid="uid://sanctuaryui0scene"]
+[gd_scene load_steps=11 format=3 uid="uid://sanctuaryui0scene"]
 
 [ext_resource type="Script" path="res://src/presentation/sanctuary_ui/sanctuary_ui.gd" id="1_su"]
 [ext_resource type="Script" path="res://src/presentation/sanctuary_ui/tab_strip.gd" id="2_ts"]
@@ -9,6 +9,7 @@
 [ext_resource type="Script" path="res://src/core/crafting/crafting.gd" id="7_craft"]
 [ext_resource type="Script" path="res://src/core/building_upgrade/building_upgrade.gd" id="8_bldup"]
 [ext_resource type="Script" path="res://src/core/tower_assembly/tower_assembly.gd" id="9_towasm"]
+[ext_resource type="Texture2D" path="res://assets/art/sanctuary/town/overview_background.png" id="10_bg"]
 
 [node name="SanctuaryUI" type="Control"]
 layout_mode = 3
@@ -21,6 +22,18 @@ mouse_filter = 2
 [node name="Diorama" type="Control" parent="."]
 layout_mode = 1
 script = ExtResource("6_dio")
+
+[node name="Background" type="TextureRect" parent="Diorama"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("10_bg")
+expand_mode = 1
+stretch_mode = 6
 
 [node name="World" type="Node2D" parent="Diorama"]
 
