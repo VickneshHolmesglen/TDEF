@@ -271,16 +271,7 @@ func _build_town() -> void:
 		view.focus_exited.connect(_show_town_prompt)
 		town.add_child(view)
 		_town_views[res.building_id] = view
-	_town_info_label = Label.new()
-	_town_info_label.name = "TownInfo"
-	_town_info_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_town_info_label.add_theme_color_override("font_color", ShellChromeStyle.UI_PARCHMENT)
-	_town_info_label.anchor_top = 1.0
-	_town_info_label.anchor_bottom = 1.0
-	_town_info_label.offset_left = 16.0
-	_town_info_label.offset_top = -36.0
-	_town_info_label.offset_bottom = -12.0
-	add_child(_town_info_label)
+	add_child(_build_town_info_strip())
 	_show_town_prompt()
 	_town_refresh_signals = [
 		GEventBus.slot_expansion_completed, GEventBus.recipe_discovered, GEventBus.creature_acquired,
@@ -318,6 +309,38 @@ func _on_town_building_pressed(building_id: StringName) -> void:
 	var view: TownBuildingView = _town_views.get(building_id)
 	if view != null and view.building.target_state != &"":
 		building_selected.emit(view.building.target_state)
+
+
+## Bottom hint line on a translucent chrome strip: the Overview background's
+## rocky bottom edge made bare parchment text hard to read. Stops short of the
+## Launch Mission button (SanctuaryUI, 220 px wide at 24 px from the right).
+func _build_town_info_strip() -> PanelContainer:
+	var strip := PanelContainer.new()
+	strip.name = "TownInfoStrip"
+	strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	strip.anchor_top = 1.0
+	strip.anchor_bottom = 1.0
+	strip.anchor_right = 1.0
+	strip.offset_left = 12.0
+	strip.offset_top = -40.0
+	strip.offset_right = -256.0
+	strip.offset_bottom = -8.0
+	var box := ShellChromeStyle.chrome_panel_stylebox()
+	box.bg_color.a = 0.82
+	box.border_width_top = 1
+	box.border_color = Color(ShellChromeStyle.UI_PARCHMENT, 0.35)
+	box.content_margin_left = 12.0
+	box.content_margin_right = 12.0
+	strip.add_theme_stylebox_override("panel", box)
+	_town_info_label = Label.new()
+	_town_info_label.name = "TownInfo"
+	_town_info_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_town_info_label.add_theme_color_override("font_color", ShellChromeStyle.UI_PARCHMENT)
+	_town_info_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_town_info_label.add_theme_font_size_override("font_size", 14)
+	_town_info_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	strip.add_child(_town_info_label)
+	return strip
 
 
 func _show_town_info(building_id: StringName) -> void:
