@@ -6,7 +6,7 @@
 [resource]
 script = ExtResource("1")
 base_texture = ExtResource("2")
-layer_order = Array[String](["boots", "pants", "chest", "gloves", "helmet", "offhand", "main_hand"])
+layer_order = Array[String](["boots", "pants", "chest", "main_hand", "gloves", "helmet", "offhand"])
 icon_anchors = Dictionary[String, Vector2]({
 "boots": Vector2(0.51, 0.9),
 "chest": Vector2(0.503, 0.32),

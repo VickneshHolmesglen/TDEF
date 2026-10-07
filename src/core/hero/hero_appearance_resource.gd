@@ -14,7 +14,9 @@ extends Resource
 ## The body the gear is layered on. Fitted overlays must share its canvas size.
 @export var base_texture: Texture2D = null
 ## Shown slots, drawn back to front. Slots not listed (neck, rings) never show.
-@export var layer_order: Array[String] = ["boots", "pants", "chest", "gloves", "helmet", "offhand", "main_hand"]
+## Gloves sit above main_hand: every weapon overlay carries a bare gripping
+## hand, which a glove must cover (2026-10-07 kit review).
+@export var layer_order: Array[String] = ["boots", "pants", "chest", "main_hand", "gloves", "helmet", "offhand"]
 ## Icon-fallback centre per slot, as a fraction of the base canvas (0..1).
 @export var icon_anchors: Dictionary[String, Vector2] = {}
 ## Icon-fallback height per slot, as a fraction of the base canvas height.

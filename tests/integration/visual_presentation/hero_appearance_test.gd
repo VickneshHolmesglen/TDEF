@@ -7,7 +7,11 @@ extends GdUnitTestSuite
 const HELM := &"brutes_war_helm"
 const BOOTS := &"reinforced_boots"
 const AMULET := &"bogpearl_amulet"
-const SWORD := &"iron_sword"  ## no worn_texture yet: exercises the icon fallback
+const SWORD := &"iron_sword"
+
+
+var _stripped: ItemDefinitionResource = null
+var _stripped_worn: Texture2D = null
 
 
 func before_test() -> void:
@@ -16,6 +20,19 @@ func before_test() -> void:
 
 func after_test() -> void:
 	GInventory.reset_to_defaults()
+	if _stripped != null:
+		_stripped.worn_texture = _stripped_worn  # shared cached resource
+		_stripped = null
+
+
+## Every shipped item has fitted art now; the icon-fallback path (still used
+## by any future item before its overlay lands) is exercised by stripping the
+## sword's worn_texture for one test. Restored in after_test().
+func _sword_without_worn_art() -> ItemDefinitionResource:
+	_stripped = _definition(SWORD)
+	_stripped_worn = _stripped.worn_texture
+	_stripped.worn_texture = null
+	return _stripped
 
 
 func _definition(id: StringName) -> ItemDefinitionResource:
@@ -34,7 +51,7 @@ func _sprite_host() -> Array:
 func test_hero_appearance_equip_adds_layer_and_unequip_removes_it() -> void:
 	var appearance: HeroAppearance = _sprite_host()[1]
 	assert_object(appearance.get_layer("main_hand")).is_null()
-	assert_bool(GInventory.equip_item("main_hand", _definition(SWORD))).is_true()
+	assert_bool(GInventory.equip_item("main_hand", _sword_without_worn_art())).is_true()
 	var layer: Sprite2D = appearance.get_layer("main_hand")
 	assert_object(layer).is_not_null()
 	assert_object(layer.texture).is_same(_definition(SWORD).icon)
@@ -45,7 +62,7 @@ func test_hero_appearance_equip_adds_layer_and_unequip_removes_it() -> void:
 
 func test_hero_appearance_icon_fallback_sits_on_the_slot_anchor() -> void:
 	var appearance: HeroAppearance = _sprite_host()[1]
-	GInventory.equip_item("main_hand", _definition(SWORD))
+	GInventory.equip_item("main_hand", _sword_without_worn_art())
 	var base_size := Vector2(appearance.config.base_texture.get_size())
 	var expected: Vector2 = (appearance.config.icon_anchors["main_hand"] - Vector2(0.5, 0.5)) * base_size
 	assert_vector(appearance.get_layer("main_hand").position).is_equal_approx(expected, Vector2(0.01, 0.01))
@@ -138,13 +155,29 @@ func test_hero_appearance_config_validates() -> void:
 	assert_array(config.validate()).is_empty()
 
 
-func test_hero_appearance_shipped_helmets_use_fitted_overlays() -> void:
-	# 2026-10-07: the 5 helmets have real worn art on the base-body canvas.
+func test_hero_appearance_every_shown_slot_item_has_fitted_art() -> void:
+	# 2026-10-07: all 35 helmet/chest/gloves/pants/boots/weapon/offhand items
+	# have worn art on the base-body canvas.
 	var appearance: HeroAppearance = _sprite_host()[1]
-	for id: StringName in [&"brutes_war_helm", &"goblin_fang_circlet", &"iron_helm", &"reinforced_helm", &"sentinel_visor"]:
-		var definition := _definition(id)
-		assert_object(definition.worn_texture).override_failure_message("%s has no worn_texture" % id).is_not_null()
-		assert_vector(Vector2(definition.worn_texture.get_size())).is_equal(Vector2(appearance.config.base_texture.get_size()))
-		GInventory.equip_item("helmet", definition)
-		assert_bool(appearance.is_fitted("helmet")).is_true()
-		GInventory.unequip_item("helmet")
+	var base_size := Vector2(appearance.config.base_texture.get_size())
+	var checked: int = 0
+	for slot: String in appearance.config.layer_order:
+		var category: String = Inventory.EQUIPMENT_SLOT_CATEGORY[slot]
+		for id: StringName in GGameDataRegistry.get_all_item_definitions():
+			var definition := _definition(id)
+			if definition.equipment_category != category:
+				continue
+			assert_object(definition.worn_texture).override_failure_message("%s has no worn_texture" % id).is_not_null()
+			assert_vector(Vector2(definition.worn_texture.get_size())).is_equal(base_size)
+			GInventory.equip_item(slot, definition)
+			assert_bool(appearance.is_fitted(slot)).override_failure_message("%s not fitted" % id).is_true()
+			GInventory.unequip_item(slot)
+			checked += 1
+	assert_int(checked).is_equal(35)
+
+
+func test_hero_appearance_gloves_draw_over_the_weapon_grip() -> void:
+	var appearance: HeroAppearance = _sprite_host()[1]
+	GInventory.equip_item("main_hand", _definition(SWORD))
+	GInventory.equip_item("gloves", _definition(&"leather_gloves"))
+	assert_int(appearance.get_layer("gloves").get_index()).is_greater(appearance.get_layer("main_hand").get_index())

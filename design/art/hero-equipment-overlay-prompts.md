@@ -33,8 +33,10 @@ inherits this pose, so a bad base wastes 35 generations.
 
 ## 2. Step 2: one edit per item
 
-Input: the approved base body raw image **and** the item's icon
+Input: the exact original magenta file `assets/source/characters/hero_base_body_raw.png` **and** the item's icon
 `assets/art/items/<item_id>.png` (attach both, so the gear matches its icon).
+
+Never use the processed base in `assets/art/`: the extractor compares each edit against that exact original raw image. Regenerate any edit that changes the face, pose or unrelated clothes. Notify the user when a batch is saved; Claude Code extracts, wires and checks it in the game.
 
 Template:
 
