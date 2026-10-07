@@ -321,6 +321,17 @@ considering it done** — do not assume a `.size`/`.scale` line in code is
 sufficient. This has broken 3 separate times in this project's history for 3
 different node types; assume it will break a 4th time if unverified.
 
+**Import `process/size_limit` distorts multi-piece art (broke 2026-10-07).**
+The texture-memory pass (9d592d3) caps most categories at 256 px. A cap
+scales each PNG by its *own* factor (`256 / max(w, h)`), so pieces meant to
+share a pixel scale stop matching: tower Base/Shaft/Top layers pulled apart
+into 3 visible pieces in missions. Fixed in code —
+`TowerInstance.LAYER_SOURCE_MAX_DIMENSIONS` rescales each layer back to its
+source size before stacking. When replacing any tower layer PNG, update its
+entry there (a missing entry falls back to 1:1, i.e. the broken behavior).
+Any future layered/composited art (overlays, paperdoll parts) needs the same
+care: either one shared limit that never binds, or source-size compensation.
+
 ### 5.6 Engine budgets (Godot 4.6.2, from `art-bible.md` §8.7 — these stay
 valid regardless of §1's style outcome, since they're perf/engine constraints
 not aesthetic ones)

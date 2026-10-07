@@ -2514,7 +2514,9 @@ New `UserDataPaths.root()` returns `user://` normally and `user://test_sandbox/`
 
 ---
 
-## TD-perf-002 — Texture memory is ~850 MB because generated art ships at native generation resolution (open, advisory)
+## TD-perf-002 — Texture memory is ~850 MB because generated art ships at native generation resolution (RESOLVED 2026-10-06)
+
+**Resolved**: 9d592d3 — import `process/size_limit` per category (items/towers/monsters/species 256, tarot 384, terrain 512, hero 768); live mission texture memory 847 → 115.5 MB. **Side effect found 2026-10-07**: per-texture caps scale each tower Base/Shaft/Top layer by a different factor, splitting placed towers into 3 pieces; fixed in ee3c21a (`TowerInstance.LAYER_SOURCE_MAX_DIMENSIONS`, see `design/art/codex-art-overhaul.md` §5.5). `Hero.tscn` Sprite2D scale is now 0.078125 (mission hero enlarged 1.5×), not the 0.052083 quoted below.
 
 **Logged**: 2026-10-04 (live `Performance` sample during The Gap: `RENDER_TEXTURE_MEM_USED` 847 MB of 894 MB VRAM; static RAM ~100 MB; 60 FPS; 84 draw calls)
 **Severity**: Low today — fits the reference GPUs (6–8 GB) and the 1 GB budget is a RAM ceiling — but it grows with every new asset. Sprites displayed at ~64 px are uploaded at 1000–1500 px (e.g. `hero_warden_smith.png` 1024×1536, tower parts ~1000 px, `mission_frame_background.png` 1672×941). `animation-pipeline.md` §4 deliberately keeps Lossless/no-mipmaps, so GPU compression is not the lever.
