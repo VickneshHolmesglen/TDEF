@@ -7,6 +7,7 @@ extends GdUnitTestSuite
 const HELM := &"brutes_war_helm"
 const BOOTS := &"reinforced_boots"
 const AMULET := &"bogpearl_amulet"
+const SWORD := &"iron_sword"  ## no worn_texture yet: exercises the icon fallback
 
 
 func before_test() -> void:
@@ -32,33 +33,34 @@ func _sprite_host() -> Array:
 
 func test_hero_appearance_equip_adds_layer_and_unequip_removes_it() -> void:
 	var appearance: HeroAppearance = _sprite_host()[1]
-	assert_object(appearance.get_layer("helmet")).is_null()
-	assert_bool(GInventory.equip_item("helmet", _definition(HELM))).is_true()
-	var layer: Sprite2D = appearance.get_layer("helmet")
+	assert_object(appearance.get_layer("main_hand")).is_null()
+	assert_bool(GInventory.equip_item("main_hand", _definition(SWORD))).is_true()
+	var layer: Sprite2D = appearance.get_layer("main_hand")
 	assert_object(layer).is_not_null()
-	assert_object(layer.texture).is_same(_definition(HELM).icon)
-	assert_bool(appearance.is_fitted("helmet")).is_false()
-	assert_bool(GInventory.unequip_item("helmet")).is_true()
-	assert_object(appearance.get_layer("helmet")).is_null()
+	assert_object(layer.texture).is_same(_definition(SWORD).icon)
+	assert_bool(appearance.is_fitted("main_hand")).is_false()
+	assert_bool(GInventory.unequip_item("main_hand")).is_true()
+	assert_object(appearance.get_layer("main_hand")).is_null()
 
 
 func test_hero_appearance_icon_fallback_sits_on_the_slot_anchor() -> void:
 	var appearance: HeroAppearance = _sprite_host()[1]
-	GInventory.equip_item("helmet", _definition(HELM))
+	GInventory.equip_item("main_hand", _definition(SWORD))
 	var base_size := Vector2(appearance.config.base_texture.get_size())
-	var expected: Vector2 = (appearance.config.icon_anchors["helmet"] - Vector2(0.5, 0.5)) * base_size
-	assert_vector(appearance.get_layer("helmet").position).is_equal_approx(expected, Vector2(0.01, 0.01))
-	var icon_height: float = appearance.get_layer("helmet").scale.y * _definition(HELM).icon.get_height()
-	assert_float(icon_height).is_equal_approx(appearance.config.icon_heights["helmet"] * base_size.y, 0.5)
+	var expected: Vector2 = (appearance.config.icon_anchors["main_hand"] - Vector2(0.5, 0.5)) * base_size
+	assert_vector(appearance.get_layer("main_hand").position).is_equal_approx(expected, Vector2(0.01, 0.01))
+	var icon_height: float = appearance.get_layer("main_hand").scale.y * _definition(SWORD).icon.get_height()
+	assert_float(icon_height).is_equal_approx(appearance.config.icon_heights["main_hand"] * base_size.y, 0.5)
 
 
 func test_hero_appearance_fitted_overlay_replaces_the_icon() -> void:
 	var definition := _definition(HELM)
+	var original: Texture2D = definition.worn_texture
 	var worn := ImageTexture.create_from_image(Image.create(512, 768, false, Image.FORMAT_RGBA8))
 	definition.worn_texture = worn
 	var appearance: HeroAppearance = _sprite_host()[1]
 	GInventory.equip_item("helmet", definition)
-	definition.worn_texture = null  # shared cached resource: restore before asserting
+	definition.worn_texture = original  # shared cached resource: restore before asserting
 	var layer: Sprite2D = appearance.get_layer("helmet")
 	assert_bool(appearance.is_fitted("helmet")).is_true()
 	assert_object(layer.texture).is_same(worn)
@@ -134,3 +136,15 @@ func test_hero_scene_and_paperdoll_both_host_hero_appearance() -> void:
 func test_hero_appearance_config_validates() -> void:
 	var config: HeroAppearanceResource = load(HeroAppearance.CONFIG_PATH)
 	assert_array(config.validate()).is_empty()
+
+
+func test_hero_appearance_shipped_helmets_use_fitted_overlays() -> void:
+	# 2026-10-07: the 5 helmets have real worn art on the base-body canvas.
+	var appearance: HeroAppearance = _sprite_host()[1]
+	for id: StringName in [&"brutes_war_helm", &"goblin_fang_circlet", &"iron_helm", &"reinforced_helm", &"sentinel_visor"]:
+		var definition := _definition(id)
+		assert_object(definition.worn_texture).override_failure_message("%s has no worn_texture" % id).is_not_null()
+		assert_vector(Vector2(definition.worn_texture.get_size())).is_equal(Vector2(appearance.config.base_texture.get_size()))
+		GInventory.equip_item("helmet", definition)
+		assert_bool(appearance.is_fitted("helmet")).is_true()
+		GInventory.unequip_item("helmet")
