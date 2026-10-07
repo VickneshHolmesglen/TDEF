@@ -135,6 +135,57 @@ const WEAPON_TOP_OVERLAP_PROFILES: Dictionary[StringName, float] = {
 	&"frost": 0.24,
 }
 
+## Largest pixel dimension of each layer PNG on disk. The tower import preset
+## caps textures at 256 px (process/size_limit, 9d592d3), which shrinks every
+## layer by a DIFFERENT factor (a 1433 px shaft by 0.18, a 954 px top by 0.27),
+## so laying out raw imported sizes pulled the pieces apart in missions.
+## _layout_layers() rescales each sprite back to this shared source pixel space.
+## Regenerate when layer art is replaced; missing entries fall back to 1:1.
+const LAYER_SOURCE_MAX_DIMENSIONS: Dictionary[String, int] = {
+	"tower_base_matched_hexplank": 1222,
+	"tower_base_matched_octagon": 1048,
+	"tower_base_matched_round": 1055,
+	"tower_base_matched_scalloped": 1107,
+	"tower_base_matched_square": 1094,
+	"tower_base_matched_stonemound": 1176,
+	"tower_base_matched_stump": 1180,
+	"tower_base_matched_tiered": 1175,
+	"tower_base_matched_triangle": 1227,
+	"tower_modular_base_shared": 1010,
+	"tower_modular_shaft_open_support": 1132,
+	"tower_modular_shaft_solid": 936,
+	"tower_modular_top_fire": 985,
+	"tower_modular_top_frost": 1094,
+	"tower_modular_top_physical": 998,
+	"tower_modular_top_poison": 970,
+	"tower_modular_top_ranged": 1155,
+	"tower_modular_top_support": 1090,
+	"tower_shaft_hexplank": 1433,
+	"tower_shaft_octagon": 1029,
+	"tower_shaft_round": 1040,
+	"tower_shaft_scalloped": 1157,
+	"tower_shaft_square": 1116,
+	"tower_shaft_stonemound": 1140,
+	"tower_shaft_stump": 1083,
+	"tower_shaft_tiered": 1043,
+	"tower_shaft_triangle": 959,
+	"tower_top_hexplank": 1063,
+	"tower_top_octagon": 1119,
+	"tower_top_round": 1090,
+	"tower_top_scalloped": 1131,
+	"tower_top_square": 1133,
+	"tower_top_stonemound": 953,
+	"tower_top_stump": 1167,
+	"tower_top_tiered": 997,
+	"tower_top_triangle": 954,
+	"tower_top_weapon_arcane_lance_emitter": 1133,
+	"tower_top_weapon_firestorm_emitter": 1170,
+	"tower_top_weapon_frost_emitter": 1042,
+	"tower_top_weapon_railgun_laser": 949,
+	"tower_top_weapon_siege_cannon": 1170,
+	"tower_top_weapon_storm_emitter": 988,
+}
+
 ## Persistent color-identity ring for an "elemental" archetype tower whose
 ## WeaponComponent.element has no bespoke art in ELEMENT_TEXTURES yet (see
 ## that dict's own fallback comment above configure()) -- lets a brand-new
@@ -516,9 +567,12 @@ func _resolve_modular_top(archetype: String, element: String) -> Texture2D:
 
 
 func _layout_layers(overlap_profile: Vector2) -> void:
-	var base_height: float = float(_base_sprite.texture.get_height())
-	var shaft_height: float = float(_shaft_sprite.texture.get_height())
-	var top_height: float = float(_top_sprite.texture.get_height())
+	for sprite: Sprite2D in [_base_sprite, _shaft_sprite, _top_sprite]:
+		var factor: float = _source_scale_for(sprite.texture)
+		sprite.scale = Vector2(factor, factor)
+	var base_height: float = float(_base_sprite.texture.get_height()) * _base_sprite.scale.y
+	var shaft_height: float = float(_shaft_sprite.texture.get_height()) * _shaft_sprite.scale.y
+	var top_height: float = float(_top_sprite.texture.get_height()) * _top_sprite.scale.y
 	var base_shaft_overlap: float = minf(base_height, shaft_height) * overlap_profile.x
 	var shaft_top_overlap: float = minf(shaft_height, top_height) * overlap_profile.y
 	var assembled_height: float = base_height + shaft_height + top_height - base_shaft_overlap - shaft_top_overlap
@@ -531,10 +585,20 @@ func _layout_layers(overlap_profile: Vector2) -> void:
 	_base_sprite_scale = _layer_root.scale
 
 
+## Scale that maps an imported (possibly size-capped) layer texture back to
+## its on-disk pixel size; see LAYER_SOURCE_MAX_DIMENSIONS.
+func _source_scale_for(texture: Texture2D) -> float:
+	var source_max: int = LAYER_SOURCE_MAX_DIMENSIONS.get(texture.resource_path.get_file().get_basename(), 0)
+	var imported_max: float = maxf(float(texture.get_width()), float(texture.get_height()))
+	if source_max <= 0 or imported_max <= 0.0:
+		return 1.0
+	return float(source_max) / imported_max
+
+
 func _sprite_rect(sprite: Sprite2D) -> Rect2:
 	if sprite.texture == null:
 		return Rect2(sprite.position, Vector2.ZERO)
-	var size: Vector2 = sprite.texture.get_size()
+	var size: Vector2 = sprite.texture.get_size() * sprite.scale
 	return Rect2(sprite.position - size * 0.5, size)
 
 
