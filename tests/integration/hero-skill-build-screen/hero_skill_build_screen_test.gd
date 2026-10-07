@@ -26,6 +26,7 @@ var _screen: Control
 func before_test() -> void:
 	GHeroSkillBuild.reset_to_defaults()
 	GHeroSkillBuild._is_sanctuary = true
+	GHeroSkillTree.reset_to_defaults()
 	GInventory.reset_to_defaults()
 	_runner = scene_runner("res://src/gameplay/ui/hero_skill_build_screen/HeroSkillBuildScreen.tscn")
 	_screen = _runner.scene() as Control
@@ -33,6 +34,7 @@ func before_test() -> void:
 
 func after_test() -> void:
 	GHeroSkillBuild.reset_to_defaults()
+	GHeroSkillTree.reset_to_defaults()
 	GInventory.reset_to_defaults()
 
 
@@ -224,3 +226,86 @@ func test_hovering_a_locked_skill_still_shows_its_detail() -> void:
 	assert_bool(button.disabled).is_true()
 	button.mouse_entered.emit()
 	assert_str(_screen.get_skill_detail_text()).contains("Absolute Zero")
+
+
+# ---------------------------------------------------------------------------
+# Locked-skill unlock conditions (detail panel, 2026-10-07)
+# ---------------------------------------------------------------------------
+
+## Buys one Skill Tree node the way the Skill Tree screen does, granting the
+## point and clearing the once-per-visit limit first.
+func _buy_node(archetype: String, node_index: int, skill_id: String = "") -> void:
+	GHeroSkillTree.skill_tree_points[archetype] = 1
+	GHeroSkillTree.visit_spend_count = 0
+	assert_bool(GHeroSkillTree.purchase_node(archetype, node_index, skill_id)).is_true()
+
+
+func _hover(skill_id: String) -> String:
+	var button: Button = _screen.get_library_button(skill_id)
+	button.mouse_entered.emit()
+	return _screen.get_skill_detail_text()
+
+
+func _display_name(skill_id: String) -> String:
+	return GGameDataRegistry.get_skill_definition(StringName(skill_id)).display_name
+
+
+func test_locked_skill_shows_its_skill_tree_node_and_unmet_requirements() -> void:
+	var text: String = _hover("elem_absolute_zero")
+	assert_str(text).contains("Unlock: Skill Tree, Elemental Choice III")
+	assert_str(text).contains("Requires Elemental Minor first")
+	assert_str(text).contains("Costs 1 Elemental skill point (you have 0), earned by fighting near Elemental towers")
+
+
+func test_unlock_conditions_sit_below_the_skill_description() -> void:
+	var text: String = _hover("elem_absolute_zero")
+	assert_int(text.find("Unlock:")).is_greater(text.find("Effect:"))
+
+
+func test_unlock_tier_maps_to_its_choice_node() -> void:
+	var opener: String = GHeroSkillTree.get_tier_skill_ids("ranged", 1)[0]
+	var core: String = GHeroSkillTree.get_tier_skill_ids("ranged", 2)[0]
+	assert_str(_hover(opener)).contains("Unlock: Skill Tree, Ranged Choice I
+")
+	assert_str(_hover(core)).contains("Unlock: Skill Tree, Ranged Choice II
+")
+
+
+func test_requires_line_names_the_first_locked_node_in_the_chain() -> void:
+	_buy_node("elemental", 0)
+	var text: String = _hover("elem_absolute_zero")
+	assert_str(text).contains("Requires Elemental Choice I first")
+	assert_str(text).not_contains("Elemental Minor")
+
+
+func test_requires_line_is_omitted_once_the_chain_reaches_the_node() -> void:
+	_buy_node("elemental", 0)
+	var opener: String = GHeroSkillTree.get_tier_skill_ids("elemental", 1)[0]
+	assert_str(_hover(opener)).not_contains("Requires")
+
+
+func test_point_count_includes_overflow_points() -> void:
+	GHeroSkillTree.skill_tree_points["ranged"] = 2
+	GHeroSkillTree.overflow_points = 1
+	assert_str(_hover("rng_barrage")).contains("(you have 3)")
+
+
+func test_sibling_of_a_chosen_skill_shows_locked_out_instead_of_requirements() -> void:
+	var openers: Array[String] = GHeroSkillTree.get_tier_skill_ids("elemental", 1)
+	_buy_node("elemental", 0)
+	_buy_node("elemental", 1, openers[0])
+	_rebuild_all()
+
+	var text: String = _hover(openers[1])
+	assert_str(text).contains("Locked out: you chose %s at Elemental Choice I" % _display_name(openers[0]))
+	assert_str(text).not_contains("Unlock:")
+	assert_str(text).not_contains("Costs 1")
+
+
+func test_learned_skill_shows_no_unlock_conditions() -> void:
+	_unlock(&"elem_absolute_zero")
+	_rebuild_all()
+	var text: String = _hover("elem_absolute_zero")
+	assert_str(text).contains("Absolute Zero")
+	assert_str(text).not_contains("Unlock:")
+	assert_str(text).not_contains("Locked out")
