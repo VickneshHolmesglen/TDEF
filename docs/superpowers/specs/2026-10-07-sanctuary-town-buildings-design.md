@@ -32,7 +32,7 @@ A missing system (e.g. no Crafting instance in a test scene) contributes 0 to it
 - Each building is defined by data, `SanctuaryBuildingResource` (`assets/data/sanctuary_buildings/*.tres`): id, name key, target state, position, footprint size, placeholder colour, and 5 tier texture slots.
 - **With art:** the tier's texture fills the footprint (aspect-fit, bottom-aligned).
 - **Without art (now):** a coloured block whose height grows with the tier (55% to 100% of the footprint), a darker roof band, the building name, and 5 tier pips. Clearly a placeholder, but the growth already reads.
-- **Selection:** buttons focusable with keyboard/gamepad, as well as mouse. Hover or focus shows an info line at the bottom of the diorama: name, tier n/5, progress %, and what grows it.
+- **Selection:** buttons focusable with keyboard/gamepad, as well as mouse. Hover or focus shows an info line at the bottom of the diorama: name, tier n/5, progress %, and what grows it. (2026-10-07 update: the line sits on a translucent dark chrome strip at 14 px, ending before the Launch Mission button, so it stays legible over the Overview background.)
 - **Click/accept:** opens the tab through the tab strip (`TabStrip.select_target`), so the active-tab highlight, room mount and the Loadout transition behave exactly like a side-panel click. The Castle does nothing on click.
 - **Upgrade feedback:** scores refresh whenever the Overview becomes visible and on the progress events below. A building whose tier rose since the last refresh plays a scale pop (skipped under reduce-motion) and the `structure_upgraded`-family sound is NOT emitted (no new EventBus signals; the pop is visual only).
 - Refresh triggers: `slot_expansion_completed`, `recipe_discovered`, `creature_acquired`, `creature_bred`, `creature_sacrificed`, `tech_unlocked`, `sanctuary_structure_built`, `item_rune_imbued`, `hero_equipment_crafted`, `skill_tree_node_unlocked`, `tarot_deck_changed`, plus visibility.
@@ -40,6 +40,8 @@ A missing system (e.g. no Crafting instance in a test scene) contributes 0 to it
 ## 5. Art (Codex)
 
 35 images: 7 buildings x 5 tiers, matching the existing diorama art style (the habitat/watchtower sprites), transparent background, same camera angle, each tier visibly grander than the last (tier 1 humble wood/stone, tier 5 grand with banners/gold trim). Queued as one row per building in `production/art-overhaul-status.md` with prompts in `design/art/sanctuary-town-buildings-prompts.md`. Claude Code processes the drops into `assets/art/sanctuary/town/<building>_tier_<n>.png` and fills the resource texture slots. The visual direction is not locked (art-overhaul §1), so these are not final art.
+
+**Overview background (added 2026-10-07):** an opaque Codex-generated town ground plane (`assets/art/sanctuary/town/overview_background.png`, prompt in the prompts doc §4) drawn as `Diorama/Background` behind `World`, so it shows on the Overview only. Buildings must stand on its open grass: the bottom stone wall curves through the lower-left and centre, which is why the Keep moved from (450,600) to (650,585). Check any future layout change against the background, not just against other buildings.
 
 ## 6. Edge Cases
 
