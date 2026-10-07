@@ -97,19 +97,15 @@ const TAB_LABEL_KEYS: Array[String] = [
 ]
 
 ## Index-ordered 1:1 with TAB_TARGETS -- `design/art/asset-UI-prompt.md`'s
-## "Sanctuary Room Tab Strip" icon set (2026-08-04) only ever covered the
-## original 6 entries. **Real gap, not fixed here**: no icon exists for the
-## new Skills entry (index 5) -- `null` renders as Button's own no-icon
-## layout (text-only), matching this project's established "flag the gap,
-## don't invent unapproved art" precedent rather than reusing an unrelated
-## icon that would misrepresent the room.
+## "Sanctuary Room Tab Strip" icon set (2026-08-04) plus the Skills glyph
+## (index 5, generated 2026-10-07).
 const TAB_ICON_TEXTURES: Array[Texture2D] = [
 	preload("res://assets/art/ui/tab_overview.png"),
 	preload("res://assets/art/ui/tab_inventory_crafting.png"),
 	preload("res://assets/art/ui/tab_menagerie.png"),
 	preload("res://assets/art/ui/tab_defense_building.png"),
 	preload("res://assets/art/ui/tab_equipment_forge.png"),
-	null,
+	preload("res://assets/art/ui/tab_hero_skills.png"),
 	preload("res://assets/art/ui/tab_loadout.png"),
 ]
 

@@ -54,35 +54,35 @@ offset_bottom = 700.0
 theme_override_constants/separation = 16
 
 [node name="ContinueButton" type="TextureButton" parent="Buttons"]
-custom_minimum_size = Vector2(280, 71.3)
+custom_minimum_size = Vector2(280, 74)
 layout_mode = 2
 texture_normal = ExtResource("3_continue")
 ignore_texture_size = true
 stretch_mode = 4
 
 [node name="NewGameButton" type="TextureButton" parent="Buttons"]
-custom_minimum_size = Vector2(280, 73.6)
+custom_minimum_size = Vector2(280, 74)
 layout_mode = 2
 texture_normal = ExtResource("7_new_game")
 ignore_texture_size = true
 stretch_mode = 4
 
 [node name="LoadGameButton" type="TextureButton" parent="Buttons"]
-custom_minimum_size = Vector2(280, 71.1)
+custom_minimum_size = Vector2(280, 74)
 layout_mode = 2
 texture_normal = ExtResource("8_load_game")
 ignore_texture_size = true
 stretch_mode = 4
 
 [node name="SettingsButton" type="TextureButton" parent="Buttons"]
-custom_minimum_size = Vector2(280, 79.4)
+custom_minimum_size = Vector2(280, 74)
 layout_mode = 2
 texture_normal = ExtResource("4_settings")
 ignore_texture_size = true
 stretch_mode = 4
 
 [node name="QuitButton" type="TextureButton" parent="Buttons"]
-custom_minimum_size = Vector2(280, 80.7)
+custom_minimum_size = Vector2(280, 74)
 layout_mode = 2
 texture_normal = ExtResource("5_exit")
 ignore_texture_size = true

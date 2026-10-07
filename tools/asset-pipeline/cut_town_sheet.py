@@ -1,7 +1,7 @@
 """Alpha-cut a 5-tier Sanctuary town-building sheet on #FF00FF into per-tier PNGs.
 
 usage (from the project root):
-  python tools/asset-pipeline/cut_town_sheet.py assets/source/sanctuary/town/sanctuary_<id>_sheet.png <id> [check.png]
+  python tools/asset-pipeline/cut_town_sheet.py assets/source/sanctuary/town/sanctuary_<id>_sheet.png <id> [check.png] [--distance-key]
 
 Writes assets/art/sanctuary/town/<id>_tier_1..5.png. Keys on magenta excess
 (min(R,B) - G) rather than colour distance, because the generator tints the
@@ -10,25 +10,37 @@ The edge pixels are despilled. Tiers = the 5 largest solid blobs, left to right;
 every tier is padded bottom-centre onto ONE shared canvas so relative size
 (tier 1 small, tier 5 big) survives the aspect-fit into the building
 footprint. Set the building's footprint to the printed canvas aspect.
+--distance-key: for buildings whose own palette is violet/magenta (the
+Seer's Tower), where magenta excess would eat the roofs. Keys on plain colour
+distance from #FF00FF instead and un-premultiplies the magenta (no shadow).
 The optional check.png composites all tiers on green to spot fringe.
 See design/art/sanctuary-town-buildings-prompts.md section 3."""
 import sys
 from PIL import Image
 import numpy as np
 from scipy import ndimage
-src, bid = sys.argv[1], sys.argv[2]
+distance_key = '--distance-key' in sys.argv
+args = [a for a in sys.argv[1:] if a != '--distance-key']
+src, bid = args[0], args[1]
 im = np.asarray(Image.open(src).convert('RGB')).astype(float)
 r, g, b = im[..., 0], im[..., 1], im[..., 2]
 spill = np.minimum(r, b) - g
 def smooth(e0, e1, x):
     t = np.clip((x - e0) / (e1 - e0), 0, 1); return t * t * (3 - 2 * t)
 w = smooth(25, 70, spill)
+if distance_key:
+    distance = np.sqrt((r - 255) ** 2 + g ** 2 + (b - 255) ** 2)
+    w = 1 - smooth(40, 120, distance)
 shadow_a = np.clip((250 - np.maximum(r, b)) / 250, 0, 1) * 0.55
 excess = np.clip(spill, 0, None)
 bld = 1 - w
 out_a = bld + w * shadow_a
 safe = np.where(out_a > 1e-4, out_a, 1)
 rgb = np.stack([np.clip(r - excess, 0, 255), g, np.clip(b - excess, 0, 255)], -1) * (bld / safe)[..., None]
+if distance_key:
+    out_a = 1 - w
+    safe = np.where(out_a > 1e-4, out_a, 1)
+    rgb = np.clip((im - w[..., None] * np.array([255, 0, 255])) / safe[..., None], 0, 255)
 rgba = np.dstack([rgb, out_a * 255]).clip(0, 255).astype(np.uint8)
 # Tiers = the 5 largest solid-building blobs; every other visible pixel
 # (shadow, a detached flag tip) belongs to whichever blob is nearest.
@@ -55,4 +67,4 @@ for i, c in enumerate(crops):
 sheet = Image.new('RGBA', (W * 5, H), (120, 200, 120, 255))
 for i in range(5):
     sheet.alpha_composite(Image.open(f'assets/art/sanctuary/town/{bid}_tier_{i + 1}.png'), (i * W, 0))
-sheet.save(sys.argv[3] if len(sys.argv) > 3 else 'check.png')
+sheet.save(args[2] if len(args) > 2 else 'check.png')
