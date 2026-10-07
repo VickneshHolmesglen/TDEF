@@ -119,3 +119,50 @@ Accent: deep violet and silver, starlight glow.
   always verify the scale live).
 - The visual direction for final art is not locked (codex-art-overhaul §1 pilot gate), so this
   batch is placeholder-replacement art, not ship-final.
+
+## 4. Overview background (`overview_background`), added 2026-10-07
+
+The town currently sits on a flat `UI_CHROME` colour fill (`SanctuaryUI`'s
+`ContentBackground`). This is one opaque painted backdrop for the Overview
+content area. Buildings are drawn on top of it at runtime, so it must be a
+**stage, not a scene**: no buildings, no landmarks, nothing a building could
+collide with.
+
+- **Area it fills**: the content zone right of the tab strip and below the header,
+  about **960×656** at the 1280×720 base (aspect about 1.46:1). Generate
+  **1536×1024**; Claude Code crops to the aspect and scales to cover the zone.
+- **Where things go on it**: buildings occupy the whole interior in three loose
+  rows (bases at roughly y 280 / 440 / 600 of 656), plus the watchtower and habitat
+  in the top-left. The Launch Mission button sits in the **bottom-right corner**, so
+  keep that corner calm and low-detail.
+- **Match the buildings**: the same stylised, pre-rendered 3D-look fantasy render, the same
+  three-quarter top-down camera (about 35° down), and the same soft key light from the upper
+  left. Each building sprite already stands on its own small patch of grass and
+  cobbles, so the ground must use the **same grass greens and warm earth or
+  cobble tones** for those patches to blend in.
+- **Keep it quiet**: lower contrast and slightly less saturated than the buildings,
+  even and fairly uniform across the interior, with no strong focal point. Detail
+  belongs at the edges.
+- **Opaque**: there is no magenta key and no alpha cut. The whole canvas is the image.
+
+> Stylised fantasy 3D-rendered environment illustration, three-quarter top-down
+> view about 35 degrees down, soft warm daylight from the upper left, matching a
+> cosy medieval-fantasy town-builder game. The empty ground of a hilltop
+> sanctuary town: a broad, gently rolling grassy plateau with soft patches of worn
+> earth, a few faint cobblestone lanes and small trampled clearings, tiny
+> wildflowers and scattered pebbles. Along the left, right and bottom edges only:
+> a low, mossy dry-stone boundary wall, a few bushes and small trees, and rocky
+> cliff edges falling away. Along the top edge only: a thin band of distant misty
+> blue mountains and pale sky, no more than the top tenth of the image. The central
+> area is open, even and calm, low contrast and slightly desaturated, with no
+> buildings, no structures, no ruins, no tents, no people, no animals and no props
+> in the middle 80% of the image. The bottom-right corner is plain grass. No text,
+> no letters, no UI, no frame, no border, no vignette.
+
+**Hand-off**: raw to `assets/source/sanctuary/town/sanctuary_overview_background.png`,
+then set the tracker row to `generated, awaiting processing`. Claude Code crops it to
+the content aspect, downscales it to about 2× display size, writes
+`assets/art/sanctuary/town/overview_background.png`, and shows it behind the Overview's
+`World` only (other rooms keep their own backgrounds). A darkening overlay, if the
+buildings need more separation, is applied in-engine rather than baked into the image.
+Live-check it with the real save's tiers and with every building forced to tier 5.
