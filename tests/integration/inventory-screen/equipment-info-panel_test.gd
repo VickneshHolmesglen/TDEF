@@ -83,3 +83,15 @@ func test_panel_visible_only_on_equipment_tab() -> void:
 	assert_bool(_panel().visible).is_false()
 	_screen._on_tab_pressed(&"Equipment")
 	assert_bool(_panel().visible).is_true()
+
+
+func test_full_kit_bonus_list_scrolls_instead_of_growing_the_screen() -> void:
+	# Regression (2026-10-07): a 7-piece kit's stat + set-bonus list made the
+	# panel taller than the window and pushed the whole screen off the top.
+	var height_before: float = _panel().get_combined_minimum_size().y
+	var kit := {"helmet": &"brutes_war_helm", "chest": &"leather_jerkin", "gloves": &"leather_gloves",
+		"pants": &"leather_leggings", "boots": &"traveler_boots", "main_hand": &"iron_sword", "offhand": &"iron_buckler"}
+	for slot: String in kit:
+		GInventory.equip_item(slot, GGameDataRegistry.get_item_definition(kit[slot]))
+	await _runner.simulate_frames(2)
+	assert_float(_panel().get_combined_minimum_size().y).is_equal_approx(height_before, 1.0)

@@ -211,12 +211,11 @@ Placeholder-replacement art, not ship-final (§1 pilot gate still applies).
 layers each equipped item's `worn_texture` over the base body, falling back to
 its icon pinned at the slot anchor until the overlay exists. Prompts and the
 edit-based workflow are in `design/art/hero-equipment-overlay-prompts.md`; the extractor is
-`tools/asset-pipeline/extract_worn_overlay.py`. **The base body gates everything else.** Get
-user approval on it before generating any item edit.
+`tools/asset-pipeline/extract_worn_overlay.py`. **Base body approved by user on 2026-10-07.** Use the approved raw image below for all 35 item edits; those edits remain in backlog.
 
 | Item | Category | Status | Owner | Notes |
 |---|---|---|---|---|
-| Hero base body (no gear, empty hands) | characters | `backlog` | Codex → user approval → Claude Code | Prompt §1. Raw: `assets/source/characters/hero_base_body_raw.png`. Blocks every row below. |
+| Hero base body (no gear, empty hands) | characters | `done` | Codex → user → Claude Code | 2026-10-07: user saved the base and Codex moved on to items. Keyed off magenta with `extract_worn_overlay.py --base-only` into `assets/art/characters/hero_base_body.png` (import size_limit 768, same as the warden art, so mission scale is unchanged; figure height matches within 2%). Wired as `hero_appearance.tres` base_texture. Icon anchors re-measured for the new pose (hands at sides, no hammer). Live-verified bare and with a 7-piece kit. Items: edit `assets/source/characters/hero_base_body_raw.png` (the magenta raw), not the processed PNG. |
 | Worn overlays: helmet (5) | characters | `backlog` | Codex → Claude Code | Prompt §2. Edits: `assets/source/characters/gear/<item_id>_edit.png` for `brutes_war_helm`, `goblin_fang_circlet`, `iron_helm`, `reinforced_helm`, `sentinel_visor`. |
 | Worn overlays: chest (5) | characters | `backlog` | Codex → Claude Code | Prompt §2. Edits: `assets/source/characters/gear/<item_id>_edit.png` for `brutes_bulwark_plate`, `leather_jerkin`, `reinforced_plate`, `troll_hide_mantle`, `warlords_battleplate`. |
 | Worn overlays: gloves (5) | characters | `backlog` | Codex → Claude Code | Prompt §2. Edits: `assets/source/characters/gear/<item_id>_edit.png` for `brute_gauntlets`, `goblin_claw_gauntlets`, `leather_gloves`, `lurker_claw_gauntlets`, `reinforced_gauntlets`. |

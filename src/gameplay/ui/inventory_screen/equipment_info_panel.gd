@@ -36,9 +36,13 @@ func _ready() -> void:
 	column.add_child(_header)
 	_body = RichTextLabel.new()
 	_body.bbcode_enabled = true
-	_body.fit_content = true
-	_body.scroll_active = false
-	_body.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# Fills the row and scrolls (2026-10-07): with fit_content a full kit's
+	# stat + set-bonus list grew the panel past the window and pushed the
+	# whole Inventory screen (tabs included) off the top.
+	_body.fit_content = false
+	_body.scroll_active = true
+	_body.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_body.mouse_filter = Control.MOUSE_FILTER_PASS  # wheel scroll
 	_body.custom_minimum_size = Vector2(240, 0)
 	column.add_child(_body)
 	GEventBus.equipment_slot_changed.connect(_on_equipment_slot_changed)

@@ -127,6 +127,8 @@ Then:
 - Set `assets/data/hero/hero_appearance.tres` `base_texture` to `hero_base_body.png`.
   This happens once, after the base is approved. The current baked-gear art stays the base until then.
 - Set each item's `worn_texture` in `assets/data/items/<item_id>.tres`.
+- In each new overlay's `.import`, set `process/size_limit=768` (same as the base
+  body) and rescan. The overlay is scaled per axis to the base anyway; this only saves memory.
 - Live-check in the Equipment paperdoll and in a mission (mirror, bob, hit flash).
 
 Layer order (back to front, data in `hero_appearance.tres`): boots, pants, chest,
