@@ -225,6 +225,31 @@ edit-based workflow are in `design/art/hero-equipment-overlay-prompts.md`; the e
 | Worn overlays: weapon (5) | characters | `done` | Codex → Claude Code | 2026-10-07: extracted with `extract_worn_overlay.py` (all realign shifts 0,0; masks confined to the slot's body region), installed at `assets/art/characters/gear/<id>_worn.png` (import limit 768), and `worn_texture` wired. Reviewed per slot and as 3 full kits on the base body. Weapons draw below gloves (see the gloves row). Live-verified. |
 | Worn overlays: offhand (5) | characters | `done` | Codex → Claude Code | 2026-10-07: extracted with `extract_worn_overlay.py` (all realign shifts 0,0; masks confined to the slot's body region), installed at `assets/art/characters/gear/<id>_worn.png` (import limit 768), and `worn_texture` wired. Reviewed per slot and as 3 full kits on the base body. Live-verified. |
 
+**Tower adaptor caps batch, opened 2026-10-09**: user-approved in chat ("per-shape
+caps, only on mismatched pairs"). Any Top/Shaft/Base can be mixed in the Inventory
+tower preview; mixed shape families join seamlessly but their outlines disagree
+(combo sheets: `production/qa/evidence/tower-combos-2026-10-09/`). One cap per
+family sits on that family's piece, matches its top-face outline, and ends in a
+standard round socket. Code is shipped and picks up each cap as its PNG lands:
+`TowerInstance.with_adaptor_caps()`. Prompts, shared rules (shaft image as edit
+reference, identical socket on all 9, flat `#FF00FF`) and hand-off paths:
+`design/art/tower-adaptor-caps-prompts.md`. Raw → `assets/source/towers/caps/tower_cap_<shape>_raw.png`;
+processed → `assets/art/towers/tower_cap_<shape>.png`.
+
+| Item | Category | Status | Owner | Notes |
+|---|---|---|---|---|
+| Tower adaptor cap: Round (socket reference — generate first) | towers | `backlog` | Codex → Claude Code | See batch note. Defines the standard round socket the other 8 copy. |
+| Tower adaptor cap: Square | towers | `backlog` | Codex → Claude Code | Square lid with bronze corner brackets. |
+| Tower adaptor cap: Octagon | towers | `backlog` | Codex → Claude Code | Eight-sided lid. |
+| Tower adaptor cap: Hexplank | towers | `backlog` | Codex → Claude Code | Plank crate lid closing the open hexplank crate. |
+| Tower adaptor cap: Triangle (highest priority after Round) | towers | `backlog` | Codex → Claude Code | Flared column-capital from the narrow apex up to a full-width socket; fixes tops balancing on the apex. |
+| Tower adaptor cap: Tiered | towers | `backlog` | Codex → Claude Code | Two-tier round lid. |
+| Tower adaptor cap: Scalloped | towers | `backlog` | Codex → Claude Code | Four-lobed lid following the scalloped outline. |
+| Tower adaptor cap: Stump | towers | `backlog` | Codex → Claude Code | Rope-and-bronze wooden ring-lid closing the timber frame. |
+| Tower adaptor cap: Stonemound | towers | `backlog` | Codex → Claude Code | Fieldstone ring levelling the domed top. |
+
+---
+
 ## Known layout gaps (from `production/Issues.PNG` / `UI Changes.PNG`)
 
 | Gap | Status | Notes |

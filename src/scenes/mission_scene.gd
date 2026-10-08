@@ -246,8 +246,15 @@ func _on_grid_initialized(cols: int, rows: int, cell_size: float) -> void:
 	else:
 		push_error("[MissionScene] GridVisual node has no configure() method — grid will not render.")
 
-	_camera.position = Vector2(cols * cell_size / 2.0, rows * cell_size / 2.0)
-	_camera.zoom = Vector2(0.85, 0.85)
+	# Edge-to-edge map (UX overhaul 2026-10-09): "cover" zoom, so the larger
+	# ratio wins and the map always fills the viewport. Mission grids are
+	# authored at ~16:9 (21x12, 14x8), so at most a sliver of the outer
+	# BLOCKED ring is cropped.
+	var map_size := Vector2(cols * cell_size, rows * cell_size)
+	var view_size: Vector2 = get_viewport().get_visible_rect().size
+	var cover: float = maxf(view_size.x / map_size.x, view_size.y / map_size.y)
+	_camera.position = map_size / 2.0
+	_camera.zoom = Vector2(cover, cover)
 
 
 ## Swaps from the Mission Select screen to the live gameplay assembly.

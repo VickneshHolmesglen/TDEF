@@ -259,7 +259,7 @@ func _build_grid_texture(mission_id: String, rng: RandomNumberGenerator) -> Imag
 			var cell_type: int = cells.get(cell, 4)  # BLOCKED default, matches Grid.get_cell_type()
 			var origin_x: int = col * cell_px
 			var origin_y: int = row * cell_px
-			if cell_type == 0:
+			if cell_type == 0 or (cell_type == 4 and _is_outer_ring(cell)):
 				image.blit_rect(ground_layer, Rect2i(origin_x, origin_y, cell_px, cell_px), Vector2i(origin_x, origin_y))
 			elif cell_type == 1:
 				_draw_lane_cell(image, lane, cell, cell_px)
@@ -270,6 +270,14 @@ func _build_grid_texture(mission_id: String, rng: RandomNumberGenerator) -> Imag
 				var prop: Image = scaled_props[rng.randi_range(0, scaled_props.size() - 1)]
 				image.blend_rect(prop, Rect2i(0, 0, prop_px, prop_px), Vector2i(origin_x + prop_offset, origin_y + prop_offset))
 	return ImageTexture.create_from_image(image)
+
+
+## True for cells on the grid's outermost ring. MapGenerator makes that ring
+## BLOCKED (apart from SPAWN/GOAL) to fence the lane in; it is drawn as open
+## ground rather than wall art so the map reads edge to edge with no frame
+## (UX overhaul 2026-10-09). It stays unbuildable in Grid either way.
+func _is_outer_ring(cell: Vector2i) -> bool:
+	return cell.x == 0 or cell.y == 0 or cell.x == cols - 1 or cell.y == rows - 1
 
 
 ## Draws one PATH cell: the seamless lane surface, plus the edging strip on

@@ -105,86 +105,59 @@ const MODULAR_TOP_TEXTURES: Dictionary[StringName, Texture2D] = {
 	&"poison": preload("res://assets/art/towers/tower_modular_top_poison.png"),
 }
 
-## Transparent padding differs between the generated silhouette families, so
-## a universal overlap leaves some attachment planes floating. Values are a
-## fraction of the smaller adjacent texture height. Every authored family has
-## an explicit profile; unknown component IDs use the modular fallback.
-const SHAPE_OVERLAP_PROFILES: Dictionary[StringName, Vector2] = {
-	# x = Base -> Shaft, y = Shaft -> matched Top.
-	&"round": Vector2(0.20, 0.22),
-	&"square": Vector2(0.26, 0.20),
-	&"stump": Vector2(0.18, 0.18),
-	&"stonemound": Vector2(0.18, 0.18),
-	&"octagon": Vector2(0.18, 0.18),
-	&"tiered": Vector2(0.18, 0.18),
-	&"scalloped": Vector2(0.22, 0.24),
-	&"triangle": Vector2(0.22, 0.30),
-	&"hexplank": Vector2(0.28, 0.26),
+## Any Top fits any Shaft and any Shaft fits any Base (UX overhaul
+## 2026-10-09, player-requested "all the tops should attach seamlessly to all
+## the shafts, and all the shafts to all the bases"). stack_layers() lays the
+## three pieces out from their painted (non-transparent) rects, so neither
+## the PNGs' transparent margins nor the 256 px import cap can open a seam:
+##  1. Width: every piece is scaled so its painted width is a fixed fraction
+##     of the base's (LAYER_WIDTH_FRACTIONS), so mixed families match in size.
+##  2. Seat: each Base/Shaft carries a seat line, the front rim of its
+##     painted top face, as a fraction of its painted width measured down from
+##     its painted top (LAYER_SEAT_FRACTIONS). The piece above stands with its
+##     painted bottom on that line, covering the face.
+## Seat values were read off every base/shaft with the line drawn on it, then
+## checked on composites of every shaft on two bases and every top on two
+## shafts. Re-measure when layer art is replaced; unknown art falls back to
+## DEFAULT_SEAT_FRACTION.
+const LAYER_WIDTH_FRACTIONS: PackedFloat32Array = [1.0, 0.85, 0.95]  # base, shaft, top
+const DEFAULT_SEAT_FRACTION: float = 0.27
+const LAYER_SEAT_FRACTIONS: Dictionary[String, float] = {
+	"tower_base_matched_hexplank": 0.21,
+	"tower_base_matched_octagon": 0.26,
+	"tower_base_matched_round": 0.27,
+	"tower_base_matched_scalloped": 0.27,
+	"tower_base_matched_square": 0.25,
+	"tower_base_matched_stonemound": 0.17,
+	"tower_base_matched_stump": 0.25,
+	"tower_base_matched_tiered": 0.27,
+	"tower_base_matched_triangle": 0.09,
+	"tower_modular_base_shared": 0.26,
+	"tower_modular_shaft_open_support": 0.30,
+	"tower_modular_shaft_solid": 0.30,
+	"tower_shaft_hexplank": 0.21,
+	"tower_shaft_octagon": 0.28,
+	"tower_shaft_round": 0.28,
+	"tower_shaft_scalloped": 0.28,
+	"tower_shaft_square": 0.25,
+	"tower_shaft_stonemound": 0.19,
+	"tower_shaft_stump": 0.28,
+	"tower_shaft_tiered": 0.27,
+	"tower_shaft_triangle": 0.14,
 }
-const MODULAR_OVERLAP_PROFILE: Vector2 = Vector2(0.18, 0.18)
+## Adaptor caps (2026-10-09, player decision: one cap per shape family, shown
+## only where two different families meet). A cap sits on the lower piece's
+## seat line, matches that piece's top-face outline and width, and ends in a
+## standard round socket every upper piece fits on. Art is a Codex batch
+## (design/art/tower-adaptor-caps-prompts.md); a family with no cap PNG yet
+## simply joins directly, so caps switch on per shape as the art lands. Seat
+## lines for caps go in LAYER_SEAT_FRACTIONS like any other lower piece.
+const CAP_TEXTURE_PATH_FORMAT: String = "res://assets/art/towers/tower_cap_%s.png"
+## Basename prefixes that carry a shape family name after them.
+const FAMILY_PREFIXES: PackedStringArray = ["tower_base_matched_", "tower_base_", "tower_shaft_", "tower_top_", "tower_cap_"]
 
-## Dedicated weapon crowns have their own transparent mount padding. These
-## values override only the profile's y component, preserving the foundation
-## family's tuned Base -> Shaft join.
-const WEAPON_TOP_OVERLAP_PROFILES: Dictionary[StringName, float] = {
-	&"siege": 0.26,
-	&"railgun": 0.34,
-	&"arcane": 0.20,
-	&"storm": 0.20,
-	&"firestorm": 0.20,
-	&"frost": 0.24,
-}
-
-## Largest pixel dimension of each layer PNG on disk. The tower import preset
-## caps textures at 256 px (process/size_limit, 9d592d3), which shrinks every
-## layer by a DIFFERENT factor (a 1433 px shaft by 0.18, a 954 px top by 0.27),
-## so laying out raw imported sizes pulled the pieces apart in missions.
-## _layout_layers() rescales each sprite back to this shared source pixel space.
-## Regenerate when layer art is replaced; missing entries fall back to 1:1.
-const LAYER_SOURCE_MAX_DIMENSIONS: Dictionary[String, int] = {
-	"tower_base_matched_hexplank": 1222,
-	"tower_base_matched_octagon": 1048,
-	"tower_base_matched_round": 1055,
-	"tower_base_matched_scalloped": 1107,
-	"tower_base_matched_square": 1094,
-	"tower_base_matched_stonemound": 1176,
-	"tower_base_matched_stump": 1180,
-	"tower_base_matched_tiered": 1175,
-	"tower_base_matched_triangle": 1227,
-	"tower_modular_base_shared": 1010,
-	"tower_modular_shaft_open_support": 1132,
-	"tower_modular_shaft_solid": 936,
-	"tower_modular_top_fire": 985,
-	"tower_modular_top_frost": 1094,
-	"tower_modular_top_physical": 998,
-	"tower_modular_top_poison": 970,
-	"tower_modular_top_ranged": 1155,
-	"tower_modular_top_support": 1090,
-	"tower_shaft_hexplank": 1433,
-	"tower_shaft_octagon": 1029,
-	"tower_shaft_round": 1040,
-	"tower_shaft_scalloped": 1157,
-	"tower_shaft_square": 1116,
-	"tower_shaft_stonemound": 1140,
-	"tower_shaft_stump": 1083,
-	"tower_shaft_tiered": 1043,
-	"tower_shaft_triangle": 959,
-	"tower_top_hexplank": 1063,
-	"tower_top_octagon": 1119,
-	"tower_top_round": 1090,
-	"tower_top_scalloped": 1131,
-	"tower_top_square": 1133,
-	"tower_top_stonemound": 953,
-	"tower_top_stump": 1167,
-	"tower_top_tiered": 997,
-	"tower_top_triangle": 954,
-	"tower_top_weapon_arcane_lance_emitter": 1133,
-	"tower_top_weapon_firestorm_emitter": 1170,
-	"tower_top_weapon_frost_emitter": 1042,
-	"tower_top_weapon_railgun_laser": 949,
-	"tower_top_weapon_siege_cannon": 1170,
-	"tower_top_weapon_storm_emitter": 988,
-}
+## texture resource_path -> painted rect in texture pixels; see painted_rect().
+static var _painted_rect_cache: Dictionary[String, Rect2] = {}
 
 ## Persistent color-identity ring for an "elemental" archetype tower whose
 ## WeaponComponent.element has no bespoke art in ELEMENT_TEXTURES yet (see
@@ -462,12 +435,16 @@ func resolve_shape_for_component(component_id: String, archetype: String) -> Str
 	return &""
 
 
-## Returns the unscaled union of all active layered sprites. Exposed for
-## deterministic layout verification; gameplay code does not need it.
+## Returns the unscaled union of the painted (non-transparent) parts of the
+## layered sprites. Exposed for deterministic layout verification; gameplay
+## code does not need it.
 func get_layered_visual_bounds() -> Rect2:
-	var bounds: Rect2 = _sprite_rect(_base_sprite)
-	bounds = bounds.merge(_sprite_rect(_shaft_sprite))
-	bounds = bounds.merge(_sprite_rect(_top_sprite))
+	var bounds := Rect2()
+	for sprite: Sprite2D in [_base_sprite, _shaft_sprite, _top_sprite]:
+		var painted: Rect2 = painted_rect(sprite.texture)
+		var top_left: Vector2 = sprite.position - sprite.texture.get_size() * sprite.scale * 0.5
+		var part := Rect2(top_left + painted.position * sprite.scale, painted.size * sprite.scale)
+		bounds = part if sprite == _base_sprite else bounds.merge(part)
 	return bounds
 
 
@@ -528,11 +505,7 @@ func _configure_layered(archetype: String, element: String, foundation_component
 	_sprite.visible = false
 	_layer_root.visible = true
 	_visual_root.modulate = Color.WHITE
-	var overlap_profile: Vector2 = SHAPE_OVERLAP_PROFILES.get(shape, MODULAR_OVERLAP_PROFILE)
-	var weapon_top_key: StringName = _resolve_weapon_top_key(weapon_component_id)
-	if weapon_top_key != &"":
-		overlap_profile.y = WEAPON_TOP_OVERLAP_PROFILES[weapon_top_key]
-	_layout_layers(overlap_profile)
+	_layout_layers()
 	queue_redraw()
 
 
@@ -566,40 +539,120 @@ func _resolve_modular_top(archetype: String, element: String) -> Texture2D:
 	return MODULAR_TOP_TEXTURES.get(StringName(archetype), MODULAR_TOP_TEXTURES[&"physical"])
 
 
-func _layout_layers(overlap_profile: Vector2) -> void:
-	for sprite: Sprite2D in [_base_sprite, _shaft_sprite, _top_sprite]:
-		var factor: float = _source_scale_for(sprite.texture)
-		sprite.scale = Vector2(factor, factor)
-	var base_height: float = float(_base_sprite.texture.get_height()) * _base_sprite.scale.y
-	var shaft_height: float = float(_shaft_sprite.texture.get_height()) * _shaft_sprite.scale.y
-	var top_height: float = float(_top_sprite.texture.get_height()) * _top_sprite.scale.y
-	var base_shaft_overlap: float = minf(base_height, shaft_height) * overlap_profile.x
-	var shaft_top_overlap: float = minf(shaft_height, top_height) * overlap_profile.y
-	var assembled_height: float = base_height + shaft_height + top_height - base_shaft_overlap - shaft_top_overlap
-	var bottom_y: float = assembled_height * 0.5
-	_base_sprite.position = Vector2(0.0, bottom_y - base_height * 0.5)
-	_shaft_sprite.position = Vector2(0.0, bottom_y - base_height + base_shaft_overlap - shaft_height * 0.5)
-	_top_sprite.position = Vector2(0.0, bottom_y - base_height + base_shaft_overlap - shaft_height + shaft_top_overlap - top_height * 0.5)
-	var uniform_scale: float = TARGET_DISPLAY_HEIGHT / assembled_height
+func _layout_layers() -> void:
+	var sprites: Array[Sprite2D] = [_base_sprite, _shaft_sprite, _top_sprite]
+	var textures: Array[Texture2D] = [_base_sprite.texture, _shaft_sprite.texture, _top_sprite.texture]
+	var rects: Array[Rect2] = stack_layers(textures)
+	var painted: Rect2 = stacked_painted_bounds(textures, rects)
+	# Painted stack centred on the origin (spans -H/2..H/2), then scaled to
+	# TARGET_DISPLAY_HEIGHT -- the same footprint the single-sprite path uses.
+	var shift := Vector2(0.0, -painted.get_center().y)
+	for i: int in sprites.size():
+		var sprite: Sprite2D = sprites[i]
+		var tex_scale: float = rects[i].size.x / float(sprite.texture.get_width())
+		sprite.scale = Vector2(tex_scale, tex_scale)
+		sprite.position = rects[i].get_center() + shift
+	var uniform_scale: float = TARGET_DISPLAY_HEIGHT / painted.size.y
 	_layer_root.scale = Vector2(uniform_scale, uniform_scale)
 	_base_sprite_scale = _layer_root.scale
 
 
-## Scale that maps an imported (possibly size-capped) layer texture back to
-## its on-disk pixel size; see LAYER_SOURCE_MAX_DIMENSIONS.
-func _source_scale_for(texture: Texture2D) -> float:
-	var source_max: int = LAYER_SOURCE_MAX_DIMENSIONS.get(texture.resource_path.get_file().get_basename(), 0)
-	var imported_max: float = maxf(float(texture.get_width()), float(texture.get_height()))
-	if source_max <= 0 or imported_max <= 0.0:
-		return 1.0
-	return float(source_max) / imported_max
+## Lays out a Base/Shaft/Top texture triple (bottom to top) as one tower.
+## Returns each texture's full draw rect in layout units: the base's painted
+## width is 1.0, its painted bottom sits on y = 0, and every piece is
+## centred on x = 0, so y grows downward and the stack occupies negative y.
+## Shared by TowerInstance and the Inventory tower preview so both always
+## show the same silhouette. See LAYER_SEAT_FRACTIONS for the rules.
+## Adaptor caps (see with_adaptor_caps()) take the width of the piece below
+## them and do not count toward the base/shaft/top width roles.
+static func stack_layers(textures: Array[Texture2D]) -> Array[Rect2]:
+	var rects: Array[Rect2] = []
+	var bottom_y: float = 0.0
+	var role: int = 0
+	var width: float = 0.0
+	for i: int in textures.size():
+		var texture: Texture2D = textures[i]
+		var painted: Rect2 = painted_rect(texture)
+		if not is_adaptor_cap(texture) or i == 0:
+			width = LAYER_WIDTH_FRACTIONS[mini(role, LAYER_WIDTH_FRACTIONS.size() - 1)]
+			role += 1
+		var tex_scale: float = width / painted.size.x
+		var origin := Vector2(-painted.get_center().x * tex_scale, bottom_y - painted.end.y * tex_scale)
+		rects.append(Rect2(origin, texture.get_size() * tex_scale))
+		var painted_top: float = bottom_y - painted.size.y * tex_scale
+		bottom_y = painted_top + seat_fraction(texture) * width
+	return rects
 
 
-func _sprite_rect(sprite: Sprite2D) -> Rect2:
-	if sprite.texture == null:
-		return Rect2(sprite.position, Vector2.ZERO)
-	var size: Vector2 = sprite.texture.get_size() * sprite.scale
-	return Rect2(sprite.position - size * 0.5, size)
+## Returns `textures` (bottom to top) with an adaptor cap inserted between
+## every adjacent pair whose shape families differ, when the lower piece's
+## family has cap art. Pieces with no recognised family (modular fallbacks,
+## dedicated weapon tops) never get a cap.
+static func with_adaptor_caps(textures: Array[Texture2D]) -> Array[Texture2D]:
+	var result: Array[Texture2D] = []
+	for i: int in textures.size():
+		result.append(textures[i])
+		if i == textures.size() - 1:
+			break
+		var lower: StringName = shape_family(textures[i])
+		var upper: StringName = shape_family(textures[i + 1])
+		if lower == &"" or upper == &"" or lower == upper:
+			continue
+		var cap_path: String = CAP_TEXTURE_PATH_FORMAT % lower
+		if ResourceLoader.exists(cap_path):
+			result.append(load(cap_path) as Texture2D)
+	return result
+
+
+## Shape family a tower layer texture belongs to ("round", "triangle", ...),
+## read from its file name; &"" for modular fallbacks and weapon tops.
+static func shape_family(texture: Texture2D) -> StringName:
+	var basename: String = texture.resource_path.get_file().get_basename()
+	for prefix: String in FAMILY_PREFIXES:
+		if basename.begins_with(prefix):
+			var family: StringName = StringName(basename.trim_prefix(prefix))
+			return family if SHAPE_BASE_TEXTURES.has(family) else &""
+	return &""
+
+
+static func is_adaptor_cap(texture: Texture2D) -> bool:
+	return texture.resource_path.get_file().begins_with("tower_cap_")
+
+
+## Union of the painted (visible) parts of rects returned by stack_layers().
+static func stacked_painted_bounds(textures: Array[Texture2D], rects: Array[Rect2]) -> Rect2:
+	var bounds := Rect2()
+	for i: int in textures.size():
+		var tex_scale: float = rects[i].size.x / float(textures[i].get_width())
+		var painted: Rect2 = painted_rect(textures[i])
+		var part := Rect2(rects[i].position + painted.position * tex_scale, painted.size * tex_scale)
+		bounds = part if i == 0 else bounds.merge(part)
+	return bounds
+
+
+## Seat line of a Base/Shaft texture: LAYER_SEAT_FRACTIONS by file basename.
+static func seat_fraction(texture: Texture2D) -> float:
+	return LAYER_SEAT_FRACTIONS.get(texture.resource_path.get_file().get_basename(), DEFAULT_SEAT_FRACTION)
+
+
+## Non-transparent rect of `texture`, in its own (imported) pixels. Cached
+## per resource path; tower art imports lossless, so get_image() is cheap
+## and exact. Falls back to the full texture rect if no image is readable.
+static func painted_rect(texture: Texture2D) -> Rect2:
+	var key: String = texture.resource_path
+	if key != "" and _painted_rect_cache.has(key):
+		return _painted_rect_cache[key]
+	var rect := Rect2(Vector2.ZERO, texture.get_size())
+	var image: Image = texture.get_image()
+	if image != null:
+		if image.is_compressed():
+			image.decompress()
+		var used: Rect2i = image.get_used_rect()
+		if used.has_area():
+			rect = Rect2(used)
+	if key != "":
+		_painted_rect_cache[key] = rect
+	return rect
 
 
 func _assign_hit_flash_material(sprite: Sprite2D) -> void:

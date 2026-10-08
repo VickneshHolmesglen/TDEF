@@ -137,20 +137,70 @@ func test_layered_tower_is_scaled_to_target_height_and_bottom_centered() -> void
 	assert_float(bounds.end.y * _instance._layer_root.scale.y).is_equal_approx(TowerInstance.TARGET_DISPLAY_HEIGHT * 0.5, 0.1)
 
 
-func test_every_shape_family_has_a_complete_overlap_profile() -> void:
-	assert_int(TowerInstance.SHAPE_OVERLAP_PROFILES.size()).is_equal(TowerInstance.SHAPE_BASE_TEXTURES.size())
-	for shape: StringName in TowerInstance.SHAPE_BASE_TEXTURES:
-		assert_bool(TowerInstance.SHAPE_OVERLAP_PROFILES.has(shape)).is_true()
-		var profile: Vector2 = TowerInstance.SHAPE_OVERLAP_PROFILES[shape]
-		assert_float(profile.x).is_between(0.0, 0.5)
-		assert_float(profile.y).is_between(0.0, 0.5)
+func test_stack_layers_seats_each_piece_on_the_seat_line_below_it() -> void:
+	for base_shape: StringName in TowerInstance.SHAPE_BASE_TEXTURES:
+		for shaft_shape: StringName in TowerInstance.SHAPE_SHAFT_TEXTURES:
+			var textures: Array[Texture2D] = [
+				TowerInstance.SHAPE_BASE_TEXTURES[base_shape],
+				TowerInstance.SHAPE_SHAFT_TEXTURES[shaft_shape],
+				TowerInstance.SHAPE_TOP_TEXTURES[&"round"],
+			]
+			var rects: Array[Rect2] = TowerInstance.stack_layers(textures)
+			for i: int in [1, 2]:
+				var lower: Rect2 = _painted_part(textures[i - 1], rects[i - 1])
+				var upper: Rect2 = _painted_part(textures[i], rects[i])
+				var seat_y: float = lower.position.y + TowerInstance.seat_fraction(textures[i - 1]) * lower.size.x
+				assert_float(upper.end.y).is_equal_approx(seat_y, 0.0001)
+				assert_float(upper.get_center().x).is_equal_approx(0.0, 0.0001)
 
 
-func test_every_dedicated_weapon_top_has_an_overlap_profile() -> void:
-	assert_int(TowerInstance.WEAPON_TOP_OVERLAP_PROFILES.size()).is_equal(TowerInstance.WEAPON_TOP_TEXTURES.size())
-	for weapon_top: StringName in TowerInstance.WEAPON_TOP_TEXTURES:
-		assert_bool(TowerInstance.WEAPON_TOP_OVERLAP_PROFILES.has(weapon_top)).is_true()
-		assert_float(TowerInstance.WEAPON_TOP_OVERLAP_PROFILES[weapon_top]).is_between(0.0, 0.5)
+func test_stack_layers_matches_painted_widths_across_families() -> void:
+	var textures: Array[Texture2D] = [
+		TowerInstance.SHAPE_BASE_TEXTURES[&"triangle"],
+		TowerInstance.SHAPE_SHAFT_TEXTURES[&"hexplank"],
+		TowerInstance.SHAPE_TOP_TEXTURES[&"stonemound"],
+	]
+	var rects: Array[Rect2] = TowerInstance.stack_layers(textures)
+	for i: int in textures.size():
+		assert_float(_painted_part(textures[i], rects[i]).size.x).is_equal_approx(TowerInstance.LAYER_WIDTH_FRACTIONS[i], 0.0001)
+
+
+func test_shape_family_reads_family_from_layer_file_names() -> void:
+	assert_str(String(TowerInstance.shape_family(TowerInstance.SHAPE_BASE_TEXTURES[&"triangle"]))).is_equal("triangle")
+	assert_str(String(TowerInstance.shape_family(TowerInstance.SHAPE_SHAFT_TEXTURES[&"hexplank"]))).is_equal("hexplank")
+	assert_str(String(TowerInstance.shape_family(TowerInstance.SHAPE_TOP_TEXTURES[&"round"]))).is_equal("round")
+	assert_str(String(TowerInstance.shape_family(TowerInstance.MODULAR_BASE_TEXTURE))).is_equal("")
+	for weapon_top: Texture2D in TowerInstance.WEAPON_TOP_TEXTURES.values():
+		assert_str(String(TowerInstance.shape_family(weapon_top))).is_equal("")
+
+
+func test_with_adaptor_caps_inserts_a_cap_only_between_mismatched_families_with_art() -> void:
+	var matched: Array[Texture2D] = [
+		TowerInstance.SHAPE_BASE_TEXTURES[&"round"],
+		TowerInstance.SHAPE_SHAFT_TEXTURES[&"round"],
+		TowerInstance.SHAPE_TOP_TEXTURES[&"round"],
+	]
+	assert_int(TowerInstance.with_adaptor_caps(matched).size()).is_equal(3)
+	var mixed: Array[Texture2D] = [
+		TowerInstance.SHAPE_BASE_TEXTURES[&"square"],
+		TowerInstance.SHAPE_SHAFT_TEXTURES[&"triangle"],
+		TowerInstance.SHAPE_TOP_TEXTURES[&"round"],
+	]
+	var expected: int = 3
+	for family: String in ["square", "triangle"]:
+		if ResourceLoader.exists(TowerInstance.CAP_TEXTURE_PATH_FORMAT % family):
+			expected += 1
+	var capped: Array[Texture2D] = TowerInstance.with_adaptor_caps(mixed)
+	assert_int(capped.size()).is_equal(expected)
+	for texture: Texture2D in capped:
+		if TowerInstance.is_adaptor_cap(texture):
+			assert_bool(TowerInstance.shape_family(texture) in [&"square", &"triangle"]).is_true()
+
+
+func _painted_part(texture: Texture2D, rect: Rect2) -> Rect2:
+	var tex_scale: float = rect.size.x / float(texture.get_width())
+	var painted: Rect2 = TowerInstance.painted_rect(texture)
+	return Rect2(rect.position + painted.position * tex_scale, painted.size * tex_scale)
 
 
 func test_all_shape_profiles_remain_64_units_and_bottom_centered() -> void:
