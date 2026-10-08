@@ -9,6 +9,15 @@
 > which is gitignored and single-agent) specifically so a fresh session of
 > either agent, in a different terminal, sees current state immediately.
 
+> **Codex sandbox note (2026-10-09)**: if Codex reports "setup refresh had
+> errors" and can't read any file, it's the Windows sandbox setup failing on
+> its own locked `node_repl.exe` (`os error 32` in
+> `~/.codex/.sandbox/sandbox.*.log`), not the project. Quit Codex fully, end
+> leftover `node_repl.exe`, reopen (or restart the PC). If it recurs, set
+> `[windows] sandbox = "unelevated"` in `~/.codex/config.toml`. Separately,
+> `assets/` had permission inheritance turned off, so the sandbox couldn't
+> write there; it was re-enabled the same day (admin `icacls /inheritance:e`).
+
 ---
 
 ## Status legend
