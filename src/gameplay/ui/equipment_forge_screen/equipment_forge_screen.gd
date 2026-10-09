@@ -214,6 +214,8 @@ func _create_recipe_button(recipe: EquipmentRecipeResource) -> Button:
 	button.focus_mode = Control.FOCUS_ALL
 	button.clip_text = true
 	button.text = _recipe_entry_text(recipe)
+	if _is_blocked_by_full_bag(recipe.recipe_id):
+		button.tooltip_text = tr("FORGE_RECIPE_BAG_FULL_TOOLTIP")
 	button.pressed.connect(_on_recipe_pressed.bind(recipe.recipe_id))
 	_wire_focus_ring(button)
 	return button
@@ -223,7 +225,15 @@ func _create_recipe_button(recipe: EquipmentRecipeResource) -> Button:
 ## smoke check -- previously "iron_sword_recipe [MISSING_MATERIALS]").
 func _recipe_entry_text(recipe: EquipmentRecipeResource) -> String:
 	var craftable_tag: String = tr("FORGE_RECIPE_CRAFTABLE") if equipment_forge.is_craftable(recipe.recipe_id) else tr("FORGE_RECIPE_MISSING")
+	if _is_blocked_by_full_bag(recipe.recipe_id):
+		craftable_tag = tr("FORGE_RECIPE_BAG_FULL")
 	return "%s  ·  %s" % [_item_display_name(recipe.output_item_id), craftable_tag]
+
+
+## Materials ready but resolve_craft() would reject for lack of a free slot
+## -- tagged so the press doesn't read as a silent no-op (2026-10-10).
+func _is_blocked_by_full_bag(recipe_id: StringName) -> bool:
+	return equipment_forge.is_craftable(recipe_id) and not equipment_forge.has_room_for_output(recipe_id)
 
 
 static func _item_display_name(item_id: StringName) -> String:

@@ -89,6 +89,25 @@ func is_craftable(recipe_id: StringName) -> bool:
 	return _has_recipe_inputs(recipe.inputs)
 
 
+## resolve_craft()'s step (b) room gate, exposed so the Crafting Panel can
+## tell a materials-ready recipe that is blocked only by a full bag apart
+## from a genuinely craftable one -- is_craftable() deliberately stays a
+## materials-only read (AC-3), so without this the Craft button looked live
+## but resolve_craft() rejected silently (2026-10-10 bug report). Always
+## true for crafted_good (its overflow is AC-13's own consume-then-fail path)
+## and for an unknown recipe_id (resolve_craft() rejects that separately).
+##
+## Counts a slot the craft's own cost would empty (player-requested
+## 2026-10-10, AC-4 amended): a full bag holding exactly the 5 Material a
+## recipe costs is NOT out of room, since step (c) frees that slot before
+## step (d) places the output. See Inventory.consuming_would_free_a_slot().
+func has_room_for_output(recipe_id: StringName) -> bool:
+	var recipe: RecipeResource = GGameDataRegistry.get_recipe(recipe_id)
+	if recipe == null or recipe.recipe_category != "tower_component":
+		return true
+	return GInventory.has_room_for(recipe.component_slot, 1) or GInventory.consuming_would_free_a_slot(recipe.inputs)
+
+
 ## TD-craft-001 RESOLVED (Sprint 6, S6-06b): `RecipeResource.validate()`
 ## accepts item_type keys (Equipment/TowerComponent/Material/CraftedGood),
 ## rarity keys (Common/Uncommon/Rare — content-accurate to Formula 1-3, e.g.
@@ -164,7 +183,7 @@ func resolve_craft(recipe_id: StringName) -> bool:
 		_craft_resolving = false
 		return false
 
-	if recipe.recipe_category == "tower_component" and not GInventory.has_room_for(recipe.component_slot, 1):
+	if not has_room_for_output(recipe_id):
 		_craft_resolving = false
 		return false
 

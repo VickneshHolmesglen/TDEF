@@ -72,9 +72,13 @@ func test_resolve_craft_rejects_undiscovered_recipe() -> void:
 ## floor-exact capacity insufficient — this test's own "fill every
 ## discretionary slot" setup grows to match (1 slot from the seeded
 ## material + 7 filler items = 8).
+##
+## Seeds 5 against a cost of 4 so the stack survives consumption -- a stack
+## the cost would fully empty frees its slot and counts as room (AC-9
+## amended 2026-10-10, see the test below).
 func test_resolve_craft_rejects_when_no_room_zero_consumption() -> void:
 	_discover(RECIPE_IRON_SWORD)
-	_seed_material(4)
+	_seed_material(5)
 	# Fill all 8 discretionary slots (1 used by the seeded material above, 7
 	# more here) so no room remains for the crafted item.
 	for i: int in 7:
@@ -90,7 +94,26 @@ func test_resolve_craft_rejects_when_no_room_zero_consumption() -> void:
 	assert_bool(result).is_false()
 	assert_bool(_spy.was_emitted("hero_equipment_crafted")).is_false()
 	# Materials untouched — step (b) rejects before step (c) ever runs.
-	assert_bool(GInventory.has_items({&"Material": 4})).is_true()
+	assert_bool(GInventory.has_items({&"Material": 5})).is_true()
+
+
+func test_resolve_craft_succeeds_when_cost_frees_the_only_slot() -> void:
+	_discover(RECIPE_IRON_SWORD)
+	_seed_material(4)  # exactly the cost -- consuming it empties this slot
+	for i: int in 7:
+		var filler := ItemDefinitionResource.new()
+		filler.item_id = StringName("filler_%d" % i)
+		filler.item_type = &"Equipment"
+		filler.display_name = "Filler"
+		filler.is_unique_instance = true
+		GInventory.add_unique_item(filler)
+	assert_bool(GInventory.has_room_for("weapon", 1)).is_false()
+
+	var result: bool = _forge.resolve_craft(RECIPE_IRON_SWORD)
+
+	assert_bool(result).is_true()
+	assert_bool(_spy.was_emitted("hero_equipment_crafted")).is_true()
+	assert_bool(GInventory.has_items({&"Material": 1})).is_false()
 
 
 # ---------------------------------------------------------------------------

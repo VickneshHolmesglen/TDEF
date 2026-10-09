@@ -46,6 +46,8 @@ INVENTORY_TOWER_PREVIEW_HEADER,Preview
 CRAFTING_CATEGORY_TOWER_COMPONENT,Tower Components
 CRAFTING_CATEGORY_CRAFTED_GOOD,Crafted Goods
 CRAFTING_CRAFT_BUTTON,Craft
+CRAFTING_BAG_FULL_BUTTON,Bag Full
+CRAFTING_BAG_FULL_TOOLTIP,"No free bag slot for this component. Free a slot or expand your Inventory, then craft."
 TAROT_DECK_UI_TAB_HERO_SKILL_BUILD,Hero Skill Build
 TAROT_DECK_UI_TAB_TAROT_DECK,Tarot Deck
 TAROT_DECK_UI_RETURN_TO_SANCTUARY_BUTTON,Return to Sanctuary
@@ -221,6 +223,8 @@ DEFENSE_STRUCTURE_UNBUILT,Not built
 DEFENSE_STRUCTURE_GATE,  ·  Requires %s
 FORGE_RECIPE_CRAFTABLE,Ready to craft
 FORGE_RECIPE_MISSING,Missing materials
+FORGE_RECIPE_BAG_FULL,Bag full
+FORGE_RECIPE_BAG_FULL_TOOLTIP,"No free bag slot for this item. Free a slot or expand your Inventory, then craft."
 FORGE_ITEM_SLOTS_FREE,%s (%d/%d rune slots free)
 FORGE_RECIPES_EMPTY,"No equipment recipes discovered yet. Research tech in Defense Building and collect materials on missions to discover them."
 FORGE_IMBUE_ITEMS_EMPTY,"No equipment with a free rune slot. Craft equipment here first, then imbue it with runes."

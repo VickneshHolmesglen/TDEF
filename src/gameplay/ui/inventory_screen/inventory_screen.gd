@@ -1219,12 +1219,19 @@ func _create_recipe_row(recipe: RecipeResource, owned_totals: Dictionary) -> Con
 	title_row.add_child(name_label)
 
 	var craftable: bool = crafting.is_craftable(recipe.recipe_id)
+	# Materials ready but no free slot for a tower component: resolve_craft()
+	# would reject, so say why instead of a live-looking button that does
+	# nothing (2026-10-10 bug report).
+	var bag_full: bool = craftable and not crafting.has_room_for_output(recipe.recipe_id)
 
 	var craft_button := Button.new()
-	craft_button.text = tr("CRAFTING_CRAFT_BUTTON")
-	craft_button.disabled = not craftable
+	craft_button.name = "CraftButton"
+	craft_button.text = tr("CRAFTING_BAG_FULL_BUTTON") if bag_full else tr("CRAFTING_CRAFT_BUTTON")
+	if bag_full:
+		craft_button.tooltip_text = tr("CRAFTING_BAG_FULL_TOOLTIP")
+	craft_button.disabled = not craftable or bag_full
 	craft_button.focus_mode = Control.FOCUS_ALL
-	craft_button.add_theme_stylebox_override("normal", ShellChromeStyle.chrome_button_stylebox(craftable))
+	craft_button.add_theme_stylebox_override("normal", ShellChromeStyle.chrome_button_stylebox(craftable and not bag_full))
 	craft_button.pressed.connect(_on_craft_button_pressed.bind(recipe.recipe_id))
 	craft_button.set_meta(UiAudioBinder.META_KEY, UiAudioBinder.KIND_NONE)
 	# Craft button focus doubles as this row's "selected" state for keyboard/

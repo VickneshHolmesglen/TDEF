@@ -1131,6 +1131,56 @@ func consume_by_material_id(item_id: StringName, quantity: int, emit_events: boo
 	return quantity - remaining
 
 
+## Read-only dry run of paying a recipe cost: true if consuming `costs` would
+## empty at least one slot, freeing it for the craft's output (player-
+## requested 2026-10-10 -- a full bag holding exactly a recipe's cost can
+## still craft). Lets Crafting/EquipmentForge widen their has_room_for()
+## pre-check without consuming first, so a rejection still spends nothing.
+##
+## `costs` uses the recipe-input vocabulary both crafting systems share: each
+## key is an item_type (routed like consume_by_type()), else a rarity (like
+## consume_by_rarity()), else a specific item_id (like
+## consume_by_material_id()). Keys are walked in Dictionary order and slots
+## in slot order against a scratch copy of each quantity, with each consume
+## method's own filters -- lives here beside those three methods because it
+## must stay in lockstep with them. Does not check affordability (callers
+## already gate on has_items*()), mutate state, or emit events.
+##
+## Usage:
+##     if GInventory.has_room_for(slot_type, 1) or GInventory.consuming_would_free_a_slot(recipe.inputs):
+func consuming_would_free_a_slot(costs: Dictionary) -> bool:
+	var scratch_quantities: Array[int] = []
+	for slot: InventorySlot in _slots:
+		var consumable: bool = slot != null and slot.instance_id == -1 and not slot.locked
+		scratch_quantities.append(slot.quantity if consumable else 0)
+
+	for key: Variant in costs:
+		var remaining: int = costs[key]
+		for i: int in range(_slots.size()):
+			if remaining <= 0:
+				break
+			if scratch_quantities[i] <= 0 or not _slot_pays_cost_key(_slots[i], StringName(key)):
+				continue
+			var take: int = mini(scratch_quantities[i], remaining)
+			scratch_quantities[i] -= take
+			remaining -= take
+			if scratch_quantities[i] == 0:
+				return true
+	return false
+
+
+## consuming_would_free_a_slot()'s per-key routing -- the same filter the
+## matching consume_by_*() method applies to a slot.
+func _slot_pays_cost_key(slot: InventorySlot, key: StringName) -> bool:
+	if ItemDefinitionResource.VALID_ITEM_TYPES.has(key):
+		var type_definition: ItemDefinitionResource = GGameDataRegistry.get_item_definition(slot.item_id)
+		return type_definition != null and type_definition.item_type == key and not type_definition.excluded_from_type_costs
+	if key != &"" and ItemDefinitionResource.VALID_RARITIES.has(String(key)):
+		var rarity_definition: ItemDefinitionResource = GGameDataRegistry.get_item_definition(slot.item_id)
+		return rarity_definition != null and rarity_definition.rarity == String(key)
+	return slot.item_id == key
+
+
 ## ADR-0021 prerequisite fix (Story 005, Component Repair): locates the slot
 ## by `instance_id` — NOT `item_id` as ADR-0021's own parameter naming
 ## suggests, since item_id identifies an item DEFINITION, not a specific

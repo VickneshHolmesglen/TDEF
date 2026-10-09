@@ -807,7 +807,11 @@ Plain equipment-crafting stays single-confirm, identical justification to `craft
   consumed, and no event fires beyond a UI refresh (Rule 9 step (a), Edge
   Cases).
 - **AC-9** *(unblocked — dependency shipped 2026-07-17, found stale 2026-08-27)* — **GIVEN** a
-  craftable Equipment Recipe whose output slot has no free Inventory room,
+  craftable Equipment Recipe whose output slot has no free Inventory room
+  (and no input stack the cost would fully empty — **amended 2026-10-10,
+  player request**: a slot the craft's own cost empties counts as room, via
+  `Inventory.consuming_would_free_a_slot()`, and the Forge tags such a
+  blocked recipe "Bag full" instead of silently ignoring the press),
   **WHEN** confirm is pressed, **THEN** step (b)'s `has_room_for(output_slot,
   1)` pre-check returns false, the craft is rejected in full before step (c)
   ever runs, and zero materials are consumed (Rule 9 step (b), Edge Cases).

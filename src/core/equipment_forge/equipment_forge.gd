@@ -384,6 +384,19 @@ func is_craftable(recipe_id: StringName) -> bool:
 	return _has_recipe_inputs(recipe.inputs)
 
 
+## resolve_craft()'s step (b) room gate (AC-9), exposed so the Forge screen
+## can say "Bag full" instead of a recipe button that silently does nothing
+## (2026-10-10, same fix as Crafting.has_room_for_output()). Counts a slot
+## the recipe's own cost would empty -- see
+## Inventory.consuming_would_free_a_slot(). True for an unknown recipe_id
+## (resolve_craft() rejects that separately).
+func has_room_for_output(recipe_id: StringName) -> bool:
+	var recipe: EquipmentRecipeResource = GGameDataRegistry.get_equipment_recipe(recipe_id)
+	if recipe == null:
+		return true
+	return GInventory.has_room_for(recipe.output_slot, 1) or GInventory.consuming_would_free_a_slot(recipe.inputs)
+
+
 func _fire_recipe_discovered(recipe_id: StringName, recipe_category: String) -> void:
 	_equipment_discovery_ledger[recipe_id] = true
 	GEventBus.recipe_discovered.emit(String(recipe_id), recipe_category)
@@ -435,7 +448,8 @@ func _consume_recipe_inputs(inputs: Dictionary) -> void:
 ## types, generalizing this story's own original AC-8/AC-9-style guard).
 ## Steps:
 ##   (a) re-validate _has_recipe_inputs(inputs) — stale-UI rejection (AC-8)
-##   (b) has_room_for(output_slot, 1) pre-check (AC-9)
+##   (b) has_room_for_output() pre-check (AC-9) -- a slot the cost itself
+##       would empty counts as room (amended 2026-10-10)
 ##   (c) batch-consume inputs — only after (a)/(b) both pass
 ##   (d) construct the output item with rune_slot_count free empty rune slots
 ##   (e) emit hero_equipment_crafted(item_id, item_type=output_slot, quality_tier)
@@ -457,7 +471,7 @@ func resolve_craft(recipe_id: StringName) -> bool:
 		_forge_resolving = false
 		return false
 
-	if not GInventory.has_room_for(recipe.output_slot, 1):
+	if not has_room_for_output(recipe_id):
 		_forge_resolving = false
 		return false
 

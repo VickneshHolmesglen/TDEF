@@ -383,6 +383,14 @@ Rare required, versus 32+16+8 to build a fresh replacement.
   Sanctuary-side spend of materials the player chose to commit — a
   materials-spent-item-lost outcome would be a punishing dead loss with no
   recovery, so Crafting must pre-check rather than post-check.
+  **Amended 2026-10-10 (player request)**: a slot the craft's own cost would
+  fully empty counts as room — e.g. a full bag holding exactly the 5 Material
+  `recipe_iron_foundation` costs can still craft, since step (c) clears that
+  slot before step (d) places the output. The pre-check dry-runs the consume
+  (`Inventory.consuming_would_free_a_slot()`), so the no-dead-loss guarantee
+  above is unchanged. When the pre-check does fail, the Crafting panel shows
+  the row's button as a disabled "Bag Full" with a tooltip, never a live
+  Craft button that silently does nothing.
 
 - **If a `crafted_good` recipe's output stack has genuinely no room anywhere**
   (Inventory fully at capacity, no partial stack space and no open slot at
@@ -550,7 +558,8 @@ Single confirm (click or gamepad confirm button), **not** a two-step "confirm th
   later drops below `inputs`, THEN the recipe remains visible in the
   Crafting panel (still `DISCOVERED`) but its Craft button becomes disabled.
 - **AC-4**: GIVEN a craftable `tower_component` recipe and a full Inventory
-  (no room for the output slot type), WHEN Craft is confirmed, THEN zero
+  (no room for the output slot type, and no input stack the cost would fully
+  empty — amended 2026-10-10, see Edge Cases), WHEN Craft is confirmed, THEN zero
   materials are consumed, no `component_crafted` fires, and the craft is
   rejected before any Inventory consume call. **Interface dependency,
   resolved 2026-07-17, found stale here 2026-09-02**: this AC exercises

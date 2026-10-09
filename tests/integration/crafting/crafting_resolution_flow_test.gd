@@ -53,9 +53,12 @@ func _fill_all_slots_with_unrelated_unique_items() -> void:
 # materials consumed, no component_crafted.
 # ---------------------------------------------------------------------------
 
+## Seeds 6 against a cost of 5 so the material stack survives consumption --
+## a stack the cost would fully empty frees its slot and counts as room
+## (AC-4 amended 2026-10-10, see the test below).
 func test_resolve_craft_tower_component_rejected_when_inventory_full() -> void:
 	_crafting._discovery_ledger[RECIPE_IRON_FOUNDATION] = true
-	_seed_material(5)
+	_seed_material(6)
 	# Fill the remaining slots so no empty slot is left.
 	var def: ItemDefinitionResource = GGameDataRegistry.get_item_definition(&"iron_foundation_component")
 	while GInventory.has_room_for("TowerComponent", 1):
@@ -66,6 +69,20 @@ func test_resolve_craft_tower_component_rejected_when_inventory_full() -> void:
 	assert_bool(result).is_false()
 	assert_bool(_spy.was_emitted("component_crafted")).is_false()
 	assert_bool(_spy.was_emitted("item_removed")).is_false()  # zero materials consumed
+
+
+func test_resolve_craft_tower_component_succeeds_when_cost_frees_the_only_slot() -> void:
+	_crafting._discovery_ledger[RECIPE_IRON_FOUNDATION] = true
+	_seed_material(5)  # exactly the cost -- consuming it empties this slot
+	var def: ItemDefinitionResource = GGameDataRegistry.get_item_definition(&"iron_foundation_component")
+	while GInventory.has_room_for("TowerComponent", 1):
+		GInventory.add_unique_item(def, {})
+
+	var result: bool = _crafting.resolve_craft(RECIPE_IRON_FOUNDATION)
+
+	assert_bool(result).is_true()
+	assert_int(_spy.count("component_crafted")).is_equal(1)
+	assert_bool(GInventory.has_items({&"Material": 1})).is_false()
 
 
 func test_resolve_craft_tower_component_succeeds_with_exactly_one_free_slot() -> void:

@@ -218,7 +218,7 @@ func test_pressing_craft_updates_left_panel_slot_quantity() -> void:
 
 func test_tower_component_craft_rejected_without_room_consumes_nothing() -> void:
 	_discover(RECIPE_FOUNDATION)
-	_seed_material(5)
+	_seed_material(6)  # cost is 5 -- a leftover keeps the stack's slot occupied
 	# Fill every TowerComponent slot so has_room_for("foundation", 1) is false.
 	for i: int in range(20):
 		GInventory.add_unique_item(GGameDataRegistry.get_item_definition(&"iron_foundation_component"), {}, 0, -1)
@@ -229,6 +229,37 @@ func test_tower_component_craft_rejected_without_room_consumes_nothing() -> void
 	# Gate 3 (AC-4) rejects before consuming -- the 5 seeded Material must
 	# still be fully present.
 	assert_bool(GInventory.has_items({&"Material": 5})).is_true()
+
+
+# Regression (2026-10-10): materials ready + full bag rendered a live Craft
+# button that silently did nothing -- it must read as blocked, with a reason.
+func test_tower_component_row_shows_bag_full_when_no_room() -> void:
+	_discover(RECIPE_FOUNDATION)
+	_seed_material(6)  # leftover 1 after paying 5 -- no slot is freed
+	for i: int in range(20):
+		GInventory.add_unique_item(GGameDataRegistry.get_item_definition(&"iron_foundation_component"), {}, 0, -1)
+	_refresh()
+
+	var button: Button = _craft_button(RECIPE_FOUNDATION)
+	assert_bool(button.disabled).is_true()
+	assert_str(button.text).is_equal(tr("CRAFTING_BAG_FULL_BUTTON"))
+	assert_str(button.tooltip_text).is_not_empty()
+
+
+# A full bag whose cost exactly empties a material stack still has room --
+# the freed slot takes the output (AC-4 amended 2026-10-10).
+func test_tower_component_craft_uses_slot_freed_by_its_own_cost() -> void:
+	_discover(RECIPE_FOUNDATION)
+	_seed_material(5)
+	for i: int in range(20):
+		GInventory.add_unique_item(GGameDataRegistry.get_item_definition(&"iron_foundation_component"), {}, 0, -1)
+	_refresh()
+
+	var button: Button = _craft_button(RECIPE_FOUNDATION)
+	assert_bool(button.disabled).is_false()
+	button.pressed.emit()
+
+	assert_bool(GInventory.has_items({&"Material": 1})).is_false()
 
 
 # ---------------------------------------------------------------------------
