@@ -210,7 +210,7 @@ func test_pressing_craft_updates_left_panel_slot_quantity() -> void:
 	# pre-craft "common_scrap x3" text (regression guard for
 	# _apply_slot_visual()'s reset branch), and the real holdings must
 	# reflect consumption + output.
-	var slot_button: Button = _screen.get_node("MainLayout/LeftPanel/SlotGrid/Slot0") as Button
+	var slot_button: Button = _screen.get_node("MainLayout/LeftPanel/BagPanel/BagContent/SlotGrid/Slot0") as Button
 	assert_str(slot_button.text).is_not_equal("common_scrap x3")
 	assert_bool(GInventory.has_items({&"Material": 1})).is_false()
 	assert_bool(GInventory.has_items({&"CraftedGood": 3})).is_true()
@@ -267,8 +267,24 @@ func test_tower_component_craft_uses_slot_freed_by_its_own_cost() -> void:
 # Inventory slots on the left panel that would be consumed")
 # ---------------------------------------------------------------------------
 
+# Regression (2026-10-11): an item_id-keyed input (goblin_hide) was counted as
+# an unknown item_type -- the row read "goblin_hide 0/5 !" while the player
+# held enough and the Craft button was live.
+func test_item_id_keyed_cost_line_counts_that_item_and_shows_its_name() -> void:
+	_discover(&"recipe_goblinhide_bandage")
+	GInventory.add_stackable(GGameDataRegistry.get_item_definition(&"goblin_hide"), 7)
+	_refresh()
+
+	var texts: Array[String] = []
+	for label: Label in _collect_labels(_recipe_row(&"recipe_goblinhide_bandage")):
+		texts.append(label.text)
+	var display_name: String = GGameDataRegistry.get_item_definition(&"goblin_hide").display_name
+	assert_array(texts).contains(["%s 7/5" % display_name])
+	assert_array(texts).not_contains(["!"])
+
+
 func _preview_ring(slot_index: int) -> Panel:
-	var slot_button: Button = _screen.get_node("MainLayout/LeftPanel/SlotGrid/Slot%d" % slot_index) as Button
+	var slot_button: Button = _screen.get_node("MainLayout/LeftPanel/BagPanel/BagContent/SlotGrid/Slot%d" % slot_index) as Button
 	return slot_button.get_node("CraftPreviewRing") as Panel
 
 

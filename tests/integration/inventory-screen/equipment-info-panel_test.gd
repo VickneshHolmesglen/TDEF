@@ -28,7 +28,7 @@ func _header_text() -> String:
 
 
 func _slot_button(inventory_index: int) -> Button:
-	return _screen.get_node("MainLayout/LeftPanel/SlotGrid/Slot%d" % inventory_index) as Button
+	return _screen.get_node("MainLayout/LeftPanel/BagPanel/BagContent/SlotGrid/Slot%d" % inventory_index) as Button
 
 
 func test_panel_exists_and_defaults_to_bonuses() -> void:

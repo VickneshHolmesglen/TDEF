@@ -72,8 +72,12 @@ extends Control
 
 const EquipmentInfoPanelScript := preload("res://src/gameplay/ui/inventory_screen/equipment_info_panel.gd")
 
+## 2026-10-11 UI pass: tiles are small cards (icon + item name strip) in 5
+## columns spanning the bag panel -- they were bare 64 px icons with no name,
+## clustered in a narrow strip of an otherwise empty panel.
 const GRID_COLUMNS: int = 5
-const SLOT_SIZE: Vector2 = Vector2(64, 64)
+const SLOT_SIZE: Vector2 = Vector2(104, 128)
+const SLOT_NAME_STRIP_HEIGHT: float = 30.0
 
 ## Tab display-label localization keys, keyed by Inventory.TAB_ORDER's identifiers
 ## (Story 002 data, read-only — this story only reads TAB_ORDER to build a static
@@ -201,7 +205,15 @@ var _info_panel: PanelContainer
 ## blue slot tints were removed at the player's request (UX overhaul
 ## 2026-10-09). Built in _build_tower_preview_panel().
 @onready var _tower_preview_panel: Control = $MainLayout/LeftPanel/TowerComponentRow/TowerPreviewPanel
-@onready var _slot_grid: GridContainer = $MainLayout/LeftPanel/SlotGrid
+@onready var _slot_grid: GridContainer = $MainLayout/LeftPanel/BagPanel/BagContent/SlotGrid
+## 2026-10-11 UI pass: the bag used to be a bare grid that left the lower
+## half of the left panel blank (empty slots are hidden per the 2026-08-16
+## player request below, so a tab with few items showed almost nothing).
+## It now sits in a panel that fills the remaining height, with a used/total
+## header and a centered message when the active tab has nothing to show.
+@onready var _bag_panel: PanelContainer = $MainLayout/LeftPanel/BagPanel
+@onready var _bag_header: Label = $MainLayout/LeftPanel/BagPanel/BagContent/BagHeader
+@onready var _bag_empty_label: Label = $MainLayout/LeftPanel/BagPanel/BagContent/BagEmptyLabel
 ## Crafting is deliberately NOT an Autoload (ADR-0023: "Scene-instanced,
 ## Sanctuary-only") — unlike Inventory, there is no GCrafting global to fall
 ## back to. Real gap found and fixed here (2026-08-10, mirrors this same
@@ -331,6 +343,7 @@ func _ready() -> void:
 
 	_build_tab_strip()
 	_build_equipment_info_panel()
+	_style_bag_panel()
 	_build_slot_grid()
 	_wire_focus_neighbors()
 	_refresh_slot_visibility()
@@ -533,6 +546,36 @@ func _refresh_slot_visibility() -> void:
 			var definition: ItemDefinitionResource = GGameDataRegistry.get_item_definition(StringName(item_id))
 			visible_on_tab = definition != null and _tab_for_item_type(definition.item_type) == _active_tab
 		_slot_buttons[i].visible = visible_on_tab
+	_refresh_bag_summary()
+
+
+func _style_bag_panel() -> void:
+	var box: StyleBoxFlat = ShellChromeStyle.chrome_panel_stylebox()
+	box.bg_color = ShellChromeStyle.UI_CHROME.darkened(0.25)
+	box.set_content_margin_all(12.0)
+	_bag_panel.add_theme_stylebox_override("panel", box)
+	_bag_header.add_theme_color_override("font_color", ShellChromeStyle.UI_PARCHMENT)
+	_bag_empty_label.add_theme_color_override("font_color", Color(ShellChromeStyle.UI_PARCHMENT, 0.6))
+
+
+## Header counts discretionary bag capacity only -- locked slots are the
+## reserved Hero equip slots the paperdoll shows, not bag space.
+func _refresh_bag_summary() -> void:
+	var used: int = 0
+	var capacity: int = 0
+	var shown_on_tab: int = 0
+	for i: int in range(_slot_buttons.size()):
+		if _slot_buttons[i].visible:
+			shown_on_tab += 1
+		var contents: Dictionary = inventory.get_slot_contents(i)
+		if contents.get("locked", false):
+			continue
+		capacity += 1
+		if (contents.get("item_id", "") as String) != "" and (contents.get("quantity", 0) as int) > 0:
+			used += 1
+	_bag_header.text = tr("INVENTORY_BAG_HEADER") % [used, capacity]
+	_bag_empty_label.text = tr("INVENTORY_BAG_TAB_EMPTY") % tr(TAB_LABEL_KEYS.get(_active_tab, String(_active_tab)))
+	_bag_empty_label.visible = shown_on_tab == 0
 
 
 ## hero-skill-build.md Rule 13: skill-modifier items are filed under the
@@ -814,6 +857,10 @@ func _create_slot_button(index: int) -> Button:
 	item_icon.name = "ItemIcon"
 	item_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	item_icon.set_anchors_preset(Control.PRESET_FULL_RECT)
+	item_icon.offset_left = 6.0
+	item_icon.offset_top = 6.0
+	item_icon.offset_right = -6.0
+	item_icon.offset_bottom = -SLOT_NAME_STRIP_HEIGHT
 	item_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	item_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	item_icon.visible = false
@@ -827,16 +874,32 @@ func _create_slot_button(index: int) -> Button:
 	quantity_label.name = "QuantityLabel"
 	quantity_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	quantity_label.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
-	quantity_label.offset_left = -28.0
-	quantity_label.offset_top = -18.0
-	quantity_label.offset_right = -2.0
-	quantity_label.offset_bottom = -2.0
+	quantity_label.offset_left = -40.0
+	quantity_label.offset_top = -SLOT_NAME_STRIP_HEIGHT - 18.0
+	quantity_label.offset_right = -4.0
+	quantity_label.offset_bottom = -SLOT_NAME_STRIP_HEIGHT
 	quantity_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	quantity_label.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
 	quantity_label.clip_text = true
 	quantity_label.add_theme_font_size_override("font_size", 14)
 	quantity_label.visible = false
 	button.add_child(quantity_label)
+
+	var name_label := Label.new()
+	name_label.name = "NameLabel"
+	name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	name_label.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	name_label.offset_left = 4.0
+	name_label.offset_right = -4.0
+	name_label.offset_top = -SLOT_NAME_STRIP_HEIGHT
+	name_label.offset_bottom = -4.0
+	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	name_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	name_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	name_label.clip_text = true
+	name_label.add_theme_font_size_override("font_size", 12)
+	name_label.add_theme_color_override("font_color", ShellChromeStyle.UI_PARCHMENT)
+	button.add_child(name_label)
 
 	_apply_slot_visual(button, rarity_frame, item_icon, quantity_label, index)
 	_crafting_rarity_frames.append(rarity_frame)
@@ -924,6 +987,9 @@ func _apply_slot_visual(button: Button, rarity_frame: RarityFrame, item_icon: Te
 	# slot, so a handler reacting synchronously (as _refresh_all_slot_
 	# visuals() does) can observe a transient "quantity 0 but item_id still
 	# populated" state -- treating quantity <= 0 as empty too closes that.
+	var name_label: Label = button.get_node_or_null(^"NameLabel") as Label
+	if name_label != null:
+		name_label.text = ""
 	if contents.is_empty() or item_id == "" or quantity <= 0:
 		button.text = ""
 		rarity_frame.rarity = ""
@@ -938,6 +1004,8 @@ func _apply_slot_visual(button: Button, rarity_frame: RarityFrame, item_icon: Te
 
 	if definition != null and definition.icon != null:
 		button.text = ""
+		if name_label != null:
+			name_label.text = definition.display_name
 		item_icon.texture = definition.icon
 		item_icon.visible = true
 		quantity_label.text = "x%d" % quantity
@@ -1173,6 +1241,7 @@ func _discovered_recipes_in_category(category: String) -> Array[RecipeResource]:
 func _compute_owned_totals() -> Dictionary:
 	var by_item_type: Dictionary[StringName, int] = {}
 	var by_rarity: Dictionary[StringName, int] = {}
+	var by_item_id: Dictionary[StringName, int] = {}
 	for i: int in range(inventory.get_slot_count()):
 		var contents: Dictionary = inventory.get_slot_contents(i)
 		if contents.is_empty():
@@ -1183,12 +1252,13 @@ func _compute_owned_totals() -> Dictionary:
 		if definition == null:
 			continue
 		var quantity: int = contents["quantity"] as int
+		by_item_id[definition.item_id] = by_item_id.get(definition.item_id, 0) + quantity  # mirrors has_items_by_material_id()
 		if not definition.excluded_from_type_costs:  # mirrors Inventory.has_items()
 			by_item_type[definition.item_type] = by_item_type.get(definition.item_type, 0) + quantity
 		if definition.rarity != "":
 			var rarity_key := StringName(definition.rarity)
 			by_rarity[rarity_key] = by_rarity.get(rarity_key, 0) + quantity
-	return {"by_item_type": by_item_type, "by_rarity": by_rarity}
+	return {"by_item_type": by_item_type, "by_rarity": by_rarity, "by_item_id": by_item_id}
 
 
 ## One recipe row: output icon + name, a Craft button (filled when
@@ -1257,16 +1327,31 @@ func _create_recipe_row(recipe: RecipeResource, owned_totals: Dictionary) -> Con
 
 	var by_item_type: Dictionary = owned_totals["by_item_type"]
 	var by_rarity: Dictionary = owned_totals["by_rarity"]
+	var by_item_id: Dictionary = owned_totals["by_item_id"]
 	for key: StringName in recipe.inputs:
 		var required: int = recipe.inputs[key]
-		var current: int = by_rarity.get(key, 0) if RecipeResource.VALID_RARITIES.has(key) else by_item_type.get(key, 0)
+		# Same 3-way key routing as Crafting._has_recipe_inputs(): item_type,
+		# then rarity, else a specific item_id (2026-10-11: item_id keys were
+		# counted as an unknown item_type -- always "0/N" with a warning badge
+		# and the raw id as the label, even when the Craft button was live).
+		var current: int
+		var key_label: String = String(key)
+		if ItemDefinitionResource.VALID_ITEM_TYPES.has(key):
+			current = by_item_type.get(key, 0)
+		elif RecipeResource.VALID_RARITIES.has(key):
+			current = by_rarity.get(key, 0)
+		else:
+			current = by_item_id.get(key, 0)
+			var key_definition: ItemDefinitionResource = GGameDataRegistry.get_item_definition(key)
+			if key_definition != null and key_definition.display_name != "":
+				key_label = key_definition.display_name
 		var sufficient: bool = current >= required
 
 		var cost_line := HBoxContainer.new()
 		content.add_child(cost_line)
 
 		var cost_label := Label.new()
-		cost_label.text = "%s %d/%d" % [String(key), current, required]
+		cost_label.text = "%s %d/%d" % [key_label, current, required]
 		cost_label.add_theme_color_override("font_color", ShellChromeStyle.UI_PARCHMENT if sufficient else ShellChromeStyle.UI_WARNING_ORANGE)
 		cost_line.add_child(cost_label)
 

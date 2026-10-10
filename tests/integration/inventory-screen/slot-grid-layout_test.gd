@@ -26,7 +26,7 @@ func after_test() -> void:
 
 
 func _slot_grid() -> Control:
-	return _screen.get_node("MainLayout/LeftPanel/SlotGrid") as Control
+	return _screen.get_node("MainLayout/LeftPanel/BagPanel/BagContent/SlotGrid") as Control
 
 
 func _left_panel() -> Control:

@@ -63,9 +63,28 @@ layout_mode = 2
 size_flags_horizontal = 3
 size_flags_stretch_ratio = 1.0
 
-[node name="SlotGrid" type="GridContainer" parent="MainLayout/LeftPanel"]
+[node name="BagPanel" type="PanelContainer" parent="MainLayout/LeftPanel"]
 layout_mode = 2
-columns = 5
+size_flags_vertical = 3
+
+[node name="BagContent" type="VBoxContainer" parent="MainLayout/LeftPanel/BagPanel"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="BagHeader" type="Label" parent="MainLayout/LeftPanel/BagPanel/BagContent"]
+layout_mode = 2
+
+[node name="SlotGrid" type="GridContainer" parent="MainLayout/LeftPanel/BagPanel/BagContent"]
+layout_mode = 2
+columns = 7
+
+[node name="BagEmptyLabel" type="Label" parent="MainLayout/LeftPanel/BagPanel/BagContent"]
+visible = false
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 3
 
 [node name="RightPanel" type="PanelContainer" parent="MainLayout"]
 layout_mode = 2

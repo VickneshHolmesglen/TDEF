@@ -110,4 +110,4 @@ func test_inventory_screen_slot_grid_still_builds_correctly_when_hosted() -> voi
 	# (slot grid built) identically to being run standalone -- no behavioral
 	# change from being hosted, matching this story's own regression-check
 	# framing for the one room with real content.
-	assert_object(room.get_node_or_null("MainLayout/LeftPanel/SlotGrid")).is_not_null()
+	assert_object(room.get_node_or_null("MainLayout/LeftPanel/BagPanel/BagContent/SlotGrid")).is_not_null()

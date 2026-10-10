@@ -223,6 +223,8 @@ MENAGERIE_LURE_HEADER,Lure a Creature
 MENAGERIE_LURE_OWNED,Lures owned: %d
 MENAGERIE_LURE_BUTTON,Lure %s (%d lures)
 INVENTORY_RECIPES_EMPTY,"No recipes discovered yet. Research tech in Defense Building and collect new materials on missions to discover recipes."
+INVENTORY_BAG_HEADER,Bag  ·  %d / %d slots used
+INVENTORY_BAG_TAB_EMPTY,No %s items in your bag yet.
 DEFENSE_ENTRY_FORMAT,%s  ·  %s  ·  %d gold
 DEFENSE_TECH_STATE_UNLOCKED,Unlocked
 DEFENSE_TECH_STATE_AVAILABLE,Available

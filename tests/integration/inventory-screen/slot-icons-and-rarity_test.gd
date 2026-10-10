@@ -43,7 +43,7 @@ func _mount() -> void:
 
 
 func _slot(index: int) -> Button:
-	return _screen.get_node("MainLayout/LeftPanel/SlotGrid/Slot%d" % index) as Button
+	return _screen.get_node("MainLayout/LeftPanel/BagPanel/BagContent/SlotGrid/Slot%d" % index) as Button
 
 
 func test_empty_slot_has_no_text_no_frame_no_icon() -> void:
