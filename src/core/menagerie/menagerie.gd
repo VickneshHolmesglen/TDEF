@@ -98,6 +98,13 @@ func _on_sanctuary_structure_built(_structure_id: String, structure_type: String
 	_habitat_capacity = mini(_habitat_capacity + HABITAT_CAPACITY_PER_TIER, HABITAT_MAX_CAPACITY)
 
 
+## Current HABITAT slot count (base + built expansions). Read-only; lets the
+## Menagerie screen draw empty-slot placeholders up to the real capacity.
+##     var free_slots: int = GMenagerie.get_habitat_capacity() - roster_size
+func get_habitat_capacity() -> int:
+	return _habitat_capacity
+
+
 ## Formula 4: lure_cost(tier) = base_lure_cost × tier (AC-37/AC-38).
 static func lure_cost(species_tier: int) -> int:
 	return BASE_LURE_COST * species_tier

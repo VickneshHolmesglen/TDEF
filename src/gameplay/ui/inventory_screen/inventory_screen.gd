@@ -349,6 +349,16 @@ func _ready() -> void:
 	_recipes_tab_button.pressed.connect(_on_crafting_tab_pressed.bind(false))
 	_assemble_tab_button.pressed.connect(_on_crafting_tab_pressed.bind(true))
 	_repair_tab_button.pressed.connect(_on_repair_tab_pressed)
+	# 2026-10-10 UI pass: equal-width sub-tabs, active one filled (they were
+	# bare default buttons with no visible active state).
+	for tab_button: Button in [_recipes_tab_button, _assemble_tab_button, _repair_tab_button]:
+		tab_button.toggle_mode = true
+		tab_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		tab_button.custom_minimum_size = Vector2(0, 36)
+		tab_button.add_theme_stylebox_override("normal", ShellChromeStyle.chrome_button_stylebox(false))
+		tab_button.add_theme_stylebox_override("hover", ShellChromeStyle.chrome_button_stylebox(false))
+		tab_button.add_theme_stylebox_override("pressed", ShellChromeStyle.chrome_button_stylebox(true))
+		tab_button.add_theme_stylebox_override("hover_pressed", ShellChromeStyle.chrome_button_stylebox(true))
 	_assemble_button.pressed.connect(_on_assemble_button_pressed)
 	_assemble_confirm_dialog.confirmed.connect(_on_assemble_confirmed)
 	_assemble_confirm_dialog.get_cancel_button().set_meta(UiAudioBinder.META_KEY, UiAudioBinder.KIND_CANCEL)
@@ -1138,6 +1148,7 @@ func _refresh_crafting_panel() -> void:
 		empty_label.text = tr("INVENTORY_RECIPES_EMPTY")
 		empty_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		empty_label.custom_minimum_size = Vector2(200, 0)
+		empty_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		_recipe_list_host.add_child(empty_label)
 
 

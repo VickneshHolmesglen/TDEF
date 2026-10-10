@@ -193,7 +193,12 @@ func test_roster_button_shows_a_species_icon_for_known_species() -> void:
 	assert_object(button.icon).is_not_null()
 
 
-func test_roster_button_icon_is_capped_to_the_roster_icon_max_width() -> void:
+## Guards the original bug (native ~900-1200 px species art ballooning the
+## button to the art's own size). The 2026-10-10 card layout dropped the
+## fixed 32 px icon_max_width cap so the portrait fills its card, so the
+## guard is now: the art scales (expand_icon) and never drives the card's
+## minimum size anywhere near the art's native resolution.
+func test_roster_card_icon_scales_instead_of_ballooning_the_card() -> void:
 	var habitat_id: int = _add_creature(CreatureInstance.CreatureState.HABITAT, 70.0, &"aurora_stag")
 	@warning_ignore("unsafe_method_access")
 	_screen.call("_rebuild_roster")
@@ -202,7 +207,9 @@ func test_roster_button_icon_is_capped_to_the_roster_icon_max_width() -> void:
 	var roster_buttons: Dictionary = _screen.get("_roster_buttons")
 	var button: Button = roster_buttons[habitat_id]
 	assert_bool(button.expand_icon).is_true()
-	assert_int(button.get_theme_constant(&"icon_max_width")).is_equal(32)
+	var min_size: Vector2 = button.get_combined_minimum_size()
+	assert_float(min_size.x).is_less(300.0)
+	assert_float(min_size.y).is_less(300.0)
 
 
 ## test_species (this file's own default fixture species) has no authored

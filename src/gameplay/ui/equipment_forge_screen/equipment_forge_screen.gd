@@ -169,6 +169,28 @@ func _apply_view_visibility() -> void:
 	_craft_view.visible = _active_tab == TAB_CRAFT
 	_imbue_view.visible = _active_tab == TAB_IMBUE
 	_upgrade_view.visible = _active_tab == TAB_UPGRADE
+	_style_tab_strip()
+
+
+## 2026-10-10 UI pass: the three tabs were bare default buttons sized to
+## their text with no active-tab state. Now equal-width, with the active tab
+## filled (filled-vs-outline, never color-only), and the list views sit on a
+## padded dark panel like every other room.
+func _style_tab_strip() -> void:
+	var tabs: Dictionary[int, Button] = {TAB_CRAFT: _craft_tab_button, TAB_IMBUE: _imbue_tab_button, TAB_UPGRADE: _upgrade_tab_button}
+	for tab: int in tabs:
+		var button: Button = tabs[tab]
+		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		button.custom_minimum_size = Vector2(0, 40)
+		var box: StyleBoxFlat = ShellChromeStyle.chrome_button_stylebox(tab == _active_tab)
+		button.add_theme_stylebox_override("normal", box)
+		button.add_theme_stylebox_override("hover", box)
+	for view: Control in [_craft_view, _upgrade_view]:
+		if view is PanelContainer and not view.has_theme_stylebox_override("panel"):
+			var panel_box: StyleBoxFlat = ShellChromeStyle.chrome_panel_stylebox()
+			panel_box.bg_color = ShellChromeStyle.UI_CHROME.darkened(0.25)
+			panel_box.set_content_margin_all(16.0)
+			view.add_theme_stylebox_override("panel", panel_box)
 
 
 func get_active_tab() -> int:
@@ -248,6 +270,10 @@ static func _add_empty_label(list: VBoxContainer, text: String) -> void:
 	label.text = text
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	label.custom_minimum_size = Vector2(240, 0)
+	# Centered in its panel (2026-10-10 UI pass) instead of pinned top-left.
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	list.add_child(label)
 
 

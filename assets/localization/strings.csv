@@ -182,6 +182,8 @@ MENAGERIE_CONFIRM_BREEDING,Confirm Breeding
 MENAGERIE_CANCEL_SELECTION,Cancel Selection
 MENAGERIE_SACRIFICE_CONFIRM_TITLE,Confirm Sacrifice
 DEFENSE_BUILDING_SWITCH_VIEW,Switch View
+DEFENSE_VIEW_TECH_TREE,Tech Tree
+DEFENSE_VIEW_STRUCTURES,Structures
 MISSION_SELECT_BACK,Back
 MISSION_SELECT_TITLE,Choose a Mission
 MISSION_SELECT_BROWSE_HINT,Select a mission to choose its difficulty and run modifiers.
@@ -214,6 +216,8 @@ SKILL_TREE_ARCHETYPE_RANGED,Ranged
 SKILL_TREE_ARCHETYPE_ELEMENTAL,Elemental
 SKILL_TREE_ARCHETYPE_SUPPORT,Support
 MENAGERIE_ROSTER_EMPTY,"No creatures yet. Spend Menagerie Lures, found on missions, to lure one."
+MENAGERIE_EMPTY_SLOT,Empty habitat slot
+MENAGERIE_LOCKED_SLOT,Locked: build a Habitat Expansion
 MENAGERIE_LURE_HEADER,Lure a Creature
 MENAGERIE_LURE_OWNED,Lures owned: %d
 MENAGERIE_LURE_BUTTON,Lure %s (%d lures)

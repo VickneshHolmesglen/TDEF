@@ -183,6 +183,15 @@ func _ready() -> void:
 	GEventBus.tower_placed.connect(_on_tower_placed)
 	_ready_button.pressed.connect(_on_ready_pressed)
 	_ready_button.set_meta(UiAudioBinder.META_KEY, UiAudioBinder.KIND_CONFIRM)
+	# 2026-10-10 UI pass: Ready/Skip is the planning phase's primary action --
+	# full right-column width at the bottom, mirroring Ultimate on the left,
+	# in the same Sanctum Amber as every other launch/commit button.
+	var ready_box: StyleBoxFlat = ShellChromeStyle.launch_button_stylebox()
+	ready_box.content_margin_top = 4.0
+	ready_box.content_margin_bottom = 4.0
+	_ready_button.add_theme_stylebox_override("normal", ready_box)
+	_ready_button.add_theme_stylebox_override("hover", ready_box)
+	_sell_button.add_theme_stylebox_override("normal", ShellChromeStyle.chrome_button_stylebox(false))
 	_build_ready_focus_ring()
 	_ready_button.focus_entered.connect(_update_ready_focus_ring)
 	_ready_button.focus_exited.connect(_update_ready_focus_ring)

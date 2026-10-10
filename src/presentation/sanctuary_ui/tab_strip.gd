@@ -380,6 +380,9 @@ func _build_buttons() -> void:
 		button.focus_mode = Control.FOCUS_ALL
 		button.custom_minimum_size = Vector2(56, 56)
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		# Tabs share the strip's full height (2026-10-10 UI pass) -- they
+		# used to stop two-thirds down, leaving a dead block under them.
+		button.size_flags_vertical = Control.SIZE_EXPAND_FILL
 		button.add_theme_stylebox_override("normal", ShellChromeStyle.chrome_button_stylebox(index == 0))
 		button.add_theme_stylebox_override("hover", ShellChromeStyle.chrome_button_stylebox(index == 0))
 		button.add_theme_stylebox_override("pressed", ShellChromeStyle.chrome_button_stylebox(true))
@@ -457,6 +460,9 @@ func _update_focus_ring(index: int) -> void:
 func _build_onboarding_tooltip() -> void:
 	_onboarding_tooltip = Label.new()
 	_onboarding_tooltip.text = tr("SANCTUARY_TAB_STRIP_ONBOARDING_TOOLTIP")
+	_onboarding_tooltip.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_onboarding_tooltip.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_onboarding_tooltip.add_theme_color_override("font_color", ShellChromeStyle.UI_PARCHMENT)
 	_onboarding_tooltip.visible = not _has_shown_onboarding_this_session
 	_has_shown_onboarding_this_session = true
 	add_child(_onboarding_tooltip)

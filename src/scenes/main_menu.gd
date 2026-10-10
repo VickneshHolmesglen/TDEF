@@ -274,6 +274,8 @@ func _ready() -> void:
 	_overwrite_confirm_panel.visible = false
 	_recovery_choice_panel.visible = false
 	_save_warning_panel.visible = false
+	for panel: Control in [_settings_panel, _load_game_panel, _overwrite_confirm_panel, _recovery_choice_panel, _save_warning_panel]:
+		panel.visibility_changed.connect(_on_overlay_visibility_changed.bind(panel))
 
 	_build_focus_ring(_continue_button)
 	_build_focus_ring(_new_game_button)
@@ -672,6 +674,65 @@ func _apply_ui_scale(percent: float) -> void:
 	var factor: float = percent / 100.0
 	for control: Control in _scalable_controls:
 		control.scale = Vector2(factor, factor)
+	for panel: Control in [_settings_panel, _load_game_panel, _overwrite_confirm_panel, _recovery_choice_panel, _save_warning_panel]:
+		if panel.visible:
+			_center_overlay_content(panel.get_child(0) as Control)
+
+
+# ---------------------------------------------------------------------------
+# Overlay cards (2026-10-10 UI pass): each overlay's content used to sit at a
+# fixed top-left offset over a near-black dim, leaving most of the screen
+# empty. Its content wrapper is now centered on screen (accounting for UI
+# Scale, which scales the wrapper from its own origin) on a chrome card.
+# Computed on every show because some overlays set their message text just
+# before showing.
+# ---------------------------------------------------------------------------
+
+const OVERLAY_CARD_PADDING: float = 32.0
+var _overlay_cards: Dictionary[Control, Panel] = {}
+
+
+func _on_overlay_visibility_changed(panel: Control) -> void:
+	if panel.visible:
+		_center_overlay_content.call_deferred(panel.get_child(0) as Control)
+
+
+func _center_overlay_content(content: Control) -> void:
+	var card: Panel = _overlay_cards.get(content)
+	var bounds := Rect2()
+	var has_bounds: bool = false
+	for child: Node in content.get_children():
+		if child == card or not (child is Control) or not (child as Control).visible:
+			continue
+		var control: Control = child as Control
+		var control_size: Vector2 = control.size.max(control.get_combined_minimum_size())
+		# Single-line labels are authored with generous fixed widths; measure
+		# their text instead so the card hugs what's actually drawn.
+		if control is Label and (control as Label).autowrap_mode == TextServer.AUTOWRAP_OFF:
+			control_size.x = control.get_combined_minimum_size().x
+		var rect := Rect2(control.position, control_size)
+		bounds = bounds.merge(rect) if has_bounds else rect
+		has_bounds = true
+	if not has_bounds:
+		return
+	bounds = bounds.grow(OVERLAY_CARD_PADDING)
+
+	if card == null:
+		card = Panel.new()
+		card.name = "OverlayCard"
+		card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var box: StyleBoxFlat = ShellChromeStyle.chrome_panel_stylebox()
+		box.set_border_width_all(1)
+		box.border_color = Color(ShellChromeStyle.UI_PARCHMENT, 0.35)
+		card.add_theme_stylebox_override("panel", box)
+		content.add_child(card)
+		content.move_child(card, 0)
+		_overlay_cards[content] = card
+	card.position = bounds.position
+	card.size = bounds.size
+
+	var screen_center: Vector2 = get_viewport_rect().size / 2.0
+	content.position = screen_center - bounds.get_center() * content.scale
 
 
 func _on_ui_scale_changed(value: float) -> void:

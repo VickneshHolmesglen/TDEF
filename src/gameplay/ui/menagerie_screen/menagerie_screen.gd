@@ -61,7 +61,17 @@ const SPECIES_TEXTURES: Dictionary[StringName, Texture2D] = {
 @export var menagerie: Menagerie
 
 @onready var _input_mode_tracker: InputModeTracker = $InputModeTracker
-@onready var _roster_list: VBoxContainer = $MainLayout/RosterPanel/RosterList
+@onready var _roster_panel: PanelContainer = $MainLayout/RosterPanel
+@onready var _roster_list: GridContainer = $MainLayout/RosterPanel/RosterList
+
+## 2026-10-10 UI pass: the roster was one thin text row per creature with a
+## 32 px icon, leaving most of the room empty. It is now a 4-column grid of
+## portrait cards (species art + name + state/happiness), padded with
+## placeholders up to Menagerie.HABITAT_MAX_CAPACITY: "empty" for open
+## habitat slots, "locked" past the player's current capacity -- a full 4x3
+## grid that shows both free room and room still to unlock.
+const CARD_MIN_SIZE: Vector2 = Vector2(0, 110)
+const CARD_FONT_SIZE: int = 14
 @onready var _detail_species_label: Label = $MainLayout/DetailPanel/SpeciesLabel
 @onready var _detail_state_label: Label = $MainLayout/DetailPanel/StateLabel
 @onready var _detail_happiness_label: Label = $MainLayout/DetailPanel/HappinessLabel
@@ -101,6 +111,7 @@ func _ready() -> void:
 	_sacrifice_confirm_dialog.get_cancel_button().set_meta(UiAudioBinder.META_KEY, UiAudioBinder.KIND_CANCEL)
 	_sacrifice_confirm_dialog.get_ok_button().set_meta(UiAudioBinder.META_KEY, UiAudioBinder.KIND_CONFIRM)
 	_input_mode_tracker.input_mode_changed.connect(_on_input_mode_changed)
+	_apply_room_styles()
 
 	GEventBus.creature_acquired.connect(_on_roster_changed)
 	GEventBus.creature_happiness_changed.connect(_on_roster_changed)
@@ -135,6 +146,7 @@ func disconnect_own_subscriptions() -> void:
 ## never per-frame).
 func _rebuild_roster() -> void:
 	for child: Node in _roster_list.get_children():
+		_roster_list.remove_child(child)
 		child.queue_free()
 	_roster_buttons.clear()
 	_roster_focus_rings.clear()
@@ -161,6 +173,9 @@ func _rebuild_roster() -> void:
 		_roster_empty_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		_roster_empty_label.custom_minimum_size = Vector2(240, 0)
 		_roster_list.add_child(_roster_empty_label)
+	else:
+		for i: int in range(_roster_buttons.size(), maxi(Menagerie.HABITAT_MAX_CAPACITY, _roster_buttons.size())):
+			_roster_list.add_child(_create_empty_slot_card(i >= menagerie.get_habitat_capacity()))
 	# Breeding needs a pair -- entering select mode with fewer than two
 	# roster creatures could never be confirmed.
 	_breed_select_button.disabled = _roster_buttons.size() < 2
@@ -171,18 +186,30 @@ func _create_roster_button(creature: CreatureInstance) -> Button:
 	var button := Button.new()
 	button.name = "Creature%d" % creature.creature_id
 	button.focus_mode = Control.FOCUS_ALL
-	button.clip_text = true
 	button.text = _roster_entry_text(creature)
 	button.toggle_mode = false
 	button.icon = _species_texture(creature.species)
 	# Source art is native ChatGPT-generation resolution (~900-1200px) --
 	# found live via Godot MCP that an unconstrained Button.icon balloons the
-	# whole button to the icon's native size (button.size measured at
-	# (858, 1174) for a single roster row before this fix). expand_icon=true
-	# + the icon_max_width theme constant caps the icon at a fixed portrait
-	# size while preserving aspect ratio (Godot scales height proportionally).
+	# whole button to the icon's native size. expand_icon=true scales the
+	# portrait into whatever the card leaves after its text (aspect kept).
 	button.expand_icon = true
-	button.add_theme_constant_override("icon_max_width", ROSTER_ICON_MAX_WIDTH)
+	button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	button.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
+	button.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	button.custom_minimum_size = CARD_MIN_SIZE
+	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	button.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	button.add_theme_font_size_override("font_size", CARD_FONT_SIZE)
+	var selected: bool = _breeding_selection.has(creature.creature_id)
+	var card_box: StyleBoxFlat = ShellChromeStyle.chrome_button_stylebox(false)
+	card_box.bg_color = ShellChromeStyle.UI_CHROME
+	card_box.set_border_width_all(4 if selected else 1)
+	card_box.border_color = ShellChromeStyle.UI_ACCENT_CYAN if selected else Color(ShellChromeStyle.UI_PARCHMENT, 0.35)
+	card_box.set_content_margin_all(8.0)
+	button.add_theme_stylebox_override("normal", card_box)
+	button.add_theme_stylebox_override("hover", card_box)
+	button.add_theme_color_override("font_color", ShellChromeStyle.UI_PARCHMENT)
 
 	var focus_ring := Panel.new()
 	focus_ring.name = "FocusRing"
@@ -223,9 +250,45 @@ func _species_texture(species_id: StringName) -> Texture2D:
 
 
 func _roster_entry_text(creature: CreatureInstance) -> String:
-	var state_tag: String = CreatureInstance.CreatureState.keys()[creature.state]
+	var state_tag: String = String(CreatureInstance.CreatureState.keys()[creature.state]).capitalize()
 	var selected_tag: String = " [selected]" if _breeding_selection.has(creature.creature_id) else ""
-	return "%s (%s) H:%d%s" % [_species_display_name(creature.species), state_tag, int(creature.happiness), selected_tag]
+	return "%s\n%s  ·  H:%d%s" % [_species_display_name(creature.species), state_tag, int(creature.happiness), selected_tag]
+
+
+## Dimmed outline placeholder for one unused habitat slot; `locked` marks a
+## slot past the current capacity (needs a Habitat Expansion).
+func _create_empty_slot_card(locked: bool) -> Control:
+	var card := PanelContainer.new()
+	card.name = "LockedSlot" if locked else "EmptySlot"
+	card.custom_minimum_size = CARD_MIN_SIZE
+	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	card.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var box: StyleBoxFlat = ShellChromeStyle.chrome_panel_stylebox()
+	box.bg_color = Color(ShellChromeStyle.UI_CHROME, 0.5)
+	box.set_border_width_all(1)
+	box.border_color = Color(ShellChromeStyle.UI_PARCHMENT, 0.15)
+	card.add_theme_stylebox_override("panel", box)
+	var label := Label.new()
+	label.text = tr("MENAGERIE_LOCKED_SLOT") if locked else tr("MENAGERIE_EMPTY_SLOT")
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART  # keeps every grid column the same width
+	label.custom_minimum_size = Vector2(40, 0)
+	label.add_theme_color_override("font_color", Color(ShellChromeStyle.UI_PARCHMENT, 0.2 if locked else 0.35))
+	card.add_child(label)
+	return card
+
+
+func _apply_room_styles() -> void:
+	var box: StyleBoxFlat = ShellChromeStyle.chrome_panel_stylebox()
+	box.bg_color = ShellChromeStyle.UI_CHROME.darkened(0.25)
+	box.set_content_margin_all(16.0)
+	_roster_panel.add_theme_stylebox_override("panel", box)
+	for button: Button in [_tend_button, _breed_select_button, _sacrifice_button, _confirm_breeding_button, _cancel_selection_button]:
+		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		button.custom_minimum_size = Vector2(0, 36)
+		button.add_theme_stylebox_override("normal", ShellChromeStyle.chrome_button_stylebox(false))
 
 
 ## SpeciesResource carries no display name (menagerie.md Rule 1 names are

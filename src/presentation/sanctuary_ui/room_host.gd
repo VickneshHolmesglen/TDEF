@@ -72,8 +72,31 @@ func mount_room(scene: PackedScene, state: StringName) -> void:
 	_current_room = scene.instantiate()
 	_current_room_state = state
 	add_child(_current_room)
+	_apply_room_padding(_current_room)
 	_play_drawer_slide_in(_current_room)
 	room_mounted.emit(state)
+
+
+## Inset between this host's edges and the mounted room (2026-10-10 UI
+## pass): every room previously ran flush against the tab strip, header and
+## window edges. Applied here once rather than per room scene, so this
+## host's own rect stays exactly the frame-minus-chrome region
+## (structural-model_test AC-2) while every room gets the same gutter.
+const ROOM_PADDING: float = 16.0
+
+
+## Fills this host minus ROOM_PADDING on every side. Runs before
+## _play_drawer_slide_in(), which reads the room's settled position as the
+## slide target.
+func _apply_room_padding(room: Node) -> void:
+	if not (room is Control):
+		return
+	var control_room: Control = room as Control
+	control_room.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	control_room.offset_left = ROOM_PADDING
+	control_room.offset_top = ROOM_PADDING
+	control_room.offset_right = -ROOM_PADDING
+	control_room.offset_bottom = -ROOM_PADDING
 
 
 ## The room's own InputModeTracker, if its scene defines one at the

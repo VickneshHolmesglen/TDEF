@@ -478,6 +478,7 @@ func _configure_chrome_layout() -> void:
 	_tab_strip.offset_bottom = 0.0
 
 	_content_background.color = ShellChromeStyle.UI_CHROME
+	_add_chrome_backdrop()
 
 	for content: Control in [_content_background, _diorama, _room_host]:
 		content.anchor_left = 0.0
@@ -488,6 +489,24 @@ func _configure_chrome_layout() -> void:
 		content.offset_top = HEADER_HEIGHT
 		content.offset_right = 0.0
 		content.offset_bottom = 0.0
+
+
+## 2026-10-10 UI pass: ContentBackground only ever covered the content zone,
+## so the header bar and the tab-strip column (including the empty space
+## under the tabs) still rendered on Godot's raw grey clear color. One
+## full-rect backdrop, a shade darker than the content zone so chrome and
+## content read as separate surfaces, sits behind everything.
+const CHROME_BACKDROP_SHADE: float = 0.3
+
+
+func _add_chrome_backdrop() -> void:
+	var backdrop := ColorRect.new()
+	backdrop.name = "ChromeBackdrop"
+	backdrop.color = ShellChromeStyle.UI_CHROME.darkened(CHROME_BACKDROP_SHADE)
+	backdrop.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(backdrop)
+	move_child(backdrop, 0)
+	backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 
 ## Core Rule 8 / design/ux/sanctuary-ui.md Component Inventory: "Launch/Depart

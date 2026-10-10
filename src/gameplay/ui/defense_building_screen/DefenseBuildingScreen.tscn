@@ -20,12 +20,19 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_constants/separation = 8
+theme_override_constants/separation = 12
 
 [node name="HeaderRow" type="HBoxContainer" parent="MainLayout"]
 layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="ViewTitle" type="Label" parent="MainLayout/HeaderRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 24
 
 [node name="ViewSwitchButton" type="Button" parent="MainLayout/HeaderRow"]
+custom_minimum_size = Vector2(200, 40)
 layout_mode = 2
 text = "DEFENSE_BUILDING_SWITCH_VIEW"
 
@@ -33,13 +40,15 @@ text = "DEFENSE_BUILDING_SWITCH_VIEW"
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="TechList" type="VBoxContainer" parent="MainLayout/TechTreeView"]
+[node name="TechList" type="HBoxContainer" parent="MainLayout/TechTreeView"]
 layout_mode = 2
+theme_override_constants/separation = 16
 
 [node name="StructureBuildView" type="PanelContainer" parent="MainLayout"]
 visible = false
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="StructureList" type="VBoxContainer" parent="MainLayout/StructureBuildView"]
+[node name="StructureList" type="HBoxContainer" parent="MainLayout/StructureBuildView"]
 layout_mode = 2
+theme_override_constants/separation = 16

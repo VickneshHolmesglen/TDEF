@@ -52,11 +52,19 @@ const ROMAN_NUMERALS: Array[String] = ["", "I", "II", "III", "IV", "V"]
 @export var defense_building: DefenseBuilding
 
 @onready var _input_mode_tracker: InputModeTracker = $InputModeTracker
+@onready var _view_title: Label = $MainLayout/HeaderRow/ViewTitle
 @onready var _view_switch_button: Button = $MainLayout/HeaderRow/ViewSwitchButton
-@onready var _tech_list: VBoxContainer = $MainLayout/TechTreeView/TechList
-@onready var _structure_list: VBoxContainer = $MainLayout/StructureBuildView/StructureList
-@onready var _tech_tree_view: Control = $MainLayout/TechTreeView
-@onready var _structure_build_view: Control = $MainLayout/StructureBuildView
+@onready var _tech_list: HBoxContainer = $MainLayout/TechTreeView/TechList
+@onready var _structure_list: HBoxContainer = $MainLayout/StructureBuildView/StructureList
+@onready var _tech_tree_view: PanelContainer = $MainLayout/TechTreeView
+@onready var _structure_build_view: PanelContainer = $MainLayout/StructureBuildView
+
+## 2026-10-10 UI pass: one column per tech_category / structure_type, each
+## tier a tall card, instead of one thin full-width row per node (which left
+## ~70% of the room empty). Top-to-bottom order within a column is still the
+## prerequisite chain, so the flat-list semantics above are unchanged.
+const CARD_FONT_SIZE: int = 18
+const LOCKED_CARD_ALPHA: float = 0.55
 
 var _tech_buttons: Dictionary[StringName, Button] = {}
 var _structure_buttons: Dictionary[StringName, Button] = {}
@@ -68,6 +76,14 @@ func _ready() -> void:
 		defense_building = GDefenseBuilding
 
 	_view_switch_button.pressed.connect(_on_view_switch_pressed)
+	_view_switch_button.tooltip_text = tr("DEFENSE_BUILDING_SWITCH_VIEW")
+	_view_switch_button.add_theme_stylebox_override("normal", ShellChromeStyle.chrome_button_stylebox(false))
+	_view_title.add_theme_color_override("font_color", ShellChromeStyle.UI_PARCHMENT)
+	for view: PanelContainer in [_tech_tree_view, _structure_build_view]:
+		var box: StyleBoxFlat = ShellChromeStyle.chrome_panel_stylebox()
+		box.bg_color = ShellChromeStyle.UI_CHROME.darkened(0.25)
+		box.set_content_margin_all(16.0)
+		view.add_theme_stylebox_override("panel", box)
 	_input_mode_tracker.input_mode_changed.connect(_on_input_mode_changed)
 
 	GEventBus.tech_unlocked.connect(_on_ledger_changed)
@@ -100,6 +116,9 @@ func _on_view_switch_pressed() -> void:
 func _apply_view_visibility() -> void:
 	_tech_tree_view.visible = _showing_tech_tree
 	_structure_build_view.visible = not _showing_tech_tree
+	# Title names the current view; the switch button names the other one.
+	_view_title.text = tr("DEFENSE_VIEW_TECH_TREE") if _showing_tech_tree else tr("DEFENSE_VIEW_STRUCTURES")
+	_view_switch_button.text = tr("DEFENSE_VIEW_STRUCTURES") if _showing_tech_tree else tr("DEFENSE_VIEW_TECH_TREE")
 
 
 func is_showing_tech_tree() -> bool:
@@ -113,6 +132,7 @@ func is_showing_tech_tree() -> bool:
 
 func _rebuild_tech_list() -> void:
 	for child: Node in _tech_list.get_children():
+		_tech_list.remove_child(child)
 		child.queue_free()
 	_tech_buttons.clear()
 
@@ -126,10 +146,13 @@ func _rebuild_tech_list() -> void:
 		return node_a.branch_tier < node_b.branch_tier
 	)
 
+	var columns: Dictionary[String, VBoxContainer] = {}
 	for tech_id: StringName in tech_ids:
 		var node: TechNodeResource = all_tech[tech_id]
+		if not columns.has(node.tech_category):
+			columns[node.tech_category] = _create_column(_tech_list, TECH_CATEGORY_LABELS.get(node.tech_category, node.tech_category.capitalize()))
 		var button: Button = _create_tech_button(node)
-		_tech_list.add_child(button)
+		columns[node.tech_category].add_child(button)
 		_tech_buttons[tech_id] = button
 
 
@@ -137,8 +160,9 @@ func _create_tech_button(node: TechNodeResource) -> Button:
 	var button := Button.new()
 	button.name = "Tech_%s" % String(node.tech_id)
 	button.focus_mode = Control.FOCUS_ALL
-	button.clip_text = true
 	button.text = _tech_entry_text(node)
+	var unlocked: bool = defense_building.is_tech_unlocked(node.tech_id)
+	_style_card(button, unlocked, unlocked or defense_building.can_unlock_tech(node.tech_id))
 	button.pressed.connect(_on_tech_pressed.bind(node.tech_id))
 	_wire_focus_ring(button)
 	return button
@@ -183,6 +207,7 @@ func _on_tech_pressed(tech_id: StringName) -> void:
 
 func _rebuild_structure_list() -> void:
 	for child: Node in _structure_list.get_children():
+		_structure_list.remove_child(child)
 		child.queue_free()
 	_structure_buttons.clear()
 
@@ -196,10 +221,13 @@ func _rebuild_structure_list() -> void:
 		return struct_a.tier < struct_b.tier
 	)
 
+	var columns: Dictionary[String, VBoxContainer] = {}
 	for structure_id: StringName in structure_ids:
 		var structure: StructureResource = all_structures[structure_id]
+		if not columns.has(structure.structure_type):
+			columns[structure.structure_type] = _create_column(_structure_list, STRUCTURE_TYPE_LABELS.get(structure.structure_type, structure.structure_type.capitalize()))
 		var button: Button = _create_structure_button(structure)
-		_structure_list.add_child(button)
+		columns[structure.structure_type].add_child(button)
 		_structure_buttons[structure_id] = button
 
 
@@ -207,8 +235,10 @@ func _create_structure_button(structure: StructureResource) -> Button:
 	var button := Button.new()
 	button.name = "Structure_%s" % String(structure.structure_id)
 	button.focus_mode = Control.FOCUS_ALL
-	button.clip_text = true
 	button.text = _structure_entry_text(structure)
+	var built: bool = defense_building.is_structure_built(structure.structure_id)
+	var gate_open: bool = structure.tech_gate == &"" or defense_building.is_tech_unlocked(structure.tech_gate)
+	_style_card(button, built, built or gate_open)
 	button.pressed.connect(_on_structure_pressed.bind(structure.structure_id))
 	_wire_focus_ring(button)
 	return button
@@ -238,6 +268,42 @@ func _on_structure_pressed(structure_id: StringName) -> void:
 	var resolved: bool = defense_building.resolve_structure_build(structure_id)
 	if not resolved:
 		_show_rejection_tooltip(structure_id, false)
+
+
+# ---------------------------------------------------------------------------
+# Card layout (2026-10-10 UI pass)
+# ---------------------------------------------------------------------------
+
+## One expanding column with a header label; cards inside share its height.
+func _create_column(parent: HBoxContainer, title: String) -> VBoxContainer:
+	var column := VBoxContainer.new()
+	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	column.add_theme_constant_override("separation", 10)
+	var header := Label.new()
+	header.text = title
+	header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	header.add_theme_font_size_override("font_size", 20)
+	header.add_theme_color_override("font_color", ShellChromeStyle.UI_PARCHMENT)
+	column.add_child(header)
+	parent.add_child(column)
+	return column
+
+
+## Owned/done = filled Accent Cyan; actionable = parchment outline; blocked =
+## outline at reduced opacity. Filled-vs-outline is the non-color signal
+## (state is also spelled out in the card's own text).
+func _style_card(button: Button, done: bool, actionable: bool) -> void:
+	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	button.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	button.custom_minimum_size = Vector2(0, 64)
+	button.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	button.add_theme_font_size_override("font_size", CARD_FONT_SIZE)
+	var box: StyleBoxFlat = ShellChromeStyle.chrome_button_stylebox(done)
+	box.set_content_margin_all(12.0)
+	button.add_theme_stylebox_override("normal", box)
+	button.add_theme_stylebox_override("hover", box)
+	button.add_theme_color_override("font_color", ShellChromeStyle.UI_PARCHMENT)
+	button.modulate.a = 1.0 if actionable else LOCKED_CARD_ALPHA
 
 
 # ---------------------------------------------------------------------------

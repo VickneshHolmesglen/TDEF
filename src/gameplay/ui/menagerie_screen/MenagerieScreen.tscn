@@ -27,8 +27,11 @@ layout_mode = 2
 size_flags_horizontal = 3
 size_flags_stretch_ratio = 2.0
 
-[node name="RosterList" type="VBoxContainer" parent="MainLayout/RosterPanel"]
+[node name="RosterList" type="GridContainer" parent="MainLayout/RosterPanel"]
 layout_mode = 2
+theme_override_constants/h_separation = 12
+theme_override_constants/v_separation = 12
+columns = 4
 
 [node name="DetailPanel" type="VBoxContainer" parent="MainLayout"]
 layout_mode = 2
@@ -46,6 +49,7 @@ layout_mode = 2
 
 [node name="ActionRow" type="HBoxContainer" parent="MainLayout/DetailPanel"]
 layout_mode = 2
+theme_override_constants/separation = 8
 
 [node name="TendButton" type="Button" parent="MainLayout/DetailPanel/ActionRow"]
 layout_mode = 2
