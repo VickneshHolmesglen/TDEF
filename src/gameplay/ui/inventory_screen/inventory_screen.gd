@@ -624,15 +624,36 @@ func _build_tower_preview_panel() -> void:
 	var header := Label.new()
 	header.name = "PreviewHeader"
 	header.text = tr("INVENTORY_TOWER_PREVIEW_HEADER")
+	header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	header.add_theme_color_override("font_color", ShellChromeStyle.UI_PARCHMENT)
 	_tower_preview_panel.add_child(header)
 
+	# 2026-10-11 UI pass: the stack now grows to fill the column (it was a
+	# fixed 140x192 box at the top of an otherwise empty column) and the
+	# column sits on a dark panel with a hint underneath.
 	_tower_stack_preview = Control.new()
 	_tower_stack_preview.name = "TowerStack"
 	_tower_stack_preview.custom_minimum_size = TOWER_PREVIEW_SIZE
+	_tower_stack_preview.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_tower_stack_preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_tower_stack_preview.draw.connect(_draw_tower_stack_preview)
+	_tower_stack_preview.resized.connect(_tower_stack_preview.queue_redraw)
 	_tower_preview_panel.add_child(_tower_stack_preview)
+
+	var hint := Label.new()
+	hint.name = "PreviewHint"
+	hint.text = tr("INVENTORY_TOWER_PREVIEW_HINT")
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	hint.add_theme_font_size_override("font_size", 12)
+	hint.add_theme_color_override("font_color", Color(ShellChromeStyle.UI_PARCHMENT, 0.6))
+	_tower_preview_panel.add_child(hint)
+
+	var panel_box: StyleBoxFlat = ShellChromeStyle.chrome_panel_stylebox()
+	panel_box.bg_color = ShellChromeStyle.UI_CHROME.darkened(0.25)
+	_tower_preview_panel.draw.connect(func() -> void:
+		_tower_preview_panel.draw_style_box(panel_box, Rect2(Vector2.ZERO, _tower_preview_panel.size)))
+	_tower_preview_panel.resized.connect(_tower_preview_panel.queue_redraw)
 
 
 ## `layer`: 0 base, 1 shaft, 2 top.
@@ -654,9 +675,9 @@ func _draw_tower_stack_preview() -> void:
 	textures = TowerInstance.with_adaptor_caps(textures)
 	var rects: Array[Rect2] = TowerInstance.stack_layers(textures)
 	var painted: Rect2 = TowerInstance.stacked_painted_bounds(textures, rects)
-	var box: Vector2 = _tower_stack_preview.size
+	var box: Vector2 = _tower_stack_preview.size - Vector2(16.0, 8.0)  # small inset from the panel edge
 	var fit: float = minf(box.x / painted.size.x, box.y / painted.size.y)
-	var offset := Vector2(box.x * 0.5 - painted.get_center().x * fit, box.y - painted.end.y * fit)
+	var offset := Vector2(_tower_stack_preview.size.x * 0.5 - painted.get_center().x * fit, box.y - painted.end.y * fit)
 	for i: int in textures.size():
 		_tower_stack_preview.draw_texture_rect(textures[i], Rect2(rects[i].position * fit + offset, rects[i].size * fit), false)
 
@@ -700,6 +721,11 @@ func _build_tower_part_panel(panel: Control, header_name: String, translation_ke
 	var group := ButtonGroup.new()
 	for shape: String in TOWER_PART_SHAPES:
 		grid.add_child(_create_tower_part_entry(shape, entry_prefix, art_path_format, group, preview_layer))
+	# 2026-10-11 UI pass: start with the first shape picked so the preview
+	# shows a whole tower on open -- with nothing selected, the preview column
+	# (a third of the tab) sat blank until the player clicked three times.
+	# Fires the entry's own toggled wiring, so the preview layer is set too.
+	(grid.get_child(0) as Button).button_pressed = true
 
 
 ## One tower-part entry: the alpha-cut art only -- no name label underneath
