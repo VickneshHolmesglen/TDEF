@@ -12,20 +12,20 @@ script = ExtResource("1_pc")
 [node name="BossTelegraphHost" type="Node2D" parent="."]
 
 [node name="CompositionPreviewHost" type="VBoxContainer" parent="."]
-position = Vector2(1090, 240)
+position = Vector2(1128, 460)
 
 [node name="ReadyButton" type="Button" parent="."]
-position = Vector2(1090, 600)
+position = Vector2(1128, 632)
 text = "HUD_READY"
 
 [node name="SellButton" type="Button" parent="."]
-position = Vector2(1090, 636)
+position = Vector2(1128, 672)
 visible = false
 text = "HUD_SELL"
 
 [node name="TowerStatsPanel" type="PanelContainer" parent="."]
-position = Vector2(8, 480)
-size = Vector2(220, 200)
+position = Vector2(8, 328)
+size = Vector2(144, 190)
 visible = false
 
 [node name="StatsLabel" type="Label" parent="TowerStatsPanel"]
@@ -36,7 +36,7 @@ autowrap_mode = 3
 
 [node name="BuildListScroll" type="ScrollContainer" parent="NonReadyControls"]
 position = Vector2(8, 8)
-size = Vector2(170, 170)
+size = Vector2(148, 312)
 horizontal_scroll_mode = 0
 clip_contents = true
 

@@ -186,8 +186,12 @@ func _ready() -> void:
 	else:
 		push_error("[the_gap] GridVisual node ($GridVisual) has no configure() method — grid will not render. Check grid_visual.gd for a renamed/removed method.")
 
-	_camera.position = Vector2(config.cols * config.cell_size / 2.0, config.rows * config.cell_size / 2.0)
-	_camera.zoom = Vector2(0.85, 0.85)
+	# Same side-panel framing as mission_scene.gd (UX overhaul 2026-10-09).
+	var map_size := Vector2(config.cols * config.cell_size, config.rows * config.cell_size)
+	var play_area: Vector2 = get_viewport().get_visible_rect().size - Vector2(2.0 * MissionHud.SIDE_PANEL_WIDTH, 0.0)
+	var fit: float = minf(play_area.x / map_size.x, play_area.y / map_size.y)
+	_camera.position = map_size / 2.0
+	_camera.zoom = Vector2(fit, fit)
 
 	# Monster/tower blueprint data is now self-populated by MonsterManager/TowerSystem
 	# from GGameDataRegistry at their own _ready() (S5-01, closing TD-data-001) — no

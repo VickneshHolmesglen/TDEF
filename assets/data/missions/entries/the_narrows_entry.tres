@@ -6,8 +6,8 @@
 
 [sub_resource type="Resource" id="Resource_grid_narrows"]
 script = ExtResource("2_grid")
-cols = 14
-rows = 8
+cols = 12
+rows = 9
 cell_size = 64.0
 cells = Dictionary[Vector2i, int]({
 Vector2i(0, 0): 4,

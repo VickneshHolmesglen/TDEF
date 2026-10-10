@@ -22,12 +22,22 @@ mouse_filter = 2
 script = ExtResource("2_tracker")
 
 [node name="MainLayout" type="VBoxContainer" parent="."]
+layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
+offset_left = 24.0
+offset_top = 16.0
+offset_right = -24.0
+offset_bottom = -16.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_constants/separation = 8
+theme_override_constants/separation = 12
+
+[node name="HeaderLabel" type="Label" parent="MainLayout"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 26
+text = "MISSION_SELECT_TITLE"
 
 [node name="TopRow" type="HBoxContainer" parent="MainLayout"]
 layout_mode = 2
@@ -37,39 +47,80 @@ theme_override_constants/separation = 16
 [node name="MissionListPanel" type="PanelContainer" parent="MainLayout/TopRow"]
 layout_mode = 2
 size_flags_horizontal = 3
-size_flags_stretch_ratio = 2.0
+size_flags_stretch_ratio = 3.0
 
-[node name="MissionList" type="VBoxContainer" parent="MainLayout/TopRow/MissionListPanel"]
+[node name="MissionList" type="GridContainer" parent="MainLayout/TopRow/MissionListPanel"]
 layout_mode = 2
+theme_override_constants/h_separation = 12
+theme_override_constants/v_separation = 12
+columns = 2
 
-[node name="ConfigPanel" type="VBoxContainer" parent="MainLayout/TopRow"]
-visible = false
+[node name="RightPanel" type="PanelContainer" parent="MainLayout/TopRow"]
+custom_minimum_size = Vector2(400, 0)
 layout_mode = 2
 size_flags_horizontal = 3
-size_flags_stretch_ratio = 1.0
+size_flags_stretch_ratio = 2.0
 
-[node name="ObjectiveLabel" type="Label" parent="MainLayout/TopRow/ConfigPanel"]
+[node name="BrowseHint" type="Label" parent="MainLayout/TopRow/RightPanel"]
+layout_mode = 2
+size_flags_vertical = 1
+text = "MISSION_SELECT_BROWSE_HINT"
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 3
+
+[node name="ConfigPanel" type="VBoxContainer" parent="MainLayout/TopRow/RightPanel"]
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="MissionTitleLabel" type="Label" parent="MainLayout/TopRow/RightPanel/ConfigPanel"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+autowrap_mode = 3
+
+[node name="ObjectiveLabel" type="Label" parent="MainLayout/TopRow/RightPanel/ConfigPanel"]
 layout_mode = 2
 autowrap_mode = 3
 
-[node name="TierRow" type="HBoxContainer" parent="MainLayout/TopRow/ConfigPanel"]
+[node name="DifficultyHeader" type="Label" parent="MainLayout/TopRow/RightPanel/ConfigPanel"]
 layout_mode = 2
+text = "MISSION_SELECT_DIFFICULTY_HEADER"
 
-[node name="ModifierRow" type="VBoxContainer" parent="MainLayout/TopRow/ConfigPanel"]
+[node name="TierRow" type="HBoxContainer" parent="MainLayout/TopRow/RightPanel/ConfigPanel"]
 layout_mode = 2
+theme_override_constants/separation = 8
 
-[node name="BackButton" type="Button" parent="MainLayout/TopRow/ConfigPanel"]
+[node name="ModifierHeader" type="Label" parent="MainLayout/TopRow/RightPanel/ConfigPanel"]
+layout_mode = 2
+text = "MISSION_SELECT_MODIFIERS_HEADER"
+
+[node name="ModifierRow" type="VBoxContainer" parent="MainLayout/TopRow/RightPanel/ConfigPanel"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Spacer" type="Control" parent="MainLayout/TopRow/RightPanel/ConfigPanel"]
+layout_mode = 2
+size_flags_vertical = 3
+mouse_filter = 2
+
+[node name="BackButton" type="Button" parent="MainLayout/TopRow/RightPanel/ConfigPanel"]
 layout_mode = 2
 text = "MISSION_SELECT_BACK"
 
 [node name="LaunchBar" type="HBoxContainer" parent="MainLayout"]
 layout_mode = 2
+theme_override_constants/separation = 16
 
 [node name="RecapLabel" type="Label" parent="MainLayout/LaunchBar"]
 layout_mode = 2
 size_flags_horizontal = 3
+size_flags_vertical = 1
+vertical_alignment = 1
 autowrap_mode = 3
 
 [node name="LaunchButton" type="Button" parent="MainLayout/LaunchBar"]
+custom_minimum_size = Vector2(260, 52)
 layout_mode = 2
+theme_override_font_sizes/font_size = 20
 text = "MISSION_SELECT_LAUNCH"

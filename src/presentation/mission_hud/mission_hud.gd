@@ -64,7 +64,9 @@ var _ultimate_focus_ring: Panel = null
 ## independent CombatCluster child (matching PlanningCluster's own manual-
 ## position pattern for its Ready/Composition elements) so item drops render
 ## in their own dedicated screen zone instead of stacking under Gold.
-@onready var _materials_row: HBoxContainer = $CombatCluster/MaterialsRow
+## UX overhaul 2026-10-09: an HFlowContainer in the right side panel, so chips
+## wrap onto new lines instead of running off the screen edge.
+@onready var _materials_row: HFlowContainer = $CombatCluster/MaterialsRow
 @onready var _skill_cooldown_host: HBoxContainer = $CombatCluster/Chrome/SkillCooldownHost
 ## Player-reported 2026-08-16: replaced the original "Skill N: Ready" /
 ## "Skill N: 3.2s" text-Label placeholder with real icon buttons matching
@@ -79,7 +81,7 @@ var _ultimate_focus_ring: Panel = null
 ## placeholder face, the same "content can lag code" tolerance grid_
 ## visual.gd's own class doc comment documents elsewhere.
 const SKILL_SLOT_COUNT: int = 4
-const SKILL_TILE_SIZE: Vector2 = Vector2(40, 40)
+const SKILL_TILE_SIZE: Vector2 = Vector2(32, 32)  ## 4 tiles + gaps fit the side panel
 const SKILL_READY_COLOR: Color = Color(0.24, 0.30, 0.42, 1.0)
 const SKILL_COOLDOWN_FILL_COLOR: Color = Color(0.0, 0.0, 0.0, 0.7)
 var _skill_slot_icons: Array[ColorRect] = []
@@ -88,6 +90,14 @@ var _skill_slot_countdowns: Array[Label] = []
 @onready var _tower_hp_bars_host: VBoxContainer = $CombatCluster/Chrome/TowerHpBarsHost
 @onready var _damage_number_host: Control = $CombatCluster/DamageNumberHost
 @onready var _toast_host: VBoxContainer = $CombatCluster/ToastHost
+
+## Side panels (UX overhaul 2026-10-09, player-chosen "side panels, map
+## framed between"): opaque chrome strips down the left (tower palette,
+## tower stats, toasts, Ultimate) and right (stats, skills, materials, wave
+## preview, Ready/Sell) edges. mission_scene.gd fits the map into the space
+## between them, so the HUD never covers a cell. The panels stop mouse input,
+## so a click on the chrome can never place a tower.
+const SIDE_PANEL_WIDTH: float = 160.0
 
 ## AC-61: mirrors _active_tower_hp_bars 1:1 (tower_id -> its rendered Label) so
 ## a single tower's bar can be removed immediately without rebuilding the host.
@@ -179,6 +189,7 @@ var _last_known_routes: Array = []
 
 
 func _ready() -> void:
+	_build_side_panels()
 	GEventBus.mission_phase_changed.connect(_on_mission_phase_changed)
 	GEventBus.monster_spawned.connect(_on_monster_spawned)
 	GEventBus.monster_died.connect(_on_monster_died)
@@ -986,6 +997,21 @@ func _on_materials_earned(material_type: String, quantity: int, _source: String)
 ## real and keeps this immune to the same stale-child-state bug class
 ## PlanningCluster's render_route() doc comment documents for the
 ## equivalent partial-update alternative.
+func _build_side_panels() -> void:
+	for side: int in [SIDE_LEFT, SIDE_RIGHT]:
+		var panel := Panel.new()
+		panel.name = "LeftSidePanel" if side == SIDE_LEFT else "RightSidePanel"
+		panel.add_theme_stylebox_override("panel", ShellChromeStyle.chrome_panel_stylebox())
+		panel.mouse_filter = Control.MOUSE_FILTER_STOP
+		panel.anchor_left = 0.0 if side == SIDE_LEFT else 1.0
+		panel.anchor_right = panel.anchor_left
+		panel.anchor_bottom = 1.0
+		panel.offset_left = 0.0 if side == SIDE_LEFT else -SIDE_PANEL_WIDTH
+		panel.offset_right = SIDE_PANEL_WIDTH if side == SIDE_LEFT else 0.0
+		add_child(panel)
+		move_child(panel, 0)
+
+
 func _rebuild_materials_row() -> void:
 	for child: Node in _materials_row.get_children():
 		_materials_row.remove_child(child)

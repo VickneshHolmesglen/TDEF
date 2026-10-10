@@ -58,6 +58,14 @@ anchor_bottom = 1.0
 mouse_filter = 2
 
 [node name="UltimateButton" type="Button" parent="HUD/CombatCluster"]
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = -48.0
+offset_right = 152.0
+offset_bottom = -8.0
 text = "HUD_ULTIMATE"
 
 [node name="Chrome" type="VBoxContainer" parent="HUD/CombatCluster"]
@@ -65,7 +73,7 @@ layout_mode = 1
 anchors_preset = 1
 anchor_left = 1.0
 anchor_right = 1.0
-offset_left = -260.0
+offset_left = -152.0
 offset_right = -8.0
 offset_top = 8.0
 
@@ -117,10 +125,16 @@ theme_override_constants/separation = 6
 [node name="TowerHpBarsHost" type="VBoxContainer" parent="HUD/CombatCluster/Chrome"]
 layout_mode = 2
 
-[node name="MaterialsRow" type="HBoxContainer" parent="HUD/CombatCluster"]
+[node name="MaterialsRow" type="HFlowContainer" parent="HUD/CombatCluster"]
 layout_mode = 1
-position = Vector2(1012, 400)
-theme_override_constants/separation = 10
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -152.0
+offset_top = 380.0
+offset_right = -8.0
+offset_bottom = 380.0
+theme_override_constants/h_separation = 10
+theme_override_constants/v_separation = 4
 
 [node name="DamageNumberHost" type="Control" parent="HUD/CombatCluster"]
 layout_mode = 1
@@ -135,9 +149,9 @@ anchors_preset = 2
 anchor_top = 1.0
 anchor_bottom = 1.0
 offset_left = 8.0
-offset_top = -140.0
-offset_right = 268.0
-offset_bottom = -8.0
+offset_top = -192.0
+offset_right = 152.0
+offset_bottom = -56.0
 clip_contents = true
 
 [node name="PlanningClusterHost" type="Node" parent="HUD"]

@@ -70,7 +70,7 @@ const ROUTE_PREVIEW_WIDTH: float = 3.0
 ## anchored top-left instead of bottom-right, so the list grows downward
 ## and scrolls instead of running off-screen sideways.
 @onready var _build_list: GridContainer = $NonReadyControls/BuildListScroll/BuildList
-const TILE_SIZE: Vector2 = Vector2(48, 48)
+const TILE_SIZE: Vector2 = Vector2(42, 42)  ## 3 columns fit the 160 px side panel (UX overhaul 2026-10-09)
 const TILE_ICON_MARGIN: float = 12.0
 ## Player-reported 2026-08-16: default theme buttons read as too translucent
 ## against the busy rock-textured mission backdrop -- explicit near-opaque
@@ -138,6 +138,13 @@ const CELL_SIZE_PX: float = 64.0
 ## in how this gets called on the very first render.
 func _world_to_screen(world_pos: Vector2) -> Vector2:
 	return get_viewport().get_canvas_transform() * world_pos
+
+
+## One grid cell's size on screen. The camera zoom is no longer 1.0 (it fits
+## the map between the HUD side panels), so screen-space cell overlays scale
+## by the canvas transform rather than assuming 64 screen pixels per cell.
+func _screen_cell_size() -> Vector2:
+	return Vector2(CELL_SIZE_PX, CELL_SIZE_PX) * get_viewport().get_canvas_transform().get_scale()
 
 ## Test hook (AC-9/AC-12): true once _exit_tree() has actually run, proving
 ## the synchronous remove_child()-then-queue_free() teardown sequence
@@ -268,7 +275,7 @@ func _on_tower_placement_blocked(blocked_cells: Array, primary_blocking_cell: Ve
 		var marker := ColorRect.new()
 		var is_primary: bool = primary_blocking_cell != Vector2i(-1, -1) and cell == primary_blocking_cell
 		marker.color = Color(1.0, 0.85, 0.0, 0.9) if is_primary else Color(1.0, 0.2, 0.2, 0.5)
-		marker.size = Vector2(CELL_SIZE_PX, CELL_SIZE_PX)
+		marker.size = _screen_cell_size()
 		var world_pos: Vector2 = GGrid.cell_to_world(cell) - Vector2(CELL_SIZE_PX, CELL_SIZE_PX) * 0.5
 		marker.position = _world_to_screen(world_pos)
 		marker.set_meta("cell", cell)
@@ -288,7 +295,7 @@ func set_boss_telegraph_cell(cell: Vector2i) -> void:
 		return
 	var marker := ColorRect.new()
 	marker.color = Color(0.494, 0.180, 0.722, 0.7)  # Boss Purple (#7E2EB8), art-bible reference
-	marker.size = Vector2(CELL_SIZE_PX, CELL_SIZE_PX)
+	marker.size = _screen_cell_size()
 	var world_pos: Vector2 = GGrid.cell_to_world(cell)
 	marker.position = _world_to_screen(world_pos) - marker.size * 0.5
 	marker.set_meta("cell", cell)
@@ -677,7 +684,7 @@ func _on_tower_placement_preview_updated(cell: Vector2i, footprint: Vector2i, va
 		return
 	_placement_cursor.visible = true
 	_placement_cursor.color = PLACEMENT_VALID_COLOR if valid else PLACEMENT_INVALID_COLOR
-	_placement_cursor.size = Vector2(footprint.x, footprint.y) * CELL_SIZE_PX
+	_placement_cursor.size = Vector2(footprint.x, footprint.y) * _screen_cell_size()
 	var world_pos: Vector2 = GGrid.cell_to_world(cell) - Vector2(CELL_SIZE_PX, CELL_SIZE_PX) * 0.5
 	_placement_cursor.position = _world_to_screen(world_pos)
 	_update_placement_preview_icon()
@@ -697,7 +704,7 @@ func _update_placement_preview_icon() -> void:
 		_placement_preview_icon.visible = false
 		return
 	_placement_preview_icon.texture = texture
-	var uniform_scale: float = TowerInstance.TARGET_DISPLAY_HEIGHT / float(texture.get_height())
+	var uniform_scale: float = TowerInstance.TARGET_DISPLAY_HEIGHT / float(texture.get_height()) * _screen_cell_size().y / CELL_SIZE_PX
 	var icon_size: Vector2 = Vector2(texture.get_width(), texture.get_height()) * uniform_scale
 	_placement_preview_icon.size = icon_size
 	var cursor_center: Vector2 = _placement_cursor.position + _placement_cursor.size * 0.5

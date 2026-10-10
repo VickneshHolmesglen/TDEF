@@ -85,6 +85,11 @@ const ENABLE_3D_PRESENTATION_MODE: bool = false
 
 @onready var _mission_select_screen: Control = $MissionSelectLayer/MissionSelectScreen
 @onready var _gameplay_root: Node2D = $GameplayRoot
+## Toggled alongside _gameplay_root: a CanvasLayer does NOT inherit visibility
+## from a Node2D ancestor, so hiding _gameplay_root never hid the HUD -- its
+## side panels drew over the Mission Select screen's edges and Launch button
+## (2026-10-10 bug report, docs/images/UX fix.PNG).
+@onready var _hud: CanvasLayer = $GameplayRoot/HUD
 @onready var _grid_visual: Node2D = $GameplayRoot/GridVisual
 @onready var _hero: Hero = $GameplayRoot/Hero
 @onready var _camera: Camera2D = $GameplayRoot/Camera2D
@@ -163,6 +168,7 @@ func _ready() -> void:
 	outcome_screen.name = "MissionOutcomeScreen"
 	self.add_child(outcome_screen)
 	_gameplay_root.visible = false
+	_hud.visible = false
 	_gameplay_root.set_process(false)
 	_gameplay_root.set_physics_process(false)
 
@@ -187,8 +193,9 @@ func _ready() -> void:
 ##
 ## Also hides (or shows) the 2D world-content CanvasItems specifically —
 ## _grid_visual/_hero/_monsters_container/_dynamic_visuals_root — NOT
-## _gameplay_root itself, which also owns the HUD CanvasLayer as a child;
-## hiding _gameplay_root wholesale would take the HUD down with it. This is
+## _gameplay_root itself. (Note: hiding _gameplay_root does NOT hide its HUD
+## CanvasLayer child -- CanvasLayers don't inherit Node2D visibility -- which
+## is why _hud is toggled explicitly alongside it.) This is
 ## independent of and composes correctly with _gameplay_root's own
 ## mission-launched visibility toggle (multiplicative CanvasItem
 ## visibility — a child stays invisible if either it or any ancestor is
@@ -246,15 +253,14 @@ func _on_grid_initialized(cols: int, rows: int, cell_size: float) -> void:
 	else:
 		push_error("[MissionScene] GridVisual node has no configure() method — grid will not render.")
 
-	# Edge-to-edge map (UX overhaul 2026-10-09): "cover" zoom, so the larger
-	# ratio wins and the map always fills the viewport. Mission grids are
-	# authored at ~16:9 (21x12, 14x8), so at most a sliver of the outer
-	# BLOCKED ring is cropped.
+	# UX overhaul 2026-10-09: the map is fitted ("contain") into the space
+	# between the HUD's two side panels, so no HUD element covers a cell.
+	# Mission grids are 4:3 to match that 960x720 area exactly.
 	var map_size := Vector2(cols * cell_size, rows * cell_size)
-	var view_size: Vector2 = get_viewport().get_visible_rect().size
-	var cover: float = maxf(view_size.x / map_size.x, view_size.y / map_size.y)
+	var play_area: Vector2 = get_viewport().get_visible_rect().size - Vector2(2.0 * MissionHud.SIDE_PANEL_WIDTH, 0.0)
+	var fit: float = minf(play_area.x / map_size.x, play_area.y / map_size.y)
 	_camera.position = map_size / 2.0
-	_camera.zoom = Vector2(cover, cover)
+	_camera.zoom = Vector2(fit, fit)
 
 
 ## Swaps from the Mission Select screen to the live gameplay assembly.
@@ -268,6 +274,7 @@ func _on_mission_launched(_mission_id: String, _modifiers: PackedStringArray, _d
 	_mission_select_screen.set_process_unhandled_input(false)
 
 	_gameplay_root.visible = true
+	_hud.visible = true
 	_gameplay_root.set_process(true)
 	_gameplay_root.set_physics_process(true)
 

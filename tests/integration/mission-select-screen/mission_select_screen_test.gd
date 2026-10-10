@@ -57,7 +57,7 @@ func test_pressing_a_mission_selects_it_and_enters_configuring() -> void:
 # ---------------------------------------------------------------------------
 
 func test_config_panel_hidden_before_any_mission_is_selected() -> void:
-	var config_panel: Control = _screen.get_node("MainLayout/TopRow/ConfigPanel") as Control
+	var config_panel: Control = _screen.get_node("MainLayout/TopRow/RightPanel/ConfigPanel") as Control
 	assert_bool(config_panel.visible).is_false()
 
 
@@ -65,7 +65,7 @@ func test_config_panel_visible_after_selecting_a_mission() -> void:
 	@warning_ignore("unsafe_method_access")
 	_screen.call("_on_mission_pressed", MISSION_THE_GAP)
 
-	var config_panel: Control = _screen.get_node("MainLayout/TopRow/ConfigPanel") as Control
+	var config_panel: Control = _screen.get_node("MainLayout/TopRow/RightPanel/ConfigPanel") as Control
 	assert_bool(config_panel.visible).is_true()
 
 

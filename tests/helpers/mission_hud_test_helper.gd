@@ -42,12 +42,12 @@ static func build_hud() -> MissionHud:
 		chrome.add_child(chrome_label)
 
 	# 2026-08-16: MaterialsLabel (plain text) replaced with MaterialsRow
-	# (HBoxContainer of icon+quantity chips), then later the same day pulled
+	# (icon+quantity chips; an HFlowContainer since 2026-10-09), then later the same day pulled
 	# out of Chrome entirely and repositioned as a direct CombatCluster child
 	# ("UI Changes.PNG" yellow box) -- matched here so
 	# $CombatCluster/MaterialsRow resolves the same way in both the fixture
 	# and the real MissionScene.tscn/the_gap.tscn.
-	var materials_row := HBoxContainer.new()
+	var materials_row := HFlowContainer.new()
 	materials_row.name = "MaterialsRow"
 	combat_cluster.add_child(materials_row)
 

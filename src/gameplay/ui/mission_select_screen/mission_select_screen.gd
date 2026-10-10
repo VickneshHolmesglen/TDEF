@@ -11,9 +11,10 @@ extends Control
 ## Governing ADR: docs/architecture/adr-0028-mission-select-runtime-state.md
 ##
 ## Scope, honestly bounded:
-## - No mission-card art, no completion mini-table rendering (checkmark/dash/
-##   lock per tier) — no art exists anywhere in this project. Completion
-##   state is shown as plain text (best time or "--" per tier).
+## - Mission cards show each MissionEntry.icon (painted mission_card art) in a
+##   2-column grid (2026-10-10 relayout). No completion mini-table rendering
+##   (checkmark/dash/lock per tier) — completion state is plain text on the
+##   card (best time or "—" per tier).
 ## - Shoulder-button mission-category cycling is not implemented — the GDD
 ##   itself notes this only applies "if the catalogue is large enough to
 ##   warrant grouping" (Open Questions), and the Alpha-scope catalogue (2
@@ -38,14 +39,29 @@ const RUN_MODIFIER_STEPS: Dictionary[StringName, Array] = {
 ## space chrome in this project already uses (ShellChromeStyle.UI_CHROME).
 @onready var _background: ColorRect = $Background
 @onready var _input_mode_tracker: InputModeTracker = $InputModeTracker
-@onready var _mission_list: VBoxContainer = $MainLayout/TopRow/MissionListPanel/MissionList
-@onready var _config_panel: Control = $MainLayout/TopRow/ConfigPanel
-@onready var _objective_label: Label = $MainLayout/TopRow/ConfigPanel/ObjectiveLabel
-@onready var _tier_row: HBoxContainer = $MainLayout/TopRow/ConfigPanel/TierRow
-@onready var _modifier_row: VBoxContainer = $MainLayout/TopRow/ConfigPanel/ModifierRow
-@onready var _back_button: Button = $MainLayout/TopRow/ConfigPanel/BackButton
+@onready var _header_label: Label = $MainLayout/HeaderLabel
+@onready var _mission_list_panel: PanelContainer = $MainLayout/TopRow/MissionListPanel
+@onready var _mission_list: GridContainer = $MainLayout/TopRow/MissionListPanel/MissionList
+@onready var _right_panel: PanelContainer = $MainLayout/TopRow/RightPanel
+@onready var _browse_hint: Label = $MainLayout/TopRow/RightPanel/BrowseHint
+@onready var _config_panel: Control = $MainLayout/TopRow/RightPanel/ConfigPanel
+@onready var _mission_title_label: Label = $MainLayout/TopRow/RightPanel/ConfigPanel/MissionTitleLabel
+@onready var _objective_label: Label = $MainLayout/TopRow/RightPanel/ConfigPanel/ObjectiveLabel
+@onready var _difficulty_header: Label = $MainLayout/TopRow/RightPanel/ConfigPanel/DifficultyHeader
+@onready var _tier_row: HBoxContainer = $MainLayout/TopRow/RightPanel/ConfigPanel/TierRow
+@onready var _modifier_header: Label = $MainLayout/TopRow/RightPanel/ConfigPanel/ModifierHeader
+@onready var _modifier_row: VBoxContainer = $MainLayout/TopRow/RightPanel/ConfigPanel/ModifierRow
+@onready var _back_button: Button = $MainLayout/TopRow/RightPanel/ConfigPanel/BackButton
 @onready var _launch_button: Button = $MainLayout/LaunchBar/LaunchButton
 @onready var _launch_recap_label: Label = $MainLayout/LaunchBar/RecapLabel
+
+## Panels sit one shade darker than the UI_CHROME background so the two
+## regions read as distinct surfaces (2026-10-10 relayout, docs/images/UX
+## fix.PNG -- the old list panel used Godot's default panel, the config
+## column had no surface at all).
+const PANEL_SHADE: float = 0.25
+const MISSION_CARD_FONT_SIZE: int = 18
+const SECTION_HEADER_ALPHA: float = 0.7
 
 var _mission_buttons: Dictionary[String, Button] = {}
 var _tier_buttons: Dictionary[int, Button] = {}
@@ -58,6 +74,7 @@ func _ready() -> void:
 		mission_select = GMissionSelect
 
 	_background.color = ShellChromeStyle.UI_CHROME
+	_apply_chrome_styles()
 
 	_input_mode_tracker.input_mode_changed.connect(_on_input_mode_changed)
 	_back_button.pressed.connect(_on_back_pressed)
@@ -74,6 +91,34 @@ func _ready() -> void:
 
 	_rebuild_mission_list()
 	_refresh_config_panel()
+
+
+func _apply_chrome_styles() -> void:
+	for panel: PanelContainer in [_mission_list_panel, _right_panel]:
+		var box: StyleBoxFlat = ShellChromeStyle.chrome_panel_stylebox()
+		box.bg_color = ShellChromeStyle.UI_CHROME.darkened(PANEL_SHADE)
+		box.set_content_margin_all(16.0)
+		panel.add_theme_stylebox_override("panel", box)
+
+	for label: Label in [_header_label, _browse_hint, _mission_title_label, _objective_label, _launch_recap_label]:
+		label.add_theme_color_override("font_color", ShellChromeStyle.UI_PARCHMENT)
+	for header: Label in [_difficulty_header, _modifier_header]:
+		header.add_theme_color_override("font_color", Color(ShellChromeStyle.UI_PARCHMENT, SECTION_HEADER_ALPHA))
+
+	_back_button.custom_minimum_size = Vector2(0, 40)
+	_back_button.add_theme_stylebox_override("normal", _padded_outline_stylebox())
+
+	# Primary action: the same Sanctum Amber launch styling the Sanctuary's
+	# own Launch Mission button uses; disabled (dimmed) until a mission is
+	# chosen so it never reads as live-but-inert while browsing.
+	var launch_box: StyleBoxFlat = ShellChromeStyle.launch_button_stylebox()
+	_launch_button.add_theme_stylebox_override("normal", launch_box)
+	_launch_button.add_theme_stylebox_override("hover", launch_box)
+	_launch_button.add_theme_stylebox_override("pressed", launch_box)
+	var disabled_box: StyleBoxFlat = launch_box.duplicate() as StyleBoxFlat
+	disabled_box.bg_color = Color(ShellChromeStyle.LAUNCH_AMBER, 0.35)
+	_launch_button.add_theme_stylebox_override("disabled", disabled_box)
+	_launch_button.add_theme_stylebox_override("focus", ShellChromeStyle.focus_ring_stylebox())
 
 
 func _exit_tree() -> void:
@@ -109,12 +154,13 @@ func _on_run_modifier_selected(_modifier_id: String, _modifier_value: float) -> 
 # Mission list (primary/left region, always visible)
 # ---------------------------------------------------------------------------
 
-## design/gdd/mission-select.md "small flat environment-motif icon" — Art
-## Bible 3.3's 24x24px minimum readable size, with headroom for this list's
-## row height.
-const MISSION_ICON_SIZE: Vector2 = Vector2(32.0, 32.0)
-
-
+## One card per mission in a 2-column grid that fills the whole left panel
+## (2026-10-10 relayout -- the old one-line text rows left ~75% of the panel
+## blank and showed the painted mission_card art only as a 32 px icon). The
+## card IS the Button (art as its expand_icon, name + status as its text), so
+## _mission_buttons/get_mission_button() and press/focus wiring are unchanged.
+## entry.icon == null renders a text-only card, not an error -- matches
+## MissionEntry.icon's own doc comment.
 func _rebuild_mission_list() -> void:
 	for child: Node in _mission_list.get_children():
 		child.queue_free()
@@ -127,7 +173,7 @@ func _rebuild_mission_list() -> void:
 	for mission_id: String in mission_ids:
 		var entry: MissionEntry = entries[mission_id]
 		var button: Button = _create_mission_button(entry)
-		_mission_list.add_child(_build_mission_row(entry, button))
+		_mission_list.add_child(button)
 		_mission_buttons[mission_id] = button
 
 
@@ -135,39 +181,57 @@ func _create_mission_button(entry: MissionEntry) -> Button:
 	var button := Button.new()
 	button.name = "Mission_%s" % entry.mission_id
 	button.focus_mode = Control.FOCUS_ALL
-	button.clip_text = true
+	button.toggle_mode = true  # pressed state marks the selected mission
 	button.text = _mission_entry_text(entry)
+	button.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	button.icon = entry.icon
+	button.expand_icon = true
+	button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	button.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
 	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	button.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	button.add_theme_font_size_override("font_size", MISSION_CARD_FONT_SIZE)
+	button.add_theme_color_override("font_color", ShellChromeStyle.UI_PARCHMENT)
+	button.add_theme_color_override("font_pressed_color", ShellChromeStyle.UI_PARCHMENT)
+	button.add_theme_color_override("font_hover_pressed_color", ShellChromeStyle.UI_PARCHMENT)
+	var idle_box: StyleBoxFlat = _mission_card_stylebox(false)
+	var selected_box: StyleBoxFlat = _mission_card_stylebox(true)
+	button.add_theme_stylebox_override("normal", idle_box)
+	button.add_theme_stylebox_override("hover", idle_box)
+	button.add_theme_stylebox_override("pressed", selected_box)
+	button.add_theme_stylebox_override("hover_pressed", selected_box)
+	button.add_theme_stylebox_override("focus", ShellChromeStyle.focus_ring_stylebox())
 	button.pressed.connect(_on_mission_pressed.bind(entry.mission_id))
 	_wire_focus_ring(button)
 	return button
 
 
-## Wraps the button with its optional card icon in an HBoxContainer. The
-## button itself remains the direct target of _mission_buttons/
-## get_mission_button() (test/focus accessor) — this wrapper is purely
-## presentational and doesn't change what's tracked or how focus/press wiring
-## works. entry.icon == null (not yet art-authored for this mission) renders
-## as no icon, not an error — matches MissionEntry.icon's own doc comment.
-func _build_mission_row(entry: MissionEntry, button: Button) -> HBoxContainer:
-	var row := HBoxContainer.new()
-	row.name = "Row_%s" % entry.mission_id
-	if entry.icon != null:
-		var icon_rect := TextureRect.new()
-		icon_rect.name = "Icon"
-		icon_rect.texture = entry.icon
-		icon_rect.custom_minimum_size = MISSION_ICON_SIZE
-		icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		row.add_child(icon_rect)
-	row.add_child(button)
-	return row
+## Outlined chrome button with side padding so left-aligned text doesn't sit
+## on the border.
+static func _padded_outline_stylebox() -> StyleBoxFlat:
+	var box: StyleBoxFlat = ShellChromeStyle.chrome_button_stylebox(false)
+	box.content_margin_left = 12.0
+	box.content_margin_right = 12.0
+	return box
+
+
+## Selected = thick Accent Cyan border, idle = thin parchment outline -- a
+## border-weight change, not color alone (this project's filled-vs-outline
+## non-color-only convention, ShellChromeStyle.chrome_button_stylebox()).
+static func _mission_card_stylebox(selected: bool) -> StyleBoxFlat:
+	var box: StyleBoxFlat = ShellChromeStyle.chrome_button_stylebox(false)
+	box.bg_color = ShellChromeStyle.UI_CHROME
+	box.set_border_width_all(4 if selected else 1)
+	box.border_color = ShellChromeStyle.UI_ACCENT_CYAN if selected else Color(ShellChromeStyle.UI_PARCHMENT, 0.35)
+	box.set_content_margin_all(10.0)
+	return box
 
 
 ## GDD: "fully covered on the mission card itself" — 3-tier best-time summary,
 ## plain text (no mini-table art, see class doc comment).
 ## Readable form (2026-10-04 smoke check; was "The Gap (T1:-- T2:-- T3:--)"):
 ## "Not yet cleared" until any tier is beaten, then per-tier best times.
+## Name and summary on separate lines so the card never truncates either.
 func _mission_entry_text(entry: MissionEntry) -> String:
 	var parts: Array[String] = []
 	var any_completed: bool = false
@@ -177,7 +241,7 @@ func _mission_entry_text(entry: MissionEntry) -> String:
 		var time_text: String = ("%.1fs" % record.best_time_seconds) if record.completed else tr("MISSION_SELECT_TIER_UNCLEARED")
 		parts.append(tr("MISSION_SELECT_TIER_TIME") % [_tier_display_name(tier), time_text])
 	var summary: String = "   ".join(parts) if any_completed else tr("MISSION_SELECT_NOT_CLEARED")
-	return "%s  ·  %s" % [entry.display_name, summary]
+	return "%s\n%s" % [entry.display_name, summary]
 
 
 func _on_mission_pressed(mission_id: String) -> void:
@@ -192,8 +256,15 @@ func _on_mission_pressed(mission_id: String) -> void:
 func _refresh_config_panel() -> void:
 	var configuring: bool = mission_select.state == MissionSelect.State.CONFIGURING
 	_config_panel.visible = configuring
+	_browse_hint.visible = not configuring
+	_launch_button.disabled = not configuring
+	var current_id: String = mission_select.get_current_mission_id() if configuring else ""
+	for mission_id: String in _mission_buttons:
+		_mission_buttons[mission_id].set_pressed_no_signal(mission_id == current_id)
 	if not configuring:
 		return
+	var entry: MissionEntry = GGameDataRegistry.get_mission_entry(current_id)
+	_mission_title_label.text = entry.display_name if entry != null else current_id
 	_refresh_objective_label()
 	_refresh_tier_button_labels()
 	_refresh_modifier_button_labels()
@@ -215,17 +286,26 @@ func _create_tier_button(tier: int) -> Button:
 	var button := Button.new()
 	button.name = "Tier_%d" % tier
 	button.focus_mode = Control.FOCUS_ALL
+	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL  # 3 equal-width buttons, never clipped
+	button.custom_minimum_size = Vector2(0, 40)
+	button.add_theme_stylebox_override("focus", ShellChromeStyle.focus_ring_stylebox())
 	button.pressed.connect(_on_tier_pressed.bind(tier))
 	_wire_focus_ring(button)
 	_tier_row.add_child(button)
 	return button
 
 
+## Selected tier = filled Accent Cyan, others outlined (filled-vs-outline,
+## never color-only). Replaces the old "Normal (selected)" text tag, which
+## pushed the tier row wider than the column and clipped it.
 func _refresh_tier_button_labels() -> void:
 	for tier: int in _tier_buttons.keys():
 		var button: Button = _tier_buttons[tier]
-		var selected_tag: String = " " + tr("MISSION_SELECT_TIER_SELECTED") if mission_select.difficulty_tier == tier else ""
-		button.text = "%s%s" % [_tier_display_name(tier), selected_tag]
+		var selected: bool = mission_select.difficulty_tier == tier
+		button.text = _tier_display_name(tier)
+		var box: StyleBoxFlat = ShellChromeStyle.chrome_button_stylebox(selected)
+		button.add_theme_stylebox_override("normal", box)
+		button.add_theme_stylebox_override("hover", box)
 
 
 func _tier_display_name(tier: int) -> String:
@@ -248,6 +328,10 @@ func _create_modifier_button(modifier_id: StringName) -> Button:
 	var button := Button.new()
 	button.name = "Modifier_%s" % String(modifier_id)
 	button.focus_mode = Control.FOCUS_ALL
+	button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	button.custom_minimum_size = Vector2(0, 40)
+	button.add_theme_stylebox_override("normal", _padded_outline_stylebox())
+	button.add_theme_stylebox_override("focus", ShellChromeStyle.focus_ring_stylebox())
 	button.pressed.connect(_on_modifier_pressed.bind(modifier_id))
 	_wire_focus_ring(button)
 	_modifier_row.add_child(button)
