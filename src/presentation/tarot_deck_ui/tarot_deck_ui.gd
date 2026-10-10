@@ -152,6 +152,7 @@ func get_tab_strip_for_test() -> DeckTabStrip:
 
 func _configure_chrome_layout() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_add_backdrops()
 	# Chrome was a 0x0 Control, so TabStrip's anchor_bottom=1.0 resolved against
 	# zero height -- give it the full rect so the strip spans the screen.
 	($Chrome as Control).set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -175,6 +176,29 @@ func _configure_chrome_layout() -> void:
 	# Leave room for ReturnToSanctuaryButton (40px tall, 24px inset) so it no
 	# longer floats over the bottom rows of the hosted screen (2026-10-04).
 	_screen_host.offset_bottom = -RETURN_BAR_HEIGHT
+
+
+## 2026-10-10 UI pass: nothing painted behind this shell, so the whole
+## screen rendered on Godot's raw grey clear color. Matches the Sanctuary
+## shell: darker chrome behind everything, UI_CHROME behind the screen area.
+func _add_backdrops() -> void:
+	var backdrop := ColorRect.new()
+	backdrop.name = "ChromeBackdrop"
+	backdrop.color = ShellChromeStyle.UI_CHROME.darkened(0.3)
+	backdrop.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(backdrop)
+	move_child(backdrop, 0)
+	backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+
+	var content := ColorRect.new()
+	content.name = "ContentBackground"
+	content.color = ShellChromeStyle.UI_CHROME
+	content.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(content)
+	move_child(content, 1)
+	content.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	content.offset_left = TAB_STRIP_WIDTH
+	content.offset_bottom = -RETURN_BAR_HEIGHT
 
 
 func _on_tab_target_selected(target_state: StringName) -> void:

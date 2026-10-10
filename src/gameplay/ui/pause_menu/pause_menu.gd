@@ -98,6 +98,7 @@ func _ready() -> void:
 	_quit_confirm_cancel_button.pressed.connect(_on_quit_confirm_cancel_pressed)
 	_quit_confirm_cancel_button.set_meta(UiAudioBinder.META_KEY, UiAudioBinder.KIND_CANCEL)
 	GEventBus.mission_launched.connect(_on_mission_launched)
+	_style_button_stack()
 
 	for row_name: String in ["MusicRow", "SfxRow", "VoiceRow", "UiRow"]:
 		var row: HBoxContainer = $SettingsPanel/SettingsContent/VolumeSliders.get_node(row_name)
@@ -154,6 +155,54 @@ func _unhandled_input(event: InputEvent) -> void:
 
 ## Toggle convention (UX spec): the same `pause` input both opens and closes this
 ## screen — pressing it again resumes without navigating to the Resume button.
+## 2026-10-10 UI pass: the pause menu was five small default buttons floating
+## over a light dim, with no title. Now a "Paused" title and full-width
+## chrome buttons on a chrome card, matching the main menu's overlays. The
+## card sits behind ButtonStack; sub-panels still cover both when open.
+const PAUSE_CARD_HALF_SIZE: Vector2 = Vector2(180, 190)
+const PAUSE_BUTTON_HEIGHT: float = 44.0
+
+
+func _style_button_stack() -> void:
+	($DimOverlay as ColorRect).color = Color(0, 0, 0, 0.7)
+	var stack: VBoxContainer = $ButtonStack
+	stack.offset_left = -PAUSE_CARD_HALF_SIZE.x + 24.0
+	stack.offset_right = PAUSE_CARD_HALF_SIZE.x - 24.0
+	stack.offset_top = -PAUSE_CARD_HALF_SIZE.y + 20.0
+	stack.offset_bottom = PAUSE_CARD_HALF_SIZE.y - 20.0
+	stack.add_theme_constant_override("separation", 10)
+
+	var title := Label.new()
+	title.name = "PausedTitle"
+	title.text = tr("PAUSE_TITLE")
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 28)
+	title.add_theme_color_override("font_color", ShellChromeStyle.UI_PARCHMENT)
+	stack.add_child(title)
+	stack.move_child(title, 0)
+
+	for button: Button in [_resume_button, _settings_button, _objective_button, _quit_to_sanctuary_button, _quit_to_main_menu_button]:
+		button.custom_minimum_size = Vector2(0, PAUSE_BUTTON_HEIGHT)
+		button.add_theme_stylebox_override("normal", ShellChromeStyle.chrome_button_stylebox(false))
+		button.add_theme_color_override("font_color", ShellChromeStyle.UI_PARCHMENT)
+	_resume_button.add_theme_stylebox_override("normal", ShellChromeStyle.chrome_button_stylebox(true))
+
+	var card := Panel.new()
+	card.name = "PauseCard"
+	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var box: StyleBoxFlat = ShellChromeStyle.chrome_panel_stylebox()
+	box.set_border_width_all(1)
+	box.border_color = Color(ShellChromeStyle.UI_PARCHMENT, 0.35)
+	card.add_theme_stylebox_override("panel", box)
+	add_child(card)
+	move_child(card, stack.get_index())
+	card.set_anchors_preset(Control.PRESET_CENTER)
+	card.offset_left = -PAUSE_CARD_HALF_SIZE.x
+	card.offset_right = PAUSE_CARD_HALF_SIZE.x
+	card.offset_top = -PAUSE_CARD_HALF_SIZE.y
+	card.offset_bottom = PAUSE_CARD_HALF_SIZE.y
+
+
 func _toggle_pause() -> void:
 	var new_paused: bool = not get_tree().paused
 	get_tree().paused = new_paused

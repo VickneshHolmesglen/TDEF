@@ -20,18 +20,23 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_constants/separation = 8
+theme_override_constants/separation = 12
 
 [node name="DeckTray" type="PanelContainer" parent="MainLayout"]
+custom_minimum_size = Vector2(0, 170)
 layout_mode = 2
 size_flags_vertical = 1
 
-[node name="DeckList" type="VBoxContainer" parent="MainLayout/DeckTray"]
+[node name="DeckList" type="HBoxContainer" parent="MainLayout/DeckTray"]
 layout_mode = 2
+theme_override_constants/separation = 12
 
 [node name="CardPool" type="PanelContainer" parent="MainLayout"]
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="PoolList" type="VBoxContainer" parent="MainLayout/CardPool"]
+[node name="PoolList" type="GridContainer" parent="MainLayout/CardPool"]
 layout_mode = 2
+theme_override_constants/h_separation = 10
+theme_override_constants/v_separation = 10
+columns = 7

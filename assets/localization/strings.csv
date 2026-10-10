@@ -145,6 +145,7 @@ MAIN_MENU_LOAD_LAST_SAVE,Load Last Sanctuary Save
 MAIN_MENU_RESTORE_CHECKPOINT,Restore From Checkpoint
 MAIN_MENU_SAVE_WARNING_DEFAULT,Your save could not be loaded and the game has started fresh.
 MAIN_MENU_OK,OK
+PAUSE_TITLE,Paused
 PAUSE_RESUME,Resume
 PAUSE_SETTINGS,Settings
 PAUSE_OBJECTIVE,Objective
@@ -270,6 +271,7 @@ TAROT_TAG_LOCKED,(Locked)
 TAROT_TAG_EQUIPPED,(Equipped)
 TAROT_TAG_AVAILABLE,(Available)
 TAROT_TAG_CONFLICT,(Conflicts: %s)
+TAROT_DECK_EMPTY,No cards equipped. Pick cards from the pool below.
 MAIN_MENU_SLOT_SAVED_AT,saved %s
 MISSION_SELECT_TIER_TIME,%s: %s
 MISSION_SELECT_TIER_UNCLEARED,—

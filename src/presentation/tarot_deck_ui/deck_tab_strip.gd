@@ -48,6 +48,7 @@ func _ready() -> void:
 	add_child(_input_mode_tracker)
 	_input_mode_tracker.input_mode_changed.connect(_on_input_mode_changed)
 	_build_buttons()
+	_refresh_button_styles()
 	_wire_focus_neighbors()
 
 
@@ -83,7 +84,17 @@ func _on_input_mode_changed(_mode: InputModeTracker.InputMode) -> void:
 
 func _select_index(index: int) -> void:
 	_current_index = index
+	_refresh_button_styles()
 	tab_target_selected.emit(TAB_TARGETS[index])
+
+
+## 2026-10-10 UI pass: tabs were bare default buttons with no visible active
+## state. Chrome-styled like the Sanctuary tab strip, active tab filled.
+func _refresh_button_styles() -> void:
+	for index: int in _buttons.size():
+		var box: StyleBoxFlat = ShellChromeStyle.chrome_button_stylebox(index == _current_index)
+		_buttons[index].add_theme_stylebox_override("normal", box)
+		_buttons[index].add_theme_stylebox_override("hover", box)
 
 
 func _build_buttons() -> void:
@@ -91,6 +102,8 @@ func _build_buttons() -> void:
 		var button := Button.new()
 		button.text = tr(TAB_LABEL_KEYS[index])
 		button.focus_mode = Control.FOCUS_ALL
+		button.custom_minimum_size = Vector2(0, 56)
+		button.add_theme_color_override("font_color", ShellChromeStyle.UI_PARCHMENT)
 		button.pressed.connect(_on_button_pressed.bind(index))
 		button.focus_entered.connect(_update_focus_ring.bind(index))
 		button.focus_exited.connect(_update_focus_ring.bind(index))

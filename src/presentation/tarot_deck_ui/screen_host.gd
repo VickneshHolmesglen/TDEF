@@ -29,6 +29,15 @@ func mount_screen(scene: PackedScene, state: StringName) -> void:
 	_current_screen = scene.instantiate()
 	_current_screen_state = state
 	add_child(_current_screen)
+	# Same 16 px gutter RoomHost gives Sanctuary rooms (2026-10-10 UI pass);
+	# this host's own rect is unchanged.
+	if _current_screen is Control:
+		var screen: Control = _current_screen as Control
+		screen.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		screen.offset_left = RoomHost.ROOM_PADDING
+		screen.offset_top = RoomHost.ROOM_PADDING
+		screen.offset_right = -RoomHost.ROOM_PADDING
+		screen.offset_bottom = -RoomHost.ROOM_PADDING
 	screen_mounted.emit(state)
 
 

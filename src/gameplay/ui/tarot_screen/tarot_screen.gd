@@ -91,7 +91,6 @@ const CARD_TEXTURES: Dictionary[StringName, Texture2D] = {
 	&"swift_current": preload("res://assets/art/tarot/wheel_of_fortune.png"),
 	&"grinding_gauntlet": preload("res://assets/art/tarot/the_devil.png"),
 }
-const CARD_ICON_MAX_WIDTH: int = 32
 
 ## Injectable for tests; defaults to the real GTarot Autoload (ADR-0035).
 @export var tarot: Tarot
@@ -101,8 +100,20 @@ const CARD_ICON_MAX_WIDTH: int = 32
 @export var conflict_indicator: ConflictIndicator
 
 @onready var _input_mode_tracker: InputModeTracker = $InputModeTracker
-@onready var _deck_tray_list: VBoxContainer = $MainLayout/DeckTray/DeckList
-@onready var _card_pool_list: VBoxContainer = $MainLayout/CardPool/PoolList
+@onready var _deck_tray: PanelContainer = $MainLayout/DeckTray
+@onready var _card_pool: PanelContainer = $MainLayout/CardPool
+@onready var _deck_tray_list: HBoxContainer = $MainLayout/DeckTray/DeckList
+@onready var _card_pool_list: GridContainer = $MainLayout/CardPool/PoolList
+
+## 2026-10-10 UI pass: both lists were thin text rows with 32 px thumbnails,
+## leaving the painted tarot art unseen and most of the screen empty. The
+## pool is now a 7-column grid of portrait cards (art fills the card) and the
+## equipped tray a row of smaller cards; equipped = thick Accent Cyan border,
+## locked = dimmed (state is still spelled out in the card text).
+const POOL_CARD_MIN_SIZE: Vector2 = Vector2(0, 160)
+const DECK_CARD_SIZE: Vector2 = Vector2(110, 0)
+const CARD_FONT_SIZE: int = 13
+const LOCKED_CARD_ALPHA: float = 0.5
 
 var _deck_buttons: Dictionary[StringName, Button] = {}
 var _pool_buttons: Dictionary[StringName, Button] = {}
@@ -121,6 +132,7 @@ func _ready() -> void:
 	GEventBus.run_modifier_selected.connect(_on_run_modifier_selected)
 	GEventBus.mission_selected.connect(_on_mission_selected)
 
+	_apply_panel_styles()
 	_rebuild_deck_tray()
 	_rebuild_card_pool()
 
@@ -155,6 +167,7 @@ func _on_mission_selected(_mission_id: String) -> void:
 
 func _rebuild_deck_tray() -> void:
 	for child: Node in _deck_tray_list.get_children():
+		_deck_tray_list.remove_child(child)
 		child.queue_free()
 	_deck_buttons.clear()
 
@@ -164,15 +177,26 @@ func _rebuild_deck_tray() -> void:
 		var button: Button = _create_deck_button(card_id)
 		_deck_tray_list.add_child(button)
 		_deck_buttons[card_id] = button
+	if _deck_buttons.is_empty():
+		var empty_label := Label.new()
+		empty_label.name = "DeckEmptyLabel"
+		empty_label.text = tr("TAROT_DECK_EMPTY")
+		empty_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		empty_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		empty_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		empty_label.add_theme_color_override("font_color", Color(ShellChromeStyle.UI_PARCHMENT, 0.6))
+		_deck_tray_list.add_child(empty_label)
 
 
 func _create_deck_button(card_id: StringName) -> Button:
 	var button := Button.new()
 	button.name = "Deck_%s" % String(card_id)
 	button.focus_mode = Control.FOCUS_ALL
-	button.clip_text = true
 	button.text = _deck_entry_text(card_id)
 	_apply_card_icon(button, card_id)
+	_style_card(button, true, true)
+	button.custom_minimum_size = DECK_CARD_SIZE
+	button.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	button.pressed.connect(_on_deck_card_pressed.bind(card_id))
 	_wire_focus_ring(button)
 	return button
@@ -190,9 +214,34 @@ func _apply_card_icon(button: Button, card_id: StringName) -> void:
 	if texture == null:
 		return
 	button.icon = texture
-	button.alignment = HORIZONTAL_ALIGNMENT_LEFT  # keep the thumbnail beside its name
-	button.expand_icon = true
-	button.add_theme_constant_override("icon_max_width", CARD_ICON_MAX_WIDTH)
+	button.expand_icon = true  # art scales into the card, never balloons it
+	button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	button.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
+
+
+## Card look shared by tray and pool (see the 2026-10-10 note on the
+## constants above).
+func _style_card(button: Button, equipped: bool, unlocked: bool) -> void:
+	button.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	button.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	button.add_theme_font_size_override("font_size", CARD_FONT_SIZE)
+	button.add_theme_color_override("font_color", ShellChromeStyle.UI_PARCHMENT)
+	var box: StyleBoxFlat = ShellChromeStyle.chrome_button_stylebox(false)
+	box.bg_color = ShellChromeStyle.UI_CHROME
+	box.set_border_width_all(4 if equipped else 1)
+	box.border_color = ShellChromeStyle.UI_ACCENT_CYAN if equipped else Color(ShellChromeStyle.UI_PARCHMENT, 0.35)
+	box.set_content_margin_all(6.0)
+	button.add_theme_stylebox_override("normal", box)
+	button.add_theme_stylebox_override("hover", box)
+	button.modulate.a = 1.0 if unlocked else LOCKED_CARD_ALPHA
+
+
+func _apply_panel_styles() -> void:
+	for panel: PanelContainer in [_deck_tray, _card_pool]:
+		var box: StyleBoxFlat = ShellChromeStyle.chrome_panel_stylebox()
+		box.bg_color = ShellChromeStyle.UI_CHROME.darkened(0.25)
+		box.set_content_margin_all(12.0)
+		panel.add_theme_stylebox_override("panel", box)
 
 
 ## GDD Core Rule 6: plain-text conflict tag, tray slots only (see class doc
@@ -239,6 +288,7 @@ func _on_deck_card_pressed(card_id: StringName) -> void:
 
 func _rebuild_card_pool() -> void:
 	for child: Node in _card_pool_list.get_children():
+		_card_pool_list.remove_child(child)
 		child.queue_free()
 	_pool_buttons.clear()
 
@@ -258,9 +308,11 @@ func _create_pool_button(card_id: StringName) -> Button:
 	var button := Button.new()
 	button.name = "Pool_%s" % String(card_id)
 	button.focus_mode = Control.FOCUS_ALL
-	button.clip_text = true
 	button.text = _pool_entry_text(card_id)
 	_apply_card_icon(button, card_id)
+	_style_card(button, tarot.get_current_deck().has(card_id), tarot.is_card_unlocked(card_id))
+	button.custom_minimum_size = POOL_CARD_MIN_SIZE
+	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	button.pressed.connect(_on_pool_card_pressed.bind(card_id))
 	_wire_focus_ring(button)
 	return button
@@ -268,10 +320,10 @@ func _create_pool_button(card_id: StringName) -> Button:
 
 func _pool_entry_text(card_id: StringName) -> String:
 	if not tarot.is_card_unlocked(card_id):
-		return "%s %s" % [_card_display_name(card_id), tr("TAROT_TAG_LOCKED")]
+		return "%s\n%s" % [_card_display_name(card_id), tr("TAROT_TAG_LOCKED")]
 	if tarot.get_current_deck().has(card_id):
-		return "%s %s" % [_card_display_name(card_id), tr("TAROT_TAG_EQUIPPED")]
-	return "%s %s" % [_card_display_name(card_id), tr("TAROT_TAG_AVAILABLE")]
+		return "%s\n%s" % [_card_display_name(card_id), tr("TAROT_TAG_EQUIPPED")]
+	return "%s\n%s" % [_card_display_name(card_id), tr("TAROT_TAG_AVAILABLE")]
 
 
 ## TarotCardResource has no display name; derive one rather than showing the

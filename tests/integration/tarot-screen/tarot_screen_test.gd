@@ -232,12 +232,18 @@ func test_deck_tray_button_shows_an_icon_for_a_mapped_card() -> void:
 	assert_object(button.icon).is_not_null()
 
 
-func test_pool_button_icon_is_capped_to_the_card_icon_max_width() -> void:
+## Guards the original bug (native-res tarot art ballooning the button). The
+## 2026-10-10 card layout dropped the fixed 32 px cap so the art fills its
+## card; the guard is now that the art scales and never drives the card's
+## minimum size anywhere near the art's native resolution.
+func test_pool_card_art_scales_instead_of_ballooning_the_card() -> void:
 	_unlock(CARD_IRON_RESOLVE)
 	_rebuild_all()
 	var button: Button = _screen.call("get_pool_button", CARD_IRON_RESOLVE)
 	assert_bool(button.expand_icon).is_true()
-	assert_int(button.get_theme_constant(&"icon_max_width")).is_equal(32)
+	var min_size: Vector2 = button.get_combined_minimum_size()
+	assert_float(min_size.x).is_less(300.0)
+	assert_float(min_size.y).is_less(300.0)
 
 
 ## Every shipped card is art-mapped since 2026-10-04, so the fallback is
