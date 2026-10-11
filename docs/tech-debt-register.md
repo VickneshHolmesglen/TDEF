@@ -2507,16 +2507,18 @@ New `UserDataPaths.root()` returns `user://` normally and `user://test_sandbox/`
 
 ---
 
-## TD-test-009 — `hero_damage_chain_test.gd` errors ("Trying to cast a freed object") only when run after `tests/unit/visual_presentation` (open)
+## TD-test-009 — `hero_damage_chain_test.gd` errors ("Trying to cast a freed object") only when run after `tests/unit/visual_presentation` (fixed)
 
 **Logged**: 2026-10-04
 **Severity**: Low — test hygiene, not a product bug. Order-dependent: 3 errors raised inside gdUnit4's `GdUnitOrphanNodesMonitor.gd:202` when this suite runs after the visual-presentation unit suites; 0 errors in isolation, and reproduced identically with all 2026-10-04 changes stashed (pre-existing). Likely cause: its `after_test()` frees `MonsterEntity` nodes directly while another structure still references them. Not seen in the default full-suite ordering.
+
+- [x] Fixed 2026-10-11: root cause was the suite's own `_ds` member, not MonsterEntity. `after_test()` queue-freed the DamageStatus node and awaited a frame without clearing `_ds`; gdUnit4's orphan monitor scans suite member variables and cast the dangling reference (found by temporarily instrumenting `GdUnitOrphanNodesMonitor.gd` to print freed members; addon restored). `after_test()` now nulls `_ds` and `_mm` after freeing. Ordered repro (visual_presentation then this suite): 4 errors -> 0; isolated: 3/3 green.
 
 ---
 
 ## TD-perf-002 — Texture memory is ~850 MB because generated art ships at native generation resolution (RESOLVED 2026-10-06)
 
-**Resolved**: 9d592d3 — import `process/size_limit` per category (items/towers/monsters/species 256, tarot 384, terrain 512, hero 768); live mission texture memory 847 → 115.5 MB. **Side effect found 2026-10-07**: per-texture caps scale each tower Base/Shaft/Top layer by a different factor, splitting placed towers into 3 pieces; fixed in ee3c21a (`TowerInstance.LAYER_SOURCE_MAX_DIMENSIONS`, see `design/art/codex-art-overhaul.md` §5.5). `Hero.tscn` Sprite2D scale is now 0.078125 (mission hero enlarged 1.5×), not the 0.052083 quoted below.
+**Resolved**: 9d592d3 — import `process/size_limit` per category (items/towers/monsters/species 256, tarot 384, terrain 512, hero 768); live mission texture memory 847 → 115.5 MB. **Side effect found 2026-10-07**: per-texture caps scale each tower Base/Shaft/Top layer by a different factor, splitting placed towers into 3 pieces; fixed in ee3c21a (`TowerInstance.LAYER_SOURCE_MAX_DIMENSIONS`, see `design/art/codex-art-overhaul.md` §5.5). `Hero.tscn` Sprite2D scale is now 0.078125 (mission hero enlarged 1.5×), not the 0.052083 quoted below. **Follow-up 2026-10-11**: GPU compression did turn out to be a lever after all — 122 large painted textures now import BPTC (a9b36e1) and registry art loads lazily by path (cfb5c8c); live texture memory menu 126 → 24 MB, mission 148 → 81 MB. `animation-pipeline.md` §4 updated to match.
 
 **Logged**: 2026-10-04 (live `Performance` sample during The Gap: `RENDER_TEXTURE_MEM_USED` 847 MB of 894 MB VRAM; static RAM ~100 MB; 60 FPS; 84 draw calls)
 **Severity**: Low today — fits the reference GPUs (6–8 GB) and the 1 GB budget is a RAM ceiling — but it grows with every new asset. Sprites displayed at ~64 px are uploaded at 1000–1500 px (e.g. `hero_warden_smith.png` 1024×1536, tower parts ~1000 px, `mission_frame_background.png` 1672×941). `animation-pipeline.md` §4 deliberately keeps Lossless/no-mipmaps, so GPU compression is not the lever.

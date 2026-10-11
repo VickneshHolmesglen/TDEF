@@ -52,8 +52,10 @@ Allowed Libraries sections, which carry this outcome forward.
 
 | Asset class | Compression | Mipmaps | Notes |
 |---|---|---|---|
-| 2D sprites (towers, monsters, props, UI, terrain) | Lossless | OFF | Current project default — keep. Mipmapping would blur intentional pixel-level brushwork at distance |
-| Sprite-sheet frames (new, e.g. a monster walk-cycle) | Lossless | OFF | Same as single sprites — sheets don't get different treatment just because they're animated |
+| 2D sprites read back as pixels (terrain, props, tower layers) | Lossless | OFF | Code reads these with `get_image()` (`grid_visual.gd` blends terrain/props; `TowerInstance.painted_rect()` needs exact alpha), which a VRAM-compressed texture can't serve directly. Mipmapping would blur intentional pixel-level brushwork at distance |
+| Large painted 2D art (≥256 px: menu, Sanctuary/town, hero + worn gear, tarot, UI cards, big item/monster art) | VRAM Compressed, `high_quality=true` (BPTC/BC7) | OFF | Changed 2026-10-11 (VRAM pass): ~4× smaller in VRAM, no visible artifacts on painted art at full-res inspection. New art in these classes should import the same way |
+| Small 2D art (<256 px) | Lossless | OFF | Not worth compressing; the saving is negligible |
+| Sprite-sheet frames (new, e.g. a monster walk-cycle) | Same as the single-sprite row matching their size | OFF | Sheets don't get different treatment just because they're animated; keep frame sizes multiples of 4 so BPTC blocks never straddle two frames |
 | Hero (if/when a 3D model lands) | N/A (3D texture) | ON | Already spec'd in hero-visual-profile.md — 3D VRAM budget item, not relevant to any 2D sprite in this pass |
 
 No project-wide `[rendering]` section exists in `project.godot`, and none is

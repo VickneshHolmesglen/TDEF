@@ -65,9 +65,15 @@ func after_test() -> void:
 			e.free()
 	remove_child(_mm)
 	_mm.free()
+	_mm = null
+	# TD-test-009: clear every member that points at a freed node. gdUnit4's
+	# orphan monitor scans this suite's member variables and errored ("Trying
+	# to cast a freed object") on the dangling _ds after the await below.
 	if is_instance_valid(_ds):
 		_ds.queue_free()
+		_ds = null
 		await get_tree().process_frame
+	_ds = null
 	if _hero != null and is_instance_valid(_hero):
 		if _hero.is_inside_tree():
 			_hero.get_parent().remove_child(_hero)
