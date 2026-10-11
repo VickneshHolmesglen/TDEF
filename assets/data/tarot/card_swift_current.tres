@@ -2,8 +2,6 @@
 
 [ext_resource type="Script" path="res://src/core/tarot/tarot_card_resource.gd" id="1"]
 [ext_resource type="Script" path="res://src/core/tarot/tarot_modifier_entry.gd" id="2"]
-[ext_resource type="Texture2D" path="res://assets/art/tarot/the_moon.png" id="3"]
-
 [sub_resource type="Resource" id="Modifier_swift_current"]
 script = ExtResource("2")
 modifier_type = &"tarot_speed_scalar_mult"
@@ -17,4 +15,4 @@ modifiers = [SubResource("Modifier_swift_current")]
 linked_rune_id = &"rune_swift_current"
 rune_stat_delta = {&"move_speed": 20.0, &"cdr": 0.02}
 unlock_tech_id = &""
-icon = ExtResource("3")
+icon_path = "res://assets/art/tarot/the_moon.png"

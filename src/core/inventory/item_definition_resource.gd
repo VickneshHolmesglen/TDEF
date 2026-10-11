@@ -54,12 +54,41 @@ extends Resource
 ## slot falls back to its pre-existing text rendering, "mechanism real,
 ## content placeholder") -- never hardcoded as a UI-side item_id->texture
 ## lookup table, matching this project's own data-driven-values rule.
-@export var icon: Texture2D = null
+## Lazy-loaded (2026-10-11, VRAM step B): the .tres stores only the file
+## path, so loading every definition at boot no longer pulls its art into
+## VRAM. The texture loads on first read and is then kept; assigning a
+## texture directly (tests, generated definitions) overrides the path.
+@export_file("*.png") var icon_path: String = ""
+var icon: Texture2D:
+	get:
+		if not _icon_loaded:
+			_icon_loaded = true
+			if icon_path != "":
+				_icon = load(icon_path) as Texture2D
+		return _icon
+	set(value):
+		_icon = value
+		_icon_loaded = true
+var _icon: Texture2D = null
+var _icon_loaded: bool = false
 ## Equipment worn on the hero (hero equipment appearance spec, 2026-10-07):
 ## a transparent overlay on the SAME canvas as HeroAppearanceResource.
 ## base_texture, drawn full-canvas over the body, so it lines up with no
 ## offsets. Null = HeroAppearance pins `icon` to the slot's anchor instead.
-@export var worn_texture: Texture2D = null
+## Lazy-loaded like `icon`.
+@export_file("*.png") var worn_texture_path: String = ""
+var worn_texture: Texture2D:
+	get:
+		if not _worn_texture_loaded:
+			_worn_texture_loaded = true
+			if worn_texture_path != "":
+				_worn_texture = load(worn_texture_path) as Texture2D
+		return _worn_texture
+	set(value):
+		_worn_texture = value
+		_worn_texture_loaded = true
+var _worn_texture: Texture2D = null
+var _worn_texture_loaded: bool = false
 ## Tower Assembly (2026-08-11, player-requested, design/quick-specs/
 ## tower-assembly-2026-08-11.md): path to a standalone `.tres` whose root
 ## resource is a real FoundationComponent/WeaponComponent/FocusComponent/

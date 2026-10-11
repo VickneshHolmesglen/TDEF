@@ -2,8 +2,6 @@
 
 [ext_resource type="Script" path="res://src/core/mission_entry.gd" id="1_entry"]
 [ext_resource type="Script" path="res://src/foundation/grid/grid_config.gd" id="2_grid"]
-[ext_resource type="Texture2D" path="res://assets/art/ui/mission_card_the_hollow.png" id="3_icon"]
-
 [sub_resource type="Resource" id="Resource_grid_hollow"]
 script = ExtResource("2_grid")
 cells = Dictionary[Vector2i, int]({
@@ -209,4 +207,4 @@ grid_config = SubResource("Resource_grid_hollow")
 wave_config_path = "res://assets/data/waves/the_hollow_waves.tres"
 base_wave_count = 7
 recommended_difficulty_tier = 3
-icon = ExtResource("3_icon")
+icon_path = "res://assets/art/ui/mission_card_the_hollow.png"

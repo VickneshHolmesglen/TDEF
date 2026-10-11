@@ -114,7 +114,8 @@ Accent: deep violet and silver, starlight glow.
   magenta fringe remains), pads every tier onto one shared canvas per building (bottom-centre, same ground line), and writes
   `assets/art/sanctuary/town/<building_id>_tier_<n>.png`, matching the existing
   `habitat_tier_<n>.png` naming in `assets/art/sanctuary/`. It then fills the
-  `tier_textures` slots of `assets/data/sanctuary_buildings/<building_id>.tres` and
+  `tier_texture_paths` slots (file paths, loaded on demand since 2026-10-11) of
+  `assets/data/sanctuary_buildings/<building_id>.tres` and
   live-checks the scale in the Overview against each building's `footprint` (§5.5:
   always verify the scale live).
 - The visual direction for final art is not locked (codex-art-overhaul §1 pilot gate), so this

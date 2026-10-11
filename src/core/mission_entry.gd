@@ -38,7 +38,23 @@ extends Resource
 ## not every mission entry is guaranteed art-complete the moment it's
 ## authored — matches this project's established "content can lag code"
 ## tolerance for other optional per-entry art fields.
-@export var icon: Texture2D = null
+## Lazy-loaded (2026-10-11, VRAM step B): the .tres stores only the file
+## path, so loading every definition at boot no longer pulls its art into
+## VRAM. The texture loads on first read and is then kept; assigning a
+## texture directly (tests, generated definitions) overrides the path.
+@export_file("*.png") var icon_path: String = ""
+var icon: Texture2D:
+	get:
+		if not _icon_loaded:
+			_icon_loaded = true
+			if icon_path != "":
+				_icon = load(icon_path) as Texture2D
+		return _icon
+	set(value):
+		_icon = value
+		_icon_loaded = true
+var _icon: Texture2D = null
+var _icon_loaded: bool = false
 
 
 ## Load-time validation. Called by GameDataRegistry at boot (ADR-0009 pattern).

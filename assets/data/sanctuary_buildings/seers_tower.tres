@@ -1,12 +1,7 @@
-[gd_resource type="Resource" script_class="SanctuaryBuildingResource" load_steps=7 format=3]
+[gd_resource type="Resource" script_class="SanctuaryBuildingResource" load_steps=2 format=3]
 
 [ext_resource type="Script" path="res://src/core/sanctuary/sanctuary_building_resource.gd" id="1"]
 
-[ext_resource type="Texture2D" path="res://assets/art/sanctuary/town/seers_tower_tier_1.png" id="2"]
-[ext_resource type="Texture2D" path="res://assets/art/sanctuary/town/seers_tower_tier_2.png" id="3"]
-[ext_resource type="Texture2D" path="res://assets/art/sanctuary/town/seers_tower_tier_3.png" id="4"]
-[ext_resource type="Texture2D" path="res://assets/art/sanctuary/town/seers_tower_tier_4.png" id="5"]
-[ext_resource type="Texture2D" path="res://assets/art/sanctuary/town/seers_tower_tier_5.png" id="6"]
 
 [resource]
 script = ExtResource("1")
@@ -17,4 +12,4 @@ target_state = &"DEPARTING_TO_LOADOUT"
 position = Vector2(800, 280)
 footprint = Vector2(130, 210)
 placeholder_color = Color(0.48, 0.36, 0.62, 1)
-tier_textures = Array[Texture2D]([ExtResource("2"), ExtResource("3"), ExtResource("4"), ExtResource("5"), ExtResource("6")])
+tier_texture_paths = Array[String](["res://assets/art/sanctuary/town/seers_tower_tier_1.png", "res://assets/art/sanctuary/town/seers_tower_tier_2.png", "res://assets/art/sanctuary/town/seers_tower_tier_3.png", "res://assets/art/sanctuary/town/seers_tower_tier_4.png", "res://assets/art/sanctuary/town/seers_tower_tier_5.png"])

@@ -2,8 +2,6 @@
 
 [ext_resource type="Script" path="res://src/core/tarot/tarot_card_resource.gd" id="1"]
 [ext_resource type="Script" path="res://src/core/tarot/tarot_modifier_entry.gd" id="2"]
-[ext_resource type="Texture2D" path="res://assets/art/tarot/the_chariot.png" id="3"]
-
 [sub_resource type="Resource" id="Modifier_hunters_pace"]
 script = ExtResource("2")
 modifier_type = &"tarot_speed_scalar_mult"
@@ -17,4 +15,4 @@ modifiers = [SubResource("Modifier_hunters_pace")]
 linked_rune_id = &"rune_hunters_pace"
 rune_stat_delta = {&"move_speed": 15.0, &"attack_range": 12.0}
 unlock_tech_id = &""
-icon = ExtResource("3")
+icon_path = "res://assets/art/tarot/the_chariot.png"

@@ -1,7 +1,6 @@
-[gd_resource type="Resource" script_class="ItemDefinitionResource" load_steps=3 format=3]
+[gd_resource type="Resource" script_class="ItemDefinitionResource" load_steps=2 format=3]
 
 [ext_resource type="Script" path="res://src/core/inventory/item_definition_resource.gd" id="1"]
-[ext_resource type="Texture2D" path="res://assets/art/items/archer_power_component.png" id="2"]
 
 [resource]
 script = ExtResource("1")
@@ -11,4 +10,4 @@ display_name = "Archer Power"
 is_unique_instance = true
 base_stats = {}
 component_resource_path = "res://assets/data/tower_components/power_archer_copy.tres"
-icon = ExtResource("2")
+icon_path = "res://assets/art/items/archer_power_component.png"

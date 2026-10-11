@@ -2,8 +2,6 @@
 
 [ext_resource type="Script" path="res://src/core/tarot/tarot_card_resource.gd" id="1"]
 [ext_resource type="Script" path="res://src/core/tarot/tarot_modifier_entry.gd" id="2"]
-[ext_resource type="Texture2D" path="res://assets/art/tarot/the_emperor.png" id="3"]
-
 [sub_resource type="Resource" id="Modifier_iron_resolve"]
 script = ExtResource("2")
 modifier_type = &"tarot_difficulty_growth_rate"
@@ -17,4 +15,4 @@ modifiers = [SubResource("Modifier_iron_resolve")]
 linked_rune_id = &"rune_iron_resolve"
 rune_stat_delta = {&"armor": 20.0, &"elemental_resist_fire": 0.045, &"elemental_resist_frost": 0.045}
 unlock_tech_id = &""
-icon = ExtResource("3")
+icon_path = "res://assets/art/tarot/the_emperor.png"

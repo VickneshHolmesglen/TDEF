@@ -80,7 +80,7 @@ func set_progress(new_score: float) -> bool:
 
 ## True when the current tier shows real art rather than the placeholder.
 func has_tier_art() -> bool:
-	return building != null and building.tier_textures.size() >= tier and building.tier_textures[tier - 1] != null
+	return building != null and building.has_tier_texture(tier)
 
 
 ## Height of the placeholder block for the current tier, in pixels.
@@ -104,7 +104,7 @@ func play_tier_up() -> void:
 func _apply_tier_visual() -> void:
 	if building == null:
 		return
-	_art.texture = building.tier_textures[tier - 1] if has_tier_art() else null
+	_art.texture = building.get_tier_texture(tier) if has_tier_art() else null
 	_art.visible = _art.texture != null
 	_art_rect = _visible_art_rect() if has_tier_art() else Rect2()
 	_name_label.size = Vector2(size.x, 18.0)

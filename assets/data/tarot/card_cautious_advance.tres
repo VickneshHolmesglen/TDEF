@@ -2,8 +2,6 @@
 
 [ext_resource type="Script" path="res://src/core/tarot/tarot_card_resource.gd" id="1"]
 [ext_resource type="Script" path="res://src/core/tarot/tarot_modifier_entry.gd" id="2"]
-[ext_resource type="Texture2D" path="res://assets/art/tarot/the_hermit.png" id="3"]
-
 [sub_resource type="Resource" id="Modifier_cautious_advance"]
 script = ExtResource("2")
 modifier_type = &"tarot_speed_scalar_mult"
@@ -17,4 +15,4 @@ modifiers = [SubResource("Modifier_cautious_advance")]
 linked_rune_id = &"rune_cautious_advance"
 rune_stat_delta = {&"armor": 15.0, &"move_speed": 5.0}
 unlock_tech_id = &""
-icon = ExtResource("3")
+icon_path = "res://assets/art/tarot/the_hermit.png"

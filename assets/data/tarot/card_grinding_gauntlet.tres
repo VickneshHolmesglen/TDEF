@@ -2,8 +2,6 @@
 
 [ext_resource type="Script" path="res://src/core/tarot/tarot_card_resource.gd" id="1"]
 [ext_resource type="Script" path="res://src/core/tarot/tarot_modifier_entry.gd" id="2"]
-[ext_resource type="Texture2D" path="res://assets/art/tarot/the_hanged_man.png" id="3"]
-
 [sub_resource type="Resource" id="Modifier_gauntlet_reward"]
 script = ExtResource("2")
 modifier_type = &"tarot_reward_scalar_mult"
@@ -22,4 +20,4 @@ modifiers = [SubResource("Modifier_gauntlet_reward"), SubResource("Modifier_gaun
 linked_rune_id = &"rune_grinding_gauntlet"
 rune_stat_delta = {&"max_hp": 75.0, &"physical_attack": 3.75}
 unlock_tech_id = &"tech_structural_2"
-icon = ExtResource("3")
+icon_path = "res://assets/art/tarot/the_hanged_man.png"

@@ -2,8 +2,6 @@
 
 [ext_resource type="Script" path="res://src/core/skill_definition_resource.gd" id="1_def"]
 [ext_resource type="Script" path="res://src/core/hero_skill_effect_resource.gd" id="2_effect_script"]
-[ext_resource type="Texture2D" path="res://assets/art/items/elem_frostbolt-2026-09-01.png" id="3_icon"]
-
 [sub_resource type="Resource" id="Resource_effect"]
 script = ExtResource("2_effect_script")
 damage_type = "ice"
@@ -25,4 +23,4 @@ source_build_signature = &"found_frostbolt_t1|weap_frostbolt_t1|focus_frostbolt_
 mastery_threshold_seconds = 45.0
 base_cooldown = 4.0
 effect_data = SubResource("Resource_effect")
-icon = ExtResource("3_icon")
+icon_path = "res://assets/art/items/elem_frostbolt-2026-09-01.png"

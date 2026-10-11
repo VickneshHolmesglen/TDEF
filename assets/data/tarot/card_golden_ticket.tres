@@ -2,8 +2,6 @@
 
 [ext_resource type="Script" path="res://src/core/tarot/tarot_card_resource.gd" id="1"]
 [ext_resource type="Script" path="res://src/core/tarot/tarot_modifier_entry.gd" id="2"]
-[ext_resource type="Texture2D" path="res://assets/art/tarot/wheel_of_fortune.png" id="3"]
-
 [sub_resource type="Resource" id="Modifier_golden_ticket"]
 script = ExtResource("2")
 modifier_type = &"tarot_reward_scalar_mult"
@@ -18,4 +16,4 @@ linked_rune_id = &"rune_golden_ticket"
 rune_stat_delta = {&"luck": 0.08}
 unlock_tech_id = &""
 rune_bonus_flat = 0.05
-icon = ExtResource("3")
+icon_path = "res://assets/art/tarot/wheel_of_fortune.png"

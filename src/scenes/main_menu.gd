@@ -752,9 +752,13 @@ func _style_overlay_controls(root: Node) -> void:
 			if button is CheckButton:
 				continue  # keeps its own switch art; a box around it reads as a second button
 			var filled: bool = primary.has(button)
-			for state: String in ["normal", "hover", "pressed", "hover_pressed"]:
-				button.add_theme_stylebox_override(state, ShellChromeStyle.chrome_button_stylebox(filled))
-			button.add_theme_stylebox_override("disabled", ShellChromeStyle.chrome_button_stylebox(false))
+			for state: String in ["normal", "hover", "pressed", "hover_pressed", "disabled"]:
+				var box: StyleBoxFlat = ShellChromeStyle.chrome_button_stylebox(filled and state != "disabled")
+				# The shell's tab boxes have no side padding; without it, long
+				# labels ("Load Last Sanctuary Save") ran into the border.
+				box.content_margin_left = 16.0
+				box.content_margin_right = 16.0
+				button.add_theme_stylebox_override(state, box)
 			button.add_theme_color_override("font_disabled_color", Color(ShellChromeStyle.UI_PARCHMENT, 0.4))
 		elif node is HSlider:
 			var track := StyleBoxFlat.new()
