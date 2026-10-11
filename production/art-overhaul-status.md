@@ -48,6 +48,8 @@
 | HD-2D target look + Claude-authored assets | `done` | User set `docs/images/graphics.PNG` as the target and said Codex can no longer generate art. Procedural texture set in `assets/art/hd2d/` from `tools/asset-pipeline/hd2d/generate_hd2d_textures.py`. |
 | The Gap: HD-2D scenery layer | `done` | ADR-0042. `Hd2dScenery` + `the_gap_scenery.tres`: 3D ground/grass/trees/fence/ruins/rocks under the unchanged 2D gameplay canvas, ortho camera aligned 1:1 with the 2D map. Live-verified mid-wave. Screenshot `docs/images/the-gap-hd2d.png`. |
 | MissionScene missions: HD-2D scenery | `done` | Foothills (golden grassland, pines, crags), Hollow (dark slate, cobbles, glowing crystals), Narrows (red canyon, river lane, reeds, spires). Live-verified each; screenshots `docs/images/the-{foothills,hollow,narrows}-hd2d.png`. |
+| Unit pass: contact shadows + per-mission unit light | `done` | `GroundShadow`, `unit_tint` (ADR-0042). |
+| Pixel conversion of all sprites (characters, gear, monsters, towers, items, species) | `done` | 252 sprites via `pixelate_sprites.py --batch`, same dimensions as before; painted originals in `assets/source/painted/`. Live-verified towers (stacked + single), all 6 monster sheets, hero, inventory paper doll. |
 
 ## Production architecture (blocking)
 

@@ -96,3 +96,25 @@ every overlay stay exactly as they are.
     (`cos(pitch)`) clears every lane and landmark cell (`_clear_above`).
   - Mission maps fill the screen, so border dressing prefers the in-grid
     blocked cells over the off-map margin.
+- **Units (2026-10-12):**
+  - `GroundShadow` puts a contact shadow under the hero, monsters and towers.
+  - The profile's `unit_tint` is applied as a `CanvasModulate` ("UnitLight")
+    on the 2D gameplay canvas. The HUD is a `CanvasLayer`, so it is
+    unaffected.
+- **Sprite pixel conversion (2026-10-12, user decision: "pixelate all of
+  them"):**
+  - All 252 character, gear, monster, tower, item and species sprites under
+    `assets/art/` are pixel art, converted by
+    `tools/asset-pipeline/hd2d/pixelate_sprites.py --batch`.
+  - Each output keeps its source's **exact dimensions**: the sprite is
+    converted at low resolution, then scaled back up with nearest-neighbour.
+    So frame slicing, gear overlays, tower layer stacking and every
+    texture-size-based fit work unchanged, and pixel edges stay crisp under
+    the default linear filtering.
+  - Sheets are converted frame by frame and share one palette.
+  - Pixel density per category is matched to on-screen size, about 1.4
+    screen px per sprite pixel.
+  - The painted originals are kept in `assets/source/painted/` (with a
+    `.gdignore`, so Godot never imports them). They are the batch's only
+    input, so re-tuning never pixelates twice.
+
