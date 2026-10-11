@@ -1,0 +1,55 @@
+[gd_resource type="Resource" script_class="Hd2dSceneryProfile" load_steps=13 format=3]
+
+[ext_resource type="Script" path="res://src/presentation/hd2d/hd2d_scenery_profile.gd" id="1_profile"]
+[ext_resource type="Texture2D" path="res://assets/art/hd2d/narrows_ground.png" id="2_narrows_ground"]
+[ext_resource type="Texture2D" path="res://assets/art/hd2d/narrows_lane.png" id="3_narrows_lane"]
+[ext_resource type="Texture2D" path="res://assets/art/hd2d/narrows_stone.png" id="4_narrows_stone"]
+[ext_resource type="Texture2D" path="res://assets/art/hd2d/narrows_card_scrub.png" id="5_narrows_card_scrub"]
+[ext_resource type="Texture2D" path="res://assets/art/hd2d/narrows_card_bush.png" id="6_narrows_card_bush"]
+[ext_resource type="Texture2D" path="res://assets/art/hd2d/narrows_card_reeds.png" id="7_narrows_card_reeds"]
+[ext_resource type="Texture2D" path="res://assets/art/hd2d/card_leaves_gold.png" id="8_card_leaves_gold"]
+[ext_resource type="Texture2D" path="res://assets/art/hd2d/narrows_mat_rock.png" id="9_narrows_mat_rock"]
+[ext_resource type="Texture2D" path="res://assets/art/hd2d/mat_bark.png" id="10_mat_bark"]
+[ext_resource type="Texture2D" path="res://assets/art/hd2d/mat_wood.png" id="11_mat_wood"]
+[ext_resource type="Texture2D" path="res://assets/art/hd2d/mat_ruin_bricks.png" id="12_mat_ruin_bricks"]
+
+[resource]
+script = ExtResource("1_profile")
+ground_grass = ExtResource("2_narrows_ground")
+ground_dirt = ExtResource("3_narrows_lane")
+ground_stone = ExtResource("4_narrows_stone")
+grass_cards = Array[Texture2D]([ExtResource("5_narrows_card_scrub")])
+bush_card = ExtResource("6_narrows_card_bush")
+lane_edge_cards = Array[Texture2D]([ExtResource("7_narrows_card_reeds"), ExtResource("7_narrows_card_reeds"), ExtResource("5_narrows_card_scrub")])
+leaf_cards = Array[Texture2D]([ExtResource("8_card_leaves_gold")])
+rock = ExtResource("9_narrows_mat_rock")
+bark = ExtResource("10_mat_bark")
+wood = ExtResource("11_mat_wood")
+ruin_bricks = ExtResource("12_mat_ruin_bricks")
+lane_shimmer = 1.0
+landmark_radius_cells = 1.1
+grass_per_cell = 6.0
+grass_inner_factor = 0.4
+grass_height_px = 30.0
+flowers_per_cell = 0.0
+bush_count = 16
+grass_tint = Color(1, 0.95, 0.85, 1)
+lane_edge_per_cell = 2.4
+lane_edge_height_px = 46.0
+broadleaf_count = 3
+pine_count = 0
+rock_count = 24
+fence_along_top = false
+ruin_tint = Color(1, 0.8, 0.7, 1)
+spire_count = 14
+spire_height_px = Vector2(80, 170)
+sun_color = Color(1, 0.82, 0.62, 1)
+sun_energy = 1.2
+sun_rotation_deg = Vector3(-48, -50, 0)
+ambient_color = Color(0.56, 0.5, 0.52, 1)
+ambient_energy = 0.45
+exposure = 0.86
+saturation = 0.9
+contrast = 1.14
+background_color = Color(0.24, 0.12, 0.08, 1)
+rng_seed = 59

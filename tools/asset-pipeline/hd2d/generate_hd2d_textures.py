@@ -81,34 +81,35 @@ LEAF_GOLD_PALETTE = [(46, 54, 22), (70, 80, 28), (100, 108, 34), (134, 138, 44),
 MOSS_PALETTE = [(58, 84, 40), (78, 106, 46), (100, 128, 54)]
 
 
-def ground_grass() -> Image.Image:
+def ground_grass(pal: list[tuple[int, int, int]] = GRASS_PALETTE, ticks: int = 900) -> Image.Image:
     v = 0.55 * tile_noise(128, 4) + 0.45 * tile_noise(128, 32, 2)
-    rgb = palette_map(dither(v, 0.22), GRASS_PALETTE)
+    rgb = palette_map(dither(v, 0.22), pal)
     # Blade ticks: 1x2 lit strokes over a dark root pixel -- the chunky
     # crosshatch speckle the reference ground reads with.
-    for _ in range(900):
+    for _ in range(ticks):
         x, y = (int(c) for c in RNG.integers(0, 128, 2))
-        lit = GRASS_PALETTE[int(RNG.integers(3, len(GRASS_PALETTE)))]
+        lit = pal[int(RNG.integers(3, len(pal)))]
         rgb[y, x] = lit
         rgb[(y + 1) % 128, x] = lit
-        rgb[(y + 2) % 128, x] = GRASS_PALETTE[0]
+        rgb[(y + 2) % 128, x] = pal[0]
     return Image.fromarray(rgb)
 
 
-def ground_dirt() -> Image.Image:
+def ground_dirt(pal: list[tuple[int, int, int]] = DIRT_PALETTE, pebbles: int = 90) -> Image.Image:
     v = 0.6 * tile_noise(128, 4) + 0.4 * tile_noise(128, 32, 2)
-    rgb = palette_map(dither(v, 0.14), DIRT_PALETTE)
+    rgb = palette_map(dither(v, 0.14), pal)
     # Pebbles: 2x2 light flecks with a dark underside.
-    for _ in range(90):
+    for _ in range(pebbles):
         x, y = RNG.integers(0, 128, 2)
-        rgb[y % 128, x % 128] = DIRT_PALETTE[-1]
-        rgb[y % 128, (x + 1) % 128] = DIRT_PALETTE[-1]
-        rgb[(y + 1) % 128, x % 128] = DIRT_PALETTE[1]
-        rgb[(y + 1) % 128, (x + 1) % 128] = DIRT_PALETTE[1]
+        rgb[y % 128, x % 128] = pal[-1]
+        rgb[y % 128, (x + 1) % 128] = pal[-1]
+        rgb[(y + 1) % 128, x % 128] = pal[1]
+        rgb[(y + 1) % 128, (x + 1) % 128] = pal[1]
     return Image.fromarray(rgb)
 
 
-def stone_flags() -> Image.Image:
+def stone_flags(pal: list[tuple[int, int, int]] = STONE_PALETTE, grout: tuple[int, int, int] = (44, 46, 42),
+                moss_pal: list[tuple[int, int, int]] = MOSS_PALETTE, moss_threshold: float = 0.62) -> Image.Image:
     """Mossy flagstones: irregular slabs (jittered grid) with dark grout."""
     size, n = 128, 4
     pts = [((i + 0.2 + RNG.random() * 0.6) * size / n, (j + 0.2 + RNG.random() * 0.6) * size / n)
@@ -128,10 +129,10 @@ def stone_flags() -> Image.Image:
     edge = (d2 - d1) < 2.5
     shade = np.array([RNG.random() for _ in pts])[owner]
     v = dither(0.25 + 0.5 * shade + 0.25 * tile_noise(size, 16, 2), 0.1)
-    rgb = palette_map(v, STONE_PALETTE)
-    moss = tile_noise(size, 4) > 0.62
-    rgb[moss] = palette_map(dither(tile_noise(size, 16, 2), 0.2), MOSS_PALETTE)[moss]
-    rgb[edge] = (44, 46, 42)
+    rgb = palette_map(v, pal)
+    moss = tile_noise(size, 4) > moss_threshold
+    rgb[moss] = palette_map(dither(tile_noise(size, 16, 2), 0.2), moss_pal)[moss]
+    rgb[edge] = grout
     return Image.fromarray(rgb)
 
 
@@ -139,7 +140,8 @@ def stone_flags() -> Image.Image:
 # Billboard cards (RGBA, alpha-scissored in-engine)
 # ---------------------------------------------------------------------------
 
-def grass_blades(w: int, h: int, count: int, width: tuple[float, float], seed_offset: int) -> Image.Image:
+def grass_blades(w: int, h: int, count: int, width: tuple[float, float], seed_offset: int,
+                 ramp: list[tuple[int, int, int]] | None = None) -> Image.Image:
     """A tuft of pointed blades, dark at the root, sunlit yellow-green at the tip.
 
     Thin (1-2 px) blades in large numbers read as the soft meadow grass of the
@@ -147,7 +149,7 @@ def grass_blades(w: int, h: int, count: int, width: tuple[float, float], seed_of
     """
     rng = np.random.default_rng(20261011 + seed_offset)
     img = np.zeros((h, w, 4), dtype=np.uint8)
-    ramp = [(30, 52, 24), (44, 74, 30), (64, 102, 38), (90, 132, 46), (124, 160, 56), (168, 192, 78), (206, 214, 112)]
+    ramp = ramp or [(30, 52, 24), (44, 74, 30), (64, 102, 38), (90, 132, 46), (124, 160, 56), (168, 192, 78), (206, 214, 112)]
     for _ in range(count):
         base_x = rng.normal(w / 2, w / 5)
         height = rng.uniform(0.4, 0.98) * h
@@ -212,7 +214,7 @@ def flowers() -> Image.Image:
     return Image.fromarray(img)
 
 
-def bush() -> Image.Image:
+def bush(pal: list[tuple[int, int, int]] | None = None) -> Image.Image:
     """Low shrub: wide dome of dark foliage, lit rim on top, flat-ish base."""
     w, h = 64, 44
     rng = np.random.default_rng(20261011 + 40)
@@ -230,12 +232,12 @@ def bush() -> Image.Image:
     light = 1 - yy / h
     v = np.clip(light * 0.75 + rng.random((h, w)) * 0.4 - 0.1, 0, 1)
     img = np.zeros((h, w, 4), dtype=np.uint8)
-    img[..., :3] = palette_map(v, [(22, 42, 22), (32, 58, 26), (46, 78, 30), (64, 100, 36), (92, 128, 44), (126, 154, 58)])
+    img[..., :3] = palette_map(v, pal or [(22, 42, 22), (32, 58, 26), (46, 78, 30), (64, 100, 36), (92, 128, 44), (126, 154, 58)])
     img[..., 3] = np.where(mask, 255, 0)
     return Image.fromarray(img)
 
 
-def pine() -> Image.Image:
+def pine(pal: list[tuple[int, int, int]] = LEAF_GOLD_PALETTE) -> Image.Image:
     """Conifer: stacked drooping tiers, sunlit on the left, dark core."""
     w, h = 72, 112
     rng = np.random.default_rng(20261011 + 50)
@@ -258,17 +260,17 @@ def pine() -> Image.Image:
                     continue
                 side = (x - w / 2) / max(half, 1)
                 v = np.clip(0.55 - side * 0.35 - k * 0.25 + rng.random() * 0.35, 0, 1)
-                img[y, x] = (*palette_map(np.array([v]), LEAF_GOLD_PALETTE)[0], 255)
+                img[y, x] = (*palette_map(np.array([v]), pal)[0], 255)
     return Image.fromarray(img)
 
 
-def rock() -> Image.Image:
-    """Tileable boulder surface: grey stone, cracks, moss on the lit top."""
+def rock(pal: list[tuple[int, int, int]] = STONE_PALETTE, crack: tuple[int, int, int] = (52, 54, 50)) -> Image.Image:
+    """Tileable boulder surface: stone, cracks."""
     size = 64
     v = dither(0.6 * tile_noise(size, 4) + 0.4 * tile_noise(size, 16, 2), 0.12)
-    rgb = palette_map(v, STONE_PALETTE)
+    rgb = palette_map(v, pal)
     cracks = np.abs(tile_noise(size, 8, 2) - 0.5) < 0.025
-    rgb[cracks] = (52, 54, 50)
+    rgb[cracks] = crack
     return Image.fromarray(rgb)
 
 
@@ -306,6 +308,100 @@ def ruin_bricks() -> Image.Image:
     return Image.fromarray(rgb)
 
 
+# ---------------------------------------------------------------------------
+# Per-mission sets (2026-10-11: Foothills / Hollow / Narrows HD-2D profiles)
+# ---------------------------------------------------------------------------
+
+def water() -> Image.Image:
+    """Tileable river surface: deep blue body, current streaks, white glints.
+
+    The ground shader scrolls and sparkles it (lane_shimmer); the texture only
+    carries the painted ripple pattern.
+    """
+    size = 128
+    pal = [(20, 42, 66), (26, 56, 84), (34, 72, 102), (46, 92, 122), (66, 120, 148), (110, 162, 186)]
+    xx = np.mgrid[0:size, 0:size][1].astype(float)
+    streaks = np.sin((xx / size) * math.tau * 3 + tile_noise(size, 4) * 4.0) * 0.5 + 0.5
+    v = dither(0.55 * tile_noise(size, 4) + 0.45 * streaks * tile_noise(size, 8, 2), 0.1)
+    rgb = palette_map(v, pal)
+    glint = (tile_noise(size, 16, 2) > 0.82) & (RNG.random((size, size)) < 0.08)
+    rgb[glint] = (214, 232, 238)
+    return Image.fromarray(rgb)
+
+
+def reeds() -> Image.Image:
+    """River reeds: tall thin olive stalks, a few brown cattail heads."""
+    w, h = 40, 72
+    rng = np.random.default_rng(20261011 + 60)
+    img = np.zeros((h, w, 4), dtype=np.uint8)
+    ramp = [(40, 54, 26), (58, 76, 32), (80, 98, 40), (108, 122, 52), (140, 146, 70)]
+    for _ in range(16):
+        x0 = rng.normal(w / 2, w / 6)
+        height = int(rng.uniform(0.55, 0.98) * h)
+        lean = rng.normal(0, 3.0)
+        for st in range(height):
+            t = st / max(height - 1, 1)
+            x = int(round(x0 + lean * t * t))
+            if 0 <= x < w:
+                img[h - 1 - st, x] = (*ramp[min(int(t * len(ramp)), len(ramp) - 1)], 255)
+        if rng.random() < 0.45:
+            top = h - height
+            x = int(round(x0 + lean))
+            for y in range(max(top, 0), min(top + 6, h)):
+                for dx, c in ((0, (92, 58, 34)), (1, (120, 78, 44))):
+                    if 0 <= x + dx < w:
+                        img[y, x + dx] = (*c, 255)
+    return Image.fromarray(img)
+
+
+FOOT_GRASS = [(96, 78, 40), (122, 100, 50), (146, 122, 62), (168, 142, 74), (188, 162, 88), (208, 184, 108)]
+FOOT_DIRT = [(150, 132, 104), (172, 154, 124), (192, 174, 144), (210, 194, 164), (224, 210, 182), (236, 224, 200)]
+FOOT_CARD = [(84, 66, 32), (110, 88, 40), (140, 114, 52), (168, 140, 66), (194, 166, 84), (218, 192, 110), (236, 216, 140)]
+FOOT_STONE = [(96, 88, 76), (122, 112, 96), (148, 136, 116), (172, 160, 138), (194, 182, 160)]
+FOOT_PINE = [(30, 46, 30), (42, 62, 36), (58, 82, 42), (80, 104, 50), (108, 128, 60), (142, 152, 76)]
+
+HOLLOW_GROUND = [(22, 26, 32), (30, 36, 42), (38, 46, 52), (48, 58, 62), (58, 72, 72), (72, 90, 86)]
+HOLLOW_LANE = [(38, 42, 52), (50, 56, 66), (62, 68, 80), (76, 82, 94), (92, 98, 112)]
+HOLLOW_MOSS = [(34, 70, 82), (46, 96, 112), (70, 132, 150)]
+HOLLOW_CARD = [(16, 30, 32), (22, 44, 46), (30, 62, 62), (42, 84, 80), (62, 112, 102), (92, 146, 130), (130, 182, 164)]
+HOLLOW_LEAF = [(14, 24, 28), (20, 36, 40), (28, 50, 54), (38, 68, 70), (54, 92, 90), (78, 122, 116)]
+HOLLOW_ROCK = [(34, 38, 46), (46, 50, 60), (60, 64, 76), (76, 80, 94), (94, 98, 114)]
+
+NARROWS_GROUND = [(92, 46, 30), (116, 60, 38), (138, 76, 46), (158, 92, 56), (178, 110, 68), (196, 130, 84)]
+NARROWS_CARD = [(52, 44, 22), (72, 62, 28), (96, 82, 36), (122, 104, 46), (148, 126, 60), (174, 150, 80), (198, 176, 104)]
+NARROWS_ROCK = [(86, 44, 30), (110, 58, 38), (134, 74, 48), (156, 92, 60), (176, 112, 76)]
+NARROWS_STONE = [(112, 80, 62), (138, 102, 78), (160, 122, 94), (182, 144, 112), (200, 166, 132)]
+NARROWS_SHRUB = [(40, 40, 20), (56, 56, 26), (74, 72, 32), (96, 92, 40), (120, 112, 52), (146, 136, 68)]
+
+
+def mission_sets() -> None:
+    # The Foothills: dry golden grassland, sandy road, pale stone.
+    save(ground_grass(FOOT_GRASS, 700), "foothills_ground.png")
+    save(ground_dirt(FOOT_DIRT, 140), "foothills_lane.png")
+    save(stone_flags(FOOT_STONE, (70, 62, 52), [(120, 112, 60), (140, 130, 70), (160, 150, 84)], 0.7), "foothills_stone.png")
+    save(grass_blades(64, 64, 60, (1.0, 2.0), 20, FOOT_CARD), "foothills_card_grass.png")
+    save(grass_blades(48, 30, 30, (1.0, 2.0), 21, FOOT_CARD), "foothills_card_grass_short.png")
+    save(pine(FOOT_PINE), "foothills_card_pine.png")
+    save(leaf_clump(22, LEAF_GOLD_PALETTE), "foothills_card_leaves.png")
+    save(rock(FOOT_STONE, (78, 70, 58)), "foothills_mat_rock.png")
+    # The Hollow: dark slate floor with teal moss, cobbled lane; crystals are 3D.
+    save(ground_grass(HOLLOW_GROUND, 500), "hollow_ground.png")
+    save(stone_flags(HOLLOW_LANE, (16, 18, 24), HOLLOW_MOSS, 0.74), "hollow_lane.png")
+    save(stone_flags(HOLLOW_ROCK, (14, 16, 20), HOLLOW_MOSS, 0.6), "hollow_stone.png")
+    save(grass_blades(64, 64, 46, (1.0, 2.4), 30, HOLLOW_CARD), "hollow_card_fern.png")
+    save(leaf_clump(31, HOLLOW_LEAF), "hollow_card_leaves.png")
+    save(bush(HOLLOW_LEAF), "hollow_card_bush.png")
+    save(rock(HOLLOW_ROCK, (18, 20, 26)), "hollow_mat_rock.png")
+    # The Narrows: red canyon earth, river lane, reeds, red rock spires.
+    save(ground_dirt(NARROWS_GROUND, 160), "narrows_ground.png")
+    save(water(), "narrows_lane.png")
+    save(stone_flags(NARROWS_STONE, (70, 42, 30), [(96, 92, 40), (120, 112, 52), (146, 136, 68)], 0.72), "narrows_stone.png")
+    save(grass_blades(48, 40, 26, (1.0, 2.0), 40, NARROWS_CARD), "narrows_card_scrub.png")
+    save(reeds(), "narrows_card_reeds.png")
+    save(bush(NARROWS_SHRUB), "narrows_card_bush.png")
+    save(rock(NARROWS_ROCK, (64, 32, 22)), "narrows_mat_rock.png")
+
+
 def main() -> None:
     os.makedirs(OUT_DIR, exist_ok=True)
     save(ground_grass(), "ground_grass.png")
@@ -323,6 +419,7 @@ def main() -> None:
     save(bark(), "mat_bark.png")
     save(wood_plank(), "mat_wood.png")
     save(ruin_bricks(), "mat_ruin_bricks.png")
+    mission_sets()
 
 
 if __name__ == "__main__":

@@ -15,6 +15,8 @@ uniform float z_stretch = 1.0;
 uniform float texel_world = 3.0;        // 2D map px per texture pixel
 uniform float stone_scale = 2.5;        // flagstone slabs smaller than the ground pixel grid
 uniform float edge_jitter = 0.22;
+uniform float lane_shimmer = 0.0;
+uniform float lane_scale = 1.0;        // > 1 = smaller lane texture features (cobbles)      // > 0: scroll + sparkle the lane (river)
 
 varying vec2 map_pos;
 
@@ -32,7 +34,11 @@ void fragment() {
 	vec2 snapped = (px + 0.5) * texel_world;
 	vec2 uv = snapped / (128.0 * texel_world);
 	vec3 grass = texture(grass_tex, uv).rgb;
-	vec3 dirt = texture(dirt_tex, uv).rgb;
+	// River lanes flow: offset in whole texture pixels so the scroll stays pixel-stepped.
+	vec2 flow = floor(vec2(TIME * 6.0, TIME * 2.0) * lane_shimmer) / 128.0;
+	vec3 dirt = texture(dirt_tex, uv * lane_scale + flow).rgb;
+	float glint = step(0.9985, hash(px + floor(TIME * 3.0))) * step(0.001, lane_shimmer);
+	dirt = mix(dirt, vec3(0.86, 0.93, 0.96), glint);
 	vec3 stone = texture(stone_tex, uv * stone_scale).rgb;
 	vec2 muv = (snapped - mask_origin) / mask_size;
 	// Outside the mask: plain grass (repeat_disable alone would smear the edge texels outward).

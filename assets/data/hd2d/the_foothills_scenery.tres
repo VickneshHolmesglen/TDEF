@@ -1,0 +1,57 @@
+[gd_resource type="Resource" script_class="Hd2dSceneryProfile" load_steps=16 format=3]
+
+[ext_resource type="Script" path="res://src/presentation/hd2d/hd2d_scenery_profile.gd" id="1_profile"]
+[ext_resource type="Texture2D" path="res://assets/art/hd2d/foothills_ground.png" id="2_foothills_ground"]
+[ext_resource type="Texture2D" path="res://assets/art/hd2d/foothills_lane.png" id="3_foothills_lane"]
+[ext_resource type="Texture2D" path="res://assets/art/hd2d/foothills_stone.png" id="4_foothills_stone"]
+[ext_resource type="Texture2D" path="res://assets/art/hd2d/foothills_card_grass.png" id="5_foothills_card_grass"]
+[ext_resource type="Texture2D" path="res://assets/art/hd2d/foothills_card_grass_short.png" id="6_foothills_card_grass_short"]
+[ext_resource type="Texture2D" path="res://assets/art/hd2d/card_flowers.png" id="7_card_flowers"]
+[ext_resource type="Texture2D" path="res://assets/art/hd2d/card_bush.png" id="8_card_bush"]
+[ext_resource type="Texture2D" path="res://assets/art/hd2d/foothills_card_leaves.png" id="9_foothills_card_leaves"]
+[ext_resource type="Texture2D" path="res://assets/art/hd2d/card_leaves_gold.png" id="10_card_leaves_gold"]
+[ext_resource type="Texture2D" path="res://assets/art/hd2d/foothills_card_pine.png" id="11_foothills_card_pine"]
+[ext_resource type="Texture2D" path="res://assets/art/hd2d/foothills_mat_rock.png" id="12_foothills_mat_rock"]
+[ext_resource type="Texture2D" path="res://assets/art/hd2d/mat_bark.png" id="13_mat_bark"]
+[ext_resource type="Texture2D" path="res://assets/art/hd2d/mat_wood.png" id="14_mat_wood"]
+[ext_resource type="Texture2D" path="res://assets/art/hd2d/mat_ruin_bricks.png" id="15_mat_ruin_bricks"]
+
+[resource]
+script = ExtResource("1_profile")
+ground_grass = ExtResource("2_foothills_ground")
+ground_dirt = ExtResource("3_foothills_lane")
+ground_stone = ExtResource("4_foothills_stone")
+grass_cards = Array[Texture2D]([ExtResource("5_foothills_card_grass"), ExtResource("5_foothills_card_grass"), ExtResource("6_foothills_card_grass_short")])
+flower_card = ExtResource("7_card_flowers")
+bush_card = ExtResource("8_card_bush")
+lane_edge_cards = Array[Texture2D]([ExtResource("6_foothills_card_grass_short")])
+leaf_cards = Array[Texture2D]([ExtResource("9_foothills_card_leaves"), ExtResource("10_card_leaves_gold")])
+pine_card = ExtResource("11_foothills_card_pine")
+rock = ExtResource("12_foothills_mat_rock")
+bark = ExtResource("13_mat_bark")
+wood = ExtResource("14_mat_wood")
+ruin_bricks = ExtResource("15_mat_ruin_bricks")
+grass_per_cell = 12.0
+grass_inner_factor = 0.45
+grass_height_px = 42.0
+flowers_per_cell = 0.6
+bush_count = 14
+grass_tint = Color(1, 0.96, 0.86, 1)
+lane_edge_per_cell = 1.2
+lane_edge_height_px = 22.0
+broadleaf_count = 5
+pine_count = 9
+rock_count = 22
+fence_along_top = false
+ruin_tint = Color(1, 0.94, 0.84, 1)
+spire_count = 6
+spire_height_px = Vector2(50, 110)
+sun_color = Color(1, 0.88, 0.7, 1)
+sun_energy = 1.15
+ambient_color = Color(0.56, 0.58, 0.66, 1)
+ambient_energy = 0.5
+exposure = 0.86
+saturation = 0.85
+contrast = 1.12
+background_color = Color(0.3, 0.26, 0.16, 1)
+rng_seed = 31

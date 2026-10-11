@@ -1,0 +1,54 @@
+[gd_resource type="Resource" script_class="Hd2dSceneryProfile" load_steps=12 format=3]
+
+[ext_resource type="Script" path="res://src/presentation/hd2d/hd2d_scenery_profile.gd" id="1_profile"]
+[ext_resource type="Texture2D" path="res://assets/art/hd2d/hollow_ground.png" id="2_hollow_ground"]
+[ext_resource type="Texture2D" path="res://assets/art/hd2d/hollow_lane.png" id="3_hollow_lane"]
+[ext_resource type="Texture2D" path="res://assets/art/hd2d/hollow_stone.png" id="4_hollow_stone"]
+[ext_resource type="Texture2D" path="res://assets/art/hd2d/hollow_card_fern.png" id="5_hollow_card_fern"]
+[ext_resource type="Texture2D" path="res://assets/art/hd2d/hollow_card_bush.png" id="6_hollow_card_bush"]
+[ext_resource type="Texture2D" path="res://assets/art/hd2d/hollow_card_leaves.png" id="7_hollow_card_leaves"]
+[ext_resource type="Texture2D" path="res://assets/art/hd2d/hollow_mat_rock.png" id="8_hollow_mat_rock"]
+[ext_resource type="Texture2D" path="res://assets/art/hd2d/mat_bark.png" id="9_mat_bark"]
+[ext_resource type="Texture2D" path="res://assets/art/hd2d/mat_wood.png" id="10_mat_wood"]
+[ext_resource type="Texture2D" path="res://assets/art/hd2d/mat_ruin_bricks.png" id="11_mat_ruin_bricks"]
+
+[resource]
+script = ExtResource("1_profile")
+ground_grass = ExtResource("2_hollow_ground")
+ground_dirt = ExtResource("3_hollow_lane")
+ground_stone = ExtResource("4_hollow_stone")
+grass_cards = Array[Texture2D]([ExtResource("5_hollow_card_fern")])
+bush_card = ExtResource("6_hollow_card_bush")
+leaf_cards = Array[Texture2D]([ExtResource("7_hollow_card_leaves")])
+rock = ExtResource("8_hollow_mat_rock")
+bark = ExtResource("9_mat_bark")
+wood = ExtResource("10_mat_wood")
+ruin_bricks = ExtResource("11_mat_ruin_bricks")
+lane_scale = 2.6
+grass_per_cell = 7.0
+grass_inner_factor = 0.35
+grass_height_px = 38.0
+grass_sway_px = 1.5
+flowers_per_cell = 0.0
+bush_count = 18
+grass_tint = Color(0.9, 1, 1, 1)
+broadleaf_count = 7
+pine_count = 0
+rock_count = 26
+fence_along_top = false
+ruin_tint = Color(0.55, 0.6, 0.72, 1)
+foliage_tint = Color(0.85, 0.95, 1, 1)
+spire_count = 8
+spire_height_px = Vector2(60, 140)
+crystal_clusters = 9
+crystal_color = Color(0.42, 0.72, 1, 1)
+sun_color = Color(0.62, 0.72, 1, 1)
+sun_energy = 0.55
+sun_rotation_deg = Vector3(-60, 30, 0)
+ambient_color = Color(0.34, 0.42, 0.56, 1)
+ambient_energy = 0.7
+exposure = 0.95
+saturation = 0.95
+contrast = 1.1
+background_color = Color(0.05, 0.06, 0.09, 1)
+rng_seed = 47

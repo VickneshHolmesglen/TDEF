@@ -14,6 +14,10 @@ extends Resource
 @export var ground_texel_px: float = 3.0
 ## Radius, in cells, of the flagstone patch under the spawn and goal.
 @export var landmark_radius_cells: float = 1.25
+## > 0 scrolls and sparkles the lane texture (a river lane, The Narrows).
+@export var lane_shimmer: float = 0.0
+## Lane texture repeat factor (> 1 shrinks cobbles/slabs on the road).
+@export var lane_scale: float = 1.0
 
 @export_group("Grass")
 @export var grass_cards: Array[Texture2D] = []
@@ -28,6 +32,12 @@ extends Resource
 @export var flowers_per_cell: float = 1.2
 @export var bush_card: Texture2D
 @export var bush_count: int = 18
+## Per-instance colour multiplier for grass tufts.
+@export var grass_tint: Color = Color(1.04, 1.0, 0.82)
+## Cards scattered tight along the lane banks (reeds, dry tufts); empty = none.
+@export var lane_edge_cards: Array[Texture2D] = []
+@export var lane_edge_per_cell: float = 0.0
+@export var lane_edge_height_px: float = 40.0
 
 @export_group("Trees and props")
 @export var leaf_cards: Array[Texture2D] = []
@@ -41,6 +51,15 @@ extends Resource
 @export var rock_count: int = 14
 @export var fence_along_top: bool = true
 @export var ruins_at_landmarks: bool = true
+@export var ruin_tint: Color = Color.WHITE
+## Multiplier on tree leaf clumps and pines.
+@export var foliage_tint: Color = Color.WHITE
+## Tall rock spires on the blocked border / off-map (uses `rock`).
+@export var spire_count: int = 0
+@export var spire_height_px: Vector2 = Vector2(70.0, 150.0)
+## Emissive crystal clusters on the blocked border / off-map, each with a light.
+@export var crystal_clusters: int = 0
+@export var crystal_color: Color = Color(0.45, 0.75, 1.0)
 
 @export_group("Light and camera")
 ## Camera tilt below horizontal. The ground is stretched by 1/sin(pitch) so

@@ -83,6 +83,10 @@ const PLACEMENT_CONFIRM_DURATION: float = 0.3  ## seconds, per the GDD's own "~0
 ## ADR-0040's Migration Plan.
 const ENABLE_3D_PRESENTATION_MODE: bool = false
 
+## ADR-0042: per-mission HD-2D scenery profiles, `<mission_id>_scenery.tres`.
+const SCENERY_PROFILE_DIR: String = "res://assets/data/hd2d/"
+var _scenery: Hd2dScenery
+
 @onready var _mission_select_screen: Control = $MissionSelectLayer/MissionSelectScreen
 @onready var _gameplay_root: Node2D = $GameplayRoot
 ## Toggled alongside _gameplay_root: a CanvasLayer does NOT inherit visibility
@@ -261,6 +265,38 @@ func _on_grid_initialized(cols: int, rows: int, cell_size: float) -> void:
 	var fit: float = minf(play_area.x / map_size.x, play_area.y / map_size.y)
 	_camera.position = map_size / 2.0
 	_camera.zoom = Vector2(fit, fit)
+	_build_scenery(cols, rows, cell_size)
+
+
+## ADR-0042 HD-2D scenery: 3D ground/grass/trees/props for the current
+## mission, rendered under the unchanged 2D gameplay canvas. Looks up
+## SCENERY_PROFILE_DIR/<mission_id>_scenery.tres; with no profile the flat 2D
+## GridVisual terrain stays. Rebuilt on every grid_initialized (retry or a
+## different mission) and kept inactive until mission_launched reveals the
+## gameplay subtree, so it never renders behind the Mission Select screen.
+func _build_scenery(cols: int, rows: int, cell_size: float) -> void:
+	if ENABLE_3D_PRESENTATION_MODE:
+		return
+	var path: String = SCENERY_PROFILE_DIR + "%s_scenery.tres" % GMissionSelect.get_current_mission_id()
+	var profile: Hd2dSceneryProfile = load(path) as Hd2dSceneryProfile if ResourceLoader.exists(path) else null
+	if profile == null:
+		if _scenery != null:
+			_scenery.set_active(false)
+		_grid_visual.visible = true
+		return
+	if _scenery == null:
+		_scenery = Hd2dScenery.new()
+		_scenery.name = "Hd2dScenery"
+		$PresentationRoot3D.add_child(_scenery)
+	_scenery.profile = profile
+	var cells: Dictionary = {}
+	for row: int in range(rows):
+		for col: int in range(cols):
+			cells[Vector2i(col, row)] = GGrid.get_cell_type(Vector2i(col, row))
+	_scenery.build(cols, rows, cell_size, cells)
+	_scenery.follow_camera(_camera)
+	_scenery.set_active(_gameplay_root.visible)
+	_grid_visual.visible = false
 
 
 ## Swaps from the Mission Select screen to the live gameplay assembly.
@@ -277,6 +313,8 @@ func _on_mission_launched(_mission_id: String, _modifiers: PackedStringArray, _d
 	_hud.visible = true
 	_gameplay_root.set_process(true)
 	_gameplay_root.set_physics_process(true)
+	if _scenery != null and not _grid_visual.visible:
+		_scenery.set_active(true)
 
 	var spawn_cells: Array[Vector2i] = GGrid.get_spawn_cells()
 	_hero.global_position = GGrid.cell_to_world(spawn_cells[0]) if not spawn_cells.is_empty() else Vector2.ZERO

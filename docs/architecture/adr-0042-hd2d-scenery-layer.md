@@ -78,6 +78,21 @@ every overlay stay exactly as they are.
   - Left on the default layer 1, the scenery camera dropped its own sun, and
     only ambient light reached the ground. Raising light energy made no
     difference.
-- **Not yet done:**
-  - `MissionScene.tscn` (the other mission scene) still uses the 2D terrain.
-    Wiring it is the same `_build_scenery` call plus one profile per mission.
+- **Per-mission profiles (added 2026-10-11, same day):**
+  - `MissionScene` builds the scenery on `grid_initialized` from
+    `assets/data/hd2d/<mission_id>_scenery.tres`. It stays inactive behind the
+    Mission Select screen and turns on at `mission_launched`.
+  - With no profile, the flat 2D `GridVisual` remains.
+  - Profiles exist for The Gap, The Foothills, The Hollow and The Narrows.
+- **Profile features beyond the base layer:**
+  - `lane_shimmer`: a scrolling, glinting river lane (The Narrows).
+  - `lane_scale`: cobble size on the road.
+  - `lane_edge_cards`: reeds or dry tufts along the banks.
+  - `spire_count`: rock spires.
+  - `crystal_clusters`: emissive crystal clusters, each with its own light.
+  - Grass, foliage and ruin tints.
+- **Readability rule:**
+  - Tall props (trees, spires) are only placed where their on-screen height
+    (`cos(pitch)`) clears every lane and landmark cell (`_clear_above`).
+  - Mission maps fill the screen, so border dressing prefers the in-grid
+    blocked cells over the off-map margin.

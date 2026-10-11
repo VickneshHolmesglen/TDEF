@@ -74,12 +74,25 @@ func build(cols: int, rows: int, cell_size: float, cells: Dictionary) -> void:
 	if profile.ruins_at_landmarks:
 		_build_ruins()
 	_build_rocks()
+	# Mission-specific dressing (2026-10-11). Built last so the shared scatter
+	# above keeps its RNG sequence, and with it The Gap's exact layout.
+	_build_lane_edges()
+	_build_spires()
+	_build_crystals()
 
 
 ## Keeps the scenery camera locked to `camera` (call once after build()).
 func follow_camera(camera: Camera2D) -> void:
 	_follow = camera
 	_sync_camera()
+
+
+## Shows/hides the layer and hands the viewport camera to it (or releases it).
+## MissionScene keeps the scenery inactive behind the mission-select screen.
+func set_active(active: bool) -> void:
+	visible = active
+	if _camera != null:
+		_camera.current = active
 
 
 ## 2D map position -> scenery world position (ground stretched, see class doc).
@@ -233,6 +246,8 @@ func _build_ground() -> void:
 	mat.set_shader_parameter(&"mask_size", Vector2(_cols + MARGIN_CELLS * 2, _rows + MARGIN_CELLS * 2) * _cell)
 	mat.set_shader_parameter(&"z_stretch", _z_stretch)
 	mat.set_shader_parameter(&"texel_world", profile.ground_texel_px)
+	mat.set_shader_parameter(&"lane_shimmer", profile.lane_shimmer)
+	mat.set_shader_parameter(&"lane_scale", profile.lane_scale)
 
 	var map := Vector2(_cols, _rows) * _cell
 	var plane := PlaneMesh.new()
@@ -261,6 +276,19 @@ static func cross_card_mesh(w: float, h: float) -> ArrayMesh:
 		for i: int in [0, 1, 2, 0, 2, 3]:
 			st.set_uv(uvs[i])
 			st.add_vertex(quad[i])
+	return st.commit()
+
+
+## One upright quad facing the scenery camera (which never yaws), pivot at
+## the bottom centre. For wide cards a crossed pair would show as an X.
+static func facing_card_mesh(w: float, h: float) -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var quad: Array[Vector3] = [Vector3(-w * 0.5, h, 0), Vector3(w * 0.5, h, 0), Vector3(w * 0.5, 0, 0), Vector3(-w * 0.5, 0, 0)]
+	var uvs: Array[Vector2] = [Vector2(0, 0), Vector2(1, 0), Vector2(1, 1), Vector2(0, 1)]
+	for i: int in [0, 1, 2, 0, 2, 3]:
+		st.set_uv(uvs[i])
+		st.add_vertex(quad[i])
 	return st.commit()
 
 
@@ -310,7 +338,7 @@ func _build_grass() -> void:
 		var b := Basis(Vector3.UP, _rng.randf() * TAU).scaled(Vector3(s, s * _rng.randf_range(0.85, 1.2), s))
 		per_card[k]["x"].append(Transform3D(b, to_world(p)))
 		var v: float = _rng.randf_range(0.66, 0.95)
-		per_card[k]["c"].append(Color(v * 1.04, v, v * 0.82))
+		per_card[k]["c"].append(Color(v * profile.grass_tint.r, v * profile.grass_tint.g, v * profile.grass_tint.b))
 	for k in cards.size():
 		var tex: Texture2D = cards[k]
 		var h: float = profile.grass_height_px * float(tex.get_height()) / 64.0
@@ -350,11 +378,12 @@ func _build_bushes() -> void:
 		if not _is_open_ground(p):
 			continue
 		var s: float = _rng.randf_range(0.8, 1.3)
-		xforms.append(Transform3D(Basis(Vector3.UP, _rng.randf() * TAU).scaled(Vector3(s, s, s)), to_world(p)))
+		_rng.randf()  # was the card's yaw; still drawn so later scatter keeps its RNG sequence
+		xforms.append(Transform3D(Basis.IDENTITY.scaled(Vector3(s, s, s)), to_world(p)))
 		var v: float = _rng.randf_range(0.8, 1.0)
 		colors.append(Color(v, v, v))
 		placed += 1
-	_scatter("Bushes", cross_card_mesh(64.0, 44.0), _card_material(profile.bush_card, 1.0), xforms, colors)
+	_scatter("Bushes", facing_card_mesh(64.0, 44.0), _card_material(profile.bush_card, 1.0), xforms, colors)
 
 
 # --- Trees ----------------------------------------------------------------
@@ -372,7 +401,7 @@ func _tree_spots(count: int) -> Array[Vector2]:
 			p = _cell_center(c) + Vector2(_rng.randf_range(-12, 12), _rng.randf_range(-12, 12))
 		else:
 			p = Vector2(_rng.randf_range(-_cell, (_cols + 1) * _cell), _rng.randf_range(_rows * _cell + 10.0, (_rows + 1.5) * _cell))
-		if not _is_open_ground(p):
+		if not _is_open_ground(p) or not _clear_above(p, 150.0, _cell * 0.5):
 			continue
 		var crowded := false
 		for q: Vector2 in spots:
@@ -415,7 +444,7 @@ func _billboard_material(tex: Texture2D, shade: float) -> StandardMaterial3D:
 		return _material_cache[key]
 	var m := StandardMaterial3D.new()
 	m.albedo_texture = tex
-	m.albedo_color = Color(shade, shade, shade * 0.92)
+	m.albedo_color = Color(shade, shade, shade * 0.92) * profile.foliage_tint
 	m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
 	m.alpha_scissor_threshold = 0.5
@@ -507,7 +536,8 @@ func _build_fence() -> void:
 
 ## Broken brick pillars flanking each landmark, plus fallen blocks.
 func _build_ruins() -> void:
-	var brick: StandardMaterial3D = _std_material(profile.ruin_bricks, 0.035)
+	var brick: StandardMaterial3D = _std_material(profile.ruin_bricks, 0.035).duplicate()
+	brick.albedo_color = profile.ruin_tint
 	for lm: Vector2i in _landmarks:
 		var centre: Vector2 = _cell_center(lm)
 		var inward := Vector2.ZERO
@@ -557,6 +587,165 @@ func _build_rocks() -> void:
 		mi.rotation_degrees = Vector3(_rng.randf_range(-12, 12), _rng.randf() * 360.0, _rng.randf_range(-12, 12))
 		mi.scale = Vector3(_rng.randf_range(1.0, 1.5), 1.0, _rng.randf_range(0.9, 1.3))
 		placed += 1
+
+
+# --- Mission-specific dressing ---------------------------------------------
+
+## Distance from `p` to the nearest lane cell's rectangle (0 inside one).
+func _lane_distance(p: Vector2) -> float:
+	var c := Vector2i(floori(p.x / _cell), floori(p.y / _cell))
+	var best: float = INF
+	for dy in range(-1, 2):
+		for dx in range(-1, 2):
+			var n := c + Vector2i(dx, dy)
+			if not _lane.has(n):
+				continue
+			var r := Rect2(Vector2(n) * _cell, Vector2(_cell, _cell))
+			var q := Vector2(clampf(p.x, r.position.x, r.end.x), clampf(p.y, r.position.y, r.end.y))
+			best = minf(best, p.distance_to(q))
+	return best
+
+
+## Reeds / dry tufts hugging the lane banks (Narrows river, Foothills road).
+func _build_lane_edges() -> void:
+	if profile.lane_edge_cards.is_empty() or profile.lane_edge_per_cell <= 0.0:
+		return
+	var cards: Array[Texture2D] = profile.lane_edge_cards
+	var per_card: Array = []
+	for i in cards.size():
+		per_card.append({"x": [] as Array[Transform3D], "c": [] as Array[Color]})
+	var tries: int = int(_lane.size() * profile.lane_edge_per_cell * 3.0)
+	for i in tries:
+		var lane_cells: Array = _lane.keys()
+		var lc: Vector2i = lane_cells[_rng.randi() % lane_cells.size()]
+		var p: Vector2 = _cell_center(lc) + Vector2(_rng.randf_range(-0.85, 0.85), _rng.randf_range(-0.85, 0.85)) * _cell
+		var d: float = _lane_distance(p)
+		if d < 2.0 or d > _cell * 0.32:
+			continue
+		var on_landmark := false
+		for lm: Vector2i in _landmarks:
+			if p.distance_to(_cell_center(lm)) < _cell * (profile.landmark_radius_cells + 0.1):
+				on_landmark = true
+		if on_landmark:
+			continue
+		var k: int = _rng.randi() % cards.size()
+		var s: float = _rng.randf_range(0.8, 1.25)
+		per_card[k]["x"].append(Transform3D(Basis(Vector3.UP, _rng.randf() * TAU).scaled(Vector3(s, s, s)), to_world(p)))
+		var v: float = _rng.randf_range(0.75, 1.0)
+		per_card[k]["c"].append(Color(v, v, v))
+	for k in cards.size():
+		var tex: Texture2D = cards[k]
+		var h: float = profile.lane_edge_height_px
+		var w: float = h * float(tex.get_width()) / float(tex.get_height())
+		_scatter("LaneEdge%d" % k, cross_card_mesh(w, h), _card_material(tex, profile.grass_sway_px), per_card[k]["x"], per_card[k]["c"])
+
+
+## True when an upright prop `height` tall at `p` would not cover any lane or
+## landmark cell on screen. The camera foreshortens height by cos(pitch) and
+## draws it straight up the screen, i.e. toward smaller 2D y.
+func _clear_above(p: Vector2, height: float, half_width: float) -> bool:
+	var screen_h: float = height * cos(deg_to_rad(profile.camera_pitch_deg))
+	var y: float = p.y
+	while y >= p.y - screen_h:
+		for x: float in [p.x - half_width, p.x, p.x + half_width]:
+			var c := Vector2i(floori(x / _cell), floori(y / _cell))
+			if _lane.has(c) or _landmarks.has(c):
+				return false
+		y -= _cell * 0.25
+	return true
+
+
+## A spot on the blocked border or just off the map (never the field);
+## Vector2(INF, INF) when none is found.
+func _border_spot(margin_px: float) -> Vector2:
+	# Mission maps fill the screen exactly, so off-map dressing is mostly out
+	# of view: try the in-grid blocked cells first, then the margin.
+	for attempt in 20:
+		if _blocked.is_empty():
+			break
+		var c0: Vector2i = _blocked[_rng.randi() % _blocked.size()]
+		var q: Vector2 = _cell_center(c0) + Vector2(_rng.randf_range(-20, 20), _rng.randf_range(-20, 20))
+		if _is_open_ground(q):
+			return q
+	for attempt in 40:
+		var p: Vector2 = _random_point(margin_px)
+		var c := Vector2i(floori(p.x / _cell), floori(p.y / _cell))
+		if _in_grid(p) and not _blocked.has(c):
+			continue
+		if _is_open_ground(p):
+			return p
+	return Vector2(INF, INF)
+
+
+## Tall eroded rock spires (Narrows canyon walls, Foothills crags).
+func _build_spires() -> void:
+	if profile.spire_count <= 0 or profile.rock == null:
+		return
+	var mat: StandardMaterial3D = _std_material(profile.rock, 0.05)
+	for i in profile.spire_count:
+		var p: Vector2 = _border_spot(_cell * 1.5)
+		if p.x == INF:
+			continue
+		var h: float = _rng.randf_range(profile.spire_height_px.x, profile.spire_height_px.y)
+		var r: float = _rng.randf_range(16.0, 28.0)
+		if not _clear_above(p, h, r):
+			continue
+		var cyl := CylinderMesh.new()
+		cyl.bottom_radius = r
+		cyl.top_radius = r * _rng.randf_range(0.45, 0.75)
+		cyl.height = h
+		cyl.radial_segments = 6
+		cyl.rings = 2
+		var mi := MeshInstance3D.new()
+		mi.name = "Spire"
+		mi.mesh = cyl
+		mi.material_override = mat
+		_own(mi)
+		mi.position = to_world(p, h * 0.5)
+		mi.rotation_degrees = Vector3(_rng.randf_range(-5, 5), _rng.randf() * 360.0, _rng.randf_range(-5, 5))
+		# Rubble shelf at the foot so a spire never stands on a hard edge.
+		_box(Vector3(r * 1.6, 8, r * 1.4), to_world(p, 4.0), mat, Vector3(0, _rng.randf() * 90.0, 0))
+
+
+## Glowing crystal clusters (The Hollow): emissive prisms plus one small light
+## per cluster, so the dark floor around them picks up their colour.
+func _build_crystals() -> void:
+	if profile.crystal_clusters <= 0:
+		return
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = profile.crystal_color
+	mat.emission_enabled = true
+	mat.emission = profile.crystal_color
+	mat.emission_energy_multiplier = 1.6
+	mat.roughness = 0.25
+	for i in profile.crystal_clusters:
+		var centre: Vector2 = _border_spot(_cell)
+		if centre.x == INF:
+			continue
+		for j in _rng.randi_range(3, 6):
+			var p: Vector2 = centre + Vector2(_rng.randf_range(-14, 14), _rng.randf_range(-12, 12))
+			var prism := CylinderMesh.new()
+			prism.bottom_radius = _rng.randf_range(4.0, 8.0)
+			prism.top_radius = 0.0
+			prism.height = _rng.randf_range(18.0, 46.0)
+			prism.radial_segments = 5
+			prism.rings = 1
+			var mi := MeshInstance3D.new()
+			mi.name = "Crystal"
+			mi.mesh = prism
+			mi.material_override = mat
+			_own(mi)
+			mi.position = to_world(p, prism.height * 0.4)
+			mi.rotation_degrees = Vector3(_rng.randf_range(-22, 22), _rng.randf() * 360.0, _rng.randf_range(-22, 22))
+		var glow := OmniLight3D.new()
+		glow.name = "CrystalGlow"
+		glow.light_color = profile.crystal_color
+		glow.light_energy = 1.4
+		glow.omni_range = 110.0
+		glow.light_cull_mask = RENDER_LAYER
+		glow.layers = RENDER_LAYER  # see the sun's comment: lights are camera-culled by layers
+		add_child(glow)
+		glow.position = to_world(centre, 30.0)
 
 
 func _own(node: VisualInstance3D) -> void:
