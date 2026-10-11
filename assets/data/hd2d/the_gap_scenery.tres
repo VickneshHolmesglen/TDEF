@@ -44,3 +44,4 @@ ambient_energy = 0.5
 exposure = 0.82
 saturation = 0.85
 contrast = 1.15
+unit_tint = Color(1, 0.97, 0.9, 1)

@@ -373,6 +373,9 @@ var _hit_flash_material_3d: ShaderMaterial = null
 
 
 func _ready() -> void:
+	# ADR-0042 unit pass: every tower is normalised to TARGET_DISPLAY_HEIGHT,
+	# so one fixed contact shadow at the base fits all of them.
+	GroundShadow.attach(self, TARGET_DISPLAY_HEIGHT * 0.8, TARGET_DISPLAY_HEIGHT * 0.42)
 	_assign_hit_flash_material(_sprite)
 	_assign_hit_flash_material(_base_sprite)
 	_assign_hit_flash_material(_shaft_sprite)

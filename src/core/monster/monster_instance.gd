@@ -125,6 +125,12 @@ const WALK_MOVE_EPSILON: float = 0.05
 @onready var _nameplate: Label = $Nameplate
 
 
+## ADR-0042 unit pass: contact shadow at the sprite's feet, sized from the
+## fitted sprite so it tracks every tier/size.
+func _update_ground_shadow() -> void:
+	GroundShadow.attach(self, _sprite_half_size.x * 1.3, _sprite_half_size.y * 0.85)
+
+
 func _ready() -> void:
 	_hit_flash_material = ShaderMaterial.new()
 	_hit_flash_material.shader = HIT_FLASH_SHADER
@@ -170,6 +176,7 @@ func configure(monster_id: StringName, tier: int = 0, display_name: String = "")
 	var uniform_scale: float = target_long_edge / longest_edge
 	_sprite.scale = Vector2(uniform_scale, uniform_scale)
 	_sprite_half_size = Vector2(texture.get_width(), texture.get_height()) * uniform_scale * 0.5
+	_update_ground_shadow()
 
 	_configure_nameplate(display_name)
 	queue_redraw()
@@ -216,6 +223,7 @@ func _configure_sheet(monster_id: StringName, tier: int) -> bool:
 	var uniform_scale: float = TARGET_LONG_EDGE_BY_TIER.get(tier, 64.0) / maxf(frame_size.x, frame_size.y)
 	_sprite.scale = Vector2(uniform_scale, uniform_scale)
 	_sprite_half_size = frame_size * uniform_scale * 0.5
+	_update_ground_shadow()
 	_anim_time = 0.0
 	_has_last_position = false
 	_show_clip(&"idle" if _clips.has(&"idle") else &"walk", 0.0)

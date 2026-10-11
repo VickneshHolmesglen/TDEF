@@ -283,6 +283,7 @@ func _build_scenery(cols: int, rows: int, cell_size: float) -> void:
 		if _scenery != null:
 			_scenery.set_active(false)
 		_grid_visual.visible = true
+		Hd2dScenery.apply_unit_light(_gameplay_root, Color.WHITE)
 		return
 	if _scenery == null:
 		_scenery = Hd2dScenery.new()
@@ -297,6 +298,7 @@ func _build_scenery(cols: int, rows: int, cell_size: float) -> void:
 	_scenery.follow_camera(_camera)
 	_scenery.set_active(_gameplay_root.visible)
 	_grid_visual.visible = false
+	Hd2dScenery.apply_unit_light(_gameplay_root, profile.unit_tint)
 
 
 ## Swaps from the Mission Select screen to the live gameplay assembly.

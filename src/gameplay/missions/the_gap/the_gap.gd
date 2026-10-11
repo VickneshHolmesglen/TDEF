@@ -391,6 +391,7 @@ func _build_scenery(config: GridConfig) -> void:
 	_scenery.build(config.cols, config.rows, config.cell_size, config.cells)
 	_scenery.follow_camera(_camera)
 	_grid_visual.visible = false
+	Hd2dScenery.apply_unit_light(self, profile.unit_tint)
 
 
 ## See mission_scene.gd's identical method for the full rationale — this

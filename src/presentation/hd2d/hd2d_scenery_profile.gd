@@ -74,6 +74,9 @@ extends Resource
 @export var saturation: float = 0.9
 @export var contrast: float = 1.12
 @export var background_color: Color = Color(0.12, 0.16, 0.1)
+## Tint for the 2D gameplay layer (units, towers, VFX) so sprites take on the
+## mission's light; applied by the mission scene as a CanvasModulate.
+@export var unit_tint: Color = Color.WHITE
 @export var rng_seed: int = 20261011
 
 

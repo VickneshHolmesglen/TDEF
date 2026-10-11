@@ -739,6 +739,10 @@ func _count_qualifying_towers() -> int:
 ## mission scene) — the shape is built in code so move_and_slide() collision response
 ## (Rule 27) is real and testable before that scene exists.
 func _ready() -> void:
+	# ADR-0042 unit pass: contact shadow at the hero sprite's feet.
+	var body_sprite: Sprite2D = get_node_or_null(^"Sprite2D") as Sprite2D
+	if body_sprite != null and body_sprite.texture != null:
+		GroundShadow.attach(self, 30.0, body_sprite.texture.get_height() * body_sprite.scale.y * 0.46)
 	collision_layer = COLLISION_LAYER_HERO
 	collision_mask = COLLISION_LAYER_ENVIRONMENT
 

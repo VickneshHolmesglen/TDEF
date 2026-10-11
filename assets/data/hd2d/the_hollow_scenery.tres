@@ -52,3 +52,4 @@ saturation = 0.95
 contrast = 1.1
 background_color = Color(0.05, 0.06, 0.09, 1)
 rng_seed = 47
+unit_tint = Color(0.82, 0.88, 1, 1)

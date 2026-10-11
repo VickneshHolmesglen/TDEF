@@ -81,6 +81,19 @@ func build(cols: int, rows: int, cell_size: float, cells: Dictionary) -> void:
 	_build_crystals()
 
 
+## The 2D gameplay layer's light for this mission (ADR-0042 unit pass): a
+## CanvasModulate named "UnitLight" under `canvas_host`, created on first use.
+## It tints every CanvasItem on that canvas (units, towers, VFX) but not
+## CanvasLayers such as the HUD.
+static func apply_unit_light(canvas_host: Node, tint: Color) -> void:
+	var light: CanvasModulate = canvas_host.get_node_or_null(^"UnitLight") as CanvasModulate
+	if light == null:
+		light = CanvasModulate.new()
+		light.name = "UnitLight"
+		canvas_host.add_child(light)
+	light.color = tint
+
+
 ## Keeps the scenery camera locked to `camera` (call once after build()).
 func follow_camera(camera: Camera2D) -> void:
 	_follow = camera
