@@ -365,19 +365,14 @@ func _ready() -> void:
 	# 2026-10-10 UI pass: equal-width sub-tabs, active one filled (they were
 	# bare default buttons with no visible active state).
 	for tab_button: Button in [_recipes_tab_button, _assemble_tab_button, _repair_tab_button]:
-		tab_button.toggle_mode = true
-		tab_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		tab_button.custom_minimum_size = Vector2(0, 36)
-		tab_button.add_theme_stylebox_override("normal", ShellChromeStyle.chrome_button_stylebox(false))
-		tab_button.add_theme_stylebox_override("hover", ShellChromeStyle.chrome_button_stylebox(false))
-		tab_button.add_theme_stylebox_override("pressed", ShellChromeStyle.chrome_button_stylebox(true))
-		tab_button.add_theme_stylebox_override("hover_pressed", ShellChromeStyle.chrome_button_stylebox(true))
+		_style_sub_tab(tab_button)
 	_assemble_button.pressed.connect(_on_assemble_button_pressed)
 	_assemble_confirm_dialog.confirmed.connect(_on_assemble_confirmed)
 	_assemble_confirm_dialog.get_cancel_button().set_meta(UiAudioBinder.META_KEY, UiAudioBinder.KIND_CANCEL)
 	_assemble_confirm_dialog.get_ok_button().set_meta(UiAudioBinder.META_KEY, UiAudioBinder.KIND_CONFIRM)
 	for slot: String in _assemble_slot_tab_buttons:
 		_assemble_slot_tab_buttons[slot].pressed.connect(_on_assemble_slot_tab_pressed.bind(slot))
+		_style_sub_tab(_assemble_slot_tab_buttons[slot])
 	_rebuild_assemble_lists()
 	_rebuild_repair_list()
 
@@ -436,8 +431,25 @@ func _build_tab_strip() -> void:
 		button.button_pressed = tab == _active_tab
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		button.pressed.connect(_on_tab_pressed.bind(tab))
+		_style_sub_tab(button)
 		_tab_strip.add_child(button)
 		_tab_buttons[tab] = button
+
+
+## 2026-10-11: one look for every tab strip on this screen (bag categories,
+## Recipes/Assemble/Repair, the 7 assemble slots) -- outline when idle,
+## filled when active. The category and slot strips were still bare default
+## buttons, and the 7 slot tabs in one row squeezed "Foundation" until it
+## clipped; that strip is now a 4-column grid (InventoryScreen.tscn).
+func _style_sub_tab(tab_button: Button) -> void:
+	tab_button.toggle_mode = true
+	tab_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	tab_button.custom_minimum_size = Vector2(0, 36)
+	tab_button.add_theme_color_override("font_color", ShellChromeStyle.UI_PARCHMENT)
+	tab_button.add_theme_stylebox_override("normal", ShellChromeStyle.chrome_button_stylebox(false))
+	tab_button.add_theme_stylebox_override("hover", ShellChromeStyle.chrome_button_stylebox(false))
+	tab_button.add_theme_stylebox_override("pressed", ShellChromeStyle.chrome_button_stylebox(true))
+	tab_button.add_theme_stylebox_override("hover_pressed", ShellChromeStyle.chrome_button_stylebox(true))
 
 
 func _on_tab_pressed(tab: StringName) -> void:

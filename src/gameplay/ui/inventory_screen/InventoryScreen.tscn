@@ -30,6 +30,7 @@ size_flags_stretch_ratio = 2.0
 
 [node name="TabStrip" type="HBoxContainer" parent="MainLayout/LeftPanel"]
 layout_mode = 2
+theme_override_constants/separation = 4
 
 [node name="EquipmentRow" type="HBoxContainer" parent="MainLayout/LeftPanel"]
 layout_mode = 2
@@ -146,9 +147,11 @@ layout_mode = 2
 size_flags_vertical = 3
 theme_override_constants/separation = 8
 
-[node name="AssembleSlotTabStrip" type="HBoxContainer" parent="MainLayout/RightPanel/RightPanelContent/AssembleView"]
+[node name="AssembleSlotTabStrip" type="GridContainer" parent="MainLayout/RightPanel/RightPanelContent/AssembleView"]
 layout_mode = 2
-theme_override_constants/separation = 4
+theme_override_constants/h_separation = 4
+theme_override_constants/v_separation = 4
+columns = 4
 
 [node name="FoundationTabButton" type="Button" parent="MainLayout/RightPanel/RightPanelContent/AssembleView/AssembleSlotTabStrip"]
 layout_mode = 2

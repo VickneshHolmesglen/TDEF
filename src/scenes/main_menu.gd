@@ -276,6 +276,7 @@ func _ready() -> void:
 	_save_warning_panel.visible = false
 	for panel: Control in [_settings_panel, _load_game_panel, _overwrite_confirm_panel, _recovery_choice_panel, _save_warning_panel]:
 		panel.visibility_changed.connect(_on_overlay_visibility_changed.bind(panel))
+		_style_overlay_controls(panel)
 
 	_build_focus_ring(_continue_button)
 	_build_focus_ring(_new_game_button)
@@ -508,10 +509,10 @@ func _perform_load(slot: int) -> void:
 		SavePersistence.LoadResult.CORRUPT_RECOVERED:
 			# EC-5: the load DID succeed (every system reset to defaults,
 			# sanctuary_state_restored already fired) -- proceed on OK.
-			_show_save_warning("Your save could not be loaded and the game has started fresh.", true)
+			_show_save_warning(tr("MAIN_MENU_SAVE_WARNING_DEFAULT"), true)
 		SavePersistence.LoadResult.VERSION_TOO_NEW:
 			# AC-11: load was aborted, file left untouched -- stay at the menu on OK.
-			_show_save_warning("This save was made with a newer version of the game and cannot be loaded.", false)
+			_show_save_warning(tr("MAIN_MENU_SAVE_WARNING_VERSION_TOO_NEW"), false)
 		_:
 			pass  # NOT_FOUND unreachable here -- every caller already confirmed the slot exists
 
@@ -733,6 +734,39 @@ func _center_overlay_content(content: Control) -> void:
 
 	var screen_center: Vector2 = get_viewport_rect().size / 2.0
 	content.position = screen_center - bounds.get_center() * content.scale
+
+
+## TD-ui-003 (2026-10-11): the overlays' buttons, sliders and labels were
+## Godot's default grey theme on top of the chrome card. They now use the same
+## ShellChromeStyle tokens as the Sanctuary shell -- outline buttons, with the
+## one "go ahead" action per dialog filled (Yes / Load Save / OK).
+func _style_overlay_controls(root: Node) -> void:
+	var primary: Array[Button] = [_overwrite_yes_button, _recovery_load_save_button, _save_warning_ok_button]
+	for node: Node in root.find_children("*", "Control", true, false):
+		if node is Label:
+			(node as Label).add_theme_color_override("font_color", ShellChromeStyle.UI_PARCHMENT)
+		elif node is Button:
+			var button: Button = node as Button
+			button.add_theme_color_override("font_color", ShellChromeStyle.UI_PARCHMENT)
+			button.add_theme_color_override("font_hover_color", Color.WHITE)
+			if button is CheckButton:
+				continue  # keeps its own switch art; a box around it reads as a second button
+			var filled: bool = primary.has(button)
+			for state: String in ["normal", "hover", "pressed", "hover_pressed"]:
+				button.add_theme_stylebox_override(state, ShellChromeStyle.chrome_button_stylebox(filled))
+			button.add_theme_stylebox_override("disabled", ShellChromeStyle.chrome_button_stylebox(false))
+			button.add_theme_color_override("font_disabled_color", Color(ShellChromeStyle.UI_PARCHMENT, 0.4))
+		elif node is HSlider:
+			var track := StyleBoxFlat.new()
+			track.bg_color = ShellChromeStyle.UI_CHROME.darkened(0.4)
+			track.set_corner_radius_all(3)
+			track.content_margin_top = 3.0
+			track.content_margin_bottom = 3.0
+			var fill: StyleBoxFlat = track.duplicate()
+			fill.bg_color = ShellChromeStyle.UI_ACCENT_CYAN
+			node.add_theme_stylebox_override("slider", track)
+			node.add_theme_stylebox_override("grabber_area", fill)
+			node.add_theme_stylebox_override("grabber_area_highlight", fill)
 
 
 func _on_ui_scale_changed(value: float) -> void:

@@ -2524,7 +2524,9 @@ New `UserDataPaths.root()` returns `user://` normally and `user://test_sandbox/`
 
 ---
 
-## TD-ui-003 — Main-menu modal overlays (Settings, Load Game, overwrite/recovery confirms) use unthemed default controls (open)
+## TD-ui-003 — Main-menu modal overlays (Settings, Load Game, overwrite/recovery confirms) use unthemed default controls (fixed)
 
 **Logged**: 2026-10-04
 **Severity**: Low — functional and legible (96%-opaque dim), but plain default buttons/sliders over a dark dim read as unfinished next to the painted menu buttons. Deferred to a UI theme pass because the visual direction for UI chrome is not locked (`CLAUDE.md` Asset Generation); not invented ad hoc.
+
+- [x] Fixed 2026-10-11: overlays now sit centered on a chrome card (2026-10-10) and their buttons, labels and sliders use ShellChromeStyle tokens (`main_menu.gd` `_style_overlay_controls()`): outline buttons with the dialog's go-ahead action filled, parchment text, cyan slider fill. ShellChromeStyle is now the shipped UI chrome on every screen, so this follows it rather than inventing a new look.

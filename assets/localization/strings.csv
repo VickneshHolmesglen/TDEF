@@ -308,3 +308,20 @@ HUD_TIMER,Timer: %.1fs
 HUD_TIMER_IDLE,Timer: --
 GAP_HELP_CONTROLS,SPACE = ready-up | Left-click = place tower
 GAP_HELP_DEBUG_KILL, | K = debug-kill hero (QA only)
+FORGE_RUNE_ENTRY,%s (source: %s)
+DEFENSE_CATEGORY_PRODUCTION,Production
+DEFENSE_CATEGORY_STRUCTURAL,Structural
+DEFENSE_STRUCTURE_HABITAT_EXPANSION,Habitat Expansion
+DEFENSE_STRUCTURE_WATCHTOWER,Watchtower
+EQUIP_SLOT_HELMET,Helmet
+EQUIP_SLOT_CHEST,Chest
+EQUIP_SLOT_GLOVES,Gloves
+EQUIP_SLOT_PANTS,Pants
+EQUIP_SLOT_BOOTS,Boots
+EQUIP_SLOT_MAIN_HAND,Main Hand
+EQUIP_SLOT_NECK,Neck
+EQUIP_SLOT_RING_1,Ring 1
+EQUIP_SLOT_RING_2,Ring 2
+EQUIP_SLOT_OFFHAND,Offhand
+HUD_PATH_UPDATE_QUEUED,Path update queued for next intermission.
+MAIN_MENU_SAVE_WARNING_VERSION_TOO_NEW,This save was made with a newer version of the game and cannot be loaded.

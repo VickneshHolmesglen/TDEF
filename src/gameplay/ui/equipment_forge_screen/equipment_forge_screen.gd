@@ -365,7 +365,7 @@ func _create_rune_button(rune_id: StringName, entry: Dictionary) -> Button:
 	button.name = "Rune_%s" % String(rune_id)
 	button.focus_mode = Control.FOCUS_ALL
 	button.clip_text = true
-	button.text = "%s (source: %s)" % [String(rune_id), entry.get("rune_source", "")]
+	button.text = tr("FORGE_RUNE_ENTRY") % [String(rune_id).capitalize(), String(entry.get("rune_source", "")).capitalize()]
 	button.pressed.connect(_on_rune_pressed.bind(rune_id))
 	_wire_focus_ring(button)
 	return button

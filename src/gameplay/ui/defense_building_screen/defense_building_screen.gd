@@ -38,13 +38,14 @@ const FOCUS_RING_COLOR: Color = Color(1.0, 0.85, 0.2, 1.0)  ## placeholder — a
 ## backing. Falls back to .capitalize() on the raw string for any future
 ## category/type this map doesn't yet cover, so new content never regresses
 ## to a raw snake_case id even if this list isn't updated alongside it.
+## Values are strings.csv keys (2026-10-11 localization pass).
 const TECH_CATEGORY_LABELS: Dictionary[String, String] = {
-	"production_tech": "Production",
-	"structural_tech": "Structural",
+	"production_tech": "DEFENSE_CATEGORY_PRODUCTION",
+	"structural_tech": "DEFENSE_CATEGORY_STRUCTURAL",
 }
 const STRUCTURE_TYPE_LABELS: Dictionary[String, String] = {
-	"habitat_expansion": "Habitat Expansion",
-	"watchtower": "Watchtower",
+	"habitat_expansion": "DEFENSE_STRUCTURE_HABITAT_EXPANSION",
+	"watchtower": "DEFENSE_STRUCTURE_WATCHTOWER",
 }
 const ROMAN_NUMERALS: Array[String] = ["", "I", "II", "III", "IV", "V"]
 
@@ -150,7 +151,7 @@ func _rebuild_tech_list() -> void:
 	for tech_id: StringName in tech_ids:
 		var node: TechNodeResource = all_tech[tech_id]
 		if not columns.has(node.tech_category):
-			columns[node.tech_category] = _create_column(_tech_list, TECH_CATEGORY_LABELS.get(node.tech_category, node.tech_category.capitalize()))
+			columns[node.tech_category] = _create_column(_tech_list, _tech_category_label(node.tech_category))
 		var button: Button = _create_tech_button(node)
 		columns[node.tech_category].add_child(button)
 		_tech_buttons[tech_id] = button
@@ -170,8 +171,16 @@ func _create_tech_button(node: TechNodeResource) -> Button:
 
 ## "Production II", "Structural I" — see TECH_CATEGORY_LABELS' own doc
 ## comment for why this is derived from data fields, not a per-id name.
+func _tech_category_label(category: String) -> String:
+	return tr(TECH_CATEGORY_LABELS[category]) if TECH_CATEGORY_LABELS.has(category) else category.capitalize()
+
+
+func _structure_type_label(structure_type: String) -> String:
+	return tr(STRUCTURE_TYPE_LABELS[structure_type]) if STRUCTURE_TYPE_LABELS.has(structure_type) else structure_type.capitalize()
+
+
 func _tech_display_name(node: TechNodeResource) -> String:
-	var category_label: String = TECH_CATEGORY_LABELS.get(node.tech_category, node.tech_category.capitalize())
+	var category_label: String = _tech_category_label(node.tech_category)
 	var tier_label: String = ROMAN_NUMERALS[node.branch_tier] if node.branch_tier < ROMAN_NUMERALS.size() else str(node.branch_tier)
 	return "%s %s" % [category_label, tier_label]
 
@@ -225,7 +234,7 @@ func _rebuild_structure_list() -> void:
 	for structure_id: StringName in structure_ids:
 		var structure: StructureResource = all_structures[structure_id]
 		if not columns.has(structure.structure_type):
-			columns[structure.structure_type] = _create_column(_structure_list, STRUCTURE_TYPE_LABELS.get(structure.structure_type, structure.structure_type.capitalize()))
+			columns[structure.structure_type] = _create_column(_structure_list, _structure_type_label(structure.structure_type))
 		var button: Button = _create_structure_button(structure)
 		columns[structure.structure_type].add_child(button)
 		_structure_buttons[structure_id] = button
@@ -247,7 +256,7 @@ func _create_structure_button(structure: StructureResource) -> Button:
 ## "Habitat Expansion II", "Watchtower I" — see TECH_CATEGORY_LABELS' own doc
 ## comment for why this is derived from data fields, not a per-id name.
 func _structure_display_name(structure: StructureResource) -> String:
-	var type_label: String = STRUCTURE_TYPE_LABELS.get(structure.structure_type, structure.structure_type.capitalize())
+	var type_label: String = _structure_type_label(structure.structure_type)
 	var tier_label: String = ROMAN_NUMERALS[structure.tier] if structure.tier < ROMAN_NUMERALS.size() else str(structure.tier)
 	return "%s %s" % [type_label, tier_label]
 

@@ -75,9 +75,12 @@ const RIGHT_COLUMN_SLOTS: Array[String] = ["neck", "ring_1", "ring_2", "", "", "
 ## art exists yet (Phase 3, same "content can lag code" tolerance this
 ## project's other slot/tile UIs already document) -- text is the honest
 ## placeholder, not a guessed-at icon.
+## Values are strings.csv keys (2026-10-11 localization pass).
 const SLOT_LABEL: Dictionary[String, String] = {
-	"helmet": "Helmet", "chest": "Chest", "gloves": "Gloves", "pants": "Pants", "boots": "Boots",
-	"main_hand": "Main Hand", "neck": "Neck", "ring_1": "Ring 1", "ring_2": "Ring 2", "offhand": "Offhand",
+	"helmet": "EQUIP_SLOT_HELMET", "chest": "EQUIP_SLOT_CHEST", "gloves": "EQUIP_SLOT_GLOVES",
+	"pants": "EQUIP_SLOT_PANTS", "boots": "EQUIP_SLOT_BOOTS", "main_hand": "EQUIP_SLOT_MAIN_HAND",
+	"neck": "EQUIP_SLOT_NECK", "ring_1": "EQUIP_SLOT_RING_1", "ring_2": "EQUIP_SLOT_RING_2",
+	"offhand": "EQUIP_SLOT_OFFHAND",
 }
 
 ## Hover only: the frames are non-focusable Panels (existing design). Gamepad/
@@ -278,8 +281,9 @@ func _refresh_slot(slot_name: String) -> void:
 	if item_id == "":
 		icon.visible = false
 		fallback_label.visible = true
-		fallback_label.text = SLOT_LABEL.get(slot_name, slot_name.capitalize())
-		frame.tooltip_text = SLOT_LABEL.get(slot_name, slot_name.capitalize())
+		var slot_label: String = tr(SLOT_LABEL[slot_name]) if SLOT_LABEL.has(slot_name) else slot_name.capitalize()
+		fallback_label.text = slot_label
+		frame.tooltip_text = slot_label
 		return
 
 	var definition: ItemDefinitionResource = GGameDataRegistry.get_item_definition(StringName(item_id))

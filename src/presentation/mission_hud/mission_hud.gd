@@ -560,7 +560,7 @@ func _on_tower_destroyed(tower_id: int, _grid_position: Vector2i, _archetype: St
 		_tower_hp_bar_labels.erase(tower_id)
 	if _current_phase != "WAVE_ACTIVE":
 		return
-	_show_transient_banner("Path update queued for next intermission.")
+	_show_transient_banner(tr("HUD_PATH_UPDATE_QUEUED"))
 
 
 func _on_hero_class_unlocked(archetype: StringName, _is_deep: bool) -> void:
