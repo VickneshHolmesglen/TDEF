@@ -3,20 +3,21 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://b2rb5xio1fqws"
-path="res://.godot/imported/leather_jerkin_worn.png-15d76166da0e8cfb3414e4c76e6266ff.ctex"
+path.bptc="res://.godot/imported/leather_jerkin_worn.png-15d76166da0e8cfb3414e4c76e6266ff.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/art/characters/gear/leather_jerkin_worn.png"
-dest_files=["res://.godot/imported/leather_jerkin_worn.png-15d76166da0e8cfb3414e4c76e6266ff.ctex"]
+dest_files=["res://.godot/imported/leather_jerkin_worn.png-15d76166da0e8cfb3414e4c76e6266ff.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

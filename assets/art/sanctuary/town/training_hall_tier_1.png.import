@@ -3,20 +3,21 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://di61144y3up50"
-path="res://.godot/imported/training_hall_tier_1.png-56c7123cf549993b76958616d8b07078.ctex"
+path.bptc="res://.godot/imported/training_hall_tier_1.png-56c7123cf549993b76958616d8b07078.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/art/sanctuary/town/training_hall_tier_1.png"
-dest_files=["res://.godot/imported/training_hall_tier_1.png-56c7123cf549993b76958616d8b07078.ctex"]
+dest_files=["res://.godot/imported/training_hall_tier_1.png-56c7123cf549993b76958616d8b07078.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

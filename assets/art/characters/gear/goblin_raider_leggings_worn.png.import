@@ -3,20 +3,21 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://c3tr4wbpsvash"
-path="res://.godot/imported/goblin_raider_leggings_worn.png-5a642a7e6c29074fc082d823a0d0eaed.ctex"
+path.bptc="res://.godot/imported/goblin_raider_leggings_worn.png-5a642a7e6c29074fc082d823a0d0eaed.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/art/characters/gear/goblin_raider_leggings_worn.png"
-dest_files=["res://.godot/imported/goblin_raider_leggings_worn.png-5a642a7e6c29074fc082d823a0d0eaed.ctex"]
+dest_files=["res://.godot/imported/goblin_raider_leggings_worn.png-5a642a7e6c29074fc082d823a0d0eaed.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

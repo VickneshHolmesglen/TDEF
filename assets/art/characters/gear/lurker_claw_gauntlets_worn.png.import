@@ -3,20 +3,21 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://c684w251vj5ve"
-path="res://.godot/imported/lurker_claw_gauntlets_worn.png-453e6696cee6c2605e3d51bf47cac07b.ctex"
+path.bptc="res://.godot/imported/lurker_claw_gauntlets_worn.png-453e6696cee6c2605e3d51bf47cac07b.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/art/characters/gear/lurker_claw_gauntlets_worn.png"
-dest_files=["res://.godot/imported/lurker_claw_gauntlets_worn.png-453e6696cee6c2605e3d51bf47cac07b.ctex"]
+dest_files=["res://.godot/imported/lurker_claw_gauntlets_worn.png-453e6696cee6c2605e3d51bf47cac07b.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

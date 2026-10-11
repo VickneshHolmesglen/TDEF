@@ -3,20 +3,21 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bpxu3y0e2agym"
-path="res://.godot/imported/castle_tier_1.png-f0273db97b13166e8b824ed5b7b304f0.ctex"
+path.bptc="res://.godot/imported/castle_tier_1.png-f0273db97b13166e8b824ed5b7b304f0.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/art/sanctuary/town/castle_tier_1.png"
-dest_files=["res://.godot/imported/castle_tier_1.png-f0273db97b13166e8b824ed5b7b304f0.ctex"]
+dest_files=["res://.godot/imported/castle_tier_1.png-f0273db97b13166e8b824ed5b7b304f0.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

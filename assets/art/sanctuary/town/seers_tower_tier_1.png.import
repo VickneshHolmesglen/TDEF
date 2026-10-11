@@ -3,20 +3,21 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bqad7frgf0gns"
-path="res://.godot/imported/seers_tower_tier_1.png-2f2d734ebcd19f95ade49986d1a878c0.ctex"
+path.bptc="res://.godot/imported/seers_tower_tier_1.png-2f2d734ebcd19f95ade49986d1a878c0.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/art/sanctuary/town/seers_tower_tier_1.png"
-dest_files=["res://.godot/imported/seers_tower_tier_1.png-2f2d734ebcd19f95ade49986d1a878c0.ctex"]
+dest_files=["res://.godot/imported/seers_tower_tier_1.png-2f2d734ebcd19f95ade49986d1a878c0.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

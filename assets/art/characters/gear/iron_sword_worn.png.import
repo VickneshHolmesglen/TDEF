@@ -3,20 +3,21 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dyl127bkq0trb"
-path="res://.godot/imported/iron_sword_worn.png-3962e16f85b0a8710ddb2a0a36537d1b.ctex"
+path.bptc="res://.godot/imported/iron_sword_worn.png-3962e16f85b0a8710ddb2a0a36537d1b.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/art/characters/gear/iron_sword_worn.png"
-dest_files=["res://.godot/imported/iron_sword_worn.png-3962e16f85b0a8710ddb2a0a36537d1b.ctex"]
+dest_files=["res://.godot/imported/iron_sword_worn.png-3962e16f85b0a8710ddb2a0a36537d1b.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

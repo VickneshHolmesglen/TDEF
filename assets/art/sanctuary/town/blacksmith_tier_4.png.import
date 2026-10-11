@@ -3,20 +3,21 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://ckv4lgq8sj7je"
-path="res://.godot/imported/blacksmith_tier_4.png-29e2438e57f13f5c1a5e6873897ef5be.ctex"
+path.bptc="res://.godot/imported/blacksmith_tier_4.png-29e2438e57f13f5c1a5e6873897ef5be.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/art/sanctuary/town/blacksmith_tier_4.png"
-dest_files=["res://.godot/imported/blacksmith_tier_4.png-29e2438e57f13f5c1a5e6873897ef5be.ctex"]
+dest_files=["res://.godot/imported/blacksmith_tier_4.png-29e2438e57f13f5c1a5e6873897ef5be.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
