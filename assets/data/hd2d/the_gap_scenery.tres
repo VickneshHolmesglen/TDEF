@@ -1,0 +1,46 @@
+[gd_resource type="Resource" script_class="Hd2dSceneryProfile" load_steps=19 format=3]
+
+[ext_resource type="Script" path="res://src/presentation/hd2d/hd2d_scenery_profile.gd" id="1_profile"]
+[ext_resource type="Texture2D" path="res://assets/art/hd2d/ground_grass.png" id="2_gg"]
+[ext_resource type="Texture2D" path="res://assets/art/hd2d/ground_dirt.png" id="3_gd"]
+[ext_resource type="Texture2D" path="res://assets/art/hd2d/ground_stone.png" id="4_gs"]
+[ext_resource type="Texture2D" path="res://assets/art/hd2d/card_grass.png" id="5_cg"]
+[ext_resource type="Texture2D" path="res://assets/art/hd2d/card_grass_short.png" id="6_cgs"]
+[ext_resource type="Texture2D" path="res://assets/art/hd2d/card_flowers.png" id="7_cf"]
+[ext_resource type="Texture2D" path="res://assets/art/hd2d/card_bush.png" id="8_cb"]
+[ext_resource type="Texture2D" path="res://assets/art/hd2d/card_leaves_0.png" id="9_l0"]
+[ext_resource type="Texture2D" path="res://assets/art/hd2d/card_leaves_1.png" id="10_l1"]
+[ext_resource type="Texture2D" path="res://assets/art/hd2d/card_leaves_2.png" id="11_l2"]
+[ext_resource type="Texture2D" path="res://assets/art/hd2d/card_leaves_gold.png" id="12_lg"]
+[ext_resource type="Texture2D" path="res://assets/art/hd2d/card_pine.png" id="13_pine"]
+[ext_resource type="Texture2D" path="res://assets/art/hd2d/mat_bark.png" id="14_bark"]
+[ext_resource type="Texture2D" path="res://assets/art/hd2d/mat_wood.png" id="15_wood"]
+[ext_resource type="Texture2D" path="res://assets/art/hd2d/mat_ruin_bricks.png" id="16_brick"]
+[ext_resource type="Texture2D" path="res://assets/art/hd2d/mat_rock.png" id="17_rock"]
+
+[resource]
+script = ExtResource("1_profile")
+ground_grass = ExtResource("2_gg")
+ground_dirt = ExtResource("3_gd")
+ground_stone = ExtResource("4_gs")
+grass_cards = Array[Texture2D]([ExtResource("5_cg"), ExtResource("5_cg"), ExtResource("6_cgs")])
+flower_card = ExtResource("7_cf")
+bush_card = ExtResource("8_cb")
+leaf_cards = Array[Texture2D]([ExtResource("9_l0"), ExtResource("10_l1"), ExtResource("11_l2"), ExtResource("12_lg")])
+pine_card = ExtResource("13_pine")
+bark = ExtResource("14_bark")
+wood = ExtResource("15_wood")
+ruin_bricks = ExtResource("16_brick")
+rock = ExtResource("17_rock")
+grass_per_cell = 14.0
+grass_inner_factor = 0.5
+grass_height_px = 46.0
+flowers_per_cell = 1.6
+bush_count = 26
+sun_color = Color(1, 0.88, 0.72, 1)
+sun_energy = 1.05
+ambient_color = Color(0.46, 0.54, 0.66, 1)
+ambient_energy = 0.5
+exposure = 0.82
+saturation = 0.85
+contrast = 1.15

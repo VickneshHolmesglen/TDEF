@@ -1,5 +1,11 @@
 # Art Overhaul — Codex + Claude Code Collaboration Brief
 
+> **2026-10-11: Codex no longer generates art for this project** (user
+> decision). Claude Code authors new assets itself, procedurally; see
+> `tools/asset-pipeline/hd2d/` and ADR-0042. The target look is now HD-2D
+> (`docs/images/graphics.PNG`). The role split below is kept for history.
+
+
 > **Audience**: this document is written for Codex to read directly. Claude Code
 > also treats it as authoritative for this initiative. If the two disagree on
 > process, this file wins; if it's silent, fall back to `AGENTS.md` (Codex) /

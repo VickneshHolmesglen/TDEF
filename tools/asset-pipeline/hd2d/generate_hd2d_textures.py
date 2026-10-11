@@ -75,6 +75,9 @@ def save(img: Image.Image, name: str, scale: int = 1) -> None:
 GRASS_PALETTE = [(34, 52, 26), (48, 72, 32), (64, 90, 38), (82, 108, 44), (104, 126, 52), (130, 146, 62)]
 DIRT_PALETTE = [(92, 64, 38), (118, 84, 48), (142, 104, 60), (164, 124, 72), (186, 146, 88), (204, 168, 106)]
 STONE_PALETTE = [(70, 72, 68), (96, 98, 92), (122, 124, 116), (148, 150, 140), (172, 172, 160)]
+LEAF_PALETTE = [(28, 52, 26), (40, 70, 30), (56, 92, 34), (76, 116, 40), (102, 140, 48), (140, 172, 64)]
+# Sun-bleached yellow-green, like the big conifer in the reference.
+LEAF_GOLD_PALETTE = [(46, 54, 22), (70, 80, 28), (100, 108, 34), (134, 138, 44), (168, 164, 60), (204, 192, 92)]
 MOSS_PALETTE = [(58, 84, 40), (78, 106, 46), (100, 128, 54)]
 
 
@@ -136,30 +139,35 @@ def stone_flags() -> Image.Image:
 # Billboard cards (RGBA, alpha-scissored in-engine)
 # ---------------------------------------------------------------------------
 
-def grass_blades() -> Image.Image:
-    """A tuft of pointed blades, dark at the root, sunlit yellow-green at the tip."""
-    w, h = 48, 48
+def grass_blades(w: int, h: int, count: int, width: tuple[float, float], seed_offset: int) -> Image.Image:
+    """A tuft of pointed blades, dark at the root, sunlit yellow-green at the tip.
+
+    Thin (1-2 px) blades in large numbers read as the soft meadow grass of the
+    reference; the root third is kept sparse so tufts don't sit on a solid block.
+    """
+    rng = np.random.default_rng(20261011 + seed_offset)
     img = np.zeros((h, w, 4), dtype=np.uint8)
-    ramp = [(34, 58, 26), (50, 82, 32), (72, 110, 40), (98, 138, 48), (132, 166, 58), (176, 196, 84)]
-    for _ in range(26):
-        base_x = RNG.normal(w / 2, w / 6)
-        height = RNG.uniform(0.45, 0.98) * h
-        lean = RNG.normal(0, 0.35) * height * 0.5
-        width = RNG.uniform(1.6, 3.2)
+    ramp = [(30, 52, 24), (44, 74, 30), (64, 102, 38), (90, 132, 46), (124, 160, 56), (168, 192, 78), (206, 214, 112)]
+    for _ in range(count):
+        base_x = rng.normal(w / 2, w / 5)
+        height = rng.uniform(0.4, 0.98) * h
+        lean = rng.normal(0, 0.45) * height * 0.45
+        blade_w = rng.uniform(*width)
         steps = int(height)
-        for s in range(steps):
-            t = s / max(steps - 1, 1)
-            y = h - 1 - s
+        bright = rng.uniform(0.8, 1.15)
+        for st in range(steps):
+            t = st / max(steps - 1, 1)
+            y = h - 1 - st
             cx = base_x + lean * t * t
-            half = width * (1 - t) * 0.5 + 0.35
-            shade = ramp[min(int(t * len(ramp) * RNG.uniform(0.85, 1.1)), len(ramp) - 1)]
-            for x in range(int(cx - half), int(cx + half) + 1):
+            half = blade_w * (1 - t) * 0.5 + 0.3
+            shade = ramp[min(int(t * len(ramp) * bright), len(ramp) - 1)]
+            for x in range(int(round(cx - half)), int(round(cx + half)) + 1):
                 if 0 <= x < w and 0 <= y < h:
                     img[y, x] = (*shade, 255)
     return Image.fromarray(img)
 
 
-def leaf_clump(seed_offset: int) -> Image.Image:
+def leaf_clump(seed_offset: int, pal: list[tuple[int, int, int]] | None = None) -> Image.Image:
     """Round foliage mass: lit from the upper-left, pixel-leaf speckle, ragged edge."""
     size = 64
     rng = np.random.default_rng(20261011 + seed_offset)
@@ -179,7 +187,7 @@ def leaf_clump(seed_offset: int) -> Image.Image:
         cx, cy = rng.normal(size / 2, size / 6, 2)
         pockets = np.maximum(pockets, 1 - np.hypot(xx - cx, yy - cy) / (size * 0.12))
     v = np.clip(light * 0.8 + rng.random((size, size)) * 0.35 - np.clip(pockets, 0, 1) * 0.35, 0, 1)
-    pal = [(28, 52, 26), (40, 70, 30), (56, 92, 34), (76, 116, 40), (102, 140, 48), (140, 172, 64)]
+    pal = pal or LEAF_PALETTE
     rgb = palette_map(v, pal)
     img = np.zeros((size, size, 4), dtype=np.uint8)
     img[..., :3] = rgb
@@ -202,6 +210,66 @@ def flowers() -> Image.Image:
             img[top + dy, x + dx] = (*c, 255)
         img[top, x] = (250, 230, 120, 255)
     return Image.fromarray(img)
+
+
+def bush() -> Image.Image:
+    """Low shrub: wide dome of dark foliage, lit rim on top, flat-ish base."""
+    w, h = 64, 44
+    rng = np.random.default_rng(20261011 + 40)
+    yy, xx = np.mgrid[0:h, 0:w].astype(float)
+    mask = np.zeros((h, w), dtype=bool)
+    for _ in range(12):
+        cx = rng.uniform(w * 0.18, w * 0.82)
+        cy = rng.uniform(h * 0.35, h * 0.75)
+        r = rng.uniform(h * 0.22, h * 0.36)
+        mask |= np.hypot(xx - cx, (yy - cy) * 1.15) < r
+    mask &= yy < h - 1
+    ragged = rng.random((h, w)) < 0.4
+    edge = mask & ~np.roll(mask, 1, 0)
+    mask &= ~(edge & ragged)
+    light = 1 - yy / h
+    v = np.clip(light * 0.75 + rng.random((h, w)) * 0.4 - 0.1, 0, 1)
+    img = np.zeros((h, w, 4), dtype=np.uint8)
+    img[..., :3] = palette_map(v, [(22, 42, 22), (32, 58, 26), (46, 78, 30), (64, 100, 36), (92, 128, 44), (126, 154, 58)])
+    img[..., 3] = np.where(mask, 255, 0)
+    return Image.fromarray(img)
+
+
+def pine() -> Image.Image:
+    """Conifer: stacked drooping tiers, sunlit on the left, dark core."""
+    w, h = 72, 112
+    rng = np.random.default_rng(20261011 + 50)
+    img = np.zeros((h, w, 4), dtype=np.uint8)
+    trunk_top = int(h * 0.8)
+    for y in range(trunk_top, h):
+        for x in range(w // 2 - 3, w // 2 + 3):
+            img[y, x] = (*[(58, 40, 26), (78, 54, 34)][x % 2], 255)
+    tiers = 6
+    for t in range(tiers):
+        top = int(h * 0.04 + t * h * 0.13)
+        bottom = top + int(h * 0.24)
+        for y in range(top, min(bottom, int(h * 0.86))):
+            k = (y - top) / (bottom - top)
+            half = (3 + (w * 0.5 - 4) * (0.35 + 0.65 * t / (tiers - 1))) * k
+            for x in range(int(w / 2 - half), int(w / 2 + half) + 1):
+                if not 0 <= x < w:
+                    continue
+                if k > 0.85 and rng.random() < 0.5:
+                    continue
+                side = (x - w / 2) / max(half, 1)
+                v = np.clip(0.55 - side * 0.35 - k * 0.25 + rng.random() * 0.35, 0, 1)
+                img[y, x] = (*palette_map(np.array([v]), LEAF_GOLD_PALETTE)[0], 255)
+    return Image.fromarray(img)
+
+
+def rock() -> Image.Image:
+    """Tileable boulder surface: grey stone, cracks, moss on the lit top."""
+    size = 64
+    v = dither(0.6 * tile_noise(size, 4) + 0.4 * tile_noise(size, 16, 2), 0.12)
+    rgb = palette_map(v, STONE_PALETTE)
+    cracks = np.abs(tile_noise(size, 8, 2) - 0.5) < 0.025
+    rgb[cracks] = (52, 54, 50)
+    return Image.fromarray(rgb)
 
 
 # ---------------------------------------------------------------------------
@@ -243,9 +311,14 @@ def main() -> None:
     save(ground_grass(), "ground_grass.png")
     save(ground_dirt(), "ground_dirt.png")
     save(stone_flags(), "ground_stone.png")
-    save(grass_blades(), "card_grass.png")
+    save(grass_blades(64, 64, 70, (1.0, 2.2), 10), "card_grass.png")
+    save(grass_blades(48, 30, 34, (1.0, 2.0), 11), "card_grass_short.png")
     for i in range(3):
         save(leaf_clump(i), f"card_leaves_{i}.png")
+    save(leaf_clump(3, LEAF_GOLD_PALETTE), "card_leaves_gold.png")
+    save(bush(), "card_bush.png")
+    save(pine(), "card_pine.png")
+    save(rock(), "mat_rock.png")
     save(flowers(), "card_flowers.png")
     save(bark(), "mat_bark.png")
     save(wood_plank(), "mat_wood.png")

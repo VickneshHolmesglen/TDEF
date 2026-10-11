@@ -85,6 +85,12 @@ See `.claude/docs/context-management.md` — read when managing long sessions, c
 
 ## Asset Generation
 
+**2026-10-11 update -- Codex no longer generates art; Claude Code authors
+assets itself**, procedurally (`tools/asset-pipeline/hd2d/`). Target look is
+HD-2D (`docs/images/graphics.PNG`): 2D painted ground with 3D grass, trees
+and props, see ADR-0042. The Codex-generates / Claude-processes split below is
+historical for new assets.
+
 **Active art overhaul (2026-08-23 onward)**: read
 `design/art/codex-art-overhaul.md` — it's written for Codex but Claude Code is
 equally bound by it. Short version: Codex now generates art (drafts prompts,

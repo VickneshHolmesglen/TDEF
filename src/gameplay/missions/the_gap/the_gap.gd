@@ -112,6 +112,12 @@ var _dynamic_visuals_root: Node2D
 
 const TowerInstanceScene: PackedScene = preload("res://src/core/tower/TowerInstance.tscn")
 
+## ADR-0042 HD-2D scenery (target look docs/images/graphics.PNG): 3D ground,
+## grass, trees and props rendered under the unchanged 2D gameplay layer. Null
+## falls back to the flat 2D GridVisual terrain.
+const SCENERY_PROFILE_PATH: String = "res://assets/data/hd2d/the_gap_scenery.tres"
+var _scenery: Hd2dScenery
+
 ## Upgraded 2026-08-11 from design/quick-specs/combat-tower-placeholder-
 ## visual-layer-2026-07-31.md's original flat ColorRect to real per-
 ## archetype art (tower_instance.gd) -- that spec's own "Out of Scope"
@@ -192,6 +198,7 @@ func _ready() -> void:
 	var fit: float = minf(play_area.x / map_size.x, play_area.y / map_size.y)
 	_camera.position = map_size / 2.0
 	_camera.zoom = Vector2(fit, fit)
+	_build_scenery(config)
 
 	# Monster/tower blueprint data is now self-populated by MonsterManager/TowerSystem
 	# from GGameDataRegistry at their own _ready() (S5-01, closing TD-data-001) — no
@@ -365,6 +372,25 @@ func _unhandled_input(event: InputEvent) -> void:
 			GEventBus.player_ready.emit()
 		elif event.keycode == KEY_K and debug_controls_enabled:
 			_debug_kill_hero()
+
+
+## ADR-0042: builds the HD-2D scenery under PresentationRoot3D and hides the
+## flat 2D terrain it replaces. Skipped in the full-3D ADR-0040 mode, which
+## owns the 3D camera itself.
+func _build_scenery(config: GridConfig) -> void:
+	if ENABLE_3D_PRESENTATION_MODE:
+		return
+	var profile: Hd2dSceneryProfile = load(SCENERY_PROFILE_PATH) as Hd2dSceneryProfile
+	if profile == null:
+		push_warning("[the_gap] no HD-2D scenery profile at %s -- keeping the 2D terrain" % SCENERY_PROFILE_PATH)
+		return
+	_scenery = Hd2dScenery.new()
+	_scenery.name = "Hd2dScenery"
+	_scenery.profile = profile
+	$PresentationRoot3D.add_child(_scenery)
+	_scenery.build(config.cols, config.rows, config.cell_size, config.cells)
+	_scenery.follow_camera(_camera)
+	_grid_visual.visible = false
 
 
 ## See mission_scene.gd's identical method for the full rationale — this

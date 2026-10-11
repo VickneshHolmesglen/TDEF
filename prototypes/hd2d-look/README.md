@@ -1,6 +1,6 @@
 # HD-2D Look Prototype
 
-**Status:** in progress (first pass, 2026-10-11)
+**Status:** concluded (2026-10-11) -- rewritten to production as ADR-0042 `Hd2dScenery`
 
 ## Hypothesis
 
@@ -57,3 +57,11 @@ The Gap's real 16x12 lane layout (copied from `the_gap.gd`), at the project's
 - Not wired into any mission: the real cutover means making `Camera3D`
   current in `the_gap.tscn` and hiding the 2D `GridVisual` (2D and 3D
   composite independently -- see ADR-0040 notes).
+
+## Conclusion
+
+Look validated, so it was rewritten for production (not migrated) as
+`src/presentation/hd2d/hd2d_scenery.gd` + `Hd2dSceneryProfile`. The production
+version swaps this prototype's perspective camera for an orthographic one with
+a depth-stretched ground, so the 3D layer lines up 1:1 with the 2D gameplay
+canvas instead of replacing it. See ADR-0042.

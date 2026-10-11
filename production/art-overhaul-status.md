@@ -41,6 +41,14 @@
 |---|---|---|
 | 3D-world / 2D-creatures visual foundation | `done` | Locked by user 2026-08-23. Diablo IV screenshots are Player Inventory UI references only. |
 
+## HD-2D scenery (2026-10-11, Claude Code)
+
+| Item | Status | Notes |
+|---|---|---|
+| HD-2D target look + Claude-authored assets | `done` | User set `docs/images/graphics.PNG` as the target and said Codex can no longer generate art. Procedural texture set in `assets/art/hd2d/` from `tools/asset-pipeline/hd2d/generate_hd2d_textures.py`. |
+| The Gap: HD-2D scenery layer | `done` | ADR-0042. `Hd2dScenery` + `the_gap_scenery.tres`: 3D ground/grass/trees/fence/ruins/rocks under the unchanged 2D gameplay canvas, ortho camera aligned 1:1 with the 2D map. Live-verified mid-wave. Screenshot `docs/images/the-gap-hd2d.png`. |
+| MissionScene (other missions): HD-2D scenery | `backlog` | Same `_build_scenery` wiring plus one profile `.tres` per mission (Foothills/Hollow/Narrows palettes). |
+
 ## Production architecture (blocking)
 
 | Item | Status | Notes |
