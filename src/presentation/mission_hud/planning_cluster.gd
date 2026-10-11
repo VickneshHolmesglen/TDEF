@@ -49,6 +49,14 @@ signal route_updated(routes: Array)
 ## into this color/opacity fix.
 const ROUTE_PREVIEW_COLOR: Color = Color(0x2D / 255.0, 0x5F / 255.0, 0x8A / 255.0, 0.48)
 const ROUTE_PREVIEW_WIDTH: float = 3.0
+## 2026-10-11 gameplay-graphics pass (closes TD-hud-002's dashed stroke and
+## chevrons): the route is a soft dashed band scaled to the cell size instead
+## of a hairline, with a chevron every ROUTE_CHEVRON_EVERY cells pointing the
+## way monsters walk. ROUTE_PREVIEW_WIDTH stays the floor at tiny zooms.
+const ROUTE_WIDTH_PER_CELL: float = 0.09
+const ROUTE_DASH_COLOR: Color = Color(0.62, 0.84, 1.0, 0.55)
+const ROUTE_CHEVRON_COLOR: Color = Color(0.85, 0.95, 1.0, 0.8)
+const ROUTE_CHEVRON_EVERY: int = 2
 @onready var _boss_telegraph_host: Node2D = $BossTelegraphHost
 ## Holds the wave-composition preview lines (Story 007, Rules 11f-11i).
 @onready var _composition_preview_host: VBoxContainer = $CompositionPreviewHost
@@ -209,6 +217,7 @@ func _ready() -> void:
 	# icon()'s manually-computed small preview size gets silently overridden
 	# back to the tower art's full native resolution (found live via MCP:
 	# a 36x64 target rendered as 858x1003, covering most of the grid).
+	_build_composition_card()
 	_placement_preview_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_placement_preview_icon.stretch_mode = TextureRect.STRETCH_SCALE
 	_tower_stats_panel.visible = false
@@ -340,14 +349,60 @@ func render_route(routes: Array) -> void:
 	for child: Node in _route_overlay_host.get_children():
 		_route_overlay_host.remove_child(child)
 		child.queue_free()
+	var cell_px: float = _screen_cell_size().x
 	for route: Array in routes:
 		var line := Line2D.new()
-		line.default_color = ROUTE_PREVIEW_COLOR
-		line.width = ROUTE_PREVIEW_WIDTH
+		line.default_color = ROUTE_DASH_COLOR
+		line.width = maxf(ROUTE_PREVIEW_WIDTH, cell_px * ROUTE_WIDTH_PER_CELL)
+		line.joint_mode = Line2D.LINE_JOINT_ROUND
+		line.begin_cap_mode = Line2D.LINE_CAP_ROUND
+		line.end_cap_mode = Line2D.LINE_CAP_ROUND
+		line.antialiased = true
+		line.texture = _dash_texture()
+		line.texture_mode = Line2D.LINE_TEXTURE_TILE
+		line.texture_repeat = CanvasItem.TEXTURE_REPEAT_ENABLED
 		for cell: Vector2i in route:
 			var world_pos: Vector2 = GGrid.cell_to_world(cell)
 			line.add_point(_world_to_screen(world_pos))
+		_add_route_chevrons(line, cell_px)
 		_route_overlay_host.add_child(line)
+
+
+## One dash-and-gap repeat for the route line. Line2D tiles it along the
+## stroke, scaled so its height matches the line width.
+static func _dash_texture() -> ImageTexture:
+	if _dash_texture_cache == null:
+		var img := Image.create(12, 4, false, Image.FORMAT_RGBA8)
+		img.fill(Color(1, 1, 1, 0))
+		img.fill_rect(Rect2i(0, 0, 7, 4), Color.WHITE)
+		_dash_texture_cache = ImageTexture.create_from_image(img)
+	return _dash_texture_cache
+static var _dash_texture_cache: ImageTexture = null
+
+
+## Adds a small chevron as a child of `line` midway along every
+## ROUTE_CHEVRON_EVERY-th segment, pointing from the spawn toward the goal.
+## Children of the line, so the overlay host still holds one node per route.
+func _add_route_chevrons(line: Line2D, cell_px: float) -> void:
+	var half: float = cell_px * 0.13
+	for i: int in range(1, line.get_point_count(), ROUTE_CHEVRON_EVERY):
+		var from: Vector2 = line.get_point_position(i - 1)
+		var to: Vector2 = line.get_point_position(i)
+		if from.is_equal_approx(to):
+			continue
+		var dir: Vector2 = (to - from).normalized()
+		var side: Vector2 = dir.orthogonal()
+		var tip: Vector2 = (from + to) * 0.5 + dir * half
+		var chevron := Polygon2D.new()
+		chevron.color = ROUTE_CHEVRON_COLOR
+		chevron.antialiased = true
+		chevron.polygon = PackedVector2Array([
+			tip,
+			tip - dir * half * 1.6 + side * half * 1.2,
+			tip - dir * half * 1.0,
+			tip - dir * half * 1.6 - side * half * 1.2,
+		])
+		line.add_child(chevron)
 
 
 ## Story 007 (Rules 11f-11i, PC-5 composition half): dispatches to the full
@@ -366,6 +421,7 @@ func render_composition_preview(composition: Array, current_planning_phase: Stri
 		_render_full_breakdown(composition)  # AC-36
 	else:  # INTERMISSION
 		_render_tier_bucketed(composition)  # AC-35
+	_layout_composition_card.call_deferred()
 
 
 ## AC-35: one line per non-zero tier bucket (never a bucket with count 0),
@@ -383,6 +439,8 @@ func _render_tier_bucketed(composition: Array) -> void:
 			var label := Label.new()
 			# Localized tier word (was the raw "STANDARD"/"ELITE" enum -- 2026-10-04 smoke check).
 			label.text = tr("HUD_PREVIEW_TIER_COUNT") % [totals[tier_name], tr("HUD_TIER_" + tier_name)]
+			label.add_theme_font_size_override("font_size", MissionHud.BODY_FONT_SIZE)
+			label.add_theme_color_override("font_color", ShellChromeStyle.UI_PARCHMENT)
 			_composition_preview_host.add_child(label)
 
 
@@ -417,8 +475,47 @@ func _render_full_breakdown(composition: Array) -> void:
 			count_label.text = "x%d" % (entry["count"] as int)
 		else:
 			count_label.text = "%s x%d" % [resource.display_name, entry["count"] as int]
+		count_label.add_theme_font_size_override("font_size", MissionHud.BODY_FONT_SIZE)
+		count_label.add_theme_color_override("font_color", ShellChromeStyle.UI_PARCHMENT)
+		count_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		row.add_child(count_label)
 		_composition_preview_host.add_child(row)
+
+
+## Wraps CompositionPreviewHost in a titled "Next Wave" card (2026-10-11
+## gameplay-graphics pass). The host keeps its own children, so each row is
+## still one host child. The card is bottom-anchored just above Sell and
+## grows upward, so the status/loot cards above it can grow downward.
+const COMPOSITION_CARD_BOTTOM: float = 616.0
+const COMPOSITION_CARD_LEFT: float = 1128.0
+const COMPOSITION_CARD_WIDTH: float = 144.0
+var _composition_card: PanelContainer = null
+
+
+func _build_composition_card() -> void:
+	_composition_card = MissionHud.make_card("CompositionCard")
+	_composition_card.custom_minimum_size.x = COMPOSITION_CARD_WIDTH
+	add_child(_composition_card)
+	move_child(_composition_card, _composition_preview_host.get_index())
+	var body := VBoxContainer.new()
+	body.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	body.add_theme_constant_override("separation", 6)
+	_composition_card.add_child(body)
+	body.add_child(MissionHud.make_section_title(tr("HUD_SECTION_NEXT_WAVE")))
+	_composition_preview_host.reparent(body, false)
+	_composition_preview_host.position = Vector2.ZERO
+	_composition_preview_host.add_theme_constant_override("separation", 4)
+	_layout_composition_card()
+
+
+## Shows the card only when it has rows, and re-pins its bottom edge.
+func _layout_composition_card() -> void:
+	if _composition_card == null:
+		return
+	_composition_card.visible = _composition_preview_host.get_child_count() > 0
+	_composition_card.reset_size()
+	var height: float = _composition_card.get_combined_minimum_size().y
+	_composition_card.position = Vector2(COMPOSITION_CARD_LEFT, COMPOSITION_CARD_BOTTOM - height)
 
 
 func _clear_composition_preview_host() -> void:

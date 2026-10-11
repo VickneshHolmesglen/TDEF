@@ -42,7 +42,9 @@ func test_effect_list_sits_directly_under_the_hero_hp_line() -> void:
 
 	assert_object(list).is_not_null()
 	assert_object(list.get_parent()).is_same(hp.get_parent())
-	assert_int(list.get_index()).is_equal(hp.get_index() + 1)
+	# 2026-10-11 layout pass: the Hero HP bar sits between the line and the list.
+	assert_object(hp.get_parent().get_child(hp.get_index() + 1)).is_same(_hud._hero_hp_bar)
+	assert_int(list.get_index()).is_equal(hp.get_index() + 2)
 	assert_bool(list.visible).is_false()
 
 

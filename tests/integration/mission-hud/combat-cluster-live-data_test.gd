@@ -228,7 +228,7 @@ func test_wave_started_updates_wave_label() -> void:
 func test_phase_timer_tick_updates_timer_label() -> void:
 	GEventBus.phase_timer_tick.emit("PRE_WAVE", 4.2)
 
-	assert_str(_hud._phase_timer_label.text).is_equal(tr("HUD_PHASE_TIMER") % [tr("HUD_PHASE_NAME_PRE_WAVE"), 4.2])
+	assert_str(_hud._phase_timer_label.text).is_equal(tr("HUD_PHASE_TIMER") % 4.2)
 
 
 # ---------------------------------------------------------------------------

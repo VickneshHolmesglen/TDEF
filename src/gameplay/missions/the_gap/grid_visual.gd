@@ -184,6 +184,16 @@ const PATH_EDGING_BY_MISSION: Dictionary[String, Dictionary] = {
 }
 ## Cell types a lane flows into without edging between them: PATH, SPAWN, GOAL.
 const LANE_CELL_TYPES: Array[int] = [1, 2, 3]
+## Landmark cells (2026-10-11 gameplay-graphics pass): SPAWN/GOAL art was
+## blitted as an opaque grey-stone square that sat on the dirt like a sticker.
+## They now draw the lane underneath and blend the landmark on top with a
+## round fade, so only the rift/gate shows and the stone melts into the lane.
+## Values are [fully-opaque radius, fully-transparent radius] as fractions of
+## the cell size, measured from the cell centre.
+const LANDMARK_FADE_BY_TYPE: Dictionary[int, Vector2] = {
+	2: Vector2(0.22, 0.50),  # SPAWN: the rift is small and central
+	3: Vector2(0.34, 0.56),  # GOAL: the gate spans most of the tile
+}
 
 var _texture: ImageTexture = null
 
@@ -242,6 +252,10 @@ func _build_grid_texture(mission_id: String, rng: RandomNumberGenerator) -> Imag
 	var lane: Dictionary = build_lane_parts((texture_by_type[1] as Texture2D).get_image(), String(edging["axis"]),
 			float(edging["band"]), px_width, px_height, cell_px, int(cell_px * GROUND_TILE_CELLS))
 
+	var landmarks: Dictionary = {}
+	for landmark_type: int in LANDMARK_FADE_BY_TYPE:
+		landmarks[landmark_type] = faded_landmark(scaled_by_type[landmark_type], LANDMARK_FADE_BY_TYPE[landmark_type])
+
 	var prop_pool: Array = PROP_TEXTURES_BY_MISSION.get(mission_id, [])
 	var prop_px: int = int(cell_size * PROP_SCALE)
 	var prop_offset: int = int((cell_px - prop_px) / 2.0)
@@ -263,6 +277,10 @@ func _build_grid_texture(mission_id: String, rng: RandomNumberGenerator) -> Imag
 				image.blit_rect(ground_layer, Rect2i(origin_x, origin_y, cell_px, cell_px), Vector2i(origin_x, origin_y))
 			elif cell_type == 1:
 				_draw_lane_cell(image, lane, cell, cell_px)
+			elif LANDMARK_FADE_BY_TYPE.has(cell_type):
+				_draw_lane_cell(image, lane, cell, cell_px)
+				var landmark: Image = landmarks[cell_type]
+				image.blend_rect(landmark, Rect2i(Vector2i.ZERO, landmark.get_size()), Vector2i(origin_x, origin_y))
 			else:
 				var tile: Image = scaled_by_type.get(cell_type, scaled_by_type[4])
 				image.blit_rect(tile, Rect2i(0, 0, cell_px, cell_px), Vector2i(origin_x, origin_y))
@@ -270,6 +288,24 @@ func _build_grid_texture(mission_id: String, rng: RandomNumberGenerator) -> Imag
 				var prop: Image = scaled_props[rng.randi_range(0, scaled_props.size() - 1)]
 				image.blend_rect(prop, Rect2i(0, 0, prop_px, prop_px), Vector2i(origin_x + prop_offset, origin_y + prop_offset))
 	return ImageTexture.create_from_image(image)
+
+
+## A copy of square RGBA8 `tile` with a round alpha fade: opaque inside
+## fade.x, transparent beyond fade.y (both fractions of the tile size, from its
+## centre), smoothstepped between.
+## Example: `faded_landmark(goal_tile, Vector2(0.34, 0.56))`
+static func faded_landmark(tile: Image, fade: Vector2) -> Image:
+	var out: Image = tile.duplicate()
+	var n: Vector2 = Vector2(out.get_size())
+	var centre: Vector2 = n * 0.5
+	for y: int in range(out.get_height()):
+		for x: int in range(out.get_width()):
+			var dist: float = (Vector2(x + 0.5, y + 0.5) - centre).length() / n.x
+			var keep: float = 1.0 - smoothstep(fade.x, fade.y, dist)
+			var pixel: Color = out.get_pixel(x, y)
+			pixel.a *= keep
+			out.set_pixel(x, y, pixel)
+	return out
 
 
 ## True for cells on the grid's outermost ring. MapGenerator makes that ring
@@ -292,8 +328,13 @@ func _draw_lane_cell(image: Image, lane: Dictionary, cell: Vector2i, cell_px: in
 		Vector2i.LEFT: Vector2i.ZERO,
 		Vector2i.RIGHT: Vector2i(cell_px - thickness, 0),
 	}
+	var is_landmark: bool = LANDMARK_FADE_BY_TYPE.has(int(cells.get(cell, 4)))
 	for dir: Vector2i in sides:
 		if LANE_CELL_TYPES.has(int(cells.get(cell + dir, 4))):
+			continue
+		# A spawn/goal on the map edge: the lane runs on off the map, so no
+		# kerb across its mouth.
+		if is_landmark and not cells.has(cell + dir):
 			continue
 		var strip: Image = lane[dir]
 		image.blit_rect(strip, Rect2i(Vector2i.ZERO, strip.get_size()), origin + (sides[dir] as Vector2i))

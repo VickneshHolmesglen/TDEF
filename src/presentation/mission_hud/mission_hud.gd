@@ -81,7 +81,7 @@ var _ultimate_focus_ring: Panel = null
 ## placeholder face, the same "content can lag code" tolerance grid_
 ## visual.gd's own class doc comment documents elsewhere.
 const SKILL_SLOT_COUNT: int = 4
-const SKILL_TILE_SIZE: Vector2 = Vector2(32, 32)  ## 4 tiles + gaps fit the side panel
+const SKILL_TILE_SIZE: Vector2 = Vector2(26, 30)  ## minimum; the tiles expand to share the card width
 const SKILL_READY_COLOR: Color = Color(0.24, 0.30, 0.42, 1.0)
 const SKILL_COOLDOWN_FILL_COLOR: Color = Color(0.0, 0.0, 0.0, 0.7)
 var _skill_slot_icons: Array[ColorRect] = []
@@ -98,6 +98,27 @@ var _skill_slot_countdowns: Array[Label] = []
 ## between them, so the HUD never covers a cell. The panels stop mouse input,
 ## so a click on the chrome can never place a tower.
 const SIDE_PANEL_WIDTH: float = 160.0
+
+## Right-column layout (2026-10-11 gameplay-graphics pass, docs/images/
+## "Gameplay graphics.PNG"): the readouts sat flush against the panel edge in
+## one oversized text stack, with materials floating at a fixed y below it.
+## They now sit in inset cards inside one flowing column -- a status card
+## (phase header, timer, wave, Hero HP + bar, breaches, gold, skills) and a
+## titled loot card -- so nothing can overlap however tall either card gets.
+## Built in code so both mission scenes get it without scene edits.
+const PANEL_INSET: float = 8.0
+const CARD_GAP: int = 8
+const HEADER_FONT_SIZE: int = 13
+const TIMER_FONT_SIZE: int = 22
+const BODY_FONT_SIZE: int = 14
+const GOLD_FONT_SIZE: int = 18
+const GOLD_TEXT_COLOR: Color = Color(1.0, 0.82, 0.42)
+const HP_BAR_FILL_COLOR: Color = Color(0.36, 0.72, 0.36)
+const HP_BAR_BACK_COLOR: Color = Color(0.05, 0.06, 0.09)
+const CARD_BG_COLOR: Color = Color(0.11, 0.13, 0.19, 1.0)
+const CARD_BORDER_COLOR: Color = Color(0.87, 0.83, 0.69, 0.18)
+var _hero_hp_bar: ProgressBar = null
+var _loot_card: PanelContainer = null
 
 ## AC-61: mirrors _active_tower_hp_bars 1:1 (tower_id -> its rendered Label) so
 ## a single tower's bar can be removed immediately without rebuilding the host.
@@ -257,6 +278,7 @@ func _ready() -> void:
 	_combat_cluster.visible = false
 	GEventBus.mission_launched.connect(_on_mission_launched_show_combat_cluster)
 	_build_effect_list()
+	_build_right_column()
 
 
 func _exit_tree() -> void:
@@ -510,6 +532,7 @@ func _on_tower_damaged(tower_id: int, _damage_dealt: float, current_hp: float, m
 	var label: Label = _tower_hp_bar_labels.get(tower_id)
 	if label == null:
 		label = Label.new()
+		_style_label(label, 12, ShellChromeStyle.UI_PARCHMENT)
 		_tower_hp_bars_host.add_child(label)
 		_tower_hp_bar_labels[tower_id] = label
 	label.text = tr("HUD_TOWER_HP") % [tower_id, roundi(current_hp), roundi(max_hp)]
@@ -679,6 +702,9 @@ func _on_hero_health_changed(current_health: float, max_health: float) -> void:
 	if _terminal:
 		return
 	_hero_hp_label.text = tr("HUD_HERO_HP") % [roundi(current_health), roundi(max_health)]
+	if _hero_hp_bar != null:
+		_hero_hp_bar.max_value = maxf(max_health, 1.0)
+		_hero_hp_bar.value = current_health
 
 
 ## Places the effect list directly under the Hero HP line and starts polling.
@@ -735,6 +761,8 @@ func _refresh_effect_list() -> void:
 		var label := Label.new()
 		label.text = lines[i]
 		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		label.add_theme_font_size_override("font_size", 12)
 		label.add_theme_color_override("font_color",
 				EFFECT_COLOR_SHIELD if String(entries[i][&"kind"]) == "shield" else EFFECT_COLOR_BUFF)
 		_effect_list.add_child(label)
@@ -753,18 +781,27 @@ func _build_skill_slots() -> void:
 		var tile := Panel.new()
 		tile.name = "Slot%d" % slot
 		tile.custom_minimum_size = SKILL_TILE_SIZE
+		tile.size_flags_horizontal = Control.SIZE_EXPAND_FILL  # 4 equal tiles across the card
+		var frame: StyleBoxFlat = _flat_box(Color(0, 0, 0, 0), ShellChromeStyle.CHAMFER_PX)
+		frame.set_border_width_all(1)
+		frame.border_color = Color(ShellChromeStyle.UI_ACCENT_CYAN, 0.55)
+		tile.add_theme_stylebox_override("panel", frame)
+		tile.clip_contents = true
 		_skill_cooldown_host.add_child(tile)
 
 		var icon := ColorRect.new()
 		icon.name = "Icon"
 		icon.color = SKILL_READY_COLOR
 		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		icon.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		icon.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, 1)
 		tile.add_child(icon)
 		_skill_slot_icons.append(icon)
 
 		var slot_label := Label.new()
+		slot_label.name = "SlotLabel"
 		slot_label.text = str(slot + 1)
+		slot_label.add_theme_font_size_override("font_size", BODY_FONT_SIZE)
+		slot_label.add_theme_color_override("font_color", ShellChromeStyle.UI_PARCHMENT)
 		slot_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		slot_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		slot_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -787,6 +824,7 @@ func _build_skill_slots() -> void:
 
 		var countdown := Label.new()
 		countdown.name = "CountdownLabel"
+		countdown.add_theme_font_size_override("font_size", 12)
 		countdown.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		countdown.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		countdown.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -813,6 +851,11 @@ func _on_skill_cooldown_display_updated(skill_slot: int, cooldown_remaining: flo
 	var on_cooldown: bool = cooldown_remaining > 0.0
 	icon.modulate.a = 0.5 if on_cooldown else 1.0
 	fill.visible = on_cooldown
+	# The countdown replaces the slot number while cooling down -- both centred
+	# in one small tile, they overprinted each other.
+	var slot_label: Label = icon.get_parent().get_node_or_null(^"SlotLabel") as Label
+	if slot_label != null:
+		slot_label.visible = not on_cooldown
 	if on_cooldown:
 		var fraction: float = clampf(cooldown_remaining / cooldown_max, 0.0, 1.0) if cooldown_max > 0.0 else 0.0
 		fill.anchor_bottom = fraction
@@ -959,9 +1002,10 @@ func _on_wave_started(wave_number: int, total_waves: int, _wave_difficulty: floa
 	_wave_label.text = tr("HUD_WAVE_PROGRESS") % [wave_number, total_waves]
 
 
-## AC-63 (PC-4, timer half).
-func _on_phase_timer_tick(phase: String, seconds_remaining: float) -> void:
-	_phase_timer_label.text = tr("HUD_PHASE_TIMER") % [phase_display_name(phase), seconds_remaining]
+## AC-63 (PC-4, timer half). Just the seconds: the phase name sits directly
+## above it in PhaseLabel (2026-10-11 layout pass).
+func _on_phase_timer_tick(_phase: String, seconds_remaining: float) -> void:
+	_phase_timer_label.text = tr("HUD_PHASE_TIMER") % seconds_remaining
 
 
 ## Player-facing name for a WaveManager phase id (2026-10-04 smoke check: the
@@ -1012,12 +1056,122 @@ func _build_side_panels() -> void:
 		move_child(panel, 0)
 
 
+## Moves Chrome and MaterialsRow into inset cards in one right-hand column and
+## restyles the readouts (see PANEL_INSET's doc comment). Every @onready
+## reference was resolved before this runs, so reparenting keeps them valid.
+func _build_right_column() -> void:
+	var chrome: VBoxContainer = _phase_label.get_parent() as VBoxContainer
+	var column := VBoxContainer.new()
+	column.name = "RightColumn"
+	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	column.anchor_left = 1.0
+	column.anchor_right = 1.0
+	column.offset_left = -SIDE_PANEL_WIDTH + PANEL_INSET
+	column.offset_right = -PANEL_INSET
+	column.offset_top = PANEL_INSET
+	column.add_theme_constant_override("separation", CARD_GAP)
+	_combat_cluster.add_child(column)
+	_combat_cluster.move_child(column, chrome.get_index())
+
+	var status_card: PanelContainer = make_card("StatusCard")
+	column.add_child(status_card)
+	chrome.reparent(status_card, false)
+	chrome.add_theme_constant_override("separation", 4)
+
+	_loot_card = make_card("LootCard")
+	column.add_child(_loot_card)
+	var loot_body := VBoxContainer.new()
+	loot_body.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	loot_body.add_theme_constant_override("separation", 6)
+	_loot_card.add_child(loot_body)
+	loot_body.add_child(make_section_title(tr("HUD_SECTION_LOOT")))
+	_materials_row.reparent(loot_body, false)
+	_materials_row.add_theme_constant_override("h_separation", 8)
+	_loot_card.visible = not _materials_tally.is_empty()
+
+	_style_label(_phase_label, HEADER_FONT_SIZE, ShellChromeStyle.UI_ACCENT_CYAN)
+	_phase_label.uppercase = true
+	_style_label(_phase_timer_label, TIMER_FONT_SIZE, ShellChromeStyle.UI_PARCHMENT)
+	_style_label(_wave_label, BODY_FONT_SIZE, ShellChromeStyle.UI_PARCHMENT)
+	_style_label(_hero_hp_label, BODY_FONT_SIZE, ShellChromeStyle.UI_PARCHMENT)
+	_style_label(_breach_counter_label, BODY_FONT_SIZE, ShellChromeStyle.UI_PARCHMENT)
+	_style_label(_boss_bar_label, BODY_FONT_SIZE, Color(0.85, 0.6, 1.0))
+	_boss_bar_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_style_label(_gold_label, GOLD_FONT_SIZE, GOLD_TEXT_COLOR)
+	_gold_label.clip_text = false  # a clipping Label has no minimum width, so the HBox collapsed it to nothing
+	var gold_icon: TextureRect = _gold_label.get_parent().get_node_or_null(^"GoldIcon") as TextureRect
+	if gold_icon != null:
+		gold_icon.custom_minimum_size = Vector2(24, 24)
+
+	# A thin divider between the "where are we" block and the hero/economy block.
+	var divider := ColorRect.new()
+	divider.name = "Divider"
+	divider.color = CARD_BORDER_COLOR
+	divider.custom_minimum_size = Vector2(0, 1)
+	divider.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	chrome.add_child(divider)
+	chrome.move_child(divider, _hero_hp_label.get_index())
+
+	_hero_hp_bar = ProgressBar.new()
+	_hero_hp_bar.name = "HeroHpBar"
+	_hero_hp_bar.show_percentage = false
+	_hero_hp_bar.custom_minimum_size = Vector2(0, 6)
+	_hero_hp_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_hero_hp_bar.max_value = 1.0
+	_hero_hp_bar.value = 1.0
+	_hero_hp_bar.add_theme_stylebox_override("background", _flat_box(HP_BAR_BACK_COLOR, 2))
+	_hero_hp_bar.add_theme_stylebox_override("fill", _flat_box(HP_BAR_FILL_COLOR, 2))
+	chrome.add_child(_hero_hp_bar)
+	chrome.move_child(_hero_hp_bar, _hero_hp_label.get_index() + 1)
+
+	_skill_cooldown_host.add_theme_constant_override("separation", 4)
+
+
+## An inset card for the side panels: darker than the panel, hairline border.
+static func make_card(card_name: String) -> PanelContainer:
+	var card := PanelContainer.new()
+	card.name = card_name
+	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var box: StyleBoxFlat = _flat_box(CARD_BG_COLOR, ShellChromeStyle.CHAMFER_PX)
+	box.set_border_width_all(1)
+	box.border_color = CARD_BORDER_COLOR
+	box.set_content_margin_all(8.0)
+	card.add_theme_stylebox_override("panel", box)
+	return card
+
+
+## A small uppercase accent-cyan section heading for a card.
+static func make_section_title(text: String) -> Label:
+	var title := Label.new()
+	title.text = text
+	title.uppercase = true
+	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	title.add_theme_font_size_override("font_size", HEADER_FONT_SIZE)
+	title.add_theme_color_override("font_color", ShellChromeStyle.UI_ACCENT_CYAN)
+	return title
+
+
+static func _flat_box(color: Color, radius: int) -> StyleBoxFlat:
+	var box := StyleBoxFlat.new()
+	box.bg_color = color
+	box.set_corner_radius_all(radius)
+	return box
+
+
+static func _style_label(label: Label, font_size: int, color: Color) -> void:
+	label.add_theme_font_size_override("font_size", font_size)
+	label.add_theme_color_override("font_color", color)
+	label.clip_text = true
+
+
 func _rebuild_materials_row() -> void:
 	for child: Node in _materials_row.get_children():
 		_materials_row.remove_child(child)
 		child.queue_free()
 	for mat_type: String in _materials_tally:
 		_materials_row.add_child(_build_material_chip(mat_type, _materials_tally[mat_type]))
+	if _loot_card != null:
+		_loot_card.visible = not _materials_tally.is_empty()
 
 
 ## "[icon] xN" per inventory_screen.gd's established icon-with-text-fallback
@@ -1036,13 +1190,16 @@ func _build_material_chip(mat_type: String, quantity: int) -> HBoxContainer:
 	if definition != null and definition.icon != null:
 		var icon := TextureRect.new()
 		icon.texture = definition.icon
-		icon.custom_minimum_size = Vector2(20, 20)
+		icon.custom_minimum_size = Vector2(22, 22)
 		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		chip.add_child(icon)
 		quantity_label.text = "x%d" % quantity
 	else:
 		quantity_label.text = "%s x%d" % [mat_type, quantity]
+	quantity_label.add_theme_font_size_override("font_size", BODY_FONT_SIZE)
+	quantity_label.add_theme_color_override("font_color", ShellChromeStyle.UI_PARCHMENT)
+	quantity_label.custom_minimum_size.x = 30.0  # keeps the two chip columns aligned
 
 	chip.add_child(quantity_label)
 	return chip
