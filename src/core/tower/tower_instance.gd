@@ -690,6 +690,7 @@ func set_idle_ambient(element: String) -> void:
 	ramp.set_color(0, Color(color, 0.6))  ## capped below full alpha — "low-intensity," never competes with attack VFX
 	ramp.set_color(1, Color(color, 0.0))
 	_idle_particles.color_ramp = ramp
+	PixelVfx.style_particles(_idle_particles)
 
 	_idle_particles.emitting = true
 

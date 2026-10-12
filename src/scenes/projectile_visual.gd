@@ -174,6 +174,7 @@ func configure(archetype: String, projectile_type: String, start_pos: Vector2, t
 		_line.width = 3.0
 		if ELEMENT_TRAIL_CONFIGS.has(element):
 			_start_trail_particles(ELEMENT_TRAIL_CONFIGS[element] as Dictionary)
+	PixelVfx.style_line(_line)
 
 	# Epic 15 Story 006 (ADR-0037): builds the 3D visual companion, seeded at
 	# _start_position, so a projectile fired this frame has a correctly-placed
@@ -209,6 +210,7 @@ func _start_trail_particles(config: Dictionary) -> void:
 	ramp.set_color(0, Color(_color, 1.0))
 	ramp.set_color(1, Color(_color, 0.0))
 	_trail_particles.color_ramp = ramp
+	PixelVfx.style_particles(_trail_particles)
 
 	_trail_particles.emitting = true
 

@@ -102,6 +102,7 @@ func _spawn_burst(color: Color, config: Dictionary) -> void:
 	ramp.set_color(0, Color(color, 1.0))
 	ramp.set_color(1, Color(color, 0.0))
 	_particles.color_ramp = ramp
+	PixelVfx.style_particles(_particles)
 
 	_particles.restart()
 	_particles.emitting = true

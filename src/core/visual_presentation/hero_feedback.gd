@@ -314,6 +314,7 @@ func _spawn_particles(direction: Vector2) -> void:
 	else:
 		p.direction = direction
 		p.spread = 25.0
+	PixelVfx.style_particles(p)
 	parent.add_child(p)
 	p.global_position = _hero.global_position
 	p.emitting = true

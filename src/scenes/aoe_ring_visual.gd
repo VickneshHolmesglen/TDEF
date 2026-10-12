@@ -118,6 +118,7 @@ func _spawn_particle_burst(color: Color, config: Dictionary) -> void:
 	ramp.set_color(0, Color(color, 1.0))
 	ramp.set_color(1, Color(color, 0.0))
 	_particles.color_ramp = ramp
+	PixelVfx.style_particles(_particles)
 
 	_particles.restart()
 	_particles.emitting = true
@@ -136,4 +137,5 @@ func _draw() -> void:
 	var radius: float = _target_radius * t
 	var color: Color = _color
 	color.a = 1.0 - t
-	draw_arc(Vector2.ZERO, radius, 0.0, TAU, 48, color, RING_WIDTH, true)
+	# HD-2D effects pass: pixel-block ring instead of an anti-aliased arc.
+	PixelVfx.draw_pixel_ring(self, Vector2.ZERO, radius, RING_WIDTH, color)

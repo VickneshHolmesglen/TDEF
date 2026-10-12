@@ -57,6 +57,7 @@ var _self_destruct_time: float = 0.4
 
 @onready var _particles: CPUParticles2D = $CPUParticles2D
 @onready var _dissolve_sprite: Sprite2D = $DissolveSprite
+const DISSOLVE_SHADER: Shader = preload("res://src/shaders/dissolve.gdshader")
 
 
 ## monster_id/tier: from MonsterDiedEvent — tier selects TIER_CONFIGS (any
@@ -82,8 +83,18 @@ func _spawn_dissolve_ghost(monster_id: StringName, tier: int, config: Dictionary
 	_dissolve_sprite.scale = Vector2.ONE * (target_long_edge / longest_edge)
 
 	var dissolve_duration: float = config["dissolve_duration"] as float
+	# HD-2D effects pass: the ghost breaks apart in blocks the size of the
+	# sprite's own art pixels (dissolve.gdshader) instead of a smooth fade.
+	# Pixel sprites are 46 px on the long edge (80 for bosses), see
+	# tools/asset-pipeline/hd2d/pixelate_sprites.py.
+	var art_long_edge: float = 80.0 if tier >= 2 else 46.0
+	var mat := ShaderMaterial.new()
+	mat.shader = DISSOLVE_SHADER
+	mat.set_shader_parameter(&"cells", Vector2(texture.get_size()) * (art_long_edge / longest_edge))
+	mat.set_shader_parameter(&"dissolve_amount", 0.0)
+	_dissolve_sprite.material = mat
 	var tween := create_tween()
-	tween.tween_property(_dissolve_sprite, "modulate:a", 0.0, dissolve_duration).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	tween.tween_property(mat, "shader_parameter/dissolve_amount", 1.0, dissolve_duration)
 
 
 func _spawn_particle_burst(config: Dictionary) -> void:
@@ -104,6 +115,7 @@ func _spawn_particle_burst(config: Dictionary) -> void:
 	ramp.set_color(0, Color(color, 1.0))
 	ramp.set_color(1, Color(color, 0.0))
 	_particles.color_ramp = ramp
+	PixelVfx.style_particles(_particles)
 
 	_particles.restart()
 	_particles.emitting = true
