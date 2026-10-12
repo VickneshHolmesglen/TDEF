@@ -183,9 +183,9 @@ func _style_button_stack() -> void:
 
 	for button: Button in [_resume_button, _settings_button, _objective_button, _quit_to_sanctuary_button, _quit_to_main_menu_button]:
 		button.custom_minimum_size = Vector2(0, PAUSE_BUTTON_HEIGHT)
-		button.add_theme_stylebox_override("normal", ShellChromeStyle.chrome_button_stylebox(false))
+		button.add_theme_stylebox_override("normal", ShellChromeStyle.skin_button_for(false))
 		button.add_theme_color_override("font_color", ShellChromeStyle.UI_PARCHMENT)
-	_resume_button.add_theme_stylebox_override("normal", ShellChromeStyle.chrome_button_stylebox(true))
+	_resume_button.add_theme_stylebox_override("normal", ShellChromeStyle.skin_button_for(true))
 
 	var card := Panel.new()
 	card.name = "PauseCard"

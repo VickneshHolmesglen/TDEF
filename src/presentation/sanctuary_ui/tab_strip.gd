@@ -274,8 +274,8 @@ func _select_index(index: int) -> void:
 func _refresh_active_tab_styling() -> void:
 	for index: int in _buttons.size():
 		var is_active: bool = index == _current_index
-		_buttons[index].add_theme_stylebox_override("normal", ShellChromeStyle.chrome_button_stylebox(is_active))
-		_buttons[index].add_theme_stylebox_override("hover", ShellChromeStyle.chrome_button_stylebox(is_active))
+		_buttons[index].add_theme_stylebox_override("normal", ShellChromeStyle.skin_button_for(is_active))
+		_buttons[index].add_theme_stylebox_override("hover", ShellChromeStyle.skin_button_for(is_active))
 
 
 ## Test/inspection accessor -- current live count for a badge-eligible index
@@ -383,9 +383,9 @@ func _build_buttons() -> void:
 		# Tabs share the strip's full height (2026-10-10 UI pass) -- they
 		# used to stop two-thirds down, leaving a dead block under them.
 		button.size_flags_vertical = Control.SIZE_EXPAND_FILL
-		button.add_theme_stylebox_override("normal", ShellChromeStyle.chrome_button_stylebox(index == 0))
-		button.add_theme_stylebox_override("hover", ShellChromeStyle.chrome_button_stylebox(index == 0))
-		button.add_theme_stylebox_override("pressed", ShellChromeStyle.chrome_button_stylebox(true))
+		button.add_theme_stylebox_override("normal", ShellChromeStyle.skin_button_for(index == 0))
+		button.add_theme_stylebox_override("hover", ShellChromeStyle.skin_button_for(index == 0))
+		button.add_theme_stylebox_override("pressed", ShellChromeStyle.skin_button(&"active"))
 		button.add_theme_color_override("font_color", ShellChromeStyle.UI_PARCHMENT)
 		button.pressed.connect(_on_button_pressed.bind(index))
 		button.focus_entered.connect(_update_focus_ring.bind(index))

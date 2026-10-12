@@ -173,3 +173,7 @@ tarot_tab_next={
 [internationalization]
 
 locale/translations=PackedStringArray("res://assets/localization/strings.en.translation")
+
+[gui]
+
+theme/custom="res://assets/ui/hd2d_theme.tres"

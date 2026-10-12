@@ -39,7 +39,7 @@ extends Control
 ## happiness == 100 rather than a fabricated cooldown timer that doesn't
 ## exist in the data layer.
 
-const FOCUS_RING_COLOR: Color = Color(1.0, 0.85, 0.2, 1.0)  ## placeholder — art-director TBD
+const FOCUS_RING_COLOR: Color = FocusRingFactory.FOCUS_RING_COLOR  ## HD-2D skin gold
 
 ## species_id -> art lookup. All 5 species generated this session have art.
 ## Closes this screen's own flagged "no real creature art" simplification —
@@ -205,7 +205,7 @@ func _create_roster_button(creature: CreatureInstance) -> Button:
 	var card_box: StyleBoxFlat = ShellChromeStyle.chrome_button_stylebox(false)
 	card_box.bg_color = ShellChromeStyle.UI_CHROME
 	card_box.set_border_width_all(4 if selected else 1)
-	card_box.border_color = ShellChromeStyle.UI_ACCENT_CYAN if selected else Color(ShellChromeStyle.UI_PARCHMENT, 0.35)
+	card_box.border_color = ShellChromeStyle.UI_ACCENT if selected else Color(ShellChromeStyle.UI_PARCHMENT, 0.35)
 	card_box.set_content_margin_all(8.0)
 	button.add_theme_stylebox_override("normal", card_box)
 	button.add_theme_stylebox_override("hover", card_box)
@@ -288,7 +288,7 @@ func _apply_room_styles() -> void:
 	for button: Button in [_tend_button, _breed_select_button, _sacrifice_button, _confirm_breeding_button, _cancel_selection_button]:
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		button.custom_minimum_size = Vector2(0, 36)
-		button.add_theme_stylebox_override("normal", ShellChromeStyle.chrome_button_stylebox(false))
+		button.add_theme_stylebox_override("normal", ShellChromeStyle.skin_button_for(false))
 
 
 ## SpeciesResource carries no display name (menagerie.md Rule 1 names are

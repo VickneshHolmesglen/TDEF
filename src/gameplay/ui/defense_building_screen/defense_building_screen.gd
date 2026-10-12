@@ -26,7 +26,7 @@ extends Control
 ## Root is a plain Control. No class_name — matches inventory_screen.gd/
 ## menagerie_screen.gd's TD-workflow-001 precedent.
 
-const FOCUS_RING_COLOR: Color = Color(1.0, 0.85, 0.2, 1.0)  ## placeholder — art-director TBD
+const FOCUS_RING_COLOR: Color = FocusRingFactory.FOCUS_RING_COLOR  ## HD-2D skin gold
 
 ## Human-readable labels for the two real tech_category / structure_type
 ## values in assets/data/defense_building/ (verified via grep, not guessed —
@@ -78,7 +78,7 @@ func _ready() -> void:
 
 	_view_switch_button.pressed.connect(_on_view_switch_pressed)
 	_view_switch_button.tooltip_text = tr("DEFENSE_BUILDING_SWITCH_VIEW")
-	_view_switch_button.add_theme_stylebox_override("normal", ShellChromeStyle.chrome_button_stylebox(false))
+	_view_switch_button.add_theme_stylebox_override("normal", ShellChromeStyle.skin_button_for(false))
 	_view_title.add_theme_color_override("font_color", ShellChromeStyle.UI_PARCHMENT)
 	for view: PanelContainer in [_tech_tree_view, _structure_build_view]:
 		var box: StyleBoxFlat = ShellChromeStyle.chrome_panel_stylebox()
@@ -298,7 +298,7 @@ func _create_column(parent: HBoxContainer, title: String) -> VBoxContainer:
 	return column
 
 
-## Owned/done = filled Accent Cyan; actionable = parchment outline; blocked =
+## Owned/done = filled the accent colour; actionable = parchment outline; blocked =
 ## outline at reduced opacity. Filled-vs-outline is the non-color signal
 ## (state is also spelled out in the card's own text).
 func _style_card(button: Button, done: bool, actionable: bool) -> void:

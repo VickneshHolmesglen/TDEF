@@ -535,9 +535,9 @@ func _configure_launch_mission_button() -> void:
 	_launch_mission_button.offset_right = -24.0
 	_launch_mission_button.offset_bottom = -24.0
 	_launch_mission_button.text = tr("SANCTUARY_LAUNCH_MISSION_BUTTON")
-	_launch_mission_button.add_theme_stylebox_override("normal", ShellChromeStyle.launch_button_stylebox())
-	_launch_mission_button.add_theme_stylebox_override("hover", ShellChromeStyle.launch_button_stylebox())
-	_launch_mission_button.add_theme_stylebox_override("pressed", ShellChromeStyle.launch_button_stylebox())
+	_launch_mission_button.add_theme_stylebox_override("normal", ShellChromeStyle.skin_launch())
+	_launch_mission_button.add_theme_stylebox_override("hover", ShellChromeStyle.skin_launch())
+	_launch_mission_button.add_theme_stylebox_override("pressed", ShellChromeStyle.skin_launch(&"pressed"))
 	_launch_mission_button.add_theme_color_override("font_color", ShellChromeStyle.UI_PARCHMENT)
 	# Focus-reachable via Godot's default Tab-order traversal (the UX spec's
 	# own "implementation-detail choice, not fixed here" — design/ux/

@@ -32,6 +32,7 @@ stretch_mode = 6
 
 [node name="TitleLabel" type="Label" parent="."]
 layout_mode = 0
+theme_type_variation = &"TitleLabel"
 offset_left = 96.0
 offset_top = 48.0
 offset_right = 900.0

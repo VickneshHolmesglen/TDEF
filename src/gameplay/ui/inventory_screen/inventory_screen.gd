@@ -299,7 +299,7 @@ var _slot_focus_rings: Array[Panel] = []
 ## highlighting which left-panel slots that recipe would consume
 ## (design/gdd/crafting.md UI Requirements: "Selecting a recipe row
 ## highlights ... the specific Inventory slots on the left panel that would
-## be consumed"). Kept as a separate node/color (Accent Cyan, not the
+## be consumed"). Kept as a separate node/color (UI_HIGHLIGHT cyan, not the
 ## keyboard ring's gold) so both can be visible at once without one
 ## overwriting the other's state.
 var _slot_craft_preview_rings: Array[Panel] = []
@@ -446,10 +446,10 @@ func _style_sub_tab(tab_button: Button) -> void:
 	tab_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	tab_button.custom_minimum_size = Vector2(0, 36)
 	tab_button.add_theme_color_override("font_color", ShellChromeStyle.UI_PARCHMENT)
-	tab_button.add_theme_stylebox_override("normal", ShellChromeStyle.chrome_button_stylebox(false))
-	tab_button.add_theme_stylebox_override("hover", ShellChromeStyle.chrome_button_stylebox(false))
-	tab_button.add_theme_stylebox_override("pressed", ShellChromeStyle.chrome_button_stylebox(true))
-	tab_button.add_theme_stylebox_override("hover_pressed", ShellChromeStyle.chrome_button_stylebox(true))
+	tab_button.add_theme_stylebox_override("normal", ShellChromeStyle.skin_button_for(false))
+	tab_button.add_theme_stylebox_override("hover", ShellChromeStyle.skin_button_for(false))
+	tab_button.add_theme_stylebox_override("pressed", ShellChromeStyle.skin_button(&"active"))
+	tab_button.add_theme_stylebox_override("hover_pressed", ShellChromeStyle.skin_button(&"active"))
 
 
 func _on_tab_pressed(tab: StringName) -> void:
@@ -956,7 +956,7 @@ func _create_slot_button(index: int) -> Button:
 	craft_preview_style.border_width_right = 3
 	craft_preview_style.border_width_top = 3
 	craft_preview_style.border_width_bottom = 3
-	craft_preview_style.border_color = ShellChromeStyle.UI_ACCENT_CYAN
+	craft_preview_style.border_color = ShellChromeStyle.UI_HIGHLIGHT
 	craft_preview_ring.add_theme_stylebox_override("panel", craft_preview_style)
 	craft_preview_ring.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	craft_preview_ring.visible = false
@@ -1350,7 +1350,7 @@ func _create_recipe_row(recipe: RecipeResource, owned_totals: Dictionary) -> Con
 		craft_button.tooltip_text = tr("CRAFTING_BAG_FULL_TOOLTIP")
 	craft_button.disabled = not craftable or bag_full
 	craft_button.focus_mode = Control.FOCUS_ALL
-	craft_button.add_theme_stylebox_override("normal", ShellChromeStyle.chrome_button_stylebox(craftable and not bag_full))
+	craft_button.add_theme_stylebox_override("normal", ShellChromeStyle.skin_button_for(craftable and not bag_full))
 	craft_button.pressed.connect(_on_craft_button_pressed.bind(recipe.recipe_id))
 	craft_button.set_meta(UiAudioBinder.META_KEY, UiAudioBinder.KIND_NONE)
 	# Craft button focus doubles as this row's "selected" state for keyboard/
@@ -1414,7 +1414,7 @@ func _on_craft_button_pressed(recipe_id: StringName) -> void:
 	crafting.resolve_craft(recipe_id)
 
 
-## Highlights (Accent Cyan ring, distinct from the keyboard-focus gold ring)
+## Highlights (UI_HIGHLIGHT cyan ring, distinct from the keyboard-focus gold ring)
 ## every left-panel slot holding a material this recipe's inputs would
 ## consume -- "what could I make" made concrete per the GDD's own Player
 ## Fantasy section. Best-effort: a recipe cost of "8 Common" doesn't map to
@@ -1557,7 +1557,7 @@ func _create_repair_row(contents: Dictionary, quality_tier: int, owned_common: i
 
 	var row := PanelContainer.new()
 	row.name = "Repair_%d" % instance_id
-	row.add_theme_stylebox_override("panel", ShellChromeStyle.chrome_panel_stylebox())
+	row.add_theme_stylebox_override("panel", ShellChromeStyle.skin_panel())
 
 	var content := VBoxContainer.new()
 	row.add_child(content)
@@ -1575,7 +1575,7 @@ func _create_repair_row(contents: Dictionary, quality_tier: int, owned_common: i
 	repair_button.text = tr("INVENTORY_REPAIR_BUTTON")
 	repair_button.disabled = not sufficient
 	repair_button.focus_mode = Control.FOCUS_ALL
-	repair_button.add_theme_stylebox_override("normal", ShellChromeStyle.chrome_button_stylebox(sufficient))
+	repair_button.add_theme_stylebox_override("normal", ShellChromeStyle.skin_button_for(sufficient))
 	repair_button.pressed.connect(_on_repair_button_pressed.bind(instance_id))
 	repair_button.set_meta(UiAudioBinder.META_KEY, UiAudioBinder.KIND_NONE)
 	title_row.add_child(repair_button)

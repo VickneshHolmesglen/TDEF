@@ -52,7 +52,7 @@ extends Control
 ## Root is a plain Control. No class_name — matches the other room screens'
 ## TD-workflow-001 precedent.
 
-const FOCUS_RING_COLOR: Color = Color(1.0, 0.85, 0.2, 1.0)  ## placeholder — art-director TBD
+const FOCUS_RING_COLOR: Color = FocusRingFactory.FOCUS_RING_COLOR  ## HD-2D skin gold
 
 const TAB_CRAFT: int = 0
 const TAB_IMBUE: int = 1

@@ -29,7 +29,7 @@ var _body: RichTextLabel
 
 func _ready() -> void:
 	custom_minimum_size = Vector2(260, 0)
-	add_theme_stylebox_override("panel", ShellChromeStyle.chrome_panel_stylebox())
+	add_theme_stylebox_override("panel", ShellChromeStyle.skin_panel())
 	var column := VBoxContainer.new()
 	add_child(column)
 	_header = Label.new()

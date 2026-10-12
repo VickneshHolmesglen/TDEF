@@ -94,16 +94,18 @@ func _ready() -> void:
 
 
 func _apply_chrome_styles() -> void:
+	# HD-2D UI skin (2026-10-12): studded gold-rule panels, Cinzel headings.
 	for panel: PanelContainer in [_mission_list_panel, _right_panel]:
-		var box: StyleBoxFlat = ShellChromeStyle.chrome_panel_stylebox()
-		box.bg_color = ShellChromeStyle.UI_CHROME.darkened(PANEL_SHADE)
+		var box: StyleBoxTexture = ShellChromeStyle.skin_panel()
 		box.set_content_margin_all(16.0)
 		panel.add_theme_stylebox_override("panel", box)
 
-	for label: Label in [_header_label, _browse_hint, _mission_title_label, _objective_label, _launch_recap_label]:
+	_header_label.theme_type_variation = &"TitleLabel"
+	_mission_title_label.theme_type_variation = &"HeaderLabel"
+	for label: Label in [_browse_hint, _objective_label, _launch_recap_label]:
 		label.add_theme_color_override("font_color", ShellChromeStyle.UI_PARCHMENT)
 	for header: Label in [_difficulty_header, _modifier_header]:
-		header.add_theme_color_override("font_color", Color(ShellChromeStyle.UI_PARCHMENT, SECTION_HEADER_ALPHA))
+		header.theme_type_variation = &"HeaderLabel"
 
 	_back_button.custom_minimum_size = Vector2(0, 40)
 	_back_button.add_theme_stylebox_override("normal", _padded_outline_stylebox())
@@ -111,14 +113,14 @@ func _apply_chrome_styles() -> void:
 	# Primary action: the same Sanctum Amber launch styling the Sanctuary's
 	# own Launch Mission button uses; disabled (dimmed) until a mission is
 	# chosen so it never reads as live-but-inert while browsing.
-	var launch_box: StyleBoxFlat = ShellChromeStyle.launch_button_stylebox()
+	var launch_box: StyleBoxTexture = ShellChromeStyle.skin_button(&"active")
+	launch_box.content_margin_left = 24
+	launch_box.content_margin_right = 24
 	_launch_button.add_theme_stylebox_override("normal", launch_box)
 	_launch_button.add_theme_stylebox_override("hover", launch_box)
-	_launch_button.add_theme_stylebox_override("pressed", launch_box)
-	var disabled_box: StyleBoxFlat = launch_box.duplicate() as StyleBoxFlat
-	disabled_box.bg_color = Color(ShellChromeStyle.LAUNCH_AMBER, 0.35)
-	_launch_button.add_theme_stylebox_override("disabled", disabled_box)
-	_launch_button.add_theme_stylebox_override("focus", ShellChromeStyle.focus_ring_stylebox())
+	_launch_button.add_theme_stylebox_override("pressed", ShellChromeStyle.skin_button(&"pressed"))
+	_launch_button.add_theme_stylebox_override("disabled", ShellChromeStyle.skin_button(&"disabled"))
+	_launch_button.add_theme_stylebox_override("focus", ShellChromeStyle.skin_focus())
 
 
 func _exit_tree() -> void:
@@ -194,13 +196,12 @@ func _create_mission_button(entry: MissionEntry) -> Button:
 	button.add_theme_color_override("font_color", ShellChromeStyle.UI_PARCHMENT)
 	button.add_theme_color_override("font_pressed_color", ShellChromeStyle.UI_PARCHMENT)
 	button.add_theme_color_override("font_hover_pressed_color", ShellChromeStyle.UI_PARCHMENT)
-	var idle_box: StyleBoxFlat = _mission_card_stylebox(false)
-	var selected_box: StyleBoxFlat = _mission_card_stylebox(true)
-	button.add_theme_stylebox_override("normal", idle_box)
-	button.add_theme_stylebox_override("hover", idle_box)
+	var selected_box: StyleBox = _mission_card_stylebox(true)
+	button.add_theme_stylebox_override("normal", _mission_card_stylebox(false))
+	button.add_theme_stylebox_override("hover", ShellChromeStyle.skin_button(&"hover"))
 	button.add_theme_stylebox_override("pressed", selected_box)
 	button.add_theme_stylebox_override("hover_pressed", selected_box)
-	button.add_theme_stylebox_override("focus", ShellChromeStyle.focus_ring_stylebox())
+	button.add_theme_stylebox_override("focus", ShellChromeStyle.skin_focus())
 	button.pressed.connect(_on_mission_pressed.bind(entry.mission_id))
 	_wire_focus_ring(button)
 	return button
@@ -208,21 +209,15 @@ func _create_mission_button(entry: MissionEntry) -> Button:
 
 ## Outlined chrome button with side padding so left-aligned text doesn't sit
 ## on the border.
-static func _padded_outline_stylebox() -> StyleBoxFlat:
-	var box: StyleBoxFlat = ShellChromeStyle.chrome_button_stylebox(false)
-	box.content_margin_left = 12.0
-	box.content_margin_right = 12.0
-	return box
+static func _padded_outline_stylebox() -> StyleBox:
+	return ShellChromeStyle.skin_button(&"normal")
 
 
-## Selected = thick Accent Cyan border, idle = thin parchment outline -- a
-## border-weight change, not color alone (this project's filled-vs-outline
-## non-color-only convention, ShellChromeStyle.chrome_button_stylebox()).
-static func _mission_card_stylebox(selected: bool) -> StyleBoxFlat:
-	var box: StyleBoxFlat = ShellChromeStyle.chrome_button_stylebox(false)
-	box.bg_color = ShellChromeStyle.UI_CHROME
-	box.set_border_width_all(4 if selected else 1)
-	box.border_color = ShellChromeStyle.UI_ACCENT_CYAN if selected else Color(ShellChromeStyle.UI_PARCHMENT, 0.35)
+## Selected = warm amber fill with a lit gold rule, idle = navy with a bronze
+## rule -- a fill change, not colour of a line alone (filled-vs-outline
+## convention). HD-2D skin frames since 2026-10-12.
+static func _mission_card_stylebox(selected: bool) -> StyleBox:
+	var box: StyleBoxTexture = ShellChromeStyle.skin_button(&"active" if selected else &"normal")
 	box.set_content_margin_all(10.0)
 	return box
 
@@ -288,14 +283,14 @@ func _create_tier_button(tier: int) -> Button:
 	button.focus_mode = Control.FOCUS_ALL
 	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL  # 3 equal-width buttons, never clipped
 	button.custom_minimum_size = Vector2(0, 40)
-	button.add_theme_stylebox_override("focus", ShellChromeStyle.focus_ring_stylebox())
+	button.add_theme_stylebox_override("focus", ShellChromeStyle.skin_focus())
 	button.pressed.connect(_on_tier_pressed.bind(tier))
 	_wire_focus_ring(button)
 	_tier_row.add_child(button)
 	return button
 
 
-## Selected tier = filled Accent Cyan, others outlined (filled-vs-outline,
+## Selected tier = filled the accent colour, others outlined (filled-vs-outline,
 ## never color-only). Replaces the old "Normal (selected)" text tag, which
 ## pushed the tier row wider than the column and clipped it.
 func _refresh_tier_button_labels() -> void:
@@ -303,7 +298,7 @@ func _refresh_tier_button_labels() -> void:
 		var button: Button = _tier_buttons[tier]
 		var selected: bool = mission_select.difficulty_tier == tier
 		button.text = _tier_display_name(tier)
-		var box: StyleBoxFlat = ShellChromeStyle.chrome_button_stylebox(selected)
+		var box: StyleBox = ShellChromeStyle.skin_button_for(selected)
 		button.add_theme_stylebox_override("normal", box)
 		button.add_theme_stylebox_override("hover", box)
 
@@ -331,7 +326,7 @@ func _create_modifier_button(modifier_id: StringName) -> Button:
 	button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	button.custom_minimum_size = Vector2(0, 40)
 	button.add_theme_stylebox_override("normal", _padded_outline_stylebox())
-	button.add_theme_stylebox_override("focus", ShellChromeStyle.focus_ring_stylebox())
+	button.add_theme_stylebox_override("focus", ShellChromeStyle.skin_focus())
 	button.pressed.connect(_on_modifier_pressed.bind(modifier_id))
 	_wire_focus_ring(button)
 	_modifier_row.add_child(button)

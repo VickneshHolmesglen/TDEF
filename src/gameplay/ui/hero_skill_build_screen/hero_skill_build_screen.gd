@@ -86,7 +86,7 @@ extends Control
 ## Root is a plain Control. No class_name — matches the other room/screen
 ## scripts' TD-workflow-001 precedent.
 
-const FOCUS_RING_COLOR: Color = Color(1.0, 0.85, 0.2, 1.0)  ## placeholder — art-director TBD
+const FOCUS_RING_COLOR: Color = FocusRingFactory.FOCUS_RING_COLOR  ## HD-2D skin gold
 const ACTIVE_SLOT_LABELS: Array[String] = ["A", "B", "C", "D"]
 ## Caps a skill icon's rendered box (both dimensions — see
 ## _build_button_content()'s own doc comment for why a fixed box, not

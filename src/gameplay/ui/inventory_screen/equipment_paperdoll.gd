@@ -118,7 +118,7 @@ func _build_background() -> void:
 	panel.name = "Background"
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	panel.add_theme_stylebox_override("panel", ShellChromeStyle.chrome_panel_stylebox())
+	panel.add_theme_stylebox_override("panel", ShellChromeStyle.skin_panel())
 	add_child(panel)
 	move_child(panel, 0)
 

@@ -108,15 +108,13 @@ const SIDE_PANEL_WIDTH: float = 160.0
 ## Built in code so both mission scenes get it without scene edits.
 const PANEL_INSET: float = 8.0
 const CARD_GAP: int = 8
-const HEADER_FONT_SIZE: int = 13
-const TIMER_FONT_SIZE: int = 22
-const BODY_FONT_SIZE: int = 14
-const GOLD_FONT_SIZE: int = 18
+const HEADER_FONT_SIZE: int = 14
+const TIMER_FONT_SIZE: int = 24
+const BODY_FONT_SIZE: int = 16
+const GOLD_FONT_SIZE: int = 20
 const GOLD_TEXT_COLOR: Color = Color(1.0, 0.82, 0.42)
 const HP_BAR_FILL_COLOR: Color = Color(0.36, 0.72, 0.36)
-const HP_BAR_BACK_COLOR: Color = Color(0.05, 0.06, 0.09)
-const CARD_BG_COLOR: Color = Color(0.11, 0.13, 0.19, 1.0)
-const CARD_BORDER_COLOR: Color = Color(0.87, 0.83, 0.69, 0.18)
+const CARD_BORDER_COLOR: Color = Color(0.81, 0.66, 0.38, 0.45)  # gold rule (HD-2D skin)
 var _hero_hp_bar: ProgressBar = null
 var _loot_card: PanelContainer = null
 
@@ -784,7 +782,7 @@ func _build_skill_slots() -> void:
 		tile.size_flags_horizontal = Control.SIZE_EXPAND_FILL  # 4 equal tiles across the card
 		var frame: StyleBoxFlat = _flat_box(Color(0, 0, 0, 0), ShellChromeStyle.CHAMFER_PX)
 		frame.set_border_width_all(1)
-		frame.border_color = Color(ShellChromeStyle.UI_ACCENT_CYAN, 0.55)
+		frame.border_color = Color(ShellChromeStyle.UI_ACCENT, 0.55)
 		tile.add_theme_stylebox_override("panel", frame)
 		tile.clip_contents = true
 		_skill_cooldown_host.add_child(tile)
@@ -1045,7 +1043,7 @@ func _build_side_panels() -> void:
 	for side: int in [SIDE_LEFT, SIDE_RIGHT]:
 		var panel := Panel.new()
 		panel.name = "LeftSidePanel" if side == SIDE_LEFT else "RightSidePanel"
-		panel.add_theme_stylebox_override("panel", ShellChromeStyle.chrome_panel_stylebox())
+		panel.add_theme_stylebox_override("panel", ShellChromeStyle.skin_panel(true))
 		panel.mouse_filter = Control.MOUSE_FILTER_STOP
 		panel.anchor_left = 0.0 if side == SIDE_LEFT else 1.0
 		panel.anchor_right = panel.anchor_left
@@ -1089,7 +1087,7 @@ func _build_right_column() -> void:
 	_materials_row.add_theme_constant_override("h_separation", 8)
 	_loot_card.visible = not _materials_tally.is_empty()
 
-	_style_label(_phase_label, HEADER_FONT_SIZE, ShellChromeStyle.UI_ACCENT_CYAN)
+	_style_label(_phase_label, HEADER_FONT_SIZE, ShellChromeStyle.UI_ACCENT)
 	_phase_label.uppercase = true
 	_style_label(_phase_timer_label, TIMER_FONT_SIZE, ShellChromeStyle.UI_PARCHMENT)
 	_style_label(_wave_label, BODY_FONT_SIZE, ShellChromeStyle.UI_PARCHMENT)
@@ -1119,35 +1117,38 @@ func _build_right_column() -> void:
 	_hero_hp_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_hero_hp_bar.max_value = 1.0
 	_hero_hp_bar.value = 1.0
-	_hero_hp_bar.add_theme_stylebox_override("background", _flat_box(HP_BAR_BACK_COLOR, 2))
-	_hero_hp_bar.add_theme_stylebox_override("fill", _flat_box(HP_BAR_FILL_COLOR, 2))
+	_hero_hp_bar.custom_minimum_size = Vector2(0, 8)
+	# HD-2D skin: pixel trough from the theme; green fill on the skin's bar
+	# texture (keeps its darker bottom lip).
+	var hp_fill := StyleBoxTexture.new()
+	hp_fill.texture = load(ShellChromeStyle.SKIN_DIR + "bar_fill.png") as Texture2D
+	hp_fill.set_texture_margin_all(4)
+	hp_fill.modulate_color = HP_BAR_FILL_COLOR
+	_hero_hp_bar.add_theme_stylebox_override("fill", hp_fill)
 	chrome.add_child(_hero_hp_bar)
 	chrome.move_child(_hero_hp_bar, _hero_hp_label.get_index() + 1)
 
 	_skill_cooldown_host.add_theme_constant_override("separation", 4)
 
 
-## An inset card for the side panels: darker than the panel, hairline border.
+## A card for the side panels: the HD-2D studded gold-rule panel frame.
 static func make_card(card_name: String) -> PanelContainer:
 	var card := PanelContainer.new()
 	card.name = card_name
 	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var box: StyleBoxFlat = _flat_box(CARD_BG_COLOR, ShellChromeStyle.CHAMFER_PX)
-	box.set_border_width_all(1)
-	box.border_color = CARD_BORDER_COLOR
-	box.set_content_margin_all(8.0)
+	var box: StyleBoxTexture = ShellChromeStyle.skin_panel(true)
+	box.set_content_margin_all(10.0)
 	card.add_theme_stylebox_override("panel", box)
 	return card
 
 
-## A small uppercase accent-cyan section heading for a card.
+## A small section heading for a card: Cinzel, gold (theme HeaderLabel).
 static func make_section_title(text: String) -> Label:
 	var title := Label.new()
 	title.text = text
-	title.uppercase = true
+	title.theme_type_variation = &"HeaderLabel"
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	title.add_theme_font_size_override("font_size", HEADER_FONT_SIZE)
-	title.add_theme_color_override("font_color", ShellChromeStyle.UI_ACCENT_CYAN)
+	title.add_theme_font_size_override("font_size", HEADER_FONT_SIZE + 1)
 	return title
 
 

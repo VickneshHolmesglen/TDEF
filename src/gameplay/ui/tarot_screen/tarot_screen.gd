@@ -49,7 +49,7 @@ extends Control
 ## Root is a plain Control. No class_name — matches the other room/screen
 ## scripts' TD-workflow-001 precedent.
 
-const FOCUS_RING_COLOR: Color = Color(1.0, 0.85, 0.2, 1.0)  ## placeholder — art-director TBD
+const FOCUS_RING_COLOR: Color = FocusRingFactory.FOCUS_RING_COLOR  ## HD-2D skin gold
 
 ## card_id -> art lookup. Sourced from a 22-Major-Arcana generation batch
 ## (design/art/asset-generation-prompts.md, 2026-08-04) — 15 of the 22 have
@@ -229,7 +229,7 @@ func _style_card(button: Button, equipped: bool, unlocked: bool) -> void:
 	var box: StyleBoxFlat = ShellChromeStyle.chrome_button_stylebox(false)
 	box.bg_color = ShellChromeStyle.UI_CHROME
 	box.set_border_width_all(4 if equipped else 1)
-	box.border_color = ShellChromeStyle.UI_ACCENT_CYAN if equipped else Color(ShellChromeStyle.UI_PARCHMENT, 0.35)
+	box.border_color = ShellChromeStyle.UI_ACCENT if equipped else Color(ShellChromeStyle.UI_PARCHMENT, 0.35)
 	box.set_content_margin_all(6.0)
 	button.add_theme_stylebox_override("normal", box)
 	button.add_theme_stylebox_override("hover", box)
