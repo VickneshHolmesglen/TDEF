@@ -22,6 +22,8 @@ const POP_SECONDS: float = 0.18
 ## Ground shadow width as a fraction of the visible art's width (ADR-0042):
 ## narrower than the art so eaves and banners don't cast past the walls.
 const SHADOW_WIDTH_FRACTION: float = 0.8
+## Buildings are big solid masses: a darker shadow than the units' to read.
+const SHADOW_DARKNESS: float = 1.9
 
 var building: SanctuaryBuildingResource = null
 var tier: int = 1
@@ -177,7 +179,7 @@ func _draw_ground_shadow() -> void:
 		return
 	var width: float = base.size.x * SHADOW_WIDTH_FRACTION
 	var centre := Vector2(base.get_center().x, base.end.y) + width * GroundShadow.SUN_OFFSET
-	GroundShadow.draw_on(self, centre, width * 0.5)
+	GroundShadow.draw_on(self, centre, width * 0.5, SHADOW_DARKNESS)
 
 
 func _notification(what: int) -> void:

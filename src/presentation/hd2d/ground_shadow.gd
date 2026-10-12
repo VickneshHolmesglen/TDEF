@@ -47,9 +47,12 @@ func _draw() -> void:
 ## Draws the same shadow onto any CanvasItem from its own _draw(), for hosts
 ## that are not Node2Ds (the Sanctuary's TownBuildingView buttons). `centre`
 ## is the shadow centre in `ci`'s local coords, sun offset not applied.
-static func draw_on(ci: CanvasItem, centre: Vector2, half_width: float) -> void:
-	_draw_ellipse(ci, centre, Vector2(half_width * 1.25, half_width * 1.25 * FLATTEN), RIM_COLOR)
-	_draw_ellipse(ci, centre, Vector2(half_width, half_width * FLATTEN), CORE_COLOR)
+## `darkness` scales both ellipses' alpha (1.0 = the unit shadow).
+static func draw_on(ci: CanvasItem, centre: Vector2, half_width: float, darkness: float = 1.0) -> void:
+	var rim := Color(RIM_COLOR, minf(RIM_COLOR.a * darkness, 1.0))
+	var core := Color(CORE_COLOR, minf(CORE_COLOR.a * darkness, 1.0))
+	_draw_ellipse(ci, centre, Vector2(half_width * 1.25, half_width * 1.25 * FLATTEN), rim)
+	_draw_ellipse(ci, centre, Vector2(half_width, half_width * FLATTEN), core)
 
 
 static func _draw_ellipse(ci: CanvasItem, centre: Vector2, radii: Vector2, color: Color) -> void:
