@@ -54,6 +54,7 @@
 | HD-2D UI skin + project theme | `done` | `Hd2dTheme`, Cinzel/Alegreya, generated 9-slice frames. |
 | Sanctuary town diorama (HD-2D) | `done` | `Hd2dTownBackdrop` + `sanctuary_town_scenery.tres`; buildings pixelated. |
 | Main menu backdrop | `kept` | Already pixel art in the HD-2D style; a live 3D town diorama can replace it on request (Hd2dTownBackdrop reuse). |
+| Sanctuary building shadows + shorter grass | `done` | 2026-10-12: TownBuildingView draws a GroundShadow (GroundShadow.draw_on) under the visible art base, 80% of its width. grass_height_px cut ~35% in all five profiles (Gap 30, Foothills 27, Hollow 25, Narrows 20, town 17; default 22). Compile-checked only, not live-verified. |
 
 ## Production architecture (blocking)
 

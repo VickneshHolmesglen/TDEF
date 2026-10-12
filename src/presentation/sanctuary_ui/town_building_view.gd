@@ -19,6 +19,9 @@ const PIP_GAP: float = 10.0
 const MIN_HEIGHT_FRACTION: float = 0.55  ## tier 1 block height; tier 5 fills the footprint
 const POP_SCALE: float = 1.12
 const POP_SECONDS: float = 0.18
+## Ground shadow width as a fraction of the visible art's width (ADR-0042):
+## narrower than the art so eaves and banners don't cast past the walls.
+const SHADOW_WIDTH_FRACTION: float = 0.8
 
 var building: SanctuaryBuildingResource = null
 var tier: int = 1
@@ -143,6 +146,7 @@ func _draw() -> void:
 	if building == null:
 		return
 	var focus_highlight: bool = has_focus() or is_hovered()
+	_draw_ground_shadow()
 	if not has_tier_art():
 		var h: float = placeholder_height()
 		var w: float = size.x * 0.82
@@ -163,6 +167,17 @@ func _draw() -> void:
 	if focus_highlight:
 		var outline: Rect2 = _art_rect.grow(3.0) if has_tier_art() else Rect2(Vector2.ZERO, size)
 		draw_rect(outline, Color(1.0, 0.9, 0.55, 0.9), false, 2.0)
+
+
+## Contact shadow under the building's base, drawn here so it sits behind the
+## Art child; offset toward the lower right like the mission units' shadows.
+func _draw_ground_shadow() -> void:
+	var base: Rect2 = _art_rect if has_tier_art() else Rect2(Vector2(size.x * 0.09, 0.0), Vector2(size.x * 0.82, size.y))
+	if base.size.x <= 0.0:
+		return
+	var width: float = base.size.x * SHADOW_WIDTH_FRACTION
+	var centre := Vector2(base.get_center().x, base.end.y) + width * GroundShadow.SUN_OFFSET
+	GroundShadow.draw_on(self, centre, width * 0.5)
 
 
 func _notification(what: int) -> void:

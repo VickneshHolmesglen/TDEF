@@ -41,13 +41,20 @@ func set_size(width: float, foot_y: float) -> void:
 
 
 func _draw() -> void:
-	_draw_ellipse(Vector2(_half_width * 1.25, _half_width * 1.25 * FLATTEN), RIM_COLOR)
-	_draw_ellipse(Vector2(_half_width, _half_width * FLATTEN), CORE_COLOR)
+	draw_on(self, Vector2.ZERO, _half_width)
 
 
-func _draw_ellipse(radii: Vector2, color: Color) -> void:
+## Draws the same shadow onto any CanvasItem from its own _draw(), for hosts
+## that are not Node2Ds (the Sanctuary's TownBuildingView buttons). `centre`
+## is the shadow centre in `ci`'s local coords, sun offset not applied.
+static func draw_on(ci: CanvasItem, centre: Vector2, half_width: float) -> void:
+	_draw_ellipse(ci, centre, Vector2(half_width * 1.25, half_width * 1.25 * FLATTEN), RIM_COLOR)
+	_draw_ellipse(ci, centre, Vector2(half_width, half_width * FLATTEN), CORE_COLOR)
+
+
+static func _draw_ellipse(ci: CanvasItem, centre: Vector2, radii: Vector2, color: Color) -> void:
 	var pts := PackedVector2Array()
 	for i in SEGMENTS:
 		var a: float = TAU * float(i) / float(SEGMENTS)
-		pts.append(Vector2(cos(a) * radii.x, sin(a) * radii.y))
-	draw_colored_polygon(pts, color)
+		pts.append(centre + Vector2(cos(a) * radii.x, sin(a) * radii.y))
+	ci.draw_colored_polygon(pts, color)
