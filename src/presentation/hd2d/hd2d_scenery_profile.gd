@@ -26,7 +26,7 @@ extends Resource
 ## Multiplier on that density for cells inside the playable grid (keeps the
 ## field readable; the borders stay lush).
 @export var grass_inner_factor: float = 0.55
-@export var grass_height_px: float = 22.0
+@export var grass_height_px: float = 14.0
 @export var grass_sway_px: float = 3.5
 @export var flower_card: Texture2D
 @export var flowers_per_cell: float = 1.2
