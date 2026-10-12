@@ -158,6 +158,8 @@ func _ready() -> void:
 	if menagerie == null:
 		menagerie = GMenagerie
 	_build_town()
+	_setup_hd2d_backdrop()
+	resized.connect(_setup_hd2d_backdrop)
 	GEventBus.sanctuary_structure_built.connect(_on_sanctuary_structure_built)
 	GEventBus.creature_acquired.connect(_on_habitat_composition_changed)
 	GEventBus.creature_happiness_changed.connect(_on_creature_happiness_changed)
@@ -283,6 +285,33 @@ func _build_town() -> void:
 		sig.connect(_on_town_progress_event)
 	visibility_changed.connect(_on_town_visibility_changed)
 	refresh_town(false)
+
+
+## ADR-0042 dioramas pass (2026-10-12): the HD-2D town scenery, rendered in
+## its own SubViewport, replaces the painted Background image. The building
+## buttons stay on top unchanged; the scenery camera frames this Control's own
+## rect so each building stands on the dirt pad laid out under it. Rebuilt
+## only when the diorama's size changes; with no profile the painted image
+## stays.
+var _town_backdrop: Hd2dTownBackdrop
+
+
+func _setup_hd2d_backdrop() -> void:
+	if size.x < 8.0 or size.y < 8.0:
+		return
+	var background: TextureRect = get_node_or_null(^"Background") as TextureRect
+	if background == null:
+		return
+	if _town_backdrop == null:
+		_town_backdrop = Hd2dTownBackdrop.new()
+		_town_backdrop.name = "Hd2dTownBackdrop"
+		add_child(_town_backdrop)
+	var buildings: Array[SanctuaryBuildingResource] = []
+	for id: StringName in _town_views:
+		buildings.append(_town_views[id].building)
+	if _town_backdrop.setup(size, buildings):
+		background.texture = _town_backdrop.get_texture()
+		background.stretch_mode = TextureRect.STRETCH_SCALE
 
 
 ## Re-scores every building. With `animate`, a building whose tier rose plays

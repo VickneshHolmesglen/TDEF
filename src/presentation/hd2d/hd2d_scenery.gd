@@ -35,6 +35,8 @@ const CAMERA_DISTANCE: float = 3000.0
 
 var _camera: Camera3D
 var _follow: Camera2D
+## Fixed 2D rect to frame instead of following a Camera2D (frame_rect()).
+var _frame: Rect2 = Rect2()
 var _z_stretch: float = 1.0
 var _cols: int = 0
 var _rows: int = 0
@@ -55,6 +57,8 @@ func build(cols: int, rows: int, cell_size: float, cells: Dictionary) -> void:
 	for err: String in profile.validate():
 		push_error("[Hd2dScenery] profile: " + err)
 	for child: Node in get_children():
+		# Detach now so the rebuilt nodes keep their plain names ("Ground", ...).
+		remove_child(child)
 		child.queue_free()
 	_material_cache.clear()
 	_cols = cols
@@ -118,13 +122,29 @@ func _process(_delta: float) -> void:
 
 
 func _sync_camera() -> void:
-	if _follow == null or _camera == null or not is_instance_valid(_follow):
+	if _camera == null:
 		return
-	var zoom: float = maxf(_follow.zoom.y, 0.001)
-	_camera.size = get_viewport().get_visible_rect().size.y / zoom
+	var centre: Vector2
+	if _frame.size.y > 0.0:
+		_camera.size = _frame.size.y
+		centre = _frame.get_center()
+	elif _follow != null and is_instance_valid(_follow):
+		var zoom: float = maxf(_follow.zoom.y, 0.001)
+		_camera.size = get_viewport().get_visible_rect().size.y / zoom
+		centre = _follow.get_screen_center_position()
+	else:
+		return
 	var basis := Basis(Vector3.RIGHT, -deg_to_rad(profile.camera_pitch_deg))
-	var target: Vector3 = to_world(_follow.get_screen_center_position())
-	_camera.global_transform = Transform3D(basis, target + basis.z * CAMERA_DISTANCE)
+	_camera.global_transform = Transform3D(basis, to_world(centre) + basis.z * CAMERA_DISTANCE)
+
+
+## Frames a fixed 2D map rect instead of following a Camera2D -- for a
+## scenery rendered into its own SubViewport behind a UI (the Sanctuary
+## diorama). The viewport's aspect must match `rect`'s.
+func frame_rect(rect: Rect2) -> void:
+	_follow = null
+	_frame = rect
+	_sync_camera()
 
 
 # --- Layout ---------------------------------------------------------------

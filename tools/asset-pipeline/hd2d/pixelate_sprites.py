@@ -175,6 +175,10 @@ def plan(rel: str, size: tuple[int, int], columns: int) -> tuple[int, int, int]:
     if folder == "items":
         lw, lh = _fit(W, H, 36)
         return lw, lh, 16
+    if folder == "sanctuary":
+        # Town buildings show at ~150 px in the diorama.
+        lw, lh = _fit(W, H, 96)
+        return lw, lh, 28
     if folder == "species":
         lw, lh = _fit(W, H, 64)
         return lw, lh, 24
@@ -182,7 +186,10 @@ def plan(rel: str, size: tuple[int, int], columns: int) -> tuple[int, int, int]:
 
 
 BATCH_GLOBS = ["characters/*.png", "characters/gear/*.png", "monsters/*.png",
-               "towers/*.png", "items/*.png", "species/*.png"]
+               "towers/*.png", "items/*.png", "species/*.png",
+               "sanctuary/*.png", "sanctuary/town/*.png"]
+# Not sprites: painted fallback backdrops stay as they are.
+BATCH_SKIP = ("background",)
 
 
 def batch() -> None:
@@ -190,6 +197,8 @@ def batch() -> None:
     done = 0
     for g in BATCH_GLOBS:
         for art_path in sorted(glob.glob(os.path.join(ART, g))):
+            if any(k in os.path.basename(art_path) for k in BATCH_SKIP):
+                continue
             rel = os.path.relpath(art_path, ART)
             original = os.path.join(ORIGINALS, rel)
             if not os.path.exists(original):

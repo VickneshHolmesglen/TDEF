@@ -50,6 +50,10 @@
 | MissionScene missions: HD-2D scenery | `done` | Foothills (golden grassland, pines, crags), Hollow (dark slate, cobbles, glowing crystals), Narrows (red canyon, river lane, reeds, spires). Live-verified each; screenshots `docs/images/the-{foothills,hollow,narrows}-hd2d.png`. |
 | Unit pass: contact shadows + per-mission unit light | `done` | `GroundShadow`, `unit_tint` (ADR-0042). |
 | Pixel conversion of all sprites (characters, gear, monsters, towers, items, species) | `done` | 252 sprites via `pixelate_sprites.py --batch`, same dimensions as before; painted originals in `assets/source/painted/`. Live-verified towers (stacked + single), all 6 monster sheets, hero, inventory paper doll. |
+| Pixel-style VFX | `done` | `PixelVfx` (particles, rings, trails, block dissolve). |
+| HD-2D UI skin + project theme | `done` | `Hd2dTheme`, Cinzel/Alegreya, generated 9-slice frames. |
+| Sanctuary town diorama (HD-2D) | `done` | `Hd2dTownBackdrop` + `sanctuary_town_scenery.tres`; buildings pixelated. |
+| Main menu backdrop | `kept` | Already pixel art in the HD-2D style; a live 3D town diorama can replace it on request (Hd2dTownBackdrop reuse). |
 
 ## Production architecture (blocking)
 
