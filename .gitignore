@@ -41,6 +41,12 @@ dist/
 *.dylib
 *.app
 
+# GDExtension addons ship their native libs; keep them despite the rules above
+!addons/limboai/bin/
+!addons/**/*.dll
+!addons/**/*.so
+!addons/**/*.dylib
+
 # === Engine: Godot ===
 .godot/
 *.translation
