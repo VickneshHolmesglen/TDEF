@@ -1,0 +1,6 @@
+# Godot imports glTF natively; the other formats Kenney ships stay local only
+kenney_nature_kit/Models/DAE format/
+kenney_nature_kit/Models/FBX format/
+kenney_nature_kit/Models/OBJ format/
+kenney_nature_kit/Models/STL format/
+*.url
