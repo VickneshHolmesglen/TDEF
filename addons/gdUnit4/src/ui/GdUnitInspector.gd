@@ -1,10 +1,6 @@
 @tool
 class_name GdUnitInspecor
-extends Panel
-
-
-var _command_handler := GdUnitCommandHandler.instance()
-var _wait_time := 0.0
+extends Control
 
 
 func _ready() -> void:
@@ -22,13 +18,7 @@ func _ready() -> void:
 					tab_container.set_current_tab(tab_index)
 	)
 
-	# propagete the test_counters_changed signal to the progress bar
-	@warning_ignore("unsafe_property_access", "unsafe_method_access")
-	%MainPanel.test_counters_changed.connect(%ProgressBar._on_test_counter_changed)
-
-
-func _process(delta: float) -> void:
-	_wait_time += delta
-	if _wait_time > 2.0:
-		_wait_time = 0
-		_command_handler._do_process()
+	# Register for editor theme updates
+	add_child(GdUnitEditorColorTheme.new(), true, Node.INTERNAL_MODE_BACK)
+	# Add command handler
+	add_child(GdUnitCommandHandler.instance(), true, Node.INTERNAL_MODE_BACK)
