@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="Hd2dSceneryProfile" load_steps=16 format=3]
+[gd_resource type="Resource" script_class="Hd2dSceneryProfile" load_steps=39 format=3]
 
 [ext_resource type="Script" path="res://src/presentation/hd2d/hd2d_scenery_profile.gd" id="1_profile"]
 [ext_resource type="Texture2D" path="res://assets/art/hd2d/foothills_ground.png" id="2_foothills_ground"]
@@ -15,6 +15,29 @@
 [ext_resource type="Texture2D" path="res://assets/art/hd2d/mat_bark.png" id="13_mat_bark"]
 [ext_resource type="Texture2D" path="res://assets/art/hd2d/mat_wood.png" id="14_mat_wood"]
 [ext_resource type="Texture2D" path="res://assets/art/hd2d/mat_ruin_bricks.png" id="15_mat_ruin_bricks"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/rock_largeA.glb" id="k1_rock_largeA"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/rock_largeB.glb" id="k2_rock_largeB"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/rock_largeC.glb" id="k3_rock_largeC"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/rock_largeD.glb" id="k4_rock_largeD"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/rock_largeE.glb" id="k5_rock_largeE"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/rock_largeF.glb" id="k6_rock_largeF"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/rock_tallA.glb" id="k7_rock_tallA"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/rock_tallB.glb" id="k8_rock_tallB"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/rock_tallC.glb" id="k9_rock_tallC"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/rock_tallD.glb" id="k10_rock_tallD"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/tree_pineTallA_detailed.glb" id="k11_tree_pineTallA_detailed"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/tree_pineTallB_detailed.glb" id="k12_tree_pineTallB_detailed"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/tree_pineRoundA.glb" id="k13_tree_pineRoundA"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/tree_pineRoundC.glb" id="k14_tree_pineRoundC"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/statue_column.glb" id="k15_statue_column"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/statue_columnDamaged.glb" id="k16_statue_columnDamaged"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/statue_block.glb" id="k17_statue_block"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/stump_old.glb" id="k18_stump_old"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/stump_roundDetailed.glb" id="k19_stump_roundDetailed"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/log.glb" id="k20_log"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/log_large.glb" id="k21_log_large"]
+[ext_resource type="Texture2D" path="res://assets/art/hd2d/foothills_kit_rock.png" id="k22_foothills_kit_rock"]
+[ext_resource type="Texture2D" path="res://assets/art/hd2d/foothills_kit_foliage.png" id="k23_foothills_kit_foliage"]
 
 [resource]
 script = ExtResource("1_profile")
@@ -56,3 +79,13 @@ contrast = 1.12
 background_color = Color(0.3, 0.26, 0.16, 1)
 rng_seed = 31
 unit_tint = Color(1, 0.96, 0.86, 1)
+kit_rocks = Array[PackedScene]([ExtResource("k1_rock_largeA"), ExtResource("k2_rock_largeB"), ExtResource("k3_rock_largeC"), ExtResource("k4_rock_largeD"), ExtResource("k5_rock_largeE"), ExtResource("k6_rock_largeF")])
+kit_spires = Array[PackedScene]([ExtResource("k7_rock_tallA"), ExtResource("k8_rock_tallB"), ExtResource("k9_rock_tallC"), ExtResource("k10_rock_tallD")])
+kit_pines = Array[PackedScene]([ExtResource("k11_tree_pineTallA_detailed"), ExtResource("k12_tree_pineTallB_detailed"), ExtResource("k13_tree_pineRoundA"), ExtResource("k14_tree_pineRoundC")])
+kit_columns = Array[PackedScene]([ExtResource("k15_statue_column"), ExtResource("k16_statue_columnDamaged"), ExtResource("k16_statue_columnDamaged")])
+kit_rubble = Array[PackedScene]([ExtResource("k17_statue_block")])
+kit_debris = Array[PackedScene]([ExtResource("k18_stump_old"), ExtResource("k19_stump_roundDetailed"), ExtResource("k20_log"), ExtResource("k21_log_large")])
+debris_count = 8
+kit_rock_texture = ExtResource("k22_foothills_kit_rock")
+kit_rubble_texture = ExtResource("k22_foothills_kit_rock")
+kit_foliage = ExtResource("k23_foothills_kit_foliage")

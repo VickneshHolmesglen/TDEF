@@ -45,7 +45,11 @@ var _lane: Dictionary = {}        # Vector2i -> true: path cells plus off-map ru
 var _landmarks: Array[Vector2i] = []
 var _blocked: Array[Vector2i] = []
 var _rng := RandomNumberGenerator.new()
+## Kit-model choices (variant, yaw) and the debris pass draw from their own
+## stream so enabling kit meshes never shifts the main layout.
+var _kit_rng := RandomNumberGenerator.new()
 var _material_cache: Dictionary = {}
+var _kit_mesh_cache: Dictionary = {}  # PackedScene path -> Mesh
 
 
 ## Builds the whole layer for a grid. `cells` is GridConfig.cells
@@ -66,6 +70,7 @@ func build(cols: int, rows: int, cell_size: float, cells: Dictionary) -> void:
 	_cell = cell_size
 	_z_stretch = 1.0 / sin(deg_to_rad(profile.camera_pitch_deg))
 	_rng.seed = profile.rng_seed
+	_kit_rng.seed = profile.rng_seed + 7919
 	_classify(cells)
 	_build_camera_and_light()
 	_build_ground()
@@ -83,6 +88,7 @@ func build(cols: int, rows: int, cell_size: float, cells: Dictionary) -> void:
 	_build_lane_edges()
 	_build_spires()
 	_build_crystals()
+	_build_debris()
 
 
 ## The 2D gameplay layer's light for this mission (ADR-0042 unit pass): a
@@ -521,9 +527,20 @@ func _build_broadleaf(p2d: Vector2, s: float) -> void:
 
 
 func _build_pine(p2d: Vector2, s: float) -> void:
+	var h: float = 150.0 * s
+	if not profile.kit_pines.is_empty():
+		var kit: MeshInstance3D = _kit_instance(_kit_pick(profile.kit_pines), null)
+		kit.name = "Pine"
+		var size: Vector3 = kit.mesh.get_aabb().size
+		var k: float = h / size.y
+		# Kenney pines are slender; widen a little to match the reference's
+		# full-bodied conifers.
+		kit.scale = Vector3(k * 1.25, k, k * 1.25)
+		kit.position = to_world(p2d)
+		kit.rotation.y = _kit_rng.randf() * TAU
+		return
 	var q := QuadMesh.new()
 	var tex: Texture2D = profile.pine_card
-	var h: float = 150.0 * s
 	q.size = Vector2(h * float(tex.get_width()) / float(tex.get_height()), h)
 	q.center_offset = Vector3(0, h * 0.5, 0)
 	var mi := MeshInstance3D.new()
@@ -582,13 +599,31 @@ func _build_ruins() -> void:
 		for sgn: float in [-1.0, 1.0]:
 			var at: Vector2 = centre + side * sgn * _cell * 0.95 + inward * _cell * 0.2
 			var h: float = _rng.randf_range(60.0, 110.0)
-			_box(Vector3(30, h, 30), to_world(at, h * 0.5), brick, Vector3(0, _rng.randf_range(-10, 10), _rng.randf_range(-3, 3)))
+			var rot := Vector3(0, _rng.randf_range(-10, 10), _rng.randf_range(-3, 3))
+			if profile.kit_columns.is_empty():
+				_box(Vector3(30, h, 30), to_world(at, h * 0.5), brick, rot)
+			else:
+				var col: MeshInstance3D = _kit_instance(_kit_pick(profile.kit_columns), profile.ruin_bricks, profile.ruin_tint)
+				col.name = "Column"
+				var size: Vector3 = col.mesh.get_aabb().size
+				col.scale = Vector3(30.0 / size.x, h / size.y, 30.0 / size.z)
+				col.position = to_world(at)
+				col.rotation_degrees = rot
 			_box(Vector3(42, 8, 42), to_world(at, 4.0), brick)
 		for i in 4:
 			var at: Vector2 = centre + Vector2(_rng.randf_range(-1.2, 1.2), _rng.randf_range(-1.2, 1.2)) * _cell
 			if _lane.has(Vector2i(floori(at.x / _cell), floori(at.y / _cell))):
 				continue
-			_box(Vector3(20, 12, 16), to_world(at, 5.0), brick, Vector3(_rng.randf_range(-15, 15), _rng.randf() * 90.0, _rng.randf_range(-15, 15)))
+			var rot := Vector3(_rng.randf_range(-15, 15), _rng.randf() * 90.0, _rng.randf_range(-15, 15))
+			if profile.kit_rubble.is_empty():
+				_box(Vector3(20, 12, 16), to_world(at, 5.0), brick, rot)
+			else:
+				var tex: Texture2D = profile.kit_rubble_texture if profile.kit_rubble_texture != null else profile.ruin_bricks
+				var block: MeshInstance3D = _kit_instance(_kit_pick(profile.kit_rubble), tex, profile.ruin_tint)
+				block.name = "Rubble"
+				block.scale = Vector3.ONE * 20.0 / block.mesh.get_aabb().size.x
+				block.position = to_world(at, -2.0)
+				block.rotation_degrees = rot
 
 
 func _build_rocks() -> void:
@@ -605,10 +640,25 @@ func _build_rocks() -> void:
 			continue
 		if not _is_open_ground(p):
 			continue
-		var sphere := SphereMesh.new()
 		var r: float = _rng.randf_range(10.0, 22.0)
+		var height_mul: float = _rng.randf_range(1.1, 1.5)
+		var rot := Vector3(_rng.randf_range(-12, 12), _rng.randf() * 360.0, _rng.randf_range(-12, 12))
+		var stretch := Vector3(_rng.randf_range(1.0, 1.5), 1.0, _rng.randf_range(0.9, 1.3))
+		placed += 1
+		if not profile.kit_rocks.is_empty():
+			var kit: MeshInstance3D = _kit_instance(_kit_pick(profile.kit_rocks), _kit_rock_texture(), profile.kit_rock_tint)
+			kit.name = "Rock"
+			var size: Vector3 = kit.mesh.get_aabb().size
+			# Footprint ~2.4 r wide; Kenney's flat boulders get the sphere's
+			# height multiplier so taller variety survives.
+			var k: float = r * 2.4 / maxf(size.x, size.z)
+			kit.scale = Vector3(k * stretch.x, k * height_mul, k * stretch.z)
+			kit.position = to_world(p)
+			kit.rotation_degrees = rot
+			continue
+		var sphere := SphereMesh.new()
 		sphere.radius = r
-		sphere.height = r * _rng.randf_range(1.1, 1.5)
+		sphere.height = r * height_mul
 		sphere.radial_segments = 6
 		sphere.rings = 3
 		var mi := MeshInstance3D.new()
@@ -617,9 +667,8 @@ func _build_rocks() -> void:
 		mi.material_override = mat
 		_own(mi)
 		mi.position = to_world(p, r * 0.25)
-		mi.rotation_degrees = Vector3(_rng.randf_range(-12, 12), _rng.randf() * 360.0, _rng.randf_range(-12, 12))
-		mi.scale = Vector3(_rng.randf_range(1.0, 1.5), 1.0, _rng.randf_range(0.9, 1.3))
-		placed += 1
+		mi.rotation_degrees = rot
+		mi.scale = stretch
 
 
 # --- Mission-specific dressing ---------------------------------------------
@@ -723,9 +772,22 @@ func _build_spires() -> void:
 		var r: float = _rng.randf_range(16.0, 28.0)
 		if not _clear_above(p, h, r):
 			continue
+		var taper: float = _rng.randf_range(0.45, 0.75)
+		var rot := Vector3(_rng.randf_range(-5, 5), _rng.randf() * 360.0, _rng.randf_range(-5, 5))
+		var shelf_yaw: float = _rng.randf() * 90.0
+		if not profile.kit_spires.is_empty():
+			# Kenney's tall rocks carry their own grassy foot, so no shelf.
+			var kit: MeshInstance3D = _kit_instance(_kit_pick(profile.kit_spires), _kit_rock_texture(), profile.kit_rock_tint)
+			kit.name = "Spire"
+			var size: Vector3 = kit.mesh.get_aabb().size
+			var w: float = r * 2.6 / maxf(size.x, size.z)
+			kit.scale = Vector3(w, h / size.y, w)
+			kit.position = to_world(p)
+			kit.rotation_degrees = rot
+			continue
 		var cyl := CylinderMesh.new()
 		cyl.bottom_radius = r
-		cyl.top_radius = r * _rng.randf_range(0.45, 0.75)
+		cyl.top_radius = r * taper
 		cyl.height = h
 		cyl.radial_segments = 6
 		cyl.rings = 2
@@ -735,9 +797,9 @@ func _build_spires() -> void:
 		mi.material_override = mat
 		_own(mi)
 		mi.position = to_world(p, h * 0.5)
-		mi.rotation_degrees = Vector3(_rng.randf_range(-5, 5), _rng.randf() * 360.0, _rng.randf_range(-5, 5))
+		mi.rotation_degrees = rot
 		# Rubble shelf at the foot so a spire never stands on a hard edge.
-		_box(Vector3(r * 1.6, 8, r * 1.4), to_world(p, 4.0), mat, Vector3(0, _rng.randf() * 90.0, 0))
+		_box(Vector3(r * 1.6, 8, r * 1.4), to_world(p, 4.0), mat, Vector3(0, shelf_yaw, 0))
 
 
 ## Glowing crystal clusters (The Hollow): emissive prisms plus one small light
@@ -779,6 +841,121 @@ func _build_crystals() -> void:
 		glow.layers = RENDER_LAYER  # see the sun's comment: lights are camera-culled by layers
 		add_child(glow)
 		glow.position = to_world(centre, 30.0)
+
+
+## Stumps, logs and mushrooms on the blocked border / off-map (the
+## reference's fallen trunk and forest-floor clutter). Built last; the kit
+## stream picks the model, size and yaw.
+func _build_debris() -> void:
+	if profile.debris_count <= 0 or profile.kit_debris.is_empty():
+		return
+	for i in profile.debris_count:
+		var p: Vector2 = _border_spot(_cell * 0.5)
+		if p.x == INF:
+			continue
+		var scene: PackedScene = _kit_pick(profile.kit_debris)
+		var size: Vector3 = _kit_mesh(scene).get_aabb().size
+		# Kenney props are ~1 unit per tile; 70 px/unit keeps a stump under
+		# half a cell and a big log just over one.
+		var k: float = 70.0 * _kit_rng.randf_range(0.85, 1.15)
+		var yaw: float = _kit_rng.randf() * TAU
+		if not _clear_above(p, size.y * k, maxf(size.x, size.z) * k * 0.5):
+			continue
+		var kit: MeshInstance3D = _kit_instance(scene, null)
+		kit.name = "Debris"
+		kit.scale = Vector3.ONE * k
+		kit.position = to_world(p)
+		kit.rotation.y = yaw
+
+
+# --- Kenney kit meshes -----------------------------------------------------
+
+func _kit_pick(scenes: Array[PackedScene]) -> PackedScene:
+	return scenes[_kit_rng.randi() % scenes.size()]
+
+
+func _kit_rock_texture() -> Texture2D:
+	return profile.kit_rock_texture if profile.kit_rock_texture != null else profile.rock
+
+
+## The first mesh in a kit scene (Kenney .glb: a root plus one mesh node,
+## modelled base-at-origin). Cached per scene.
+func _kit_mesh(scene: PackedScene) -> Mesh:
+	var key: String = scene.resource_path
+	if _kit_mesh_cache.has(key):
+		return _kit_mesh_cache[key]
+	var root: Node = scene.instantiate()
+	var mesh: Mesh = null
+	for n: Node in root.find_children("*", "MeshInstance3D", true, false):
+		mesh = (n as MeshInstance3D).mesh
+		break
+	root.free()
+	_kit_mesh_cache[key] = mesh
+	return mesh
+
+
+## A scenery-owned MeshInstance3D of a kit scene with every surface reskinned
+## by its Kenney material name (_kit_surface_material()). `stone` is the
+## texture for rock/stone surfaces; null leaves those flat-coloured.
+func _kit_instance(scene: PackedScene, stone: Texture2D, stone_tint: Color = Color.WHITE) -> MeshInstance3D:
+	var mi := MeshInstance3D.new()
+	mi.mesh = _kit_mesh(scene)
+	for i in mi.mesh.get_surface_count():
+		mi.set_surface_override_material(i, _kit_surface_material(mi.mesh.surface_get_material(i), stone, stone_tint))
+	_own(mi)
+	return mi
+
+
+## Maps a Kenney Nature Kit material onto the project's pixel textures so the
+## kit shares the HD-2D look (Kenney ships flat, untextured colours):
+##   leafs*      -> kit_foliage (tinted by foliage_tint)
+##   woodInner   -> wood          wood*/bark -> bark
+##   grass       -> ground_grass  (the mossy caps on Kenney rocks)
+##   dirt/stone*/rock, _defaultMat with a stone texture -> `stone`
+##   anything else (mushroom caps and stems) -> its own colour, toned down.
+## Textures are world-space triplanar, so a stretched mesh never stretches
+## its pixels. The key includes the texel scale via the texture path only, as
+## ground_texel_px is fixed per profile and the cache is cleared per build().
+func _kit_surface_material(src: Material, stone: Texture2D, stone_tint: Color) -> Material:
+	var src_name: String = src.resource_name.to_lower() if src != null else ""
+	var tex: Texture2D = null
+	var shade := Color.WHITE
+	if src_name.begins_with("leaf"):
+		tex = profile.kit_foliage
+		shade = profile.foliage_tint
+	elif src_name == "woodinner":
+		tex = profile.wood
+	elif src_name.begins_with("wood") or src_name.contains("bark"):
+		tex = profile.bark
+	elif src_name == "grass":
+		tex = profile.ground_grass
+		shade = profile.grass_tint
+	elif stone != null and (src_name == "dirt" or src_name.begins_with("stone") or src_name.begins_with("rock") or src_name == "_defaultmat"):
+		tex = stone
+		shade = stone_tint
+		if src_name == "stonedark":
+			shade = shade.darkened(0.22)
+		elif src_name == "_defaultmat":
+			shade = shade.lightened(0.08)
+	var key := "kit|%s|%s" % [tex.resource_path if tex != null else src_name, shade.to_html()]
+	if _material_cache.has(key):
+		return _material_cache[key]
+	var m := StandardMaterial3D.new()
+	m.roughness = 1.0
+	if tex != null:
+		m.albedo_texture = tex
+		m.albedo_color = shade
+		m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+		m.uv1_triplanar = true
+		m.uv1_world_triplanar = true
+		# One texture repeat per (width x ground_texel_px) world px: prop
+		# pixels come out the same size as the ground's.
+		m.uv1_scale = Vector3.ONE / (float(tex.get_width()) * profile.ground_texel_px)
+	else:
+		var base: Color = (src as BaseMaterial3D).albedo_color if src is BaseMaterial3D else Color(0.8, 0.8, 0.8)
+		m.albedo_color = base.darkened(0.18)
+	_material_cache[key] = m
+	return m
 
 
 func _own(node: VisualInstance3D) -> void:

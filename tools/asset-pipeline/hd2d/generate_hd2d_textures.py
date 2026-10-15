@@ -402,6 +402,73 @@ def mission_sets() -> None:
     save(rock(NARROWS_ROCK, (64, 32, 22)), "narrows_mat_rock.png")
 
 
+# ---------------------------------------------------------------------------
+# Photo-sourced material textures (2026-10-15). CC0 Poly Haven scans under
+# assets/source/kits/polyhaven_ground/ are reduced to 64 px pixel art in the
+# project palettes: the scan supplies believable structure (cracks, pebbles,
+# moss growth), the palette keeps the HD-2D read. Used by the Kenney kit
+# meshes (Hd2dScenery kit props). Poly Haven scans are seamless, and a box
+# downscale of a seamless image stays seamless.
+# ---------------------------------------------------------------------------
+
+PHOTO_DIR = os.path.join("assets", "source", "kits", "polyhaven_ground")
+
+
+def _photo(name: str, size: int) -> np.ndarray:
+    """Scan as float RGB in [0, 1], box-downscaled to size x size."""
+    img = Image.open(os.path.join(PHOTO_DIR, f"{name}_diff_1k.jpg")).convert("RGB")
+    return np.asarray(img.resize((size, size), Image.BOX), dtype=np.float32) / 255.0
+
+
+def _stretch(v: np.ndarray, lo: float = 3.0, hi: float = 97.0) -> np.ndarray:
+    """Percentile contrast stretch to [0, 1] (scans are flat-lit and murky)."""
+    a, b = np.percentile(v, [lo, hi])
+    return np.clip((v - a) / max(b - a, 1e-6), 0.0, 1.0)
+
+
+def photo_stone(name: str, pal: list[tuple[int, int, int]], size: int = 64) -> Image.Image:
+    """A scan's luminance mapped onto a stone palette."""
+    rgb = _photo(name, size)
+    lum = rgb @ np.array([0.299, 0.587, 0.114], dtype=np.float32)
+    return Image.fromarray(palette_map(dither(_stretch(lum), 0.05), pal))
+
+
+def photo_moss_stone(name: str, stone: list[tuple[int, int, int]], moss: list[tuple[int, int, int]],
+                     size: int = 64) -> Image.Image:
+    """Like photo_stone, but pixels the scan shows as green growth take the
+    moss palette -- the overgrown-ruin read of the reference's columns."""
+    rgb = _photo(name, size)
+    lum = _stretch(rgb @ np.array([0.299, 0.587, 0.114], dtype=np.float32))
+    green = rgb[..., 1] - 0.5 * (rgb[..., 0] + rgb[..., 2])
+    v = dither(lum, 0.05)
+    out = palette_map(v, stone)
+    mask = green > np.percentile(green, 62)
+    out[mask] = palette_map(v, moss)[mask]
+    return Image.fromarray(out)
+
+
+def photo_sets() -> None:
+    save(photo_stone("rocks_ground_02", STONE_PALETTE), "kit_rock.png")
+    save(photo_moss_stone("mossy_rock", STONE_PALETTE, MOSS_PALETTE), "kit_ruin_stone.png")
+    save(photo_stone("rocky_terrain_02", FOOT_STONE), "foothills_kit_rock.png")
+    save(photo_moss_stone("mossy_rock", HOLLOW_ROCK, HOLLOW_MOSS), "hollow_kit_rock.png")
+    save(photo_stone("rocky_trail", NARROWS_ROCK), "narrows_kit_rock.png")
+    # Opaque needle/leaf mass for the kit's 3D pines (the leaf cards are
+    # cut-out sprites and cannot wrap a solid canopy).
+    save(foliage_mass(LEAF_PALETTE), "kit_foliage.png")
+    save(foliage_mass(FOOT_PINE), "foothills_kit_foliage.png")
+    save(foliage_mass(HOLLOW_LEAF), "hollow_kit_foliage.png")
+
+
+def foliage_mass(pal: list[tuple[int, int, int]]) -> Image.Image:
+    """Tileable opaque foliage: clumpy light/dark masses with needle speckle."""
+    size = 64
+    # Summed noise clusters around 0.5; stretch it so the whole palette (dark
+    # hollows to sunlit tips) shows up on a solid cone.
+    v = dither(_stretch(0.55 * tile_noise(size, 6) + 0.45 * tile_noise(size, 24, 2), 2.0, 98.0), 0.14)
+    return Image.fromarray(palette_map(v, pal))
+
+
 def main() -> None:
     os.makedirs(OUT_DIR, exist_ok=True)
     save(ground_grass(), "ground_grass.png")
@@ -420,6 +487,7 @@ def main() -> None:
     save(wood_plank(), "mat_wood.png")
     save(ruin_bricks(), "mat_ruin_bricks.png")
     mission_sets()
+    photo_sets()
 
 
 if __name__ == "__main__":

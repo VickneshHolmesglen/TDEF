@@ -138,3 +138,23 @@ every overlay stay exactly as they are.
   - The Sanctuary building art joined the pixel conversion (sanctuary
     category, 96 px).
 
+- **Kit models (2026-10-15):** CC0 Kenney Nature Kit meshes replace the
+  primitive stand-ins.
+  - Coverage: rocks, spires, pines, landmark columns and rubble, plus a new
+    `debris` pass of stumps, logs and mushrooms on the blocked border.
+  - Source: 24 `.glb` files in `assets/art/hd2d/kit/`, chosen per profile
+    with `kit_*` lists. An empty list keeps the primitive.
+  - **Reskin, not Kenney colours.** `_kit_surface_material()` maps each
+    Kenney material name (`leafs*`, `wood*`, `grass`, `dirt`, `stone*`,
+    `_defaultMat`) onto the profile's pixel textures. Those are world-space
+    triplanar with one repeat per `width × ground_texel_px`, so prop pixels
+    match the ground's, and stretched meshes never stretch texels. Only
+    mushroom caps and stems keep their own (toned-down) colour.
+  - **Layout-stable.** The primitive paths keep their exact `_rng` draws.
+    Kit variant, yaw and debris come from a separate `_kit_rng`
+    (`rng_seed + 7919`), so enabling the kit never moves anything.
+  - **Photo-sourced textures.** `generate_hd2d_textures.py::photo_sets()`
+    reduces CC0 Poly Haven scans (`assets/source/kits/polyhaven_ground/`) to
+    64 px in mission palettes (`*kit_rock`, mossy `kit_ruin_stone`), plus an
+    opaque `*kit_foliage` for 3D pine canopies. The leaf cards are cut-outs
+    and can't wrap a solid mesh.

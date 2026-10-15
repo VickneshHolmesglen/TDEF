@@ -55,6 +55,7 @@
 | Sanctuary town diorama (HD-2D) | `done` | `Hd2dTownBackdrop` + `sanctuary_town_scenery.tres`; buildings pixelated. |
 | Main menu backdrop | `kept` | Already pixel art in the HD-2D style; a live 3D town diorama can replace it on request (Hd2dTownBackdrop reuse). |
 | Sanctuary building shadows + shorter grass | `done` | 2026-10-12: TownBuildingView draws a GroundShadow (GroundShadow.draw_on) under the visible art base, 80% of its width. grass_height_px cut twice by ~35% in all five profiles (Gap 20, Foothills 18, Hollow 16, Narrows 13, town 11; default 14); building shadows 1.9x unit alpha. Live-verified (Sanctuary + The Gap). |
+| Kenney kit props + Poly Haven textures in all five profiles | `done` | 2026-10-15: 24 CC0 Kenney Nature Kit meshes (`assets/art/hd2d/kit/`) replace the primitive rocks, spires, pines, landmark columns and rubble, plus a new stump/log/mushroom `debris` pass. Every surface is reskinned with project pixel textures (world triplanar at `ground_texel_px`). New textures: Poly Haven scans palette-reduced (`photo_sets()` → `*kit_rock`, `kit_ruin_stone`) and opaque `*kit_foliage`. Layouts are unchanged (the kit draws from its own RNG). Live-verified 2026-10-15 in The Gap, with the Narrows/Foothills/Hollow profiles rebuilt on The Gap's grid. That pass greened the Gap pines (`kit_foliage` → LEAF_PALETTE, contrast-stretched), added `kit_rock_tint` (default 0.8, Hollow 1.0). Screenshots `docs/images/kit-props-*.png`. |
 
 ## Production architecture (blocking)
 

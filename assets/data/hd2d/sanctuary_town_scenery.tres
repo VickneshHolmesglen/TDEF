@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="Hd2dSceneryProfile" load_steps=19 format=3]
+[gd_resource type="Resource" script_class="Hd2dSceneryProfile" load_steps=35 format=3]
 
 [ext_resource type="Script" path="res://src/presentation/hd2d/hd2d_scenery_profile.gd" id="1_profile"]
 [ext_resource type="Texture2D" path="res://assets/art/hd2d/ground_grass.png" id="2_gg"]
@@ -17,6 +17,22 @@
 [ext_resource type="Texture2D" path="res://assets/art/hd2d/mat_wood.png" id="15_wood"]
 [ext_resource type="Texture2D" path="res://assets/art/hd2d/mat_ruin_bricks.png" id="16_brick"]
 [ext_resource type="Texture2D" path="res://assets/art/hd2d/mat_rock.png" id="17_rock"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/rock_largeA.glb" id="k1_rock_largeA"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/rock_largeB.glb" id="k2_rock_largeB"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/rock_largeC.glb" id="k3_rock_largeC"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/rock_largeD.glb" id="k4_rock_largeD"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/rock_largeE.glb" id="k5_rock_largeE"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/rock_largeF.glb" id="k6_rock_largeF"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/tree_pineTallA_detailed.glb" id="k7_tree_pineTallA_detailed"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/tree_pineTallB_detailed.glb" id="k8_tree_pineTallB_detailed"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/tree_pineRoundA.glb" id="k9_tree_pineRoundA"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/tree_pineRoundC.glb" id="k10_tree_pineRoundC"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/stump_old.glb" id="k11_stump_old"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/stump_roundDetailed.glb" id="k12_stump_roundDetailed"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/log.glb" id="k13_log"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/log_large.glb" id="k14_log_large"]
+[ext_resource type="Texture2D" path="res://assets/art/hd2d/kit_rock.png" id="k15_kit_rock"]
+[ext_resource type="Texture2D" path="res://assets/art/hd2d/kit_foliage.png" id="k16_kit_foliage"]
 
 [resource]
 script = ExtResource("1_profile")
@@ -51,3 +67,9 @@ exposure = 0.88
 saturation = 0.88
 contrast = 1.12
 rng_seed = 71
+kit_rocks = Array[PackedScene]([ExtResource("k1_rock_largeA"), ExtResource("k2_rock_largeB"), ExtResource("k3_rock_largeC"), ExtResource("k4_rock_largeD"), ExtResource("k5_rock_largeE"), ExtResource("k6_rock_largeF")])
+kit_pines = Array[PackedScene]([ExtResource("k7_tree_pineTallA_detailed"), ExtResource("k8_tree_pineTallB_detailed"), ExtResource("k9_tree_pineRoundA"), ExtResource("k10_tree_pineRoundC")])
+kit_debris = Array[PackedScene]([ExtResource("k11_stump_old"), ExtResource("k12_stump_roundDetailed"), ExtResource("k13_log"), ExtResource("k14_log_large")])
+debris_count = 6
+kit_rock_texture = ExtResource("k15_kit_rock")
+kit_foliage = ExtResource("k16_kit_foliage")

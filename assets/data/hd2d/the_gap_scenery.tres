@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="Hd2dSceneryProfile" load_steps=19 format=3]
+[gd_resource type="Resource" script_class="Hd2dSceneryProfile" load_steps=41 format=3]
 
 [ext_resource type="Script" path="res://src/presentation/hd2d/hd2d_scenery_profile.gd" id="1_profile"]
 [ext_resource type="Texture2D" path="res://assets/art/hd2d/ground_grass.png" id="2_gg"]
@@ -17,6 +17,28 @@
 [ext_resource type="Texture2D" path="res://assets/art/hd2d/mat_wood.png" id="15_wood"]
 [ext_resource type="Texture2D" path="res://assets/art/hd2d/mat_ruin_bricks.png" id="16_brick"]
 [ext_resource type="Texture2D" path="res://assets/art/hd2d/mat_rock.png" id="17_rock"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/rock_largeA.glb" id="k1_rock_largeA"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/rock_largeB.glb" id="k2_rock_largeB"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/rock_largeC.glb" id="k3_rock_largeC"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/rock_largeD.glb" id="k4_rock_largeD"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/rock_largeE.glb" id="k5_rock_largeE"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/rock_largeF.glb" id="k6_rock_largeF"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/tree_pineTallA_detailed.glb" id="k7_tree_pineTallA_detailed"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/tree_pineTallB_detailed.glb" id="k8_tree_pineTallB_detailed"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/tree_pineRoundA.glb" id="k9_tree_pineRoundA"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/tree_pineRoundC.glb" id="k10_tree_pineRoundC"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/statue_column.glb" id="k11_statue_column"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/statue_columnDamaged.glb" id="k12_statue_columnDamaged"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/statue_block.glb" id="k13_statue_block"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/stump_old.glb" id="k14_stump_old"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/stump_roundDetailed.glb" id="k15_stump_roundDetailed"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/log.glb" id="k16_log"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/log_large.glb" id="k17_log_large"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/mushroom_redGroup.glb" id="k18_mushroom_redGroup"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/mushroom_tanGroup.glb" id="k19_mushroom_tanGroup"]
+[ext_resource type="Texture2D" path="res://assets/art/hd2d/kit_rock.png" id="k20_kit_rock"]
+[ext_resource type="Texture2D" path="res://assets/art/hd2d/kit_ruin_stone.png" id="k21_kit_ruin_stone"]
+[ext_resource type="Texture2D" path="res://assets/art/hd2d/kit_foliage.png" id="k22_kit_foliage"]
 
 [resource]
 script = ExtResource("1_profile")
@@ -45,3 +67,12 @@ exposure = 0.82
 saturation = 0.85
 contrast = 1.15
 unit_tint = Color(1, 0.97, 0.9, 1)
+kit_rocks = Array[PackedScene]([ExtResource("k1_rock_largeA"), ExtResource("k2_rock_largeB"), ExtResource("k3_rock_largeC"), ExtResource("k4_rock_largeD"), ExtResource("k5_rock_largeE"), ExtResource("k6_rock_largeF")])
+kit_pines = Array[PackedScene]([ExtResource("k7_tree_pineTallA_detailed"), ExtResource("k8_tree_pineTallB_detailed"), ExtResource("k9_tree_pineRoundA"), ExtResource("k10_tree_pineRoundC")])
+kit_columns = Array[PackedScene]([ExtResource("k11_statue_column"), ExtResource("k12_statue_columnDamaged"), ExtResource("k12_statue_columnDamaged")])
+kit_rubble = Array[PackedScene]([ExtResource("k13_statue_block")])
+kit_debris = Array[PackedScene]([ExtResource("k14_stump_old"), ExtResource("k15_stump_roundDetailed"), ExtResource("k16_log"), ExtResource("k17_log_large"), ExtResource("k18_mushroom_redGroup"), ExtResource("k19_mushroom_tanGroup")])
+debris_count = 10
+kit_rock_texture = ExtResource("k20_kit_rock")
+kit_rubble_texture = ExtResource("k21_kit_ruin_stone")
+kit_foliage = ExtResource("k22_kit_foliage")

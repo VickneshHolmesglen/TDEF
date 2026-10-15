@@ -61,6 +61,30 @@ extends Resource
 @export var crystal_clusters: int = 0
 @export var crystal_color: Color = Color(0.45, 0.75, 1.0)
 
+@export_group("Kit models")
+## CC0 Kenney Nature Kit meshes (assets/art/hd2d/kit/), reskinned with the
+## textures below so they share the pixel look. Each list replaces one
+## primitive stand-in; an empty list keeps the primitive. Placement is
+## unchanged either way -- only the mesh differs.
+@export var kit_rocks: Array[PackedScene] = []
+@export var kit_spires: Array[PackedScene] = []
+@export var kit_pines: Array[PackedScene] = []
+## Landmark pillars (intact and broken) and the fallen blocks around them.
+@export var kit_columns: Array[PackedScene] = []
+@export var kit_rubble: Array[PackedScene] = []
+## Stumps, logs and mushrooms on the blocked border / off-map.
+@export var kit_debris: Array[PackedScene] = []
+@export var debris_count: int = 0
+## Rock body texture for kit rocks and spires (falls back to `rock`).
+@export var kit_rock_texture: Texture2D
+## Multiplier on kit rock/spire stone: Kenney boulders catch full sun on
+## broad faces, so they read brighter than the primitives they replace.
+@export var kit_rock_tint: Color = Color(0.8, 0.8, 0.78)
+## Mossy stone for kit rubble (falls back to `ruin_bricks`).
+@export var kit_rubble_texture: Texture2D
+## Opaque needle mass for kit pines (required when kit_pines is set).
+@export var kit_foliage: Texture2D
+
 @export_group("Light and camera")
 ## Camera tilt below horizontal. The ground is stretched by 1/sin(pitch) so
 ## it still lines up 1:1 with the 2D map (see Hd2dScenery.to_world()).
@@ -91,4 +115,8 @@ func validate() -> Array[String]:
 		errors.append("leaf_cards must not be empty when broadleaf_count > 0")
 	if ground_texel_px <= 0.0:
 		errors.append("ground_texel_px must be positive")
+	if not kit_pines.is_empty() and kit_foliage == null:
+		errors.append("kit_foliage is required when kit_pines is set")
+	if debris_count > 0 and kit_debris.is_empty():
+		errors.append("kit_debris must not be empty when debris_count > 0")
 	return errors
