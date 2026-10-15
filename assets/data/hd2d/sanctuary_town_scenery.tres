@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="Hd2dSceneryProfile" load_steps=35 format=3]
+[gd_resource type="Resource" script_class="Hd2dSceneryProfile" load_steps=41 format=3]
 
 [ext_resource type="Script" path="res://src/presentation/hd2d/hd2d_scenery_profile.gd" id="1_profile"]
 [ext_resource type="Texture2D" path="res://assets/art/hd2d/ground_grass.png" id="2_gg"]
@@ -33,6 +33,12 @@
 [ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/log_large.glb" id="k14_log_large"]
 [ext_resource type="Texture2D" path="res://assets/art/hd2d/kit_rock.png" id="k15_kit_rock"]
 [ext_resource type="Texture2D" path="res://assets/art/hd2d/kit_foliage.png" id="k16_kit_foliage"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/log_stack.glb" id="t1_log_stack"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/log_stackLarge.glb" id="t2_log_stackLarge"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/stump_squareDetailed.glb" id="t3_stump_squareDetailed"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/mushroom_redTall.glb" id="t4_mushroom_redTall"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/mushroom_redGroup.glb" id="t5_mushroom_redGroup"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/mushroom_tanGroup.glb" id="t6_mushroom_tanGroup"]
 
 [resource]
 script = ExtResource("1_profile")
@@ -69,7 +75,8 @@ contrast = 1.12
 rng_seed = 71
 kit_rocks = Array[PackedScene]([ExtResource("k1_rock_largeA"), ExtResource("k2_rock_largeB"), ExtResource("k3_rock_largeC"), ExtResource("k4_rock_largeD"), ExtResource("k5_rock_largeE"), ExtResource("k6_rock_largeF")])
 kit_pines = Array[PackedScene]([ExtResource("k7_tree_pineTallA_detailed"), ExtResource("k8_tree_pineTallB_detailed"), ExtResource("k9_tree_pineRoundA"), ExtResource("k10_tree_pineRoundC")])
-kit_debris = Array[PackedScene]([ExtResource("k11_stump_old"), ExtResource("k12_stump_roundDetailed"), ExtResource("k13_log"), ExtResource("k14_log_large")])
-debris_count = 6
+kit_debris = Array[PackedScene]([ExtResource("k11_stump_old"), ExtResource("k12_stump_roundDetailed"), ExtResource("k13_log"), ExtResource("k14_log_large"), ExtResource("t1_log_stack"), ExtResource("t2_log_stackLarge"), ExtResource("t3_stump_squareDetailed"), ExtResource("t4_mushroom_redTall"), ExtResource("t5_mushroom_redGroup"), ExtResource("t6_mushroom_tanGroup")])
+debris_count = 24
+debris_field_share = 0.65
 kit_rock_texture = ExtResource("k15_kit_rock")
 kit_foliage = ExtResource("k16_kit_foliage")

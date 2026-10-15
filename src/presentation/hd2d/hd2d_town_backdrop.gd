@@ -46,6 +46,7 @@ func setup(size_px: Vector2, buildings: Array[SanctuaryBuildingResource]) -> boo
 	_scenery.profile = profile
 	var cols: int = ceili(target.x / CELL)
 	var rows: int = ceili(target.y / CELL)
+	_scenery.keep_out = building_keep_out(buildings)
 	_scenery.build(cols, rows, CELL, town_cells(cols, rows, CELL, buildings))
 	_scenery.frame_rect(Rect2(Vector2.ZERO, Vector2(target)))
 	_built_size = target
@@ -80,6 +81,17 @@ static func town_cells(cols: int, rows: int, cell: float, buildings: Array[Sanct
 	cells[gate] = Grid.CellType.SPAWN
 	cells[castle] = Grid.CellType.GOAL
 	return cells
+
+
+## Each building's art rect (footprint rising from its bottom-centre
+## `position`), grown by a cell so debris also clears the edges and the name
+## label under it. Fed to Hd2dScenery.keep_out.
+static func building_keep_out(buildings: Array[SanctuaryBuildingResource]) -> Array[Rect2]:
+	var rects: Array[Rect2] = []
+	for b: SanctuaryBuildingResource in buildings:
+		var r := Rect2(b.position - Vector2(b.footprint.x * 0.5, b.footprint.y), b.footprint)
+		rects.append(r.grow(CELL))
+	return rects
 
 
 static func _base_cell(b: SanctuaryBuildingResource, cell: float, cols: int, rows: int) -> Vector2i:

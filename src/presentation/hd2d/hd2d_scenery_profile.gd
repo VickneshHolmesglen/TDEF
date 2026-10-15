@@ -75,6 +75,10 @@ extends Resource
 ## Stumps, logs and mushrooms on the blocked border / off-map.
 @export var kit_debris: Array[PackedScene] = []
 @export var debris_count: int = 0
+## Share of debris (0-1) placed on open in-grid ground instead of the
+## border. Keep 0 for missions: their field is play space. The Sanctuary town
+## uses it, since its border sits mostly behind the room menu.
+@export_range(0.0, 1.0) var debris_field_share: float = 0.0
 ## Rock body texture for kit rocks and spires (falls back to `rock`).
 @export var kit_rock_texture: Texture2D
 ## Multiplier on kit rock/spire stone: Kenney boulders catch full sun on

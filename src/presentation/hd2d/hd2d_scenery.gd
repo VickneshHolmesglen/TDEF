@@ -32,6 +32,10 @@ const MARGIN_CELLS: int = 3
 const CAMERA_DISTANCE: float = 3000.0
 
 @export var profile: Hd2dSceneryProfile
+## 2D-map rects that in-field debris must avoid (set before build()). The
+## Sanctuary town passes its buildings' art rects: the 2D buttons hide
+## anything behind them, and a prop peeking out reads as clutter.
+var keep_out: Array[Rect2] = []
 
 var _camera: Camera3D
 var _follow: Camera2D
@@ -850,7 +854,10 @@ func _build_debris() -> void:
 	if profile.debris_count <= 0 or profile.kit_debris.is_empty():
 		return
 	for i in profile.debris_count:
-		var p: Vector2 = _border_spot(_cell * 0.5)
+		# Only draw the coin when a share is set, so share-0 profiles keep
+		# their existing debris picks.
+		var in_field: bool = profile.debris_field_share > 0.0 and _kit_rng.randf() < profile.debris_field_share
+		var p: Vector2 = _field_spot() if in_field else _border_spot(_cell * 0.5)
 		if p.x == INF:
 			continue
 		var scene: PackedScene = _kit_pick(profile.kit_debris)
@@ -866,6 +873,28 @@ func _build_debris() -> void:
 		kit.scale = Vector3.ONE * k
 		kit.position = to_world(p)
 		kit.rotation.y = yaw
+
+
+## An open in-grid spot at least half a cell from any lane (roads, and the
+## town's building pads) and landmark; Vector2(INF, INF) when none is found.
+## Draws from the kit stream only.
+func _field_spot() -> Vector2:
+	for attempt in 30:
+		var p := Vector2(_kit_rng.randf_range(0.0, _cols * _cell), _kit_rng.randf_range(0.0, _rows * _cell))
+		var c := Vector2i(floori(p.x / _cell), floori(p.y / _cell))
+		if _blocked.has(c) or not _is_open_ground(p):
+			continue
+		if _lane_distance(p) < _cell * 0.5:
+			continue
+		var hidden := false
+		for r: Rect2 in keep_out:
+			if r.has_point(p):
+				hidden = true
+				break
+		if hidden:
+			continue
+		return p
+	return Vector2(INF, INF)
 
 
 # --- Kenney kit meshes -----------------------------------------------------
