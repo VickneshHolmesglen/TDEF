@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="Hd2dSceneryProfile" load_steps=41 format=3]
+[gd_resource type="Resource" script_class="Hd2dSceneryProfile" load_steps=54 format=3]
 
 [ext_resource type="Script" path="res://src/presentation/hd2d/hd2d_scenery_profile.gd" id="1_profile"]
 [ext_resource type="Texture2D" path="res://assets/art/hd2d/ground_grass.png" id="2_gg"]
@@ -39,6 +39,19 @@
 [ext_resource type="Texture2D" path="res://assets/art/hd2d/kit_rock.png" id="k20_kit_rock"]
 [ext_resource type="Texture2D" path="res://assets/art/hd2d/kit_ruin_stone.png" id="k21_kit_ruin_stone"]
 [ext_resource type="Texture2D" path="res://assets/art/hd2d/kit_foliage.png" id="k22_kit_foliage"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/stump_oldTall.glb" id="a40_stump_oldTall"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/mushroom_red.glb" id="a41_mushroom_red"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/mushroom_tan.glb" id="a42_mushroom_tan"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/mushroom_tanTall.glb" id="a43_mushroom_tanTall"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/rock_smallA.glb" id="a44_rock_smallA"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/rock_smallC.glb" id="a45_rock_smallC"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/rock_smallE.glb" id="a46_rock_smallE"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/rock_smallG.glb" id="a47_rock_smallG"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/rock_smallFlatA.glb" id="a48_rock_smallFlatA"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/rock_smallFlatB.glb" id="a49_rock_smallFlatB"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/rock_smallFlatC.glb" id="a50_rock_smallFlatC"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/campfire_stones.glb" id="a51_campfire_stones"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/campfire_logs.glb" id="a52_campfire_logs"]
 
 [resource]
 script = ExtResource("1_profile")
@@ -71,8 +84,22 @@ kit_rocks = Array[PackedScene]([ExtResource("k1_rock_largeA"), ExtResource("k2_r
 kit_pines = Array[PackedScene]([ExtResource("k7_tree_pineTallA_detailed"), ExtResource("k8_tree_pineTallB_detailed"), ExtResource("k9_tree_pineRoundA"), ExtResource("k10_tree_pineRoundC")])
 kit_columns = Array[PackedScene]([ExtResource("k11_statue_column"), ExtResource("k12_statue_columnDamaged"), ExtResource("k12_statue_columnDamaged")])
 kit_rubble = Array[PackedScene]([ExtResource("k13_statue_block")])
-kit_debris = Array[PackedScene]([ExtResource("k14_stump_old"), ExtResource("k15_stump_roundDetailed"), ExtResource("k16_log"), ExtResource("k17_log_large"), ExtResource("k18_mushroom_redGroup"), ExtResource("k19_mushroom_tanGroup")])
-debris_count = 10
+kit_debris = Array[PackedScene]([ExtResource("k14_stump_old"), ExtResource("k15_stump_roundDetailed"), ExtResource("k16_log"), ExtResource("k17_log_large"), ExtResource("k18_mushroom_redGroup"), ExtResource("k19_mushroom_tanGroup"), ExtResource("a40_stump_oldTall"), ExtResource("a41_mushroom_red"), ExtResource("a42_mushroom_tan"), ExtResource("a43_mushroom_tanTall")])
+debris_field_share = 0.45
+field_debris_max_px = 24.0
+mote_size_px = 3.5
+debris_count = 26
 kit_rock_texture = ExtResource("k20_kit_rock")
 kit_rubble_texture = ExtResource("k21_kit_ruin_stone")
 kit_foliage = ExtResource("k22_kit_foliage")
+kit_bank_debris = Array[PackedScene]([ExtResource("a44_rock_smallA"), ExtResource("a45_rock_smallC"), ExtResource("a46_rock_smallE"), ExtResource("a47_rock_smallG"), ExtResource("a48_rock_smallFlatA"), ExtResource("a49_rock_smallFlatB"), ExtResource("a50_rock_smallFlatC")])
+bank_debris_per_cell = 0.9
+kit_campfire = Array[PackedScene]([ExtResource("a51_campfire_stones"), ExtResource("a52_campfire_logs")])
+campfires = 1
+cloud_shadow_strength = 0.3
+motes_amount = 120
+mote_color = Color(1, 0.93, 0.68, 0.75)
+haze_strength = 0.22
+haze_color = Color(0.72, 0.8, 0.92, 1)
+bloom = 0.35
+tilt_shift = 0.06

@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="Hd2dSceneryProfile" load_steps=31 format=3]
+[gd_resource type="Resource" script_class="Hd2dSceneryProfile" load_steps=42 format=3]
 
 [ext_resource type="Script" path="res://src/presentation/hd2d/hd2d_scenery_profile.gd" id="1_profile"]
 [ext_resource type="Texture2D" path="res://assets/art/hd2d/hollow_ground.png" id="2_hollow_ground"]
@@ -30,6 +30,17 @@
 [ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/mushroom_tanGroup.glb" id="k17_mushroom_tanGroup"]
 [ext_resource type="Texture2D" path="res://assets/art/hd2d/hollow_kit_rock.png" id="k18_hollow_kit_rock"]
 [ext_resource type="Texture2D" path="res://assets/art/hd2d/hollow_kit_foliage.png" id="k19_hollow_kit_foliage"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/stump_oldTall.glb" id="a31_stump_oldTall"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/mushroom_red.glb" id="a32_mushroom_red"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/mushroom_tan.glb" id="a33_mushroom_tan"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/mushroom_tanTall.glb" id="a34_mushroom_tanTall"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/rock_smallA.glb" id="a35_rock_smallA"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/rock_smallC.glb" id="a36_rock_smallC"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/rock_smallE.glb" id="a37_rock_smallE"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/rock_smallG.glb" id="a38_rock_smallG"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/rock_smallFlatA.glb" id="a39_rock_smallFlatA"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/rock_smallFlatB.glb" id="a40_rock_smallFlatB"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/rock_smallFlatC.glb" id="a41_rock_smallFlatC"]
 
 [resource]
 script = ExtResource("1_profile")
@@ -76,9 +87,21 @@ kit_rocks = Array[PackedScene]([ExtResource("k1_rock_largeA"), ExtResource("k2_r
 kit_spires = Array[PackedScene]([ExtResource("k7_rock_tallA"), ExtResource("k8_rock_tallB"), ExtResource("k9_rock_tallC"), ExtResource("k10_rock_tallD")])
 kit_columns = Array[PackedScene]([ExtResource("k11_statue_column"), ExtResource("k12_statue_columnDamaged"), ExtResource("k12_statue_columnDamaged")])
 kit_rubble = Array[PackedScene]([ExtResource("k13_statue_block")])
-kit_debris = Array[PackedScene]([ExtResource("k14_log"), ExtResource("k15_log_large"), ExtResource("k16_mushroom_redGroup"), ExtResource("k17_mushroom_tanGroup"), ExtResource("k16_mushroom_redGroup"), ExtResource("k17_mushroom_tanGroup")])
-debris_count = 12
+kit_debris = Array[PackedScene]([ExtResource("k14_log"), ExtResource("k15_log_large"), ExtResource("k16_mushroom_redGroup"), ExtResource("k17_mushroom_tanGroup"), ExtResource("k16_mushroom_redGroup"), ExtResource("k17_mushroom_tanGroup"), ExtResource("a31_stump_oldTall"), ExtResource("a32_mushroom_red"), ExtResource("a33_mushroom_tan"), ExtResource("a34_mushroom_tanTall")])
+debris_field_share = 0.45
+field_debris_max_px = 24.0
+mote_size_px = 3.0
+debris_count = 28
 kit_rock_texture = ExtResource("k18_hollow_kit_rock")
 kit_rubble_texture = ExtResource("k18_hollow_kit_rock")
 kit_foliage = ExtResource("k19_hollow_kit_foliage")
 kit_rock_tint = Color(1, 1, 1, 1)
+kit_bank_debris = Array[PackedScene]([ExtResource("a35_rock_smallA"), ExtResource("a36_rock_smallC"), ExtResource("a37_rock_smallE"), ExtResource("a38_rock_smallG"), ExtResource("a39_rock_smallFlatA"), ExtResource("a40_rock_smallFlatB"), ExtResource("a41_rock_smallFlatC")])
+bank_debris_per_cell = 0.8
+motes_amount = 130
+mote_color = Color(0.15, 0.7, 1, 0.9)
+mote_glow = 3.0
+haze_strength = 0.3
+haze_color = Color(0.12, 0.18, 0.3, 1)
+bloom = 0.7
+tilt_shift = 0.07

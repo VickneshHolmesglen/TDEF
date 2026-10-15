@@ -54,6 +54,11 @@ var _rng := RandomNumberGenerator.new()
 var _kit_rng := RandomNumberGenerator.new()
 var _material_cache: Dictionary = {}
 var _kit_mesh_cache: Dictionary = {}  # PackedScene path -> Mesh
+## Atmosphere pass: cloud-shadow decal pair, campfire lights, clock.
+var _clouds: Array[Decal] = []
+var _cloud_tile: float = 0.0
+var _fires: Array[OmniLight3D] = []
+var _time: float = 0.0
 
 
 ## Builds the whole layer for a grid. `cells` is GridConfig.cells
@@ -69,6 +74,8 @@ func build(cols: int, rows: int, cell_size: float, cells: Dictionary) -> void:
 		remove_child(child)
 		child.queue_free()
 	_material_cache.clear()
+	_clouds.clear()
+	_fires.clear()
 	_cols = cols
 	_rows = rows
 	_cell = cell_size
@@ -93,6 +100,11 @@ func build(cols: int, rows: int, cell_size: float, cells: Dictionary) -> void:
 	_build_spires()
 	_build_crystals()
 	_build_debris()
+	# Atmosphere pass (2026-10-15), after everything that draws from _rng.
+	_build_bank_debris()
+	_build_campfires()
+	_build_clouds()
+	_build_motes()
 
 
 ## The 2D gameplay layer's light for this mission (ADR-0042 unit pass): a
@@ -127,8 +139,10 @@ func to_world(p2d: Vector2, height: float = 0.0) -> Vector3:
 	return Vector3(p2d.x, height, p2d.y * _z_stretch)
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	_sync_camera()
+	_time += delta
+	_animate_atmosphere()
 
 
 func _sync_camera() -> void:
@@ -146,6 +160,25 @@ func _sync_camera() -> void:
 		return
 	var basis := Basis(Vector3.RIGHT, -deg_to_rad(profile.camera_pitch_deg))
 	_camera.global_transform = Transform3D(basis, to_world(centre) + basis.z * CAMERA_DISTANCE)
+	_sync_depth_effects()
+
+
+## Haze and tilt-shift are depth based. The ground's depth grows by
+## cot(pitch) per px up the screen, so the screen's top edge sits
+## `reach` beyond the centre; both effects are placed as fractions of it
+## and follow zoom.
+func _sync_depth_effects() -> void:
+	var reach: float = _camera.size * 0.5 / tan(deg_to_rad(profile.camera_pitch_deg))
+	var env: Environment = _camera.environment
+	if env.fog_enabled:
+		env.fog_depth_begin = CAMERA_DISTANCE - reach * 0.2
+		env.fog_depth_end = CAMERA_DISTANCE + reach * 1.1
+	var attr := _camera.attributes as CameraAttributesPractical
+	if attr != null:
+		attr.dof_blur_far_distance = CAMERA_DISTANCE + reach * 0.55
+		attr.dof_blur_far_transition = reach * 0.45
+		attr.dof_blur_near_distance = CAMERA_DISTANCE - reach * 0.7
+		attr.dof_blur_near_transition = reach * 0.3
 
 
 ## Frames a fixed 2D map rect instead of following a Camera2D -- for a
@@ -236,6 +269,20 @@ func _build_camera_and_light() -> void:
 	env.adjustment_enabled = true
 	env.adjustment_saturation = profile.saturation
 	env.adjustment_contrast = profile.contrast
+	if profile.bloom > 0.0:
+		# 3D-only bloom: the scenery's own Environment, never Viewport HDR 2D
+		# (forbidden, see technical-preferences.md).
+		env.glow_enabled = true
+		env.glow_intensity = profile.bloom
+		env.glow_hdr_threshold = 0.85
+	if profile.haze_strength > 0.0:
+		env.fog_enabled = true
+		env.fog_mode = Environment.FOG_MODE_DEPTH
+		env.fog_density = profile.haze_strength
+		env.fog_light_color = profile.haze_color
+		env.fog_light_energy = 1.0
+		env.fog_sky_affect = 0.0
+		env.fog_depth_curve = 1.6
 
 	_camera = Camera3D.new()
 	_camera.name = "SceneryCamera"
@@ -245,6 +292,12 @@ func _build_camera_and_light() -> void:
 	_camera.far = CAMERA_DISTANCE * 2.0
 	_camera.cull_mask = RENDER_LAYER
 	_camera.environment = env
+	if profile.tilt_shift > 0.0:
+		var attr := CameraAttributesPractical.new()
+		attr.dof_blur_far_enabled = true
+		attr.dof_blur_near_enabled = true
+		attr.dof_blur_amount = profile.tilt_shift
+		_camera.attributes = attr
 	add_child(_camera)
 	_camera.current = true
 
@@ -866,6 +919,8 @@ func _build_debris() -> void:
 		# half a cell and a big log just over one.
 		var k: float = 70.0 * _kit_rng.randf_range(0.85, 1.15)
 		var yaw: float = _kit_rng.randf() * TAU
+		if in_field and profile.field_debris_max_px > 0.0 and size.y * k > profile.field_debris_max_px:
+			continue
 		if not _clear_above(p, size.y * k, maxf(size.x, size.z) * k * 0.5):
 			continue
 		var kit: MeshInstance3D = _kit_instance(scene, null)
@@ -895,6 +950,224 @@ func _field_spot() -> Vector2:
 			continue
 		return p
 	return Vector2(INF, INF)
+
+
+# --- Atmosphere (2026-10-15) ----------------------------------------------
+
+## Small stones along the lane banks, so the road reads as worn into the
+## ground rather than painted on it. Kit stream only.
+func _build_bank_debris() -> void:
+	if profile.bank_debris_per_cell <= 0.0 or profile.kit_bank_debris.is_empty() or _lane.is_empty():
+		return
+	var lane_cells: Array = _lane.keys()
+	var want: int = int(lane_cells.size() * profile.bank_debris_per_cell)
+	var placed: int = 0
+	for attempt in want * 12:
+		if placed >= want:
+			break
+		var lc: Vector2i = lane_cells[_kit_rng.randi() % lane_cells.size()]
+		var p: Vector2 = _cell_center(lc) + Vector2(_kit_rng.randf_range(-0.9, 0.9), _kit_rng.randf_range(-0.9, 0.9)) * _cell
+		var d: float = _lane_distance(p)
+		if d < 1.0 or d > _cell * 0.28 or not _off_landmarks(p):
+			continue
+		var scene: PackedScene = _kit_pick(profile.kit_bank_debris)
+		var size: Vector3 = _kit_mesh(scene).get_aabb().size
+		# Sized by footprint (the kit's small rocks range 0.36-0.68 wide), 18-30
+		# px across, and kept back so at most a third overhangs the road.
+		var k: float = _kit_rng.randf_range(18.0, 30.0) / maxf(size.x, size.z)
+		var yaw: float = _kit_rng.randf() * TAU
+		var half_w: float = maxf(size.x, size.z) * k * 0.5
+		if d < half_w * 0.35 or not _clear_above(p, size.y * k, half_w):
+			continue
+		var kit: MeshInstance3D = _kit_instance(scene, _kit_rock_texture(), profile.kit_rock_tint)
+		kit.name = "BankStone"
+		kit.scale = Vector3.ONE * k
+		kit.position = to_world(p)
+		kit.rotation.y = yaw
+		placed += 1
+
+
+func _off_landmarks(p: Vector2) -> bool:
+	for lm: Vector2i in _landmarks:
+		if p.distance_to(_cell_center(lm)) < _cell * (profile.landmark_radius_cells + 0.1):
+			return false
+	return true
+
+
+## Campfires on the blocked border: the kit pieces stacked, a flame of
+## particles and a warm light that _animate_atmosphere() flickers.
+func _build_campfires() -> void:
+	if profile.campfires <= 0 or profile.kit_campfire.is_empty():
+		return
+	for i in profile.campfires:
+		var p: Vector2 = _border_spot(_cell * 0.5)
+		if p.x == INF or not _clear_above(p, 40.0, 20.0):
+			continue
+		var yaw: float = _kit_rng.randf() * TAU
+		for scene: PackedScene in profile.kit_campfire:
+			var kit: MeshInstance3D = _kit_instance(scene, _kit_rock_texture(), profile.kit_rock_tint)
+			kit.name = "Campfire"
+			kit.scale = Vector3.ONE * 70.0
+			kit.position = to_world(p)
+			kit.rotation.y = yaw
+		var flame := _particles("CampfireFlame", 28, 0.9, 3.0, 2.6)
+		var pm := flame.process_material as ParticleProcessMaterial
+		pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
+		pm.emission_sphere_radius = 5.0
+		pm.direction = Vector3.UP
+		pm.spread = 12.0
+		pm.initial_velocity_min = 18.0
+		pm.initial_velocity_max = 34.0
+		pm.gravity = Vector3(0, 6, 0)
+		pm.scale_min = 1.2
+		pm.scale_max = 2.2
+		pm.scale_curve = _curve_texture([Vector2(0, 1), Vector2(1, 0.2)])
+		pm.color_ramp = _gradient_texture([0.0, 0.35, 1.0], [Color(1, 0.95, 0.6, 1), Color(1, 0.45, 0.12, 0.9), Color(0.6, 0.12, 0.05, 0)])
+		flame.position = to_world(p, 3.0)
+		flame.visibility_aabb = AABB(Vector3(-40, -10, -40), Vector3(80, 80, 80))
+		var light := OmniLight3D.new()
+		light.name = "CampfireLight"
+		light.light_color = Color(1.0, 0.6, 0.28)
+		light.light_energy = 1.6
+		light.omni_range = 130.0
+		light.light_cull_mask = RENDER_LAYER
+		light.layers = RENDER_LAYER  # lights are camera-culled by layers (see the sun)
+		add_child(light)
+		light.position = to_world(p, 22.0)
+		_fires.append(light)
+
+
+## Cloud shadows: two side-by-side decals of one seamless noise tile,
+## slid along x and wrapped by _animate_atmosphere(), so the shade never
+## jumps. Decals shade every surface (ground, grass, props) alike.
+func _build_clouds() -> void:
+	if profile.cloud_shadow_strength <= 0.0:
+		return
+	var map := Vector2(_cols, _rows) * _cell
+	_cloud_tile = maxf(map.x, map.y) + _cell * 24.0
+	var noise := FastNoiseLite.new()
+	noise.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
+	noise.seed = profile.rng_seed
+	noise.fractal_octaves = 3
+	# Feature size in texture px = cloud size scaled onto the 256-px tile.
+	noise.frequency = _cloud_tile / (profile.cloud_shadow_scale_px * 256.0)
+	var tex := NoiseTexture2D.new()
+	tex.width = 256
+	tex.height = 256
+	tex.seamless = true
+	tex.noise = noise
+	var clear := Color(0, 0, 0, 0)
+	var shade := Color(0, 0, 0, 1)
+	tex.color_ramp = _gradient([0.0, 0.48, 0.62, 1.0], [clear, clear, shade, shade])
+	for i in 2:
+		var d := Decal.new()
+		d.name = "CloudShadow%d" % i
+		d.texture_albedo = tex
+		# Cool shade: decals tint albedo, so a blue-black reads as shadow.
+		d.modulate = Color(0.1, 0.12, 0.2, profile.cloud_shadow_strength)
+		d.albedo_mix = 1.0
+		d.normal_fade = 0.0
+		d.upper_fade = 0.0
+		d.lower_fade = 0.0
+		d.size = Vector3(_cloud_tile, 4000.0, _cloud_tile * _z_stretch)
+		d.cull_mask = RENDER_LAYER
+		_own(d)
+		_clouds.append(d)
+	_animate_atmosphere()
+
+
+## Floating motes over the whole map: tiny square billboards drifting on
+## turbulence and twinkling through their colour ramp.
+func _build_motes() -> void:
+	if profile.motes_amount <= 0:
+		return
+	var map := Vector2(_cols, _rows) * _cell
+	var motes := _particles("Motes", profile.motes_amount, 9.0, profile.mote_glow, profile.mote_size_px)
+	var pm := motes.process_material as ParticleProcessMaterial
+	var ext := Vector3(map.x * 0.5 + _cell * 2.0, 45.0, (map.y * 0.5 + _cell * 2.0) * _z_stretch)
+	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
+	pm.emission_box_extents = ext
+	pm.direction = Vector3(1, 0.2, 0)
+	pm.spread = 180.0
+	pm.initial_velocity_min = 2.0
+	pm.initial_velocity_max = 7.0
+	pm.gravity = Vector3.ZERO
+	pm.turbulence_enabled = true
+	pm.turbulence_noise_strength = 2.0
+	pm.turbulence_noise_scale = 6.0
+	pm.turbulence_influence_min = 0.02
+	pm.turbulence_influence_max = 0.06
+	var c: Color = profile.mote_color
+	var off := Color(c, 0.0)
+	pm.color_ramp = _gradient_texture([0.0, 0.15, 0.35, 0.5, 0.7, 0.88, 1.0], [off, c, Color(c, c.a * 0.25), c, Color(c, c.a * 0.4), c, off])
+	motes.preprocess = 9.0
+	motes.position = to_world(map * 0.5, 50.0)
+	var pad := ext + Vector3(60, 60, 60)
+	motes.visibility_aabb = AABB(-pad, pad * 2.0)
+
+
+## A scenery-owned GPUParticles3D drawing square billboards `size_px` wide,
+## coloured by its process material's ramp. `glow` > 0 pushes them past
+## 1.0 so the scenery's bloom catches them (fireflies, spores, flames).
+func _particles(node_name: String, amount: int, lifetime: float, glow: float, size_px: float) -> GPUParticles3D:
+	var mat := StandardMaterial3D.new()
+	mat.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.vertex_color_use_as_albedo = true
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	if glow > 0.0:
+		var g: float = 1.0 + glow * 0.2
+		mat.albedo_color = Color(g, g, g)
+		mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	var quad := QuadMesh.new()
+	quad.size = Vector2(size_px, size_px)
+	quad.material = mat
+	var gp := GPUParticles3D.new()
+	gp.name = node_name
+	gp.amount = amount
+	gp.lifetime = lifetime
+	gp.process_material = ParticleProcessMaterial.new()
+	gp.draw_pass_1 = quad
+	gp.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_own(gp)
+	return gp
+
+
+static func _gradient(offsets: Array[float], colors: Array[Color]) -> Gradient:
+	var g := Gradient.new()
+	g.offsets = PackedFloat32Array(offsets)
+	g.colors = PackedColorArray(colors)
+	return g
+
+
+static func _gradient_texture(offsets: Array[float], colors: Array[Color]) -> GradientTexture1D:
+	var t := GradientTexture1D.new()
+	t.gradient = _gradient(offsets, colors)
+	return t
+
+
+static func _curve_texture(points: Array[Vector2]) -> CurveTexture:
+	var curve := Curve.new()
+	for pt: Vector2 in points:
+		curve.add_point(pt)
+	var t := CurveTexture.new()
+	t.curve = curve
+	return t
+
+
+## Per-frame atmosphere: slides the cloud pair (wrapping by one tile, which
+## the seamless noise hides) and flickers the campfire lights.
+func _animate_atmosphere() -> void:
+	if not _clouds.is_empty():
+		var map := Vector2(_cols, _rows) * _cell
+		var left: float = map.x * 0.5 - _cloud_tile * 0.5
+		var offset: float = fposmod(_time * profile.cloud_shadow_speed_px, _cloud_tile)
+		var z: float = map.y * 0.5 * _z_stretch
+		_clouds[0].position = Vector3(left + offset - _cloud_tile * 0.5, 0.0, z)
+		_clouds[1].position = Vector3(left + offset + _cloud_tile * 0.5, 0.0, z)
+	for i in _fires.size():
+		var t: float = _time * 9.0 + i * 3.1
+		_fires[i].light_energy = 1.45 + 0.22 * sin(t) + 0.12 * sin(t * 2.7 + 1.3) + 0.08 * sin(t * 6.1)
 
 
 # --- Kenney kit meshes -----------------------------------------------------

@@ -52,7 +52,9 @@ Run every script from the repo root: `python tools/asset-pipeline/hd2d/<script>.
      serving the old pixels. Reimport with
      `Godot.exe --headless --editor --path . --quit`.
 5. **Profiles, not code.** A mission's look (densities, tints, pitch, light,
-   `lane_shimmer`, `spire_count`, `crystal_clusters`, `lane_edge_cards`) is a
+   `lane_shimmer`, `spire_count`, `crystal_clusters`, `lane_edge_cards`, the
+   kit lists, and the Atmosphere group: clouds, motes, haze, bloom,
+   `tilt_shift`) is a
    `.tres` edit. Copy the closest existing profile in `assets/data/hd2d/`.
    With no profile, the mission falls back to the flat `GridVisual`.
 6. **Readability.** Tall props only go where `cos(pitch)` × height clears

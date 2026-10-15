@@ -76,9 +76,14 @@ extends Resource
 @export var kit_debris: Array[PackedScene] = []
 @export var debris_count: int = 0
 ## Share of debris (0-1) placed on open in-grid ground instead of the
-## border. Keep 0 for missions: their field is play space. The Sanctuary town
-## uses it, since its border sits mostly behind the room menu.
+## border. Missions pair it with field_debris_max_px to keep the field
+## readable; the Sanctuary town uses it unrestricted, since its border sits
+## mostly behind the room menu.
 @export_range(0.0, 1.0) var debris_field_share: float = 0.0
+## > 0 skips in-field debris taller than this (2D px), so a mission's
+## buildable ground only gets low clutter -- mushrooms, stumps, flat logs --
+## that a tower simply covers.
+@export var field_debris_max_px: float = 0.0
 ## Rock body texture for kit rocks and spires (falls back to `rock`).
 @export var kit_rock_texture: Texture2D
 ## Multiplier on kit rock/spire stone: Kenney boulders catch full sun on
@@ -88,6 +93,35 @@ extends Resource
 @export var kit_rubble_texture: Texture2D
 ## Opaque needle mass for kit pines (required when kit_pines is set).
 @export var kit_foliage: Texture2D
+## Small stones hugging the lane banks (reskinned with the kit rock
+## texture). Pieces per lane cell; 0 = none.
+@export var kit_bank_debris: Array[PackedScene] = []
+@export var bank_debris_per_cell: float = 0.0
+## Campfires on the blocked border: every scene in kit_campfire stacked on
+## one spot, plus a flickering light and a flame.
+@export var kit_campfire: Array[PackedScene] = []
+@export var campfires: int = 0
+
+@export_group("Atmosphere")
+## Drifting cloud shadows (a moving decal over the whole map); 0 = off.
+@export_range(0.0, 1.0) var cloud_shadow_strength: float = 0.0
+## Typical cloud size and drift speed, in 2D map px (and px per second).
+@export var cloud_shadow_scale_px: float = 420.0
+@export var cloud_shadow_speed_px: float = 9.0
+## Floating motes (sunlit dust, spores, fireflies); 0 = none.
+@export var motes_amount: int = 0
+@export var mote_color: Color = Color(1.0, 0.92, 0.7, 0.8)
+@export var mote_size_px: float = 2.5
+## > 0 makes motes emissive (fireflies, spores) at this energy.
+@export var mote_glow: float = 0.0
+## Haze toward the top of the screen (depth fog); 0 = off.
+@export_range(0.0, 1.0) var haze_strength: float = 0.0
+@export var haze_color: Color = Color(0.7, 0.78, 0.9)
+## Bloom on emissive and sunlit highlights; 0 = off.
+@export var bloom: float = 0.0
+## Tilt-shift blur on the top and bottom screen edges (HD-2D's miniature
+## look); 0 = off. Only the 3D scenery blurs -- units stay sharp.
+@export_range(0.0, 0.3) var tilt_shift: float = 0.0
 
 @export_group("Light and camera")
 ## Camera tilt below horizontal. The ground is stretched by 1/sin(pitch) so
@@ -123,4 +157,8 @@ func validate() -> Array[String]:
 		errors.append("kit_foliage is required when kit_pines is set")
 	if debris_count > 0 and kit_debris.is_empty():
 		errors.append("kit_debris must not be empty when debris_count > 0")
+	if bank_debris_per_cell > 0.0 and kit_bank_debris.is_empty():
+		errors.append("kit_bank_debris must not be empty when bank_debris_per_cell > 0")
+	if campfires > 0 and kit_campfire.is_empty():
+		errors.append("kit_campfire must not be empty when campfires > 0")
 	return errors

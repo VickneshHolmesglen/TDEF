@@ -158,3 +158,20 @@ every overlay stay exactly as they are.
     64 px in mission palettes (`*kit_rock`, mossy `kit_ruin_stone`), plus an
     opaque `*kit_foliage` for 3D pine canopies. The leaf cards are cut-outs
     and can't wrap a solid mesh.
+
+- **Atmosphere pass (2026-10-15):** an `Atmosphere` profile group adds
+  depth and motion without touching gameplay.
+  - Drifting cloud shadows: two decals of one seamless noise tile, slid
+    and wrapped each frame (`cloud_shadow_*`).
+  - Motes: dust, spores or fireflies as GPU particles (`motes_*`, `mote_*`).
+  - Depth haze (`FOG_MODE_DEPTH`), 3D-only bloom, and a tilt-shift blur on
+    the top and bottom screen edges (`CameraAttributesPractical` DOF). Haze
+    and blur distances follow zoom (`_sync_depth_effects()`). Only the 3D
+    layer blurs, so units and towers stay sharp, which is the HD-2D look.
+  - More dressing: small stones on lane banks (`kit_bank_debris`), campfires
+    with a flickering light, and low in-field clutter on missions
+    (`debris_field_share` capped by `field_debris_max_px`, so a tower simply
+    covers it).
+  - Every new knob defaults off. The passes run after every `_rng` draw,
+    so existing layouts are unchanged. Bloom uses the scenery's own
+    Environment, never `Viewport.use_hdr_2d`.
