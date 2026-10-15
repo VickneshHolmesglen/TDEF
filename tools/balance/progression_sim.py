@@ -284,6 +284,7 @@ class Assumptions:
     tier_reward: list[float]
     menagerie_bonus: float
     win_rate: float
+    drop_mult: float = 1.0
 
 
 def mission_yield(m: Mission, a: Assumptions, rules: Rules, monsters: dict, tables: dict) -> dict:
@@ -308,7 +309,7 @@ def mission_yield(m: Mission, a: Assumptions, rules: Rules, monsters: dict, tabl
                 continue
             for mat, qty in table["entries"]:
                 q = max(round(qty * scalar * a.menagerie_bonus), table["min"])
-                mats[mat] += table["rate"] * q
+                mats[mat] += table["rate"] * q * a.drop_mult
         xp += rules.wave_xp
     # A defeat keeps kill XP/drops so far; this treats a loss as a full run
     # without the completion XP and surplus (an upper bound on loss income).
@@ -410,7 +411,7 @@ def run(args) -> str:
     purchases = load_purchases()
     tier_reward = [float(x) for x in args.tier_reward.split(",")]
     a = Assumptions(args.hero_inner, args.hero_outer, args.towers, args.foundation_tier, args.archetype,
-                    args.difficulty, tier_reward, args.menagerie_bonus, args.win_rate)
+                    args.difficulty, tier_reward, args.menagerie_bonus, args.win_rate, args.drop_mult)
     plan = [p.strip() for p in args.plan.split(",")] if args.plan else list(missions)
     for p in plan:
         if p not in missions:
@@ -428,7 +429,8 @@ def run(args) -> str:
     L.append(f"- {a.towers} towers placed, foundation tier {a.foundation_tier}, archetype `{a.archetype}` (surplus)")
     L.append(f"- Difficulty {a.difficulty}; reward multiplier per tier {tier_reward} "
              f"({'game has none' if tier_reward == [1.0, 1.0, 1.0] else 'WHAT-IF'})")
-    L.append(f"- Menagerie quality bonus x{a.menagerie_bonus}, win rate {a.win_rate:.0%}, no tarot")
+    L.append(f"- Menagerie quality bonus x{a.menagerie_bonus}, win rate {a.win_rate:.0%}, no tarot"
+             + (f", kill drops x{a.drop_mult} (WHAT-IF)" if a.drop_mult != 1.0 else ""))
     L.append(f"- Plan (cycled): {' -> '.join(plan)}\n")
 
     L.append("## One run of each mission\n")
@@ -523,6 +525,7 @@ def main() -> None:
     ap.add_argument("--archetype", default="physical", help="dominant tower archetype for the surplus bonus")
     ap.add_argument("--menagerie-bonus", type=float, default=1.0)
     ap.add_argument("--win-rate", type=float, default=1.0)
+    ap.add_argument("--drop-mult", type=float, default=1.0, help="WHAT-IF multiplier on kill drops (not surplus)")
     ap.add_argument("--xp-growth", type=float, help="WHAT-IF level curve growth (game: 1.15)")
     ap.add_argument("--level-cap", type=int, help="WHAT-IF level cap (game: 50)")
     ap.add_argument("--mission-xp", type=int, help="WHAT-IF mission completion XP")
