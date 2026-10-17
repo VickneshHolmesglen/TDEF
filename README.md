@@ -122,6 +122,15 @@ audio/QA, 73 skills, 12 hooks) — see
 [donchitos/claude-code-game-studios](https://github.com/Donchitos/claude-code-game-studios)
 for the framework itself.
 
+## Other project
+
+**[Project Intelligence RAG](https://github.com/VickneshHolmesglen/AIJP)**: a
+retrieval-augmented assistant that answers questions about a software
+project's design docs and source code with citations to the exact file,
+section and line range, and refuses when the evidence is not there. Python,
+FastAPI, PostgreSQL + pgvector, local models via Ollama, an MCP server, and
+its own evaluation tooling. Also built with an AI coding assistant.
+
 ## License
 
 See [LICENSE](LICENSE). This repository was scaffolded from the open-source
