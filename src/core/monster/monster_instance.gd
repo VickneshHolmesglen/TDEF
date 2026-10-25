@@ -12,7 +12,11 @@ extends Node2D
 ## already parents every MonsterEntity into the real scene tree (TD-monster-003),
 ## so no separate placement-triggered-instantiation gap exists here.
 
-## monster_id -> art lookup. All 7 monsters generated this session have art.
+## monster_id -> single-pose art (HUD/Mission Select previews, death ghost, and
+## the in-mission sprite for a monster without an animation sheet). Every
+## monster in assets/data/monsters has an entry. iron_colossus_elite's only
+## painted art is its walk strip, so its still is that strip's idle frame
+## (pixelate_sprites.py DERIVED_STILLS, 2026-10-25).
 const MONSTER_TEXTURES: Dictionary[StringName, Texture2D] = {
 	&"goblin_runner": preload("res://assets/art/monsters/goblin_runner.png"),
 	&"spore_skitterling": preload("res://assets/art/monsters/spore_skitterling.png"),
@@ -21,6 +25,7 @@ const MONSTER_TEXTURES: Dictionary[StringName, Texture2D] = {
 	&"bog_lurker_elite": preload("res://assets/art/monsters/bog_lurker_elite.png"),
 	&"goblin_warlord_boss": preload("res://assets/art/monsters/goblin_warlord_boss.png"),
 	&"rift_sentinel_boss": preload("res://assets/art/monsters/rift_sentinel_boss.png"),
+	&"iron_colossus_elite": preload("res://assets/art/monsters/iron_colossus_elite_idle.png"),
 }
 
 ## Target on-screen size (world units, matches MonsterManager.CELL_SIZE=64) for

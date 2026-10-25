@@ -190,6 +190,15 @@ BATCH_GLOBS = ["characters/*.png", "characters/gear/*.png", "monsters/*.png",
                "sanctuary/*.png", "sanctuary/town/*.png"]
 # Not sprites: painted fallback backdrops stay as they are.
 BATCH_SKIP = ("background",)
+# Single-pose stills cut from an already-converted sheet: art-relative output ->
+# (art-relative sheet, frame index). For a monster whose only painted art is its
+# animation strip, the still (MonsterInstance.MONSTER_TEXTURES: HUD previews,
+# Mission Select intel, death ghost) must match the strip's shared palette, so it
+# is cut from the converted strip, never pixelated on its own. These files have
+# no painted original and are skipped by the batch loop below.
+DERIVED_STILLS = {
+    "monsters/iron_colossus_elite_idle.png": ("monsters/iron_colossus_elite.png", 0),
+}
 
 
 def batch() -> None:
@@ -200,6 +209,8 @@ def batch() -> None:
             if any(k in os.path.basename(art_path) for k in BATCH_SKIP):
                 continue
             rel = os.path.relpath(art_path, ART)
+            if rel.replace("\\", "/") in DERIVED_STILLS:
+                continue
             original = os.path.join(ORIGINALS, rel)
             if not os.path.exists(original):
                 os.makedirs(os.path.dirname(original), exist_ok=True)
@@ -211,6 +222,21 @@ def batch() -> None:
             done += 1
             print(f"{rel}: {src.size} -> {lw * cols}x{lh} px grid ({cols} frame{'s' if cols > 1 else ''})")
     print(f"converted {done} sprites; painted originals in {ORIGINALS}")
+    derive_stills(columns)
+
+
+def derive_stills(columns: dict[str, int] | None = None) -> None:
+    """Writes each DERIVED_STILLS entry as one frame cut from its converted sheet."""
+    columns = columns if columns is not None else _atlas_columns()
+    for out_rel, (sheet_rel, frame) in DERIVED_STILLS.items():
+        sheet_path = os.path.join(ART, sheet_rel)
+        sheet = Image.open(sheet_path).convert("RGBA")
+        key = os.path.normpath(sheet_path).replace("\\", "/")
+        cols = columns.get(key, columns.get(os.path.normpath(sheet_path), 1))
+        bounds = [round(i * sheet.width / cols) for i in range(cols + 1)]
+        still = sheet.crop((bounds[frame], 0, bounds[frame + 1], sheet.height))
+        still.save(os.path.join(ART, out_rel), optimize=True)
+        print(f"{out_rel}: frame {frame} of {sheet_rel} ({cols} frames)")
 
 
 def preview(paths: list[str], out_path: str, heights: tuple[int, ...] = (20, 32, 44)) -> None:
