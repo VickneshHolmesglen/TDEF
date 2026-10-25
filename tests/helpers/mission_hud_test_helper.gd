@@ -105,4 +105,12 @@ static func build_hud() -> MissionHud:
 	retry_button.name = "RetryButton"
 	hud.add_child(retry_button)
 
+	var breach_flash_overlay := Control.new()
+	breach_flash_overlay.name = "BreachFlashOverlay"
+	hud.add_child(breach_flash_overlay)
+	for edge_name: String in ["TopEdge", "BottomEdge", "LeftEdge", "RightEdge"]:
+		var edge := ColorRect.new()
+		edge.name = edge_name
+		breach_flash_overlay.add_child(edge)
+
 	return hud
