@@ -277,6 +277,8 @@ func _ready() -> void:
 	GEventBus.mission_launched.connect(_on_mission_launched_show_combat_cluster)
 	_build_effect_list()
 	_build_right_column()
+	# Center-screen wave/boss ceremony; self-subscribing, see WaveCallout's doc comment.
+	add_child(WaveCallout.new())
 
 
 func _exit_tree() -> void:

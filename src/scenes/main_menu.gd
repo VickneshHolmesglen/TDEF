@@ -690,6 +690,10 @@ func _apply_ui_scale(percent: float) -> void:
 # ---------------------------------------------------------------------------
 
 const OVERLAY_CARD_PADDING: float = 32.0
+## Backdrop alpha behind an open overlay: enough to quiet the menu art, not hide it.
+const OVERLAY_DIM_ALPHA: float = 0.78
+## How far an overlay card rises into place as it fades in.
+const OVERLAY_RISE_PX: float = 14.0
 var _overlay_cards: Dictionary[Control, Panel] = {}
 
 
@@ -722,10 +726,9 @@ func _center_overlay_content(content: Control) -> void:
 		card = Panel.new()
 		card.name = "OverlayCard"
 		card.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		var box: StyleBoxFlat = ShellChromeStyle.chrome_panel_stylebox()
-		box.set_border_width_all(1)
-		box.border_color = Color(ShellChromeStyle.UI_PARCHMENT, 0.35)
-		card.add_theme_stylebox_override("panel", box)
+		# 2026-10-25 AAA UI pass: the studded HD-2D skin frame, matching every in-game
+		# panel, instead of a flat 1 px outline box.
+		card.add_theme_stylebox_override("panel", ShellChromeStyle.skin_panel(true))
 		content.add_child(card)
 		content.move_child(card, 0)
 		_overlay_cards[content] = card
@@ -734,6 +737,22 @@ func _center_overlay_content(content: Control) -> void:
 
 	var screen_center: Vector2 = get_viewport_rect().size / 2.0
 	content.position = screen_center - bounds.get_center() * content.scale
+	_play_overlay_entrance(content.get_parent() as Control, content)
+
+
+## Overlays fade in while their card rises a few pixels into place, rather than
+## popping on. Animates the backdrop's modulate and the content's position only:
+## content.scale belongs to the UI-scale setting (_scalable_controls).
+func _play_overlay_entrance(backdrop: Control, content: Control) -> void:
+	if backdrop == null or ReduceMotion.enabled():
+		return
+	var rest_y: float = content.position.y
+	backdrop.modulate.a = 0.0
+	content.position.y = rest_y + OVERLAY_RISE_PX
+	var tween: Tween = backdrop.create_tween().set_parallel(true)
+	tween.tween_property(backdrop, "modulate:a", 1.0, ShellChromeStyle.MOTION_SETTLE_SEC)
+	tween.tween_property(content, "position:y", rest_y, ShellChromeStyle.MOTION_SETTLE_SEC * 1.4) \
+		.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 
 
 ## TD-ui-003 (2026-10-11): the overlays' buttons, sliders and labels were
@@ -742,8 +761,14 @@ func _center_overlay_content(content: Control) -> void:
 ## one "go ahead" action per dialog filled (Yes / Load Save / OK).
 func _style_overlay_controls(root: Node) -> void:
 	var primary: Array[Button] = [_overwrite_yes_button, _recovery_load_save_button, _save_warning_ok_button]
+	# Dim the menu art behind the dialog rather than blacking it out: the scene stays
+	# present, the dialog reads as layered on top of it.
+	if root is ColorRect:
+		(root as ColorRect).color = Color(0.02, 0.03, 0.06, OVERLAY_DIM_ALPHA)
 	for node: Node in root.find_children("*", "Control", true, false):
 		if node is Label:
+			if (node as Label).theme_type_variation == &"TitleLabel":
+				continue  # keeps the theme's gold Cinzel heading
 			(node as Label).add_theme_color_override("font_color", ShellChromeStyle.UI_PARCHMENT)
 		elif node is Button:
 			var button: Button = node as Button
@@ -752,12 +777,22 @@ func _style_overlay_controls(root: Node) -> void:
 			if button is CheckButton:
 				continue  # keeps its own switch art; a box around it reads as a second button
 			var filled: bool = primary.has(button)
-			for state: String in ["normal", "hover", "pressed", "hover_pressed", "disabled"]:
-				var box: StyleBoxFlat = ShellChromeStyle.chrome_button_stylebox(filled and state != "disabled")
-				# The shell's tab boxes have no side padding; without it, long
-				# labels ("Load Last Sanctuary Save") ran into the border.
-				box.content_margin_left = 16.0
-				box.content_margin_right = 16.0
+			# HD-2D skin frames per state (2026-10-25), primary actions in the amber
+			# "active" frame; previously flat chrome boxes, the one place the skin
+			# never reached.
+			var skin_states: Dictionary = {
+				"normal": &"active" if filled else &"normal",
+				"hover": &"active" if filled else &"hover",
+				"pressed": &"pressed",
+				"hover_pressed": &"pressed",
+				"disabled": &"disabled",
+			}
+			for state: String in skin_states:
+				var box: StyleBoxTexture = ShellChromeStyle.skin_button(skin_states[state])
+				# Without side padding, long labels ("Load Last Sanctuary Save") ran
+				# into the border.
+				box.content_margin_left = 20.0
+				box.content_margin_right = 20.0
 				button.add_theme_stylebox_override(state, box)
 			button.add_theme_color_override("font_disabled_color", Color(ShellChromeStyle.UI_PARCHMENT, 0.4))
 		elif node is HSlider:
@@ -767,7 +802,7 @@ func _style_overlay_controls(root: Node) -> void:
 			track.content_margin_top = 3.0
 			track.content_margin_bottom = 3.0
 			var fill: StyleBoxFlat = track.duplicate()
-			fill.bg_color = ShellChromeStyle.UI_ACCENT_CYAN
+			fill.bg_color = ShellChromeStyle.UI_ACCENT
 			node.add_theme_stylebox_override("slider", track)
 			node.add_theme_stylebox_override("grabber_area", fill)
 			node.add_theme_stylebox_override("grabber_area_highlight", fill)

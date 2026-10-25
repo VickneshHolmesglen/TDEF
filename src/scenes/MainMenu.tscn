@@ -388,23 +388,35 @@ visible = false
 
 [node name="RecoveryContent" type="Control" parent="RecoveryChoicePanel"]
 
+[node name="TitleLabel" type="Label" parent="RecoveryChoicePanel/RecoveryContent"]
+layout_mode = 0
+offset_left = 96.0
+offset_top = 196.0
+offset_right = 816.0
+offset_bottom = 246.0
+theme_type_variation = &"TitleLabel"
+text = "MAIN_MENU_RECOVERY_TITLE"
+horizontal_alignment = 1
+
 [node name="MessageLabel" type="Label" parent="RecoveryChoicePanel/RecoveryContent"]
 layout_mode = 0
 offset_left = 96.0
-offset_top = 240.0
-offset_right = 1100.0
-offset_bottom = 340.0
-theme_override_font_sizes/font_size = 28
+offset_top = 262.0
+offset_right = 816.0
+offset_bottom = 342.0
+theme_override_font_sizes/font_size = 24
 text = "MAIN_MENU_CHECKPOINT_PROMPT"
+horizontal_alignment = 1
 autowrap_mode = 3
 
 [node name="ChoiceButtons" type="HBoxContainer" parent="RecoveryChoicePanel/RecoveryContent"]
 layout_mode = 0
 offset_left = 96.0
-offset_top = 360.0
-offset_right = 700.0
+offset_top = 366.0
+offset_right = 816.0
 offset_bottom = 420.0
 theme_override_constants/separation = 20
+alignment = 1
 
 [node name="LoadSaveButton" type="Button" parent="RecoveryChoicePanel/RecoveryContent/ChoiceButtons"]
 custom_minimum_size = Vector2(280, 54)

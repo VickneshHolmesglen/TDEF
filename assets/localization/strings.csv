@@ -195,7 +195,7 @@ HUD_SELL,Sell
 HUD_ULTIMATE,Ultimate
 HUD_RETRY,Retry
 HUD_READY,Ready
-HUD_SKIP_COUNTDOWN,Skip Countdown
+HUD_SKIP_COUNTDOWN,Start Now
 SKILL_TREE_VISIT_AVAILABLE,1 purchase available this visit
 SKILL_TREE_VISIT_SPENT,Spent this visit — more available after your next mission
 SKILL_TREE_NODE_MINOR,Minor
@@ -327,3 +327,11 @@ HUD_PATH_UPDATE_QUEUED,Path update queued for next intermission.
 HUD_SECTION_LOOT,Loot
 HUD_SECTION_NEXT_WAVE,Next Wave
 MAIN_MENU_SAVE_WARNING_VERSION_TOO_NEW,This save was made with a newer version of the game and cannot be loaded.
+HUD_CALLOUT_WAVE,Wave %d
+HUD_CALLOUT_WAVE_OF,Wave %d of %d
+HUD_CALLOUT_OF_TOTAL,of %d
+HUD_CALLOUT_FINAL_WAVE,Final Wave
+HUD_CALLOUT_WAVE_CLEARED,Wave Cleared
+HUD_CALLOUT_FORTIFY,Fortify your defenses
+HUD_CALLOUT_BOSS,A champion approaches
+MAIN_MENU_RECOVERY_TITLE,Interrupted Mission

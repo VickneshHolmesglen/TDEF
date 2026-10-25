@@ -231,8 +231,8 @@ func _configure_return_to_sanctuary_button() -> void:
 	# doc comment reserves for "this screen's single most consequential
 	# action") -- this is a secondary/back action, matching the tab strip's
 	# own inactive-tab treatment.
-	_return_to_sanctuary_button.add_theme_stylebox_override("normal", ShellChromeStyle.chrome_button_stylebox(false))
-	_return_to_sanctuary_button.add_theme_stylebox_override("hover", ShellChromeStyle.chrome_button_stylebox(false))
+	_return_to_sanctuary_button.add_theme_stylebox_override("normal", ShellChromeStyle.skin_button_for(false))
+	_return_to_sanctuary_button.add_theme_stylebox_override("hover", ShellChromeStyle.skin_button_for(false))
 	_return_to_sanctuary_button.add_theme_stylebox_override("pressed", ShellChromeStyle.chrome_button_stylebox(false))
 	_return_to_sanctuary_button.add_theme_color_override("font_color", ShellChromeStyle.UI_PARCHMENT)
 	_return_to_sanctuary_button.focus_mode = Control.FOCUS_ALL

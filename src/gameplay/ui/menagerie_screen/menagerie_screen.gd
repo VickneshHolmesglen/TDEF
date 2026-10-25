@@ -269,8 +269,21 @@ func _create_empty_slot_card(locked: bool) -> Control:
 	box.set_border_width_all(1)
 	box.border_color = Color(ShellChromeStyle.UI_PARCHMENT, 0.15)
 	card.add_theme_stylebox_override("panel", box)
+	if locked:
+		# 2026-10-25 AAA UI pass: a padlock instead of the same sentence repeated in
+		# every locked cell (ten times over on a fresh save); the explanation moves
+		# to the tooltip.
+		card.mouse_filter = Control.MOUSE_FILTER_PASS
+		card.tooltip_text = tr("MENAGERIE_LOCKED_SLOT")
+		var lock := PixelLockGlyph.new()
+		lock.custom_minimum_size = Vector2(30, 36)
+		lock.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		lock.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		lock.color = Color(ShellChromeStyle.UI_PARCHMENT, 0.18)
+		card.add_child(lock)
+		return card
 	var label := Label.new()
-	label.text = tr("MENAGERIE_LOCKED_SLOT") if locked else tr("MENAGERIE_EMPTY_SLOT")
+	label.text = tr("MENAGERIE_EMPTY_SLOT")
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART  # keeps every grid column the same width

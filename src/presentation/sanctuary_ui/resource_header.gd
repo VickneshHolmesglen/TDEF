@@ -30,7 +30,12 @@ var _materials: Dictionary = {}
 @onready var _background: Panel = Panel.new()
 @onready var _row: HBoxContainer = HBoxContainer.new()
 @onready var _title_label: Label = Label.new()
-@onready var _materials_label: Label = Label.new()
+## 2026-10-25 AAA UI pass: the readout was one joined text string ("Goblin Hide 254 ·
+## Iron Ore 21 · ..."), which reads as debug output. Now one chip per material --
+## inset frame, item icon, count -- with the display name as a hover tooltip.
+@onready var _materials_row: HBoxContainer = HBoxContainer.new()
+
+const CHIP_ICON_SIZE: float = 26.0
 
 
 func _ready() -> void:
@@ -66,28 +71,17 @@ func _ready() -> void:
 	_title_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_title_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 
-	_materials_label.name = &"MaterialsLabel"
+	_materials_row.name = &"MaterialsRow"
 	# 2026-10-07 (player-reported): inside the 320 px title plaque there was only
-	# room for one material ("Goblin Hide 219 · ..."), the rest ellipsized away.
-	# The plaque now carries just its title, and the readout sits in the empty
-	# top strip to the plaque's right, sized to the window (see _layout_materials()).
-	add_child(_materials_label)
-	_materials_label.add_theme_color_override("font_color", ShellChromeStyle.UI_PARCHMENT)
-	_materials_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	# Pre-existing overflow, only exposed visually now that the Chrome
-	# full-rect fix (sanctuary_ui.gd, 2026-08-04) lets this header actually
-	# render at nonzero size: the untranslated placeholder key + material
-	# list is long enough to autowrap to 2 lines and spill outside
-	# HEADER_HEIGHT vertically. Single-line + ellipsis-trim + vertical
-	# centering is a display-only fix (Story 004's own "read-only, no
-	# authoritative data" scope) -- it doesn't touch the underlying text
-	# content, which is a separate localization-catalogue gap every other
-	# SANCTUARY_TAB_* key in this shell already has.
-	_materials_label.autowrap_mode = TextServer.AUTOWRAP_OFF
-	_materials_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	_materials_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_materials_label.clip_contents = true
-	_materials_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# room for one material, the rest ellipsized away. The plaque now carries just
+	# its title, and the readout sits in the empty top strip to the plaque's right,
+	# sized to the window (see _layout_materials()). Clipped, never wrapped: the
+	# header has a fixed height.
+	add_child(_materials_row)
+	_materials_row.alignment = BoxContainer.ALIGNMENT_BEGIN
+	_materials_row.add_theme_constant_override("separation", 10)
+	_materials_row.clip_contents = true
+	_materials_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	resized.connect(_layout_materials)
 	get_viewport().size_changed.connect(_layout_materials)
 	_layout_materials()
@@ -108,8 +102,8 @@ const MATERIALS_GAP: float = 16.0
 ## window's width (the header Control itself is only the plaque's 320 px).
 func _layout_materials() -> void:
 	var available: float = get_viewport_rect().size.x - global_position.x - size.x - MATERIALS_GAP * 2.0
-	_materials_label.position = Vector2(size.x + MATERIALS_GAP, 0.0)
-	_materials_label.size = Vector2(maxf(available, 0.0), size.y)
+	_materials_row.position = Vector2(size.x + MATERIALS_GAP, 0.0)
+	_materials_row.size = Vector2(maxf(available, 0.0), size.y)
 
 
 func _exit_tree() -> void:
@@ -144,12 +138,16 @@ func _on_materials_spent(material_type: String, quantity: int, _destination: Str
 ## GDD Visual/Audio Requirements: numeric changes reuse Inventory's existing
 ## scale-pop treatment (~1.0->1.15->1.0 over ~0.2s).
 func _play_scale_pop() -> void:
-	_row.pivot_offset = _row.size / 2.0
-	_row.scale = Vector2.ONE
+	if ReduceMotion.enabled():
+		return
+	# Pops the chips, not the title plaque; pivots on the left edge so the first chip
+	# doesn't push back under the plaque.
+	_materials_row.pivot_offset = Vector2(0.0, _materials_row.size.y / 2.0)
+	_materials_row.scale = Vector2.ONE
 	var tween: Tween = create_tween()
-	tween.tween_property(_row, "scale", Vector2(1.15, 1.15), 0.1) \
+	tween.tween_property(_materials_row, "scale", Vector2(1.08, 1.08), 0.1) \
 		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-	tween.tween_property(_row, "scale", Vector2.ONE, 0.1) \
+	tween.tween_property(_materials_row, "scale", Vector2.ONE, 0.1) \
 		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 
 
@@ -179,10 +177,55 @@ func _on_inventory_changed(_item_id: String, _item_type: String, _quantity: int)
 
 
 func _refresh_label() -> void:
-	var parts: PackedStringArray = []
+	# free(), not queue_free(): chips are plain leaf Controls, never the signal emitter
+	# being handled, and a detached-but-queued node lingers as an orphan until frame end.
+	for child: Node in _materials_row.get_children():
+		child.free()
 	for material_type: String in _materials:
-		parts.append("%s %d" % [_material_label(material_type), _materials[material_type]])
-	_materials_label.text = " · ".join(parts)
+		_materials_row.add_child(_build_chip(material_type, int(_materials[material_type])))
+
+
+## One material chip: inset frame, icon, count; the name lives in the tooltip. A
+## material with no icon yet falls back to "Name N" text (content can lag code, the
+## same tolerance as MissionHud's loot chips).
+func _build_chip(material_type: String, quantity: int) -> PanelContainer:
+	var chip := PanelContainer.new()
+	chip.name = StringName("Chip_%s" % material_type)
+	chip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	chip.focus_mode = Control.FOCUS_NONE
+	chip.mouse_filter = Control.MOUSE_FILTER_PASS  # tooltip only; never focusable (Core Rule 3)
+	chip.tooltip_text = _material_label(material_type)
+	var box := ShellChromeStyle.skin_inset()
+	box.content_margin_top = 3
+	box.content_margin_bottom = 3
+	box.content_margin_right = 10
+	chip.add_theme_stylebox_override("panel", box)
+
+	var row := HBoxContainer.new()
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_theme_constant_override("separation", 6)
+	chip.add_child(row)
+
+	var definition: ItemDefinitionResource = GGameDataRegistry.get_item_definition(StringName(material_type))
+	var count := Label.new()
+	count.name = &"Count"
+	count.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	count.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	count.add_theme_color_override("font_color", ShellChromeStyle.UI_PARCHMENT)
+	if definition != null and definition.icon != null:
+		var icon := TextureRect.new()
+		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		icon.texture = definition.icon
+		icon.custom_minimum_size = Vector2(CHIP_ICON_SIZE, CHIP_ICON_SIZE)
+		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		row.add_child(icon)
+		count.text = str(quantity)
+	else:
+		count.text = "%s %d" % [_material_label(material_type), quantity]
+	row.add_child(count)
+	return chip
 
 
 ## Registry display name ("Menagerie Lure"); unknown ids are shown as-is.
