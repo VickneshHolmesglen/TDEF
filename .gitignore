@@ -152,3 +152,7 @@ $RECYCLE.BIN/
 *.msp
 *.lnk
 .mcp/
+
+# Tool scratch state
+.superpowers/
+*.stackdump
