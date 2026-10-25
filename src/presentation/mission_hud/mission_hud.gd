@@ -98,6 +98,8 @@ var _skill_slot_countdowns: Array[Label] = []
 ## between them, so the HUD never covers a cell. The panels stop mouse input,
 ## so a click on the chrome can never place a tower.
 const SIDE_PANEL_WIDTH: float = 160.0
+## Peak darkness of the side regions' edge vignette (see _build_side_panels()).
+const EDGE_VIGNETTE_ALPHA: float = 0.72
 
 ## Right-column layout (2026-10-11 gameplay-graphics pass, docs/images/
 ## "Gameplay graphics.PNG"): the readouts sat flush against the panel edge in
@@ -1041,19 +1043,50 @@ func _on_materials_earned(material_type: String, quantity: int, _source: String)
 ## real and keeps this immune to the same stale-child-state bug class
 ## PlanningCluster's render_route() doc comment documents for the
 ## equivalent partial-update alternative.
+##
+## 2026-10-25 AAA UI pass: the panels are no longer opaque full-height slabs.
+## The HD-2D scenery already extends Hd2dScenery.MARGIN_CELLS past the grid
+## (wider than SIDE_PANEL_WIDTH on screen), so the regions now show that world
+## under a soft edge vignette and the cards float on top of it. The grid itself
+## is still framed between the regions, so no HUD element covers a cell, and
+## the regions still swallow clicks so off-grid input behaves exactly as before.
 func _build_side_panels() -> void:
 	for side: int in [SIDE_LEFT, SIDE_RIGHT]:
 		var panel := Panel.new()
 		panel.name = "LeftSidePanel" if side == SIDE_LEFT else "RightSidePanel"
-		panel.add_theme_stylebox_override("panel", ShellChromeStyle.skin_panel(true))
+		panel.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 		panel.mouse_filter = Control.MOUSE_FILTER_STOP
 		panel.anchor_left = 0.0 if side == SIDE_LEFT else 1.0
 		panel.anchor_right = panel.anchor_left
 		panel.anchor_bottom = 1.0
 		panel.offset_left = 0.0 if side == SIDE_LEFT else -SIDE_PANEL_WIDTH
 		panel.offset_right = SIDE_PANEL_WIDTH if side == SIDE_LEFT else 0.0
+		var vignette := TextureRect.new()
+		vignette.name = "EdgeVignette"
+		vignette.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		vignette.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		vignette.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		vignette.stretch_mode = TextureRect.STRETCH_SCALE
+		vignette.texture = _edge_vignette_texture(side == SIDE_LEFT)
+		panel.add_child(vignette)
 		add_child(panel)
 		move_child(panel, 0)
+
+
+## Darkest at the screen edge, clear where the grid begins: frames the play
+## area and keeps card edges legible without hiding the scenery underneath.
+static func _edge_vignette_texture(dark_on_left: bool) -> GradientTexture2D:
+	var gradient := Gradient.new()
+	var edge := Color(0.02, 0.03, 0.06, EDGE_VIGNETTE_ALPHA)
+	var mid := Color(edge, EDGE_VIGNETTE_ALPHA * 0.55)
+	var clear := Color(edge, 0.0)
+	gradient.offsets = PackedFloat32Array([0.0, 0.55, 1.0])
+	gradient.colors = PackedColorArray([edge, mid, clear] if dark_on_left else [clear, mid, edge])
+	var texture := GradientTexture2D.new()
+	texture.gradient = gradient
+	texture.width = 64
+	texture.height = 1
+	return texture
 
 
 ## Moves Chrome and MaterialsRow into inset cards in one right-hand column and

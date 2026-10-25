@@ -27,6 +27,11 @@ extends Control
 
 var _materials: Dictionary = {}
 
+## strings.csv key for the plaque title. Set before adding to the tree; the
+## Loadout shell reuses this header with its own title so both screens share
+## one chrome (2026-10-25 AAA UI pass).
+var title_key: String = "SANCTUARY_HEADER_TITLE"
+
 @onready var _background: Panel = Panel.new()
 @onready var _row: HBoxContainer = HBoxContainer.new()
 @onready var _title_label: Label = Label.new()
@@ -65,7 +70,7 @@ func _ready() -> void:
 	## is the plaque's own identifying label.
 	_title_label.name = &"TitleLabel"
 	_row.add_child(_title_label)
-	_title_label.text = tr("SANCTUARY_HEADER_TITLE")
+	_title_label.text = tr(title_key)
 	_title_label.add_theme_color_override("font_color", ShellChromeStyle.UI_PARCHMENT)
 	_title_label.add_theme_font_size_override("font_size", 20)
 	_title_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER

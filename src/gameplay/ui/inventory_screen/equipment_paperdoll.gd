@@ -192,6 +192,10 @@ func _build_spacer(tile_size: Vector2) -> Control:
 ## on why click-to-unequip isn't wired up), so it deliberately carries no
 ## clickable affordance. Control.tooltip_text works on any Control, Panel
 ## included -- no functionality lost by not using Button here.
+## Empty-slot names read as faint engraving in the socket, not as content.
+const EMPTY_SLOT_LABEL_ALPHA: float = 0.4
+
+
 func _build_slot_frame(slot_name: String, tile_size: Vector2) -> Panel:
 	var frame := Panel.new()
 	frame.name = "Slot_%s" % slot_name
@@ -203,15 +207,10 @@ func _build_slot_frame(slot_name: String, tile_size: Vector2) -> Panel:
 	# border convention (shell_chrome_style.gd) makes each slot read as its
 	# own discrete bordered box, matching the reference layout's framed-slot
 	# look with this project's own palette instead of copying their skin.
-	var slot_style := StyleBoxFlat.new()
-	slot_style.bg_color = Color(ShellChromeStyle.UI_CHROME, 1.0).lightened(0.15)
-	slot_style.border_width_left = 2
-	slot_style.border_width_right = 2
-	slot_style.border_width_top = 2
-	slot_style.border_width_bottom = 2
-	slot_style.border_color = ShellChromeStyle.UI_PARCHMENT
-	slot_style.set_corner_radius_all(ShellChromeStyle.CHAMFER_PX)
-	frame.add_theme_stylebox_override("panel", slot_style)
+	# 2026-10-25 AAA UI pass: HD-2D skin -- an empty slot is a recessed socket
+	# (skin_inset), an equipped one a raised frame (skin_button); swapped in
+	# _refresh_slot(). Replaces the flat parchment-outlined box.
+	frame.add_theme_stylebox_override("panel", ShellChromeStyle.skin_inset())
 	frame.mouse_filter = Control.MOUSE_FILTER_PASS  ## lets tooltip_text register on hover
 	frame.mouse_entered.connect(_on_frame_mouse_entered.bind(slot_name))
 	frame.gui_input.connect(_on_frame_gui_input.bind(slot_name))
@@ -283,8 +282,13 @@ func _refresh_slot(slot_name: String) -> void:
 		fallback_label.visible = true
 		var slot_label: String = tr(SLOT_LABEL[slot_name]) if SLOT_LABEL.has(slot_name) else slot_name.capitalize()
 		fallback_label.text = slot_label
+		fallback_label.add_theme_color_override("font_color", Color(ShellChromeStyle.UI_PARCHMENT, EMPTY_SLOT_LABEL_ALPHA))
+		frame.add_theme_stylebox_override("panel", ShellChromeStyle.skin_inset())
 		frame.tooltip_text = slot_label
 		return
+
+	frame.add_theme_stylebox_override("panel", ShellChromeStyle.skin_button(&"normal"))
+	fallback_label.add_theme_color_override("font_color", ShellChromeStyle.UI_PARCHMENT)
 
 	var definition: ItemDefinitionResource = GGameDataRegistry.get_item_definition(StringName(item_id))
 	if definition != null and definition.icon != null:

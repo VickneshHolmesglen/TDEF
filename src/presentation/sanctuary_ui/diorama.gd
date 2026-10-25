@@ -342,7 +342,7 @@ func _on_town_building_pressed(building_id: StringName) -> void:
 
 ## Bottom hint line on a translucent chrome strip: the Overview background's
 ## rocky bottom edge made bare parchment text hard to read. Stops short of the
-## Launch Mission button (SanctuaryUI, 220 px wide at 24 px from the right).
+## Launch Mission button (SanctuaryUI.LAUNCH_BUTTON_SIZE, 24 px from the right).
 func _build_town_info_strip() -> PanelContainer:
 	var strip := PanelContainer.new()
 	strip.name = "TownInfoStrip"
@@ -352,7 +352,7 @@ func _build_town_info_strip() -> PanelContainer:
 	strip.anchor_right = 1.0
 	strip.offset_left = 12.0
 	strip.offset_top = -40.0
-	strip.offset_right = -256.0
+	strip.offset_right = -(SanctuaryUI.LAUNCH_BUTTON_SIZE.x + 24.0 + 16.0)
 	strip.offset_bottom = -8.0
 	var box := ShellChromeStyle.chrome_panel_stylebox()
 	box.bg_color.a = 0.82

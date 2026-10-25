@@ -74,7 +74,9 @@ func _ready() -> void:
 		mission_select = GMissionSelect
 
 	_background.color = ShellChromeStyle.UI_CHROME
+	_build_world_backdrop()
 	_apply_chrome_styles()
+	_build_intel_section()
 
 	_input_mode_tracker.input_mode_changed.connect(_on_input_mode_changed)
 	_back_button.pressed.connect(_on_back_pressed)
@@ -196,6 +198,9 @@ func _create_mission_button(entry: MissionEntry) -> Button:
 	button.add_theme_color_override("font_color", ShellChromeStyle.UI_PARCHMENT)
 	button.add_theme_color_override("font_pressed_color", ShellChromeStyle.UI_PARCHMENT)
 	button.add_theme_color_override("font_hover_pressed_color", ShellChromeStyle.UI_PARCHMENT)
+	# Selected: the raised "hover" frame plus a gold glow frame (SelectionFrame,
+	# toggled in _refresh_selection_visuals()), not an amber flood fill that
+	# drowned the medallion art (2026-10-25 AAA UI pass).
 	var selected_box: StyleBox = _mission_card_stylebox(true)
 	button.add_theme_stylebox_override("normal", _mission_card_stylebox(false))
 	button.add_theme_stylebox_override("hover", ShellChromeStyle.skin_button(&"hover"))
@@ -204,7 +209,41 @@ func _create_mission_button(entry: MissionEntry) -> Button:
 	button.add_theme_stylebox_override("focus", ShellChromeStyle.skin_focus())
 	button.pressed.connect(_on_mission_pressed.bind(entry.mission_id))
 	_wire_focus_ring(button)
+	var frame := Panel.new()
+	frame.name = "SelectionFrame"
+	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	frame.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	frame.add_theme_stylebox_override("panel", _selection_frame_stylebox())
+	frame.visible = false
+	button.add_child(frame)
 	return button
+
+
+## Gold rule with an outer glow -- the selected card's frame.
+static func _selection_frame_stylebox() -> StyleBoxFlat:
+	var box := StyleBoxFlat.new()
+	box.draw_center = false
+	box.set_border_width_all(3)
+	box.border_color = ShellChromeStyle.UI_ACCENT
+	box.shadow_color = Color(ShellChromeStyle.UI_ACCENT, 0.45)
+	box.shadow_size = 14
+	return box
+
+
+## Selected card lit and framed; the rest step back so the choice reads at a
+## glance. Nothing dims while just browsing.
+func _refresh_selection_visuals(current_id: String) -> void:
+	for mission_id: String in _mission_buttons:
+		var button: Button = _mission_buttons[mission_id]
+		var selected: bool = mission_id == current_id
+		var frame: Panel = button.get_node_or_null(^"SelectionFrame") as Panel
+		if frame != null:
+			frame.visible = selected
+		var target: Color = Color.WHITE if (selected or current_id.is_empty()) else UNSELECTED_CARD_TINT
+		if ReduceMotion.enabled() or not button.is_inside_tree():
+			button.modulate = target
+		else:
+			button.create_tween().tween_property(button, "modulate", target, ShellChromeStyle.MOTION_SETTLE_SEC)
 
 
 ## Outlined chrome button with side padding so left-aligned text doesn't sit
@@ -217,7 +256,7 @@ static func _padded_outline_stylebox() -> StyleBox:
 ## rule -- a fill change, not colour of a line alone (filled-vs-outline
 ## convention). HD-2D skin frames since 2026-10-12.
 static func _mission_card_stylebox(selected: bool) -> StyleBox:
-	var box: StyleBoxTexture = ShellChromeStyle.skin_button(&"active" if selected else &"normal")
+	var box: StyleBoxTexture = ShellChromeStyle.skin_button(&"hover" if selected else &"normal")
 	box.set_content_margin_all(10.0)
 	return box
 
@@ -256,11 +295,13 @@ func _refresh_config_panel() -> void:
 	var current_id: String = mission_select.get_current_mission_id() if configuring else ""
 	for mission_id: String in _mission_buttons:
 		_mission_buttons[mission_id].set_pressed_no_signal(mission_id == current_id)
+	_refresh_selection_visuals(current_id)
 	if not configuring:
 		return
 	var entry: MissionEntry = GGameDataRegistry.get_mission_entry(current_id)
 	_mission_title_label.text = entry.display_name if entry != null else current_id
 	_refresh_objective_label()
+	_refresh_intel(entry)
 	_refresh_tier_button_labels()
 	_refresh_modifier_button_labels()
 
@@ -275,6 +316,117 @@ func _refresh_objective_label() -> void:
 	var mission_id: StringName = StringName(mission_select.get_current_mission_id())
 	var resource: MissionResource = GGameDataRegistry.get_mission_resource(mission_id)
 	_objective_label.text = resource.objective_text if resource != null else ""
+
+
+# ---------------------------------------------------------------------------
+# World backdrop + mission intel (2026-10-25 AAA UI pass)
+# ---------------------------------------------------------------------------
+
+const UNSELECTED_CARD_TINT: Color = Color(0.68, 0.68, 0.74)
+const WORLD_BACKDROP_TINT: Color = Color(0.32, 0.34, 0.42)
+const INTEL_ICON_SIZE: Vector2 = Vector2(36, 36)
+const WORLD_BACKDROP_TEXTURE: Texture2D = preload("res://assets/art/main_menu/background.png")
+const BOSS_TIER: int = 2  ## MonsterResource.tier: 0=STANDARD 1=ELITE 2=BOSS
+
+var _intel_waves_label: Label
+var _intel_roster: HBoxContainer
+
+
+## The world painting, dimmed, behind the panels: the screen reads as a war
+## table over the land the missions take place in, not a form on flat navy.
+## Sits just above _background, whose UI_CHROME color stays as the fallback.
+func _build_world_backdrop() -> void:
+	var art := TextureRect.new()
+	art.name = "WorldBackdrop"
+	art.texture = WORLD_BACKDROP_TEXTURE
+	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	art.modulate = WORLD_BACKDROP_TINT
+	add_child(art)
+	move_child(art, _background.get_index() + 1)
+	art.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+
+
+## "Enemy Forces" section under the objective: wave count, then one sprite per
+## monster type the mission's waves field (bosses framed in warning orange).
+func _build_intel_section() -> void:
+	var header := Label.new()
+	header.name = "IntelHeader"
+	header.text = tr("MISSION_SELECT_INTEL_HEADER")
+	header.theme_type_variation = &"HeaderLabel"
+	_config_panel.add_child(header)
+	_config_panel.move_child(header, _difficulty_header.get_index())
+
+	_intel_waves_label = Label.new()
+	_intel_waves_label.name = "IntelWaves"
+	_intel_waves_label.add_theme_color_override("font_color", Color(ShellChromeStyle.UI_PARCHMENT, 0.8))
+	_config_panel.add_child(_intel_waves_label)
+	_config_panel.move_child(_intel_waves_label, _difficulty_header.get_index())
+
+	_intel_roster = HBoxContainer.new()
+	_intel_roster.name = "IntelRoster"
+	_intel_roster.add_theme_constant_override("separation", 6)
+	_config_panel.add_child(_intel_roster)
+	_config_panel.move_child(_intel_roster, _difficulty_header.get_index())
+
+
+func _refresh_intel(entry: MissionEntry) -> void:
+	for child: Node in _intel_roster.get_children():
+		child.free()
+	if entry == null:
+		_intel_waves_label.text = ""
+		return
+	_intel_waves_label.text = tr("MISSION_SELECT_INTEL_WAVES") % entry.base_wave_count
+	for monster_id: StringName in mission_monster_ids(entry):
+		var resource: MonsterResource = GGameDataRegistry.get_monster_resource(monster_id)
+		if resource == null:
+			continue
+		_intel_roster.add_child(_intel_icon(monster_id, resource))
+
+
+## Monster ids across every wave of `entry`, in first-appearance order. Empty
+## when the wave config is missing (the section then shows just the count).
+static func mission_monster_ids(entry: MissionEntry) -> Array[StringName]:
+	var ids: Array[StringName] = []
+	if entry.wave_config_path.is_empty() or not ResourceLoader.exists(entry.wave_config_path):
+		return ids
+	var config: WaveConfig = load(entry.wave_config_path) as WaveConfig
+	if config == null:
+		return ids
+	for wave: WaveScript in config.wave_scripts:
+		if wave == null:
+			continue
+		for spawn: WaveSpawnEntry in wave.entries:
+			if spawn != null and spawn.monster_id != &"" and not ids.has(spawn.monster_id):
+				ids.append(spawn.monster_id)
+	return ids
+
+
+func _intel_icon(monster_id: StringName, resource: MonsterResource) -> Control:
+	var slot := PanelContainer.new()
+	slot.tooltip_text = resource.display_name
+	var box: StyleBoxTexture = ShellChromeStyle.skin_inset()
+	box.set_content_margin_all(3)
+	if resource.tier == BOSS_TIER:
+		box.modulate_color = ShellChromeStyle.UI_WARNING_ORANGE
+	slot.add_theme_stylebox_override("panel", box)
+	var texture: Texture2D = MonsterInstance.MONSTER_TEXTURES.get(monster_id)
+	if texture != null:
+		var icon := TextureRect.new()
+		icon.texture = texture
+		icon.custom_minimum_size = INTEL_ICON_SIZE
+		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		slot.add_child(icon)
+	else:
+		var label := Label.new()
+		label.text = resource.display_name
+		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		slot.add_child(label)
+	return slot
 
 
 func _create_tier_button(tier: int) -> Button:

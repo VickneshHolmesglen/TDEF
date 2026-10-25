@@ -316,6 +316,13 @@ func _ready() -> void:
 
 	_configure_continue_new_game_load_state()
 
+	# Backdrop drift, fireflies, title/button entrance (after the Continue/Load
+	# visibility decision above, which the entrance reads).
+	var ambience := MainMenuAmbience.new()
+	ambience.name = "Ambience"
+	add_child(ambience)
+	ambience.setup($Background, $TitleLabel, $Buttons)
+
 
 ## No modal open -> same path as clicking Settings. A modal open -> that
 ## modal's own existing Back/Cancel function, exactly as its Back/Cancel

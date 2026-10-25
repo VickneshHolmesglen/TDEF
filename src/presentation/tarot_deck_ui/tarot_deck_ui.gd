@@ -34,9 +34,12 @@ const SCREEN_SCENES: Dictionary[StringName, PackedScene] = {
 const HERO_SKILL_BUILD_STATE: StringName = &"HERO_SKILL_BUILD"
 const TAROT_DECK_STATE: StringName = &"TAROT_DECK"
 
-## 160, not 72 (2026-10-04 smoke check): "Hero Skill Build" measures ~126px,
-## so a 72px strip overflowed 54px into ScreenHost and drew over its rows.
-const TAB_STRIP_WIDTH: float = 160.0
+## 2026-10-25 AAA UI pass: shares the Sanctuary shell's rail width and header
+## height, and mounts the same ResourceHeader plaque, so moving between
+## Sanctuary and Loadout reads as one place rather than two different games.
+## (Was 160: "Hero Skill Build" measures ~126 px -- 240 clears it with the icon.)
+const TAB_STRIP_WIDTH: float = SanctuaryUI.TAB_STRIP_WIDTH
+const HEADER_HEIGHT: float = SanctuaryUI.HEADER_HEIGHT
 const RETURN_BAR_HEIGHT: float = 72.0
 
 @onready var _screen_host: ScreenHost = $ScreenHost
@@ -162,7 +165,7 @@ func _configure_chrome_layout() -> void:
 	_tab_strip.anchor_right = 0.0
 	_tab_strip.anchor_bottom = 1.0
 	_tab_strip.offset_left = 0.0
-	_tab_strip.offset_top = 0.0
+	_tab_strip.offset_top = HEADER_HEIGHT
 	_tab_strip.offset_right = TAB_STRIP_WIDTH
 	_tab_strip.offset_bottom = 0.0
 
@@ -171,7 +174,7 @@ func _configure_chrome_layout() -> void:
 	_screen_host.anchor_right = 1.0
 	_screen_host.anchor_bottom = 1.0
 	_screen_host.offset_left = TAB_STRIP_WIDTH
-	_screen_host.offset_top = 0.0
+	_screen_host.offset_top = HEADER_HEIGHT
 	_screen_host.offset_right = 0.0
 	# Leave room for ReturnToSanctuaryButton (40px tall, 24px inset) so it no
 	# longer floats over the bottom rows of the hosted screen (2026-10-04).
@@ -198,7 +201,20 @@ func _add_backdrops() -> void:
 	move_child(content, 1)
 	content.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	content.offset_left = TAB_STRIP_WIDTH
+	content.offset_top = HEADER_HEIGHT
 	content.offset_bottom = -RETURN_BAR_HEIGHT
+
+	# Same title plaque + material chips as the Sanctuary's top bar.
+	var header := ResourceHeader.new()
+	header.name = "ResourceHeader"
+	header.title_key = "TAROT_DECK_UI_HEADER_TITLE"
+	header.anchor_left = 0.0
+	header.anchor_top = 0.0
+	header.anchor_right = 0.0
+	header.anchor_bottom = 0.0
+	header.offset_right = TAB_STRIP_WIDTH
+	header.offset_bottom = HEADER_HEIGHT
+	add_child(header)
 
 
 func _on_tab_target_selected(target_state: StringName) -> void:
@@ -233,7 +249,8 @@ func _configure_return_to_sanctuary_button() -> void:
 	# own inactive-tab treatment.
 	_return_to_sanctuary_button.add_theme_stylebox_override("normal", ShellChromeStyle.skin_button_for(false))
 	_return_to_sanctuary_button.add_theme_stylebox_override("hover", ShellChromeStyle.skin_button_for(false))
-	_return_to_sanctuary_button.add_theme_stylebox_override("pressed", ShellChromeStyle.chrome_button_stylebox(false))
+	_return_to_sanctuary_button.add_theme_stylebox_override("hover", ShellChromeStyle.skin_button(&"hover"))
+	_return_to_sanctuary_button.add_theme_stylebox_override("pressed", ShellChromeStyle.skin_button(&"pressed"))
 	_return_to_sanctuary_button.add_theme_color_override("font_color", ShellChromeStyle.UI_PARCHMENT)
 	_return_to_sanctuary_button.focus_mode = Control.FOCUS_ALL
 	_return_to_sanctuary_button.pressed.connect(confirm_return_to_sanctuary)

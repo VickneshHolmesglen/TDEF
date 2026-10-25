@@ -227,7 +227,7 @@ func _rebuild_recipe_list() -> void:
 		_recipe_list.add_child(button)
 		_recipe_buttons[recipe_id] = button
 	if _recipe_buttons.is_empty():
-		_add_empty_label(_recipe_list, tr("FORGE_RECIPES_EMPTY"))
+		_add_empty_label(_recipe_list, tr("FORGE_RECIPES_EMPTY"), tr("FORGE_EMPTY_CTA_DEFENSE"), &"ROOM_DEFENSE_BUILDING")
 
 
 func _create_recipe_button(recipe: EquipmentRecipeResource) -> Button:
@@ -264,17 +264,53 @@ static func _item_display_name(item_id: StringName) -> String:
 
 
 ## Empty list: say why instead of a silent blank column.
-static func _add_empty_label(list: VBoxContainer, text: String) -> void:
+## Empty state (2026-10-25 AAA UI pass): the Forge's anvil glyph, the
+## explanation, and -- when the way forward is another room -- a button that
+## takes the player there (GEventBus.sanctuary_room_requested), instead of one
+## line of text floating in an empty panel. Centered in its list's panel.
+const EMPTY_STATE_GLYPH: Texture2D = preload("res://assets/art/ui/tab_equipment_forge.png")
+
+
+static func _add_empty_label(list: VBoxContainer, text: String, cta_text: String = "", cta_target: StringName = &"") -> void:
+	var state := VBoxContainer.new()
+	state.name = "EmptyState"
+	state.alignment = BoxContainer.ALIGNMENT_CENTER
+	state.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	state.add_theme_constant_override("separation", 14)
+
+	var glyph := TextureRect.new()
+	glyph.texture = EMPTY_STATE_GLYPH
+	glyph.custom_minimum_size = Vector2(88, 88)
+	glyph.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	glyph.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	glyph.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	glyph.modulate = Color(1, 1, 1, 0.35)
+	state.add_child(glyph)
+
 	var label := Label.new()
 	label.name = "EmptyLabel"
 	label.text = text
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	label.custom_minimum_size = Vector2(240, 0)
-	# Centered in its panel (2026-10-10 UI pass) instead of pinned top-left.
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	label.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	list.add_child(label)
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	label.add_theme_color_override("font_color", Color(ShellChromeStyle.UI_PARCHMENT, 0.8))
+	state.add_child(label)
+
+	if not cta_text.is_empty() and cta_target != &"":
+		var cta := Button.new()
+		cta.name = "EmptyStateCta"
+		cta.text = cta_text
+		cta.focus_mode = Control.FOCUS_ALL
+		cta.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		cta.custom_minimum_size = Vector2(0, 44)
+		cta.add_theme_stylebox_override("normal", ShellChromeStyle.skin_launch())
+		cta.add_theme_stylebox_override("hover", ShellChromeStyle.skin_launch())
+		cta.add_theme_stylebox_override("pressed", ShellChromeStyle.skin_launch(&"pressed"))
+		cta.add_theme_color_override("font_color", ShellChromeStyle.UI_PARCHMENT)
+		cta.pressed.connect(func() -> void: GEventBus.sanctuary_room_requested.emit(cta_target))
+		state.add_child(cta)
+	list.add_child(state)
 
 
 ## GDD: single-confirm, matching Crafting's own convention. resolve_craft()
@@ -418,7 +454,7 @@ func _rebuild_upgrade_list() -> void:
 		var row: VBoxContainer = _create_upgrade_row(upgrade)
 		_upgrade_list.add_child(row)
 	if _upgrade_list.get_children().all(func(c: Node) -> bool: return c.is_queued_for_deletion()):
-		_add_empty_label(_upgrade_list, tr("FORGE_UPGRADES_EMPTY"))
+		_add_empty_label(_upgrade_list, tr("FORGE_UPGRADES_EMPTY"), tr("FORGE_EMPTY_CTA_DEFENSE"), &"ROOM_DEFENSE_BUILDING")
 
 
 ## Rule 2a/AC-6/AC-6b: each upgrade renders as a header purchase Button

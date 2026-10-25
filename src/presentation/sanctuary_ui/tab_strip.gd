@@ -123,6 +123,10 @@ const HOTKEY_ACTIONS: Array[StringName] = [
 ## skill_tree_overflow_point_earned).
 const BADGE_ELIGIBLE_INDICES: Array[int] = [1, 2, 3, 4, 5]
 
+const TAB_HEIGHT: float = 58.0
+const TAB_ICON_SIZE: int = 34
+const TAB_FONT_SIZE: int = 16
+
 ## Session-local onboarding flag (GDD Core Rule 2's onboarding paragraph):
 ## "has a Sanctuary UI instance mounted before this session" -- explicitly
 ## NOT persisted (Save & Persistence's "no UI state saved" rule), so a static
@@ -378,11 +382,16 @@ func _build_buttons() -> void:
 		button.clip_text = true
 		button.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		button.focus_mode = Control.FOCUS_ALL
-		button.custom_minimum_size = Vector2(56, 56)
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		# Tabs share the strip's full height (2026-10-10 UI pass) -- they
-		# used to stop two-thirds down, leaving a dead block under them.
-		button.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		# 2026-10-25 AAA UI pass: compact rail. Fixed-height, left-aligned tabs
+		# with a small icon read as navigation; the earlier full-height tabs
+		# (each ~95 px tall, centered text) read as seven primary buttons and
+		# dominated the screen. The space below holds the hotkey hint.
+		button.custom_minimum_size = Vector2(0, TAB_HEIGHT)
+		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		button.add_theme_constant_override("icon_max_width", TAB_ICON_SIZE)
+		button.add_theme_constant_override("h_separation", 10)
+		button.add_theme_font_size_override("font_size", TAB_FONT_SIZE)
 		button.add_theme_stylebox_override("normal", ShellChromeStyle.skin_button_for(index == 0))
 		button.add_theme_stylebox_override("hover", ShellChromeStyle.skin_button_for(index == 0))
 		button.add_theme_stylebox_override("pressed", ShellChromeStyle.skin_button(&"active"))
@@ -462,7 +471,11 @@ func _build_onboarding_tooltip() -> void:
 	_onboarding_tooltip.text = tr("SANCTUARY_TAB_STRIP_ONBOARDING_TOOLTIP")
 	_onboarding_tooltip.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_onboarding_tooltip.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_onboarding_tooltip.add_theme_color_override("font_color", ShellChromeStyle.UI_PARCHMENT)
+	_onboarding_tooltip.add_theme_color_override("font_color", Color(ShellChromeStyle.UI_PARCHMENT, 0.6))
+	_onboarding_tooltip.add_theme_font_size_override("font_size", 14)
+	# Pinned to the rail's bottom now that the tabs no longer fill it.
+	_onboarding_tooltip.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_onboarding_tooltip.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
 	_onboarding_tooltip.visible = not _has_shown_onboarding_this_session
 	_has_shown_onboarding_this_session = true
 	add_child(_onboarding_tooltip)

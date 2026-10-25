@@ -241,7 +241,7 @@ FORGE_ITEM_SLOTS_FREE,%s (%d/%d rune slots free)
 FORGE_RECIPES_EMPTY,"No equipment recipes discovered yet. Research tech in Defense Building and collect materials on missions to discover them."
 FORGE_IMBUE_ITEMS_EMPTY,"No equipment with a free rune slot. Craft equipment here first, then imbue it with runes."
 FORGE_UPGRADES_EMPTY,"No buildings to upgrade yet. Build structures in Defense Building to unlock their upgrades."
-SKILL_BUILD_SLOT_EMPTY,(empty)
+SKILL_BUILD_SLOT_EMPTY,Empty slot · choose a skill below
 SKILL_BUILD_PASSIVES_NONE,Passives: —
 SKILL_BUILD_PASSIVES,Passives: %d/%d (cycle)
 SKILL_BUILD_TAG_LOCKED,(Locked)
@@ -335,3 +335,13 @@ HUD_CALLOUT_WAVE_CLEARED,Wave Cleared
 HUD_CALLOUT_FORTIFY,Fortify your defenses
 HUD_CALLOUT_BOSS,A champion approaches
 MAIN_MENU_RECOVERY_TITLE,Interrupted Mission
+DEFENSE_CARD_REQUIRES,Requires %s
+DEFENSE_CARD_UNLOCKS,Unlocks %s
+DEFENSE_CARD_RECIPE_COUNT,%d recipes
+DEFENSE_PILL_RESEARCHED,Researched
+DEFENSE_PILL_AVAILABLE,Available
+DEFENSE_PILL_LOCKED,Locked
+TAROT_DECK_UI_HEADER_TITLE,Loadout
+MISSION_SELECT_INTEL_HEADER,Enemy Forces
+MISSION_SELECT_INTEL_WAVES,%d waves
+FORGE_EMPTY_CTA_DEFENSE,Go to Defense Building

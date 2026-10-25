@@ -37,6 +37,13 @@ const TAB_LABEL_KEYS: Array[String] = [
 	"TAROT_DECK_UI_TAB_TAROT_DECK",
 ]
 
+## Index-ordered 1:1 with TAB_TARGETS: the Sanctuary rail's own glyphs for
+## these two rooms, so the same destination looks the same in both shells.
+const TAB_ICON_TEXTURES: Array[Texture2D] = [
+	preload("res://assets/art/ui/tab_hero_skills.png"),
+	preload("res://assets/art/ui/tab_loadout.png"),
+]
+
 var _current_index: int = 0
 var _buttons: Array[Button] = []
 var _focus_rings: Array[Panel] = []
@@ -88,13 +95,13 @@ func _select_index(index: int) -> void:
 	tab_target_selected.emit(TAB_TARGETS[index])
 
 
-## 2026-10-10 UI pass: tabs were bare default buttons with no visible active
-## state. Chrome-styled like the Sanctuary tab strip, active tab filled.
+## Skinned exactly like the Sanctuary rail (tab_strip.gd), active tab amber.
 func _refresh_button_styles() -> void:
 	for index: int in _buttons.size():
-		var box: StyleBoxFlat = ShellChromeStyle.chrome_button_stylebox(index == _current_index)
+		var box: StyleBoxTexture = ShellChromeStyle.skin_button_for(index == _current_index)
 		_buttons[index].add_theme_stylebox_override("normal", box)
 		_buttons[index].add_theme_stylebox_override("hover", box)
+		_buttons[index].add_theme_stylebox_override("pressed", ShellChromeStyle.skin_button(&"active"))
 
 
 func _build_buttons() -> void:
@@ -102,7 +109,13 @@ func _build_buttons() -> void:
 		var button := Button.new()
 		button.text = tr(TAB_LABEL_KEYS[index])
 		button.focus_mode = Control.FOCUS_ALL
-		button.custom_minimum_size = Vector2(0, 56)
+		button.icon = TAB_ICON_TEXTURES[index]
+		button.expand_icon = true
+		button.custom_minimum_size = Vector2(0, TabStrip.TAB_HEIGHT)
+		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		button.add_theme_constant_override("icon_max_width", TabStrip.TAB_ICON_SIZE)
+		button.add_theme_constant_override("h_separation", 10)
+		button.add_theme_font_size_override("font_size", TabStrip.TAB_FONT_SIZE)
 		button.add_theme_color_override("font_color", ShellChromeStyle.UI_PARCHMENT)
 		button.pressed.connect(_on_button_pressed.bind(index))
 		button.focus_entered.connect(_update_focus_ring.bind(index))
@@ -113,6 +126,7 @@ func _build_buttons() -> void:
 		var ring := Panel.new()
 		ring.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		ring.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		ring.add_theme_stylebox_override("panel", ShellChromeStyle.focus_ring_stylebox())
 		ring.visible = false
 		button.add_child(ring)
 		_focus_rings.append(ring)

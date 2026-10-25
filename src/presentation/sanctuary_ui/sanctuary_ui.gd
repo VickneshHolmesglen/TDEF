@@ -112,6 +112,9 @@ const TAB_STRIP_WIDTH: float = RESOURCE_HEADER_WIDTH
 ## prompt.md) has room to read as a frame rather than a squished pinstripe.
 const HEADER_HEIGHT: float = 64.0
 
+const LAUNCH_BUTTON_SIZE: Vector2 = Vector2(300.0, 68.0)
+const LAUNCH_FONT: Font = preload("res://assets/ui/fonts/Cinzel-Variable.ttf")
+
 ## Fixed width for the gold header art itself (2026-08-04): the header no
 ## longer stretches full-width edge-to-edge across the top bar -- that
 ## squashed the 9-sliced art's proportions into a thin plain stripe with tiny
@@ -120,7 +123,11 @@ const HEADER_HEIGHT: float = 64.0
 ## ~4.4:1) at HEADER_HEIGHT, so it reads as a compact title plaque. The
 ## remaining top-bar space to its right is bare Chrome background (untextured
 ## -- no GDD requirement fills it with anything else).
-const RESOURCE_HEADER_WIDTH: float = 320.0
+## Narrowed 320 -> 240 (2026-10-25 AAA UI pass) together with the compact
+## tab rail (tab_strip.gd TAB_HEIGHT/TAB_ICON_SIZE): with a 34 px icon and a
+## 16 pt label, "Inventory & Crafting" fits in 240 px, and the rooms and the
+## diorama get the 80 px back.
+const RESOURCE_HEADER_WIDTH: float = 240.0
 
 ## Player-reported 2026-08-16: a "lot of grey area" was visible throughout
 ## the Sanctuary UI. Root cause: Diorama/RoomHost's content zone had no
@@ -181,9 +188,12 @@ func _ready() -> void:
 	_launch_mission_button.set_meta(UiAudioBinder.META_KEY, UiAudioBinder.KIND_CONFIRM)
 	GEventBus.scene_transition_completed.connect(_on_scene_transition_completed)
 	GEventBus.sanctuary_structure_built.connect(_on_sanctuary_structure_built)
+	GEventBus.sanctuary_room_requested.connect(_on_sanctuary_room_requested)
 
 
 func _exit_tree() -> void:
+	if GEventBus.sanctuary_room_requested.is_connected(_on_sanctuary_room_requested):
+		GEventBus.sanctuary_room_requested.disconnect(_on_sanctuary_room_requested)
 	# Idempotent against the terminal latch already having disconnected these
 	# same 2 subscriptions -- Godot errors on disconnecting an already-
 	# disconnected signal, and _exit_tree() legitimately still runs after
@@ -318,6 +328,15 @@ func _on_scene_transition_completed(target_context: String, _mission_id: String)
 ## (an event already queued before the disconnect ran) -- the disconnect
 ## itself is what actually prevents any FUTURE event from reaching this
 ## handler at all.
+## A room's call to action (e.g. the Forge's empty state) asking for another
+## room: routed through the tab strip exactly like a tab click, so the rail's
+## active styling follows. Ignored once departing (ADR-0032 terminal latch).
+func _on_sanctuary_room_requested(target_state: StringName) -> void:
+	if _departing:
+		return
+	_tab_strip.select_target(target_state)
+
+
 func _on_sanctuary_structure_built(structure_id: String, _structure_type: String) -> void:
 	if _departing:
 		return
@@ -530,8 +549,10 @@ func _configure_launch_mission_button() -> void:
 	_launch_mission_button.anchor_bottom = 1.0
 	_launch_mission_button.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	_launch_mission_button.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	_launch_mission_button.offset_left = -220.0
-	_launch_mission_button.offset_top = -64.0
+	# 2026-10-25 AAA UI pass: the screen's one primary action was its smallest
+	# button. Now the hero CTA: larger, Cinzel, outlined, with a slow glow.
+	_launch_mission_button.offset_left = -LAUNCH_BUTTON_SIZE.x - 24.0
+	_launch_mission_button.offset_top = -LAUNCH_BUTTON_SIZE.y - 24.0
 	_launch_mission_button.offset_right = -24.0
 	_launch_mission_button.offset_bottom = -24.0
 	_launch_mission_button.text = tr("SANCTUARY_LAUNCH_MISSION_BUTTON")
@@ -539,6 +560,15 @@ func _configure_launch_mission_button() -> void:
 	_launch_mission_button.add_theme_stylebox_override("hover", ShellChromeStyle.skin_launch())
 	_launch_mission_button.add_theme_stylebox_override("pressed", ShellChromeStyle.skin_launch(&"pressed"))
 	_launch_mission_button.add_theme_color_override("font_color", ShellChromeStyle.UI_PARCHMENT)
+	_launch_mission_button.add_theme_color_override("font_hover_color", Color.WHITE)
+	_launch_mission_button.add_theme_font_override("font", LAUNCH_FONT)
+	_launch_mission_button.add_theme_font_size_override("font_size", 26)
+	_launch_mission_button.add_theme_color_override("font_outline_color", Color(0.08, 0.06, 0.04))
+	_launch_mission_button.add_theme_constant_override("outline_size", 4)
+	if not ReduceMotion.enabled():
+		var glow: Tween = _launch_mission_button.create_tween().set_loops()
+		glow.tween_property(_launch_mission_button, "self_modulate", Color(1.2, 1.12, 0.92), 1.1) 			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		glow.tween_property(_launch_mission_button, "self_modulate", Color.WHITE, 1.1) 			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	# Focus-reachable via Godot's default Tab-order traversal (the UX spec's
 	# own "implementation-detail choice, not fixed here" — design/ux/
 	# sanctuary-ui.md line 287 names two equally-valid options; this is the

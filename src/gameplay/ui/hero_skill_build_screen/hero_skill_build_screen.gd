@@ -144,6 +144,10 @@ const ARCHETYPE_GLYPHS: Dictionary[String, String] = {
 ## too (no hover-only information, per technical-preferences.md).
 var _skill_detail_label: Label = null
 
+## Empty assembly slots render dimmed (see _rebuild_active_slots()).
+const EMPTY_SLOT_ALPHA: float = 0.7
+## Inner left/right padding of composed button content (_build_button_content()).
+const CONTENT_PADDING: float = 10.0
 var _active_slot_buttons: Dictionary[int, Button] = {}
 var _passive_cycle_buttons: Dictionary[int, Button] = {}
 var _library_buttons: Dictionary[String, Button] = {}
@@ -270,6 +274,15 @@ func _rebuild_active_slots() -> void:
 		passive_button.size_flags_stretch_ratio = 1.0
 		passive_button.text = _passive_summary_text(bound)
 		passive_button.disabled = bound.is_empty()
+		if bound.is_empty():
+			# 2026-10-25 AAA UI pass: an empty slot is a recessed socket asking to
+			# be filled, not a row of placeholder text. The passive
+			# button keeps its place in the row (stable layout) but is not shown.
+			for style_state: String in ["normal", "hover", "pressed", "focus"]:
+				slot_button.add_theme_stylebox_override(style_state, ShellChromeStyle.skin_inset())
+			slot_button.modulate = Color(1, 1, 1, EMPTY_SLOT_ALPHA)
+			passive_button.modulate.a = 0.0
+			passive_button.focus_mode = Control.FOCUS_NONE
 		passive_button.pressed.connect(_on_passive_cycle_pressed.bind(i))
 		row.add_child(passive_button)
 		_passive_cycle_buttons[i] = passive_button
@@ -332,6 +345,10 @@ func _build_button_content(button: Button, texture: Texture2D, label_text: Strin
 	content.add_child(label)
 
 	button.add_child(content)
+	# Inner padding: anchored flush, text and icons sat on the frame's border
+	# (most visibly the slot letter on the empty-socket inset, 2026-10-25).
+	content.offset_left = CONTENT_PADDING
+	content.offset_right = -CONTENT_PADDING
 
 
 ## Display-name lookup for a skill_id, falling back to the raw skill_id

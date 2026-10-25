@@ -601,6 +601,12 @@ signal tech_unlocked(tech_id: String, tech_category: String)
 ## Key subscribers: Mission HUD, Audio.
 signal sanctuary_structure_built(structure_id: String, structure_type: String)
 
+## A Sanctuary room asks the shell to switch rooms (e.g. an empty state's
+## "Go to Defense Building" call to action). target_state is a
+## TabStrip.TAB_TARGETS value; unknown targets are ignored.
+## Key subscribers: SanctuaryUI (routes it like a tab click).
+signal sanctuary_room_requested(target_state: StringName)
+
 ## An already-built Sanctuary structure gains a permanent upgrade (player-
 ## requested Building Upgrade System, design/gdd/building-upgrade.md Rule 6 —
 ## added 2026-08-11). Building Upgrade only emits this; it owns no

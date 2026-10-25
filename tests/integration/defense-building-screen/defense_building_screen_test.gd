@@ -50,12 +50,12 @@ func test_tech_list_contains_all_6_authored_nodes() -> void:
 
 func test_locked_prereq_node_shows_locked_state_in_its_button_text() -> void:
 	var button: Button = _screen.call("get_tech_button", &"tech_production_3")
-	assert_str(button.text).contains(tr("DEFENSE_TECH_STATE_LOCKED"))
+	assert_str(button.accessibility_name).contains(tr("DEFENSE_TECH_STATE_LOCKED"))
 
 
 func test_pressing_an_available_tech_node_unlocks_it() -> void:
 	var button: Button = _screen.call("get_tech_button", &"tech_production_2")
-	assert_str(button.text).contains(tr("DEFENSE_TECH_STATE_AVAILABLE"))
+	assert_str(button.accessibility_name).contains(tr("DEFENSE_TECH_STATE_AVAILABLE"))
 
 	@warning_ignore("unsafe_method_access")
 	_screen.call("_on_tech_pressed", &"tech_production_2")
@@ -74,7 +74,7 @@ func test_pressing_a_locked_prereq_node_does_not_unlock_it_and_flags_rejection()
 func test_ledger_change_event_triggers_a_live_rebuild() -> void:
 	GDefenseBuilding.resolve_tech_unlock(&"tech_production_2")
 	var button: Button = _screen.call("get_tech_button", &"tech_production_2")
-	assert_str(button.text).contains(tr("DEFENSE_TECH_STATE_UNLOCKED"))
+	assert_str(button.accessibility_name).contains(tr("DEFENSE_TECH_STATE_UNLOCKED"))
 
 
 # ---------------------------------------------------------------------------
@@ -93,7 +93,7 @@ func test_structure_list_contains_all_5_authored_structures() -> void:
 
 func test_unbuilt_structure_shows_unbuilt_status() -> void:
 	var button: Button = _screen.call("get_structure_button", &"watchtower_tier_1")
-	assert_str(button.text).contains(tr("DEFENSE_STRUCTURE_UNBUILT"))
+	assert_str(button.accessibility_name).contains(tr("DEFENSE_STRUCTURE_UNBUILT"))
 
 
 func test_pressing_an_eligible_structure_builds_it() -> void:
@@ -109,7 +109,7 @@ func test_pressing_an_eligible_structure_builds_it() -> void:
 
 func test_gated_structure_shows_its_tech_gate_reference() -> void:
 	var button: Button = _screen.call("get_structure_button", &"habitat_expansion_tier_2")
-	assert_str(button.text).contains("Requires")
+	assert_str(button.accessibility_name).contains("Requires")
 
 
 # ---------------------------------------------------------------------------
