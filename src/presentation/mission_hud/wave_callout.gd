@@ -2,7 +2,7 @@ class_name WaveCallout
 extends Control
 
 ## Center-screen ceremony for the mission's big beats: "Wave 3 / of 5", "Final Wave",
-## "Wave Cleared", and a boss's arrival. Before this the only signal a wave had started or
+## "Wave Cleared", a boss's arrival, and the mission's first breach. Before this the only signal a wave had started or
 ## ended was a small label changing in the corner status card.
 ##
 ## Pure presentation: subscribes to EventBus itself, owns no gameplay state, never takes
@@ -31,6 +31,11 @@ var _showing: bool = false
 var _tween: Tween = null
 var _total_waves: int = 0
 var _terminal: bool = false
+## Only the first breach of a mission attempt gets a callout: breaches can come
+## several per wave, and a banner for each would drown out every other beat (the
+## HUD's breach counter pulse and edge flash still mark each one). Reset on SCOUT,
+## so a Retry warns again.
+var _breach_announced: bool = false
 
 var _ribbon: TextureRect
 var _rule_top: ColorRect
@@ -50,6 +55,7 @@ func _ready() -> void:
 	GEventBus.wave_started.connect(_on_wave_started)
 	GEventBus.wave_completed.connect(_on_wave_completed)
 	GEventBus.monster_spawned.connect(_on_monster_spawned)
+	GEventBus.monster_breached.connect(_on_monster_breached)
 	GEventBus.mission_phase_changed.connect(_on_mission_phase_changed)
 
 
@@ -57,6 +63,7 @@ func _exit_tree() -> void:
 	GEventBus.wave_started.disconnect(_on_wave_started)
 	GEventBus.wave_completed.disconnect(_on_wave_completed)
 	GEventBus.monster_spawned.disconnect(_on_monster_spawned)
+	GEventBus.monster_breached.disconnect(_on_monster_breached)
 	GEventBus.mission_phase_changed.disconnect(_on_mission_phase_changed)
 
 
@@ -230,6 +237,13 @@ func _on_wave_completed(wave_number: int, _enemies_remaining: int, _was_boss_bre
 	show_callout(tr("HUD_CALLOUT_WAVE_CLEARED"), tr("HUD_CALLOUT_FORTIFY"))
 
 
+func _on_monster_breached(_entity_id: int, _monster_id: StringName, _tier: int) -> void:
+	if _breach_announced or _terminal:
+		return
+	_breach_announced = true
+	show_callout(tr("HUD_CALLOUT_BREACH"), tr("HUD_CALLOUT_BREACH_SUBTITLE"), ShellChromeStyle.UI_WARNING_ORANGE)
+
+
 func _on_monster_spawned(payload: MonsterSpawnedEvent) -> void:
 	var resource: MonsterResource = GGameDataRegistry.get_monster_resource(payload.monster_id)
 	if resource == null or resource.tier != BOSS_TIER:
@@ -241,6 +255,7 @@ func _on_mission_phase_changed(_previous_phase: String, new_phase: String, _time
 	match new_phase:
 		"SCOUT":
 			_terminal = false
+			_breach_announced = false
 			_total_waves = 0
 			_clear()
 		"MISSION_COMPLETE", "DEFEAT":
