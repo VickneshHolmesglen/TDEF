@@ -78,5 +78,7 @@ static func pick_tower(camera: Camera3D, mouse_pos: Vector2, space_state: Physic
 	var collider: Object = hit.get("collider")
 	if collider == null or not (collider is Node):
 		return null
-	var owner_tower: Variant = (collider as Node).get_meta("owner_tower", null)
-	return owner_tower as Node2D
+	# has_meta() first: get_meta() with a null default still logs an engine error for a missing key.
+	if not (collider as Node).has_meta(&"owner_tower"):
+		return null
+	return (collider as Node).get_meta(&"owner_tower") as Node2D
