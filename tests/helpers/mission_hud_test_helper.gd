@@ -111,6 +111,7 @@ static func build_hud() -> MissionHud:
 	for edge_name: String in ["TopEdge", "BottomEdge", "LeftEdge", "RightEdge"]:
 		var edge := ColorRect.new()
 		edge.name = edge_name
+		edge.color = Color(1.0, 0.0, 0.0, 0.0)  # MissionScene.tscn's resting state
 		breach_flash_overlay.add_child(edge)
 
 	return hud

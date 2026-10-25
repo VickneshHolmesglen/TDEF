@@ -107,6 +107,64 @@ func test_breach_updates_counter_label() -> void:
 
 
 # ---------------------------------------------------------------------------
+# Breach edge flash (a04e98d): goal-side edge for a standard/elite breach,
+# all four for a boss, fading back to transparent
+# ---------------------------------------------------------------------------
+
+func _edge_alphas() -> Dictionary:
+	return {
+		&"top": _hud._breach_flash_top.color.a,
+		&"bottom": _hud._breach_flash_bottom.color.a,
+		&"left": _hud._breach_flash_left.color.a,
+		&"right": _hud._breach_flash_right.color.a,
+	}
+
+
+func test_breach_flashes_only_the_goal_side_edge() -> void:
+	var cfg := GridConfig.new()
+	cfg.cols = 3
+	cfg.rows = 1
+	cfg.cell_size = 64.0
+	cfg.cells = {SPAWN_CELL: Grid.CellType.SPAWN, Vector2i(2, 0): Grid.CellType.GOAL}
+	GGrid.initialize(cfg)
+
+	_hud._on_monster_breached(1, &"goblin_runner", 0)
+
+	assert_object(_hud._breach_flash_right.color).is_equal(MissionHud.BREACH_FLASH_COLOR)
+	assert_dict(_edge_alphas()).is_equal({&"top": 0.0, &"bottom": 0.0, &"left": 0.0, &"right": MissionHud.BREACH_FLASH_COLOR.a})
+
+
+func test_breach_without_a_goal_cell_falls_back_to_the_bottom_edge() -> void:
+	_hud._on_monster_breached(1, &"goblin_runner", 0)
+
+	assert_dict(_edge_alphas()).is_equal({&"top": 0.0, &"bottom": MissionHud.BREACH_FLASH_COLOR.a, &"left": 0.0, &"right": 0.0})
+
+
+func test_boss_breach_flashes_all_four_edges() -> void:
+	_hud._on_monster_breached(1, &"goblin_warlord_boss", 2)
+
+	var lit: float = MissionHud.BREACH_FLASH_COLOR.a
+	assert_dict(_edge_alphas()).is_equal({&"top": lit, &"bottom": lit, &"left": lit, &"right": lit})
+
+
+func test_breach_flash_fades_back_to_transparent() -> void:
+	_hud._on_monster_breached(1, &"goblin_runner", 0)
+	var tween: Tween = _hud._breach_flash_tweens[&"bottom"]
+
+	tween.custom_step(MissionHud.BREACH_FLASH_IN_DURATION + MissionHud.BREACH_FLASH_FADE_DURATION + 0.01)
+
+	assert_float(_hud._breach_flash_bottom.color.a).is_equal_approx(0.0, 0.001)
+
+
+func test_breach_after_terminal_does_not_flash() -> void:
+	_hud._terminal = true
+
+	_hud._on_monster_breached(1, &"goblin_warlord_boss", 2)
+
+	assert_dict(_edge_alphas()).is_equal({&"top": 0.0, &"bottom": 0.0, &"left": 0.0, &"right": 0.0})
+
+
+# ---------------------------------------------------------------------------
 # AC-60/AC-66: boss bar mount/update/dismount, stray discard
 # ---------------------------------------------------------------------------
 
