@@ -156,3 +156,6 @@ $RECYCLE.BIN/
 # Tool scratch state
 .superpowers/
 *.stackdump
+
+# Personal notes (not project content)
+portfolio-readme-brief.md
