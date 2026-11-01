@@ -246,6 +246,80 @@ making variants of one asset.
 
 ---
 
+## 6.1 Lessons from pilot P1 (hero, 2026-11-01)
+
+FLUX.2 Klein 4B got the costume and props right (~90 %) but missed style,
+lighting and background instructions (~40 %):
+
+- "Warm sunlight from the upper left" was painted as a **visible light beam**.
+  Phrase lighting as a property of the figure: *"the figure is evenly lit from
+  the upper left with a soft pale rim light along its edges"*.
+- `#FF00FF` came out as a raspberry gradient with a floor shadow. Spell out
+  *"perfectly even, no gradient, no light beams, no floor, no ground shadow"*.
+  The flood-fill cut still handles the gradient, so this is cleanup, not a blocker.
+- Scratchy metal texture became noise at 44 px. Say *"smooth surfaces, no
+  scratches, no grime, no fine texture"*.
+- The hero is a body plus gear overlays on a shared canvas, so a fully dressed
+  generation cannot replace `hero_base_body.png`. Single-image assets
+  (monsters, towers, props) are the right Amuse targets.
+
+---
+
+## 8. Automation runs (Amuse "Prompt Lines" mode)
+
+From Amuse's `AutomationManager.cs` (v3.8.6):
+
+- Each non-empty line of the text file is one generation. **The file must
+  contain prompts only.** A comment line would be generated as an image.
+- The main prompt box is **appended to every line**. Leave it **empty** for
+  these files; every line is self-contained.
+- A **fixed (non-zero) seed** gives **every line the same seed**. Seed 0 gives
+  each line a different random seed. Animations need a fixed seed so the
+  character stays consistent across frames.
+- Output names are `<prefix>Line<N>[_<seed>].png`, where N is the line number.
+
+### 8.1 `amuse-automation/goblin_runner_walk.txt`
+
+Restyle (not redesign) of the shipped goblin runner
+(`assets/source/painted/monsters/goblin_runner.png`): same topknot, ears,
+olive skin, leather shoulder pad, red-brown wraps, trailing dagger, facing
+right. The arms are held constant across all frames on purpose. Only the
+legs and body height change, which keeps the frames consistent with each other.
+
+| Line | Output | Frame |
+|---|---|---|
+| 1 | `goblin_runner_Line1_<seed>.png` | idle (atlas frame 0) |
+| 2 | `goblin_runner_Line2_<seed>.png` | walk 1: contact, near leg forward |
+| 3 | `goblin_runner_Line3_<seed>.png` | walk 2: passing, far knee up |
+| 4 | `goblin_runner_Line4_<seed>.png` | walk 3: contact, far leg forward |
+| 5 | `goblin_runner_Line5_<seed>.png` | walk 4: passing, near knee up |
+
+**Amuse settings**
+
+| Setting | Value |
+|---|---|
+| View | Text to Image, Automation type **Prompt Lines**, input file = the `.txt` |
+| Model / backend | FLUX.2 Klein 4B, StableDiffusion.cpp Vulkan (AMD) |
+| Resolution | 1024 × 1024 |
+| Steps / guidance | Model defaults (4 steps) |
+| Seed | **Any fixed non-zero number** (e.g. 1001) |
+| Main prompt box | **Empty** |
+| Output directory | `G:\TDef\assets\source\amuse\monsters` |
+| Output prefix | `goblin_runner_` |
+| Postfix seed | On |
+
+**Run it 3–4 times with different fixed seeds** (e.g. 1001, 2002, 3003,
+4004). Each run is one coherent 5-frame set. Pick the set where the goblin
+stays most consistent, not the single best-looking frame.
+
+**Processing (Claude Code):** alpha-cut each frame, re-anchor so the feet sit
+on one baseline at a constant scale, assemble a 5 × 175 px strip matching
+`goblin_runner_locomotion.png` (875 × 128) so `goblin_runner.tres` needs no
+change, re-derive the still `goblin_runner.png` from frame 1, then pixelate
+with the `monsters/` rule.
+
+---
+
 ## 7. Keeper log
 
 Record every image that is wired in, so it can be regenerated later.
