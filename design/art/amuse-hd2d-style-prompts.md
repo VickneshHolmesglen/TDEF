@@ -124,12 +124,16 @@ Don't introduce new hues to get brightness.
 
 | Setting | Value | Note |
 |---|---|---|
-| Backend | Vulkan first. Try ROCm if offered (v3.8.3 added ROCm 10.1). | Compare speed on one fixed seed. |
-| Model class | SDXL-class or FLUX Klein-class to start | Fits 16 GB comfortably. Move to bigger models (FLUX.2 GGUF) only if quality is lacking. |
-| Resolution: characters/monsters | 832 × 1216 (portrait) | Matches existing painted sources (1024 × 1536 hero, ~2:3). |
-| Resolution: towers/trees | 832 × 1216 or 1024 × 1024 | |
+| Backend | **StableDiffusion.cpp Vulkan (AMD)**, which Amuse marks as the AMD default. ROCm (sd.cpp or HuggingFace 7.2.1) is optional; Windows ROCm support for gfx1030 is uncertain. | Amuse detected the card as `AMD Radeon RX 6800 XT, gfx1030, 16337MB` (2026-11-01 log). |
+| Model #1 | **FLUX.2 Klein 4B** (StableDiffusion.cpp entry, Q8 GGUF, 4 steps) | Apache 2.0. Strong prompt following, fast. Standard quality mode uses ~6–10 GB. |
+| Model #2 | **Z-Image Turbo** (StableDiffusion.cpp entry, Q8 GGUF, 9 steps) | Apache 2.0. Use it to compare looks on the same prompt. Standard mode uses ~9–14 GB. |
+| Avoid for shipped art | FLUX.2 Klein 9B, FLUX.1 Dev | Gated / non-Apache licenses. Check before using. |
+| Quality mode | Standard | Production mode's high end (16–24 GB) exceeds the card. |
+| Resolution: characters/monsters | 832 × 1280 (Amuse preset, portrait) | Close to existing painted sources (1024 × 1536 hero, 2:3). Resized to the target canvas during processing. |
+| Resolution: towers/trees | 832 × 1280 or 1024 × 1024 | |
 | Resolution: props/items | 1024 × 1024 | Existing items are ~700–1100 px square-ish. |
-| Steps / CFG | Model defaults first, then ±20 % | Note what worked in §7. |
+| Steps / CFG | Model defaults first (Klein 4B: 4 steps, Z-Image Turbo: 9) | Distilled/turbo models want low steps and low guidance. Raising steps doesn't add quality. Note what worked in §7. |
+| Negative prompt | May be ignored | FLUX/Z-Image distilled models largely ignore negatives. If unwanted elements appear, phrase the fix positively in the main prompt ("plain empty magenta background", "single figure only"). |
 | Batch | 4 per prompt | Pick the best and lock its seed for variants. |
 | Seed | **Lock it** once a keeper appears | Variants (tiers, damage states, palette swaps) reuse the seed and change one phrase. |
 
