@@ -74,6 +74,9 @@ class _TrackingSystem extends RefCounted:
 func before_test() -> void:
 	_original_active_slot = GSavePersistence._active_slot
 	GSavePersistence.set_active_slot(TEST_SLOT)
+	# Automatic saves (checkpoint on launch, DEFEAT save) need a session, as in
+	# real play; after_test() ends it with reset_session().
+	GSavePersistence._begin_fresh_session()
 	_mission_select = MissionSelect.new()
 	_mission_select._restore_completed = true
 	# Defensive cleanup, not just in after_test(): GSavePersistence is a real

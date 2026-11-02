@@ -542,8 +542,20 @@ func _migrate_step(data: Dictionary, from_version: int) -> Dictionary:
 # EventBus handlers
 # ---------------------------------------------------------------------------
 
+## Automatic saves (Sanctuary entry, the autosave timer, DEFEAT, the mission
+## checkpoint) write only once a slot is loaded or a new game started. Without
+## that, every system holds defaults, and the save would overwrite the active
+## slot (0 by default) with an empty game. Fixed 2026-11-03: a mission run
+## straight from the editor, or a script that changes scene without loading,
+## wiped slot 0 and its checkpoint on returning to the Sanctuary. Explicit
+## save_slot()/save_checkpoint() calls are not gated.
+func _auto_save_allowed() -> bool:
+	return _has_loaded_data
+
+
 func _on_mission_launched(_mission_id: String, _modifiers: PackedStringArray, _difficulty_tier: int) -> void:
-	save_checkpoint(_active_slot)
+	if _auto_save_allowed():
+		save_checkpoint(_active_slot)
 
 
 ## TD-save-004 (fixed 2026-08-27): Rule 9's DEFEAT-triggered save had no
@@ -557,7 +569,7 @@ func _on_mission_launched(_mission_id: String, _modifiers: PackedStringArray, _d
 ## `item_added` from the tower-destruction cascade — has already run before
 ## `save_slot()` calls `get_save_data()` on any registered system.
 func _on_mission_phase_changed(_previous_phase: String, new_phase: String, _timestamp: float) -> void:
-	if new_phase == "DEFEAT":
+	if new_phase == "DEFEAT" and _auto_save_allowed():
 		save_slot.call_deferred(_active_slot)
 
 
@@ -574,10 +586,12 @@ func _on_mission_phase_changed(_previous_phase: String, new_phase: String, _time
 func _on_scene_transition_completed(target_context: String, _mission_id: String) -> void:
 	if target_context == "SANCTUARY":
 		_autosave_timer.paused = false
-		save_slot(_active_slot)
+		if _auto_save_allowed():
+			save_slot(_active_slot)
 	elif target_context == "MISSION":
 		_autosave_timer.paused = true
 
 
 func _on_autosave_timer_timeout() -> void:
-	save_slot(_active_slot)
+	if _auto_save_allowed():
+		save_slot(_active_slot)

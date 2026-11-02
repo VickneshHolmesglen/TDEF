@@ -168,6 +168,7 @@ func test_mission_launched_handler_saves_checkpoint_for_active_slot() -> void:
 	var sp := SavePersistence.new()
 	sp._ensure_save_dir()
 	sp.set_active_slot(97)  # high slot to avoid collision with real saves
+	sp._begin_fresh_session()  # automatic saves need a loaded/new game
 	# Act
 	sp._on_mission_launched("forest_01", PackedStringArray([]), 1)
 	# Assert
@@ -201,6 +202,7 @@ func test_mission_launched_signal_wired_after_ready_triggers_checkpoint() -> voi
 	var sp := SavePersistence.new()
 	sp._ensure_save_dir()
 	sp.set_active_slot(96)
+	sp._begin_fresh_session()
 	add_child(sp)
 	await get_tree().process_frame  # allow _ready() to complete
 	# Act: emit via GEventBus — should route to _on_mission_launched → save_checkpoint
@@ -227,6 +229,7 @@ func test_scene_transition_completed_sanctuary_saves_slot_and_unpauses_autosave(
 	var sp := SavePersistence.new()
 	sp._ensure_save_dir()
 	sp.set_active_slot(95)
+	sp._begin_fresh_session()
 	add_child(sp)
 	await get_tree().process_frame
 	sp._autosave_timer.paused = true  # simulate having been paused during a mission
@@ -242,6 +245,39 @@ func test_scene_transition_completed_sanctuary_saves_slot_and_unpauses_autosave(
 	remove_child(sp)
 	sp.free()
 	DirAccess.remove_absolute(save_path)
+
+
+## Regression (2026-11-03): with no slot loaded and no new game started, every
+## automatic save path must leave the slot and its checkpoint alone. A mission
+## run straight from the editor (or a script that changed scene without
+## loading) otherwise overwrote slot 0 with an empty game on reaching the
+## Sanctuary, and deleted its checkpoint.
+func test_save_persistence_automatic_saves_without_session_do_not_touch_slot() -> void:
+	# Arrange: a real slot and checkpoint on disk, but no session this run.
+	var sp := SavePersistence.new()
+	sp._ensure_save_dir()
+	sp.set_active_slot(94)
+	var save_path: String = UserDataPaths.root() + "saves/save_slot_94.dat"
+	var checkpoint_path: String = UserDataPaths.root() + "saves/save_slot_94_checkpoint.dat"
+	sp._write_slot(94, {"inventory": {"marker": "player data"}})
+	sp._write_checkpoint(94, {"inventory": {"marker": "player data"}})
+	add_child(sp)
+	await get_tree().process_frame
+	# Act: every automatic save trigger.
+	sp._on_scene_transition_completed("SANCTUARY", "")
+	sp._on_autosave_timer_timeout()
+	sp._on_mission_phase_changed("WAVE_ACTIVE", "DEFEAT", 0.0)
+	sp._on_mission_launched("the_gap", PackedStringArray([]), 1)
+	await get_tree().process_frame  # the DEFEAT save is deferred
+	# Assert: file untouched, checkpoint kept; the timer still unpauses.
+	assert_dict(sp._read_slot(94)).is_equal({"inventory": {"marker": "player data"}})
+	assert_bool(FileAccess.file_exists(checkpoint_path)).is_true()
+	assert_bool(sp._autosave_timer.paused).is_false()
+	# Cleanup
+	remove_child(sp)
+	sp.free()
+	DirAccess.remove_absolute(save_path)
+	DirAccess.remove_absolute(checkpoint_path)
 
 
 ## Companion regression test: entering a mission must pause the autosave timer
