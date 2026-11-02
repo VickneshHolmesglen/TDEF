@@ -800,6 +800,12 @@ signal run_modifier_selected(modifier_id: String, modifier_value: float)
 ## Key subscribers: Wave Manager, Save & Persistence (pre-mission checkpoint).
 signal mission_launched(mission_id: String, modifiers: PackedStringArray, difficulty_tier: int)
 
+## A won mission was recorded in Mission Select's completion ledger (fires on
+## MISSION_COMPLETE, after the record is written). Added 2026-11-03 with
+## campaign unlocks: a clear can open the next map or the next tier.
+## Key subscribers: Mission Outcome screen (unlock callout).
+signal mission_completion_recorded(mission_id: String, difficulty_tier: int)
+
 # =============================================================================
 # Encyclopedia System
 # =============================================================================

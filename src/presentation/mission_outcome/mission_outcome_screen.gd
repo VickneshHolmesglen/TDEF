@@ -52,6 +52,16 @@ var _fade_tween: Tween = null
 @onready var _retry_button: Button = %RetryButton
 @onready var _sanctuary_button: Button = %SanctuaryButton
 
+## Campaign unlocks (2026-11-03): "New map unlocked: X" / "Hard unlocked on X"
+## lines for a victory, built in code above the buttons. Empty = hidden.
+var _unlock_label: Label
+var _unlock_lines: PackedStringArray = PackedStringArray()
+## Snapshot at mission_launched of what was open, so a recorded win can be
+## diffed into what it newly opened.
+var _open_maps_at_launch: PackedStringArray = PackedStringArray()
+var _open_tier_at_launch: int = 0
+var _launched_mission_id: String = ""
+
 
 ## Title translation key for a mode ("" for NONE).
 static func title_key(mode: Mode) -> String:
@@ -96,9 +106,69 @@ func _ready() -> void:
 	GEventBus.mission_phase_changed.connect(_on_phase_changed)
 	GEventBus.hero_died.connect(_on_hero_died)
 	GEventBus.mission_launched.connect(_on_mission_launched)
+	GEventBus.mission_completion_recorded.connect(_on_mission_completion_recorded)
+	_build_unlock_label()
+
+
+func _build_unlock_label() -> void:
+	_unlock_label = Label.new()
+	_unlock_label.name = "UnlockLabel"
+	_unlock_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_unlock_label.add_theme_color_override("font_color", ShellChromeStyle.UI_ACCENT)
+	_unlock_label.visible = false
+	var buttons: Node = _sanctuary_button.get_parent()
+	buttons.get_parent().add_child(_unlock_label)
+	buttons.get_parent().move_child(_unlock_label, buttons.get_index())
+
+
+## Maps and tiers open for `mission_id` right now, per GMissionSelect.
+static func open_maps() -> PackedStringArray:
+	var ids: PackedStringArray = PackedStringArray()
+	for mission_id: String in GGameDataRegistry.get_all_mission_entries():
+		if GMissionSelect.is_mission_unlocked(mission_id):
+			ids.append(mission_id)
+	return ids
+
+
+## Player-facing lines for what a win opened, diffing the launch snapshot
+## against the current state. Example: ["New map unlocked: The Foothills",
+## "Hard unlocked on The Gap"].
+static func unlock_lines_since(maps_before: PackedStringArray, tier_before: int, mission_id: String) -> PackedStringArray:
+	var lines: PackedStringArray = PackedStringArray()
+	for map_id: String in open_maps():
+		if not maps_before.has(map_id):
+			var entry: MissionEntry = GGameDataRegistry.get_mission_entry(map_id)
+			lines.append(TranslationServer.translate("OUTCOME_UNLOCKED_MAP") % (entry.display_name if entry != null else map_id))
+	var tier_now: int = GMissionSelect.get_highest_unlocked_tier(mission_id)
+	if tier_now > tier_before and tier_before > 0:
+		var mission_entry: MissionEntry = GGameDataRegistry.get_mission_entry(mission_id)
+		lines.append(TranslationServer.translate("OUTCOME_UNLOCKED_TIER") % [
+				tier_name(tier_now), mission_entry.display_name if mission_entry != null else mission_id])
+	return lines
+
+
+## Same names as the Mission Select tier buttons.
+static func tier_name(tier: int) -> String:
+	match tier:
+		1: return TranslationServer.translate("MISSION_SELECT_TIER_NORMAL")
+		2: return TranslationServer.translate("MISSION_SELECT_TIER_HARD")
+		3: return TranslationServer.translate("MISSION_SELECT_TIER_BRUTAL")
+	return TranslationServer.translate("MISSION_SELECT_TIER_ASCENSION") % DifficultyRewards.ascension_rank(tier)
+
+
+func _on_mission_completion_recorded(mission_id: String, _tier: int) -> void:
+	if mission_id != _launched_mission_id:
+		return
+	_unlock_lines = unlock_lines_since(_open_maps_at_launch, _open_tier_at_launch, mission_id)
+
+
+func get_unlock_lines() -> PackedStringArray:
+	return _unlock_lines
 
 
 func _exit_tree() -> void:
+	if GEventBus.mission_completion_recorded.is_connected(_on_mission_completion_recorded):
+		GEventBus.mission_completion_recorded.disconnect(_on_mission_completion_recorded)
 	_cancel_pending_show()
 	if _fade_tween != null and _fade_tween.is_valid():
 		_fade_tween.kill()
@@ -186,7 +256,11 @@ func _on_hero_died() -> void:
 	_on_terminal_event(Mode.DEFEAT)
 
 
-func _on_mission_launched(_id: String, _modifiers: PackedStringArray, _tier: int) -> void:
+func _on_mission_launched(id: String, _modifiers: PackedStringArray, _tier: int) -> void:
+	_launched_mission_id = id
+	_open_maps_at_launch = open_maps()
+	_open_tier_at_launch = GMissionSelect.get_highest_unlocked_tier(id)
+	_unlock_lines = PackedStringArray()
 	_stats.reset()
 	_reset_attempt_state()
 	_live = true
@@ -267,6 +341,8 @@ func _show(mode: Mode) -> void:
 	_slain_value.text = str(_stats.monsters_slain)
 	_breaches_value.text = str(_stats.breaches)
 	_time_value.text = MissionOutcomeStats.format_time(_stats.elapsed_seconds)
+	_unlock_label.text = "\n".join(_unlock_lines) if mode == Mode.VICTORY else ""
+	_unlock_label.visible = not _unlock_label.text.is_empty()
 	var buttons: Array[StringName] = buttons_for(mode)
 	_retry_button.visible = buttons.has(&"retry") and (not _retry_available.is_valid() or _retry_available.call())
 	_sanctuary_button.visible = buttons.has(&"sanctuary")

@@ -128,6 +128,11 @@ var _runtime_difficulty_tier: int = 0
 var _runtime_modifiers: PackedStringArray = PackedStringArray()
 var _runtime_launch_timestamp: float = 0.0
 
+## Campaign unlocks (maps in campaign_order, tiers one at a time). Off = every
+## map and tier open: for tests that are not about unlocking, and as a debug
+## switch. Not saved.
+var campaign_locks_enabled: bool = true
+
 
 func _ready() -> void:
 	GEventBus.sanctuary_state_restored.connect(_on_sanctuary_state_restored)
@@ -153,6 +158,7 @@ func _on_sanctuary_state_restored(_save_slot: int) -> void:
 ## own state does not change).
 func _on_mission_phase_changed(_previous_phase: String, new_phase: String, _timestamp: float) -> void:
 	if new_phase == "MISSION_COMPLETE":
+		_record_runtime_completion()
 		_runtime_mission_id = ""
 		_runtime_grid_config = null
 		_runtime_difficulty_tier = 0
@@ -161,6 +167,72 @@ func _on_mission_phase_changed(_previous_phase: String, new_phase: String, _time
 		state = State.BROWSING
 	elif new_phase == "DEFEAT":
 		state = State.DORMANT_RETRY_ARMED
+
+
+## Fixed 2026-11-03: record_completion() had no production caller, so no
+## clear was ever recorded (every save's completion_ledger was empty and the
+## mission cards always read "Not yet cleared"). The win is recorded here,
+## from the launch-time cache, before MISSION_COMPLETE clears it. Emits
+## mission_completion_recorded so open screens can refresh their locks.
+func _record_runtime_completion() -> void:
+	if _runtime_mission_id.is_empty() or _runtime_difficulty_tier < 1:
+		return
+	var elapsed: float = maxf(0.0, Time.get_unix_time_from_system() - _runtime_launch_timestamp)
+	record_completion(_runtime_mission_id, _runtime_difficulty_tier, elapsed)
+	GEventBus.mission_completion_recorded.emit(_runtime_mission_id, _runtime_difficulty_tier)
+
+
+# ---------------------------------------------------------------------------
+# Campaign unlocks + Ascension (2026-11-03)
+# ---------------------------------------------------------------------------
+# Maps open in MissionEntry.campaign_order: a map is open once the map just
+# before it has any tier cleared (campaign_order <= 1, 0, or no predecessor =
+# always open). On an open map, tier N+1 opens once tier N is cleared, up to
+# DifficultyRewards.MAX_TIER (tiers 4+ are Ascension ranks).
+
+## True when `mission_id` can be played at all.
+## Example: is_mission_unlocked("the_foothills") is true once The Gap is cleared.
+func is_mission_unlocked(mission_id: String) -> bool:
+	return get_unlock_prerequisite(mission_id).is_empty()
+
+
+## The mission that must be cleared first, or "" when `mission_id` is open.
+func get_unlock_prerequisite(mission_id: String) -> String:
+	if not campaign_locks_enabled:
+		return ""
+	var entry: MissionEntry = GGameDataRegistry.get_mission_entry(mission_id)
+	if entry == null or entry.campaign_order <= 1:
+		return ""
+	var entries: Dictionary[String, MissionEntry] = GGameDataRegistry.get_all_mission_entries()
+	for other_id: String in entries:
+		if entries[other_id].campaign_order == entry.campaign_order - 1:
+			return "" if get_highest_completed_tier(other_id) > 0 else other_id
+	return ""
+
+
+## Highest tier cleared on `mission_id`, 0 if never cleared.
+func get_highest_completed_tier(mission_id: String) -> int:
+	var highest: int = 0
+	var by_tier: Dictionary = _completion_ledger.get(mission_id, {})
+	for tier: int in by_tier:
+		var record: MissionCompletionRecord = by_tier[tier]
+		if record.completed and tier > highest:
+			highest = tier
+	return highest
+
+
+## Highest tier the player may launch on `mission_id`; 0 when the map is locked.
+## Example: The Gap with Normal and Hard cleared -> 3 (Brutal open).
+func get_highest_unlocked_tier(mission_id: String) -> int:
+	if not campaign_locks_enabled:
+		return DifficultyRewards.MAX_TIER
+	if not is_mission_unlocked(mission_id):
+		return 0
+	return mini(get_highest_completed_tier(mission_id) + 1, DifficultyRewards.MAX_TIER)
+
+
+func is_tier_unlocked(mission_id: String, tier: int) -> bool:
+	return tier >= 1 and tier <= get_highest_unlocked_tier(mission_id)
 
 
 ## Selects a mission for configuring (Rule 6). Emits mission_selected
@@ -175,7 +247,9 @@ func select_mission(mission_id: String) -> void:
 	_current_mission_id = mission_id
 	_run_modifiers.clear()
 	var entry: MissionEntry = GGameDataRegistry.get_mission_entry(mission_id)
-	difficulty_tier = entry.recommended_difficulty_tier if entry != null else 1
+	var recommended: int = entry.recommended_difficulty_tier if entry != null else 1
+	# Never default onto a tier that is still locked.
+	difficulty_tier = clampi(recommended, 1, maxi(1, get_highest_unlocked_tier(mission_id)))
 	state = State.CONFIGURING
 	GEventBus.mission_selected.emit(mission_id)
 
@@ -231,9 +305,12 @@ func can_launch() -> bool:
 		return false
 	if state == State.BROWSING:
 		return false
-	if difficulty_tier < 1 or difficulty_tier > 3:
+	if difficulty_tier < 1 or difficulty_tier > DifficultyRewards.MAX_TIER:
 		return false
 	if GGameDataRegistry.get_mission_entry(_current_mission_id) == null:
+		return false
+	# Campaign gate (2026-11-03): locked maps and tiers cannot launch.
+	if not is_tier_unlocked(_current_mission_id, difficulty_tier):
 		return false
 	return true
 

@@ -1063,7 +1063,9 @@ func _spawn_entity(res: MonsterResource, spawn_cell: Vector2i, wave_index: int,
 	_current_difficulty_tier = difficulty_tier
 	# HP scaling: base_hp × (1 + rate × (wave-1)) × (1 + diff_rate × (diff-1))
 	var hp_mult := 1.0 + HP_WAVE_GROWTH_RATE * float(wave_index - 1)
-	var diff_mult := 1.0 + HP_DIFFICULTY_GROWTH_RATE * float(difficulty_tier - 1)
+	# Tiers above Brutal are Ascension ranks: Brutal's HP times a per-rank growth.
+	var diff_mult := (1.0 + HP_DIFFICULTY_GROWTH_RATE * float(mini(difficulty_tier, DifficultyRewards.BRUTAL_TIER) - 1)) \
+			* DifficultyRewards.ascension_hp_multiplier(difficulty_tier)
 	var scaled_hp := maxf(1.0, res.base_hp * hp_mult * diff_mult)
 	# Speed scaling: base_speed × (1 + rate × (wave-1)) × tarot_scalar
 	var speed_mult := 1.0 + SPEED_WAVE_GROWTH_RATE * float(wave_index - 1)

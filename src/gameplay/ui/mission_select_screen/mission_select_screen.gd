@@ -67,6 +67,9 @@ var _mission_buttons: Dictionary[String, Button] = {}
 var _tier_buttons: Dictionary[int, Button] = {}
 var _modifier_buttons: Dictionary[StringName, Button] = {}
 var _launch_armed: bool = false
+## Cycles through the selected map's open Ascension ranks (tiers 4+); hidden
+## until Brutal is cleared there.
+var _ascension_button: Button
 
 
 func _ready() -> void:
@@ -85,6 +88,7 @@ func _ready() -> void:
 	_launch_button.set_meta(UiAudioBinder.META_KEY, UiAudioBinder.KIND_CONFIRM)
 	for tier: int in [1, 2, 3]:
 		_tier_buttons[tier] = _create_tier_button(tier)
+	_ascension_button = _create_ascension_button()
 	for modifier_id: StringName in RUN_MODIFIER_STEPS.keys():
 		_modifier_buttons[modifier_id] = _create_modifier_button(modifier_id)
 
@@ -213,6 +217,9 @@ func _create_mission_button(entry: MissionEntry) -> Button:
 	button.add_theme_stylebox_override("focus", ShellChromeStyle.skin_focus())
 	button.pressed.connect(_on_mission_pressed.bind(entry.mission_id))
 	_wire_focus_ring(button)
+	# Campaign lock (2026-11-03): a locked map stays visible (so the road ahead
+	# reads) but cannot be picked; its card says which map opens it.
+	button.disabled = not mission_select.is_mission_unlocked(entry.mission_id)
 	var frame := Panel.new()
 	frame.name = "SelectionFrame"
 	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -271,6 +278,11 @@ static func _mission_card_stylebox(selected: bool) -> StyleBox:
 ## "Not yet cleared" until any tier is beaten, then per-tier best times.
 ## Name and summary on separate lines so the card never truncates either.
 func _mission_entry_text(entry: MissionEntry) -> String:
+	var prerequisite: String = mission_select.get_unlock_prerequisite(entry.mission_id)
+	if not prerequisite.is_empty():
+		var prerequisite_entry: MissionEntry = GGameDataRegistry.get_mission_entry(prerequisite)
+		var prerequisite_name: String = prerequisite_entry.display_name if prerequisite_entry != null else prerequisite
+		return "%s\n%s" % [entry.display_name, tr("MISSION_SELECT_LOCKED") % prerequisite_name]
 	var parts: Array[String] = []
 	var any_completed: bool = false
 	for tier: int in [1, 2, 3]:
@@ -279,6 +291,9 @@ func _mission_entry_text(entry: MissionEntry) -> String:
 		var time_text: String = ("%.1fs" % record.best_time_seconds) if record.completed else tr("MISSION_SELECT_TIER_UNCLEARED")
 		parts.append(tr("MISSION_SELECT_TIER_TIME") % [_tier_display_name(tier), time_text])
 	var summary: String = "   ".join(parts) if any_completed else tr("MISSION_SELECT_NOT_CLEARED")
+	var best_rank: int = DifficultyRewards.ascension_rank(mission_select.get_highest_completed_tier(entry.mission_id))
+	if best_rank > 0:
+		summary += "\n" + tr("MISSION_SELECT_ASCENSION_BEST") % best_rank
 	return "%s\n%s" % [entry.display_name, summary]
 
 
@@ -450,13 +465,58 @@ func _create_tier_button(tier: int) -> Button:
 ## never color-only). Replaces the old "Normal (selected)" text tag, which
 ## pushed the tier row wider than the column and clipped it.
 func _refresh_tier_button_labels() -> void:
+	var highest_open: int = mission_select.get_highest_unlocked_tier(mission_select.get_current_mission_id())
 	for tier: int in _tier_buttons.keys():
 		var button: Button = _tier_buttons[tier]
 		var selected: bool = mission_select.difficulty_tier == tier
-		button.text = _tier_display_name(tier)
+		var unlocked: bool = tier <= highest_open
+		button.disabled = not unlocked
+		button.text = _tier_display_name(tier) if unlocked else tr("MISSION_SELECT_TIER_LOCKED") % _tier_display_name(tier)
 		var box: StyleBox = ShellChromeStyle.skin_button_for(selected)
 		button.add_theme_stylebox_override("normal", box)
 		button.add_theme_stylebox_override("hover", box)
+	_refresh_ascension_button(highest_open)
+
+
+func _create_ascension_button() -> Button:
+	var button := Button.new()
+	button.name = "Tier_Ascension"
+	button.focus_mode = Control.FOCUS_ALL
+	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	button.custom_minimum_size = Vector2(0, 40)
+	button.add_theme_stylebox_override("focus", ShellChromeStyle.skin_focus())
+	button.pressed.connect(_on_ascension_pressed)
+	button.visible = false
+	_wire_focus_ring(button)
+	_tier_row.add_child(button)
+	return button
+
+
+## Shown once Brutal is cleared on the selected map. Reads the selected rank,
+## or the highest open one while a lower tier is selected.
+func _refresh_ascension_button(highest_open: int) -> void:
+	_ascension_button.visible = DifficultyRewards.ascension_rank(highest_open) > 0
+	if not _ascension_button.visible:
+		return
+	var selected: bool = mission_select.difficulty_tier > DifficultyRewards.BRUTAL_TIER
+	_ascension_button.text = _tier_display_name(mission_select.difficulty_tier if selected else highest_open)
+	var box: StyleBox = ShellChromeStyle.skin_button_for(selected)
+	_ascension_button.add_theme_stylebox_override("normal", box)
+	_ascension_button.add_theme_stylebox_override("hover", box)
+
+
+## First press picks the highest open rank (the usual goal); further presses
+## step up through the open ranks and wrap to rank 1.
+func _on_ascension_pressed() -> void:
+	var highest_open: int = mission_select.get_highest_unlocked_tier(mission_select.get_current_mission_id())
+	var first_rank_tier: int = DifficultyRewards.BRUTAL_TIER + 1
+	if highest_open < first_rank_tier:
+		return
+	var current: int = mission_select.difficulty_tier
+	var next: int = highest_open
+	if current >= first_rank_tier:
+		next = current + 1 if current < highest_open else first_rank_tier
+	_on_tier_pressed(next)
 
 
 func _tier_display_name(tier: int) -> String:
@@ -464,10 +524,14 @@ func _tier_display_name(tier: int) -> String:
 		1: return tr("MISSION_SELECT_TIER_NORMAL")
 		2: return tr("MISSION_SELECT_TIER_HARD")
 		3: return tr("MISSION_SELECT_TIER_BRUTAL")
-		_: return tr("MISSION_SELECT_TIER_GENERIC") % tier
+	if tier > DifficultyRewards.BRUTAL_TIER:
+		return tr("MISSION_SELECT_TIER_ASCENSION") % DifficultyRewards.ascension_rank(tier)
+	return tr("MISSION_SELECT_TIER_GENERIC") % tier
 
 
 func _on_tier_pressed(tier: int) -> void:
+	if not mission_select.is_tier_unlocked(mission_select.get_current_mission_id(), tier):
+		return
 	mission_select.set_difficulty_tier(tier)
 	_disarm_launch()
 	_refresh_tier_button_labels()
@@ -600,6 +664,10 @@ func get_mission_button(mission_id: String) -> Button:
 
 func get_tier_button(tier: int) -> Button:
 	return _tier_buttons.get(tier)
+
+
+func get_ascension_button() -> Button:
+	return _ascension_button
 
 
 func get_modifier_button(modifier_id: StringName) -> Button:

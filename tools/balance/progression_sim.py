@@ -253,6 +253,50 @@ def load_items() -> tuple[dict[str, str], dict[str, str]]:
     return rarity, kind
 
 
+def load_gear_stats() -> dict[str, tuple[str, float]]:
+    """Equipment item_id -> (equipment_category, physical_attack)."""
+    out = {}
+    for f in (DATA / "items").glob("*.tres"):
+        res, _ = parse_tres(f)
+        cat = s_val(res.get("equipment_category"))
+        if not cat:
+            continue
+        m = re.search(r'physical_attack"\s*:\s*([\d.]+)', res.get("base_stats") or "")
+        out[s_val(res.get("item_id"))] = (cat, float(m.group(1)) if m else 0.0)
+    return out
+
+
+@dataclass
+class PowerRules:
+    """Hero attack growth and enemy HP scaling, read from the game code."""
+    base_attack: float = 25.0
+    attack_per_level: float = 2.0
+    hp_tier_rate: float = 0.35
+    brutal_tier: int = 3
+    max_ascension: int = 10
+    asc_hp_growth: float = 1.15
+    asc_reward_growth: float = 1.12
+
+
+def load_power_rules() -> PowerRules:
+    hero = (ROOT / "src/core/hero/hero.gd").read_text(encoding="utf-8")
+    mm = (ROOT / "src/core/monster/monster_manager.gd").read_text(encoding="utf-8")
+    dr = (ROOT / "src/core/difficulty_rewards.gd").read_text(encoding="utf-8")
+    r = PowerRules()
+    m = re.search(r'&"physical_attack":\s*([\d.]+)', hero[hero.find("PLACEHOLDER_BASE_STATS"):])
+    if m:
+        r.base_attack = float(m.group(1))
+    m = re.search(r'_base_stats\[&"physical_attack"\][^\n]*\+\s*([\d.]+)\s*$', hero, re.M)
+    if m:
+        r.attack_per_level = float(m.group(1))
+    r.hp_tier_rate = gd_const(mm, "HP_DIFFICULTY_GROWTH_RATE", 0.35)
+    r.brutal_tier = gd_const(dr, "BRUTAL_TIER", 3)
+    r.max_ascension = gd_const(dr, "MAX_ASCENSION", 10)
+    r.asc_hp_growth = gd_const(dr, "ASCENSION_HP_GROWTH", 1.15)
+    r.asc_reward_growth = gd_const(dr, "ASCENSION_REWARD_GROWTH", 1.12)
+    return r
+
+
 def load_purchases() -> list[Purchase]:
     out: list[Purchase] = []
     for f in sorted((DATA / "defense_building/tech_nodes").glob("*.tres")):
@@ -468,6 +512,8 @@ def run(args) -> str:
     first_affordable: dict[str, int] = {}
     bought_at: dict[str, int] = {}
     timeline = []
+    gear_stats = load_gear_stats()
+    gear_attack_at: dict[int, float] = {}
     for n in range(1, args.missions + 1):
         y = yields[plan[(n - 1) % len(plan)]]
         xp_total += y["xp"]
@@ -487,6 +533,12 @@ def run(args) -> str:
                 bought_at[p.name] = n
         lvl = level_for_xp(xp_total, rules)
         gear = sum(1 for q in purchases if q.category == "equipment" and q.name in owned)
+        best: dict[str, float] = {}
+        for name in owned:
+            if name in gear_stats:
+                cat, atk = gear_stats[name]
+                best[cat] = max(best.get(cat, 0.0), atk)
+        gear_attack_at[n] = sum(best.values())
         timeline.append((n, lvl, lvl // rules.skill_point_interval, xp_total, len(owned), gear))
 
     L.append(f"\n## Campaign timeline ({args.missions} missions)\n")
@@ -497,6 +549,29 @@ def run(args) -> str:
     for n, lvl, pts, xp, owned_n, gear_n in timeline:
         if n in marks:
             L.append(f"| {n} | {lvl} | {pts} | {fmt(xp)} | {owned_n}/{len(purchases)} | {gear_n}/{gear_total} |")
+
+    # Power vs enemy HP: does enemy HP keep pace with the hero?
+    pr = load_power_rules()
+    brutal_hp = 1.0 + pr.hp_tier_rate * (pr.brutal_tier - 1)
+    start_attack = pr.base_attack + gear_attack_at.get(1, 0.0)
+    L.append("\n## Hero power vs enemy HP\n")
+    L.append(f"Hero attack = {pr.base_attack:g} base + {pr.attack_per_level:g}/level + best owned gear per slot "
+             f"(physical_attack). Enemy HP: Brutal x{brutal_hp:g}, each Ascension rank x{pr.asc_hp_growth:g} "
+             f"(max {pr.max_ascension}). `Rank to match` = the Ascension rank whose HP has grown as much as "
+             "the hero has since mission 1 on Normal, i.e. the rank that should feel like the first mission. "
+             "Towers, skills and tarot are NOT modelled; they push the real number higher.\n")
+    L.append("| Missions | Hero level | Gear attack | Hero attack | Power vs mission 1 | Rank to match |")
+    L.append("|---|---|---|---|---|---|")
+    for n, lvl, pts, xp, owned_n, gear_n in timeline:
+        if n in marks:
+            attack = pr.base_attack + pr.attack_per_level * (lvl - 1) + gear_attack_at[n]
+            ratio = attack / start_attack
+            if ratio <= brutal_hp:
+                rank_text = "Brutal or lower"
+            else:
+                rank = math.ceil(math.log(ratio / brutal_hp) / math.log(pr.asc_hp_growth))
+                rank_text = f"{rank}" if rank <= pr.max_ascension else f"{rank} (above max {pr.max_ascension})"
+            L.append(f"| {n} | {lvl} | {fmt(gear_attack_at[n])} | {fmt(attack)} | x{ratio:.2f} | {rank_text} |")
 
     L.append("\n## Missions to reach each level\n")
     L.append("| Level | XP to next | Cumulative XP | Missions (avg yield) |")

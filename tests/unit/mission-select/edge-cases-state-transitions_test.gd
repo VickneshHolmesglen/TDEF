@@ -13,6 +13,7 @@ var _mission_select: MissionSelect
 
 func before_test() -> void:
 	_mission_select = MissionSelect.new()
+	_mission_select.campaign_locks_enabled = false  # these tests are not about campaign unlocks
 
 
 func after_test() -> void:

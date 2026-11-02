@@ -64,3 +64,12 @@ counts convert to hours at roughly 3 missions per hour.
       Stalker, stealth). Existing missions extended to 7-9 waves.
 - [ ] Calibrate the simulator against real playtest runs: hero kill share,
       towers placed, and win rate are guesses today.
+- [x] Campaign unlocks + Ascension (2026-11-03): maps open in campaign_order,
+      tiers open one at a time, Ascension ranks 1-15 above Brutal (HP x1.15
+      and rewards x1.12 per rank). Also fixed: clears were never recorded.
+- [x] Research re-priced (2026-11-03): 100 / 220+30U / 380+50U+32R per
+      branch tier (was 15 / 27+14U / 45+24U+12R).
+- [x] Simulator "Hero power vs enemy HP" table (2026-11-03): hero attack
+      (level + best gear per slot) against Brutal and Ascension HP. Level 50
+      hero alone needs about Ascension 9 to feel like mission 1; towers,
+      skills and tarot are not modelled, so the real number is higher (cap 15).

@@ -78,6 +78,7 @@ func before_test() -> void:
 	# real play; after_test() ends it with reset_session().
 	GSavePersistence._begin_fresh_session()
 	_mission_select = MissionSelect.new()
+	_mission_select.campaign_locks_enabled = false  # these tests are not about campaign unlocks
 	_mission_select._restore_completed = true
 	# Defensive cleanup, not just in after_test(): GSavePersistence is a real
 	# Autoload that persists for the whole test-suite run, and DEFEAT's new

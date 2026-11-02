@@ -270,3 +270,34 @@ func test_retry_unavailable_hides_retry_and_focuses_return() -> void:
 	assert_bool(_btn("RetryButton").visible).is_false()
 	assert_bool(_btn("SanctuaryButton").has_focus()).is_true()
 	assert_array(MissionOutcomeScreen.buttons_for(MissionOutcomeScreen.Mode.DEFEAT)).is_equal([&"retry", &"sanctuary"])
+
+
+# Campaign unlocks (2026-11-03): a victory that opens a map or tier says so.
+func test_outcome_victory_lists_what_the_win_unlocked() -> void:
+	GMissionSelect.reset_to_defaults()
+	GMissionSelect.campaign_locks_enabled = true
+	_screen._on_mission_launched("the_gap", PackedStringArray(), 1)
+
+	GMissionSelect.record_completion("the_gap", 1, 100.0)
+	_screen._on_mission_completion_recorded("the_gap", 1)
+	_screen._show(MissionOutcomeScreen.Mode.VICTORY)
+
+	var lines: PackedStringArray = _screen.get_unlock_lines()
+	assert_bool(lines.has(tr("OUTCOME_UNLOCKED_MAP") % "The Foothills")).is_true()
+	assert_bool(lines.has(tr("OUTCOME_UNLOCKED_TIER") % [tr("MISSION_SELECT_TIER_HARD"), "The Gap"])).is_true()
+	assert_bool(_label("UnlockLabel").visible).is_true()
+	GMissionSelect.reset_to_defaults()
+
+
+func test_outcome_repeat_win_with_nothing_new_hides_the_unlock_line() -> void:
+	GMissionSelect.reset_to_defaults()
+	GMissionSelect.record_completion("the_gap", 1, 100.0)
+	_screen._on_mission_launched("the_gap", PackedStringArray(), 1)
+
+	GMissionSelect.record_completion("the_gap", 1, 90.0)
+	_screen._on_mission_completion_recorded("the_gap", 1)
+	_screen._show(MissionOutcomeScreen.Mode.VICTORY)
+
+	assert_int(_screen.get_unlock_lines().size()).is_equal(0)
+	assert_bool(_label("UnlockLabel").visible).is_false()
+	GMissionSelect.reset_to_defaults()

@@ -18,12 +18,57 @@ var _screen: Control
 func before_test() -> void:
 	GMissionSelect.reset_to_defaults()
 	GMissionSelect._restore_completed = true
+	# Most tests here are not about campaign unlocks; the lock tests below
+	# turn locks back on and rebuild the screen.
+	GMissionSelect.campaign_locks_enabled = false
 	_runner = scene_runner("res://src/gameplay/ui/mission_select_screen/MissionSelectScreen.tscn")
 	_screen = _runner.scene() as Control
 
 
 func after_test() -> void:
+	GMissionSelect.campaign_locks_enabled = true
 	GMissionSelect.reset_to_defaults()
+
+
+func _rebuild_with_locks(completions: Array) -> void:
+	GMissionSelect.campaign_locks_enabled = true
+	for completion: Array in completions:
+		GMissionSelect.record_completion(completion[0], completion[1], 100.0)
+	_runner = scene_runner("res://src/gameplay/ui/mission_select_screen/MissionSelectScreen.tscn")
+	_screen = _runner.scene() as Control
+
+
+func test_campaign_locked_map_card_is_disabled_and_names_its_prerequisite() -> void:
+	_rebuild_with_locks([])
+
+	var foothills: Button = _screen.call("get_mission_button", "the_foothills")
+	assert_bool(foothills.disabled).is_true()
+	assert_str(foothills.text).contains(tr("MISSION_SELECT_LOCKED") % "The Gap")
+	assert_bool((_screen.call("get_mission_button", "the_gap") as Button).disabled).is_false()
+
+
+func test_campaign_locked_tiers_are_disabled_and_ignore_presses() -> void:
+	_rebuild_with_locks([])
+	_screen.call("_on_mission_pressed", MISSION_THE_GAP)
+
+	var hard: Button = _screen.call("get_tier_button", 2)
+	assert_bool(hard.disabled).is_true()
+	_screen.call("_on_tier_pressed", 2)
+	assert_int(GMissionSelect.difficulty_tier).is_equal(1)
+	assert_bool((_screen.call("get_ascension_button") as Button).visible).is_false()
+
+
+func test_campaign_ascension_button_appears_after_brutal_and_cycles_ranks() -> void:
+	_rebuild_with_locks([[MISSION_THE_GAP, 4]])  # Brutal + Ascension 1 cleared -> ranks 1-2 open
+	_screen.call("_on_mission_pressed", MISSION_THE_GAP)
+	var ascension: Button = _screen.call("get_ascension_button")
+	assert_bool(ascension.visible).is_true()
+
+	_screen.call("_on_ascension_pressed")
+	assert_int(GMissionSelect.difficulty_tier).is_equal(5)  # first press: highest open rank
+	assert_str(ascension.text).is_equal(tr("MISSION_SELECT_TIER_ASCENSION") % 2)
+	_screen.call("_on_ascension_pressed")
+	assert_int(GMissionSelect.difficulty_tier).is_equal(4)  # wraps to rank 1
 
 
 # ---------------------------------------------------------------------------

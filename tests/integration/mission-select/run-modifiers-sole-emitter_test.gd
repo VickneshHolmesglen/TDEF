@@ -12,6 +12,7 @@ var _spy: EventBusSpy
 
 func before_test() -> void:
 	_mission_select = MissionSelect.new()
+	_mission_select.campaign_locks_enabled = false  # these tests are not about campaign unlocks
 	_spy = EventBusSpy.new()
 	_spy.watch(GEventBus.run_modifier_selected)
 
