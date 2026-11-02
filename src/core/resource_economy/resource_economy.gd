@@ -82,6 +82,21 @@ func set_hero_luck_drop_bonus(bonus: float) -> void:
 	_hero_luck_drop_bonus = bonus
 
 
+## Difficulty reward multiplier (DifficultyRewards), pushed in by the mission
+## scene at launch like the luck bonus above. Scales material drop quantities
+## and the mission-end surplus. Gold is mission-scoped and not scaled.
+var _tier_reward_multiplier: float = 1.0
+
+
+func set_tier_reward_multiplier(multiplier: float) -> void:
+	_tier_reward_multiplier = maxf(multiplier, 0.0)
+
+
+## Applies _tier_reward_multiplier to a material quantity (1.0 = unchanged).
+func _scale_by_tier(quantity: int) -> int:
+	return roundi(float(quantity) * _tier_reward_multiplier)
+
+
 ## kill_source value Monster System sets for wave-end force-clears
 ## (monster_manager.gd:366-368). Story 011 (AC-07, fixing TD-econ-002 —
 ## flagged during Story 008's code review as a then-live GDD violation):
@@ -237,14 +252,14 @@ func _grant_mission_end_surplus() -> void:
 	if tower_system == null:
 		return
 	for state: TowerMissionState in tower_system.get_placed_tower_slot_tally():
-		var quantity: int = _compute_surplus_quantity(state.foundation.tier)
+		var quantity: int = _scale_by_tier(_compute_surplus_quantity(state.foundation.tier))
 		GEventBus.materials_earned.emit(String(SURPLUS_FOUNDATION_MATERIAL), quantity, SURPLUS_GRANT_SOURCE)
 		GEventBus.materials_earned.emit(String(SURPLUS_WEAPON_MATERIAL), quantity, SURPLUS_GRANT_SOURCE)
 		GEventBus.materials_earned.emit(String(SURPLUS_FOCUS_MATERIAL), quantity, SURPLUS_GRANT_SOURCE)
 		GEventBus.materials_earned.emit(String(SURPLUS_POWER_MATERIAL), quantity, SURPLUS_GRANT_SOURCE)
 		var archetype_material: StringName = ARCHETYPE_BONUS_MATERIAL_MAP.get(state.foundation.archetype, &"")
 		if archetype_material != &"":
-			GEventBus.materials_earned.emit(String(archetype_material), ARCHETYPE_BONUS_QUANTITY, SURPLUS_GRANT_SOURCE)
+			GEventBus.materials_earned.emit(String(archetype_material), _scale_by_tier(ARCHETYPE_BONUS_QUANTITY), SURPLUS_GRANT_SOURCE)
 
 
 ## Formula 6's per-slot quantity term: quantity = BASE_SURPLUS_PER_SLOT ×
@@ -328,6 +343,7 @@ func _process_drops(payload: MonsterDiedEvent) -> void:
 			_menagerie_quality_bonus,
 			table.guaranteed_min_quantity
 		)
+		quantity = _scale_by_tier(quantity)
 		# Formula 3 (Story 009): computed per successful entry, matching Formula 1/2's
 		# per-entry cadence — deliberately NOT consumed by an actual roll or surfaced
 		# anywhere yet (see doc comment above). Kept here, not left as an orphaned

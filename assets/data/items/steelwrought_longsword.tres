@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ItemDefinitionResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/core/inventory/item_definition_resource.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+item_id = &"steelwrought_longsword"
+item_type = &"Equipment"
+display_name = "Steelwrought Longsword"
+is_unique_instance = true
+base_stats = {&"physical_attack": 6.2, &"crit_multiplier": 0.120}
+rarity = ""
+equipment_category = "weapon"
+icon_path = "res://assets/art/items/steelwrought_longsword.png"
+worn_texture_path = "res://assets/art/characters/gear/steelwrought_longsword_worn.png"

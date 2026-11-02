@@ -179,6 +179,9 @@ var _base_stats: Dictionary[StringName, float] = {}
 ## trigger — see that field's own doc comment precedent on _proximity_time).
 var _current_level: int = 1
 var _current_xp: int = 0
+## Difficulty reward multiplier (DifficultyRewards), pushed in by the mission
+## scene at launch. Scales every XP grant in _grant_xp(); 1.0 = Normal.
+var _reward_multiplier: float = 1.0
 
 ## Hero Leveling System (2026-09-19), Critical fix (found in final review):
 ## the running total of every class-specific level-up bonus stat delta
@@ -228,16 +231,20 @@ const CLASS_LEVEL_BONUS: Dictionary[StringName, Array] = {
 	&"support": [&"lifesteal", 0.01],  ## Field Medic; 10 levels -> +10% (within the catalogue's +8%-15% range)
 }
 const SKILL_POINT_LEVEL_INTERVAL: int = 5
+## Formula L1 growth per level. 1.15 -> 1.067 on 2026-11-02 (progression-
+## targets.md, campaign + endgame pacing): the cap (50) now lands near
+## mission 65 instead of ~1,500.
+const XP_CURVE_GROWTH: float = 1.067
 ## Reserved sentinel for a level-derived skill_tree_point_earned emission --
 ## real tower ids from Tower Mastery's own emissions are always >= 0.
 const LEVEL_DERIVED_SKILL_POINT_SOURCE_ID: int = -1
 
-## Formula L1: xp_required(level) = floor(100 * 1.15^(level-1)). Pure,
+## Formula L1: xp_required(level) = floor(100 * XP_CURVE_GROWTH^(level-1)). Pure,
 ## static — no instance state, matching this file's established
 ## _diminishing_curve()/_apply_tower_affinity_bonus() precedent for
 ## formula helpers.
 static func _xp_required_for_level(level: int) -> int:
-	return int(floor(100.0 * pow(1.15, float(level - 1))))
+	return int(floor(100.0 * pow(XP_CURVE_GROWTH, float(level - 1))))
 
 
 ## Formula L2: resolves kill XP for one monster death by distance band.
@@ -274,6 +281,7 @@ func _resolve_kill_xp_band(payload: MonsterDiedEvent) -> int:
 ## outside both bands, or a not-yet-authored zero-XP source, must never
 ## emit a spurious hero_xp_gained(0, ...)).
 func _grant_xp(amount: int) -> void:
+	amount = roundi(float(amount) * _reward_multiplier)
 	if amount <= 0:
 		return
 	if _current_level >= LEVEL_CAP:
@@ -1741,6 +1749,12 @@ func reset_to_defaults() -> void:
 ## lands. Also calls reset_to_defaults() so _current_hp/_max_hp resolve
 ## against the newly-set base_stats immediately, matching both original
 ## call sites' own sequencing.
+## Sets the difficulty reward multiplier for this mission (see
+## DifficultyRewards.multiplier_for_tier()).
+func set_reward_multiplier(multiplier: float) -> void:
+	_reward_multiplier = maxf(multiplier, 0.0)
+
+
 func apply_placeholder_base_stats() -> void:
 	# Finding C1 (final review, 2026-09-19): reset_to_defaults() below also
 	# resets _current_level/_current_xp to 1/0 -- this stopgap runs on

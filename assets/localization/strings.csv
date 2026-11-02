@@ -347,3 +347,13 @@ MISSION_SELECT_INTEL_WAVES,%d waves
 FORGE_EMPTY_CTA_DEFENSE,Go to Defense Building
 HUD_CALLOUT_BREACH,Breach!
 HUD_CALLOUT_BREACH_SUBTITLE,An enemy has reached the Sanctuary
+HUD_GAME_SPEED,Speed %dx
+HUD_GAME_SPEED_TOOLTIP,Change game speed (F)
+HINT_BUILD_TITLE,Build your defense
+HINT_BUILD_BODY,"Pick a tower on the left, then click an open tile beside the path to build it. Towers cost gold."
+HINT_READY_TITLE,Call the first wave
+HINT_READY_BODY,"Build more if you can afford it. When you're set, press Space or Ready. Press F any time to speed up."
+HINT_HERO_TITLE,Your hero fights too
+HINT_HERO_BODY,Move with WASD or the arrow keys. Fighting near your towers teaches your hero new skills.
+HINT_INTERMISSION_TITLE,Wave cleared
+HINT_INTERMISSION_BODY,"Between waves you can build, sell and repair. The Next Wave card on the right shows what's coming."

@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="ItemDefinitionResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/core/inventory/item_definition_resource.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+item_id = &"steelwrought_torc"
+item_type = &"Equipment"
+display_name = "Steelwrought Torc"
+is_unique_instance = true
+base_stats = {&"magic_attack": 6.0, &"cdr": 0.016}
+rarity = ""
+equipment_category = "neck"
+icon_path = "res://assets/art/items/steelwrought_torc.png"

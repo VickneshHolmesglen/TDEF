@@ -32,6 +32,10 @@ extends Resource
 @export var base_wave_count: int = 5
 ## Suggested difficulty tier (1-3) shown in the catalogue UI.
 @export var recommended_difficulty_tier: int = 1
+## Position in the campaign (1 = first). Mission Select lists cards in this
+## order, ties broken by mission_id. 0 = unordered (sorts last). Added
+## 2026-11-02 when the catalogue grew from 4 to 8 missions.
+@export var campaign_order: int = 0
 ## design/gdd/mission-select.md "Mission list presentation": "a small flat
 ## environment-motif icon (silhouette-level, not a diorama render)" shown per
 ## card. Optional at load time (null renders as no icon, not an error) since

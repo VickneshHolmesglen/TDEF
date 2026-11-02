@@ -150,8 +150,11 @@ def load_rules() -> Rules:
     eco = (ROOT / "src/core/resource_economy/resource_economy.gd").read_text(encoding="utf-8")
     r = Rules()
     m = re.search(r'floor\(([\d.]+)\s*\*\s*pow\(([\d.]+),', hero)
+    m_const = re.search(r'floor\(([\d.]+)\s*\*\s*pow\(XP_CURVE_GROWTH,', hero)
     if m:
         r.xp_base, r.xp_growth = float(m.group(1)), float(m.group(2))
+    elif m_const:
+        r.xp_base, r.xp_growth = float(m_const.group(1)), gd_const(hero, "XP_CURVE_GROWTH", 1.15)
     else:
         print("warning: level curve not found in hero.gd, using 100 x 1.15^(L-1)", file=sys.stderr)
     r.level_cap = gd_const(hero, "LEVEL_CAP", 50)
@@ -168,6 +171,15 @@ def load_rules() -> Rules:
     if m:
         r.archetype_map = dict(re.findall(r'"(\w+)"\s*:\s*&"(\w+)"', m.group(1)))
     return r
+
+
+def load_tier_multipliers() -> list[float]:
+    src = (ROOT / "src/core/difficulty_rewards.gd").read_text(encoding="utf-8")
+    m = re.search(r'TIER_MULTIPLIERS[^=]*=\s*\[([^\]]*)\]', src)
+    if not m:
+        print("warning: TIER_MULTIPLIERS not found, using 1,1,1", file=sys.stderr)
+        return [1.0, 1.0, 1.0]
+    return [float(x) for x in m.group(1).split(",")]
 
 
 # --- Game data --------------------------------------------------------------
@@ -409,7 +421,8 @@ def run(args) -> str:
     rarity, item_type = load_items()
     pools = Pools(rarity, item_type)
     purchases = load_purchases()
-    tier_reward = [float(x) for x in args.tier_reward.split(",")]
+    tier_reward = ([float(x) for x in args.tier_reward.split(",")] if args.tier_reward
+                   else load_tier_multipliers())
     a = Assumptions(args.hero_inner, args.hero_outer, args.towers, args.foundation_tier, args.archetype,
                     args.difficulty, tier_reward, args.menagerie_bonus, args.win_rate, args.drop_mult)
     plan = [p.strip() for p in args.plan.split(",")] if args.plan else list(missions)
@@ -428,7 +441,7 @@ def run(args) -> str:
     L.append(f"- Hero kill share: {a.hero_inner:.0%} full XP, {a.hero_outer:.0%} half XP, rest none (`--hero-inner/--hero-outer`)")
     L.append(f"- {a.towers} towers placed, foundation tier {a.foundation_tier}, archetype `{a.archetype}` (surplus)")
     L.append(f"- Difficulty {a.difficulty}; reward multiplier per tier {tier_reward} "
-             f"({'game has none' if tier_reward == [1.0, 1.0, 1.0] else 'WHAT-IF'})")
+             f"({'game values' if not args.tier_reward else 'WHAT-IF'})")
     L.append(f"- Menagerie quality bonus x{a.menagerie_bonus}, win rate {a.win_rate:.0%}, no tarot"
              + (f", kill drops x{a.drop_mult} (WHAT-IF)" if a.drop_mult != 1.0 else ""))
     L.append(f"- Plan (cycled): {' -> '.join(plan)}\n")
@@ -517,7 +530,8 @@ def main() -> None:
     ap.add_argument("--missions", type=int, default=40, help="missions to simulate (default 40)")
     ap.add_argument("--plan", default="", help="comma-separated mission ids, cycled (default: all, data order)")
     ap.add_argument("--difficulty", type=int, default=1, choices=(1, 2, 3))
-    ap.add_argument("--tier-reward", default="1,1,1", help="WHAT-IF reward multiplier per tier, e.g. 1,1.3,1.7")
+    ap.add_argument("--tier-reward", default="", help="WHAT-IF reward multiplier per tier, e.g. 1,1.3,1.7 "
+                    "(default: DifficultyRewards.TIER_MULTIPLIERS)")
     ap.add_argument("--hero-inner", type=float, default=0.35, help="share of kills inside hero attack range")
     ap.add_argument("--hero-outer", type=float, default=0.15, help="share of kills in the half-XP band")
     ap.add_argument("--towers", type=int, default=6, help="towers placed at mission end (surplus)")

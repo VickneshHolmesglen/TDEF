@@ -84,6 +84,8 @@ var _current_phase: Phase = Phase.UNKNOWN
 ## see _on_monster_spawned()'s own doc comment for the is_armored bugfix
 ## that came with them.
 var _monster_cache: Dictionary = {}
+## Hero cell for the stealth reveal rule (2026-11-02). (-1, -1) = no living Hero.
+var _hero_cell: Vector2i = Vector2i(-1, -1)
 
 ## DI seams — untyped so RefCounted stubs work in unit tests.
 var _grid = null
@@ -119,6 +121,8 @@ func _ready() -> void:
 	GEventBus.wave_completed.connect(_on_wave_completed)
 	GEventBus.boss_tower_attack_attempted.connect(_on_boss_tower_attack_attempted)
 	GEventBus.tower_sell_requested.connect(_on_tower_sell_requested)
+	GEventBus.hero_position_changed.connect(_on_hero_position_changed)
+	GEventBus.hero_died.connect(_on_hero_died)
 
 
 func _exit_tree() -> void:
@@ -131,6 +135,8 @@ func _exit_tree() -> void:
 	GEventBus.wave_completed.disconnect(_on_wave_completed)
 	GEventBus.boss_tower_attack_attempted.disconnect(_on_boss_tower_attack_attempted)
 	GEventBus.tower_sell_requested.disconnect(_on_tower_sell_requested)
+	GEventBus.hero_position_changed.disconnect(_on_hero_position_changed)
+	GEventBus.hero_died.disconnect(_on_hero_died)
 
 
 ## Combat tick. Called by engine each physics frame. Public for test injection.
@@ -513,6 +519,8 @@ func _apply_splash_damage(state: TowerMissionState, primary_id: int, primary_cel
 		if entity_id == primary_id:
 			continue
 		var entry: Dictionary = _monster_cache[entity_id] as Dictionary
+		if entry.get("is_flying", false):
+			continue  # a ground burst never reaches a flyer (archetype counter, 2026-11-02)
 		var cell: Vector2i = entry["cell"] as Vector2i
 		var distance: int = maxi(absi(cell.x - primary_cell.x), absi(cell.y - primary_cell.y))
 		if distance < 1 or distance > radius:
@@ -671,10 +679,32 @@ func _find_scatter_target(state: TowerMissionState) -> int:
 func _candidates_in_range(state: TowerMissionState) -> Array[int]:
 	var result: Array[int] = []
 	for entity_id: int in _monster_cache:
-		var cell: Vector2i = (_monster_cache[entity_id] as Dictionary)["cell"] as Vector2i
-		if is_in_range(state.grid_position, cell, state.focus, state.shaft):
+		var entry: Dictionary = _monster_cache[entity_id] as Dictionary
+		var cell: Vector2i = entry["cell"] as Vector2i
+		if is_in_range(state.grid_position, cell, state.focus, state.shaft) and can_target(state, entry):
 			result.append(entity_id)
 	return result
+
+
+## Archetype counters (2026-11-02, enemy-variety pass), applied to every
+## targeting mode through _candidates_in_range():
+##   * BALLISTIC (lobbed) weapons cannot hit flying monsters; HOMING/BEAM can.
+##   * A stealthed monster is only targetable while the Hero is within its
+##     reveal radius (MonsterManager.is_revealed, the same rule the sprite fade uses).
+func can_target(state: TowerMissionState, entry: Dictionary) -> bool:
+	if entry.get("is_flying", false) and state.weapon.projectile_type == "BALLISTIC":
+		return false
+	if entry.get("stealthed", false):
+		return MonsterManager.is_revealed(entry["cell"] as Vector2i, _hero_cell, entry.get("reveal_radius", 0) as int)
+	return true
+
+
+func _on_hero_position_changed(grid_position: Vector2i) -> void:
+	_hero_cell = grid_position
+
+
+func _on_hero_died() -> void:
+	_hero_cell = Vector2i(-1, -1)
 
 
 ## tower.md Rule 15 — dispatches to the tower's own Focus.targeting_mode.
@@ -862,6 +892,9 @@ func _on_monster_spawned(payload: MonsterSpawnedEvent) -> void:
 		"elemental_resistances": elemental_resistances,
 		"is_boss": resource != null and resource.tier == 2,
 		"path_step_index": 0,
+		"is_flying": resource != null and resource.is_flying(),
+		"stealthed": resource != null and resource.stealthed,
+		"reveal_radius": resource.stealth_reveal_radius_cells if resource != null else 0,
 	}
 
 

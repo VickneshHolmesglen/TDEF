@@ -88,6 +88,8 @@ const RECOGNIZED_SLOW_EFFECTS: Array[String] = ["slow"]
 ## is. Prevents one extreme content value from freezing a monster in place
 ## entirely (0 speed is a stuck-forever state, not a strong slow).
 const SPEED_MULTIPLIER_FLOOR := 0.05
+## World units a split child is offset from its parent's death point.
+const SPLIT_SPREAD_PX := 10.0
 
 const MONSTER_INSTANCE_SCENE: PackedScene = preload("res://src/core/monster/MonsterInstance.tscn")
 
@@ -108,6 +110,12 @@ var _active_monsters_next: Array[MonsterEntity] = []
 var _pending_damage: Array[MonsterDamageTaken] = []
 var _pending_absorbed: Dictionary = {}   # entity_id(int) -> float accumulator
 var _pending_deaths: Array[MonsterDiedEvent] = []   ## ADR-0033 — frame-scoped, flushed each frame in Pass 4
+## Splitter deaths queued this frame (2026-11-02). Children spawn at the start of
+## Pass 4, BEFORE the parent's monster_died flush, so WaveManager's alive count
+## never reaches 0 between a splitter dying and its brood appearing.
+var _pending_splits: Array[Dictionary] = []
+## Difficulty tier of the current mission, for split children's HP scaling.
+var _current_difficulty_tier: int = 1
 var _entity_lookup: Dictionary = {}      # entity_id(int) -> MonsterEntity
 var _entity_id_counter: int = 0
 var _current_wave_index: int = -1
@@ -206,6 +214,7 @@ func _physics_process(delta: float) -> void:
 	_pass1b_status_effects(delta)
 	_pass2_boss_logic(delta)
 	_pass2b_hero_attacks(delta)
+	_pass2c_archetype_behaviours(delta)
 	_pass3_movement(delta)
 	_pass3c_visual_sync(delta)
 	_pass4_death_and_absorbed_flush()
@@ -287,6 +296,8 @@ func _emit_death(entity: MonsterEntity, kill_source: StringName) -> void:
 	# "ACTIVE -> DEAD (current_hp <= 0)" as a real transition; this method
 	# just never performed it.
 	entity.lifecycle_state = MonsterEntity.State.DEAD
+	if entity.resource.is_splitter():
+		_queue_split(entity)
 	if entity.resource.tier == 2:
 		GEventBus.boss_died.emit(entity.entity_id, entity.resource.monster_id,
 				entity.wave_index, &"killed")
@@ -1012,6 +1023,7 @@ func _sync_windup_telegraph(entity: MonsterEntity, delta: float) -> void:
 ## signal already "fired" with real data. Reassignment leaves the emitted
 ## array's contents intact and untouched by future frames.
 func _pass4_death_and_absorbed_flush() -> void:
+	_spawn_pending_splits()
 	if _pending_deaths.size() > DEATH_BATCH_THRESHOLD:
 		GEventBus.monsters_died_batch.emit(_pending_deaths)
 	else:
@@ -1047,7 +1059,8 @@ func spawn_monster(monster_id: StringName, spawn_cell: Vector2i, wave_index: int
 
 
 func _spawn_entity(res: MonsterResource, spawn_cell: Vector2i, wave_index: int,
-		difficulty_tier: int, wave_reward_scalar: float) -> MonsterEntity:
+		difficulty_tier: int, wave_reward_scalar: float, split_origin: Dictionary = {}) -> MonsterEntity:
+	_current_difficulty_tier = difficulty_tier
 	# HP scaling: base_hp × (1 + rate × (wave-1)) × (1 + diff_rate × (diff-1))
 	var hp_mult := 1.0 + HP_WAVE_GROWTH_RATE * float(wave_index - 1)
 	var diff_mult := 1.0 + HP_DIFFICULTY_GROWTH_RATE * float(difficulty_tier - 1)
@@ -1067,6 +1080,10 @@ func _spawn_entity(res: MonsterResource, spawn_cell: Vector2i, wave_index: int,
 	entity.spawn_wave_reward_scalar = wave_reward_scalar
 	entity.wave_index = wave_index
 	entity.global_position = _grid.cell_to_world(spawn_cell)
+	if not split_origin.is_empty():
+		entity.global_position = split_origin["position"] as Vector2
+	if res.is_healer():
+		entity.heal_cooldown_remaining = res.heal_interval_seconds
 	if res.tier == 2:
 		entity.boss_scan_frames_remaining = 0
 		entity.boss_attack_cooldown_remaining = 0.0
@@ -1093,6 +1110,8 @@ func _spawn_entity(res: MonsterResource, spawn_cell: Vector2i, wave_index: int,
 	# parameter entirely, along with _build_visual_companion()/
 	# sync_visual_companion_position() themselves.
 	instance.configure(res.monster_id, res.tier, res.display_name)
+	if res.is_flying():
+		instance.set_flying(true)
 	entity.monster_instance = instance
 
 	# ADR-0038, Epic 16 Stories 7 & 9: register with the swarm renderer
@@ -1123,7 +1142,16 @@ func _spawn_entity(res: MonsterResource, spawn_cell: Vector2i, wave_index: int,
 			if swarm_mapping != null:
 				entity.walk_clip = swarm_mapping.get_animation_clip(&"walk")
 
-	var path: Array[Vector2i] = _pathfinding.find_path(spawn_cell, res.tier)
+	var path: Array[Vector2i] = []
+	var start_step: int = 0
+	if not split_origin.is_empty():
+		# A split child carries on along its parent's route from where it fell.
+		path = split_origin["path"] as Array[Vector2i]
+		start_step = split_origin["step"] as int
+	elif res.is_flying():
+		path = flight_path(spawn_cell, _grid.get_goal_cells())
+	else:
+		path = _pathfinding.find_path(spawn_cell, res.tier)
 	if path.is_empty():
 		push_warning("[MonsterManager] No path for entity_id=%d at %s. Entity stays SPAWNING." % [
 				entity.entity_id, spawn_cell])
@@ -1132,7 +1160,7 @@ func _spawn_entity(res: MonsterResource, spawn_cell: Vector2i, wave_index: int,
 		return entity
 
 	entity.current_path = path
-	entity.path_step_index = 0
+	entity.path_step_index = mini(start_step, path.size() - 1)
 	entity.lifecycle_state = MonsterEntity.State.ACTIVE
 	active_monsters.append(entity)
 	_entity_lookup[entity.entity_id] = entity
@@ -1141,7 +1169,7 @@ func _spawn_entity(res: MonsterResource, spawn_cell: Vector2i, wave_index: int,
 	ev.entity_id = entity.entity_id
 	ev.monster_id = res.monster_id
 	ev.wave_index = wave_index
-	ev.grid_position = spawn_cell
+	ev.grid_position = spawn_cell if split_origin.is_empty() else _grid.world_to_cell(entity.global_position)
 	ev.hp_max = scaled_hp
 	GEventBus.monster_spawned.emit(ev)
 	return entity
@@ -1175,6 +1203,7 @@ func _on_wave_started(wave_number: int, _total_waves: int, _wave_difficulty: flo
 	_pending_absorbed.clear()
 	_pending_damage.clear()
 	_pending_deaths.clear()
+	_pending_splits.clear()
 
 
 ## Story 002 (epic-04-wave-manager): wave_completed gained a third
@@ -1187,6 +1216,7 @@ func _on_wave_completed(_wave_number: int, _enemies_remaining: int, _was_boss_br
 	_pending_absorbed.clear()
 	_pending_damage.clear()
 	_pending_deaths.clear()
+	_pending_splits.clear()
 	for entity in active_monsters:
 		if entity.resource.tier == 2:
 			GEventBus.boss_died.emit(entity.entity_id, entity.resource.monster_id,
@@ -1244,6 +1274,7 @@ func _on_mission_launched(_mission_id: String, _modifiers: PackedStringArray, _d
 	_pending_absorbed.clear()
 	_pending_damage.clear()
 	_pending_deaths.clear()
+	_pending_splits.clear()
 	clear_all_entities()
 
 
@@ -1276,3 +1307,147 @@ func _on_path_invalidated(_affected_cells: Array) -> void:
 
 func _on_monster_damage_taken(payload: MonsterDamageTaken) -> void:
 	_pending_damage.append(payload)
+
+
+# ---------------------------------------------------------------------------
+# Archetype behaviours (2026-11-02, enemy-variety pass): flying, healing,
+# splitting, stealth. Data lives on MonsterResource (its Archetype Behaviour
+# group); everything here runs from the existing centralized
+# _physics_process(), never a per-monster callback (ADR-0006).
+# ---------------------------------------------------------------------------
+
+## Straight-line cell route from `from_cell` to the nearest goal cell
+## (Bresenham), ignoring walls and towers: a flyer crosses the maze instead of
+## walking it. Every cell is in bounds because both endpoints are. Returns []
+## when there is no goal.
+##
+## Usage: MonsterManager.flight_path(Vector2i(0, 4), GGrid.get_goal_cells())
+static func flight_path(from_cell: Vector2i, goal_cells: Array[Vector2i]) -> Array[Vector2i]:
+	var result: Array[Vector2i] = []
+	if goal_cells.is_empty():
+		return result
+	var goal: Vector2i = goal_cells[0]
+	var best: int = chebyshev(from_cell, goal)
+	for candidate: Vector2i in goal_cells:
+		var d: int = chebyshev(from_cell, candidate)
+		if d < best:
+			best = d
+			goal = candidate
+	var x0: int = from_cell.x
+	var y0: int = from_cell.y
+	var dx: int = absi(goal.x - x0)
+	var dy: int = -absi(goal.y - y0)
+	var sx: int = 1 if x0 < goal.x else -1
+	var sy: int = 1 if y0 < goal.y else -1
+	var err: int = dx + dy
+	while true:
+		result.append(Vector2i(x0, y0))
+		if x0 == goal.x and y0 == goal.y:
+			break
+		var e2: int = 2 * err
+		if e2 >= dy:
+			err += dy
+			x0 += sx
+		if e2 <= dx:
+			err += dx
+			y0 += sy
+	return result
+
+
+## Chebyshev (king-move) cell distance, the metric every range check uses.
+static func chebyshev(a: Vector2i, b: Vector2i) -> int:
+	return maxi(absi(a.x - b.x), absi(a.y - b.y))
+
+
+## Shared stealth rule (TowerSystem uses this same function): a stealthed
+## monster is revealed while the Hero stands within `radius` cells. A negative
+## hero cell means no living Hero, so nothing is revealed.
+static func is_revealed(monster_cell: Vector2i, hero_cell: Vector2i, radius: int) -> bool:
+	if hero_cell.x < 0 or hero_cell.y < 0:
+		return false
+	return chebyshev(monster_cell, hero_cell) <= radius
+
+
+## Healing pulses and stealth visibility. Runs after the attack passes and
+## before movement, over the same active_monsters array (no allocation).
+func _pass2c_archetype_behaviours(delta: float) -> void:
+	for entity in active_monsters:
+		if not is_instance_valid(entity) or entity.lifecycle_state != MonsterEntity.State.ACTIVE:
+			continue
+		var res: MonsterResource = entity.resource
+		if res.is_healer() and entity.stun_remaining <= 0.0:
+			entity.heal_cooldown_remaining -= delta
+			if entity.heal_cooldown_remaining <= 0.0:
+				entity.heal_cooldown_remaining += res.heal_interval_seconds
+				_heal_pulse(entity)
+		if res.stealthed:
+			var hero_cell: Vector2i = _hero_cell if _hero_targetable() else Vector2i(-1, -1)
+			var hidden: bool = not is_revealed(_grid.world_to_cell(entity.global_position),
+					hero_cell, res.stealth_reveal_radius_cells)
+			if hidden != entity.stealth_hidden:
+				entity.stealth_hidden = hidden
+				if entity.monster_instance != null and is_instance_valid(entity.monster_instance):
+					entity.monster_instance.set_stealth_hidden(hidden)
+
+
+## Restores heal_fraction of max HP to every OTHER live monster within the
+## healer radius (bosses included, capped at their max). A healer never heals
+## itself: killing it first is the counter.
+func _heal_pulse(healer: MonsterEntity) -> void:
+	var origin: Vector2i = _grid.world_to_cell(healer.global_position)
+	var radius: int = healer.resource.heal_radius_cells
+	var fraction: float = healer.resource.heal_fraction
+	for other in active_monsters:
+		if other == healer or not is_instance_valid(other) or other.lifecycle_state != MonsterEntity.State.ACTIVE:
+			continue
+		if other.current_hp >= other.scaled_hp:
+			continue
+		if chebyshev(origin, _grid.world_to_cell(other.global_position)) > radius:
+			continue
+		other.current_hp = minf(other.scaled_hp, other.current_hp + other.scaled_hp * fraction)
+		if other.monster_instance != null and is_instance_valid(other.monster_instance):
+			other.monster_instance.play_heal_glow()
+		if other.resource.tier == 2:
+			GEventBus.boss_hp_changed.emit(other.entity_id, other.current_hp, other.scaled_hp)
+
+
+## Snapshots what a splitter brood needs (the entity is queue_free()d right
+## after _emit_death()). Never reached by wave-end force clears or breaches,
+## which do not go through _emit_death().
+func _queue_split(entity: MonsterEntity) -> void:
+	_pending_splits.append({
+		"monster_id": entity.resource.split_into_monster_id,
+		"count": entity.resource.split_count,
+		"position": entity.global_position,
+		"path": entity.current_path,
+		"step": entity.path_step_index,
+		"wave_index": entity.wave_index,
+		"reward_scalar": entity.spawn_wave_reward_scalar,
+	})
+
+
+## Spawns every queued brood. Children start where the parent fell, spread a
+## few units apart so they read as separate bodies, and follow its route.
+## Respects MAX_ACTIVE_MONSTERS like any other spawn.
+func _spawn_pending_splits() -> void:
+	if _pending_splits.is_empty():
+		return
+	var splits: Array[Dictionary] = _pending_splits
+	_pending_splits = []
+	for split: Dictionary in splits:
+		var res: MonsterResource = _resource_table.get(split["monster_id"]) as MonsterResource
+		if res == null:
+			push_warning("[MonsterManager] split target '%s' not registered" % split["monster_id"])
+			continue
+		var path: Array[Vector2i] = split["path"] as Array[Vector2i]
+		if path.is_empty():
+			continue
+		var count: int = split["count"] as int
+		for i: int in count:
+			if active_monsters.size() >= MAX_ACTIVE_MONSTERS:
+				return
+			var angle: float = TAU * float(i) / float(maxi(count, 1))
+			var origin: Dictionary = split.duplicate()
+			origin["position"] = (split["position"] as Vector2) + Vector2.from_angle(angle) * SPLIT_SPREAD_PX
+			_spawn_entity(res, path[0], split["wave_index"] as int, _current_difficulty_tier,
+					split["reward_scalar"] as float, origin)

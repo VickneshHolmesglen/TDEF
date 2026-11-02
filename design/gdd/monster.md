@@ -1092,6 +1092,26 @@ GIVEN an ACTIVE BOSS with `boss_attack_prepare_remaining = 1`, `base_attack_inte
 WHEN `_physics_process(delta)` runs,
 THEN `boss_attack_prepare_remaining` decrements to 0; `boss_tower_attack_attempted` emits with the `_locked_target_id` as `target_tower_id` and `base_damage`; `boss_attack_cooldown_remaining` resets to `base_attack_interval` (3.0); `boss_attack_prepare_remaining` is now 0 (ready for next prepare cycle); `_locked_target_id` is cleared to -1; overlay `AnimatedSprite2D` plays `"attack"` animation.
 
+## Archetype Behaviours (added 2026-11-02, enemy-variety pass)
+
+Before this pass every monster differed only by HP, speed, armor and evasion, so
+one strong tower build could clear every map. Four data-driven behaviours
+(`MonsterResource`, "Archetype Behaviour" group, all off by default) each force
+a different answer. One new standard-tier monster shows each, and each is
+introduced by its own mission.
+
+| Behaviour | Fields | Rule | Counter | Monster / mission |
+|---|---|---|---|---|
+| Flying | `movement_type = "flying"` | Path is a straight Bresenham line of cells from the spawn to the nearest goal (`MonsterManager.flight_path`); ignores walls and towers. Sprite floats 14 px above its shadow. | BALLISTIC (lobbed) weapons cannot target it and their splash skips it; HOMING/BEAM can. | Ashwing Moth / The Ashfields |
+| Healer | `heal_radius_cells`, `heal_fraction`, `heal_interval_seconds` | Every interval, restores `heal_fraction` of max HP to each *other* live monster within the radius (Chebyshev), capped at max. Never heals itself. Stunned healers do not pulse. | Kill it first (LOWEST_HP / burst towers, hero). | Goblin Mender / The Mirefen |
+| Splitter | `split_into_monster_id`, `split_count` (0-8) | On death (not breach, not wave-end force clear) spawns `split_count` children where it fell, continuing along its path from the same step. Children spawn before the parent's `monster_died` flush, so the wave-clear count never touches 0 in between. | Kill it early on the path; splash behind the front line. | Brood Sac (3 Spore Skitterlings) / The Broodwarrens |
+| Stealth | `stealthed`, `stealth_reveal_radius_cells` | Towers cannot target it unless the Hero stands within the reveal radius (`MonsterManager.is_revealed`, shared by TowerSystem). Faded to 35% opacity while hidden. The Hero can always attack it. | Lead with the Hero. | Shade Stalker / The Duskwood |
+
+Validation: a monster may not split into itself; a stealthed monster needs a
+reveal radius > 0. Art for the four monsters is a palette variant of an
+existing creature (`tools/asset-pipeline/hd2d/make_archetype_monsters.py`)
+until bespoke sprites exist.
+
 ## Open Questions
 
 **OQ-1: RESOLVED** — `monster_spawn_requested` is registered in the EventBus GDD (Wave Manager events section). Field name corrected: `wave_difficulty_scalar` → `wave_reward_scalar`. Rule 6 and all related ACs updated.

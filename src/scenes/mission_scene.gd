@@ -167,6 +167,10 @@ func _ready() -> void:
 	hero_feedback.name = "HeroFeedback"
 	hero_feedback.setup(_hero, _camera, _monster_manager.get_monster_world_position)
 	_gameplay_root.add_child(hero_feedback)
+	# Fast-forward (1x/2x/3x); the HUD's speed button finds it via GameSpeed.GROUP_NAME.
+	var game_speed := GameSpeed.new()
+	game_speed.name = "GameSpeed"
+	add_child(game_speed)
 	# Mission outcome screen spec §4: the scene owns the mission-end exit (victory/defeat panel).
 	var outcome_screen: MissionOutcomeScreen = (load("res://src/presentation/mission_outcome/MissionOutcomeScreen.tscn") as PackedScene).instantiate() as MissionOutcomeScreen
 	outcome_screen.name = "MissionOutcomeScreen"
@@ -305,7 +309,7 @@ func _build_scenery(cols: int, rows: int, cell_size: float) -> void:
 ## Grid/camera/GridVisual are already set up by _on_grid_initialized() above
 ## by the time this fires — this handler only reveals the gameplay subtree
 ## and positions the Hero, mirroring the_gap.gd's own _ready() assembly.
-func _on_mission_launched(_mission_id: String, _modifiers: PackedStringArray, _difficulty_tier: int) -> void:
+func _on_mission_launched(_mission_id: String, _modifiers: PackedStringArray, difficulty_tier: int) -> void:
 	if _mission_select_screen.has_method(&"disconnect_own_subscriptions"):
 		_mission_select_screen.disconnect_own_subscriptions()
 	_mission_select_screen.visible = false
@@ -321,6 +325,9 @@ func _on_mission_launched(_mission_id: String, _modifiers: PackedStringArray, _d
 	var spawn_cells: Array[Vector2i] = GGrid.get_spawn_cells()
 	_hero.global_position = GGrid.cell_to_world(spawn_cells[0]) if not spawn_cells.is_empty() else Vector2.ZERO
 	_set_hero_placeholder_stats()
+	var reward_multiplier: float = DifficultyRewards.multiplier_for_tier(difficulty_tier)
+	_hero.set_reward_multiplier(reward_multiplier)
+	_resource_economy.set_tier_reward_multiplier(reward_multiplier)
 
 
 ## Stopgap, unchanged from the_gap.gd's own identical, already-flagged gap:
@@ -586,6 +593,11 @@ func _unhandled_input(event: InputEvent) -> void:
 		_update_placement_preview()
 	elif event is InputEventKey and event.pressed and event.keycode == KEY_SPACE:
 		GEventBus.player_ready.emit()
+	elif event.is_action_pressed(&"game_speed_cycle"):
+		var game_speed: GameSpeed = GameSpeed.find(get_tree())
+		if game_speed != null:
+			game_speed.cycle()
+			get_viewport().set_input_as_handled()
 
 
 ## Builds the invisible, process-free ground StaticBody3D that

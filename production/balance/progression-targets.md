@@ -42,9 +42,22 @@ counts convert to hours at roughly 3 missions per hour.
 
 ## Open
 
-- [ ] Re-cost the shop into early / mid / late bands that meet the shop target.
-- [ ] Implement the difficulty reward multiplier, then retune.
+- [~] Mid band: user chose **new mid-tier items** over re-pricing (2026-11-02).
+      Added the 9-piece Steelwrought line (30-48 Common, 7-12 Uncommon,
+      0-8 iron_ore; tech_production_2); the sim buys it across missions 3-13.
+      The cheap tier is still unchanged, so 60/97 purchases are owned by
+      mission 4 (the longer missions pay more). Still open: gate or re-price
+      the 3-8 Material starter tier if the shop target is to be met.
+- [x] Difficulty reward multiplier 1 / 1.3 / 1.7 (`DifficultyRewards`,
+      2026-11-02): scales hero XP, material drops and mission-end surplus;
+      gold is not scaled. The sim reads it from the code.
+- [x] Level curve: 1.15 -> 1.067 (`Hero.XP_CURVE_GROWTH`). With the 8-map,
+      7-10 wave campaign, level 50 lands at mission ~65 on Normal and ~38 on
+      Brutal.
 - [ ] Decide on Sanctuary gold: drop the costs, or make gold persist.
-- [ ] Scope 4 or more new missions, each bringing a new monster or rule.
+- [x] 4 new missions (2026-11-02), each introducing an archetype: The
+      Ashfields (Ashwing Moth, flying), The Mirefen (Goblin Mender, healer),
+      The Broodwarrens (Brood Sac, splits on death), The Duskwood (Shade
+      Stalker, stealth). Existing missions extended to 7-9 waves.
 - [ ] Calibrate the simulator against real playtest runs: hero kill share,
       towers placed, and win rate are guesses today.

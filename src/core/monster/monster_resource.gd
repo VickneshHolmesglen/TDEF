@@ -64,6 +64,42 @@ extends Resource
 @export var hero_attack_windup_seconds: float = 0.0
 
 
+## Archetype behaviours (2026-11-02, enemy-variety pass). All default to "off", so
+## existing monsters are unchanged. Each one exists to counter a build:
+##   flying  -- crosses the map in a straight line, ignoring the maze; BALLISTIC
+##              (lobbed) weapons cannot hit it, HOMING/BEAM can.
+##   heal_*  -- periodically heals every other monster within the radius; kill it first.
+##   split_* -- on death (not breach) releases split_count of split_into_monster_id
+##              where it fell, continuing along its path.
+##   stealth -- towers cannot target it unless the Hero is within
+##              stealth_reveal_radius_cells (Chebyshev); the Hero can always hit it.
+@export_group("Archetype Behaviour")
+@export_enum("ground", "flying") var movement_type: String = "ground"
+@export var heal_radius_cells: int = 0
+## Fraction of each ally's max HP restored per pulse.
+@export_range(0.0, 1.0, 0.01) var heal_fraction: float = 0.0
+@export var heal_interval_seconds: float = 0.0
+@export var split_into_monster_id: StringName = &""
+@export var split_count: int = 0
+@export var stealthed: bool = false
+@export var stealth_reveal_radius_cells: int = 0
+
+
+## True when this monster flies (straight-line path, untargetable by BALLISTIC).
+func is_flying() -> bool:
+	return movement_type == "flying"
+
+
+## True when this monster heals nearby allies.
+func is_healer() -> bool:
+	return heal_radius_cells > 0 and heal_fraction > 0.0 and heal_interval_seconds > 0.0
+
+
+## True when this monster splits on death.
+func is_splitter() -> bool:
+	return split_into_monster_id != &"" and split_count > 0
+
+
 ## Load-time validation. Called by GameDataRegistry at boot (ADR-0009).
 ## Returns [] when valid; one string per invalid field otherwise. Note:
 ## tier's valid range is also enforced here even though @export_range(0, 2)
@@ -107,4 +143,14 @@ func validate() -> Array[String]:
 		errors.append("armor must not be negative (got %.2f)" % armor)
 	if evasion < 0.0 or evasion > 100.0:
 		errors.append("evasion must be in [0.0, 100.0] (got %.2f)" % evasion)
+	if movement_type != "ground" and movement_type != "flying":
+		errors.append("movement_type must be ground/flying (got %s)" % movement_type)
+	if heal_radius_cells < 0 or heal_fraction < 0.0 or heal_interval_seconds < 0.0:
+		errors.append("heal_* fields must not be negative")
+	if split_count < 0 or split_count > 8:
+		errors.append("split_count must be in [0, 8] (got %d)" % split_count)
+	if split_into_monster_id == monster_id and monster_id != &"":
+		errors.append("split_into_monster_id must not be the monster itself (infinite split)")
+	if stealthed and stealth_reveal_radius_cells <= 0:
+		errors.append("stealthed monsters need stealth_reveal_radius_cells > 0")
 	return errors

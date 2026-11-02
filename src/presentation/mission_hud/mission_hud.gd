@@ -279,8 +279,11 @@ func _ready() -> void:
 	GEventBus.mission_launched.connect(_on_mission_launched_show_combat_cluster)
 	_build_effect_list()
 	_build_right_column()
+	_build_speed_button()
 	# Center-screen wave/boss ceremony; self-subscribing, see WaveCallout's doc comment.
 	add_child(WaveCallout.new())
+	# First-mission coaching card; self-subscribing, shows once per install.
+	add_child(FirstMissionHints.new())
 
 
 func _exit_tree() -> void:
@@ -1370,3 +1373,50 @@ func _show_toast(text: String) -> void:
 	tween.tween_interval(2.0)
 	tween.tween_property(toast, "modulate:a", 0.0, 0.5)
 	tween.tween_callback(toast.queue_free)
+
+
+# ---------------------------------------------------------------------------
+# Game speed (2026-11-02): 1x / 2x / 3x fast-forward button in the status card.
+# GameSpeed is created by MissionScene._ready(), which runs after this HUD's
+# _ready(), so the lookup is deferred one frame.
+# ---------------------------------------------------------------------------
+
+var _speed_button: Button = null
+
+
+func _build_speed_button() -> void:
+	_speed_button = Button.new()
+	_speed_button.name = "SpeedButton"
+	_speed_button.focus_mode = Control.FOCUS_ALL
+	_speed_button.tooltip_text = tr("HUD_GAME_SPEED_TOOLTIP")
+	_speed_button.add_theme_font_size_override("font_size", BODY_FONT_SIZE)
+	_speed_button.set_meta(UiAudioBinder.META_KEY, UiAudioBinder.KIND_CONFIRM)
+	var chrome: Node = _phase_timer_label.get_parent()
+	chrome.add_child(_speed_button)
+	chrome.move_child(_speed_button, _phase_timer_label.get_index() + 1)
+	_speed_button.pressed.connect(_on_speed_button_pressed)
+	_update_speed_button(1.0)
+	_connect_game_speed.call_deferred()
+
+
+func _connect_game_speed() -> void:
+	var game_speed: GameSpeed = GameSpeed.find(get_tree()) if is_inside_tree() else null
+	if game_speed == null:
+		return
+	if not game_speed.speed_changed.is_connected(_update_speed_button):
+		game_speed.speed_changed.connect(_update_speed_button)
+	_update_speed_button(game_speed.get_multiplier())
+
+
+func _on_speed_button_pressed() -> void:
+	var game_speed: GameSpeed = GameSpeed.find(get_tree())
+	if game_speed == null:
+		return
+	if not game_speed.speed_changed.is_connected(_update_speed_button):
+		game_speed.speed_changed.connect(_update_speed_button)
+	game_speed.cycle()
+
+
+func _update_speed_button(multiplier: float) -> void:
+	if _speed_button != null:
+		_speed_button.text = tr("HUD_GAME_SPEED") % int(multiplier)

@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="MonsterResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/core/monster/monster_resource.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+monster_id = &"goblin_mender"
+display_name = "Goblin Mender"
+tier = 0
+archetype_tag = &""
+base_hp = 70.0
+base_speed = 1.1
+armor = 0.0
+evasion = 5.0
+drop_table_id = &"goblin_drops"
+menagerie_attraction_drop_chance = 0.04
+boss_attack_range_cells = 0
+base_damage = 0.0
+base_attack_interval = 0.0
+heal_radius_cells = 2
+heal_fraction = 0.08
+heal_interval_seconds = 3.0

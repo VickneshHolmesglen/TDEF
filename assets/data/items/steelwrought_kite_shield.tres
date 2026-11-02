@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ItemDefinitionResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/core/inventory/item_definition_resource.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+item_id = &"steelwrought_kite_shield"
+item_type = &"Equipment"
+display_name = "Steelwrought Kite Shield"
+is_unique_instance = true
+base_stats = {&"armor": 13.0, &"max_hp": 45.0}
+rarity = ""
+equipment_category = "offhand"
+icon_path = "res://assets/art/items/steelwrought_kite_shield.png"
+worn_texture_path = "res://assets/art/characters/gear/steelwrought_kite_shield_worn.png"

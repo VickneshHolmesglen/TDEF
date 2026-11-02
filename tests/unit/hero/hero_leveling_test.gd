@@ -22,7 +22,7 @@ func after_test() -> void:
 
 
 # ---------------------------------------------------------------------------
-# Formula L1: xp_required(level) = floor(100 * 1.15^(level-1))
+# Formula L1: xp_required(level) = floor(100 * 1.067^(level-1)) (was 1.15 until 2026-11-02)
 # ---------------------------------------------------------------------------
 
 ## Correction (2026-09-19, found while writing this plan): hand-computed
@@ -38,15 +38,15 @@ func after_test() -> void:
 ## instead -- the point of this test is pinning down THIS project's actual
 ## runtime behavior, not enforcing a specific hand-derived number.
 func test_xp_required_for_level_two_matches_double_precision_curve() -> void:
-	assert_int(Hero._xp_required_for_level(2)).is_equal(114)
+	assert_int(Hero._xp_required_for_level(2)).is_equal(106)
 
 
 func test_xp_required_for_level_ten_matches_double_precision_curve() -> void:
-	# floor(100 * 1.15^9) -- computed via Node.js double-precision pow(),
-	# matching GDScript's own semantics: 351. Same platform-difference
+	# floor(100 * 1.067^9) -- computed via Python double-precision pow(),
+	# matching GDScript's own semantics: 179. Same platform-difference
 	# caveat as the level-2 test above applies if your measured value
 	# differs by 1.
-	assert_int(Hero._xp_required_for_level(10)).is_equal(351)
+	assert_int(Hero._xp_required_for_level(10)).is_equal(179)
 
 
 func test_xp_required_grows_monotonically() -> void:
@@ -412,3 +412,23 @@ func test_apply_placeholder_base_stats_preserves_class_bonuses_across_repeated_c
 	# magic_attack seeded at 10.0 by the placeholder each time; class bonus (3.0) must still be
 	# folded in after the second reseed too, not just the first
 	assert_float(_hero._base_stats[&"magic_attack"]).is_equal_approx(13.0, 0.0001)
+
+
+# ---------------------------------------------------------------------------
+# Difficulty reward multiplier (DifficultyRewards, 2026-11-02)
+# ---------------------------------------------------------------------------
+
+func test_tier_multipliers_are_1_13_17() -> void:
+	assert_float(DifficultyRewards.multiplier_for_tier(1)).is_equal(1.0)
+	assert_float(DifficultyRewards.multiplier_for_tier(2)).is_equal(1.3)
+	assert_float(DifficultyRewards.multiplier_for_tier(3)).is_equal(1.7)
+	assert_float(DifficultyRewards.multiplier_for_tier(0)).is_equal(1.0)
+	assert_float(DifficultyRewards.multiplier_for_tier(9)).is_equal(1.7)
+
+
+func test_reward_multiplier_scales_xp_grants() -> void:
+	_hero._current_level = 20
+	_hero._current_xp = 0
+	_hero.set_reward_multiplier(1.7)
+	_hero._grant_xp(100)
+	assert_int(_hero._current_xp).is_equal(170)

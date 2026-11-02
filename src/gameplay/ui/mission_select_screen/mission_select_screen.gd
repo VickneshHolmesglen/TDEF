@@ -172,7 +172,11 @@ func _rebuild_mission_list() -> void:
 
 	var entries: Dictionary[String, MissionEntry] = GGameDataRegistry.get_all_mission_entries()
 	var mission_ids: Array = entries.keys()
-	mission_ids.sort()
+	# Campaign order first (MissionEntry.campaign_order, 0 = unordered sorts last), then id.
+	mission_ids.sort_custom(func(a: String, b: String) -> bool:
+		var oa: int = entries[a].campaign_order if entries[a].campaign_order > 0 else 1 << 30
+		var ob: int = entries[b].campaign_order if entries[b].campaign_order > 0 else 1 << 30
+		return oa < ob if oa != ob else a < b)
 
 	for mission_id: String in mission_ids:
 		var entry: MissionEntry = entries[mission_id]

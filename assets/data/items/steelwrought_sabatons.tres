@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ItemDefinitionResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/core/inventory/item_definition_resource.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+item_id = &"steelwrought_sabatons"
+item_type = &"Equipment"
+display_name = "Steelwrought Sabatons"
+is_unique_instance = true
+base_stats = {&"move_speed": 11.0, &"armor": 8.0}
+rarity = ""
+equipment_category = "boots"
+icon_path = "res://assets/art/items/steelwrought_sabatons.png"
+worn_texture_path = "res://assets/art/characters/gear/steelwrought_sabatons_worn.png"

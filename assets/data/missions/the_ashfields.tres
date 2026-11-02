@@ -1,0 +1,8 @@
+[gd_resource type="Resource" script_class="MissionResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/core/mission_resource.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+mission_id = &"the_ashfields"
+objective_text = "Ash-winged moths ride the hot wind straight over your maze. Lobbed shots cannot reach them: bring towers that home in or fire beams, and keep your hero near the flight line."

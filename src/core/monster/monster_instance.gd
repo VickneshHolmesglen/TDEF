@@ -26,6 +26,10 @@ const MONSTER_TEXTURES: Dictionary[StringName, Texture2D] = {
 	&"goblin_warlord_boss": preload("res://assets/art/monsters/goblin_warlord_boss.png"),
 	&"rift_sentinel_boss": preload("res://assets/art/monsters/rift_sentinel_boss.png"),
 	&"iron_colossus_elite": preload("res://assets/art/monsters/iron_colossus_elite_idle.png"),
+	&"ashwing_moth": preload("res://assets/art/monsters/ashwing_moth.png"),
+	&"goblin_mender": preload("res://assets/art/monsters/goblin_mender.png"),
+	&"brood_sac": preload("res://assets/art/monsters/brood_sac.png"),
+	&"shade_stalker": preload("res://assets/art/monsters/shade_stalker.png"),
 }
 
 ## Target on-screen size (world units, matches MonsterManager.CELL_SIZE=64) for
@@ -156,6 +160,39 @@ func play_hit_flash() -> void:
 		func(v: float) -> void: _hit_flash_material.set_shader_parameter("flash_amount", v),
 		1.0, 0.0, HIT_FLASH_DURATION
 	)
+
+
+# --- Archetype tells (2026-11-02, enemy-variety pass) -------------------------
+# Each uses its own channel so none fights the hit flash (shader parameter) or
+# the elite/boss wind-up telegraph (_sprite.modulate): flying lifts the sprite,
+# stealth fades this whole node, the heal glow tints _sprite.self_modulate.
+
+## Height (world units) a flyer's sprite floats above its ground shadow.
+const FLY_HEIGHT_PX: float = 14.0
+## Node alpha while a stealthed monster is hidden from towers.
+const STEALTH_HIDDEN_ALPHA: float = 0.35
+const HEAL_GLOW_COLOR: Color = Color(0.55, 1.0, 0.55)
+const HEAL_GLOW_SECONDS: float = 0.45
+var _heal_tween: Tween = null
+
+
+## Lifts the sprite off its shadow so a flyer reads as airborne at a glance.
+func set_flying(flying: bool) -> void:
+	_sprite.position.y = -FLY_HEIGHT_PX if flying else 0.0
+
+
+## Fades the monster while towers cannot see it; full opacity once revealed.
+func set_stealth_hidden(hidden: bool) -> void:
+	modulate.a = STEALTH_HIDDEN_ALPHA if hidden else 1.0
+
+
+## Brief green pulse when a healer's pulse restores this monster's HP.
+func play_heal_glow() -> void:
+	if _heal_tween != null and _heal_tween.is_valid():
+		_heal_tween.kill()
+	_sprite.self_modulate = HEAL_GLOW_COLOR
+	_heal_tween = create_tween()
+	_heal_tween.tween_property(_sprite, "self_modulate", Color.WHITE, HEAL_GLOW_SECONDS)
 
 
 ## display_name: MonsterResource.display_name — only consulted for BOSS

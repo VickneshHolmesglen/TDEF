@@ -154,3 +154,10 @@ var stun_remaining: float = 0.0
 ## and DoT tick on this monster is multiplied by (1 + vulnerability_bonus).
 var vulnerability_remaining: float = 0.0
 var vulnerability_bonus: float = 0.0
+
+## Archetype behaviours (2026-11-02). Seconds until a healer's next heal pulse.
+var heal_cooldown_remaining: float = 0.0
+## True while a stealthed monster is hidden from towers (Hero not within its
+## reveal radius). TowerSystem applies the same rule for targeting; this copy
+## only drives the sprite fade.
+var stealth_hidden: bool = false

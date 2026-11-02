@@ -1,0 +1,8 @@
+[gd_resource type="Resource" script_class="MissionResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/core/mission_resource.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+mission_id = &"the_mirefen"
+objective_text = "Goblin menders mend their kin as they wade the fen. Pick the healers out first, or every wave behind them comes back to full strength."

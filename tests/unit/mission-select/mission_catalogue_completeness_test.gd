@@ -13,12 +13,15 @@
 ## convention -- no injection needed for read-only content checks).
 extends GdUnitTestSuite
 
-const REAL_MISSION_IDS: Array[String] = ["the_gap", "the_foothills", "the_hollow", "the_narrows"]
+const REAL_MISSION_IDS: Array[String] = [
+	"the_gap", "the_foothills", "the_hollow", "the_narrows",
+	"the_ashfields", "the_mirefen", "the_broodwarrens", "the_duskwood",  # 2026-11-02 campaign expansion
+]
 
 
-func test_mission_catalogue_has_between_4_and_6_entries() -> void:
+func test_mission_catalogue_has_between_8_and_12_entries() -> void:
 	var entries: Dictionary[String, MissionEntry] = GGameDataRegistry.get_all_mission_entries()
-	assert_int(entries.size()).is_between(4, 6)
+	assert_int(entries.size()).is_between(8, 12)  # campaign + endgame pacing needs 8-12 maps
 
 
 func test_every_real_mission_id_resolves_to_a_valid_entry() -> void:
@@ -59,3 +62,13 @@ func test_every_real_mission_wave_config_matches_base_wave_count() -> void:
 		var wave_config: WaveConfig = load(entry.wave_config_path)
 		assert_object(wave_config).is_not_null()
 		assert_int(wave_config.wave_scripts.size()).is_equal(entry.base_wave_count)
+
+
+## 2026-11-02: every mission has a campaign position, and no two share one.
+func test_every_real_mission_has_a_unique_campaign_order() -> void:
+	var seen: Dictionary = {}
+	for mission_id: String in REAL_MISSION_IDS:
+		var entry: MissionEntry = GGameDataRegistry.get_mission_entry(mission_id)
+		assert_int(entry.campaign_order).is_greater(0)
+		assert_bool(seen.has(entry.campaign_order)).is_false()
+		seen[entry.campaign_order] = true
