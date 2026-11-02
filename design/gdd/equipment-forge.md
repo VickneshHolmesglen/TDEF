@@ -702,6 +702,17 @@ Mirrors how Crafting's craft-confirm and Inventory's item-pop already coexist wi
 
 ## UI Requirements
 
+> **Amendment 2026-11-02 — Next recipes (user-requested).** Below the
+> discovered-recipe list, the Craft tab shows up to 3 undiscovered recipes as
+> read-only rows: lock glyph, item name, have/need per input ("34/130
+> Common, 2/16 Uncommon, 0/12 Iron Ore"), and "Needs <tech> (Defense
+> Building)" while the tech gate is closed. Order: open tech gate first, then
+> cheapest total input, then recipe_id (`EquipmentForge.get_next_locked_recipes`).
+> Discovery itself is unchanged (still tech + materials). Same pass fixed
+> Rule 9's input check to use Inventory's third cost axis (specific material
+> id), as Crafting already did: recipes costed in e.g. iron_plating were
+> previously impossible to discover or craft.
+
 **Forge screen layout**
 
 - **Center**: the forge diorama with anvil/workbench — the "stage" where the equipment currently being crafted or imbued sits, per Visual/Audio Requirements above.

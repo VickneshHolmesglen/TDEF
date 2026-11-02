@@ -671,6 +671,46 @@ func has_items_by_material_id(cost: Dictionary) -> bool:
 	return true
 
 
+## Spendable quantity on each cost axis (2026-11-02, Forge "next recipes"
+## progress). Same unlocked + stackable filtering as has_items(),
+## has_items_by_rarity() and has_items_by_material_id(), so "have" in a cost
+## readout always agrees with what a craft would actually accept.
+##
+## Usage:
+##   var have: int = GInventory.count_by_rarity("Common")
+func count_by_type(item_type: StringName) -> int:
+	var total: int = 0
+	for slot: InventorySlot in _slots:
+		if slot == null or slot.instance_id != -1 or slot.locked:
+			continue
+		var definition: ItemDefinitionResource = GGameDataRegistry.get_item_definition(slot.item_id)
+		if definition == null or definition.excluded_from_type_costs or definition.item_type != item_type:
+			continue
+		total += slot.quantity
+	return total
+
+
+## Rarity-axis counterpart of count_by_type() (see its doc comment).
+func count_by_rarity(rarity: String) -> int:
+	var total: int = 0
+	for slot: InventorySlot in _slots:
+		if slot == null or slot.instance_id != -1 or slot.locked:
+			continue
+		var definition: ItemDefinitionResource = GGameDataRegistry.get_item_definition(slot.item_id)
+		if definition != null and definition.rarity == rarity:
+			total += slot.quantity
+	return total
+
+
+## Specific-material counterpart of count_by_type() (see its doc comment).
+func count_by_material_id(item_id: StringName) -> int:
+	var total: int = 0
+	for slot: InventorySlot in _slots:
+		if slot != null and slot.instance_id == -1 and not slot.locked and slot.item_id == item_id:
+			total += slot.quantity
+	return total
+
+
 # ---------------------------------------------------------------------------
 # Mutation API
 # ---------------------------------------------------------------------------

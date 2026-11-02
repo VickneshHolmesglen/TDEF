@@ -216,9 +216,7 @@ func _structure_type_label(structure_type: String) -> String:
 
 
 func _tech_display_name(node: TechNodeResource) -> String:
-	var category_label: String = _tech_category_label(node.tech_category)
-	var tier_label: String = ROMAN_NUMERALS[node.branch_tier] if node.branch_tier < ROMAN_NUMERALS.size() else str(node.branch_tier)
-	return "%s %s" % [category_label, tier_label]
+	return TechNodeLabel.display_name(node)  # shared with the Forge's locked-recipe hints
 
 
 ## GDD UI Requirements: cost + prerequisite-eligibility state, non-color

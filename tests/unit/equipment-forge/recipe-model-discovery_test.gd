@@ -219,3 +219,43 @@ func test_craftability_flips_true_on_item_added_alone_after_discovery() -> void:
 func test_undiscovered_recipe_is_never_craftable_regardless_of_materials() -> void:
 	_seed_recipe_inputs(RECIPE_REINFORCED_PLATE)  # would satisfy its inputs
 	assert_bool(_forge.is_craftable(RECIPE_REINFORCED_PLATE)).is_false()
+
+
+# ---------------------------------------------------------------------------
+# 2026-11-02: specific-material cost axis + next-locked query
+# ---------------------------------------------------------------------------
+
+## Regression: recipes costed in a specific material (here iron_plating) used
+## to be checked as an item_type and could never be discovered or crafted.
+func test_forge_material_id_recipe_discovers_and_crafts() -> void:
+	# Arrange: brute_gauntlets is gated on tech_production_3 and costs iron_plating + Uncommon
+	var recipe: EquipmentRecipeResource = GGameDataRegistry.get_equipment_recipe(&"recipe_brute_gauntlets")
+	GDefenseBuilding._tech_ledger[recipe.tech_prerequisite] = true
+	for key: StringName in recipe.inputs:
+		var item_id: StringName = &"iron_ore" if key == &"Uncommon" else key
+		GInventory.add_stackable(GGameDataRegistry.get_item_definition(item_id), recipe.inputs[key] as int)
+	# Act
+	_forge._on_item_added("iron_plating", "Material", 1)
+	var crafted: bool = _forge.resolve_craft(recipe.recipe_id)
+	# Assert
+	assert_bool(_forge.is_discovered(recipe.recipe_id)).is_true()
+	assert_bool(crafted).is_true()
+	assert_int(GInventory.count_by_material_id(&"iron_plating")).is_equal(0)
+	GDefenseBuilding._tech_ledger.erase(recipe.tech_prerequisite)
+
+
+func test_forge_next_locked_recipes_put_open_gates_and_cheapest_first() -> void:
+	# Act
+	var locked: Array[EquipmentRecipeResource] = _forge.get_next_locked_recipes(3)
+	# Assert: with no tech researched, the 3 cheapest ungated starter recipes lead
+	assert_int(locked.size()).is_equal(3)
+	assert_str(String(locked[0].recipe_id)).is_equal(String(RECIPE_IRON_SWORD))
+	for recipe: EquipmentRecipeResource in locked:
+		assert_bool(_forge.is_tech_gate_open(recipe)).is_true()
+	assert_int(EquipmentForge.total_input_quantity(locked[0])).is_less_equal(EquipmentForge.total_input_quantity(locked[2]))
+
+
+func test_forge_input_progress_caps_have_at_need() -> void:
+	_seed_material(500)
+	var progress: Array[Dictionary] = EquipmentForge.get_input_progress(GGameDataRegistry.get_equipment_recipe(RECIPE_IRON_SWORD))
+	assert_int(progress[0]["have"] as int).is_equal(progress[0]["need"] as int)

@@ -357,3 +357,10 @@ HINT_HERO_TITLE,Your hero fights too
 HINT_HERO_BODY,Move with WASD or the arrow keys. Fighting near your towers teaches your hero new skills.
 HINT_INTERMISSION_TITLE,Wave cleared
 HINT_INTERMISSION_BODY,"Between waves you can build, sell and repair. The Next Wave card on the right shows what's coming."
+FORGE_NEXT_RECIPES_HEADER,Next recipes
+FORGE_NEXT_RECIPE_NEEDS_TECH,Needs %s (Defense Building)
+FORGE_COST_PROGRESS,%d/%d %s
+FORGE_COST_MATERIAL,Material
+FORGE_COST_COMMON,Common
+FORGE_COST_UNCOMMON,Uncommon
+FORGE_COST_RARE,Rare

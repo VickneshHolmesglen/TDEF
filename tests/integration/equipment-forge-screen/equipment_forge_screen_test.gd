@@ -362,3 +362,45 @@ func test_disconnect_own_subscriptions_is_safe_to_call() -> void:
 	@warning_ignore("unsafe_method_access")
 	_screen.call("disconnect_own_subscriptions")
 	assert_bool(true).is_true()
+
+
+# ---------------------------------------------------------------------------
+# Next recipes (2026-11-02): locked recipes with their cost and progress
+# ---------------------------------------------------------------------------
+
+func test_forge_screen_lists_cheapest_locked_recipes_with_progress() -> void:
+	# Arrange: nothing discovered, a little Material in the bag
+	_seed_material(5)
+	# Act
+	_rebuild_all()
+	# Assert: the cheapest ungated recipe (iron sword) is shown, locked, with have/need
+	var row: Control = _screen.call("get_locked_recipe_row", RECIPE_IRON_SWORD)
+	assert_object(row).is_not_null()
+	var need: int = GGameDataRegistry.get_equipment_recipe(RECIPE_IRON_SWORD).inputs[&"Material"] as int
+	var text: String = (row.get_node("Text") as Label).text
+	assert_str(text).contains("5/%d" % need)
+	assert_object(_screen.call("get_recipe_button", RECIPE_IRON_SWORD)).is_null()
+
+
+func test_forge_screen_locked_rows_cap_at_three() -> void:
+	_rebuild_all()
+	var shown: int = 0
+	for recipe_id: StringName in GGameDataRegistry.get_all_equipment_recipes():
+		if _screen.call("get_locked_recipe_row", recipe_id) != null:
+			shown += 1
+	assert_int(shown).is_equal(3)
+
+
+func test_forge_screen_discovered_recipe_leaves_the_locked_list() -> void:
+	_discover(RECIPE_IRON_SWORD)
+	_rebuild_all()
+	assert_object(_screen.call("get_locked_recipe_row", RECIPE_IRON_SWORD)).is_null()
+	assert_object(_screen.call("get_recipe_button", RECIPE_IRON_SWORD)).is_not_null()
+
+
+func test_forge_screen_locked_text_names_missing_tech() -> void:
+	# A tech-gated recipe while its tech is not researched names that tech.
+	var plate: EquipmentRecipeResource = GGameDataRegistry.get_equipment_recipe(&"recipe_reinforced_plate")
+	var text: String = _screen.call("locked_recipe_text", plate)
+	var tech_name: String = TechNodeLabel.display_name(GGameDataRegistry.get_tech_node(plate.tech_prerequisite))
+	assert_str(text).contains(tech_name)

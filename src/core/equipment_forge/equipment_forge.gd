@@ -423,23 +423,62 @@ static func material_qty(rarity: String, quality_tier: int) -> int:
 ## src/core/crafting/crafting.gd::_has_recipe_inputs()): inputs may mix
 ## item_type keys (checked via has_items()) and rarity keys (checked via
 ## has_items_by_rarity()) in the same Dictionary.
+## Splits `inputs` across Inventory's three cost axes, exactly as Crafting
+## does (crafting.gd _has_recipe_inputs): item_type ("Material"), rarity
+## ("Common"/"Uncommon"/"Rare"), anything else = a specific material id.
+## Fixed 2026-11-02: the specific-material axis was missing, so every recipe
+## costed in e.g. iron_plating/goblin_hide/iron_ore (all T3/T4 monster sets,
+## lurker_fang_blade, Steelwrought) checked that id as an item_type and could
+## never be discovered or crafted.
 func _has_recipe_inputs(inputs: Dictionary) -> bool:
 	var by_item_type: Dictionary = {}
 	var by_rarity: Dictionary = {}
+	var by_material_id: Dictionary = {}
 	for key: Variant in inputs:
-		if ItemDefinitionResource.VALID_RARITIES.has(key) and key != "":
-			by_rarity[key] = inputs[key]
-		else:
-			by_item_type[key] = inputs[key]
-	return GInventory.has_items(by_item_type) and GInventory.has_items_by_rarity(by_rarity)
+		match cost_axis(key):
+			COST_AXIS_TYPE:
+				by_item_type[key] = inputs[key]
+			COST_AXIS_RARITY:
+				by_rarity[key] = inputs[key]
+			_:
+				by_material_id[key] = inputs[key]
+	return GInventory.has_items(by_item_type) and GInventory.has_items_by_rarity(by_rarity) \
+			and GInventory.has_items_by_material_id(by_material_id)
+
+
+const COST_AXIS_TYPE: int = 0
+const COST_AXIS_RARITY: int = 1
+const COST_AXIS_MATERIAL: int = 2
+
+
+## Which Inventory axis a recipe input key is checked and spent on.
+static func cost_axis(key: Variant) -> int:
+	if ItemDefinitionResource.VALID_ITEM_TYPES.has(StringName(key)):
+		return COST_AXIS_TYPE
+	if ItemDefinitionResource.VALID_RARITIES.has(String(key)) and String(key) != "":
+		return COST_AXIS_RARITY
+	return COST_AXIS_MATERIAL
+
+
+## How much of one input key the player can spend right now.
+static func spendable_amount(key: Variant) -> int:
+	match cost_axis(key):
+		COST_AXIS_TYPE:
+			return GInventory.count_by_type(StringName(key))
+		COST_AXIS_RARITY:
+			return GInventory.count_by_rarity(String(key))
+	return GInventory.count_by_material_id(StringName(key))
 
 
 func _consume_recipe_inputs(inputs: Dictionary) -> void:
 	for key: Variant in inputs:
-		if ItemDefinitionResource.VALID_RARITIES.has(key) and key != "":
-			GInventory.consume_by_rarity(String(key), inputs[key])
-		else:
-			GInventory.consume_by_type(String(key), inputs[key])
+		match cost_axis(key):
+			COST_AXIS_TYPE:
+				GInventory.consume_by_type(String(key), inputs[key])
+			COST_AXIS_RARITY:
+				GInventory.consume_by_rarity(String(key), inputs[key])
+			_:
+				GInventory.consume_by_material_id(StringName(key), inputs[key])
 
 
 ## Equipment Crafting Resolution (Rule 9), mirroring Crafting Rule 8 exactly —
@@ -620,3 +659,57 @@ func _run_boot_discovery_sweep() -> void:
 func reset_to_defaults() -> void:
 	_equipment_discovery_ledger.clear()
 	_available_runes.clear()
+
+
+# ---------------------------------------------------------------------------
+# Next locked recipes (2026-11-02): with gear priced across the campaign, a
+# recipe stays undiscovered until it is affordable, so the Forge showed no
+# goals to save toward. These read-only queries feed the Forge screen's
+# "Next recipes" section; they never discover or change anything.
+# ---------------------------------------------------------------------------
+
+## Up to `limit` undiscovered recipes, the ones nearest to unlocking first:
+## tech gate already open before gate still closed, then cheapest total input
+## quantity, then recipe_id (stable order).
+##
+## Usage:
+##   for recipe: EquipmentRecipeResource in forge.get_next_locked_recipes(3): ...
+func get_next_locked_recipes(limit: int) -> Array[EquipmentRecipeResource]:
+	var locked: Array[EquipmentRecipeResource] = []
+	for recipe: EquipmentRecipeResource in GGameDataRegistry.get_all_equipment_recipes().values():
+		if not is_discovered(recipe.recipe_id):
+			locked.append(recipe)
+	locked.sort_custom(func(a: EquipmentRecipeResource, b: EquipmentRecipeResource) -> bool:
+		var gate_a: bool = is_tech_gate_open(a)
+		var gate_b: bool = is_tech_gate_open(b)
+		if gate_a != gate_b:
+			return gate_a
+		var cost_a: int = total_input_quantity(a)
+		var cost_b: int = total_input_quantity(b)
+		if cost_a != cost_b:
+			return cost_a < cost_b
+		return String(a.recipe_id) < String(b.recipe_id))
+	return locked.slice(0, maxi(limit, 0))
+
+
+## True when the recipe has no tech prerequisite or its tech is unlocked.
+func is_tech_gate_open(recipe: EquipmentRecipeResource) -> bool:
+	return recipe.tech_prerequisite == &"" or GDefenseBuilding.is_tech_unlocked(recipe.tech_prerequisite)
+
+
+## Sum of every input quantity: a single number to rank recipes by cost.
+static func total_input_quantity(recipe: EquipmentRecipeResource) -> int:
+	var total: int = 0
+	for key: Variant in recipe.inputs:
+		total += recipe.inputs[key] as int
+	return total
+
+
+## One {key, have, need} entry per input, in the recipe's authored order.
+## `have` is capped at `need` so a readout never shows "120/100".
+static func get_input_progress(recipe: EquipmentRecipeResource) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for key: Variant in recipe.inputs:
+		var need: int = recipe.inputs[key] as int
+		out.append({"key": StringName(key), "have": mini(spendable_amount(key), need), "need": need})
+	return out

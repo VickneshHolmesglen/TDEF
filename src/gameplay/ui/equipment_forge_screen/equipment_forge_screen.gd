@@ -92,6 +92,8 @@ const REQUIREMENT_CATEGORY_TAGS: Dictionary[String, String] = {
 @onready var _upgrade_confirm_dialog: ConfirmationDialog = $UpgradeConfirmDialog
 
 var _recipe_buttons: Dictionary[StringName, Button] = {}
+## recipe_id -> its row in the "Next recipes" section (see _add_next_recipes()).
+var _locked_rows: Dictionary[StringName, Control] = {}
 var _item_buttons: Dictionary[int, Button] = {}
 var _rune_buttons: Dictionary[StringName, Button] = {}
 var _upgrade_buttons: Dictionary[StringName, Button] = {}      ## upgrade_id -> the row's purchase Button
@@ -212,6 +214,7 @@ func _rebuild_recipe_list() -> void:
 	for child: Node in _recipe_list.get_children():
 		child.queue_free()
 	_recipe_buttons.clear()
+	_locked_rows.clear()
 
 	if equipment_forge == null:
 		return
@@ -228,6 +231,83 @@ func _rebuild_recipe_list() -> void:
 		_recipe_buttons[recipe_id] = button
 	if _recipe_buttons.is_empty():
 		_add_empty_label(_recipe_list, tr("FORGE_RECIPES_EMPTY"), tr("FORGE_EMPTY_CTA_DEFENSE"), &"ROOM_DEFENSE_BUILDING")
+	_add_next_recipes()
+
+
+# ---------------------------------------------------------------------------
+# Next recipes (2026-11-02): gear is priced across the whole campaign and a
+# recipe only appears above once it is affordable, so the player needs to see
+# what they are saving toward. Up to NEXT_RECIPE_COUNT undiscovered recipes
+# (EquipmentForge.get_next_locked_recipes()), each with have/need per input
+# and, when its tech is not researched yet, which tech it needs. Read-only
+# rows: not focusable, nothing to press.
+# ---------------------------------------------------------------------------
+
+const NEXT_RECIPE_COUNT: int = 3
+const LOCKED_TEXT_ALPHA: float = 0.75
+## Display keys for cost axes that are not a specific material id.
+const COST_KEY_LABELS: Dictionary[StringName, String] = {
+	&"Material": "FORGE_COST_MATERIAL",
+	&"Common": "FORGE_COST_COMMON",
+	&"Uncommon": "FORGE_COST_UNCOMMON",
+	&"Rare": "FORGE_COST_RARE",
+}
+
+
+func _add_next_recipes() -> void:
+	var locked: Array[EquipmentRecipeResource] = equipment_forge.get_next_locked_recipes(NEXT_RECIPE_COUNT)
+	if locked.is_empty():
+		return
+	var header := Label.new()
+	header.name = "NextRecipesHeader"
+	header.text = tr("FORGE_NEXT_RECIPES_HEADER")
+	header.uppercase = true
+	header.add_theme_color_override("font_color", ShellChromeStyle.UI_ACCENT)
+	_recipe_list.add_child(header)
+	for recipe: EquipmentRecipeResource in locked:
+		var row: Control = _create_locked_row(recipe)
+		_recipe_list.add_child(row)
+		_locked_rows[recipe.recipe_id] = row
+
+
+func _create_locked_row(recipe: EquipmentRecipeResource) -> Control:
+	var row := HBoxContainer.new()
+	row.name = "Locked_%s" % String(recipe.recipe_id)
+	row.add_theme_constant_override("separation", 10)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var lock := PixelLockGlyph.new()
+	lock.custom_minimum_size = Vector2(20, 24)
+	lock.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	lock.color = Color(ShellChromeStyle.UI_PARCHMENT, 0.45)
+	row.add_child(lock)
+	var label := Label.new()
+	label.name = "Text"
+	label.text = locked_recipe_text(recipe)
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	label.add_theme_color_override("font_color", Color(ShellChromeStyle.UI_PARCHMENT, LOCKED_TEXT_ALPHA))
+	row.add_child(label)
+	return row
+
+
+## "Steelwrought Helm  ·  34/130 Common, 2/16 Uncommon, 0/12 Iron Ore", plus a
+## second line "Needs Production II" while the recipe's tech is not researched.
+func locked_recipe_text(recipe: EquipmentRecipeResource) -> String:
+	var parts: PackedStringArray = []
+	for entry: Dictionary in EquipmentForge.get_input_progress(recipe):
+		parts.append(tr("FORGE_COST_PROGRESS") % [entry["have"], entry["need"], _cost_key_label(entry["key"])])
+	var text: String = "%s  ·  %s" % [_item_display_name(recipe.output_item_id), ", ".join(parts)]
+	if not equipment_forge.is_tech_gate_open(recipe):
+		var node: TechNodeResource = GGameDataRegistry.get_tech_node(recipe.tech_prerequisite)
+		var tech_name: String = TechNodeLabel.display_name(node) if node != null else String(recipe.tech_prerequisite)
+		text += "\n" + tr("FORGE_NEXT_RECIPE_NEEDS_TECH") % tech_name
+	return text
+
+
+func _cost_key_label(key: StringName) -> String:
+	if COST_KEY_LABELS.has(key):
+		return tr(COST_KEY_LABELS[key])
+	return _item_display_name(key)
 
 
 func _create_recipe_button(recipe: EquipmentRecipeResource) -> Button:
@@ -621,3 +701,9 @@ func get_item_button(instance_id: int) -> Button:
 
 func get_rune_button(rune_id: StringName) -> Button:
 	return _rune_buttons.get(rune_id)
+
+
+## Test/inspection accessor: the "Next recipes" row for `recipe_id`, or null
+## when it is not one of the shown locked recipes.
+func get_locked_recipe_row(recipe_id: StringName) -> Control:
+	return _locked_rows.get(recipe_id)
