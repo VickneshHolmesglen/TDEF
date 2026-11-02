@@ -321,6 +321,13 @@ func test_the_gap_real_hero_auto_attack_engages_real_spawned_monster_and_reduces
 	var spy := EventBusSpy.new()
 	spy.watch(GEventBus.hero_auto_attacked)
 
+	# Flake fix (2026-11-03): goblin_runner has 8% evasion and DamageStatus rolls
+	# it with the unseeded global RNG, so ~1 run in 12 the hit was evaded and the
+	# HP assertion below failed (live-diagnosed: 6 physics ticks elapsed, HP
+	# unchanged). Evasion is not under test here, so zero it in the hero's own
+	# cache entry, which is where the attack payload reads target_evasion from.
+	hero._monster_cache[monster.entity_id]["evasion"] = 0.0
+
 	# Timer-skip convention (matches this file's other tests): invoke the real
 	# attack-timer handler directly rather than waiting out AUTO_ATTACK_INTERVAL_S.
 	hero._on_attack_timer_timeout()

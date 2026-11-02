@@ -73,6 +73,10 @@ const FADE_IN_SECONDS: float = 0.3
 var _fade_in_seconds: float = FADE_IN_SECONDS
 const _FADE_LAYER: int = 128
 const FADE_HOLD_FRAMES: int = 2
+## Upper bound on frames _do_transition() waits for the new scene to become
+## current and ready before announcing completion anyway (a scene that never
+## becomes current, e.g. under a test runner, must not hang the transition).
+const SCENE_READY_MAX_FRAMES: int = 5
 var _fade_layer: CanvasLayer = null
 var _fade_rect: ColorRect = null
 var _fade_tween: Tween = null
@@ -165,18 +169,27 @@ func _do_transition(target_context: String, mission_id: String, scene_path: Stri
 		_transition_in_progress = false
 		return
 
+	var previous_scene: Node = get_tree().current_scene
+	var previous_scene_id: int = previous_scene.get_instance_id() if previous_scene != null else 0
 	get_tree().change_scene_to_packed(packed_scene)
 
-	# change_scene_to_packed() defers the actual swap to the end of the current
-	# frame — await one process_frame so the new scene's _ready() has run
-	# before announcing completion (ADR-0002: "after new scene is ready").
-	await get_tree().process_frame
-	# Safe even if self became invalid during the await: _transition_in_progress
-	# is an instance member, so a freed self has no future caller left to
-	# observe a stale true value. SceneManager persists for the whole game
-	# session as Autoload #6 (ADR-0002) — this branch is only reachable in
-	# practice when a non-autoload test instance is torn down mid-await.
-	if not is_instance_valid(self): return
+	# ADR-0002: completion is announced "after new scene is ready".
+	# change_scene_to_packed() adds the new scene only after the frame's
+	# process_frame signal, so the old single `await process_frame` resumed
+	# with current_scene still null (live-verified 2026-11-02): every
+	# listener ran before the new scene existed, and the save on entering the
+	# Sanctuary never contained the Sanctuary's own systems. Wait until the
+	# new scene is current and ready, capped at SCENE_READY_MAX_FRAMES.
+	for _frame: int in SCENE_READY_MAX_FRAMES:
+		await get_tree().process_frame
+		# Safe even if self became invalid during the await: _transition_in_progress
+		# is an instance member, so a freed self has no future caller left to
+		# observe a stale true value. SceneManager persists for the whole game
+		# session as Autoload #6 (ADR-0002) — this branch is only reachable in
+		# practice when a non-autoload test instance is torn down mid-await.
+		if not is_instance_valid(self): return
+		if _is_new_scene_ready(previous_scene_id):
+			break
 
 	# Reset the guard BEFORE emitting scene_transition_completed. Awaiting a
 	# signal in GDScript resumes the awaiter synchronously as part of the
@@ -189,6 +202,13 @@ func _do_transition(target_context: String, mission_id: String, scene_path: Stri
 	_transition_in_progress = false
 	_play_fade_in()
 	GEventBus.scene_transition_completed.emit(target_context, mission_id)
+
+
+## True once the tree's current scene is a different node from the one that
+## was current when the transition started, and has finished _ready().
+func _is_new_scene_ready(previous_scene_id: int) -> bool:
+	var scene: Node = get_tree().current_scene
+	return scene != null and scene.get_instance_id() != previous_scene_id and scene.is_node_ready()
 
 
 ## Hosts the global button hover/press feedback here because SceneManager lives for the whole

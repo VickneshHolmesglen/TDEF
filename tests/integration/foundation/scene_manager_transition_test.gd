@@ -84,6 +84,31 @@ func test_transition_to_sanctuary_fires_started_before_completed() -> void:
 	assert_int(_spy.count("scene_transition_completed")).is_equal(1)
 
 
+## Regression (2026-11-03, ADR-0002 "after new scene is ready"): completion
+## used to fire after one process_frame, when change_scene_to_packed() had not
+## yet added the new scene (current_scene was null). Every listener, including
+## the autosave on entering the Sanctuary, ran before the scene existed.
+func test_transition_completed_fires_with_the_new_scene_current_and_ready() -> void:
+	# Arrange
+	var previous: Node = get_tree().current_scene
+	var seen: Array = []
+	var on_completed := func(_ctx: String, _mission_id: String) -> void:
+		var scene: Node = get_tree().current_scene
+		seen.append(scene != null and scene != previous and scene.is_node_ready())
+	GEventBus.scene_transition_completed.connect(on_completed)
+
+	# Act: start it from a timer callback, as gameplay does (the live repro
+	# started it after a timer; from a test coroutine resumed at the top of
+	# the frame the old one-frame wait happened to land after the swap).
+	await get_tree().create_timer(0.05).timeout
+	GSceneManager.transition_to_sanctuary()
+	await GEventBus.scene_transition_completed
+	GEventBus.scene_transition_completed.disconnect(on_completed)
+
+	# Assert
+	assert_array(seen).is_equal([true])
+
+
 func test_transition_with_invalid_scene_path_aborts_without_crash_or_completion() -> void:
 	GSceneManager._inject(INVALID_SCENE_PATH, INVALID_SCENE_PATH)
 	await assert_error(func() -> void: GSceneManager.transition_to_mission("bad_mission")) \
