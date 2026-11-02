@@ -8,8 +8,8 @@ recipe_id = &"recipe_warlords_battleplate"
 recipe_category = "hero_equipment"
 output_slot = "chest"
 inputs = {
-&"warlord_iron": 32,
-&"Uncommon": 16,
+&"warlord_iron": 41,
+&"Uncommon": 26,
 &"warlord_emblem": 8
 }
 tech_prerequisite = &"tech_production_4"

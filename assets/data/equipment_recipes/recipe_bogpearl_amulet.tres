@@ -8,9 +8,9 @@ recipe_id = &"recipe_bogpearl_amulet"
 recipe_category = "hero_equipment"
 output_slot = "neck"
 inputs = {
-&"lurker_ichor": 32,
-&"Uncommon": 16,
-&"bog_pearl": 8
+&"lurker_ichor": 70,
+&"Uncommon": 26,
+&"bog_pearl": 11
 }
 tech_prerequisite = &"tech_production_4"
 output_item_id = &"bogpearl_amulet"

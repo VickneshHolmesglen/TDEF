@@ -8,9 +8,9 @@ recipe_id = &"recipe_goblin_fang_circlet"
 recipe_category = "hero_equipment"
 output_slot = "helmet"
 inputs = {
-&"goblin_hide": 32,
-&"Uncommon": 16,
-&"goblin_fang": 8
+&"goblin_hide": 306,
+&"Uncommon": 26,
+&"goblin_fang": 49
 }
 tech_prerequisite = &"tech_production_4"
 output_item_id = &"goblin_fang_circlet"

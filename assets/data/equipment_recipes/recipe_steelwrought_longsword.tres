@@ -8,9 +8,9 @@ recipe_id = &"recipe_steelwrought_longsword"
 recipe_category = "hero_equipment"
 output_slot = "weapon"
 inputs = {
-&"Common": 48,
-&"Uncommon": 12,
-&"iron_ore": 8
+&"Common": 280,
+&"Uncommon": 28,
+&"iron_ore": 18
 }
 tech_prerequisite = &"tech_production_2"
 output_item_id = &"steelwrought_longsword"

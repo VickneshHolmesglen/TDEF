@@ -7,7 +7,10 @@ script = ExtResource("1_recipe")
 recipe_id = &"recipe_silver_pendant"
 recipe_category = "hero_equipment"
 output_slot = "neck"
-inputs = {&"Material": 6}
+inputs = {
+&"Common": 160,
+&"Uncommon": 15
+}
 tech_prerequisite = &"tech_production_2"
 output_item_id = &"silver_pendant"
 quality_tier = 2

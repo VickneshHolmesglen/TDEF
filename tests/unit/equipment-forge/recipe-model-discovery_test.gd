@@ -12,9 +12,9 @@
 ## reset in before_test()/after_test() to avoid leaking state into other tests.
 extends GdUnitTestSuite
 
-const RECIPE_IRON_SWORD: StringName = &"recipe_iron_sword"                    # ungated, weapon, needs 4 Material
-const RECIPE_LUCKY_CHARM: StringName = &"recipe_lucky_charm_trinket"          # ungated, trinket, needs 3 Material
-const RECIPE_REINFORCED_PLATE: StringName = &"recipe_reinforced_plate"        # gated on tech_production_2, armor, needs 6 Material
+const RECIPE_IRON_SWORD: StringName = &"recipe_iron_sword"                    # ungated, weapon, costs Material
+const RECIPE_LUCKY_CHARM: StringName = &"recipe_lucky_charm_trinket"          # ungated, trinket, costs Material
+const RECIPE_REINFORCED_PLATE: StringName = &"recipe_reinforced_plate"        # gated on tech_production_2, armor, costs Common + Uncommon
 const TECH_PRODUCTION_2: StringName = &"tech_production_2"
 
 var _forge: EquipmentForge
@@ -40,6 +40,22 @@ func after_test() -> void:
 func _seed_material(quantity: int) -> void:
 	var def: ItemDefinitionResource = GGameDataRegistry.get_item_definition(&"common_scrap")
 	GInventory.add_stackable(def, quantity)
+
+
+## Seeds exactly `recipe_id`'s authored inputs (2026-11-02 shop-spread pass):
+## Material/Common keys as common_scrap (Common, Material), Uncommon and
+## iron_ore keys as iron_ore (Uncommon, Material). Tests seed from the recipe
+## instead of a hardcoded number so a re-price does not break them.
+func _seed_recipe_inputs(recipe_id: StringName) -> void:
+	var recipe: EquipmentRecipeResource = GGameDataRegistry.get_equipment_recipe(recipe_id)
+	for key: StringName in recipe.inputs:
+		var item_id: StringName = &"iron_ore" if key in [&"Uncommon", &"iron_ore"] else &"common_scrap"
+		GInventory.add_stackable(GGameDataRegistry.get_item_definition(item_id), recipe.inputs[key] as int)
+
+
+## The recipe's single "Material" cost (starter recipes cost only Material).
+func _material_cost(recipe_id: StringName) -> int:
+	return GGameDataRegistry.get_equipment_recipe(recipe_id).inputs[&"Material"] as int
 
 
 # ---------------------------------------------------------------------------
@@ -110,28 +126,17 @@ func test_item_added_does_not_discover_tech_gated_recipe_before_tech_unlocked() 
 		assert_str(emission[0] as String).is_not_equal(String(RECIPE_REINFORCED_PLATE))
 
 
-## Corrected 2026-08-26, then again 2026-08-31 (live gdUnit4 run + Godot MCP
-## diagnostic each time) — this assertion keeps going stale because new
-## equipment content keeps legitimately satisfying the same discovery
-## criteria (gated on tech_production_2 or ungated, needs <=6 common_scrap),
-## not because of any bug. 2026-08-26 found recipe_iron_greaves had joined
-## recipe_reinforced_plate (2 total). 2026-08-31's full equipment-batch pass
-## (alternate T3/T4 recipes across every slot) added several more real
-## recipes that also clear this bar — live-verified via run_script against
-## the real registry: this exact scenario now fires exactly 8
-## recipe_discovered events (recipe_iron_band, recipe_iron_buckler,
-## recipe_iron_greaves, recipe_reinforced_boots, recipe_reinforced_gauntlets,
-## recipe_reinforced_helm, recipe_reinforced_plate, recipe_silver_pendant).
-## All 8 are real, correctly-discovered recipes, not a bug. Checking the full
-## real set (not just the two originally singled out) so the next new
-## qualifying recipe fails loudly here instead of silently inflating an
-## un-asserted count.
+## Re-derived 2026-11-02 (shop-spread re-price): seeding exactly
+## reinforced_plate's inputs (140 Common + 13 Uncommon) then unlocking
+## tech_production_2 sweeps only the recipes gated on that tech and discovers
+## the 6 whose inputs fit: the pieces priced at or below reinforced_plate.
+## Steel greatsword, iron_band, silver_pendant and Steelwrought cost more and
+## stay undiscovered. Listing the full set keeps a new qualifying recipe loud.
 func test_tech_unlocked_discovers_recipe_once_materials_already_sufficient() -> void:
-	_seed_material(6)
+	_seed_recipe_inputs(RECIPE_REINFORCED_PLATE)
 	_forge._on_tech_unlocked(String(TECH_PRODUCTION_2), "production_tech")
 
 	assert_bool(_forge.is_discovered(RECIPE_REINFORCED_PLATE)).is_true()
-	assert_int(_spy.count("recipe_discovered")).is_equal(8)
 	var emissions: Array = _spy.emissions["recipe_discovered"] as Array
 	var discovered_ids: Array = []
 	var category_by_id: Dictionary = {}
@@ -140,20 +145,20 @@ func test_tech_unlocked_discovers_recipe_once_materials_already_sufficient() -> 
 		discovered_ids.append(id)
 		category_by_id[id] = emission[1] as String
 	var expected_ids: Array[String] = [
-		"recipe_iron_band", "recipe_iron_buckler", "recipe_iron_greaves",
-		"recipe_reinforced_boots", "recipe_reinforced_gauntlets",
-		"recipe_reinforced_helm", "recipe_reinforced_plate", "recipe_silver_pendant",
+		"recipe_reinforced_helm", "recipe_reinforced_boots", "recipe_reinforced_gauntlets",
+		"recipe_iron_greaves", "recipe_iron_buckler", "recipe_reinforced_plate",
 	]
 	for expected_id: String in expected_ids:
 		assert_bool(discovered_ids.has(expected_id)).append_failure_message(
 			"expected recipe '%s' to be discovered in this scenario, but it wasn't" % expected_id
 		).is_true()
+	assert_int(discovered_ids.size()).is_equal(expected_ids.size())
 	assert_str(category_by_id[String(RECIPE_REINFORCED_PLATE)] as String).is_equal("hero_equipment")
 
 
 func test_item_added_discovers_ungated_recipe_directly() -> void:
-	_seed_material(4)
-	_forge._on_item_added("common_scrap", "Material", 4)
+	_seed_material(_material_cost(RECIPE_IRON_SWORD))
+	_forge._on_item_added("common_scrap", "Material", _material_cost(RECIPE_IRON_SWORD))
 
 	assert_bool(_forge.is_discovered(RECIPE_IRON_SWORD)).is_true()
 	var iron_sword_emissions: int = 0
@@ -164,8 +169,8 @@ func test_item_added_discovers_ungated_recipe_directly() -> void:
 
 
 func test_discovery_is_permanent_despite_later_material_gate_loss() -> void:
-	_seed_material(4)
-	_forge._on_item_added("common_scrap", "Material", 4)
+	_seed_material(_material_cost(RECIPE_IRON_SWORD))
+	_forge._on_item_added("common_scrap", "Material", _material_cost(RECIPE_IRON_SWORD))
 	assert_bool(_forge.is_discovered(RECIPE_IRON_SWORD)).is_true()
 
 	# Material stock drops back to 0 (simulated) — discovery must not revert.
@@ -176,8 +181,8 @@ func test_discovery_is_permanent_despite_later_material_gate_loss() -> void:
 
 func test_recipe_discovered_fires_exactly_once_across_two_crossings() -> void:
 	GDefenseBuilding._tech_ledger[TECH_PRODUCTION_2] = true
-	_seed_material(6)
-	_forge._on_item_added("common_scrap", "Material", 6)
+	_seed_recipe_inputs(RECIPE_REINFORCED_PLATE)
+	_forge._on_item_added("common_scrap", "Material", 1)
 	_forge._on_item_added("common_scrap", "Material", 1)  # second crossing, already discovered
 
 	var reinforced_plate_emissions: int = 0
@@ -193,23 +198,24 @@ func test_recipe_discovered_fires_exactly_once_across_two_crossings() -> void:
 # ---------------------------------------------------------------------------
 
 func test_craftability_flips_true_on_item_added_alone_after_discovery() -> void:
-	_seed_material(4)
-	_forge._on_item_added("common_scrap", "Material", 4)
+	var cost: int = _material_cost(RECIPE_IRON_SWORD)
+	_seed_material(cost)
+	_forge._on_item_added("common_scrap", "Material", cost)
 	assert_bool(_forge.is_discovered(RECIPE_IRON_SWORD)).is_true()
 	assert_bool(_forge.is_craftable(RECIPE_IRON_SWORD)).is_true()
 
 	# Consume materials back below threshold — still discovered, no longer craftable.
-	GInventory.consume_by_type("Material", 4)
+	GInventory.consume_by_type("Material", cost)
 	assert_bool(_forge.is_discovered(RECIPE_IRON_SWORD)).is_true()
 	assert_bool(_forge.is_craftable(RECIPE_IRON_SWORD)).is_false()
 
 	# Re-add materials — craftability flips back true, no new recipe_discovered.
 	_spy.clear()
-	_seed_material(4)
+	_seed_material(cost)
 	assert_bool(_forge.is_craftable(RECIPE_IRON_SWORD)).is_true()
 	assert_int(_spy.count("recipe_discovered")).is_equal(0)
 
 
 func test_undiscovered_recipe_is_never_craftable_regardless_of_materials() -> void:
-	_seed_material(6)  # would satisfy recipe_reinforced_plate's inputs
+	_seed_recipe_inputs(RECIPE_REINFORCED_PLATE)  # would satisfy its inputs
 	assert_bool(_forge.is_craftable(RECIPE_REINFORCED_PLATE)).is_false()

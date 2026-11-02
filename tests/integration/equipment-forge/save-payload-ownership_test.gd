@@ -50,7 +50,7 @@ func test_save_payload_contains_no_item_instance_data() -> void:
 	# Inventory (rune_slot_count/imbued_runes) — none of that leaks into
 	# Equipment Forge's own payload, confirming the ownership split.
 	_forge._equipment_discovery_ledger[&"recipe_iron_sword"] = true
-	GInventory.add_stackable(GGameDataRegistry.get_item_definition(&"common_scrap"), 4)
+	GInventory.add_stackable(GGameDataRegistry.get_item_definition(&"common_scrap"), GGameDataRegistry.get_equipment_recipe(&"recipe_iron_sword").inputs[&"Material"] as int)
 	_forge.resolve_craft(&"recipe_iron_sword")
 
 	var saved: Dictionary = _forge.get_save_data()
@@ -100,7 +100,7 @@ func test_reset_to_defaults_clears_both_ledgers() -> void:
 # ---------------------------------------------------------------------------
 
 func test_boot_sweep_discovers_recipe_already_both_gates_true_at_restore() -> void:
-	GInventory.add_stackable(GGameDataRegistry.get_item_definition(&"common_scrap"), 4)
+	GInventory.add_stackable(GGameDataRegistry.get_item_definition(&"common_scrap"), GGameDataRegistry.get_equipment_recipe(&"recipe_iron_sword").inputs[&"Material"] as int)
 
 	var ok: bool = _forge.restore_save_data({"equipment_discovery_ledger": {}, "available_runes": {}})
 

@@ -8,9 +8,9 @@ recipe_id = &"recipe_steelwrought_kite_shield"
 recipe_category = "hero_equipment"
 output_slot = "offhand"
 inputs = {
-&"Common": 36,
-&"Uncommon": 8,
-&"iron_ore": 6
+&"Common": 240,
+&"Uncommon": 23,
+&"iron_ore": 14
 }
 tech_prerequisite = &"tech_production_2"
 output_item_id = &"steelwrought_kite_shield"

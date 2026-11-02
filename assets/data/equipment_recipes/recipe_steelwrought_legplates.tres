@@ -8,9 +8,9 @@ recipe_id = &"recipe_steelwrought_legplates"
 recipe_category = "hero_equipment"
 output_slot = "pants"
 inputs = {
-&"Common": 38,
-&"Uncommon": 8,
-&"iron_ore": 6
+&"Common": 250,
+&"Uncommon": 24,
+&"iron_ore": 14
 }
 tech_prerequisite = &"tech_production_2"
 output_item_id = &"steelwrought_legplates"

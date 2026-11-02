@@ -42,12 +42,15 @@ counts convert to hours at roughly 3 missions per hour.
 
 ## Open
 
-- [~] Mid band: user chose **new mid-tier items** over re-pricing (2026-11-02).
-      Added the 9-piece Steelwrought line (30-48 Common, 7-12 Uncommon,
-      0-8 iron_ore; tech_production_2); the sim buys it across missions 3-13.
-      The cheap tier is still unchanged, so 60/97 purchases are owned by
-      mission 4 (the longer missions pay more). Still open: gate or re-price
-      the 3-8 Material starter tier if the shop target is to be met.
+- [x] Shop spread (2026-11-02): new Steelwrought mid line, then a re-price of
+      all gear (`tools/balance/reprice_equipment.py`; equipment-forge.md
+      Formula 1 is now a floor). Sim, Normal: gear 1/54 at mission 1, 10 at
+      8, 23 at 20, 37 at 40, 50 at 60, 53 at 70 (one boss piece left for the
+      post-cap chase); Brutal finishes by ~60. Not re-priced on purpose:
+      consumables (repeat buys), tower components (spent to build towers) and
+      Defense Building (formula-locked), so total purchases still start at
+      21/97 after mission 1. The sim ignores bag capacity (18 slots, 99 per
+      stack); the dearest recipe needs ~4 slots.
 - [x] Difficulty reward multiplier 1 / 1.3 / 1.7 (`DifficultyRewards`,
       2026-11-02): scales hero XP, material drops and mission-end surplus;
       gold is not scaled. The sim reads it from the code.

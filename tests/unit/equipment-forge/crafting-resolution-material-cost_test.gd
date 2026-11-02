@@ -8,8 +8,8 @@
 ## reset in before_test()/after_test().
 extends GdUnitTestSuite
 
-const RECIPE_IRON_SWORD: StringName = &"recipe_iron_sword"                 # ungated, weapon, needs 4 Material
-const RECIPE_STEEL_GREATSWORD: StringName = &"recipe_steel_greatsword"     # ungated, weapon T2, needs 13 Common + 6 Uncommon
+const RECIPE_IRON_SWORD: StringName = &"recipe_iron_sword"                 # ungated, weapon, costs Material (see _material_cost)
+const RECIPE_STEEL_GREATSWORD: StringName = &"recipe_steel_greatsword"     # gated T2 weapon, Common + Uncommon
 
 var _forge: EquipmentForge
 var _spy: EventBusSpy
@@ -36,6 +36,22 @@ func _seed_material(quantity: int) -> void:
 	GInventory.add_stackable(def, quantity)
 
 
+## Seeds exactly `recipe_id`'s authored inputs (2026-11-02 shop-spread pass):
+## Material/Common keys as common_scrap (Common, Material), Uncommon and
+## iron_ore keys as iron_ore (Uncommon, Material). Tests seed from the recipe
+## instead of a hardcoded number so a re-price does not break them.
+func _seed_recipe_inputs(recipe_id: StringName) -> void:
+	var recipe: EquipmentRecipeResource = GGameDataRegistry.get_equipment_recipe(recipe_id)
+	for key: StringName in recipe.inputs:
+		var item_id: StringName = &"iron_ore" if key in [&"Uncommon", &"iron_ore"] else &"common_scrap"
+		GInventory.add_stackable(GGameDataRegistry.get_item_definition(item_id), recipe.inputs[key] as int)
+
+
+## The recipe's single "Material" cost (starter recipes cost only Material).
+func _material_cost(recipe_id: StringName) -> int:
+	return GGameDataRegistry.get_equipment_recipe(recipe_id).inputs[&"Material"] as int
+
+
 func _discover(recipe_id: StringName) -> void:
 	_forge._equipment_discovery_ledger[recipe_id] = true
 
@@ -46,7 +62,7 @@ func _discover(recipe_id: StringName) -> void:
 
 func test_resolve_craft_rejects_when_materials_insufficient() -> void:
 	_discover(RECIPE_IRON_SWORD)
-	_seed_material(2)  # needs 4
+	_seed_material(2)  # far below the cost
 
 	var result: bool = _forge.resolve_craft(RECIPE_IRON_SWORD)
 
@@ -99,7 +115,7 @@ func test_resolve_craft_rejects_when_no_room_zero_consumption() -> void:
 
 func test_resolve_craft_succeeds_when_cost_frees_the_only_slot() -> void:
 	_discover(RECIPE_IRON_SWORD)
-	_seed_material(4)  # exactly the cost -- consuming it empties this slot
+	_seed_material(_material_cost(RECIPE_IRON_SWORD))  # exactly the cost -- consuming it empties this slot
 	for i: int in 7:
 		var filler := ItemDefinitionResource.new()
 		filler.item_id = StringName("filler_%d" % i)
@@ -122,12 +138,12 @@ func test_resolve_craft_succeeds_when_cost_frees_the_only_slot() -> void:
 
 func test_resolve_craft_success_consumes_materials_and_emits_event() -> void:
 	_discover(RECIPE_IRON_SWORD)
-	_seed_material(4)
+	_seed_material(_material_cost(RECIPE_IRON_SWORD))
 
 	var result: bool = _forge.resolve_craft(RECIPE_IRON_SWORD)
 
 	assert_bool(result).is_true()
-	assert_bool(GInventory.has_items({&"Material": 4})).is_false()  # consumed
+	assert_bool(GInventory.has_items({&"Material": 1})).is_false()  # all consumed
 	assert_int(_spy.count("hero_equipment_crafted")).is_equal(1)
 	var args: Array = (_spy.emissions["hero_equipment_crafted"] as Array)[0]
 	assert_str(args[0] as String).is_equal("iron_sword")
@@ -137,7 +153,7 @@ func test_resolve_craft_success_consumes_materials_and_emits_event() -> void:
 
 func test_resolve_craft_success_places_item_with_free_rune_slots() -> void:
 	_discover(RECIPE_IRON_SWORD)
-	_seed_material(4)
+	_seed_material(_material_cost(RECIPE_IRON_SWORD))
 
 	_forge.resolve_craft(RECIPE_IRON_SWORD)
 
@@ -177,9 +193,17 @@ func test_formula_1_full_tier_table() -> void:
 	assert_int(EquipmentForge.material_qty("Rare", 4)).is_equal(8)
 
 
-func test_recipe_steel_greatsword_matches_formula_1_worked_example() -> void:
-	var recipe: EquipmentRecipeResource = GGameDataRegistry.get_equipment_recipe(RECIPE_STEEL_GREATSWORD)
-	assert_object(recipe).is_not_null()
-	assert_int(recipe.inputs[&"Common"]).is_equal(13)
-	assert_int(recipe.inputs[&"Uncommon"]).is_equal(6)
-	assert_bool(recipe.inputs.has(&"Rare")).is_false()  # 0 Rare at T2, omitted from inputs
+## Shop-spread re-price (2026-11-02, equipment-forge.md Formula 1 amendment):
+## gear prices are hand-banded by tools/balance/reprice_equipment.py, and
+## Formula 1 is now their floor, not their value. Every rarity-keyed cost must
+## be at least material_qty(rarity, quality_tier), and a tier-2 recipe still
+## never asks for Rare.
+func test_every_equipment_recipe_costs_at_least_formula_1() -> void:
+	for recipe: EquipmentRecipeResource in GGameDataRegistry.get_all_equipment_recipes().values():
+		for key: StringName in recipe.inputs:
+			if String(key) in ["Common", "Uncommon", "Rare"]:
+				assert_int(recipe.inputs[key] as int) \
+					.override_failure_message("%s %s below Formula 1" % [recipe.recipe_id, key]) \
+					.is_greater_equal(EquipmentForge.material_qty(String(key), recipe.quality_tier))
+	var greatsword: EquipmentRecipeResource = GGameDataRegistry.get_equipment_recipe(RECIPE_STEEL_GREATSWORD)
+	assert_bool(greatsword.inputs.has(&"Rare")).is_false()  # 0 Rare at T2, omitted from inputs

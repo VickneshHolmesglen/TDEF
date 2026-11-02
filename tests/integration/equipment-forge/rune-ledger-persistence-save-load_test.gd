@@ -101,6 +101,6 @@ func test_both_sources_survive_the_same_round_trip_together() -> void:
 
 func _craft_iron_sword_via(forge: EquipmentForge) -> int:
 	forge._equipment_discovery_ledger[&"recipe_iron_sword"] = true
-	GInventory.add_stackable(GGameDataRegistry.get_item_definition(&"common_scrap"), 4)
+	GInventory.add_stackable(GGameDataRegistry.get_item_definition(&"common_scrap"), GGameDataRegistry.get_equipment_recipe(&"recipe_iron_sword").inputs[&"Material"] as int)
 	forge.resolve_craft(&"recipe_iron_sword")
 	return GInventory.get_slot_contents(0)["instance_id"] as int

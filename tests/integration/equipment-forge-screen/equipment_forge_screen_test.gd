@@ -17,7 +17,7 @@
 ## via `.set()`, followed by an explicit rebuild call.
 extends GdUnitTestSuite
 
-const RECIPE_IRON_SWORD: StringName = &"recipe_iron_sword"  # ungated, weapon, needs 4 Material, rune_slot_count=2
+const RECIPE_IRON_SWORD: StringName = &"recipe_iron_sword"  # ungated, weapon, costs Material, rune_slot_count=2
 
 const UPGRADE_ID: StringName = &"upgrade_watchtower_reinforced"
 
@@ -114,7 +114,7 @@ func test_undiscovered_recipe_is_not_listed() -> void:
 
 func test_discovered_recipe_is_listed_with_craftable_state() -> void:
 	_discover(RECIPE_IRON_SWORD)
-	_seed_material(4)
+	_seed_material(GGameDataRegistry.get_equipment_recipe(RECIPE_IRON_SWORD).inputs[&"Material"] as int)
 	_rebuild_all()
 
 	var button: Button = _screen.call("get_recipe_button", RECIPE_IRON_SWORD)
@@ -132,13 +132,13 @@ func test_discovered_recipe_without_materials_shows_missing_materials() -> void:
 
 func test_pressing_a_craftable_recipe_crafts_it() -> void:
 	_discover(RECIPE_IRON_SWORD)
-	_seed_material(4)
+	_seed_material(GGameDataRegistry.get_equipment_recipe(RECIPE_IRON_SWORD).inputs[&"Material"] as int)
 	_rebuild_all()
 
 	@warning_ignore("unsafe_method_access")
 	_screen.call("_on_recipe_pressed", RECIPE_IRON_SWORD)
 
-	assert_bool(GInventory.has_items({&"Material": 4})).is_false()  # consumed
+	assert_bool(GInventory.has_items({&"Material": 1})).is_false()  # all consumed
 
 
 # ---------------------------------------------------------------------------

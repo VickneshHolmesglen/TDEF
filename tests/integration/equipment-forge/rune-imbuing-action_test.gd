@@ -31,7 +31,7 @@ func after_test() -> void:
 ## Crafts iron_sword (weapon, rune_slot_count=2) and returns its instance_id.
 func _craft_iron_sword() -> int:
 	_forge._equipment_discovery_ledger[&"recipe_iron_sword"] = true
-	GInventory.add_stackable(GGameDataRegistry.get_item_definition(&"common_scrap"), 4)
+	GInventory.add_stackable(GGameDataRegistry.get_item_definition(&"common_scrap"), GGameDataRegistry.get_equipment_recipe(&"recipe_iron_sword").inputs[&"Material"] as int)
 	_forge.resolve_craft(&"recipe_iron_sword")
 	return GInventory.get_slot_contents(0)["instance_id"] as int
 
@@ -70,7 +70,7 @@ func test_imbue_succeeds_on_currently_equipped_item() -> void:
 func test_imbued_rune_is_consumed_and_cannot_be_reused() -> void:
 	var instance_id_a: int = _craft_iron_sword()
 	_forge._equipment_discovery_ledger[&"recipe_lucky_charm_trinket"] = true
-	GInventory.add_stackable(GGameDataRegistry.get_item_definition(&"common_scrap"), 3)
+	GInventory.add_stackable(GGameDataRegistry.get_item_definition(&"common_scrap"), GGameDataRegistry.get_equipment_recipe(&"recipe_lucky_charm_trinket").inputs[&"Material"] as int)
 	_forge.resolve_craft(&"recipe_lucky_charm_trinket")
 	var instance_id_b: int = GInventory.get_slot_contents(1)["instance_id"] as int
 
@@ -93,7 +93,7 @@ func test_imbued_rune_is_consumed_and_cannot_be_reused() -> void:
 
 func test_imbue_rejected_when_no_free_rune_slot_rune_stays_available() -> void:
 	_forge._equipment_discovery_ledger[&"recipe_lucky_charm_trinket"] = true
-	GInventory.add_stackable(GGameDataRegistry.get_item_definition(&"common_scrap"), 3)
+	GInventory.add_stackable(GGameDataRegistry.get_item_definition(&"common_scrap"), GGameDataRegistry.get_equipment_recipe(&"recipe_lucky_charm_trinket").inputs[&"Material"] as int)
 	_forge.resolve_craft(&"recipe_lucky_charm_trinket")  # trinket, rune_slot_count = 1
 	var instance_id: int = GInventory.get_slot_contents(0)["instance_id"] as int
 

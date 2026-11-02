@@ -8,9 +8,9 @@ recipe_id = &"recipe_steelwrought_cuirass"
 recipe_category = "hero_equipment"
 output_slot = "chest"
 inputs = {
-&"Common": 44,
-&"Uncommon": 10,
-&"iron_ore": 8
+&"Common": 265,
+&"Uncommon": 26,
+&"iron_ore": 16
 }
 tech_prerequisite = &"tech_production_2"
 output_item_id = &"steelwrought_cuirass"

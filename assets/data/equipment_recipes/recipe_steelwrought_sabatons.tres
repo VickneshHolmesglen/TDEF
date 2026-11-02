@@ -8,9 +8,9 @@ recipe_id = &"recipe_steelwrought_sabatons"
 recipe_category = "hero_equipment"
 output_slot = "boots"
 inputs = {
-&"Common": 30,
-&"Uncommon": 7,
-&"iron_ore": 5
+&"Common": 190,
+&"Uncommon": 18,
+&"iron_ore": 10
 }
 tech_prerequisite = &"tech_production_2"
 output_item_id = &"steelwrought_sabatons"

@@ -486,15 +486,17 @@ def run(args) -> str:
                 owned.add(p.name)
                 bought_at[p.name] = n
         lvl = level_for_xp(xp_total, rules)
-        timeline.append((n, lvl, lvl // rules.skill_point_interval, xp_total, len(owned)))
+        gear = sum(1 for q in purchases if q.category == "equipment" and q.name in owned)
+        timeline.append((n, lvl, lvl // rules.skill_point_interval, xp_total, len(owned), gear))
 
     L.append(f"\n## Campaign timeline ({args.missions} missions)\n")
-    L.append("| Missions | Hero level | Skill pts (levels) | Total XP | Purchases owned |")
-    L.append("|---|---|---|---|---|")
+    gear_total = sum(1 for q in purchases if q.category == "equipment")
+    L.append("| Missions | Hero level | Skill pts (levels) | Total XP | Purchases owned | Gear owned |")
+    L.append("|---|---|---|---|---|---|")
     marks = sorted({1, 2, 4, 8, 12, 20, 30, 40, 60, 80, 100, args.missions} & set(range(1, args.missions + 1)))
-    for n, lvl, pts, xp, owned_n in timeline:
+    for n, lvl, pts, xp, owned_n, gear_n in timeline:
         if n in marks:
-            L.append(f"| {n} | {lvl} | {pts} | {fmt(xp)} | {owned_n}/{len(purchases)} |")
+            L.append(f"| {n} | {lvl} | {pts} | {fmt(xp)} | {owned_n}/{len(purchases)} | {gear_n}/{gear_total} |")
 
     L.append("\n## Missions to reach each level\n")
     L.append("| Level | XP to next | Cumulative XP | Missions (avg yield) |")

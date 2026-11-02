@@ -8,8 +8,8 @@ recipe_id = &"recipe_warlords_greaves"
 recipe_category = "hero_equipment"
 output_slot = "boots"
 inputs = {
-&"warlord_iron": 19,
-&"Uncommon": 10
+&"warlord_iron": 23,
+&"Uncommon": 18
 }
 tech_prerequisite = &"tech_production_3"
 output_item_id = &"warlords_greaves"

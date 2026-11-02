@@ -402,6 +402,19 @@ separate Equipment-Forge-only copy of this constant.
 + 6 Uncommon, 0 Rare — identical arithmetic to a Tier 2 Tower Component
 recipe, since both consume the same registered formula.
 
+> **Amendment 2026-11-02 (shop-spread re-price, user-requested):** Formula 1
+> is now the **floor** for Equipment Recipe costs, not their value. Measured
+> against the 8-map campaign (`tools/balance/progression_sim.py`), the
+> formula's 8–32 Common prices let the whole gear shop be bought by mission
+> ~20, against a target of about one meaningful purchase per Sanctuary return
+> until mission ~60 (`production/balance/progression-targets.md`). Gear is now
+> hand-banded by `tools/balance/reprice_equipment.py`: starter (T1) 20–100
+> Material/Common, T2 90–175 Common + 8–16 Uncommon, Steelwrought 190–280
+> Common + 18–28 Uncommon (+ iron_ore), and T3/T4 monster sets priced in
+> missions-worth of their own family material (never lowered). Tower
+> Component recipes (Crafting) still use Formula 1 unchanged. Enforced by
+> `test_every_equipment_recipe_costs_at_least_formula_1`.
+
 ---
 
 ### Formula 2 — Sacrifice Recipe Quality Tier
