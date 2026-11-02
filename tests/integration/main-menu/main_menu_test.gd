@@ -84,6 +84,7 @@ func after_test() -> void:
 	if is_instance_valid(_original_current_scene):
 		get_tree().current_scene = _original_current_scene
 	GSavePersistence._active_slot = _original_active_slot
+	GSavePersistence.reset_session()  # loaded/new-game session must not leak into later suites
 
 	for bus_name: StringName in VOLUME_BUSES:
 		GAudioSystem.set_bus_volume_percent(bus_name, _original_bus_volumes[bus_name])

@@ -36,6 +36,7 @@ func after_test() -> void:
 	if _audio != null and is_instance_valid(_audio):
 		_audio.free()
 	_audio = null
+	GSavePersistence.reset_session()  # load_slot() below must not leak into later suites
 
 	if FileAccess.file_exists(TEST_SETTINGS_PATH):
 		DirAccess.remove_absolute(TEST_SETTINGS_PATH)

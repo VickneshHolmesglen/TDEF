@@ -41,6 +41,12 @@ class _MockSystem extends RefCounted:
 		reset_called = true
 
 
+## Mock with the optional exit-state hook (Hero uses it for full HP).
+class _MockSystemWithExitData extends _MockSystem:
+	func get_save_data_on_unregister() -> Dictionary:
+		return {"exit": true}
+
+
 var _sp: _SavePersistenceStub
 ## Shared call order recorder — assign to each mock's shared_call_log before the test call.
 var _restore_call_order: Array = []
@@ -299,13 +305,17 @@ func test_late_registration_with_no_matching_key_calls_reset_to_defaults() -> vo
 	assert_that(sys_c.restore_called_with).is_equal({})
 
 
-func test_repeated_unregister_register_cycle_restores_identically_each_time() -> void:
-	# Arrange: simulates a scene-instanced system reloading multiple times
-	# within one continuous play session (Sanctuary <-> Mission <-> Sanctuary),
-	# with no new save/load in between.
+## Changed 2026-11-02 (session carry-over): this test used to require every
+## re-instance to restore the LOAD-TIME data ({"v": 42}), which is exactly the
+## rollback bug -- hero XP reset every mission, Forge discoveries every
+## Sanctuary visit. Each re-instance now restores the state the previous
+## instance left with (the mock's get_save_data() is {"key": "sys_d"}).
+func test_repeated_unregister_register_cycle_restores_latest_state() -> void:
+	# Arrange: a load happened; the system is re-mounted several times in one
+	# continuous session (Sanctuary <-> Mission <-> Sanctuary).
 	_sp._restore_all_systems({"sys_d": {"v": 42}}, 0)
 
-	# Act: register, unregister, register again — twice.
+	# Act
 	var first_instance := _MockSystem.new()
 	first_instance.save_key = "sys_d"
 	_sp.register(first_instance, 24)
@@ -314,16 +324,75 @@ func test_repeated_unregister_register_cycle_restores_identically_each_time() ->
 	var second_instance := _MockSystem.new()
 	second_instance.save_key = "sys_d"
 	_sp.register(second_instance, 24)
-	_sp.unregister(second_instance)
 
-	var third_instance := _MockSystem.new()
-	third_instance.save_key = "sys_d"
-	_sp.register(third_instance, 24)
-
-	# Assert: every re-instantiation restored identically from the same cached data.
+	# Assert: the first instance got the loaded data, the second the state
+	# the first one left with.
 	assert_that(first_instance.restore_called_with).is_equal({"v": 42})
-	assert_that(second_instance.restore_called_with).is_equal({"v": 42})
-	assert_that(third_instance.restore_called_with).is_equal({"v": 42})
+	assert_that(second_instance.restore_called_with).is_equal({"key": "sys_d"})
+
+
+func test_save_while_system_unmounted_keeps_its_last_state() -> void:
+	# Arrange: sys_a stays mounted (autoload-like); sys_f is scene-scoped.
+	var sys_a := _MockSystem.new()
+	sys_a.save_key = "sys_a"
+	_sp._registered_systems.append({"ref": sys_a, "key": "sys_a", "restore_order": 10})
+	_sp._restore_all_systems({"sys_a": {"v": 1}, "sys_f": {"v": 7}, "sys_g": {"v": 9}}, 0)
+	var sys_f := _MockSystem.new()
+	sys_f.save_key = "sys_f"
+	_sp.register(sys_f, 32)
+	_sp.unregister(sys_f)
+
+	# Act: a save while sys_f is not mounted (e.g. the DEFEAT save in a mission).
+	var data: Dictionary = _sp._collect_save_data()
+
+	# Assert: sys_f keeps the state it left with; sys_g (never mounted this
+	# session) keeps its loaded data; sys_a is live.
+	assert_that(data["sys_f"]).is_equal({"key": "sys_f"})
+	assert_that(data["sys_g"]).is_equal({"v": 9})
+	assert_that(data["sys_a"]).is_equal({"key": "sys_a"})
+
+
+func test_unregister_prefers_get_save_data_on_unregister() -> void:
+	# Arrange
+	_sp._restore_all_systems({}, 0)
+	var sys := _MockSystemWithExitData.new()
+	sys.save_key = "sys_h"
+	_sp.register(sys, 30)
+
+	# Act
+	_sp.unregister(sys)
+
+	# Assert
+	assert_that(_sp._last_loaded_data["sys_h"]).is_equal({"exit": true})
+
+
+func test_start_new_game_drops_carry_over_from_an_earlier_load() -> void:
+	# Arrange: slot 0 was loaded earlier this session with sys_i data.
+	_sp._restore_all_systems({"sys_i": {"v": 3}}, 0)
+
+	# Act: New Game on another slot, then sys_i mounts for the first time.
+	_sp.start_new_game(1)
+	var sys_i := _MockSystem.new()
+	sys_i.save_key = "sys_i"
+	_sp.register(sys_i, 24)
+
+	# Assert: defaults, never slot 0's data; and nothing carried into a save.
+	assert_bool(sys_i.reset_called).is_true()
+	assert_that(sys_i.restore_called_with).is_equal({})
+	assert_that(_sp._collect_save_data()).is_equal({"sys_i": {"key": "sys_i"}})
+
+
+func test_unregister_before_any_load_does_not_touch_the_cache() -> void:
+	# Arrange
+	var sys := _MockSystem.new()
+	sys.save_key = "sys_j"
+	_sp.register(sys, 10)
+
+	# Act
+	_sp.unregister(sys)
+
+	# Assert
+	assert_bool(_sp._last_loaded_data.has("sys_j")).is_false()
 
 
 func test_registration_before_any_load_does_not_restore() -> void:

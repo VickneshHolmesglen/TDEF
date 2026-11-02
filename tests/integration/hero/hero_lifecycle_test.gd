@@ -473,3 +473,21 @@ func test_restore_failure_via_save_persistence_falls_back_to_reset_to_defaults()
 	assert_bool(hero._skill_slots[0] == &"").is_true()
 
 	sp.free()
+
+
+## Session carry-over (2026-11-02): SavePersistence keeps the Hero's exit state
+## for the next mission, so HP is stored full while level/XP carry over.
+func test_hero_save_data_on_unregister_stores_full_hp_and_keeps_level() -> void:
+	# Arrange: a hurt hero with some progress.
+	var hero := _make_hero()
+	hero._current_hp = 1.0
+	hero._current_level = 3
+	hero._current_xp = 42
+
+	# Act
+	var data: Dictionary = hero.get_save_data_on_unregister()
+
+	# Assert
+	assert_float(float(data["hp"])).is_equal(hero.get_effective_stat(&"max_hp"))
+	assert_int(int(data["level"])).is_equal(3)
+	assert_int(int(data["xp"])).is_equal(42)

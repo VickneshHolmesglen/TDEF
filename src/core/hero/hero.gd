@@ -1641,6 +1641,18 @@ func get_save_data() -> Dictionary:
 	}
 
 
+## The state SavePersistence keeps when the Hero leaves the tree (mission end,
+## defeat, retry). HP does not carry between missions: the next mission's Hero
+## restores from this, so it is stored at full HP. Level, XP, class and slots
+## carry over unchanged (hero.md Rule 32: growth persists across missions).
+##
+## Usage: called by GSavePersistence.unregister(); not for direct use.
+func get_save_data_on_unregister() -> Dictionary:
+	var data: Dictionary = get_save_data()
+	data["hp"] = get_effective_stat(&"max_hp")
+	return data
+
+
 ## Restores all Story-006/007/008 persisted fields. Returns false (not void!)
 ## on any malformed/missing data so SavePersistence's _restore_all_systems()
 ## falls back to reset_to_defaults() for this system — see that method's doc

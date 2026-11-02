@@ -78,6 +78,17 @@ var _autosave_timer: Timer
 ## Sanctuary<->Mission transition — Constellation, Crafting, Tarot, Equipment
 ## Forge, Tower Mastery) is still restored, instead of silently sitting at
 ## @export defaults for the rest of the session.
+##
+## Session carry-over (2026-11-02): this is the latest known save state of
+## EVERY system for the active slot, not just a load-time snapshot. Without
+## it, a save written while a scene-scoped system was not mounted dropped
+## that system's key (the real slot 0 had lost equipment_forge, crafting,
+## hero, building_upgrade, tower_mastery, constellation, tower_assembly), and a
+## system re-mounted later restored load-time data, rolling back everything
+## since (hero XP every mission, Forge discoveries every Sanctuary visit).
+## Kept current by: load/checkpoint restore (replaced), start_new_game and
+## corrupt recovery (cleared), unregister() (the leaving system's final
+## state), _collect_save_data() (every save starts from it).
 var _last_loaded_data: Dictionary = {}
 var _has_loaded_data: bool = false
 
@@ -163,11 +174,36 @@ func has_loaded_data() -> bool:
 	return _has_loaded_data
 
 
+## Forgets the loaded session (no slot loaded, nothing carried over), as at
+## boot. For test cleanup: a suite that loads a slot or starts a game on the
+## real autoload must call this in after_test(), or every later suite's
+## mounted systems restore from, and save into, that leftover session.
+##
+## Usage (test after_test()): GSavePersistence.reset_session()
+func reset_session() -> void:
+	_last_loaded_data = {}
+	_has_loaded_data = false
+
+
 ## Unregister a system. Call from _exit_tree() to prevent stale refs.
+## Once a slot is loaded, the system's final state is kept in the session
+## cache first, so saves made while it is unmounted still contain it and its
+## next instance restores this state, not the one from load time. A system
+## can shape that kept state with an optional
+## get_save_data_on_unregister() -> Dictionary (Hero uses it to leave a
+## mission at full HP); otherwise get_save_data() is used.
 func unregister(system_ref: Object) -> void:
 	for i: int in range(_registered_systems.size() - 1, -1, -1):
 		if _registered_systems[i].ref == system_ref:
+			if _has_loaded_data:
+				_last_loaded_data[_registered_systems[i].key] = _final_save_data(system_ref)
 			_registered_systems.remove_at(i)
+
+
+func _final_save_data(system_ref: Object) -> Dictionary:
+	if system_ref.has_method(&"get_save_data_on_unregister"):
+		return system_ref.get_save_data_on_unregister()
+	return system_ref.get_save_data()
 
 
 ## Switch which slot future save/load calls target.
@@ -188,6 +224,7 @@ func set_active_slot(slot: int) -> void:
 ## then emit sanctuary_state_restored) instead of inventing a new one.
 func start_new_game(slot: int) -> void:
 	_active_slot = slot
+	_begin_fresh_session()
 	for entry in _registered_systems:
 		entry.ref.reset_to_defaults()
 	_emit_state_restored(slot)
@@ -282,10 +319,19 @@ func _recover_from_corrupt_save(slot: int, dat_path: String) -> void:
 		if err != OK:
 			push_error("SavePersistence: failed to rename corrupt save '%s' -> '%s': %s" % [
 					dat_path, corrupt_path, error_string(err)])
+	_begin_fresh_session()
 	for entry in _registered_systems:
 		entry.ref.reset_to_defaults()
 	_active_slot = slot
 	_emit_state_restored(slot)
+
+
+## A fresh Sanctuary (new game, corrupt-save recovery): nothing to carry over,
+## and systems mounted later must start from defaults, never from whatever
+## slot was loaded earlier this session.
+func _begin_fresh_session() -> void:
+	_last_loaded_data = {}
+	_has_loaded_data = true
 
 
 func _delete_checkpoint_if_exists(slot: int) -> void:
@@ -336,10 +382,15 @@ func _setup_autosave_timer() -> void:
 # Serialisation
 # ---------------------------------------------------------------------------
 
+## Every save starts from the session cache (systems not mounted right now
+## keep their last known state), then overlays each registered system's live
+## data. The result becomes the new cache.
 func _collect_save_data() -> Dictionary:
-	var data: Dictionary = {}
+	var data: Dictionary = _last_loaded_data.duplicate(true)
 	for entry in _registered_systems:
 		data[entry.key] = entry.ref.get_save_data()
+	if _has_loaded_data:
+		_last_loaded_data = data.duplicate(true)
 	return data
 
 

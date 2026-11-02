@@ -93,6 +93,7 @@ func before_test() -> void:
 
 func after_test() -> void:
 	GSavePersistence.set_active_slot(_original_active_slot)
+	GSavePersistence.reset_session()  # loaded/new-game session must not leak into later suites
 	for path: String in [TEST_DAT, TEST_CHECKPOINT]:
 		if FileAccess.file_exists(path):
 			DirAccess.remove_absolute(path)

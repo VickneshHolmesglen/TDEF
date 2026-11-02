@@ -346,3 +346,23 @@ N/A — Save & Persistence does not own any UI. The save slot selection screen, 
 
 **OQ-5: Where does the registered system count constant live?**
 > Core Rule 3 asserts against an "expected system count," corrected 10→12 on 2026-07-17 (Constellation, Tower Mastery added). This constant must update when new systems register with Save & Persistence — this is now the second time it has drifted from the actual registrant count, reinforcing the need for a single source of truth rather than a hardcoded literal. Confirm: should it live in Save & Persistence's GDScript file or in a central project constants file?
+
+## Amendment 2026-11-02: session carry-over
+
+Scene-scoped systems (Hero in the mission scene; Crafting, Equipment Forge,
+Building Upgrade, Tower Assembly in the Sanctuary shell) are not registered
+for part of every session. Previously a save only contained the systems
+registered at that moment, and a re-mounted system restored the data from
+load time. Both lost progress: the save on returning to the Sanctuary had no
+`hero` key, and Forge discoveries rolled back every visit.
+
+Rule: SavePersistence keeps the latest known state of every system for the
+active slot.
+- `load_slot()` / `restore_from_checkpoint()` replace it with the loaded data.
+- `start_new_game()` and corrupt-save recovery clear it.
+- `unregister()` stores the leaving system's final state (optional
+  `get_save_data_on_unregister()`; Hero stores full HP, since HP does not
+  carry between missions).
+- Every save starts from it and overlays the registered systems' live data.
+- `reset_session()` forgets it (tests that load on the real autoload call it
+  in `after_test()`).
