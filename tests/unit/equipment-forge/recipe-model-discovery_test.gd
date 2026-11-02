@@ -259,3 +259,23 @@ func test_forge_input_progress_caps_have_at_need() -> void:
 	_seed_material(500)
 	var progress: Array[Dictionary] = EquipmentForge.get_input_progress(GGameDataRegistry.get_equipment_recipe(RECIPE_IRON_SWORD))
 	assert_int(progress[0]["have"] as int).is_equal(progress[0]["need"] as int)
+
+
+## Regression (2026-11-02 Forge live check): a loaded save with NO
+## "equipment_forge" key restores the Forge through reset_to_defaults(), which
+## never ran the boot sweep, so an affordable recipe stayed locked ("Iron Sword
+## 20/20 Material") until the next item_added. _ready() now re-sweeps whenever
+## a save is loaded. Seeding happens before the Forge enters the tree, so only
+## the sweep can discover it.
+func test_registering_after_a_load_without_forge_data_sweeps_affordable_recipes() -> void:
+	var had_loaded: bool = GSavePersistence._has_loaded_data
+	var last_loaded: Dictionary = GSavePersistence._last_loaded_data
+	GSavePersistence._has_loaded_data = true
+	GSavePersistence._last_loaded_data = {}
+	_seed_material(_material_cost(RECIPE_IRON_SWORD))
+
+	add_child(_forge)
+
+	assert_bool(_forge.is_discovered(RECIPE_IRON_SWORD)).is_true()
+	GSavePersistence._has_loaded_data = had_loaded
+	GSavePersistence._last_loaded_data = last_loaded

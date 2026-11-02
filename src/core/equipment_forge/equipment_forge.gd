@@ -118,6 +118,12 @@ func _ready() -> void:
 	GEventBus.constellation_rune_discovered.connect(_on_constellation_rune_discovered)
 	GEventBus.tarot_rune_discovered.connect(_on_tarot_rune_discovered)
 	GSavePersistence.register(self, RESTORE_ORDER)
+	# Fixed 2026-11-02 (live check): a save without an "equipment_forge" key
+	# restores via reset_to_defaults(), which never swept, so the Forge showed
+	# "Iron Sword 20/20 Material" as locked. The sweep skips discovered
+	# recipes, so running it after a real restore is a no-op.
+	if GSavePersistence.has_loaded_data():
+		_run_boot_discovery_sweep()
 
 
 func _exit_tree() -> void:

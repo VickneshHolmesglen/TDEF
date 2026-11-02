@@ -152,6 +152,17 @@ func register(system_ref: Object, restore_order: int) -> void:
 		_restore_one(system_ref)
 
 
+## True once a slot has been loaded this session. Systems with a load-time
+## discovery sweep use it to re-run that sweep after register(), because a
+## save that holds no data for them goes through reset_to_defaults(), which
+## does not sweep.
+##
+## Usage:
+##   if GSavePersistence.has_loaded_data(): _run_boot_discovery_sweep()
+func has_loaded_data() -> bool:
+	return _has_loaded_data
+
+
 ## Unregister a system. Call from _exit_tree() to prevent stale refs.
 func unregister(system_ref: Object) -> void:
 	for i: int in range(_registered_systems.size() - 1, -1, -1):

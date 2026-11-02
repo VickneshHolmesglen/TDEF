@@ -57,6 +57,12 @@ func _ready() -> void:
 	GEventBus.tech_unlocked.connect(_on_tech_unlocked)
 	GEventBus.item_added.connect(_on_item_added)
 	GSavePersistence.register(self, RESTORE_ORDER)
+	# Fixed 2026-11-02 (live check): a save without a "crafting" key restores via
+	# reset_to_defaults(), which never swept, so recipes the player could
+	# already afford stayed undiscovered until the next item_added. The sweep
+	# skips discovered recipes, so running it after a real restore is a no-op.
+	if GSavePersistence.has_loaded_data():
+		_run_boot_discovery_sweep()
 
 
 func _exit_tree() -> void:
