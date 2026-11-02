@@ -22,8 +22,8 @@
 ## full explanation — real material_costs are rarity-keyed, and
 ## DefenseBuilding both checks (has_items_by_rarity()) and now spends
 ## (consume_by_rarity()) them for real. This file's own before_test() seeds
-## 100 Common, well above tech_production_2 (15) + habitat_expansion_tier_1
-## (20) combined (35) — the two resolve calls sharing one seed in the same
+## 500 Common, well above tech_production_2 (100) + habitat_expansion_tier_1
+## (20) combined (120) — the two resolve calls sharing one seed in the same
 ## test (e.g. test_defeat_transition_does_not_revert_already_unlocked_or_built_state)
 ## remain affordable even with real consumption now happening between them.
 ## GInventory (the real Autoload)
@@ -56,7 +56,7 @@ func before_test() -> void:
 	_spy.watch(GEventBus.tech_unlocked)
 	_spy.watch(GEventBus.sanctuary_structure_built)
 	GInventory.reset_to_defaults()
-	GInventory.add_stackable(_make_rarity_definition(&"Common"), 100)
+	GInventory.add_stackable(_make_rarity_definition(&"Common"), 500)
 
 
 func after_test() -> void:

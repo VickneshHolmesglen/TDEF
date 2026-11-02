@@ -68,7 +68,7 @@ func before_test() -> void:
 	_spy.watch(GEventBus.tech_unlocked)
 	_spy.watch(GEventBus.sanctuary_structure_built)
 	GInventory.reset_to_defaults()
-	GInventory.add_stackable(_make_rarity_definition(&"Common"), 100)
+	GInventory.add_stackable(_make_rarity_definition(&"Common"), 500)
 
 
 func after_test() -> void:

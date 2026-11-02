@@ -13,7 +13,7 @@
 extends GdUnitTestSuite
 
 ## Rare rarity, unlock_tech_id = &"tech_production_2", gold_cost=50,
-## material_costs={Common: 15} (assets/data/tarot/card_bountiful_harvest.tres,
+## material_costs={Common: 100} (assets/data/tarot/card_bountiful_harvest.tres,
 ## assets/data/defense_building/tech_nodes/tech_production_2.tres).
 const GATED_CARD: StringName = &"bountiful_harvest"
 const GATED_CARD_TECH: StringName = &"tech_production_2"
@@ -26,7 +26,7 @@ func before_test() -> void:
 	GDefenseBuilding.reset_to_defaults()
 	GDefenseBuilding._is_sanctuary = true  # resolve_tech_unlock() rejects outside Sanctuary
 	GInventory.reset_to_defaults()
-	GInventory.add_stackable(GGameDataRegistry.get_item_definition(&"common_scrap"), 15)
+	GInventory.add_stackable(GGameDataRegistry.get_item_definition(&"common_scrap"), 100)
 
 
 func after_test() -> void:
@@ -50,7 +50,7 @@ func test_resolving_the_real_tech_unlock_unlocks_and_makes_the_matching_card_equ
 
 
 func test_a_rejected_tech_unlock_leaves_the_matching_card_locked() -> void:
-	GInventory.reset_to_defaults()  # remove the 15 Common seeded above -> insufficient materials
+	GInventory.reset_to_defaults()  # remove the 100 Common seeded above -> insufficient materials
 
 	var resolved: bool = GDefenseBuilding.resolve_tech_unlock(GATED_CARD_TECH)
 

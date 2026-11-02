@@ -855,3 +855,15 @@ Both a tech unlock and a structure build use **Crafting's single-confirm convent
 | Watchtower's gameplay effect is undefined | Whichever future system claims it (Scout, Mission HUD, or purely cosmetic) | Deliberately left as scaffolding (Rule 6's own flag) — no other system currently subscribes to `sanctuary_structure_built(structure_type="watchtower")`. AC-16/AC-17 test only Watchtower's build/unlock mechanics; no AC in this document tests or assumes any in-game consequence of building it, since none exists yet. Whoever eventually claims Watchtower's effect will need a coordinated update to both that system's GDD and this GDD's Visual/Audio Requirements (currently silent on the effect itself). |
 | Content-migration policy for removed/renamed `tech_id`/`structure_id` values referenced by an old save | Save & Persistence owner | Shared, project-wide gap (Edge Cases, last bullet) — no system in the project currently defines this policy. AC-39 explicitly does not assert a recovery behavior pending this decision. |
 | Placeholder rarity-tier material identifiers (`Common`/`Uncommon`/`Rare`) used throughout Formulas 1–3 are generic labels, not confirmed against Inventory's actual authored material-rarity enum | Inventory owner | Same caveat class as `menagerie.md` AC-1's flagged placeholder-species naming — AC-31 through AC-36 assume these labels resolve 1:1 to Inventory's real rarity identifiers; if Inventory's enum differs in naming, only the labels need updating, not the cost logic itself. |
+
+## Amendment 2026-11-03: research re-priced
+
+The Formula 1 tech-node material costs were about one ninth of a single mission's income: the simulator bought every Production level by mission 4, so research never paced the gear tiers it gates. New costs are the same for both branches at each `branch_tier`, keeping the shared-curve rule (AC-34) and the rarity shape (tier 1 Common only, tier 2 adds Uncommon, tier 3 adds Rare):
+
+| branch_tier | Materials | Gold (unchanged, not charged while Sanctuary gold is undecided) |
+|---|---|---|
+| 1 | 100 Common | 50 |
+| 2 | 220 Common, 30 Uncommon | 90 |
+| 3 | 380 Common, 50 Uncommon, 32 Rare | 150 |
+
+That is roughly 1, 2 and 4 missions of income. A player who buys research first gets Production IV around mission 5; the simulator's cheapest-first shopper, which buys cheap gear first, gets it much later. Formula 1's base quantities no longer produce these values; the `.tres` files are the source of truth until the formula is re-derived.

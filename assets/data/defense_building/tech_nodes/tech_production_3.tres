@@ -10,7 +10,7 @@ prerequisite_tech_id = &"tech_production_2"
 branch_tier = 2
 gold_cost = 90
 material_costs = {
-&"Common": 27,
-&"Uncommon": 14
+&"Common": 220,
+&"Uncommon": 30
 }
 gates = "Crafting quality_tier=3"

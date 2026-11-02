@@ -10,6 +10,6 @@ prerequisite_tech_id = &""
 branch_tier = 1
 gold_cost = 50
 material_costs = {
-&"Common": 15
+&"Common": 100
 }
 gates = "Crafting quality_tier=2 recipes become tech-gate-satisfied"

@@ -22,7 +22,7 @@ func before_test() -> void:
 	# affordability via has_items_by_rarity() -- seed real registered items
 	# (matches currency_dual_gate_test.gd's own established pattern; a
 	# fabricated item_id silently resolves to null rarity and never counts).
-	GInventory.add_stackable(GGameDataRegistry.get_item_definition(&"common_scrap"), 100)
+	GInventory.add_stackable(GGameDataRegistry.get_item_definition(&"common_scrap"), 500)
 	GInventory.add_stackable(GGameDataRegistry.get_item_definition(&"iron_ore"), 100)
 	_runner = scene_runner("res://src/gameplay/ui/defense_building_screen/DefenseBuildingScreen.tscn")
 	_screen = _runner.scene() as Control

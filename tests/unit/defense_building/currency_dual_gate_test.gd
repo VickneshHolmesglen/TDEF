@@ -79,7 +79,7 @@ func before_test() -> void:
 	_spy = EventBusSpy.new()
 	_spy.watch(GEventBus.resources_changed)
 	GInventory.reset_to_defaults()
-	GInventory.add_stackable(_make_rarity_definition(&"Common"), 100)
+	GInventory.add_stackable(_make_rarity_definition(&"Common"), 500)
 
 
 func after_test() -> void:
@@ -181,22 +181,22 @@ func test_resolve_structure_build_rejected_by_insufficient_materials() -> void:
 # ---------------------------------------------------------------------------
 
 func test_resolve_tech_unlock_consumes_real_materials_from_inventory() -> void:
-	# before_test() seeded 100 Common; tech_production_2 costs 15 Common.
+	# before_test() seeded 500 Common; tech_production_2 costs 100 Common.
 	var result: bool = _defense_building.resolve_tech_unlock(TECH_PRODUCTION_2)
 
 	assert_bool(result).is_true()
-	# 85 remain (100 - 15) -- enough for 85 but not 86.
-	assert_bool(GInventory.has_items_by_rarity({&"Common": 86})).is_false()
-	assert_bool(GInventory.has_items_by_rarity({&"Common": 85})).is_true()
+	# 400 remain (500 - 100) -- enough for 400 but not 401.
+	assert_bool(GInventory.has_items_by_rarity({&"Common": 401})).is_false()
+	assert_bool(GInventory.has_items_by_rarity({&"Common": 400})).is_true()
 
 
 func test_resolve_structure_build_consumes_real_materials_from_inventory() -> void:
-	# before_test() seeded 100 Common; habitat_expansion_tier_1 costs 20 Common.
+	# before_test() seeded 500 Common; habitat_expansion_tier_1 costs 20 Common.
 	var result: bool = _defense_building.resolve_structure_build(HABITAT_TIER_1)
 
 	assert_bool(result).is_true()
-	assert_bool(GInventory.has_items_by_rarity({&"Common": 81})).is_false()
-	assert_bool(GInventory.has_items_by_rarity({&"Common": 80})).is_true()
+	assert_bool(GInventory.has_items_by_rarity({&"Common": 481})).is_false()
+	assert_bool(GInventory.has_items_by_rarity({&"Common": 480})).is_true()
 
 
 func test_resolve_tech_unlock_rejection_consumes_nothing() -> void:

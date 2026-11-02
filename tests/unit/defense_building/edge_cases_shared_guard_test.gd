@@ -38,7 +38,7 @@ func before_test() -> void:
 	_spy.watch(GEventBus.tech_unlocked)
 	_spy.watch(GEventBus.sanctuary_structure_built)
 	GInventory.reset_to_defaults()
-	GInventory.add_stackable(_make_rarity_definition(&"Common"), 100)
+	GInventory.add_stackable(_make_rarity_definition(&"Common"), 500)
 
 
 func after_test() -> void:
@@ -72,7 +72,7 @@ func test_stale_ui_rejection_has_zero_side_effects_and_does_not_lock_out_future_
 	assert_bool(_defense_building._action_resolving).is_false()  # guard released, not stuck
 
 	# The next legitimate attempt (materials now available) must still succeed.
-	GInventory.add_stackable(_make_rarity_definition(&"Common"), 100)
+	GInventory.add_stackable(_make_rarity_definition(&"Common"), 500)
 	var succeeded: bool = _defense_building.resolve_tech_unlock(TECH_PRODUCTION_2)
 	assert_bool(succeeded).is_true()
 

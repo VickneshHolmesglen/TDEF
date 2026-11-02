@@ -27,35 +27,37 @@ const WATCHTOWER_TIER_1: StringName = &"watchtower_tier_1"
 
 
 # ---------------------------------------------------------------------------
-# AC-31/32/33: Formula 1 — branch_tier=1/2/3 tech node costs
+# AC-31/32/33: branch_tier=1/2/3 tech node costs. Re-priced 2026-11-03
+# (progression pass): research was ~1/9 of one mission's income and never
+# gated anything; now ~1, ~2 and ~4 missions of income
 # (round(base_qty[rarity] × node_tier_multiplier), round(50 × multiplier))
 # ---------------------------------------------------------------------------
 
-func test_branch_tier_1_common_node_costs_15_common_50_gold() -> void:
+func test_branch_tier_1_common_node_costs_100_common_50_gold() -> void:
 	var node: TechNodeResource = GGameDataRegistry.get_tech_node(TECH_PRODUCTION_2)
 	assert_int(node.branch_tier).is_equal(1)
 	assert_int(node.gold_cost).is_equal(50)
-	assert_int(node.material_costs[&"Common"] as int).is_equal(15)
+	assert_int(node.material_costs[&"Common"] as int).is_equal(100)
 	assert_bool(node.material_costs.has(&"Uncommon")).is_false()
 	assert_bool(node.material_costs.has(&"Rare")).is_false()
 
 
-func test_branch_tier_2_node_costs_27_common_14_uncommon_90_gold() -> void:
+func test_branch_tier_2_node_costs_220_common_30_uncommon_90_gold() -> void:
 	var node: TechNodeResource = GGameDataRegistry.get_tech_node(TECH_PRODUCTION_3)
 	assert_int(node.branch_tier).is_equal(2)
 	assert_int(node.gold_cost).is_equal(90)
-	assert_int(node.material_costs[&"Common"] as int).is_equal(27)
-	assert_int(node.material_costs[&"Uncommon"] as int).is_equal(14)
+	assert_int(node.material_costs[&"Common"] as int).is_equal(220)
+	assert_int(node.material_costs[&"Uncommon"] as int).is_equal(30)
 	assert_bool(node.material_costs.has(&"Rare")).is_false()
 
 
-func test_branch_tier_3_node_costs_45_common_24_uncommon_12_rare_150_gold() -> void:
+func test_branch_tier_3_node_costs_380_common_50_uncommon_32_rare_150_gold() -> void:
 	var node: TechNodeResource = GGameDataRegistry.get_tech_node(TECH_PRODUCTION_4)
 	assert_int(node.branch_tier).is_equal(3)
 	assert_int(node.gold_cost).is_equal(150)
-	assert_int(node.material_costs[&"Common"] as int).is_equal(45)
-	assert_int(node.material_costs[&"Uncommon"] as int).is_equal(24)
-	assert_int(node.material_costs[&"Rare"] as int).is_equal(12)
+	assert_int(node.material_costs[&"Common"] as int).is_equal(380)
+	assert_int(node.material_costs[&"Uncommon"] as int).is_equal(50)
+	assert_int(node.material_costs[&"Rare"] as int).is_equal(32)
 
 
 # ---------------------------------------------------------------------------
