@@ -26,7 +26,7 @@ func after_test() -> void:
 
 
 func _slot_grid() -> Control:
-	return _screen.get_node("MainLayout/LeftPanel/BagPanel/BagContent/SlotGrid") as Control
+	return _screen.get_node("MainLayout/LeftPanel/BagPanel/BagContent/BagScroll/SlotGrid") as Control
 
 
 func _left_panel() -> Control:
@@ -64,3 +64,23 @@ func test_slot_grid_natural_width_is_unaffected_by_viewport_resize() -> void:
 	await _screen.get_tree().process_frame
 
 	assert_float(grid.size.x).is_equal_approx(natural_width, 1.0)
+
+
+## Live check 2026-11-03: a second row of bag tiles grew LeftPanel past the
+## screen and pushed the whole Inventory screen up under the Sanctuary header.
+## The grid now scrolls inside BagScroll; the screen's height never changes.
+func test_a_full_bag_scrolls_instead_of_growing_the_screen() -> void:
+	_screen.size = Vector2(1040, 640)
+	await _screen.get_tree().process_frame
+	var left_before: float = _left_panel().get_combined_minimum_size().y
+
+	var reg: Node = GGameDataRegistry
+	for id: StringName in [&"iron_sword", &"iron_helm", &"iron_greaves", &"iron_buckler", &"iron_band",
+			&"brutes_war_helm", &"brutes_bulwark_plate", &"brute_gauntlets"]:
+		GInventory.add_unique_item(reg.get_item_definition(id))
+	await _screen.get_tree().process_frame
+	await _screen.get_tree().process_frame
+
+	# Under one tile row of growth (a second row without the scroll adds ~70 px).
+	assert_float(_left_panel().get_combined_minimum_size().y).is_less(left_before + 20.0)
+	assert_object(_screen.get_node_or_null("MainLayout/LeftPanel/BagPanel/BagContent/BagScroll")).is_instanceof(ScrollContainer)

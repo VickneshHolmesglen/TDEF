@@ -12,6 +12,14 @@ bonuses = Dictionary[int, Dictionary]({
 4: {&"cdr": 0.05, &"elemental_resist_fire": 0.06, &"elemental_resist_frost": 0.06}
 })
 effects = Dictionary[int, Dictionary]({
+2: {
+&"name": "Last Watch",
+&"type": &"low_hp_state",
+&"params": {
+&"hp_fraction": 0.35,
+&"stats": {&"armor": 0.3, &"attack_range": 0.2}
+}
+},
 4: {
 &"name": "Overwatch",
 &"type": &"phase_state",

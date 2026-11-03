@@ -210,7 +210,7 @@ func test_pressing_craft_updates_left_panel_slot_quantity() -> void:
 	# pre-craft "common_scrap x3" text (regression guard for
 	# _apply_slot_visual()'s reset branch), and the real holdings must
 	# reflect consumption + output.
-	var slot_button: Button = _screen.get_node("MainLayout/LeftPanel/BagPanel/BagContent/SlotGrid/Slot0") as Button
+	var slot_button: Button = _screen.get_node("MainLayout/LeftPanel/BagPanel/BagContent/BagScroll/SlotGrid/Slot0") as Button
 	assert_str(slot_button.text).is_not_equal("common_scrap x3")
 	assert_bool(GInventory.has_items({&"Material": 1})).is_false()
 	assert_bool(GInventory.has_items({&"CraftedGood": 3})).is_true()
@@ -284,7 +284,7 @@ func test_item_id_keyed_cost_line_counts_that_item_and_shows_its_name() -> void:
 
 
 func _preview_ring(slot_index: int) -> Panel:
-	var slot_button: Button = _screen.get_node("MainLayout/LeftPanel/BagPanel/BagContent/SlotGrid/Slot%d" % slot_index) as Button
+	var slot_button: Button = _screen.get_node("MainLayout/LeftPanel/BagPanel/BagContent/BagScroll/SlotGrid/Slot%d" % slot_index) as Button
 	return slot_button.get_node("CraftPreviewRing") as Panel
 
 

@@ -205,7 +205,7 @@ var _info_panel: PanelContainer
 ## blue slot tints were removed at the player's request (UX overhaul
 ## 2026-10-09). Built in _build_tower_preview_panel().
 @onready var _tower_preview_panel: Control = $MainLayout/LeftPanel/TowerComponentRow/TowerPreviewPanel
-@onready var _slot_grid: GridContainer = $MainLayout/LeftPanel/BagPanel/BagContent/SlotGrid
+@onready var _slot_grid: GridContainer = $MainLayout/LeftPanel/BagPanel/BagContent/BagScroll/SlotGrid
 ## 2026-10-11 UI pass: the bag used to be a bare grid that left the lower
 ## half of the left panel blank (empty slots are hidden per the 2026-08-16
 ## player request below, so a tab with few items showed almost nothing).

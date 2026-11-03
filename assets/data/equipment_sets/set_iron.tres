@@ -12,6 +12,15 @@ bonuses = Dictionary[int, Dictionary]({
 4: {&"max_hp": 50.0, &"physical_attack": 3.0}
 })
 effects = Dictionary[int, Dictionary]({
+2: {
+&"name": "Tempered Guard",
+&"type": &"on_hurt_shield",
+&"params": {
+&"shield_fraction": 0.05,
+&"duration": 3.0,
+&"cooldown": 10.0
+}
+},
 4: {
 &"name": "Steel Reflex",
 &"type": &"on_skill_cast_buff",

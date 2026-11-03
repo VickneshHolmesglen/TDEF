@@ -114,6 +114,11 @@ const EXPECTED_TIER_EFFECTS: Dictionary[StringName, Dictionary] = {
 		"params": {&"shield_fraction": 0.08, &"duration": 4.0, &"cooldown": 8.0}},
 	&"set_reinforced": {"threshold": 2, "name": "Last Stand", "type": &"low_hp_state",
 		"params": {&"hp_fraction": 0.3, &"stats": {&"armor": 0.5, &"physical_attack": 0.2}}},
+	# 2026-11-03: the spec's open question (Iron, Sentinel) resolved.
+	&"set_iron": {"threshold": 2, "name": "Tempered Guard", "type": &"on_hurt_shield",
+		"params": {&"shield_fraction": 0.05, &"duration": 3.0, &"cooldown": 10.0}},
+	&"set_sentinel": {"threshold": 2, "name": "Last Watch", "type": &"low_hp_state",
+		"params": {&"hp_fraction": 0.35, &"stats": {&"armor": 0.3, &"attack_range": 0.2}}},
 }
 
 

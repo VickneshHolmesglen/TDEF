@@ -134,7 +134,10 @@ All values in §4 are data (`.tres`). Knobs: `heal_fraction` (Troll); `shield_fr
 
 ## 11. Open Questions
 
-- **Iron and Sentinel** were named as candidates in the scope question but are not given a second tier here (§4). Confirm or name a set to add.
-- **HUD feedback**: without a shield indicator, a player may not notice Iron Hide working. If playtests say so, the follow-up is a small HUD buff row.
+Review 2026-11-03: implementation checked against §9 (acceptance criteria 1-9 covered by `set_defensive_effects_test.gd`, the content and resolver tests; all green).
+
+
+- ~~**Iron and Sentinel**~~ Resolved 2026-11-03 (review): Iron @2 "Tempered Guard" `on_hurt_shield` {shield_fraction 0.05, duration 3.0, cooldown 10.0}, an early, lighter Iron Hide; Sentinel @2 "Last Watch" `low_hp_state` {hp_fraction 0.35, stats {armor 0.3, attack_range 0.2}}, the range set standing off when cornered. Locked in `equipment_set_content_test.gd`; Iron's line live-checked in the info panel.
+- ~~**HUD feedback**~~ Resolved: the HUD set-effect row (2026-10-06) lists active shields (with amount) and low-HP states.
 - **Shield vs. multiple attackers in one frame** (§6) errs toward damage; revisit only if it shows up in play.
 - All §4 numbers are first-pass and unplaytested.
