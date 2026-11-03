@@ -72,8 +72,15 @@ the hardest runs give.
   delivered as soon as the bag frees space (item removed, slot expansion,
   load). No "bag full" toast/sound. The outcome screen adds "Bag full: N
   shards are held and will arrive when you free space".
-- Shards stack to 99 per bag slot like every material, so the 300-shard
-  Ascendant Blade needs 4 slots of shards at once. Open tuning question.
+- Shards stack to 999 per bag slot (`ItemDefinitionResource.stack_cap`,
+  added 2026-11-03; 0 = the normal 99), so the 300-shard Ascendant Blade fits
+  one slot. Shards set `excluded_from_type_costs`: generic "Material N"
+  recipe costs never count or spend them (found live: "Material 732/6" with
+  500 shards held).
+- Gear below its slot type's normal rune count (e.g. Brute boss drops, 0):
+  each purchase up to the normal count costs the first price (40); the +2
+  extras are counted above the normal count. Every piece ends at the same
+  ceiling (normal + 2), so this is kept as the rule (decided 2026-11-03).
 - Extra-slot purchase on an item with imbued runes: allowed; runes kept.
 - Item un-equipped / equipped: slot count is per instance and travels with it.
 - Old saves: no shards, no rims, Ascension cards locked until earned.

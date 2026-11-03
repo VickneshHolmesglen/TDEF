@@ -22,6 +22,10 @@ extends Resource
 @export var item_type: StringName = &""  ## Equipment | TowerComponent | Material | CraftedGood | skill_modifier
 @export var display_name: String = ""
 @export var is_unique_instance: bool = false  ## true = cap 1, stat-rolled; false = cap 99, stackable
+## Per-item stack size for stackable items; 0 = Inventory.STACK_CAP_STACKABLE
+## (99). Added 2026-11-03 for Ascendant Shards (999), whose recipes need
+## 200-300 at once.
+@export var stack_cap: int = 0
 @export var base_stats: Dictionary[StringName, float] = {}  ## only meaningful when is_unique_instance == true
 ## TD-craft-001/TD-defbuild-002 resolution (Sprint 6, S6-06b): rarity tier for
 ## Material-tab items, independent of item_type. Recipe/tech/structure cost

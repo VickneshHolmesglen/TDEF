@@ -41,6 +41,8 @@ func test_ascension_rewards_shard_is_a_material_outside_rarity_costs() -> void:
 	assert_object(shard).is_not_null()
 	assert_str(String(shard.item_type)).is_equal("Material")
 	assert_str(shard.rarity).is_equal("")
+	# Found live 2026-11-03: generic "Material N" recipe costs counted shards.
+	assert_bool(shard.excluded_from_type_costs).is_true()
 
 
 func test_ascension_rewards_ascendant_set_covers_every_slot_at_tier_5() -> void:

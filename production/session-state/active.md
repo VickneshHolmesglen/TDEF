@@ -4250,3 +4250,4 @@ Spawned `engine-programmer`, which proposed a clean 2-line guard (`if payload.ki
 - Bug fixed: full bag silently ate the first-clear bounty. Inventory.stackable_room(); MissionSelect holds/saves held_shards and delivers on item_removed / slot_expansion_completed / load. Outcome line OUTCOME_SHARDS_HELD.
 - Bug fixed: "Worlds Weight"/"Hunters Pace" lost apostrophes. TarotCardResource.display_name() reads TAROT_CARD_<ID> strings, falls back to capitalize().
 - Open: shards stack to 99/slot (Blade needs 300). Items rolled with fewer rune slots than their slot base can be topped up past the +2 cap math (extra = count - base).
+- 2026-11-03: shard stack cap 999 via new ItemDefinitionResource.stack_cap (Inventory.stack_cap_for used by add_stackable, stackable_room and save restore). Live check found generic "Material N" costs counted shards -> ascendant_shard excluded_from_type_costs. Low-slot gear top-up rule kept and documented. 405 + 26 targeted tests green.

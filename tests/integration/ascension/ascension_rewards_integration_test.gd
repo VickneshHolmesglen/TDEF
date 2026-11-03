@@ -95,6 +95,38 @@ func test_ascension_full_bag_holds_shards_then_delivers_them() -> void:
 	assert_int(_mission_select.get_held_shards()).is_equal(0)
 
 
+## Shards stack to 999 (the 300-shard Ascendant Blade fits one slot); other
+## materials keep 99, and a 999-cap stack survives a save round trip.
+func test_ascension_shards_stack_to_999_and_reload() -> void:
+	var shard: ItemDefinitionResource = GGameDataRegistry.get_item_definition(AscensionRewards.SHARD_ITEM_ID)
+	assert_int(Inventory.stack_cap_for(shard)).is_equal(999)
+	assert_int(Inventory.stack_cap_for(GGameDataRegistry.get_item_definition(&"goblin_hide"))).is_equal(Inventory.STACK_CAP_STACKABLE)
+
+	_give_shards(500)
+
+	var used: int = 0
+	for i: int in range(GInventory.get_slot_count()):
+		if String(GInventory.get_slot_contents(i).get("item_id", "")) == String(AscensionRewards.SHARD_ITEM_ID):
+			used += 1
+	assert_int(used).is_equal(1)
+	var restored := Inventory.new()
+	assert_bool(restored.restore_save_data(GInventory.get_save_data())).is_true()
+	assert_int(restored.count_by_material_id(AscensionRewards.SHARD_ITEM_ID)).is_equal(500)
+	restored.free()
+
+
+## Found live 2026-11-03: "Material 732/6" on the recipe list counted 500 shards.
+func test_ascension_generic_material_costs_never_touch_shards() -> void:
+	_give_shards(500)
+	assert_bool(GInventory.has_items({"Material": 1})).is_false()  # shards alone don't pay a "Material" cost
+
+	GInventory.add_stackable(GGameDataRegistry.get_item_definition(&"goblin_hide"), 10)
+	GInventory.consume_by_type("Material", 6)
+
+	assert_int(_shards()).is_equal(500)
+	assert_int(GInventory.count_by_material_id(&"goblin_hide")).is_equal(4)
+
+
 func test_ascension_held_shards_survive_save_round_trip() -> void:
 	_mission_select._held_shards = 17
 	var restored := MissionSelect.new()

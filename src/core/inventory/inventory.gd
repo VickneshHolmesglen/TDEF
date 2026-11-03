@@ -840,13 +840,14 @@ func add_stackable(definition: ItemDefinitionResource, quantity: int) -> int:
 		return quantity
 
 	var remaining: int = quantity
+	var cap: int = stack_cap_for(definition)
 
 	# Fill existing open stacks of the same item_id first.
 	for slot: InventorySlot in _slots:
 		if remaining <= 0:
 			break
 		if slot != null and slot.item_id == definition.item_id and slot.instance_id == -1 and not slot.locked:
-			remaining -= _try_add_to_slot(slot, STACK_CAP_STACKABLE, remaining)
+			remaining -= _try_add_to_slot(slot, cap, remaining)
 
 	# Overflow into new slots.
 	while remaining > 0:
@@ -857,7 +858,7 @@ func add_stackable(definition: ItemDefinitionResource, quantity: int) -> int:
 		new_slot.item_id = definition.item_id
 		new_slot.instance_id = -1
 		_slots[idx] = new_slot
-		remaining -= _try_add_to_slot(new_slot, STACK_CAP_STACKABLE, remaining)
+		remaining -= _try_add_to_slot(new_slot, cap, remaining)
 
 	var placed: int = quantity - remaining
 	if placed > 0:
@@ -1334,13 +1335,25 @@ func _try_add_to_slot(slot: InventorySlot, cap: int, amount: int) -> int:
 func stackable_room(definition: ItemDefinitionResource) -> int:
 	if definition == null or definition.is_unique_instance:
 		return 0
+	var cap: int = stack_cap_for(definition)
 	var room: int = 0
 	for slot: InventorySlot in _slots:
 		if slot == null:
-			room += STACK_CAP_STACKABLE
+			room += cap
 		elif slot.item_id == definition.item_id and slot.instance_id == -1 and not slot.locked:
-			room += maxi(0, STACK_CAP_STACKABLE - slot.quantity)
+			room += maxi(0, cap - slot.quantity)
 	return room
+
+
+## Stack size for a stackable `definition`: its own stack_cap when set,
+## otherwise STACK_CAP_STACKABLE (99).
+##
+## Usage:
+##   var cap: int = Inventory.stack_cap_for(shard_def)  # 999
+static func stack_cap_for(definition: ItemDefinitionResource) -> int:
+	if definition != null and definition.stack_cap > 0:
+		return definition.stack_cap
+	return STACK_CAP_STACKABLE
 
 
 ## First null (empty) index in _slots, or -1 if full.
@@ -1507,7 +1520,7 @@ func restore_save_data(data: Dictionary) -> bool:
 				return false  # duplicate instance_id across restored slots
 			seen_instance_ids[instance_id_val] = true
 		else:
-			if quantity_val > STACK_CAP_STACKABLE:
+			if quantity_val > stack_cap_for(GGameDataRegistry.get_item_definition(StringName(item_id_raw as String))):
 				return false
 
 		var restored_overrides: Dictionary[StringName, float] = {}
