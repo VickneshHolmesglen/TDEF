@@ -1,0 +1,8 @@
+[gd_resource type="Resource" script_class="MissionResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/core/mission_resource.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+mission_id = &"the_coilmarsh"
+objective_text = "The marsh road coils back on itself. The long route gives your towers time, but menders heal the whole way: thin out the healers and let distance do the rest."

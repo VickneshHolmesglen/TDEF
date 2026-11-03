@@ -1,0 +1,119 @@
+[gd_resource type="Resource" script_class="Hd2dSceneryProfile" load_steps=51 format=3]
+
+[ext_resource type="Script" path="res://src/presentation/hd2d/hd2d_scenery_profile.gd" id="1_profile"]
+[ext_resource type="Texture2D" path="res://assets/art/hd2d/foothills_ground.png" id="2_foothills_ground"]
+[ext_resource type="Texture2D" path="res://assets/art/hd2d/foothills_lane.png" id="3_foothills_lane"]
+[ext_resource type="Texture2D" path="res://assets/art/hd2d/foothills_stone.png" id="4_foothills_stone"]
+[ext_resource type="Texture2D" path="res://assets/art/hd2d/foothills_card_grass.png" id="5_foothills_card_grass"]
+[ext_resource type="Texture2D" path="res://assets/art/hd2d/foothills_card_grass_short.png" id="6_foothills_card_grass_short"]
+[ext_resource type="Texture2D" path="res://assets/art/hd2d/card_flowers.png" id="7_card_flowers"]
+[ext_resource type="Texture2D" path="res://assets/art/hd2d/card_bush.png" id="8_card_bush"]
+[ext_resource type="Texture2D" path="res://assets/art/hd2d/foothills_card_leaves.png" id="9_foothills_card_leaves"]
+[ext_resource type="Texture2D" path="res://assets/art/hd2d/card_leaves_gold.png" id="10_card_leaves_gold"]
+[ext_resource type="Texture2D" path="res://assets/art/hd2d/foothills_card_pine.png" id="11_foothills_card_pine"]
+[ext_resource type="Texture2D" path="res://assets/art/hd2d/foothills_mat_rock.png" id="12_foothills_mat_rock"]
+[ext_resource type="Texture2D" path="res://assets/art/hd2d/mat_bark.png" id="13_mat_bark"]
+[ext_resource type="Texture2D" path="res://assets/art/hd2d/mat_wood.png" id="14_mat_wood"]
+[ext_resource type="Texture2D" path="res://assets/art/hd2d/mat_ruin_bricks.png" id="15_mat_ruin_bricks"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/rock_largeA.glb" id="k1_rock_largeA"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/rock_largeB.glb" id="k2_rock_largeB"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/rock_largeC.glb" id="k3_rock_largeC"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/rock_largeD.glb" id="k4_rock_largeD"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/rock_largeE.glb" id="k5_rock_largeE"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/rock_largeF.glb" id="k6_rock_largeF"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/rock_tallA.glb" id="k7_rock_tallA"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/rock_tallB.glb" id="k8_rock_tallB"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/rock_tallC.glb" id="k9_rock_tallC"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/rock_tallD.glb" id="k10_rock_tallD"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/tree_pineTallA_detailed.glb" id="k11_tree_pineTallA_detailed"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/tree_pineTallB_detailed.glb" id="k12_tree_pineTallB_detailed"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/tree_pineRoundA.glb" id="k13_tree_pineRoundA"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/tree_pineRoundC.glb" id="k14_tree_pineRoundC"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/statue_column.glb" id="k15_statue_column"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/statue_columnDamaged.glb" id="k16_statue_columnDamaged"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/statue_block.glb" id="k17_statue_block"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/stump_old.glb" id="k18_stump_old"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/stump_roundDetailed.glb" id="k19_stump_roundDetailed"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/log.glb" id="k20_log"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/log_large.glb" id="k21_log_large"]
+[ext_resource type="Texture2D" path="res://assets/art/hd2d/foothills_kit_rock.png" id="k22_foothills_kit_rock"]
+[ext_resource type="Texture2D" path="res://assets/art/hd2d/foothills_kit_foliage.png" id="k23_foothills_kit_foliage"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/stump_oldTall.glb" id="a39_stump_oldTall"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/mushroom_tan.glb" id="a40_mushroom_tan"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/mushroom_tanTall.glb" id="a41_mushroom_tanTall"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/rock_smallA.glb" id="a42_rock_smallA"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/rock_smallC.glb" id="a43_rock_smallC"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/rock_smallE.glb" id="a44_rock_smallE"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/rock_smallG.glb" id="a45_rock_smallG"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/rock_smallFlatA.glb" id="a46_rock_smallFlatA"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/rock_smallFlatB.glb" id="a47_rock_smallFlatB"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/rock_smallFlatC.glb" id="a48_rock_smallFlatC"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/campfire_stones.glb" id="a49_campfire_stones"]
+[ext_resource type="PackedScene" path="res://assets/art/hd2d/kit/campfire_logs.glb" id="a50_campfire_logs"]
+
+[resource]
+script = ExtResource("1_profile")
+ground_grass = ExtResource("2_foothills_ground")
+ground_dirt = ExtResource("3_foothills_lane")
+ground_stone = ExtResource("4_foothills_stone")
+grass_cards = Array[Texture2D]([ExtResource("5_foothills_card_grass"), ExtResource("5_foothills_card_grass"), ExtResource("6_foothills_card_grass_short")])
+flower_card = ExtResource("7_card_flowers")
+bush_card = ExtResource("8_card_bush")
+lane_edge_cards = Array[Texture2D]([ExtResource("6_foothills_card_grass_short")])
+leaf_cards = Array[Texture2D]([ExtResource("9_foothills_card_leaves"), ExtResource("10_card_leaves_gold")])
+pine_card = ExtResource("11_foothills_card_pine")
+rock = ExtResource("12_foothills_mat_rock")
+bark = ExtResource("13_mat_bark")
+wood = ExtResource("14_mat_wood")
+ruin_bricks = ExtResource("15_mat_ruin_bricks")
+grass_per_cell = 12.0
+grass_inner_factor = 0.45
+grass_height_px = 18.0
+flowers_per_cell = 0.6
+bush_count = 14
+grass_tint = Color(0.78, 0.84, 0.9, 1)
+lane_edge_per_cell = 1.2
+lane_edge_height_px = 22.0
+broadleaf_count = 5
+pine_count = 9
+rock_count = 22
+fence_along_top = false
+ruin_tint = Color(1, 0.94, 0.84, 1)
+spire_count = 6
+spire_height_px = Vector2(50, 110)
+sun_color = Color(0.85, 0.9, 1, 1)
+sun_energy = 1.15
+ambient_color = Color(0.38, 0.42, 0.5, 1)
+ambient_energy = 0.5
+exposure = 0.86
+saturation = 0.85
+contrast = 1.12
+background_color = Color(0.3, 0.26, 0.16, 1)
+rng_seed = 727
+unit_tint = Color(0.94, 0.97, 1, 1)
+kit_rocks = Array[PackedScene]([ExtResource("k1_rock_largeA"), ExtResource("k2_rock_largeB"), ExtResource("k3_rock_largeC"), ExtResource("k4_rock_largeD"), ExtResource("k5_rock_largeE"), ExtResource("k6_rock_largeF")])
+kit_spires = Array[PackedScene]([ExtResource("k7_rock_tallA"), ExtResource("k8_rock_tallB"), ExtResource("k9_rock_tallC"), ExtResource("k10_rock_tallD")])
+kit_pines = Array[PackedScene]([ExtResource("k11_tree_pineTallA_detailed"), ExtResource("k12_tree_pineTallB_detailed"), ExtResource("k13_tree_pineRoundA"), ExtResource("k14_tree_pineRoundC")])
+kit_columns = Array[PackedScene]([ExtResource("k15_statue_column"), ExtResource("k16_statue_columnDamaged"), ExtResource("k16_statue_columnDamaged")])
+kit_rubble = Array[PackedScene]([ExtResource("k17_statue_block")])
+kit_debris = Array[PackedScene]([ExtResource("k18_stump_old"), ExtResource("k19_stump_roundDetailed"), ExtResource("k20_log"), ExtResource("k21_log_large"), ExtResource("a39_stump_oldTall"), ExtResource("a40_mushroom_tan"), ExtResource("a41_mushroom_tanTall")])
+debris_field_share = 0.45
+field_debris_max_px = 24.0
+mote_size_px = 3.5
+debris_count = 22
+kit_rock_texture = ExtResource("k22_foothills_kit_rock")
+kit_rubble_texture = ExtResource("k22_foothills_kit_rock")
+kit_foliage = ExtResource("k23_foothills_kit_foliage")
+kit_bank_debris = Array[PackedScene]([ExtResource("a42_rock_smallA"), ExtResource("a43_rock_smallC"), ExtResource("a44_rock_smallE"), ExtResource("a45_rock_smallG"), ExtResource("a46_rock_smallFlatA"), ExtResource("a47_rock_smallFlatB"), ExtResource("a48_rock_smallFlatC")])
+bank_debris_per_cell = 1.0
+kit_campfire = Array[PackedScene]([ExtResource("a49_campfire_stones"), ExtResource("a50_campfire_logs")])
+campfires = 2
+cloud_shadow_strength = 0.34
+cloud_shadow_speed_px = 12.0
+motes_amount = 100
+mote_color = Color(0.7, 0.85, 1, 0.9)
+haze_strength = 0.14
+haze_color = Color(0.2, 0.24, 0.32, 1)
+bloom = 0.3
+tilt_shift = 0.06
+foliage_tint = Color(0.7, 0.78, 0.88, 1)

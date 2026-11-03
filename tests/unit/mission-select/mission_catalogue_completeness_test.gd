@@ -16,12 +16,14 @@ extends GdUnitTestSuite
 const REAL_MISSION_IDS: Array[String] = [
 	"the_gap", "the_foothills", "the_hollow", "the_narrows",
 	"the_ashfields", "the_mirefen", "the_broodwarrens", "the_duskwood",  # 2026-11-02 campaign expansion
+	"the_twinpass", "the_coilmarsh", "the_shardplain", "the_riftgate",  # 2026-11-03: 12 maps
 ]
 
 
 func test_mission_catalogue_has_between_8_and_12_entries() -> void:
 	var entries: Dictionary[String, MissionEntry] = GGameDataRegistry.get_all_mission_entries()
 	assert_int(entries.size()).is_between(8, 12)  # campaign + endgame pacing needs 8-12 maps
+	assert_int(entries.size()).is_equal(REAL_MISSION_IDS.size())
 
 
 func test_every_real_mission_id_resolves_to_a_valid_entry() -> void:
@@ -72,3 +74,38 @@ func test_every_real_mission_has_a_unique_campaign_order() -> void:
 		assert_int(entry.campaign_order).is_greater(0)
 		assert_bool(seen.has(entry.campaign_order)).is_false()
 		seen[entry.campaign_order] = true
+
+
+## 2026-11-03 (player request: "each map autogenerates a new pathway each
+## time"). What actually plays is MapGenerator's output for the entry's
+## settings, so check that, per map: the right number of entrances, every
+## entrance follows the lane to the goal, and two launches differ.
+func test_every_real_mission_generates_a_fresh_valid_layout_each_launch() -> void:
+	for mission_id: String in REAL_MISSION_IDS:
+		var entry: MissionEntry = GGameDataRegistry.get_mission_entry(mission_id)
+		var a: GridConfig = MapGenerator.generate(entry.grid_config.cols, entry.grid_config.rows, entry.grid_config.cell_size,
+				null, entry.spawn_count, entry.path_winding)
+		var b: GridConfig = MapGenerator.generate(entry.grid_config.cols, entry.grid_config.rows, entry.grid_config.cell_size,
+				null, entry.spawn_count, entry.path_winding)
+		var grid := Grid.new()
+		grid.initialize(a)
+		assert_array(grid.get_spawn_cells()).override_failure_message("%s entrances" % mission_id).has_size(entry.spawn_count)
+		assert_bool(grid.get_goal_cells().is_empty()).is_false()
+		grid.free()
+		# Unseeded twice: identical layouts would mean the map is not regenerated.
+		var same: bool = a.cells == b.cells
+		if same:  # astronomically unlikely; one more draw rules out a fluke
+			same = a.cells == MapGenerator.generate(entry.grid_config.cols, entry.grid_config.rows, entry.grid_config.cell_size,
+					null, entry.spawn_count, entry.path_winding).cells
+		assert_bool(same).override_failure_message("%s produced the same layout twice" % mission_id).is_false()
+
+
+func test_new_maps_have_their_own_path_character() -> void:
+	var expected: Dictionary = {
+		"the_twinpass": [2, 0.5], "the_coilmarsh": [1, 1.0], "the_shardplain": [2, 0.15], "the_riftgate": [2, 0.7],
+	}
+	for mission_id: String in expected:
+		var entry: MissionEntry = GGameDataRegistry.get_mission_entry(mission_id)
+		assert_int(entry.spawn_count).is_equal(expected[mission_id][0])
+		assert_float(entry.path_winding).is_equal_approx(expected[mission_id][1], 0.0001)
+

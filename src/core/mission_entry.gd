@@ -36,6 +36,12 @@ extends Resource
 ## order, ties broken by mission_id. 0 = unordered (sorts last). Added
 ## 2026-11-02 when the catalogue grew from 4 to 8 missions.
 @export var campaign_order: int = 0
+## Generated-path character (2026-11-03): every launch builds a new layout
+## with MapGenerator; these shape it. spawn_count 1 or 2 (a second entrance
+## whose lane merges into the main one); path_winding 0 (nearly straight) to
+## 1 (coils freely), 0.5 = the original generator.
+@export var spawn_count: int = 1
+@export var path_winding: float = MapGenerator.DEFAULT_WINDING
 ## design/gdd/mission-select.md "Mission list presentation": "a small flat
 ## environment-motif icon (silhouette-level, not a diorama render)" shown per
 ## card. Optional at load time (null renders as no icon, not an error) since
@@ -76,6 +82,10 @@ func validate() -> Array[String]:
 		errors.append("wave_config_path must not be empty")
 	if base_wave_count <= 0:
 		errors.append("base_wave_count must be > 0 (got %d)" % base_wave_count)
+	if spawn_count < 1 or spawn_count > MapGenerator.MAX_SPAWNS:
+		errors.append("spawn_count must be in [1,%d] (got %d)" % [MapGenerator.MAX_SPAWNS, spawn_count])
+	if path_winding < 0.0 or path_winding > 1.0:
+		errors.append("path_winding must be in [0,1] (got %f)" % path_winding)
 	if recommended_difficulty_tier < 1 or recommended_difficulty_tier > 3:
 		errors.append("recommended_difficulty_tier must be in [1,3] (got %d)" % recommended_difficulty_tier)
 	return errors

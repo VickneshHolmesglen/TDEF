@@ -257,7 +257,12 @@ func test_mission_launched_resets_all_seven_state_fields_from_defeat() -> void:
 	assert_bool(_wm._all_spawns_fired).is_false()
 	assert_bool(_wm._phase_locked).is_false()
 	assert_bool(_wm._wave_clear_fired).is_false()
-	assert_bool(_wm._templates_ready).is_false()
+	# Entering SCOUT makes the global pathfinding rebuild from the global grid
+	# and signal templates_ready at once, so the stale `true` is cleared and
+	# then legitimately set again when (and only when) that grid can build
+	# templates. Asserting a bare `false` depended on which suite ran before
+	# (it failed after the mission-select suites left a launched grid behind).
+	assert_bool(_wm._templates_ready).is_equal(GPathfindingSystem.is_templates_ready())
 	assert_int(_wm._phase).is_equal(WaveManager.Phase.SCOUT)
 
 

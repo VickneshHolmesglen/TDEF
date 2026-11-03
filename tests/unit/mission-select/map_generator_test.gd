@@ -217,3 +217,90 @@ func test_path_cells_exactly_match_the_computed_route() -> void:
 		pathfinding.queue_free()
 		grid.queue_free()
 		event_bus.queue_free()
+
+
+# ---------------------------------------------------------------------------
+# Per-map path character (2026-11-03): spawn_count, path_winding
+# ---------------------------------------------------------------------------
+
+## BFS over lane cells only (PATH/SPAWN/GOAL): proves monsters can follow the
+## painted lane, not just cross open ground.
+func _lane_reaches(cells: Dictionary, from: Vector2i, to: Vector2i) -> bool:
+	var lane_types: Array[int] = [Grid.CellType.PATH, Grid.CellType.SPAWN, Grid.CellType.GOAL]
+	var visited: Dictionary[Vector2i, bool] = {from: true}
+	var queue: Array[Vector2i] = [from]
+	while not queue.is_empty():
+		var current: Vector2i = queue.pop_front()
+		if current == to:
+			return true
+		for offset: Vector2i in [Vector2i.UP, Vector2i.DOWN, Vector2i.LEFT, Vector2i.RIGHT]:
+			var next: Vector2i = current + offset
+			if visited.has(next) or not lane_types.has(cells.get(next, Grid.CellType.BLOCKED) as int):
+				continue
+			visited[next] = true
+			queue.append(next)
+	return false
+
+
+func _cells_of(config: GridConfig, type: int) -> Array[Vector2i]:
+	var out: Array[Vector2i] = []
+	for cell: Vector2i in config.cells:
+		if (config.cells[cell] as int) == type:
+			out.append(cell)
+	return out
+
+
+func test_forward_weight_default_matches_the_original_generator() -> void:
+	assert_float(MapGenerator.forward_weight(MapGenerator.DEFAULT_WINDING)).is_equal(3.0)
+	assert_float(MapGenerator.forward_weight(1.0)).is_less(MapGenerator.forward_weight(0.0))
+
+
+func test_two_spawns_both_follow_the_lane_to_the_goal_on_100_seeds() -> void:
+	for seed_value: int in range(100):
+		var config: GridConfig = MapGenerator.generate(COLS, ROWS, CELL_SIZE, _seeded_rng(5000 + seed_value), 2)
+		var spawns: Array[Vector2i] = _cells_of(config, Grid.CellType.SPAWN)
+		var goal: Vector2i = _cells_of(config, Grid.CellType.GOAL)[0]
+		assert_int(spawns.size()).override_failure_message("seed %d spawns" % (5000 + seed_value)).is_equal(2)
+		for spawn: Vector2i in spawns:
+			assert_bool(_lane_reaches(config.cells, spawn, goal)) \
+					.override_failure_message("seed %d: spawn %s lane never reaches the goal" % [5000 + seed_value, spawn]) \
+					.is_true()
+
+
+func test_second_entrance_is_on_the_top_or_bottom_edge() -> void:
+	for seed_value: int in range(20):
+		var config: GridConfig = MapGenerator.generate(COLS, ROWS, CELL_SIZE, _seeded_rng(7000 + seed_value), 2)
+		var edge_spawns: int = 0
+		for spawn: Vector2i in _cells_of(config, Grid.CellType.SPAWN):
+			if spawn.y == 0 or spawn.y == ROWS - 1:
+				edge_spawns += 1
+		assert_int(edge_spawns).is_equal(1)
+
+
+func test_higher_winding_makes_longer_lanes_on_average() -> void:
+	var straight: int = 0
+	var coiled: int = 0
+	for seed_value: int in range(40):
+		straight += _cells_of(MapGenerator.generate(COLS, ROWS, CELL_SIZE, _seeded_rng(9000 + seed_value), 1, 0.1), Grid.CellType.PATH).size()
+		coiled += _cells_of(MapGenerator.generate(COLS, ROWS, CELL_SIZE, _seeded_rng(9000 + seed_value), 1, 0.9), Grid.CellType.PATH).size()
+	assert_int(coiled).is_greater(straight)
+
+
+func test_winding_maps_still_follow_the_lane_on_100_seeds() -> void:
+	for seed_value: int in range(100):
+		var config: GridConfig = MapGenerator.generate(COLS, ROWS, CELL_SIZE, _seeded_rng(11000 + seed_value), 1, 0.9)
+		var spawn: Vector2i = _cells_of(config, Grid.CellType.SPAWN)[0]
+		var goal: Vector2i = _cells_of(config, Grid.CellType.GOAL)[0]
+		assert_bool(_lane_reaches(config.cells, spawn, goal)).is_true()
+
+
+## Live check 2026-11-03 (The Rift Gate): the second lane merged two cells
+## from its entrance, beside the first one. It now joins the main lane's later
+## two thirds, so on average it is a real lane.
+func test_second_lane_is_a_real_lane_on_average() -> void:
+	var second_lane_cells: int = 0
+	for seed_value: int in range(100):
+		var single: GridConfig = MapGenerator.generate(COLS, ROWS, CELL_SIZE, _seeded_rng(13000 + seed_value), 1)
+		var double: GridConfig = MapGenerator.generate(COLS, ROWS, CELL_SIZE, _seeded_rng(13000 + seed_value), 2)
+		second_lane_cells += _cells_of(double, Grid.CellType.PATH).size() - _cells_of(single, Grid.CellType.PATH).size()
+	assert_float(second_lane_cells / 100.0).is_greater(4.0)

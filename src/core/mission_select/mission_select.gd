@@ -429,7 +429,9 @@ func confirm_launch() -> void:
 	# current_mission() below intentionally reuses this same generated
 	# instance rather than regenerating, so a retry keeps the map you were
 	# just playing.
-	_runtime_grid_config = MapGenerator.generate(entry.grid_config.cols, entry.grid_config.rows, entry.grid_config.cell_size) if entry != null else null
+	# A brand-new layout every launch (retry reuses this one), shaped per map.
+	_runtime_grid_config = MapGenerator.generate(entry.grid_config.cols, entry.grid_config.rows, entry.grid_config.cell_size,
+			null, entry.spawn_count, entry.path_winding) if entry != null else null
 	_runtime_difficulty_tier = difficulty_tier
 	_runtime_modifiers = modifiers
 	_runtime_launch_timestamp = Time.get_unix_time_from_system()
