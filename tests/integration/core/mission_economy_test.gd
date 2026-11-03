@@ -32,7 +32,12 @@
 extends GdUnitTestSuite
 
 
+## mission_launched below would make GSceneManager load a real scene (orphans).
+var _guard: SceneTransitionGuard
+
+
 func before_test() -> void:
+	_guard = SceneTransitionGuard.new(get_tree())
 	# TD-test-004: broadcasting the real grid_initialized signal here (as
 	# before_test/after_test setup/teardown boilerplate, not as the thing
 	# under test) is safe to repeat across many gdUnit4 test-case boundaries
@@ -49,6 +54,7 @@ func before_test() -> void:
 
 func after_test() -> void:
 	GMissionEconomy._on_grid_initialized(0, 0, 0.0)
+	await _guard.release()
 
 
 # ---------------------------------------------------------------------------

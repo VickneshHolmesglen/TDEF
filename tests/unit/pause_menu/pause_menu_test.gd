@@ -9,18 +9,18 @@
 extends GdUnitTestSuite
 
 const PAUSE_MENU_SCENE: PackedScene = preload("res://src/gameplay/ui/pause_menu/pause_menu.tscn")
-const STUB_SCENE_PATH: String = "res://tests/fixtures/scene_manager/StubScene.tscn"
 
 var _pause_menu: CanvasLayer
 var _spy: EventBusSpy
-var _original_mission_path: String
-var _original_sanctuary_path: String
+
+
+var _guard: SceneTransitionGuard
 
 
 func before_test() -> void:
-	_original_mission_path = GSceneManager._mission_scene_path
-	_original_sanctuary_path = GSceneManager._sanctuary_scene_path
-	GSceneManager._inject(STUB_SCENE_PATH, STUB_SCENE_PATH)
+	# Quit to Sanctuary really changes scene: the guard stubs it and frees the
+	# loaded stub afterwards (it leaked as orphans before, 2026-11-03).
+	_guard = SceneTransitionGuard.new(get_tree())
 
 	_pause_menu = PAUSE_MENU_SCENE.instantiate()
 	add_child(_pause_menu)
@@ -36,8 +36,7 @@ func after_test() -> void:
 	_spy = null
 	_pause_menu.queue_free()
 	_pause_menu = null
-	GSceneManager._inject(_original_mission_path, _original_sanctuary_path)
-	GSceneManager._transition_in_progress = false
+	await _guard.release()
 
 # ---------------------------------------------------------------------------
 # Initial state

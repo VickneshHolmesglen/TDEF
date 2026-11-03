@@ -423,7 +423,11 @@ func test_tier_multipliers_are_1_13_17() -> void:
 	assert_float(DifficultyRewards.multiplier_for_tier(2)).is_equal(1.3)
 	assert_float(DifficultyRewards.multiplier_for_tier(3)).is_equal(1.7)
 	assert_float(DifficultyRewards.multiplier_for_tier(0)).is_equal(1.0)
-	assert_float(DifficultyRewards.multiplier_for_tier(9)).is_equal(1.7)
+	# Since Ascension (2026-11-03): tiers above Brutal are ranks, x1.12 each,
+	# and the clamp is at MAX_TIER, not Brutal.
+	assert_float(DifficultyRewards.multiplier_for_tier(9)).is_equal_approx(1.7 * pow(1.12, 6), 0.0001)
+	assert_float(DifficultyRewards.multiplier_for_tier(DifficultyRewards.MAX_TIER + 5)).is_equal(
+			DifficultyRewards.multiplier_for_tier(DifficultyRewards.MAX_TIER))
 
 
 func test_reward_multiplier_scales_xp_grants() -> void:

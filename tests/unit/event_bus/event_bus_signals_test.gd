@@ -157,7 +157,9 @@ func test_bus_has_all_70_signals_declared() -> void:
 	# Act: retrieve signal list via get_signal_list().
 	var signal_list: Array = _bus.get_signal_list()
 	# Subtract Node's built-in signals (robust to Godot version changes).
-	var node_signal_count: int = Node.new().get_signal_list().size()
+	var probe := Node.new()
+	var node_signal_count: int = probe.get_signal_list().size()
+	probe.free()
 	var game_signal_count: int = signal_list.size() - node_signal_count
 	# Assert: live catalogue has 80 signals (70 original + 6 added during sprint 1
 	# UX/system design + 2 added by S4-01: scene_transition_started/completed +

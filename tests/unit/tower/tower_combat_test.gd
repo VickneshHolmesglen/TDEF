@@ -151,6 +151,10 @@ func before_test() -> void:
 func after_test() -> void:
 	_spy.disconnect_all()
 	_spy = null
+	# The stub projectile manager is a Node that is never added to the tree:
+	# free it too, or every test leaks one orphan (2026-11-03 sweep).
+	if _ts._projectile_manager != null and is_instance_valid(_ts._projectile_manager) and _ts._projectile_manager.get_parent() == null:
+		_ts._projectile_manager.free()
 	_ts.free()  # TD-tower-002 fix: _ts is a Node, never added to the tree — .free() (not queue_free()) frees it immediately, closing the orphan-node gap
 	_ts = null
 	GMissionEconomy._on_grid_initialized(0, 0, 0.0)  # reset GMissionEconomy for next suite (TD-test-004: direct call, not broadcast)

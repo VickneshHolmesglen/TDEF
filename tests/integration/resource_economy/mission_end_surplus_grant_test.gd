@@ -16,7 +16,12 @@ var _ts: TowerSystem
 var _spy: EventBusSpy
 
 
+## Phase emits below would make GSceneManager load a real scene (orphans).
+var _guard: SceneTransitionGuard
+
+
 func before_test() -> void:
+	_guard = SceneTransitionGuard.new(get_tree())
 	_re = ResourceEconomy.new()
 	_ts = TowerSystem.new()
 	add_child(_re)
@@ -36,6 +41,7 @@ func after_test() -> void:
 		remove_child(_ts)
 		_ts.free()
 	_ts = null
+	await _guard.release()
 
 
 func _make_state(tier: int, archetype: String) -> TowerMissionState:

@@ -52,13 +52,19 @@ var _sp: _SavePersistenceStub
 var _restore_call_order: Array = []
 
 
+## Phase emits below would make GSceneManager load a real scene (orphans).
+var _guard: SceneTransitionGuard
+
+
 func before_test() -> void:
+	_guard = SceneTransitionGuard.new(get_tree())
 	_sp = _SavePersistenceStub.new()
 	_restore_call_order = []
 
 
 func after_test() -> void:
 	_sp.free()
+	await _guard.release()
 
 
 # ---------------------------------------------------------------------------

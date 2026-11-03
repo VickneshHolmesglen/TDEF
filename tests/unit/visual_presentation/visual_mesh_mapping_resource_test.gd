@@ -48,6 +48,8 @@ var _registry: GameDataRegistry
 ## GameDataRegistry's does-not-abort load policy means unrelated valid
 ## production data never interferes with this suite's assertions.
 func _inject_registry(visual_mesh_mappings_dir: String) -> void:
+	if _registry != null and is_instance_valid(_registry) and not _registry.is_inside_tree():
+		_registry.free()  # a test that injects twice would otherwise leak the first (orphan sweep 2026-11-03)
 	_registry = GameDataRegistry.new()
 	_registry._inject(VALID_MONSTERS_DIR, VALID_PERK_REGISTRY_PATH, EMPTY_TOWER_BLUEPRINTS_DIR, EMPTY_MISSIONS_DIR, EMPTY_SKILLS_DIR, VALID_COMBO_TABLE_PATH, EMPTY_DROP_TABLES_DIR)
 	_registry._visual_mesh_mappings_dir = visual_mesh_mappings_dir

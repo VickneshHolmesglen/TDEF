@@ -10,7 +10,12 @@ var _wm: WaveManager
 var _spy: EventBusSpy
 
 
+## Phase emits below would make GSceneManager load a real scene (orphans).
+var _guard: SceneTransitionGuard
+
+
 func before_test() -> void:
+	_guard = SceneTransitionGuard.new(get_tree())
 	_wm = WaveManager.new()
 	add_child(_wm)  # triggers _ready() — creates timers, subscribes to EventBus
 
@@ -28,6 +33,7 @@ func after_test() -> void:
 	_spy = null
 	remove_child(_wm)
 	_wm.free()
+	await _guard.release()
 
 # ---------------------------------------------------------------------------
 # AC-7: hero_died -> DEFEAT from any of SCOUT / PRE_WAVE / INTERMISSION /

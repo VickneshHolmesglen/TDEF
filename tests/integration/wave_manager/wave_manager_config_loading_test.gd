@@ -72,7 +72,12 @@ var _spy: EventBusSpy
 var _stub_grid: _StubGrid
 
 
+## Phase emits below would make GSceneManager load a real scene (orphans).
+var _guard: SceneTransitionGuard
+
+
 func before_test() -> void:
+	_guard = SceneTransitionGuard.new(get_tree())
 	# Flush any deferred GEventBus emit still in flight from an earlier test
 	# (ADR-0001 Rule 2 deferred-dispatch convention, event_bus.gd) BEFORE
 	# connecting a fresh WaveManager below -- otherwise a stale queued
@@ -103,6 +108,7 @@ func after_test() -> void:
 	_spy = null
 	remove_child(_wm)
 	_wm.free()
+	await _guard.release()
 
 # ---------------------------------------------------------------------------
 # AC-1: mission_launched -> IDLE => SCOUT, 60s timer running, same-frame
