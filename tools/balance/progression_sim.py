@@ -15,6 +15,15 @@ It reads the game's own data, so it stays in sync with every edit:
   building_upgrades/                    sanctuary costs (the sinks)
   src/core/hero/hero.gd                 XP constants and the level curve
   src/core/resource_economy/resource_economy.gd   surplus constants
+  src/core/difficulty_rewards.gd        tier reward multipliers, Ascension growth
+  src/core/ascension_rewards.gd         Ascendant Shard income
+  src/core/inventory/inventory.gd, slot_expansion_cost_table.gd   bag size
+
+Endgame (--ascend-after N): from mission N+1 each visit to a map climbs one
+Ascension rank on it, as far as the hero's modelled power supports (the
+"Rank to match" column), earning Ascendant Shards and the higher reward
+multiplier. Bag: income that doesn't fit the bag is lost (shards are held,
+as in the game); bag expansions are bought like any other purchase.
 
 The model is expected value (no RNG): a 45% drop of 2 hide counts as 0.9
 hide. That's right for averages across many missions; single runs vary.
@@ -28,6 +37,7 @@ Usage (repo root):
   python tools/balance/progression_sim.py
   python tools/balance/progression_sim.py --missions 60 --xp-growth 1.08 --level-cap 30
   python tools/balance/progression_sim.py --difficulty 3 --tier-reward 1,1.3,1.7
+  python tools/balance/progression_sim.py --missions 120 --ascend-after 40
   python tools/balance/progression_sim.py --out production/balance/progression-baseline.md
 """
 from __future__ import annotations
@@ -253,6 +263,64 @@ def load_items() -> tuple[dict[str, str], dict[str, str]]:
     return rarity, kind
 
 
+def load_item_flags() -> tuple[set[str], dict[str, int]]:
+    """(items kept out of item_type costs, item_id -> own stack cap)."""
+    excluded, caps = set(), {}
+    for f in (DATA / "items").glob("*.tres"):
+        res, _ = parse_tres(f)
+        iid = s_val(res.get("item_id"))
+        if s_val(res.get("excluded_from_type_costs")) == "true":
+            excluded.add(iid)
+        cap = int(n_val(res.get("stack_cap")))
+        if cap > 0:
+            caps[iid] = cap
+    return excluded, caps
+
+
+@dataclass
+class BagRules:
+    start_slots: int = 18
+    stack_cap: int = 99
+    expansions: list = field(default_factory=list)  # [(slots_after, {rarity: qty})]
+
+
+def load_bag_rules() -> BagRules:
+    inv = (ROOT / "src/core/inventory/inventory.gd").read_text(encoding="utf-8")
+    table = (ROOT / "src/core/inventory/slot_expansion_cost_table.gd").read_text(encoding="utf-8")
+    b = BagRules(gd_const(inv, "STARTING_SLOT_COUNT", 18), gd_const(inv, "STACK_CAP_STACKABLE", 99))
+    for m in re.finditer(r'(\d+):\s*\{KEY_SLOTS_AFTER:\s*(\d+),\s*KEY_COMMON:\s*(\d+),\s*'
+                         r'KEY_UNCOMMON:\s*(\d+),\s*KEY_RARE:\s*(\d+)\}', table):
+        cost = {k: float(v) for k, v in zip(RARITIES, m.group(3, 4, 5)) if int(v) > 0}
+        b.expansions.append((int(m.group(2)), cost))
+    if not b.expansions:
+        print("warning: SlotExpansionCostTable rows not found, bag never grows", file=sys.stderr)
+    return b
+
+
+class Bag:
+    """Slot-limited stacks. add() returns what didn't fit."""
+
+    def __init__(self, slots: int, default_cap: int, caps: dict[str, int]):
+        self.slots = slots
+        self.default_cap = default_cap
+        self.caps = caps
+
+    def cap(self, item: str) -> int:
+        return self.caps.get(item, self.default_cap)
+
+    def used(self, inv: dict[str, float]) -> int:
+        return sum(math.ceil(q / self.cap(i) - 1e-9) for i, q in inv.items() if q > 1e-9)
+
+    def add(self, inv: dict[str, float], item: str, qty: float) -> float:
+        cap = self.cap(item)
+        have = inv.get(item, 0.0)
+        open_in_stacks = math.ceil(have / cap - 1e-9) * cap - have if have > 1e-9 else 0.0
+        room = open_in_stacks + max(0, self.slots - self.used(inv)) * cap
+        put = min(qty, room)
+        inv[item] = have + put
+        return qty - put
+
+
 def load_gear_stats() -> dict[str, tuple[str, float]]:
     """Equipment item_id -> (equipment_category, physical_attack)."""
     out = {}
@@ -276,6 +344,21 @@ class PowerRules:
     max_ascension: int = 10
     asc_hp_growth: float = 1.15
     asc_reward_growth: float = 1.12
+
+
+def load_shard_rules() -> tuple[int, int]:
+    """(first-clear shards per rank, every-win shards per rank) from AscensionRewards."""
+    src = (ROOT / "src/core/ascension_rewards.gd").read_text(encoding="utf-8")
+    return gd_const(src, "FIRST_CLEAR_SHARDS_PER_RANK", 10), gd_const(src, "RUN_SHARDS_PER_RANK", 2)
+
+
+def supported_rank(attack: float, start_attack: float, pr: "PowerRules") -> int:
+    """Highest Ascension rank whose enemy HP growth the hero's attack growth covers."""
+    ratio = attack / start_attack
+    brutal_hp = 1.0 + pr.hp_tier_rate * (pr.brutal_tier - 1)
+    if ratio <= brutal_hp:
+        return 0
+    return min(pr.max_ascension, int(math.floor(math.log(ratio / brutal_hp) / math.log(pr.asc_hp_growth))))
 
 
 def load_power_rules() -> PowerRules:
@@ -341,11 +424,19 @@ class Assumptions:
     menagerie_bonus: float
     win_rate: float
     drop_mult: float = 1.0
+    asc_reward_growth: float = 1.12
 
 
-def mission_yield(m: Mission, a: Assumptions, rules: Rules, monsters: dict, tables: dict) -> dict:
-    """Expected XP and materials for one attempt at mission `m`."""
-    mult = a.tier_reward[a.difficulty - 1]
+def tier_multiplier(tier: int, a: Assumptions) -> float:
+    """DifficultyRewards.multiplier_for_tier: base for tiers 1-3, x growth per Ascension rank."""
+    base = a.tier_reward[min(tier, 3) - 1]
+    return base * a.asc_reward_growth ** max(0, tier - 3)
+
+
+def mission_yield(m: Mission, a: Assumptions, rules: Rules, monsters: dict, tables: dict,
+                  tier: int | None = None) -> dict:
+    """Expected XP and materials for one attempt at mission `m` (at `tier`, default a.difficulty)."""
+    mult = tier_multiplier(tier or a.difficulty, a)
     mats: dict[str, float] = defaultdict(float)
     kills = defaultdict(int)
     xp = 0.0
@@ -404,16 +495,17 @@ class Pools:
     specific item id -- the three axes Inventory checks (has_items_by_rarity,
     has_items, has_items_by_material_id)."""
 
-    def __init__(self, rarity: dict[str, str], item_type: dict[str, str]):
+    def __init__(self, rarity: dict[str, str], item_type: dict[str, str], excluded: set[str] | None = None):
         self.rarity = rarity
         self.item_type = item_type
         self.types = set(item_type.values())
+        self.excluded = excluded or set()  # excluded_from_type_costs (lures, shards)
 
     def members(self, key: str, inv: dict[str, float]) -> list[str] | None:
         if key in RARITIES:
             return [i for i in inv if self.rarity.get(i) == key]
         if key in self.types:
-            return [i for i in inv if self.item_type.get(i) == key]
+            return [i for i in inv if self.item_type.get(i) == key and i not in self.excluded]
         return None
 
     def can_afford(self, cost: dict, inv: dict[str, float]) -> bool:
@@ -463,12 +555,22 @@ def run(args) -> str:
     monsters = load_monsters()
     tables = load_drop_tables()
     rarity, item_type = load_items()
-    pools = Pools(rarity, item_type)
+    excluded, stack_caps = load_item_flags()
+    pools = Pools(rarity, item_type, excluded)
     purchases = load_purchases()
+    bag_rules = load_bag_rules()
+    if not args.no_bag:
+        prev = ""
+        for i, (slots_after, cost) in enumerate(bag_rules.expansions, 1):
+            purchases.append(Purchase(f"bag_expansion_{i}", "bag", cost, prev, also_needs=f"-> {slots_after} slots"))
+            prev = f"bag_expansion_{i}"
+    pr = load_power_rules()
+    first_clear_per_rank, run_per_rank = load_shard_rules()
     tier_reward = ([float(x) for x in args.tier_reward.split(",")] if args.tier_reward
                    else load_tier_multipliers())
     a = Assumptions(args.hero_inner, args.hero_outer, args.towers, args.foundation_tier, args.archetype,
-                    args.difficulty, tier_reward, args.menagerie_bonus, args.win_rate, args.drop_mult)
+                    args.difficulty, tier_reward, args.menagerie_bonus, args.win_rate, args.drop_mult,
+                    pr.asc_reward_growth)
     plan = [p.strip() for p in args.plan.split(",")] if args.plan else list(missions)
     for p in plan:
         if p not in missions:
@@ -488,7 +590,19 @@ def run(args) -> str:
              f"({'game values' if not args.tier_reward else 'WHAT-IF'})")
     L.append(f"- Menagerie quality bonus x{a.menagerie_bonus}, win rate {a.win_rate:.0%}, no tarot"
              + (f", kill drops x{a.drop_mult} (WHAT-IF)" if a.drop_mult != 1.0 else ""))
-    L.append(f"- Plan (cycled): {' -> '.join(plan)}\n")
+    L.append(f"- Plan (cycled): {' -> '.join(plan)}")
+    if args.ascend_after:
+        L.append(f"- Endgame from mission {args.ascend_after + 1}: each map visit climbs one Ascension rank, up to "
+                 f"the rank the hero's power supports (max {pr.max_ascension}); shards {first_clear_per_rank} x rank "
+                 f"first clear + {run_per_rank} x rank every win (`--ascend-after`)")
+    else:
+        L.append("- No Ascension climb (`--ascend-after N` to model the endgame)")
+    L.append(f"- Bag: {bag_rules.start_slots} slots, stacks of {bag_rules.stack_cap}"
+             + (f" ({', '.join(f'{k} {v}' for k, v in sorted(stack_caps.items()))})" if stack_caps else "")
+             + "; overflow lost, shards held; equipment assumed worn, crafted goods used"
+             + ("; WHAT-IF unused stacks discarded" if args.discard else "; no discard (as in the game)")
+             if not args.no_bag else "- Bag: unlimited (`--no-bag`)")
+    L.append("")
 
     L.append("## One run of each mission\n")
     L.append("| Mission | Waves | Kills S/E/B | XP | Common | Uncommon | Rare | Surplus each | Lures |")
@@ -514,12 +628,51 @@ def run(args) -> str:
     timeline = []
     gear_stats = load_gear_stats()
     gear_attack_at: dict[int, float] = {}
+    bag = Bag(bag_rules.start_slots, bag_rules.stack_cap, stack_caps)
+    lost: dict[str, float] = defaultdict(float)
+    discarded: dict[str, float] = defaultdict(float)
+    lost_at: dict[int, float] = {}
+    bag_at: dict[int, tuple[int, int]] = {}
+    held_shards = 0.0
+    best_rank: dict[str, int] = defaultdict(int)
+    rank_at: dict[int, int] = {}
+    shards_at: dict[int, float] = {}
+    yield_cache: dict[tuple[str, int], dict] = {}
+    start_attack = pr.base_attack  # set after mission 1, as the power table defines it
+    attack_now = start_attack
     for n in range(1, args.missions + 1):
-        y = yields[plan[(n - 1) % len(plan)]]
+        mid = plan[(n - 1) % len(plan)]
+        tier = args.difficulty
+        shards = 0.0
+        if args.ascend_after and n > args.ascend_after:
+            rank = min(best_rank[mid] + 1, supported_rank(attack_now, start_attack, pr))
+            if rank >= 1:
+                tier = pr.brutal_tier + rank
+                shards = run_per_rank * rank + (first_clear_per_rank * rank if rank > best_rank[mid] else 0)
+                best_rank[mid] = max(best_rank[mid], rank)
+        if (mid, tier) not in yield_cache:
+            yield_cache[(mid, tier)] = mission_yield(missions[mid], a, rules, monsters, tables, tier)
+        y = yield_cache[(mid, tier)]
         xp_total += y["xp"]
-        for k, v in y["mats"].items():
-            inv[k] += v
+        lost_now = 0.0
+        for k, v in sorted(y["mats"].items(), key=lambda kv: -kv[1]):
             earned[k] += v
+            if args.no_bag:
+                inv[k] += v
+            else:
+                left = bag.add(inv, k, v)
+                lost[k] += left
+                lost_now += left
+        held_shards += shards
+        earned["ascendant_shard"] += shards
+        if args.no_bag:
+            inv["ascendant_shard"] += held_shards
+            held_shards = 0.0
+        else:
+            held_shards = bag.add(inv, "ascendant_shard", held_shards)
+        lost_at[n] = lost_now
+        rank_at[n] = max(best_rank.values(), default=0)
+        shards_at[n] = earned["ascendant_shard"]
         for p in purchases:
             if p.name not in first_affordable and pools.can_afford(p.cost, earned):
                 first_affordable[p.name] = n
@@ -531,6 +684,18 @@ def run(args) -> str:
                 pools.spend(p.cost, inv)
                 owned.add(p.name)
                 bought_at[p.name] = n
+                if p.category == "bag":
+                    bag.slots = bag_rules.expansions[int(p.name.rsplit("_", 1)[1]) - 1][0]
+        if args.discard and not args.no_bag:
+            # A tidy player throws away stacks no remaining purchase can use.
+            wanted = [p.cost for p in purchases if p.name not in owned]
+            for item in [i for i, q in inv.items() if q > 1e-9]:
+                if not any(k == item or item in (pools.members(k, {item: 1.0}) or []) for c in wanted for k in c):
+                    discarded[item] += inv[item]
+                    inv[item] = 0.0
+        if not args.no_bag:
+            held_shards = bag.add(inv, "ascendant_shard", held_shards)  # bought space frees room
+            bag_at[n] = (bag.used(inv), bag.slots)
         lvl = level_for_xp(xp_total, rules)
         gear = sum(1 for q in purchases if q.category == "equipment" and q.name in owned)
         best: dict[str, float] = {}
@@ -539,6 +704,9 @@ def run(args) -> str:
                 cat, atk = gear_stats[name]
                 best[cat] = max(best.get(cat, 0.0), atk)
         gear_attack_at[n] = sum(best.values())
+        attack_now = pr.base_attack + pr.attack_per_level * (lvl - 1) + gear_attack_at[n]
+        if n == 1:
+            start_attack = attack_now
         timeline.append((n, lvl, lvl // rules.skill_point_interval, xp_total, len(owned), gear))
 
     L.append(f"\n## Campaign timeline ({args.missions} missions)\n")
@@ -551,7 +719,6 @@ def run(args) -> str:
             L.append(f"| {n} | {lvl} | {pts} | {fmt(xp)} | {owned_n}/{len(purchases)} | {gear_n}/{gear_total} |")
 
     # Power vs enemy HP: does enemy HP keep pace with the hero?
-    pr = load_power_rules()
     brutal_hp = 1.0 + pr.hp_tier_rate * (pr.brutal_tier - 1)
     start_attack = pr.base_attack + gear_attack_at.get(1, 0.0)
     L.append("\n## Hero power vs enemy HP\n")
@@ -572,6 +739,40 @@ def run(args) -> str:
                 rank = math.ceil(math.log(ratio / brutal_hp) / math.log(pr.asc_hp_growth))
                 rank_text = f"{rank}" if rank <= pr.max_ascension else f"{rank} (above max {pr.max_ascension})"
             L.append(f"| {n} | {lvl} | {fmt(gear_attack_at[n])} | {fmt(attack)} | x{ratio:.2f} | {rank_text} |")
+
+    if args.ascend_after:
+        L.append("\n## Ascension endgame\n")
+        L.append("Best rank = highest Ascension rank cleared on any map. Shards = total earned so far. "
+                 "The Ascendant set needs "
+                 f"{fmt(sum(p.cost.get('ascendant_shard', 0) for p in purchases))} shards in all.\n")
+        L.append("| Missions | Best rank | Shards earned | Ascendant pieces owned |")
+        L.append("|---|---|---|---|")
+        asc_total = sum(1 for p in purchases if "ascendant_shard" in p.cost)
+        asc_marks = sorted(set(marks) | {m for m in range(args.ascend_after, args.missions + 1, 10)} - {0})
+        for m in asc_marks:
+            if m >= args.ascend_after:
+                pieces = sum(1 for p in purchases if "ascendant_shard" in p.cost and bought_at.get(p.name, 10 ** 6) <= m)
+                L.append(f"| {m} | {rank_at[m]} | {fmt(shards_at[m])} | {pieces}/{asc_total} |")
+        L.append("\nRanks reached per map: " + ", ".join(f"{missions[k].name} {v}" for k, v in best_rank.items()))
+
+    if not args.no_bag:
+        L.append("\n## Bag\n")
+        L.append("Slots used at the end of each shopping trip, and income lost because the bag was full "
+                 "during that mission.\n")
+        L.append("| Missions | Slots used | Lost that mission |")
+        L.append("|---|---|---|")
+        for m in marks:
+            L.append(f"| {m} | {bag_at[m][0]}/{bag_at[m][1]} | {fmt(lost_at[m])} |")
+        worst = sorted(((v, k) for k, v in lost.items() if v > 0.05), reverse=True)[:8]
+        total_lost = sum(lost.values())
+        total_earned = sum(v for k, v in earned.items() if k != "ascendant_shard")
+        L.append(f"\nLost to a full bag over {args.missions} missions: {fmt(total_lost)} of {fmt(total_earned)} "
+                 f"({total_lost / max(total_earned, 1e-9):.0%})"
+                 + (": " + ", ".join(f"{k} {fmt(v)}" for v, k in worst) if worst else ""))
+        if args.discard:
+            L.append(f"Discarded (no remaining purchase uses them; `--discard`): {fmt(sum(discarded.values()))}")
+        if held_shards > 0.5:
+            L.append(f"Shards still held for lack of room at the end: {fmt(held_shards)}")
 
     L.append("\n## Missions to reach each level\n")
     L.append("| Level | XP to next | Cumulative XP | Missions (avg yield) |")
@@ -621,6 +822,11 @@ def main() -> None:
     ap.add_argument("--level-cap", type=int, help="WHAT-IF level cap (game: 50)")
     ap.add_argument("--mission-xp", type=int, help="WHAT-IF mission completion XP")
     ap.add_argument("--wave-xp", type=int, help="WHAT-IF wave completion XP")
+    ap.add_argument("--ascend-after", type=int, default=0,
+                    help="endgame: from mission N+1 climb Ascension one rank per map visit (default off)")
+    ap.add_argument("--no-bag", action="store_true", help="WHAT-IF unlimited bag")
+    ap.add_argument("--discard", action="store_true",
+                    help="WHAT-IF the player can discard stacks no remaining purchase uses (the game has no discard)")
     ap.add_argument("--out", help="also write the report to this file")
     args = ap.parse_args()
     report = run(args)

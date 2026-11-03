@@ -57,7 +57,7 @@ counts convert to hours at roughly 3 missions per hour.
 - [x] Level curve: 1.15 -> 1.067 (`Hero.XP_CURVE_GROWTH`). With the 8-map,
       7-10 wave campaign, level 50 lands at mission ~65 on Normal and ~38 on
       Brutal.
-- [ ] Decide on Sanctuary gold: drop the costs, or make gold persist.
+- [x] Sanctuary gold: dropped (2026-11-03); Sanctuary costs are materials only.
 - [x] 4 new missions (2026-11-02), each introducing an archetype: The
       Ashfields (Ashwing Moth, flying), The Mirefen (Goblin Mender, healer),
       The Broodwarrens (Brood Sac, splits on death), The Duskwood (Shade
@@ -73,3 +73,19 @@ counts convert to hours at roughly 3 missions per hour.
       (level + best gear per slot) against Brutal and Ascension HP. Level 50
       hero alone needs about Ascension 9 to feel like mission 1; towers,
       skills and tarot are not modelled, so the real number is higher (cap 15).
+- [x] Simulator models the endgame and the bag (2026-11-03): `--ascend-after N`
+  climbs one Ascension rank per map visit up to the rank the hero's power
+  supports, paying AscensionRewards shards and the per-rank reward multiplier;
+  the bag uses Inventory's 18 slots, SlotExpansionCostTable (bought like any
+  purchase) and per-item stack caps; generic Material costs skip
+  excluded_from_type_costs items. Report: `production/balance/progression-endgame.md`
+  (`--missions 160 --ascend-after 65`).
+  Findings: (1) the bag is full by ~mission 60 with materials nothing still
+  needs, and from then on most income is lost (82% over 160 missions); held
+  shards never get room, so the Ascendant set is never bought. The game has
+  no discard or sell for materials. (2) With `--discard` (a player who throws
+  away stacks no remaining purchase uses) the set is complete ~mission 115,
+  about 6 Ascension visits per map, inside the 5-8 replay target; best rank 7.
+- [ ] Bag clog: add a way to clear materials (discard, or salvage into
+  something useful) so the endgame isn't blocked.
+
