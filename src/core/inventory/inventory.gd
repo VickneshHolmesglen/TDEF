@@ -1325,6 +1325,24 @@ func _try_add_to_slot(slot: InventorySlot, cap: int, amount: int) -> int:
 	return added
 
 
+## How many units of a stackable `definition` add_stackable() could place right
+## now (open room in matching stacks + empty slots x stack cap). Lets a caller
+## deliver only what fits, without add_stackable's "inventory full" rejection.
+##
+## Usage:
+##   var fits: int = mini(amount, GInventory.stackable_room(shard_def))
+func stackable_room(definition: ItemDefinitionResource) -> int:
+	if definition == null or definition.is_unique_instance:
+		return 0
+	var room: int = 0
+	for slot: InventorySlot in _slots:
+		if slot == null:
+			room += STACK_CAP_STACKABLE
+		elif slot.item_id == definition.item_id and slot.instance_id == -1 and not slot.locked:
+			room += maxi(0, STACK_CAP_STACKABLE - slot.quantity)
+	return room
+
+
 ## First null (empty) index in _slots, or -1 if full.
 func _find_first_empty_slot() -> int:
 	for i: int in range(_slots.size()):

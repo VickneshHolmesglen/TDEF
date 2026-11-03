@@ -118,6 +118,8 @@ var _run_modifiers: Dictionary[StringName, float] = {}
 ## GDScript typed Dictionaries only type the outer container (ADR-0021 limitation,
 ## reconfirmed by ADR-0028).
 var _completion_ledger: Dictionary[String, Dictionary] = {}
+## Ascendant Shards earned while the bag was full (see get_held_shards()).
+var _held_shards: int = 0
 
 ## MissionRuntimeState (Rule 10) — cached in memory only, NEVER persisted to
 ## save (excluded entirely from get_save_data()'s payload). Empty/null means
@@ -157,17 +159,22 @@ func _ready() -> void:
 		print("MissionSelect: dev unlock-all is ON (%s) -- every map and tier is open." % DEV_UNLOCK_SETTING)
 	GEventBus.sanctuary_state_restored.connect(_on_sanctuary_state_restored)
 	GEventBus.mission_phase_changed.connect(_on_mission_phase_changed)
+	GEventBus.item_removed.connect(_on_bag_space_maybe_freed)
+	GEventBus.slot_expansion_completed.connect(_on_bag_space_maybe_freed)
 	GSavePersistence.register(self, RESTORE_ORDER)
 
 
 func _exit_tree() -> void:
 	GEventBus.sanctuary_state_restored.disconnect(_on_sanctuary_state_restored)
 	GEventBus.mission_phase_changed.disconnect(_on_mission_phase_changed)
+	GEventBus.item_removed.disconnect(_on_bag_space_maybe_freed)
+	GEventBus.slot_expansion_completed.disconnect(_on_bag_space_maybe_freed)
 	GSavePersistence.unregister(self)
 
 
 func _on_sanctuary_state_restored(_save_slot: int) -> void:
 	_restore_completed = true
+	_on_bag_space_maybe_freed()
 
 
 ## Clears MissionRuntimeState on MISSION_COMPLETE (state returns to BROWSING,
@@ -210,8 +217,35 @@ func _award_ascension_shards(tier: int, first_clear: bool) -> void:
 	var shards: int = AscensionRewards.shards_for_victory(tier, first_clear)
 	if shards <= 0:
 		return
-	GEventBus.materials_earned.emit(String(AscensionRewards.SHARD_ITEM_ID), shards, AscensionRewards.SHARD_SOURCE)
+	_held_shards += shards
+	deliver_held_shards()
 	GEventBus.ascension_shards_awarded.emit(shards, first_clear)
+
+
+## Shards earned but not yet in the bag (it was full). Saved; delivered by
+## deliver_held_shards() as soon as there is room, so a once-only first-clear
+## bounty is never lost.
+func get_held_shards() -> int:
+	return _held_shards
+
+
+## Moves as many held shards into GInventory as fit, without triggering the
+## inventory-full rejection. Called on award, on load, and (deferred) whenever
+## the bag frees space.
+func deliver_held_shards() -> void:
+	if _held_shards <= 0:
+		return
+	var definition: ItemDefinitionResource = GGameDataRegistry.get_item_definition(AscensionRewards.SHARD_ITEM_ID)
+	var fits: int = mini(_held_shards, GInventory.stackable_room(definition))
+	if fits <= 0:
+		return
+	_held_shards -= fits
+	GEventBus.materials_earned.emit(String(AscensionRewards.SHARD_ITEM_ID), fits, AscensionRewards.SHARD_SOURCE)
+
+
+func _on_bag_space_maybe_freed(_a: Variant = null, _b: Variant = null, _c: Variant = null) -> void:
+	if _held_shards > 0:
+		deliver_held_shards.call_deferred()
 
 
 ## Highest Ascension rank cleared on any map (0 if none). Tarot cards with
@@ -472,7 +506,7 @@ func get_save_data() -> Dictionary:
 				"best_time_seconds": record.best_time_seconds,
 			}
 		ledger_data[mission_id] = tier_data
-	return {"completion_ledger": ledger_data}
+	return {"completion_ledger": ledger_data, "held_shards": _held_shards}
 
 
 ## Parses one raw {"completed": bool, "best_time_seconds": float} leaf into a
@@ -533,6 +567,9 @@ func restore_save_data(data: Dictionary) -> bool:
 			push_warning("Orphaned completion record for unknown mission_id '%s' — retained, not discarded." % mission_id)
 
 	_completion_ledger = restored_ledger
+	# Optional (added 2026-11-03): older saves have no held shards.
+	var held_raw: Variant = data.get("held_shards", 0)
+	_held_shards = maxi(0, int(held_raw)) if (held_raw is int or held_raw is float) else 0
 	return true
 
 
@@ -552,6 +589,7 @@ func restore_save_data(data: Dictionary) -> bool:
 ## no armed retry state, matching a fresh boot's own natural default.
 func reset_to_defaults() -> void:
 	_completion_ledger.clear()
+	_held_shards = 0
 	state = State.BROWSING
 	_current_mission_id = ""
 	difficulty_tier = 1

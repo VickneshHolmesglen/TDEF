@@ -171,6 +171,8 @@ func _on_mission_completion_recorded(mission_id: String, _tier: int) -> void:
 		_unlock_lines.append(tr("OUTCOME_SHARDS_FIRST_CLEAR") % _shards_awarded)
 	elif _shards_awarded > 0:
 		_unlock_lines.append(tr("OUTCOME_SHARDS") % _shards_awarded)
+	if _shards_awarded > 0 and GMissionSelect.get_held_shards() > 0:
+		_unlock_lines.append(tr("OUTCOME_SHARDS_HELD") % GMissionSelect.get_held_shards())
 
 
 func _on_ascension_shards_awarded(amount: int, first_clear: bool) -> void:
@@ -193,7 +195,7 @@ static func tarot_unlock_lines_since(rank_before: int) -> PackedStringArray:
 	unlocked.sort_custom(func(a: TarotCardResource, b: TarotCardResource) -> bool:
 		return a.unlock_ascension_rank < b.unlock_ascension_rank)
 	for card: TarotCardResource in unlocked:
-		lines.append(TranslationServer.translate("OUTCOME_UNLOCKED_TAROT") % String(card.card_id).capitalize())
+		lines.append(TranslationServer.translate("OUTCOME_UNLOCKED_TAROT") % TarotCardResource.display_name(card.card_id))
 	return lines
 
 

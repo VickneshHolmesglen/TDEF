@@ -77,6 +77,18 @@ const RUNE_BONUS_FLAT_RANGE: Vector2 = Vector2(0.02, 0.10)
 ## rune is linked. Logs its own push_error() per invalid field and returns a
 ## bool — matches TowerBlueprintData's own validate() convention, which is
 ## what GameDataRegistry's loader loop expects.
+## Player-facing card name: the strings.csv key TAROT_CARD_<ID> when one
+## exists (for names capitalize() gets wrong, e.g. "World's Weight"),
+## otherwise the id capitalized ("swift_current" -> "Swift Current").
+##
+## Usage:
+##   label.text = TarotCardResource.display_name(&"worlds_weight")
+static func display_name(card_id: StringName) -> String:
+	var key: String = "TAROT_CARD_" + String(card_id).to_upper()
+	var translated: String = String(TranslationServer.translate(key))
+	return translated if translated != key else String(card_id).capitalize()
+
+
 func validate() -> bool:
 	var ok := true
 	if not VALID_RARITIES.has(rarity):

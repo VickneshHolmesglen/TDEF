@@ -345,7 +345,7 @@ static func locked_tag(card_id: StringName) -> String:
 ## TarotCardResource has no display name; derive one rather than showing the
 ## raw id ("swift_current") -- 2026-10-04 smoke check.
 static func _card_display_name(card_id: StringName) -> String:
-	return String(card_id).capitalize()
+	return TarotCardResource.display_name(card_id)
 
 
 ## GDD: confirm on a locked card opens a context tooltip explaining the

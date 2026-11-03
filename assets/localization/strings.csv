@@ -293,6 +293,9 @@ OUTCOME_UNLOCKED_TIER,%s unlocked on %s
 OUTCOME_UNLOCKED_TAROT,Tarot card unlocked: %s
 OUTCOME_SHARDS,+%d Ascendant Shards
 OUTCOME_SHARDS_FIRST_CLEAR,+%d Ascendant Shards (first-clear bonus included)
+OUTCOME_SHARDS_HELD,"Bag full: %d shards are held and will arrive when you free space"
+TAROT_CARD_WORLDS_WEIGHT,World's Weight
+TAROT_CARD_HUNTERS_PACE,Hunter's Pace
 TAROT_TAG_LOCKED_ASCENSION,(Locked: reach Ascension %d)
 FORGE_ADD_RUNE_SLOT,Add rune slot (%d Ascendant Shards)
 FORGE_ADD_RUNE_SLOT_MAXED,Rune slots maxed

@@ -73,6 +73,39 @@ func test_ascension_first_clear_pays_bounty_then_repeat_pays_run_reward() -> voi
 	assert_bool(args[1] as bool).is_false()
 
 
+## Found live 2026-11-03: a real save with a full bag silently lost the
+## first-clear bounty. Shards that don't fit are held, saved and delivered later.
+func test_ascension_full_bag_holds_shards_then_delivers_them() -> void:
+	var hide: ItemDefinitionResource = GGameDataRegistry.get_item_definition(&"goblin_hide")
+	GInventory.add_stackable(hide, GInventory.stackable_room(hide))
+	assert_int(GInventory.stackable_room(GGameDataRegistry.get_item_definition(AscensionRewards.SHARD_ITEM_ID))).is_equal(0)
+	_spy.watch(GEventBus.item_pickup_rejected)
+
+	_win(5)  # Ascension 2 first clear: 24
+
+	assert_int(_shards()).is_equal(0)
+	assert_int(_mission_select.get_held_shards()).is_equal(24)
+	assert_bool(_spy.was_emitted("item_pickup_rejected")).is_false()  # no "bag full" toast/sound
+	assert_int(_mission_select.get_save_data()["held_shards"] as int).is_equal(24)
+
+	GInventory.consume_stackable(hide, 99)
+	_mission_select.deliver_held_shards()
+
+	assert_int(_shards()).is_equal(24)
+	assert_int(_mission_select.get_held_shards()).is_equal(0)
+
+
+func test_ascension_held_shards_survive_save_round_trip() -> void:
+	_mission_select._held_shards = 17
+	var restored := MissionSelect.new()
+	assert_bool(restored.restore_save_data(_mission_select.get_save_data())).is_true()
+	assert_int(restored.get_held_shards()).is_equal(17)
+	# Older saves have no field: nothing held.
+	assert_bool(restored.restore_save_data({"completion_ledger": {}})).is_true()
+	assert_int(restored.get_held_shards()).is_equal(0)
+	restored.free()
+
+
 func test_ascension_brutal_win_pays_no_shards() -> void:
 	_win(3)
 	assert_int(_shards()).is_equal(0)

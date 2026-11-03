@@ -74,6 +74,13 @@ func test_ascension_rewards_tarot_cards_unlock_at_ranks_3_6_10() -> void:
 		assert_bool(card.validate()).is_true()
 
 
+## Found live 2026-11-03: capitalize() dropped the apostrophe ("Worlds Weight").
+func test_ascension_rewards_card_display_name_uses_string_override() -> void:
+	assert_str(TarotCardResource.display_name(&"worlds_weight")).is_equal("World's Weight")
+	assert_str(TarotCardResource.display_name(&"hunters_pace")).is_equal("Hunter's Pace")
+	assert_str(TarotCardResource.display_name(&"swift_current")).is_equal("Swift Current")  # fallback
+
+
 func test_ascension_rewards_quality_tier_6_is_rejected() -> void:
 	var recipe := EquipmentRecipeResource.new()
 	recipe.recipe_id = &"recipe_test"

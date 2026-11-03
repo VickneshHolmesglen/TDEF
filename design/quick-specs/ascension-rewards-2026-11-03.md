@@ -65,9 +65,15 @@ the hardest runs give.
 - Re-clearing a rank already cleared: run reward only, no bounty.
 - Clearing a rank whose lower ranks were never cleared (dev switch on): the
   bounty is still paid for that rank only; lower ranks pay when cleared.
-- Bag full of other stacks: shards go through Inventory's normal stack path;
-  if no room, Inventory's existing overflow behaviour applies (same as any
-  material drop).
+- Bag full of other stacks (amended 2026-11-03 after the live check: the real
+  save had 18/18 slots used and the first-clear bounty was silently rejected):
+  only what fits (`Inventory.stackable_room`) goes in; the rest is held by
+  MissionSelect (`held_shards`, saved, absent in older saves = 0) and
+  delivered as soon as the bag frees space (item removed, slot expansion,
+  load). No "bag full" toast/sound. The outcome screen adds "Bag full: N
+  shards are held and will arrive when you free space".
+- Shards stack to 99 per bag slot like every material, so the 300-shard
+  Ascendant Blade needs 4 slots of shards at once. Open tuning question.
 - Extra-slot purchase on an item with imbued runes: allowed; runes kept.
 - Item un-equipped / equipped: slot count is per instance and travels with it.
 - Old saves: no shards, no rims, Ascension cards locked until earned.
