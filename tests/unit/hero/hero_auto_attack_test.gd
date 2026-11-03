@@ -62,7 +62,7 @@ func test_attack_timer_wait_time_matches_fixed_interval_constant() -> void:
 
 	# Then: the attack Timer's wait_time is the fixed constant, never derived from cdr
 	assert_float(_hero._attack_timer.wait_time).is_equal_approx(
-		Hero.AUTO_ATTACK_INTERVAL_S, 0.0001)
+		HeroTuning.load_default().auto_attack_interval_s, 0.0001)
 
 
 func test_attack_timer_fires_real_timeout_end_to_end_without_manual_invocation() -> void:

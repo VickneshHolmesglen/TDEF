@@ -29,7 +29,7 @@ extends Resource
 @export var aoe_radius_cells: int = 0       # BALLISTIC only, [0, 4]
 ## Tower Stats System Phase 1 (player-requested 2026-08-16). Chance per
 ## attack to land a critical hit, applying crit_multiplier to that hit's
-## damage. Mirrors Hero's crit concept (hero.gd's CRIT_CHANCE_CAP=0.8) but
+## damage. Mirrors Hero's crit concept (HeroTuning.crit_chance_cap, 0.85) but
 ## as a plain flat field, not Hero's Dictionary+get_effective_stat() runtime-
 ## modifier system — towers have no equipment/rune modifier stack today, so
 ## introducing one just for crit would be disproportionate scope.

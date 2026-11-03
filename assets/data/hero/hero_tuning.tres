@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="HeroTuning" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/core/hero/hero_tuning.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+crit_chance_cap = 0.85
+crit_chance_scaling_constant = 0.5
+crit_multiplier_bonus_cap = 2.0
+crit_multiplier_scaling_constant = 1.0
+luck_cap = 0.35
+luck_scaling_constant = 0.5
+elemental_resist_cap = 0.75
+lifesteal_cap = 0.4
+cdr_cap = 0.75
+collision_radius = 16.0
+auto_attack_interval_s = 1.0

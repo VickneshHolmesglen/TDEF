@@ -47,32 +47,11 @@ extends CharacterBody2D
 const ADDITIVE_BONUS_FLOOR: float = -0.75
 const ADDITIVE_BONUS_CAP: float = 3.0
 
-## Per-stat post-formula caps (story-001 Tuning Knobs). Applied after Formula 1 resolves.
-## TODO: migrate these into HeroResource or a TuningKnobs data resource once that data
-## model lands (stories 005/006) — hardcoded here for now, matching ADR-0010's own
-## Key Interfaces sketch, which has no data-file mechanism defined yet for this story.
-## Diminishing-returns curve cap/scaling-constant pairs (design/combat_
-## formula_and_stats.txt, reconciled in docs/superpowers/specs/2026-09-18-
-## hero-combat-stats-redesign-design.md Section 3.2). Scaling constants are
-## rescaled from the source doc's large-stat-point examples (100/200/150) to
-## fit this game's existing 0.0-1.0 fractional stat convention — see that
-## spec section's own correction note for the worked-example values these
-## produce.
-const CRIT_CHANCE_CAP: float = 0.85
-const CRIT_CHANCE_SCALING_CONSTANT: float = 0.5
-const CRIT_MULTIPLIER_BONUS_CAP: float = 2.0
-const CRIT_MULTIPLIER_SCALING_CONSTANT: float = 1.0
-const LUCK_CAP: float = 0.35
-const LUCK_SCALING_CONSTANT: float = 0.5
-const ELEMENTAL_RESIST_CAP: float = 0.75
-const LIFESTEAL_CAP: float = 0.4
-const CDR_CAP: float = 0.75
-
-## Story-002 (S4-04) collision radius. Quarter of MonsterManager.CELL_SIZE (64.0), a
-## reasonable default hitbox for a single-cell-scale entity. TODO: migrate into
-## HeroResource / TuningKnobs once that data model lands (same TODO as the stat caps
-## above) — no data-file mechanism exists yet for this story either.
-const HERO_COLLISION_RADIUS: float = 16.0
+## Per-stat post-formula caps, diminishing-curve constants, collision radius
+## and auto-attack interval live in HeroTuning (res://assets/data/hero/
+## hero_tuning.tres, 2026-11-04; were constants here). Leave `tuning` null to
+## use the shared file; tests may assign their own.
+@export var tuning: HeroTuning = null
 
 ## Story-002 collision layer/mask — see ADR-0015 (class doc comment above) for the
 ## full convention. Layer 1 = environment (BLOCKED tilemap + towers); Layer 2 = hero.
@@ -100,13 +79,6 @@ const HERO_MESH_ENTITY_ID: StringName = &"hero"
 ## the spike's live-queried AABB data shows these Kenney meshes already have
 ## their origin at their own base).
 const HERO_LAYER_HEIGHT: float = 0.0
-
-## Story-003 (S4-05) auto-attack cadence. Fixed cadence — Rule 3: CDR does NOT affect
-## auto-attack rate, and no "attack_speed" stat exists in the story-001 stat set yet.
-## TODO: migrate into HeroResource / TuningKnobs once that data model lands (same TODO
-## as the stat caps and HERO_COLLISION_RADIUS above) — no data-file mechanism exists
-## yet for this story either.
-const AUTO_ATTACK_INTERVAL_S: float = 1.0
 
 ## Story-003 (S4-05) crit multiplier base (GDD event-bus.md / ADR-0010).
 ## Hero Combat & Stats Redesign (2026-09-18): base changed 1.75 -> 1.5 per
@@ -661,13 +633,20 @@ func is_direct_kill(payload: MonsterDiedEvent) -> bool:
 ## Hero Combat & Stats Redesign (2026-09-18), Section 3.4.2: Luck contributes
 ## a secondary Crit Chance source on top of the dedicated Crit Chance stat,
 ## each independently diminishing-curved (get_effective_stat handles that per
-## stat), then summed and re-clamped to CRIT_CHANCE_CAP so a heavily-stacked
+## stat), then summed and re-clamped to tuning.crit_chance_cap so a heavily-stacked
 ## build can never exceed the "never quite guaranteed" ceiling even with both
 ## sources maxed. Both auto-attack and skill-cast crit rolls use this instead
 ## of a bare get_effective_stat(&"crit_chance") read.
 func _effective_crit_chance() -> float:
 	var combined: float = get_effective_stat(&"crit_chance") + get_effective_stat(&"luck")
-	return minf(combined, CRIT_CHANCE_CAP)
+	return minf(combined, _tuning().crit_chance_cap)
+
+
+## This hero's tuning: the assigned resource, else the shared data file.
+func _tuning() -> HeroTuning:
+	if tuning == null:
+		tuning = HeroTuning.load_default()
+	return tuning
 
 
 ## Diminishing-returns curve (Hero Combat & Stats Redesign, 2026-09-18):
@@ -691,19 +670,20 @@ static func _diminishing_curve(raw: float, hard_cap: float, scaling_constant: fl
 ## always the full, ready-to-use multiplier (callers never add the base
 ## separately anymore).
 func _apply_stat_cap(stat_name: StringName, value: float) -> float:
+	var t: HeroTuning = _tuning()
 	match stat_name:
 		&"crit_chance":
-			return _diminishing_curve(value, CRIT_CHANCE_CAP, CRIT_CHANCE_SCALING_CONSTANT)
+			return _diminishing_curve(value, t.crit_chance_cap, t.crit_chance_scaling_constant)
 		&"crit_multiplier":
-			return CRIT_MULTIPLIER_BASE + _diminishing_curve(value, CRIT_MULTIPLIER_BONUS_CAP, CRIT_MULTIPLIER_SCALING_CONSTANT)
+			return CRIT_MULTIPLIER_BASE + _diminishing_curve(value, t.crit_multiplier_bonus_cap, t.crit_multiplier_scaling_constant)
 		&"luck":
-			return _diminishing_curve(value, LUCK_CAP, LUCK_SCALING_CONSTANT)
+			return _diminishing_curve(value, t.luck_cap, t.luck_scaling_constant)
 		&"elemental_resist_fire", &"elemental_resist_frost":
-			return minf(value, ELEMENTAL_RESIST_CAP)
+			return minf(value, t.elemental_resist_cap)
 		&"lifesteal":
-			return minf(value, LIFESTEAL_CAP)
+			return minf(value, t.lifesteal_cap)
 		&"cdr":
-			return minf(value, CDR_CAP)
+			return minf(value, t.cdr_cap)
 		_:
 			return value
 
@@ -755,13 +735,13 @@ func _ready() -> void:
 	collision_mask = COLLISION_LAYER_ENVIRONMENT
 
 	var shape := CircleShape2D.new()
-	shape.radius = HERO_COLLISION_RADIUS
+	shape.radius = _tuning().collision_radius
 	var collision_shape := CollisionShape2D.new()
 	collision_shape.shape = shape
 	add_child(collision_shape)
 
 	_attack_timer = Timer.new()
-	_attack_timer.wait_time = AUTO_ATTACK_INTERVAL_S
+	_attack_timer.wait_time = _tuning().auto_attack_interval_s
 	_attack_timer.one_shot = false
 	_attack_timer.autostart = true
 	add_child(_attack_timer)
@@ -1069,7 +1049,7 @@ func _broadcast_health() -> void:
 # Story-003 (S4-05): Auto-Attack
 # ---------------------------------------------------------------------------
 
-## Rule 3: fires unconditionally at AUTO_ATTACK_INTERVAL_S (Timer node, non-physics
+## Rule 3: fires unconditionally at tuning.auto_attack_interval_s (Timer node, non-physics
 ## caller — ADR-0010 Engine Note). CDR does not affect this rate; the Timer's
 ## wait_time is a fixed constant, never derived from get_effective_stat(&"cdr").
 ##
@@ -1316,7 +1296,7 @@ func activate_skill(slot_index: int) -> void:
 	if not _skill_cooldown_timers[slot_index].is_stopped():
 		return  # still on cooldown — reject reactivation
 	var base_cooldown: float = _skill_cooldowns.get(skill_id, 0.0)
-	var cdr: float = get_effective_stat(&"cdr")  # capped at CDR_CAP (0.75) by Formula 1
+	var cdr: float = get_effective_stat(&"cdr")  # capped at tuning.cdr_cap (0.75) by Formula 1
 	var effective_cooldown: float = maxf(0.5, base_cooldown * (1.0 - cdr))
 	_start_cooldown_timer(slot_index, effective_cooldown)
 	# Real signal: hero_skill_activated(skill_id: String, target_position: Vector2)
