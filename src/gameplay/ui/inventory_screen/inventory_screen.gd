@@ -564,7 +564,9 @@ func _refresh_slot_visibility() -> void:
 		var item_id: String = contents.get("item_id", "") as String
 		var quantity: int = contents.get("quantity", 0) as int
 		var visible_on_tab: bool = false
-		if item_id != "" and quantity > 0:
+		# Equip slots (indices 8-17) share the array but are shown on the paper
+		# doll; listing them in the bag too showed worn gear twice (2026-11-04).
+		if item_id != "" and quantity > 0 and not inventory.is_equipment_slot_index(i):
 			var definition: ItemDefinitionResource = GGameDataRegistry.get_item_definition(StringName(item_id))
 			visible_on_tab = definition != null and _tab_for_item_type(definition.item_type) == _active_tab
 		_slot_buttons[i].visible = visible_on_tab

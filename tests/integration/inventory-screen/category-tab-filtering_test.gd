@@ -177,3 +177,18 @@ func test_item_fully_consumed_hides_slot_on_every_tab() -> void:
 
 	_press_tab(&"Equipment")
 	assert_bool(_slot_button(0).visible).is_false()
+
+
+# ---- 2026-11-04: equipped gear is on the paper doll, not in the bag ----
+
+func test_inventory_screen_equipped_item_is_not_listed_in_the_bag_grid() -> void:
+	# Arrange: one helm equipped, one identical helm left in the bag
+	var worn: int = GInventory.add_unique_item(GGameDataRegistry.get_item_definition(&"brutes_war_helm"))
+	GInventory.equip_from_slot(worn)
+	var spare: int = GInventory.add_unique_item(GGameDataRegistry.get_item_definition(&"brutes_war_helm"))
+	# Act
+	_screen._refresh_slot_visibility()
+	# Assert: only the bag copy has a visible tile on the Equipment tab
+	var helm_index: int = Inventory.EQUIPMENT_SLOT_INDEX["helmet"]
+	assert_bool(_screen._slot_buttons[helm_index].visible).is_false()
+	assert_bool(_screen._slot_buttons[spare].visible).is_true()
