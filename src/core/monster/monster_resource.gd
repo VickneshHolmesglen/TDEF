@@ -73,6 +73,12 @@ extends Resource
 ##              where it fell, continuing along its path.
 ##   stealth -- towers cannot target it unless the Hero is within
 ##              stealth_reveal_radius_cells (Chebyshev); the Hero can always hit it.
+##   dash_*  -- (2026-11-04) every dash_interval_seconds it runs at
+##              dash_speed_multiplier for dash_duration_seconds. Slows multiply
+##              on top and a stun cancels the burst, so control blunts it.
+##   haste_* -- (2026-11-04) every haste_interval_seconds it hastes every OTHER
+##              monster within haste_radius_cells (Chebyshev) to
+##              haste_speed_multiplier for haste_duration_seconds; kill it first.
 @export_group("Archetype Behaviour")
 @export_enum("ground", "flying") var movement_type: String = "ground"
 @export var heal_radius_cells: int = 0
@@ -83,6 +89,13 @@ extends Resource
 @export var split_count: int = 0
 @export var stealthed: bool = false
 @export var stealth_reveal_radius_cells: int = 0
+@export var dash_speed_multiplier: float = 1.0
+@export var dash_duration_seconds: float = 0.0
+@export var dash_interval_seconds: float = 0.0
+@export var haste_radius_cells: int = 0
+@export var haste_speed_multiplier: float = 1.0
+@export var haste_duration_seconds: float = 0.0
+@export var haste_interval_seconds: float = 0.0
 
 
 ## True when this monster flies (straight-line path, untargetable by BALLISTIC).
@@ -98,6 +111,16 @@ func is_healer() -> bool:
 ## True when this monster splits on death.
 func is_splitter() -> bool:
 	return split_into_monster_id != &"" and split_count > 0
+
+
+## True when this monster dashes (periodic speed burst).
+func is_dasher() -> bool:
+	return dash_speed_multiplier > 1.0 and dash_duration_seconds > 0.0 and dash_interval_seconds > 0.0
+
+
+## True when this monster hastes nearby allies.
+func is_haster() -> bool:
+	return haste_radius_cells > 0 and haste_speed_multiplier > 1.0 			and haste_duration_seconds > 0.0 and haste_interval_seconds > 0.0
 
 
 ## Load-time validation. Called by GameDataRegistry at boot (ADR-0009).
@@ -153,4 +176,12 @@ func validate() -> Array[String]:
 		errors.append("split_into_monster_id must not be the monster itself (infinite split)")
 	if stealthed and stealth_reveal_radius_cells <= 0:
 		errors.append("stealthed monsters need stealth_reveal_radius_cells > 0")
+	if dash_speed_multiplier < 1.0 or dash_speed_multiplier > 5.0:
+		errors.append("dash_speed_multiplier must be in [1.0, 5.0] (got %.2f)" % dash_speed_multiplier)
+	if dash_duration_seconds < 0.0 or dash_interval_seconds < 0.0:
+		errors.append("dash_* durations must not be negative")
+	if haste_speed_multiplier < 1.0 or haste_speed_multiplier > 3.0:
+		errors.append("haste_speed_multiplier must be in [1.0, 3.0] (got %.2f)" % haste_speed_multiplier)
+	if haste_radius_cells < 0 or haste_duration_seconds < 0.0 or haste_interval_seconds < 0.0:
+		errors.append("haste_* fields must not be negative")
 	return errors

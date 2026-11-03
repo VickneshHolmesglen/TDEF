@@ -233,9 +233,14 @@ script = ExtResource("3_entry")
 monster_id = &"goblin_runner"
 pre_delay = 1.2
 
+[sub_resource type="Resource" id="Resource_coilmarsh_w6_e9"]
+script = ExtResource("3_entry")
+monster_id = &"goblin_drummer"
+pre_delay = 2.5
+
 [sub_resource type="Resource" id="Resource_coilmarsh_wave_6"]
 script = ExtResource("2_script")
-entries = Array[ExtResource("3_entry")]([SubResource("Resource_coilmarsh_w6_e1"), SubResource("Resource_coilmarsh_w6_e2"), SubResource("Resource_coilmarsh_w6_e3"), SubResource("Resource_coilmarsh_w6_e4"), SubResource("Resource_coilmarsh_w6_e5"), SubResource("Resource_coilmarsh_w6_e6"), SubResource("Resource_coilmarsh_w6_e7"), SubResource("Resource_coilmarsh_w6_e8")])
+entries = Array[ExtResource("3_entry")]([SubResource("Resource_coilmarsh_w6_e1"), SubResource("Resource_coilmarsh_w6_e2"), SubResource("Resource_coilmarsh_w6_e3"), SubResource("Resource_coilmarsh_w6_e4"), SubResource("Resource_coilmarsh_w6_e5"), SubResource("Resource_coilmarsh_w6_e6"), SubResource("Resource_coilmarsh_w6_e7"), SubResource("Resource_coilmarsh_w6_e8"), SubResource("Resource_coilmarsh_w6_e9")])
 
 [sub_resource type="Resource" id="Resource_coilmarsh_w7_e1"]
 script = ExtResource("3_entry")
@@ -362,9 +367,19 @@ script = ExtResource("3_entry")
 monster_id = &"armored_brute"
 pre_delay = 2.5
 
+[sub_resource type="Resource" id="Resource_coilmarsh_w9_e8"]
+script = ExtResource("3_entry")
+monster_id = &"goblin_drummer"
+pre_delay = 2.5
+
+[sub_resource type="Resource" id="Resource_coilmarsh_w9_e9"]
+script = ExtResource("3_entry")
+monster_id = &"goblin_drummer"
+pre_delay = 2.5
+
 [sub_resource type="Resource" id="Resource_coilmarsh_wave_9"]
 script = ExtResource("2_script")
-entries = Array[ExtResource("3_entry")]([SubResource("Resource_coilmarsh_w9_e1"), SubResource("Resource_coilmarsh_w9_e2"), SubResource("Resource_coilmarsh_w9_e3"), SubResource("Resource_coilmarsh_w9_e4"), SubResource("Resource_coilmarsh_w9_e5"), SubResource("Resource_coilmarsh_w9_e6"), SubResource("Resource_coilmarsh_w9_e7")])
+entries = Array[ExtResource("3_entry")]([SubResource("Resource_coilmarsh_w9_e1"), SubResource("Resource_coilmarsh_w9_e2"), SubResource("Resource_coilmarsh_w9_e3"), SubResource("Resource_coilmarsh_w9_e4"), SubResource("Resource_coilmarsh_w9_e5"), SubResource("Resource_coilmarsh_w9_e6"), SubResource("Resource_coilmarsh_w9_e7"), SubResource("Resource_coilmarsh_w9_e8"), SubResource("Resource_coilmarsh_w9_e9")])
 
 [sub_resource type="Resource" id="Resource_coilmarsh_w10_e1"]
 script = ExtResource("3_entry")

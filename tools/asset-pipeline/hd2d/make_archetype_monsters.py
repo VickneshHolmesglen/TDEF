@@ -8,11 +8,13 @@ bespoke art exists:
   goblin_mender  (healer)   <- goblin_runner + walk sheet, moss green
   brood_sac      (splitter) <- spore_skitterling + walk sheet, bruised violet
   shade_stalker  (stealth)  <- goblin_runner + walk sheet, deep indigo
+  rift_hound     (dash)     <- spore_skitterling + walk sheet, rift crimson   (2026-11-04)
+  goblin_drummer (haste)    <- goblin_runner + walk sheet, drum-hide amber    (2026-11-04)
 
 Writes assets/art/monsters/<id>.png (and <id>_locomotion.png plus
 assets/data/creature_atlases/<id>.tres for the sheet-based ones). Re-runnable.
 
-  python tools/asset-pipeline/hd2d/make_archetype_monsters.py
+  python tools/asset-pipeline/hd2d/make_archetype_monsters.py [id ...]   # ids limit the run
 """
 import pathlib
 import re
@@ -31,6 +33,8 @@ MONSTERS = [
     ("goblin_mender", ART / "monsters/goblin_runner.png", "goblin_runner", (120, 200, 96), 0.5),
     ("brood_sac", ART / "monsters/spore_skitterling.png", "spore_skitterling", (150, 92, 170), 0.6),
     ("shade_stalker", ART / "monsters/goblin_runner.png", "goblin_runner", (70, 64, 150), 0.7),
+    ("rift_hound", ART / "monsters/spore_skitterling.png", "spore_skitterling", (200, 56, 72), 0.65),
+    ("goblin_drummer", ART / "monsters/goblin_runner.png", "goblin_runner", (222, 150, 60), 0.55),
 ]
 
 
@@ -61,7 +65,10 @@ def write_mapping(mid: str, template_id: str) -> None:
 
 
 def main() -> None:
+    only = set(sys.argv[1:])
     for mid, src, sheet_id, tint, strength in MONSTERS:
+        if only and mid not in only:
+            continue
         recolor(str(src), str(ART / f"monsters/{mid}.png"), tint, strength, 1.1)
         if sheet_id is None:
             # No walk sheet to recolour: build a wing-flap sheet instead.

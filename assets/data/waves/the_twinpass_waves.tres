@@ -142,9 +142,14 @@ script = ExtResource("3_entry")
 monster_id = &"armored_brute"
 pre_delay = 2.5
 
+[sub_resource type="Resource" id="Resource_twinpass_w4_e7"]
+script = ExtResource("3_entry")
+monster_id = &"goblin_drummer"
+pre_delay = 2.5
+
 [sub_resource type="Resource" id="Resource_twinpass_wave_4"]
 script = ExtResource("2_script")
-entries = Array[ExtResource("3_entry")]([SubResource("Resource_twinpass_w4_e1"), SubResource("Resource_twinpass_w4_e2"), SubResource("Resource_twinpass_w4_e3"), SubResource("Resource_twinpass_w4_e4"), SubResource("Resource_twinpass_w4_e5"), SubResource("Resource_twinpass_w4_e6")])
+entries = Array[ExtResource("3_entry")]([SubResource("Resource_twinpass_w4_e1"), SubResource("Resource_twinpass_w4_e2"), SubResource("Resource_twinpass_w4_e3"), SubResource("Resource_twinpass_w4_e4"), SubResource("Resource_twinpass_w4_e5"), SubResource("Resource_twinpass_w4_e6"), SubResource("Resource_twinpass_w4_e7")])
 
 [sub_resource type="Resource" id="Resource_twinpass_w5_e1"]
 script = ExtResource("3_entry")
@@ -246,9 +251,19 @@ script = ExtResource("3_entry")
 monster_id = &"goblin_runner"
 pre_delay = 1.2
 
+[sub_resource type="Resource" id="Resource_twinpass_w7_e8"]
+script = ExtResource("3_entry")
+monster_id = &"goblin_drummer"
+pre_delay = 2.5
+
+[sub_resource type="Resource" id="Resource_twinpass_w7_e9"]
+script = ExtResource("3_entry")
+monster_id = &"goblin_drummer"
+pre_delay = 2.5
+
 [sub_resource type="Resource" id="Resource_twinpass_wave_7"]
 script = ExtResource("2_script")
-entries = Array[ExtResource("3_entry")]([SubResource("Resource_twinpass_w7_e1"), SubResource("Resource_twinpass_w7_e2"), SubResource("Resource_twinpass_w7_e3"), SubResource("Resource_twinpass_w7_e4"), SubResource("Resource_twinpass_w7_e5"), SubResource("Resource_twinpass_w7_e6"), SubResource("Resource_twinpass_w7_e7")])
+entries = Array[ExtResource("3_entry")]([SubResource("Resource_twinpass_w7_e1"), SubResource("Resource_twinpass_w7_e2"), SubResource("Resource_twinpass_w7_e3"), SubResource("Resource_twinpass_w7_e4"), SubResource("Resource_twinpass_w7_e5"), SubResource("Resource_twinpass_w7_e6"), SubResource("Resource_twinpass_w7_e7"), SubResource("Resource_twinpass_w7_e8"), SubResource("Resource_twinpass_w7_e9")])
 
 [sub_resource type="Resource" id="Resource_twinpass_w8_e1"]
 script = ExtResource("3_entry")
@@ -289,9 +304,24 @@ script = ExtResource("3_entry")
 monster_id = &"ashwing_moth"
 pre_delay = 2.5
 
+[sub_resource type="Resource" id="Resource_twinpass_w8_e9"]
+script = ExtResource("3_entry")
+monster_id = &"rift_hound"
+pre_delay = 2.5
+
+[sub_resource type="Resource" id="Resource_twinpass_w8_e10"]
+script = ExtResource("3_entry")
+monster_id = &"rift_hound"
+pre_delay = 1.2
+
+[sub_resource type="Resource" id="Resource_twinpass_w8_e11"]
+script = ExtResource("3_entry")
+monster_id = &"rift_hound"
+pre_delay = 1.2
+
 [sub_resource type="Resource" id="Resource_twinpass_wave_8"]
 script = ExtResource("2_script")
-entries = Array[ExtResource("3_entry")]([SubResource("Resource_twinpass_w8_e1"), SubResource("Resource_twinpass_w8_e2"), SubResource("Resource_twinpass_w8_e3"), SubResource("Resource_twinpass_w8_e4"), SubResource("Resource_twinpass_w8_e5"), SubResource("Resource_twinpass_w8_e6"), SubResource("Resource_twinpass_w8_e7"), SubResource("Resource_twinpass_w8_e8")])
+entries = Array[ExtResource("3_entry")]([SubResource("Resource_twinpass_w8_e1"), SubResource("Resource_twinpass_w8_e2"), SubResource("Resource_twinpass_w8_e3"), SubResource("Resource_twinpass_w8_e4"), SubResource("Resource_twinpass_w8_e5"), SubResource("Resource_twinpass_w8_e6"), SubResource("Resource_twinpass_w8_e7"), SubResource("Resource_twinpass_w8_e8"), SubResource("Resource_twinpass_w8_e9"), SubResource("Resource_twinpass_w8_e10"), SubResource("Resource_twinpass_w8_e11")])
 
 [sub_resource type="Resource" id="Resource_twinpass_w9_e1"]
 script = ExtResource("3_entry")

@@ -515,6 +515,10 @@ func _effective_speed(entity: MonsterEntity) -> float:
 	var multiplier: float = 1.0
 	for slow: ActiveSlowEffect in entity.active_slow_effects:
 		multiplier *= slow.speed_multiplier
+	if entity.dash_remaining > 0.0:
+		multiplier *= entity.resource.dash_speed_multiplier
+	if entity.haste_remaining > 0.0:
+		multiplier *= entity.haste_multiplier
 	return entity.scaled_speed * multiplier
 
 
@@ -950,6 +954,8 @@ static func status_bits_for(entity: MonsterEntity) -> int:
 		bits |= 16
 	if entity.vulnerability_remaining > 0.0:
 		bits |= 32
+	if entity.haste_remaining > 0.0:
+		bits |= 64
 	return bits
 
 
@@ -1111,6 +1117,10 @@ func _spawn_entity(res: MonsterResource, spawn_cell: Vector2i, wave_index: int,
 		entity.global_position = split_origin["position"] as Vector2
 	if res.is_healer():
 		entity.heal_cooldown_remaining = res.heal_interval_seconds
+	if res.is_dasher():
+		entity.dash_cooldown_remaining = res.dash_interval_seconds
+	if res.is_haster():
+		entity.heal_cooldown_remaining = res.haste_interval_seconds  # drummers reuse the pulse timer
 	if res.tier == 2:
 		entity.boss_scan_frames_remaining = 0
 		entity.boss_attack_cooldown_remaining = 0.0
@@ -1407,6 +1417,23 @@ func _pass2c_archetype_behaviours(delta: float) -> void:
 			if entity.heal_cooldown_remaining <= 0.0:
 				entity.heal_cooldown_remaining += res.heal_interval_seconds
 				_heal_pulse(entity)
+		elif res.is_haster() and entity.stun_remaining <= 0.0:
+			entity.heal_cooldown_remaining -= delta
+			if entity.heal_cooldown_remaining <= 0.0:
+				entity.heal_cooldown_remaining += res.haste_interval_seconds
+				_haste_pulse(entity)
+		if entity.haste_remaining > 0.0:
+			entity.haste_remaining = maxf(0.0, entity.haste_remaining - delta)
+		if res.is_dasher():
+			if entity.stun_remaining > 0.0:
+				entity.dash_remaining = 0.0  # a stun cancels the burst
+			elif entity.dash_remaining > 0.0:
+				entity.dash_remaining = maxf(0.0, entity.dash_remaining - delta)
+			else:
+				entity.dash_cooldown_remaining -= delta
+				if entity.dash_cooldown_remaining <= 0.0:
+					entity.dash_cooldown_remaining += res.dash_interval_seconds
+					entity.dash_remaining = res.dash_duration_seconds
 		if res.stealthed:
 			var hero_cell: Vector2i = _hero_cell if _hero_targetable() else Vector2i(-1, -1)
 			var hidden: bool = not is_revealed(_grid.world_to_cell(entity.global_position),
@@ -1436,6 +1463,22 @@ func _heal_pulse(healer: MonsterEntity) -> void:
 			other.monster_instance.play_heal_glow()
 		if other.resource.tier == 2:
 			GEventBus.boss_hp_changed.emit(other.entity_id, other.current_hp, other.scaled_hp)
+
+
+## Hastes every OTHER live monster within the drummer's radius for
+## haste_duration_seconds. Refreshes rather than stacks: the timer resets and
+## the larger multiplier wins, so two drummers do not compound.
+func _haste_pulse(drummer: MonsterEntity) -> void:
+	var origin: Vector2i = _grid.world_to_cell(drummer.global_position)
+	var res: MonsterResource = drummer.resource
+	for other in active_monsters:
+		if other == drummer or not is_instance_valid(other) or other.lifecycle_state != MonsterEntity.State.ACTIVE:
+			continue
+		if chebyshev(origin, _grid.world_to_cell(other.global_position)) > res.haste_radius_cells:
+			continue
+		var current: float = other.haste_multiplier if other.haste_remaining > 0.0 else 1.0
+		other.haste_multiplier = maxf(current, res.haste_speed_multiplier)
+		other.haste_remaining = res.haste_duration_seconds
 
 
 ## Snapshots what a splitter brood needs (the entity is queue_free()d right

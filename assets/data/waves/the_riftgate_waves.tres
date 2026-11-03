@@ -114,9 +114,29 @@ script = ExtResource("3_entry")
 monster_id = &"goblin_mender"
 pre_delay = 2.5
 
+[sub_resource type="Resource" id="Resource_riftgate_w3_e6"]
+script = ExtResource("3_entry")
+monster_id = &"rift_hound"
+pre_delay = 2.5
+
+[sub_resource type="Resource" id="Resource_riftgate_w3_e7"]
+script = ExtResource("3_entry")
+monster_id = &"rift_hound"
+pre_delay = 1.2
+
+[sub_resource type="Resource" id="Resource_riftgate_w3_e8"]
+script = ExtResource("3_entry")
+monster_id = &"rift_hound"
+pre_delay = 1.2
+
+[sub_resource type="Resource" id="Resource_riftgate_w3_e9"]
+script = ExtResource("3_entry")
+monster_id = &"rift_hound"
+pre_delay = 1.2
+
 [sub_resource type="Resource" id="Resource_riftgate_wave_3"]
 script = ExtResource("2_script")
-entries = Array[ExtResource("3_entry")]([SubResource("Resource_riftgate_w3_e1"), SubResource("Resource_riftgate_w3_e2"), SubResource("Resource_riftgate_w3_e3"), SubResource("Resource_riftgate_w3_e4"), SubResource("Resource_riftgate_w3_e5")])
+entries = Array[ExtResource("3_entry")]([SubResource("Resource_riftgate_w3_e1"), SubResource("Resource_riftgate_w3_e2"), SubResource("Resource_riftgate_w3_e3"), SubResource("Resource_riftgate_w3_e4"), SubResource("Resource_riftgate_w3_e5"), SubResource("Resource_riftgate_w3_e6"), SubResource("Resource_riftgate_w3_e7"), SubResource("Resource_riftgate_w3_e8"), SubResource("Resource_riftgate_w3_e9")])
 
 [sub_resource type="Resource" id="Resource_riftgate_w4_e1"]
 script = ExtResource("3_entry")
@@ -238,9 +258,19 @@ script = ExtResource("3_entry")
 monster_id = &"goblin_mender"
 pre_delay = 2.5
 
+[sub_resource type="Resource" id="Resource_riftgate_w6_e8"]
+script = ExtResource("3_entry")
+monster_id = &"goblin_drummer"
+pre_delay = 2.5
+
+[sub_resource type="Resource" id="Resource_riftgate_w6_e9"]
+script = ExtResource("3_entry")
+monster_id = &"goblin_drummer"
+pre_delay = 2.5
+
 [sub_resource type="Resource" id="Resource_riftgate_wave_6"]
 script = ExtResource("2_script")
-entries = Array[ExtResource("3_entry")]([SubResource("Resource_riftgate_w6_e1"), SubResource("Resource_riftgate_w6_e2"), SubResource("Resource_riftgate_w6_e3"), SubResource("Resource_riftgate_w6_e4"), SubResource("Resource_riftgate_w6_e5"), SubResource("Resource_riftgate_w6_e6"), SubResource("Resource_riftgate_w6_e7")])
+entries = Array[ExtResource("3_entry")]([SubResource("Resource_riftgate_w6_e1"), SubResource("Resource_riftgate_w6_e2"), SubResource("Resource_riftgate_w6_e3"), SubResource("Resource_riftgate_w6_e4"), SubResource("Resource_riftgate_w6_e5"), SubResource("Resource_riftgate_w6_e6"), SubResource("Resource_riftgate_w6_e7"), SubResource("Resource_riftgate_w6_e8"), SubResource("Resource_riftgate_w6_e9")])
 
 [sub_resource type="Resource" id="Resource_riftgate_w7_e1"]
 script = ExtResource("3_entry")
@@ -377,9 +407,39 @@ script = ExtResource("3_entry")
 monster_id = &"goblin_runner"
 pre_delay = 1.2
 
+[sub_resource type="Resource" id="Resource_riftgate_w9_e9"]
+script = ExtResource("3_entry")
+monster_id = &"rift_hound"
+pre_delay = 2.5
+
+[sub_resource type="Resource" id="Resource_riftgate_w9_e10"]
+script = ExtResource("3_entry")
+monster_id = &"rift_hound"
+pre_delay = 1.2
+
+[sub_resource type="Resource" id="Resource_riftgate_w9_e11"]
+script = ExtResource("3_entry")
+monster_id = &"rift_hound"
+pre_delay = 1.2
+
+[sub_resource type="Resource" id="Resource_riftgate_w9_e12"]
+script = ExtResource("3_entry")
+monster_id = &"rift_hound"
+pre_delay = 1.2
+
+[sub_resource type="Resource" id="Resource_riftgate_w9_e13"]
+script = ExtResource("3_entry")
+monster_id = &"rift_hound"
+pre_delay = 1.2
+
+[sub_resource type="Resource" id="Resource_riftgate_w9_e14"]
+script = ExtResource("3_entry")
+monster_id = &"rift_hound"
+pre_delay = 1.2
+
 [sub_resource type="Resource" id="Resource_riftgate_wave_9"]
 script = ExtResource("2_script")
-entries = Array[ExtResource("3_entry")]([SubResource("Resource_riftgate_w9_e1"), SubResource("Resource_riftgate_w9_e2"), SubResource("Resource_riftgate_w9_e3"), SubResource("Resource_riftgate_w9_e4"), SubResource("Resource_riftgate_w9_e5"), SubResource("Resource_riftgate_w9_e6"), SubResource("Resource_riftgate_w9_e7"), SubResource("Resource_riftgate_w9_e8")])
+entries = Array[ExtResource("3_entry")]([SubResource("Resource_riftgate_w9_e1"), SubResource("Resource_riftgate_w9_e2"), SubResource("Resource_riftgate_w9_e3"), SubResource("Resource_riftgate_w9_e4"), SubResource("Resource_riftgate_w9_e5"), SubResource("Resource_riftgate_w9_e6"), SubResource("Resource_riftgate_w9_e7"), SubResource("Resource_riftgate_w9_e8"), SubResource("Resource_riftgate_w9_e9"), SubResource("Resource_riftgate_w9_e10"), SubResource("Resource_riftgate_w9_e11"), SubResource("Resource_riftgate_w9_e12"), SubResource("Resource_riftgate_w9_e13"), SubResource("Resource_riftgate_w9_e14")])
 
 [sub_resource type="Resource" id="Resource_riftgate_w10_e1"]
 script = ExtResource("3_entry")
@@ -420,9 +480,19 @@ script = ExtResource("3_entry")
 monster_id = &"ashwing_moth"
 pre_delay = 2.5
 
+[sub_resource type="Resource" id="Resource_riftgate_w10_e9"]
+script = ExtResource("3_entry")
+monster_id = &"goblin_drummer"
+pre_delay = 2.5
+
+[sub_resource type="Resource" id="Resource_riftgate_w10_e10"]
+script = ExtResource("3_entry")
+monster_id = &"goblin_drummer"
+pre_delay = 2.5
+
 [sub_resource type="Resource" id="Resource_riftgate_wave_10"]
 script = ExtResource("2_script")
-entries = Array[ExtResource("3_entry")]([SubResource("Resource_riftgate_w10_e1"), SubResource("Resource_riftgate_w10_e2"), SubResource("Resource_riftgate_w10_e3"), SubResource("Resource_riftgate_w10_e4"), SubResource("Resource_riftgate_w10_e5"), SubResource("Resource_riftgate_w10_e6"), SubResource("Resource_riftgate_w10_e7"), SubResource("Resource_riftgate_w10_e8")])
+entries = Array[ExtResource("3_entry")]([SubResource("Resource_riftgate_w10_e1"), SubResource("Resource_riftgate_w10_e2"), SubResource("Resource_riftgate_w10_e3"), SubResource("Resource_riftgate_w10_e4"), SubResource("Resource_riftgate_w10_e5"), SubResource("Resource_riftgate_w10_e6"), SubResource("Resource_riftgate_w10_e7"), SubResource("Resource_riftgate_w10_e8"), SubResource("Resource_riftgate_w10_e9"), SubResource("Resource_riftgate_w10_e10")])
 
 [sub_resource type="Resource" id="Resource_riftgate_w11_e1"]
 script = ExtResource("3_entry")

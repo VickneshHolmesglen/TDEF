@@ -165,3 +165,11 @@ var heal_cooldown_remaining: float = 0.0
 ## reveal radius). TowerSystem applies the same rule for targeting; this copy
 ## only drives the sprite fade.
 var stealth_hidden: bool = false
+## Dash (2026-11-04): seconds until the next burst, and seconds left in the
+## current one (> 0 while dashing).
+var dash_cooldown_remaining: float = 0.0
+var dash_remaining: float = 0.0
+## Haste from a drummer (2026-11-04): seconds left and the multiplier. A new
+## pulse refreshes the timer and keeps the larger multiplier; hastes never stack.
+var haste_remaining: float = 0.0
+var haste_multiplier: float = 1.0

@@ -30,6 +30,8 @@ const MONSTER_TEXTURES: Dictionary[StringName, Texture2D] = {
 	&"goblin_mender": preload("res://assets/art/monsters/goblin_mender.png"),
 	&"brood_sac": preload("res://assets/art/monsters/brood_sac.png"),
 	&"shade_stalker": preload("res://assets/art/monsters/shade_stalker.png"),
+	&"rift_hound": preload("res://assets/art/monsters/rift_hound.png"),
+	&"goblin_drummer": preload("res://assets/art/monsters/goblin_drummer.png"),
 }
 
 ## Target on-screen size (world units, matches MonsterManager.CELL_SIZE=64) for
@@ -84,7 +86,7 @@ const NAMEPLATE_Y_OFFSET: float = 10.0  ## world units above the sprite's own to
 ## Status pips (2026-11-03, design/quick-specs/status-pips-2026-11-03.md): one
 ## small glyph per active status, left to right along the sprite's top-left.
 ## Each status has its own SHAPE as well as colour (readable without colour).
-const STATUS_ORDER: Array[StringName] = [&"burn", &"poison", &"bleed", &"slow", &"stun", &"shred"]
+const STATUS_ORDER: Array[StringName] = [&"burn", &"poison", &"bleed", &"slow", &"stun", &"shred", &"haste"]
 const STATUS_COLORS: Dictionary[StringName, Color] = {
 	&"burn": Color(1.0, 0.55, 0.15),    # flame triangle
 	&"poison": Color(0.45, 0.85, 0.3),  # drop
@@ -92,6 +94,7 @@ const STATUS_COLORS: Dictionary[StringName, Color] = {
 	&"slow": Color(0.4, 0.7, 1.0),      # down chevron
 	&"stun": Color(1.0, 0.9, 0.3),      # star
 	&"shred": Color(0.75, 0.5, 1.0),    # cross
+	&"haste": Color(1.0, 0.45, 0.75),   # up double chevron (2026-11-04, drummer haste)
 }
 const STATUS_PIP_SIZE: float = 10.0
 const STATUS_PIP_GAP: float = 3.0
@@ -475,6 +478,9 @@ func _draw_status_glyph(status: StringName, c: Vector2) -> void:
 		&"shred":
 			draw_line(c + Vector2(-r * 0.7, -r * 0.7), c + Vector2(r * 0.7, r * 0.7), color, 2.5)
 			draw_line(c + Vector2(r * 0.7, -r * 0.7), c + Vector2(-r * 0.7, r * 0.7), color, 2.5)
+		&"haste":
+			for dy: float in [-r * 0.45, r * 0.35]:
+				draw_polyline(PackedVector2Array([c + Vector2(-r * 0.7, dy + r * 0.35), c + Vector2(0, dy - r * 0.35), c + Vector2(r * 0.7, dy + r * 0.35)]), color, 2.0)
 
 
 func _draw() -> void:
