@@ -32,6 +32,9 @@ const BOSS_TIER: int = 2  ## MonsterResource.tier: 0=STANDARD 1=ELITE 2=BOSS
 const MAX_VISIBLE_TOASTS: int = 5
 const PlanningClusterScene: PackedScene = preload("res://src/presentation/mission_hud/planning_cluster.tscn")
 const BANNER_DURATION_SECONDS: float = 3.0  ## Rule 13's fixed auto-dismiss duration
+## Multi-entrance warning (2026-11-04): longer than Rule 13's 3 s because it is
+## the one thing a player must read before placing towers on a two-spawn map.
+const ENTRANCES_BANNER_SECONDS: float = 6.0
 
 @onready var _planning_cluster_host: Node = $PlanningClusterHost
 ## Story 008 (ADR-0011): instanced exactly once at this root, shared by every
@@ -326,6 +329,19 @@ func _on_templates_ready(_spawn_count: int, _build_duration_ms: float) -> void:
 		_last_known_routes.append(GPathfindingSystem.find_path(spawn_cell, 0))
 	if _planning_cluster != null:
 		_planning_cluster.render_route(_last_known_routes)
+	_announce_entrances()
+
+
+## Two-spawn maps (MapGenerator spawn_count): warns once at mission start that
+## enemies come from more than one entrance. Called from templates_ready and
+## again from _enter_scout(), because the HUD's own SCOUT reset can run after
+## PathfindingSystem has already emitted templates_ready for the same SCOUT.
+func _announce_entrances() -> void:
+	if _current_phase != "SCOUT":
+		return
+	var count: int = GGrid.get_spawn_cells().size()
+	if count > 1:
+		_show_transient_banner(tr("HUD_ENTRANCES_WARNING") % count, ENTRANCES_BANNER_SECONDS)
 
 
 func _on_planning_cluster_route_updated(routes: Array) -> void:
@@ -375,6 +391,8 @@ func _enter_scout() -> void:
 	_reset_local_state()
 	visible = true
 	_spawn_planning_cluster()
+	if GPathfindingSystem.is_templates_ready():
+		_announce_entrances()
 
 
 ## AC-3/AC-68: unmount. DEFEAT keeps the CanvasLayer itself visible (only
@@ -598,10 +616,10 @@ func _on_hero_class_unlocked(archetype: StringName, _is_deep: bool) -> void:
 ## AC-24: Timer.start() restarts the countdown from full duration on every
 ## call — a second call while the banner is already showing naturally resets
 ## the timer rather than stacking a second banner, with zero extra bookkeeping.
-func _show_transient_banner(text: String) -> void:
+func _show_transient_banner(text: String, seconds: float = BANNER_DURATION_SECONDS) -> void:
 	_banner_label.text = text
 	_banner.visible = true
-	_banner_timer.start(BANNER_DURATION_SECONDS)
+	_banner_timer.start(seconds)
 
 
 func _dismiss_banner() -> void:

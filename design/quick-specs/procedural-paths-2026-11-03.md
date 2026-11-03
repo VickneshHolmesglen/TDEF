@@ -56,3 +56,8 @@ candidates for Amuse). Campaign order continues the unlock chain.
   layout has its entrance count and differs between two launches.
 - Live: each new map launched twice in the real game, different layouts,
   pathfinding ready, both entrances visible; Mission Select shows 12 cards.
+
+## Amendment 2026-11-04: entrance warning and routing
+
+- **Entrance warning.** On a map with more than one SPAWN, the mission HUD shows a banner at mission start: "N entrances: enemies come from each of them. Build where the lanes meet." (`HUD_ENTRANCES_WARNING`). It stays up 6 s (`MissionHud.ENTRANCES_BANNER_SECONDS`), longer than the 3 s used for other banners, and fires only in SCOUT, so intermission route rebuilds don't repeat it. Single-spawn maps show nothing. Tests: `tests/integration/mission-hud/entrances-warning_test.gd`.
+- **Routing.** PathfindingSystem now assigns cells to a spawn by path cost (pathfinding.md Rule 3), which retires the multi-spawn gate (AC-13d). Live check on The Twinpass: no path cell falls back to A*.

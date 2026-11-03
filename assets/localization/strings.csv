@@ -348,6 +348,7 @@ EQUIP_SLOT_RING_1,Ring 1
 EQUIP_SLOT_RING_2,Ring 2
 EQUIP_SLOT_OFFHAND,Offhand
 HUD_PATH_UPDATE_QUEUED,Path update queued for next intermission.
+HUD_ENTRANCES_WARNING,"%d entrances: enemies come from each of them. Build where the lanes meet."
 HUD_SECTION_LOOT,Loot
 HUD_SECTION_NEXT_WAVE,Next Wave
 MAIN_MENU_SAVE_WARNING_VERSION_TOO_NEW,This save was made with a newer version of the game and cannot be loaded.
