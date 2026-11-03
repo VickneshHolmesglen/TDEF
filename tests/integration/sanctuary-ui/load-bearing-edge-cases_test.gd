@@ -70,6 +70,14 @@ func test_rapid_mashing_through_all_7_tab_strip_entries_produces_no_errors() -> 
 	# in the sequence (a press after it would be a no-op by design, not part
 	# of what this AC tests: the mashing itself must not error, not that
 	# departing can be un-departed).
+	# Loadout starts a real scene change: point it at the stub fixture and free
+	# what it loads afterwards (the real Tarot deck scene was left alive as
+	# orphan nodes, 2026-11-03; scene_manager_transition_test.gd's pattern).
+	var original_tarot_path: String = GSceneManager._tarot_deck_scene_path
+	var original_current_scene: Node = get_tree().current_scene
+	GSceneManager._inject(GSceneManager._mission_scene_path, GSceneManager._sanctuary_scene_path,
+		"res://tests/fixtures/scene_manager/StubScene.tscn", GSceneManager._main_menu_scene_path)
+
 	_press_hotkey(&"sanctuary_tab_3")
 	_press_hotkey(&"sanctuary_tab_4")
 	_press_hotkey(&"sanctuary_tab_5")
@@ -79,6 +87,16 @@ func test_rapid_mashing_through_all_7_tab_strip_entries_produces_no_errors() -> 
 
 	assert_that(_shell.get_active_state()).is_equal(&"DEPARTING_TO_LOADOUT")
 	assert_object(_shell.get_room_host().get_current_room()).is_null()
+
+	if GSceneManager._transition_in_progress:
+		await GEventBus.scene_transition_completed
+	GSceneManager._inject(GSceneManager._mission_scene_path, GSceneManager._sanctuary_scene_path,
+		original_tarot_path, GSceneManager._main_menu_scene_path)
+	var loaded_scene: Node = get_tree().current_scene
+	if is_instance_valid(original_current_scene):
+		get_tree().current_scene = original_current_scene
+	if loaded_scene != null and is_instance_valid(loaded_scene) and loaded_scene != original_current_scene:
+		loaded_scene.free()
 
 
 # ---------------------------------------------------------------------------

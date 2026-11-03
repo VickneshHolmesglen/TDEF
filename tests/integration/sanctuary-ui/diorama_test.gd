@@ -204,8 +204,25 @@ func test_habitat_label_reflects_a_real_creature_lured_directly_into_habitat() -
 # ---------------------------------------------------------------------------
 
 func test_departing_triggers_the_diorama_pull_back_without_erroring() -> void:
+	# Departing starts a real scene change. Point it at the stub fixture and
+	# free what it loads afterwards (scene_manager_transition_test.gd's
+	# pattern): the real MissionScene was left alive after this test, 112
+	# orphan nodes (2026-11-03).
+	var original_mission_path: String = GSceneManager._mission_scene_path
+	var original_current_scene: Node = get_tree().current_scene
+	GSceneManager._inject("res://tests/fixtures/scene_manager/StubScene.tscn", GSceneManager._sanctuary_scene_path)
+
 	_shell.confirm_launch_depart()
 	assert_that(_shell.get_active_state()).is_equal(&"DEPARTING")
+
+	if GSceneManager._transition_in_progress:
+		await GEventBus.scene_transition_completed
+	GSceneManager._inject(original_mission_path, GSceneManager._sanctuary_scene_path)
+	var loaded_scene: Node = get_tree().current_scene
+	if is_instance_valid(original_current_scene):
+		get_tree().current_scene = original_current_scene
+	if loaded_scene != null and is_instance_valid(loaded_scene) and loaded_scene != original_current_scene:
+		loaded_scene.free()
 	# The pull-back tween itself is cosmetic and covered by code review, not a
 	# runtime assertion (matches the GDD's own explicit exclusion of
 	# Visual/Audio Requirements from black-box assertions) -- this test only
