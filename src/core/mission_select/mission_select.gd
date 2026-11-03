@@ -198,8 +198,29 @@ func _record_runtime_completion() -> void:
 	if _runtime_mission_id.is_empty() or _runtime_difficulty_tier < 1:
 		return
 	var elapsed: float = maxf(0.0, Time.get_unix_time_from_system() - _runtime_launch_timestamp)
+	var first_clear: bool = not get_completion_record(_runtime_mission_id, _runtime_difficulty_tier).completed
 	record_completion(_runtime_mission_id, _runtime_difficulty_tier, elapsed)
+	_award_ascension_shards(_runtime_difficulty_tier, first_clear)
 	GEventBus.mission_completion_recorded.emit(_runtime_mission_id, _runtime_difficulty_tier)
+
+
+## Ascension victories pay Ascendant Shards (AscensionRewards); emitted before
+## mission_completion_recorded so the outcome screen can list them.
+func _award_ascension_shards(tier: int, first_clear: bool) -> void:
+	var shards: int = AscensionRewards.shards_for_victory(tier, first_clear)
+	if shards <= 0:
+		return
+	GEventBus.materials_earned.emit(String(AscensionRewards.SHARD_ITEM_ID), shards, AscensionRewards.SHARD_SOURCE)
+	GEventBus.ascension_shards_awarded.emit(shards, first_clear)
+
+
+## Highest Ascension rank cleared on any map (0 if none). Tarot cards with
+## unlock_ascension_rank read this.
+func get_highest_ascension_rank() -> int:
+	var best: int = 0
+	for mission_id: String in _completion_ledger:
+		best = maxi(best, DifficultyRewards.ascension_rank(get_highest_completed_tier(mission_id)))
+	return best
 
 
 # ---------------------------------------------------------------------------

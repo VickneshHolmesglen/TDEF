@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ItemDefinitionResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/core/inventory/item_definition_resource.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+item_id = &"ascendant_crown"
+item_type = &"Equipment"
+display_name = "Ascendant Crown"
+is_unique_instance = true
+base_stats = {&"max_hp": 156.0, &"armor": 26.0}
+rarity = ""
+equipment_category = "helmet"
+icon_path = "res://assets/art/items/ascendant_crown.png"
+worn_texture_path = "res://assets/art/characters/gear/ascendant_crown_worn.png"

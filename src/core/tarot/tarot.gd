@@ -146,6 +146,8 @@ func is_card_unlocked(card_id: StringName) -> bool:
 	var card: TarotCardResource = GGameDataRegistry.get_tarot_card(card_id)
 	if card == null:
 		return false
+	if card.unlock_ascension_rank > 0:
+		return GMissionSelect.get_highest_ascension_rank() >= card.unlock_ascension_rank
 	if card.unlock_tech_id == &"":
 		return true
 	return GDefenseBuilding.is_tech_unlocked(card.unlock_tech_id)

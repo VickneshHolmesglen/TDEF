@@ -60,6 +60,11 @@ var _unlock_lines: PackedStringArray = PackedStringArray()
 ## diffed into what it newly opened.
 var _open_maps_at_launch: PackedStringArray = PackedStringArray()
 var _open_tier_at_launch: int = 0
+## Ascension rewards (2026-11-03): best rank before this run, and the shards
+## this win paid (AscensionRewards via ascension_shards_awarded).
+var _ascension_rank_at_launch: int = 0
+var _shards_awarded: int = 0
+var _shards_first_clear: bool = false
 var _launched_mission_id: String = ""
 
 
@@ -107,6 +112,7 @@ func _ready() -> void:
 	GEventBus.hero_died.connect(_on_hero_died)
 	GEventBus.mission_launched.connect(_on_mission_launched)
 	GEventBus.mission_completion_recorded.connect(_on_mission_completion_recorded)
+	GEventBus.ascension_shards_awarded.connect(_on_ascension_shards_awarded)
 	_build_unlock_label()
 
 
@@ -160,6 +166,35 @@ func _on_mission_completion_recorded(mission_id: String, _tier: int) -> void:
 	if mission_id != _launched_mission_id:
 		return
 	_unlock_lines = unlock_lines_since(_open_maps_at_launch, _open_tier_at_launch, mission_id)
+	_unlock_lines.append_array(tarot_unlock_lines_since(_ascension_rank_at_launch))
+	if _shards_awarded > 0 and _shards_first_clear:
+		_unlock_lines.append(tr("OUTCOME_SHARDS_FIRST_CLEAR") % _shards_awarded)
+	elif _shards_awarded > 0:
+		_unlock_lines.append(tr("OUTCOME_SHARDS") % _shards_awarded)
+
+
+func _on_ascension_shards_awarded(amount: int, first_clear: bool) -> void:
+	_shards_awarded = amount
+	_shards_first_clear = first_clear
+
+
+## "Tarot card unlocked: X" for every Ascension card whose rank this win
+## reached (best rank was `rank_before` at launch).
+static func tarot_unlock_lines_since(rank_before: int) -> PackedStringArray:
+	var lines: PackedStringArray = PackedStringArray()
+	var rank_now: int = GMissionSelect.get_highest_ascension_rank()
+	if rank_now <= rank_before:
+		return lines
+	var unlocked: Array[TarotCardResource] = []
+	for card: TarotCardResource in GGameDataRegistry.get_all_tarot_cards().values():
+		if card.unlock_ascension_rank > rank_before and card.unlock_ascension_rank <= rank_now:
+			unlocked.append(card)
+	# Lowest unlock rank first (StringName order is not alphabetical).
+	unlocked.sort_custom(func(a: TarotCardResource, b: TarotCardResource) -> bool:
+		return a.unlock_ascension_rank < b.unlock_ascension_rank)
+	for card: TarotCardResource in unlocked:
+		lines.append(TranslationServer.translate("OUTCOME_UNLOCKED_TAROT") % String(card.card_id).capitalize())
+	return lines
 
 
 func get_unlock_lines() -> PackedStringArray:
@@ -169,6 +204,8 @@ func get_unlock_lines() -> PackedStringArray:
 func _exit_tree() -> void:
 	if GEventBus.mission_completion_recorded.is_connected(_on_mission_completion_recorded):
 		GEventBus.mission_completion_recorded.disconnect(_on_mission_completion_recorded)
+	if GEventBus.ascension_shards_awarded.is_connected(_on_ascension_shards_awarded):
+		GEventBus.ascension_shards_awarded.disconnect(_on_ascension_shards_awarded)
 	_cancel_pending_show()
 	if _fade_tween != null and _fade_tween.is_valid():
 		_fade_tween.kill()
@@ -260,6 +297,9 @@ func _on_mission_launched(id: String, _modifiers: PackedStringArray, _tier: int)
 	_launched_mission_id = id
 	_open_maps_at_launch = open_maps()
 	_open_tier_at_launch = GMissionSelect.get_highest_unlocked_tier(id)
+	_ascension_rank_at_launch = GMissionSelect.get_highest_ascension_rank()
+	_shards_awarded = 0
+	_shards_first_clear = false
 	_unlock_lines = PackedStringArray()
 	_stats.reset()
 	_reset_attempt_state()

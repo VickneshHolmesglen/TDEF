@@ -90,6 +90,12 @@ const CARD_TEXTURES: Dictionary[StringName, Texture2D] = {
 	&"reckless_onslaught": preload("res://assets/art/tarot/the_tower.png"),
 	&"swift_current": preload("res://assets/art/tarot/wheel_of_fortune.png"),
 	&"grinding_gauntlet": preload("res://assets/art/tarot/the_devil.png"),
+	# 2026-11-03 Ascension cards: The Sun (a new day after the climb) for
+	# dawnbreaker, Judgement (the reckoning) for final_judgement, The World
+	# (the journey complete) for worlds_weight.
+	&"dawnbreaker": preload("res://assets/art/tarot/the_sun.png"),
+	&"final_judgement": preload("res://assets/art/tarot/judgement.png"),
+	&"worlds_weight": preload("res://assets/art/tarot/the_world.png"),
 }
 
 ## Injectable for tests; defaults to the real GTarot Autoload (ADR-0035).
@@ -320,10 +326,20 @@ func _create_pool_button(card_id: StringName) -> Button:
 
 func _pool_entry_text(card_id: StringName) -> String:
 	if not tarot.is_card_unlocked(card_id):
-		return "%s\n%s" % [_card_display_name(card_id), tr("TAROT_TAG_LOCKED")]
+		var tag: String = locked_tag(card_id)
+		return "%s\n%s" % [_card_display_name(card_id), tag if not tag.is_empty() else tr("TAROT_TAG_LOCKED")]
 	if tarot.get_current_deck().has(card_id):
 		return "%s\n%s" % [_card_display_name(card_id), tr("TAROT_TAG_EQUIPPED")]
 	return "%s\n%s" % [_card_display_name(card_id), tr("TAROT_TAG_AVAILABLE")]
+
+
+## For an Ascension card, the locked tag naming the rank that unlocks it;
+## "" for any other card (the caller uses the plain "(Locked)").
+static func locked_tag(card_id: StringName) -> String:
+	var card: TarotCardResource = GGameDataRegistry.get_tarot_card(card_id)
+	if card != null and card.unlock_ascension_rank > 0:
+		return TranslationServer.translate("TAROT_TAG_LOCKED_ASCENSION") % card.unlock_ascension_rank
+	return ""
 
 
 ## TarotCardResource has no display name; derive one rather than showing the

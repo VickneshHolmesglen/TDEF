@@ -752,6 +752,10 @@ signal hero_equipment_crafted(item_id: String, item_type: String, quality_tier: 
 ## Key subscribers: Hero System (stat update), Mission HUD.
 signal item_rune_imbued(item_id: String, rune_id: String, rune_source: String)
 
+## An item bought an extra rune slot with Ascendant Shards (Ascension reward,
+## 2026-11-03). Key subscribers: Equipment Forge screen (refresh).
+signal item_rune_slot_added(item_id: String, rune_slot_count: int)
+
 # =============================================================================
 # Hero Skill Build System
 # =============================================================================
@@ -805,6 +809,12 @@ signal mission_launched(mission_id: String, modifiers: PackedStringArray, diffic
 ## campaign unlocks: a clear can open the next map or the next tier.
 ## Key subscribers: Mission Outcome screen (unlock callout).
 signal mission_completion_recorded(mission_id: String, difficulty_tier: int)
+
+## An Ascension victory paid Ascendant Shards (AscensionRewards). Fires just
+## before mission_completion_recorded. `first_clear` = the bounty for the
+## first clear of that rank on that map is included in `amount`.
+## Key subscribers: Mission Outcome screen (shard line).
+signal ascension_shards_awarded(amount: int, first_clear: bool)
 
 # =============================================================================
 # Encyclopedia System

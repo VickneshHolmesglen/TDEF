@@ -218,7 +218,10 @@ func _create_mission_button(entry: MissionEntry) -> Button:
 	button.toggle_mode = true  # pressed state marks the selected mission
 	button.text = _mission_entry_text(entry)
 	button.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	button.icon = entry.icon
+	# Ascension reward (2026-11-03): bronze/silver/gold rim at best rank 5/10/15.
+	var best_rank: int = DifficultyRewards.ascension_rank(mission_select.get_highest_completed_tier(entry.mission_id))
+	button.icon = MedallionRim.apply(entry.icon, AscensionRewards.rim_level(best_rank))
+	button.set_meta(&"rim_level", AscensionRewards.rim_level(best_rank))
 	button.expand_icon = true
 	button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	button.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP

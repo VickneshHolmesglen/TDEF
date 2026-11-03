@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ItemDefinitionResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/core/inventory/item_definition_resource.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+item_id = &"ascendant_treads"
+item_type = &"Equipment"
+display_name = "Ascendant Treads"
+is_unique_instance = true
+base_stats = {&"move_speed": 30.0, &"cdr": 0.040}
+rarity = ""
+equipment_category = "boots"
+icon_path = "res://assets/art/items/ascendant_treads.png"
+worn_texture_path = "res://assets/art/characters/gear/ascendant_treads_worn.png"

@@ -76,7 +76,9 @@ extends Node
 ## (22), Menagerie (20), Constellation (24), and Hero (30).
 
 const RESTORE_ORDER: int = 32
-const TIER_DPS_MULTIPLIER: Array[float] = [1.0, 1.6, 2.4, 4.0]  ## index 0 = Tier 1
+## index 0 = Tier 1. Tier 5 = the Ascendant set (2026-11-03,
+## design/quick-specs/ascension-rewards-2026-11-03.md).
+const TIER_DPS_MULTIPLIER: Array[float] = [1.0, 1.6, 2.4, 4.0, 6.0]
 ## Formula 3 guideline ranges (content-authoring, not a strict formula) —
 ## additive bonus per rune, feeds Hero's additive_bonus_total.
 const RUNE_ADDITIVE_BONUS: float = 0.05  ## midpoint of the 0.02-0.08 guideline range
@@ -281,6 +283,48 @@ func resolve_imbue(instance_id: int, rune_id: StringName) -> bool:
 		return false
 	_available_runes.erase(rune_id)
 	GEventBus.item_rune_imbued.emit(item_contents["item_id"] as String, String(rune_id), entry["rune_source"] as String)
+	_forge_resolving = false
+	return true
+
+
+## Extra rune slots already bought on this item (rune slots above its
+## equipment slot's base count); -1 if it is not an equipment item.
+func extra_rune_slots(instance_id: int) -> int:
+	var contents: Dictionary = GInventory.get_slot_contents_by_instance_id(instance_id)
+	if contents.is_empty():
+		return -1
+	var definition: ItemDefinitionResource = GGameDataRegistry.get_item_definition(StringName(contents["item_id"]))
+	if definition == null or not EquipmentRecipeResource.RUNE_SLOT_COUNT_FOR_SLOT.has(definition.equipment_category):
+		return -1
+	var base: int = EquipmentRecipeResource.RUNE_SLOT_COUNT_FOR_SLOT[definition.equipment_category]
+	return maxi(0, (contents.get("rune_slot_count", 0) as int) - base)
+
+
+## Ascendant Shard cost of this item's next extra rune slot; -1 when it is
+## not equipment or already at AscensionRewards.MAX_EXTRA_RUNE_SLOTS.
+func add_rune_slot_cost(instance_id: int) -> int:
+	var extra: int = extra_rune_slots(instance_id)
+	return AscensionRewards.extra_rune_slot_cost(extra) if extra >= 0 else -1
+
+
+## Ascension reward (design/quick-specs/ascension-rewards-2026-11-03.md):
+## spends Ascendant Shards to add one rune slot to an owned equipment item.
+## Rejected in full (nothing spent) when the item is missing or not
+## equipment, at the cap, or short of shards. Shares _forge_resolving with
+## the other Forge operations, so a double-confirm cannot double-spend.
+## Emits item_rune_slot_added(item_id, new_slot_count) on success.
+func resolve_add_rune_slot(instance_id: int) -> bool:
+	if _forge_resolving:
+		return false
+	_forge_resolving = true
+	var cost: int = add_rune_slot_cost(instance_id)
+	if cost < 0 or GInventory.count_by_material_id(AscensionRewards.SHARD_ITEM_ID) < cost:
+		_forge_resolving = false
+		return false
+	GInventory.consume_by_material_id(AscensionRewards.SHARD_ITEM_ID, cost)
+	GInventory.add_rune_slot(instance_id)
+	var contents: Dictionary = GInventory.get_slot_contents_by_instance_id(instance_id)
+	GEventBus.item_rune_slot_added.emit(contents["item_id"] as String, contents["rune_slot_count"] as int)
 	_forge_resolving = false
 	return true
 

@@ -28,9 +28,9 @@ func _equipment_items() -> Array[ItemDefinitionResource]:
 	return result
 
 
-func test_all_54_equipment_items_have_authored_base_stats() -> void:
+func test_all_63_equipment_items_have_authored_base_stats() -> void:
 	var items: Array[ItemDefinitionResource] = _equipment_items()
-	assert_int(items.size()).is_equal(54)  # 45 + 9 Steelwrought mid-tier (2026-11-02)
+	assert_int(items.size()).is_equal(63)  # 45 + 9 Steelwrought (2026-11-02) + 9 Ascendant (2026-11-03)
 	for item: ItemDefinitionResource in items:
 		assert_bool(item.base_stats.is_empty()).override_failure_message("%s has empty base_stats" % item.item_id).is_false()
 

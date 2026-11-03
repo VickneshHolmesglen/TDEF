@@ -27,6 +27,10 @@ const EXPECTED: Dictionary[StringName, Dictionary] = {
 	&"rune_menagerie_emberwing_moth": {&"magic_attack": 7.5, &"elemental_resist_fire": 0.06},
 	&"rune_menagerie_glimmer_hare": {&"move_speed": 10.0, &"luck": 0.03},
 	&"rune_menagerie_mossback_toad": {&"armor": 10.0, &"elemental_resist_frost": 0.045},
+	# Ascension Tarot cards (2026-11-03, design/quick-specs/ascension-rewards-2026-11-03.md)
+	&"rune_dawnbreaker": {&"luck": 0.08},
+	&"rune_final_judgement": {&"physical_attack": 4.0, &"crit_multiplier": 0.12},
+	&"rune_worlds_weight": {&"max_hp": 120.0, &"physical_attack": 6.0},
 }
 
 const WILDCARDS: Array[StringName] = [&"rune_cross_plus", &"rune_menagerie_aurora_stag"]
@@ -40,8 +44,8 @@ const MAX_FLAT: Dictionary[StringName, float] = {
 }
 
 
-func test_there_are_exactly_22_expected_runes() -> void:
-	assert_int(EXPECTED.size()).is_equal(22)
+func test_there_are_exactly_25_expected_runes() -> void:
+	assert_int(EXPECTED.size()).is_equal(25)  # 22 + 3 Ascension cards (2026-11-03)
 
 
 func test_every_rune_resolves_to_exactly_its_spec_value() -> void:

@@ -32,6 +32,12 @@ extends Resource
 ## Crafting uses for recipe tiers). Empty string means unlocked from the start.
 @export var unlock_tech_id: StringName = &""
 
+## Ascension reward (2026-11-03): > 0 = the card unlocks once the highest
+## Ascension rank cleared on any map reaches this value
+## (MissionSelect.get_highest_ascension_rank()). 0 = no Ascension gate.
+## Pull-based like unlock_tech_id: nothing extra is saved.
+@export var unlock_ascension_rank: int = 0
+
 ## Story 005 (Formula F5): fixed value baked into this card's linked rune
 ## definition — "roughly half of its linked card's Tier-0 base_modifier_value's
 ## marginal effect, a design guideline, not a formula" per tarot.md's own

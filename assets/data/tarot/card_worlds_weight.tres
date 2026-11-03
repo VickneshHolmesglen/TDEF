@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="TarotCardResource" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://src/core/tarot/tarot_card_resource.gd" id="1"]
+[ext_resource type="Script" path="res://src/core/tarot/tarot_modifier_entry.gd" id="2"]
+[sub_resource type="Resource" id="Modifier_worlds_weight_0"]
+script = ExtResource("2")
+modifier_type = &"tarot_reward_scalar_mult"
+base_modifier_value = 2.5
+
+[sub_resource type="Resource" id="Modifier_worlds_weight_1"]
+script = ExtResource("2")
+modifier_type = &"tarot_speed_scalar_mult"
+base_modifier_value = 1.6
+
+[resource]
+script = ExtResource("1")
+card_id = &"worlds_weight"
+rarity = "Legendary"
+modifiers = [SubResource("Modifier_worlds_weight_0"), SubResource("Modifier_worlds_weight_1")]
+linked_rune_id = &"rune_worlds_weight"
+rune_stat_delta = {&"max_hp": 120.0, &"physical_attack": 6.0}
+unlock_ascension_rank = 10
+icon_path = "res://assets/art/tarot/the_world.png"

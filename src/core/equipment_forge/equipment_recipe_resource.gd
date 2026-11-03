@@ -24,7 +24,7 @@ extends Resource
 @export var inputs: Dictionary[StringName, int] = {}  ## item_type -> quantity
 @export var tech_prerequisite: StringName = &""  ## "" = ungated
 @export var output_item_id: StringName = &""
-@export var quality_tier: int = 1  ## 1-4, fixed author-set — never rolled or computed at craft time
+@export var quality_tier: int = 1  ## 1-5 (5 = Ascendant, 2026-11-03), fixed author-set — never rolled or computed at craft time
 ## Derived at data-authoring time from the fixed output_slot -> rune_slot_count
 ## table (Rule 11, expanded 2026-08-16: weapon=2, offhand=1, helmet/chest/
 ## gloves/pants/boots=2, neck=1, ring=1) — never authored freely; validate()
@@ -60,8 +60,8 @@ func validate() -> Array[String]:
 		errors.append("inputs must not be empty")
 	if output_item_id == &"":
 		errors.append("output_item_id must not be empty")
-	if quality_tier < 1 or quality_tier > 4:
-		errors.append("quality_tier must be in [1,4] (got %d)" % quality_tier)
+	if quality_tier < 1 or quality_tier > EquipmentForge.TIER_DPS_MULTIPLIER.size():
+		errors.append("quality_tier must be in [1,%d] (got %d)" % [EquipmentForge.TIER_DPS_MULTIPLIER.size(), quality_tier])
 	if VALID_OUTPUT_SLOTS.has(output_slot):
 		var expected: int = RUNE_SLOT_COUNT_FOR_SLOT[output_slot]
 		if rune_slot_count != expected:

@@ -103,6 +103,10 @@ var _active_tab: int = TAB_CRAFT
 var _selected_instance_id: int = -1
 var _pending_imbue_rune_id: StringName = &""
 var _pending_upgrade_id: StringName = &""
+## Ascension reward (2026-11-03): buys one more rune slot on the selected item
+## with Ascendant Shards. Built in code under the Cancel button.
+var _add_rune_slot_button: Button
+var _add_rune_slot_dialog: ConfirmationDialog
 
 
 func _ready() -> void:
@@ -132,7 +136,9 @@ func _ready() -> void:
 	GEventBus.structure_upgraded.connect(_on_forge_state_changed)
 	GEventBus.item_added.connect(_on_forge_state_changed)
 	GEventBus.item_removed.connect(_on_forge_state_changed)
+	GEventBus.item_rune_slot_added.connect(_on_forge_state_changed)
 
+	_build_add_rune_slot_controls()
 	_rebuild_recipe_list()
 	_rebuild_item_list()
 	_rebuild_rune_list()
@@ -149,6 +155,7 @@ func disconnect_own_subscriptions() -> void:
 	GEventBus.structure_upgraded.disconnect(_on_forge_state_changed)
 	GEventBus.item_added.disconnect(_on_forge_state_changed)
 	GEventBus.item_removed.disconnect(_on_forge_state_changed)
+	GEventBus.item_rune_slot_added.disconnect(_on_forge_state_changed)
 
 
 func _on_forge_state_changed(_a: Variant = null, _b: Variant = null, _c: Variant = null) -> void:
@@ -156,6 +163,7 @@ func _on_forge_state_changed(_a: Variant = null, _b: Variant = null, _c: Variant
 	_rebuild_item_list()
 	_rebuild_rune_list()
 	_rebuild_upgrade_list()
+	_refresh_add_rune_slot_button()
 
 
 # ---------------------------------------------------------------------------
@@ -415,9 +423,11 @@ func _rebuild_item_list() -> void:
 			continue
 		var rune_slot_count: int = contents.get("rune_slot_count", 0) as int
 		var imbued_runes: Array = contents.get("imbued_runes", [])
-		if rune_slot_count <= 0 or imbued_runes.size() >= rune_slot_count:
-			continue  # not an imbuable item, or no free slot remains
 		var instance_id: int = contents["instance_id"] as int
+		if rune_slot_count <= 0:
+			continue  # not an imbuable item
+		if imbued_runes.size() >= rune_slot_count and (equipment_forge == null or equipment_forge.add_rune_slot_cost(instance_id) < 0):
+			continue  # full, and cannot buy another slot (2026-11-03)
 		var button: Button = _create_item_button(instance_id, contents)
 		_item_list.add_child(button)
 		_item_buttons[instance_id] = button
@@ -441,11 +451,75 @@ func _create_item_button(instance_id: int, contents: Dictionary) -> Button:
 func _on_item_pressed(instance_id: int) -> void:
 	_selected_instance_id = instance_id
 	_imbue_cancel_button.visible = true
+	_refresh_add_rune_slot_button()
 
 
 func _on_cancel_item_selection_pressed() -> void:
 	_selected_instance_id = -1
 	_imbue_cancel_button.visible = false
+	_refresh_add_rune_slot_button()
+
+
+# ---------------------------------------------------------------------------
+# Extra rune slot (Ascension reward, design/quick-specs/
+# ascension-rewards-2026-11-03.md)
+# ---------------------------------------------------------------------------
+
+func _build_add_rune_slot_controls() -> void:
+	_add_rune_slot_button = Button.new()
+	_add_rune_slot_button.name = "AddRuneSlotButton"
+	_add_rune_slot_button.focus_mode = Control.FOCUS_ALL
+	_add_rune_slot_button.visible = false
+	_add_rune_slot_button.pressed.connect(_on_add_rune_slot_pressed)
+	_wire_focus_ring(_add_rune_slot_button)
+	var column: Node = _imbue_cancel_button.get_parent()
+	column.add_child(_add_rune_slot_button)
+	column.move_child(_add_rune_slot_button, _imbue_cancel_button.get_index() + 1)
+	_add_rune_slot_dialog = ConfirmationDialog.new()
+	_add_rune_slot_dialog.name = "AddRuneSlotConfirmDialog"
+	_add_rune_slot_dialog.confirmed.connect(_on_add_rune_slot_confirmed)
+	_add_rune_slot_dialog.get_cancel_button().set_meta(UiAudioBinder.META_KEY, UiAudioBinder.KIND_CANCEL)
+	_add_rune_slot_dialog.get_ok_button().set_meta(UiAudioBinder.META_KEY, UiAudioBinder.KIND_CONFIRM)
+	add_child(_add_rune_slot_dialog)
+
+
+## Hidden with no item selected; "Rune slots maxed" at the cap; otherwise the
+## shard price, disabled while the player has too few shards.
+func _refresh_add_rune_slot_button() -> void:
+	if _add_rune_slot_button == null:
+		return
+	_add_rune_slot_button.visible = _selected_instance_id != -1 and equipment_forge != null
+	if not _add_rune_slot_button.visible:
+		return
+	var cost: int = equipment_forge.add_rune_slot_cost(_selected_instance_id)
+	if cost < 0:
+		_add_rune_slot_button.text = tr("FORGE_ADD_RUNE_SLOT_MAXED")
+		_add_rune_slot_button.disabled = true
+		return
+	_add_rune_slot_button.text = tr("FORGE_ADD_RUNE_SLOT") % cost
+	_add_rune_slot_button.disabled = GInventory.count_by_material_id(AscensionRewards.SHARD_ITEM_ID) < cost
+
+
+func _on_add_rune_slot_pressed() -> void:
+	if _selected_instance_id == -1:
+		return
+	var cost: int = equipment_forge.add_rune_slot_cost(_selected_instance_id)
+	if cost < 0:
+		return
+	var contents: Dictionary = GInventory.get_slot_contents_by_instance_id(_selected_instance_id)
+	_add_rune_slot_dialog.dialog_text = tr("FORGE_ADD_RUNE_SLOT_CONFIRM") % [cost, _item_display_name(StringName(contents.get("item_id", "")))]
+	_add_rune_slot_dialog.popup_centered()
+
+
+func _on_add_rune_slot_confirmed() -> void:
+	if _selected_instance_id == -1:
+		return
+	equipment_forge.resolve_add_rune_slot(_selected_instance_id)
+	_refresh_add_rune_slot_button()
+
+
+func get_add_rune_slot_button() -> Button:
+	return _add_rune_slot_button
 
 
 func get_selected_instance_id() -> int:

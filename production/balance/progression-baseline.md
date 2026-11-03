@@ -29,16 +29,16 @@ Expected values (no RNG), from the live game data. Re-run after any data or form
 
 | Missions | Hero level | Skill pts (levels) | Total XP | Purchases owned | Gear owned |
 |---|---|---|---|---|---|
-| 1 | 5 | 1 | 502 | 21/97 | 1/54 |
-| 2 | 9 | 1 | 1,043 | 28/97 | 4/54 |
-| 4 | 14 | 2 | 2,130 | 35/97 | 8/54 |
-| 8 | 21 | 4 | 4,228 | 45/97 | 11/54 |
-| 12 | 26 | 5 | 6,357 | 50/97 | 15/54 |
-| 20 | 33 | 6 | 10,585 | 56/97 | 21/54 |
-| 30 | 38 | 7 | 15,920 | 66/97 | 27/54 |
-| 40 | 42 | 8 | 21,139 | 75/97 | 34/54 |
-| 60 | 48 | 9 | 31,725 | 90/97 | 48/54 |
-| 70 | 50 | 10 | 37,059 | 94/97 | 52/54 |
+| 1 | 5 | 1 | 502 | 21/106 | 1/63 |
+| 2 | 9 | 1 | 1,043 | 28/106 | 4/63 |
+| 4 | 14 | 2 | 2,130 | 35/106 | 8/63 |
+| 8 | 21 | 4 | 4,228 | 45/106 | 11/63 |
+| 12 | 26 | 5 | 6,357 | 50/106 | 15/63 |
+| 20 | 33 | 6 | 10,585 | 56/106 | 21/63 |
+| 30 | 38 | 7 | 15,920 | 66/106 | 27/63 |
+| 40 | 42 | 8 | 21,139 | 75/106 | 34/63 |
+| 60 | 48 | 9 | 31,725 | 90/106 | 48/63 |
+| 70 | 50 | 10 | 37,059 | 94/106 | 52/63 |
 
 ## Hero power vs enemy HP
 
@@ -174,3 +174,12 @@ Hero attack = 25 base + 2/level + best owned gear per slot (physical_attack). En
 | sentinels_aegis | equipment | 36 rift_shard, 26 Uncommon, 8.0 sentinel_core | tech_production_4 | 11 | 40 |
 | sentinels_lance | equipment | 36 rift_shard, 26 Uncommon, 8.0 sentinel_core | tech_production_4 | 11 | 51 |
 | sentinels_striders | equipment | 36 rift_shard, 26 Uncommon, 8.0 sentinel_core | tech_production_4 | 11 | 59 |
+| ascendant_aegis | equipment | 200 ascendant_shard, 20 Rare, 30 Uncommon | tech_production_4 | - | - |
+| ascendant_band | equipment | 200 ascendant_shard, 20 Rare, 30 Uncommon | tech_production_4 | - | - |
+| ascendant_blade | equipment | 300 ascendant_shard, 20 Rare, 30 Uncommon | tech_production_4 | - | - |
+| ascendant_crown | equipment | 200 ascendant_shard, 20 Rare, 30 Uncommon | tech_production_4 | - | - |
+| ascendant_cuirass | equipment | 300 ascendant_shard, 20 Rare, 30 Uncommon | tech_production_4 | - | - |
+| ascendant_greaves | equipment | 200 ascendant_shard, 20 Rare, 30 Uncommon | tech_production_4 | - | - |
+| ascendant_grips | equipment | 200 ascendant_shard, 20 Rare, 30 Uncommon | tech_production_4 | - | - |
+| ascendant_pendant | equipment | 200 ascendant_shard, 20 Rare, 30 Uncommon | tech_production_4 | - | - |
+| ascendant_treads | equipment | 200 ascendant_shard, 20 Rare, 30 Uncommon | tech_production_4 | - | - |

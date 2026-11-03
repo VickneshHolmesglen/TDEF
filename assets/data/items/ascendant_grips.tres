@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ItemDefinitionResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/core/inventory/item_definition_resource.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+item_id = &"ascendant_grips"
+item_type = &"Equipment"
+display_name = "Ascendant Grips"
+is_unique_instance = true
+base_stats = {&"physical_attack": 8.0, &"crit_chance": 0.080, &"lifesteal": 0.010}
+rarity = ""
+equipment_category = "gloves"
+icon_path = "res://assets/art/items/ascendant_grips.png"
+worn_texture_path = "res://assets/art/characters/gear/ascendant_grips_worn.png"

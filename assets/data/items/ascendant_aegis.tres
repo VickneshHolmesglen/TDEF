@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ItemDefinitionResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/core/inventory/item_definition_resource.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+item_id = &"ascendant_aegis"
+item_type = &"Equipment"
+display_name = "Ascendant Aegis"
+is_unique_instance = true
+base_stats = {&"armor": 36.0, &"elemental_resist_fire": 0.120, &"elemental_resist_frost": 0.120}
+rarity = ""
+equipment_category = "offhand"
+icon_path = "res://assets/art/items/ascendant_aegis.png"
+worn_texture_path = "res://assets/art/characters/gear/ascendant_aegis_worn.png"

@@ -1265,6 +1265,19 @@ func apply_rune_to_item(instance_id: int, rune_id: String, _stat_delta: Dictiona
 	return false
 
 
+## Ascension reward (2026-11-03): one more rune slot on the item with
+## `instance_id`. In-place metadata change like apply_rune_to_item() (no
+## item_added/item_removed, ignores `locked` so equipped gear qualifies).
+## The cap and the shard cost are EquipmentForge.resolve_add_rune_slot()'s
+## job. Returns false if no item has that instance_id.
+func add_rune_slot(instance_id: int) -> bool:
+	for slot: InventorySlot in _slots:
+		if slot != null and slot.instance_id == instance_id:
+			slot.rune_slot_count += 1
+			return true
+	return false
+
+
 ## Sets or clears the equipped/installed lock on `slot_index` (Story 004,
 ## ADR-0016 Decision: Inventory owns this flag itself — it is set/cleared by
 ## whichever caller reacts to a real equip/unequip event; Hero/Tower's EventBus

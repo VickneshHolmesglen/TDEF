@@ -15,7 +15,7 @@ import pathlib
 from PIL import Image
 
 
-def recolor(src: str, dst: str, tint: tuple[int, int, int], strength: float, contrast: float) -> None:
+def recolor(src: str, dst: str, tint: tuple[int, int, int], strength: float, contrast: float, gamma: float = 1.0) -> None:
     im = Image.open(src).convert("RGBA")
     px = im.load()
     tr, tg, tb = (c / 255.0 for c in tint)
@@ -27,6 +27,7 @@ def recolor(src: str, dst: str, tint: tuple[int, int, int], strength: float, con
                 continue
             lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255.0
             lum = min(1.0, max(0.0, 0.5 + (lum - 0.5) * contrast))
+            lum = lum ** gamma  # < 1 lifts dark sources (Ascendant line, 2026-11-03)
             scale = lum / t_lum if t_lum > 0 else 0.0
             nr, ng, nb = (min(1.0, c * scale) for c in (tr, tg, tb))
             out = []
@@ -63,8 +64,9 @@ def main() -> None:
     ap.add_argument("--tint", default="96,132,188")
     ap.add_argument("--strength", type=float, default=0.55)
     ap.add_argument("--contrast", type=float, default=1.1)
+    ap.add_argument("--gamma", type=float, default=1.0, help="< 1 brightens (applied after contrast)")
     a = ap.parse_args()
-    recolor(a.src, a.dst, tuple(int(c) for c in a.tint.split(",")), a.strength, a.contrast)
+    recolor(a.src, a.dst, tuple(int(c) for c in a.tint.split(",")), a.strength, a.contrast, a.gamma)
 
 
 if __name__ == "__main__":

@@ -404,3 +404,47 @@ func test_forge_screen_locked_text_names_missing_tech() -> void:
 	var text: String = _screen.call("locked_recipe_text", plate)
 	var tech_name: String = TechNodeLabel.display_name(GGameDataRegistry.get_tech_node(plate.tech_prerequisite))
 	assert_str(text).contains(tech_name)
+
+
+# ---------------------------------------------------------------------------
+# Extra rune slot (Ascension reward, 2026-11-03)
+# ---------------------------------------------------------------------------
+
+func _owned_sword_with_runes_full() -> int:
+	var definition: ItemDefinitionResource = GGameDataRegistry.get_item_definition(&"iron_sword")
+	GInventory.add_unique_item(definition, {}, 2)
+	var instance_id: int = GInventory.get_slot_contents(0)["instance_id"] as int
+	GInventory.apply_rune_to_item(instance_id, "rune_a", {})
+	GInventory.apply_rune_to_item(instance_id, "rune_b", {})
+	return instance_id
+
+
+## A full item used to vanish from the list; it stays while a slot can be bought.
+func test_forge_full_item_stays_listed_and_offers_a_rune_slot() -> void:
+	var sword: int = _owned_sword_with_runes_full()
+	_rebuild_all()
+	assert_object(_screen.call("get_item_button", sword)).is_not_null()
+
+	_screen.call("_on_item_pressed", sword)
+	var button: Button = _screen.call("get_add_rune_slot_button")
+	assert_bool(button.visible).is_true()
+	assert_str(button.text).is_equal(tr("FORGE_ADD_RUNE_SLOT") % 40)
+	assert_bool(button.disabled).is_true()  # no shards yet
+
+
+func test_forge_add_rune_slot_confirm_spends_shards_and_relists() -> void:
+	var sword: int = _owned_sword_with_runes_full()
+	GInventory.add_stackable(GGameDataRegistry.get_item_definition(AscensionRewards.SHARD_ITEM_ID), 40)
+	_rebuild_all()
+	_screen.call("_on_item_pressed", sword)
+	var button: Button = _screen.call("get_add_rune_slot_button")
+	assert_bool(button.disabled).is_false()
+
+	_screen.call("_on_add_rune_slot_confirmed")
+
+	assert_int(GInventory.get_slot_contents_by_instance_id(sword)["rune_slot_count"] as int).is_equal(3)
+	assert_str(button.text).is_equal(tr("FORGE_ADD_RUNE_SLOT") % 120)
+
+
+func test_forge_add_rune_slot_button_hidden_without_selection() -> void:
+	assert_bool((_screen.call("get_add_rune_slot_button") as Button).visible).is_false()
