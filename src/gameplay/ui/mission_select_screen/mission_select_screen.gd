@@ -97,8 +97,28 @@ func _ready() -> void:
 	GEventBus.mission_selected.connect(_on_mission_selected)
 	GEventBus.run_modifier_selected.connect(_on_run_modifier_selected)
 
+	_build_dev_unlock_tag()
 	_rebuild_mission_list()
 	_refresh_config_panel()
+
+
+## Developer unlock-all switch on (MissionSelect.dev_unlock_active): a tag in
+## the header so open maps are never mistaken for real campaign progress.
+func _build_dev_unlock_tag() -> void:
+	var tag := Label.new()
+	tag.name = "DevUnlockTag"
+	tag.text = tr("MISSION_SELECT_DEV_UNLOCK")
+	tag.add_theme_color_override("font_color", ShellChromeStyle.UI_ACCENT)
+	tag.visible = mission_select.dev_unlock_active
+	_header_label.add_child(tag)
+	# Just right of the title text (the title is left-aligned, so its minimum
+	# width is the text width).
+	tag.position = Vector2(_header_label.get_minimum_size().x + 24.0, 8.0)
+
+
+## Test/live-check accessor.
+func get_dev_unlock_tag() -> Label:
+	return _header_label.get_node(^"DevUnlockTag") as Label
 
 
 func _apply_chrome_styles() -> void:

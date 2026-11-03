@@ -133,8 +133,28 @@ var _runtime_launch_timestamp: float = 0.0
 ## switch. Not saved.
 var campaign_locks_enabled: bool = true
 
+## Developer unlock-all switch (2026-11-03): Project Settings >
+## debug/sanctuary/unlock_all_maps. Opens every map and tier without touching
+## the save, so later maps can be tested without replaying the campaign.
+## Ignored in release exports (OS.is_debug_build() is false there).
+const DEV_UNLOCK_SETTING: String = "debug/sanctuary/unlock_all_maps"
+
+## True when the dev switch turned the locks off this session (the Mission
+## Select screen shows a tag so it is never mistaken for real progress).
+var dev_unlock_active: bool = false
+
+
+## Example: dev_unlock_requested(true, true) == true;
+## dev_unlock_requested(false, true) == false (release build ignores it).
+static func dev_unlock_requested(is_debug_build: bool, setting_value: bool) -> bool:
+	return is_debug_build and setting_value
+
 
 func _ready() -> void:
+	if dev_unlock_requested(OS.is_debug_build(), ProjectSettings.get_setting(DEV_UNLOCK_SETTING, false)):
+		campaign_locks_enabled = false
+		dev_unlock_active = true
+		print("MissionSelect: dev unlock-all is ON (%s) -- every map and tier is open." % DEV_UNLOCK_SETTING)
 	GEventBus.sanctuary_state_restored.connect(_on_sanctuary_state_restored)
 	GEventBus.mission_phase_changed.connect(_on_mission_phase_changed)
 	GSavePersistence.register(self, RESTORE_ORDER)

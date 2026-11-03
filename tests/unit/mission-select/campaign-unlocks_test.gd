@@ -108,3 +108,15 @@ func test_difficulty_rewards_ascension_scales_hp_faster_than_rewards() -> void:
 	assert_float(DifficultyRewards.multiplier_for_tier(5)).is_equal_approx(1.7 * 1.12 * 1.12, 0.0001)
 	assert_float(DifficultyRewards.ascension_hp_multiplier(5)).is_equal_approx(1.15 * 1.15, 0.0001)
 	assert_float(DifficultyRewards.multiplier_for_tier(99)).is_equal_approx(DifficultyRewards.multiplier_for_tier(DifficultyRewards.MAX_TIER), 0.0001)
+
+
+## Dev unlock-all switch: only a debug build with the setting ticked opens
+## everything; a release export ignores the setting.
+func test_campaign_dev_unlock_requires_debug_build_and_setting() -> void:
+	assert_bool(MissionSelect.dev_unlock_requested(true, true)).is_true()
+	assert_bool(MissionSelect.dev_unlock_requested(true, false)).is_false()
+	assert_bool(MissionSelect.dev_unlock_requested(false, true)).is_false()
+
+
+func test_campaign_dev_unlock_setting_ships_off() -> void:
+	assert_bool(ProjectSettings.get_setting(MissionSelect.DEV_UNLOCK_SETTING, true)).is_false()

@@ -73,6 +73,19 @@ func test_campaign_ascension_button_appears_after_brutal_and_cycles_ranks() -> v
 
 ## 2026-11-03 tidy: a fully cleared card used to wrap to five lines of raw
 ## per-tier seconds under the medallion. Now: name + one status line.
+func test_mission_select_dev_unlock_tag_follows_dev_switch() -> void:
+	assert_bool((_screen.call("get_dev_unlock_tag") as Label).visible).is_false()
+
+	GMissionSelect.dev_unlock_active = true
+	_runner = scene_runner("res://src/gameplay/ui/mission_select_screen/MissionSelectScreen.tscn")
+	_screen = _runner.scene() as Control
+	GMissionSelect.dev_unlock_active = false
+
+	var tag: Label = _screen.call("get_dev_unlock_tag")
+	assert_bool(tag.visible).is_true()
+	assert_str(tag.text).is_equal(tr("MISSION_SELECT_DEV_UNLOCK"))
+
+
 func test_mission_card_cleared_card_shows_highest_tier_on_two_lines() -> void:
 	_rebuild_with_locks([[MISSION_THE_GAP, 1], [MISSION_THE_GAP, 2], [MISSION_THE_GAP, 3], [MISSION_THE_GAP, 5]])
 

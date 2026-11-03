@@ -38,6 +38,10 @@ GEncyclopedia="*res://src/core/encyclopedia/encyclopedia.gd"
 GTarot="*res://src/core/tarot/tarot.gd"
 _mcp_game_helper="*res://addons/godot_ai/runtime/game_helper.gd"
 
+[debug]
+
+sanctuary/unlock_all_maps=false
+
 [display]
 
 window/size/viewport_width=1280
