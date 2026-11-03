@@ -71,6 +71,37 @@ func test_campaign_ascension_button_appears_after_brutal_and_cycles_ranks() -> v
 	assert_int(GMissionSelect.difficulty_tier).is_equal(4)  # wraps to rank 1
 
 
+## 2026-11-03 tidy: a fully cleared card used to wrap to five lines of raw
+## per-tier seconds under the medallion. Now: name + one status line.
+func test_mission_card_cleared_card_shows_highest_tier_on_two_lines() -> void:
+	_rebuild_with_locks([[MISSION_THE_GAP, 1], [MISSION_THE_GAP, 2], [MISSION_THE_GAP, 3], [MISSION_THE_GAP, 5]])
+
+	var gap: Button = _screen.call("get_mission_button", MISSION_THE_GAP)
+	var lines: PackedStringArray = gap.text.split("\n")
+	assert_int(lines.size()).is_equal(2)
+	assert_str(lines[1]).is_equal(tr("MISSION_SELECT_CLEARED") % (tr("MISSION_SELECT_TIER_ASCENSION") % 2))
+	var foothills: Button = _screen.call("get_mission_button", "the_foothills")
+	assert_str(foothills.text.split("\n")[1]).is_equal(tr("MISSION_SELECT_NOT_CLEARED"))
+
+
+func test_mission_select_best_time_label_follows_selected_tier() -> void:
+	GMissionSelect.record_completion(MISSION_THE_GAP, 1, 200.0)
+	_screen.call("_on_mission_pressed", MISSION_THE_GAP)
+	var label: Label = _screen.call("get_best_time_label")
+	assert_str(label.text).is_equal(tr("MISSION_SELECT_BEST_TIME") % [tr("MISSION_SELECT_TIER_NORMAL"), "3:20"])
+
+	_screen.call("_on_tier_pressed", 2)
+	assert_str(label.text).is_equal(tr("MISSION_SELECT_BEST_TIME_NONE") % tr("MISSION_SELECT_TIER_HARD"))
+
+
+func test_mission_select_format_best_time_is_minutes_and_seconds() -> void:
+	var screen_script: GDScript = load("res://src/gameplay/ui/mission_select_screen/mission_select_screen.gd")
+	assert_str(screen_script.call("format_best_time", 200.0)).is_equal("3:20")
+	assert_str(screen_script.call("format_best_time", 59.6)).is_equal("1:00")
+	assert_str(screen_script.call("format_best_time", 0.0)).is_equal("0:00")
+	assert_str(screen_script.call("format_best_time", 3725.0)).is_equal("62:05")
+
+
 # ---------------------------------------------------------------------------
 # Mission list
 # ---------------------------------------------------------------------------

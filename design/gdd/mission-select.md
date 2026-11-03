@@ -491,3 +491,4 @@ Tarot/Defense Building:
 - **Outcome screen.** A victory lists what it opened ("New map unlocked: X", "<tier> unlocked on X").
 - `MissionSelect.campaign_locks_enabled` (default true, not saved) turns every lock off, for tests that are not about unlocking and as a debug switch.
 - **Saves from before this change** have an empty completion ledger (nothing was ever recorded), so they start with only The Gap on Normal open.
+- **Card text (supersedes "best times fully covered on the mission card").** The per-tier time summary wrapped a fully cleared card to five lines under the medallion. A card now reads the map name plus one status line: "Not yet cleared", "Cleared: <highest tier cleared>" (e.g. "Cleared: Ascension 2"), or its lock reason. The best time moves to the config panel, under the difficulty row, for the selected map and difficulty, as m:ss ("Best time on Hard: 3:20" / "Not yet cleared on Hard").

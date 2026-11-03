@@ -70,6 +70,7 @@ var _launch_armed: bool = false
 ## Cycles through the selected map's open Ascension ranks (tiers 4+); hidden
 ## until Brutal is cleared there.
 var _ascension_button: Button
+var _best_time_label: Label
 
 
 func _ready() -> void:
@@ -89,6 +90,7 @@ func _ready() -> void:
 	for tier: int in [1, 2, 3]:
 		_tier_buttons[tier] = _create_tier_button(tier)
 	_ascension_button = _create_ascension_button()
+	_build_best_time_label()
 	for modifier_id: StringName in RUN_MODIFIER_STEPS.keys():
 		_modifier_buttons[modifier_id] = _create_modifier_button(modifier_id)
 
@@ -272,29 +274,52 @@ static func _mission_card_stylebox(selected: bool) -> StyleBox:
 	return box
 
 
-## GDD: "fully covered on the mission card itself" — 3-tier best-time summary,
-## plain text (no mini-table art, see class doc comment).
-## Readable form (2026-10-04 smoke check; was "The Gap (T1:-- T2:-- T3:--)"):
-## "Not yet cleared" until any tier is beaten, then per-tier best times.
-## Name and summary on separate lines so the card never truncates either.
+## Card text: the map name, then one status line -- "Not yet cleared",
+## "Cleared: <highest tier>" (e.g. "Cleared: Ascension 2"), or which map
+## unlocks it. Amended 2026-11-03: per-tier best times used to sit here and
+## wrapped a fully cleared card to five lines under the medallion; they now
+## show in the config panel for the selected difficulty (_best_time_label).
 func _mission_entry_text(entry: MissionEntry) -> String:
 	var prerequisite: String = mission_select.get_unlock_prerequisite(entry.mission_id)
 	if not prerequisite.is_empty():
 		var prerequisite_entry: MissionEntry = GGameDataRegistry.get_mission_entry(prerequisite)
 		var prerequisite_name: String = prerequisite_entry.display_name if prerequisite_entry != null else prerequisite
 		return "%s\n%s" % [entry.display_name, tr("MISSION_SELECT_LOCKED") % prerequisite_name]
-	var parts: Array[String] = []
-	var any_completed: bool = false
-	for tier: int in [1, 2, 3]:
-		var record: MissionCompletionRecord = mission_select.get_completion_record(entry.mission_id, tier)
-		any_completed = any_completed or record.completed
-		var time_text: String = ("%.1fs" % record.best_time_seconds) if record.completed else tr("MISSION_SELECT_TIER_UNCLEARED")
-		parts.append(tr("MISSION_SELECT_TIER_TIME") % [_tier_display_name(tier), time_text])
-	var summary: String = "   ".join(parts) if any_completed else tr("MISSION_SELECT_NOT_CLEARED")
-	var best_rank: int = DifficultyRewards.ascension_rank(mission_select.get_highest_completed_tier(entry.mission_id))
-	if best_rank > 0:
-		summary += "\n" + tr("MISSION_SELECT_ASCENSION_BEST") % best_rank
-	return "%s\n%s" % [entry.display_name, summary]
+	var highest: int = mission_select.get_highest_completed_tier(entry.mission_id)
+	var status: String = tr("MISSION_SELECT_CLEARED") % _tier_display_name(highest) if highest > 0 else tr("MISSION_SELECT_NOT_CLEARED")
+	return "%s\n%s" % [entry.display_name, status]
+
+
+## Seconds as m:ss (200.0 -> "3:20"); best times are minutes long, so tenths
+## of a second were noise.
+static func format_best_time(seconds: float) -> String:
+	var total: int = maxi(0, roundi(seconds))
+	return "%d:%02d" % [total / 60, total % 60]
+
+
+## Under the difficulty row: the selected map's best time on the selected
+## difficulty, or that it has not been cleared there yet.
+func _refresh_best_time_label() -> void:
+	var tier: int = mission_select.difficulty_tier
+	var record: MissionCompletionRecord = mission_select.get_completion_record(mission_select.get_current_mission_id(), tier)
+	if record != null and record.completed:
+		_best_time_label.text = tr("MISSION_SELECT_BEST_TIME") % [_tier_display_name(tier), format_best_time(record.best_time_seconds)]
+	else:
+		_best_time_label.text = tr("MISSION_SELECT_BEST_TIME_NONE") % _tier_display_name(tier)
+
+
+## Built in code beside the tier row (same pattern as the intel section).
+func _build_best_time_label() -> void:
+	_best_time_label = Label.new()
+	_best_time_label.name = "BestTimeLabel"
+	_best_time_label.add_theme_color_override("font_color", Color(ShellChromeStyle.UI_PARCHMENT, 0.8))
+	_config_panel.add_child(_best_time_label)
+	_config_panel.move_child(_best_time_label, _tier_row.get_index() + 1)
+
+
+## Test/live-check accessor.
+func get_best_time_label() -> Label:
+	return _best_time_label
 
 
 func _on_mission_pressed(mission_id: String) -> void:
@@ -476,6 +501,7 @@ func _refresh_tier_button_labels() -> void:
 		button.add_theme_stylebox_override("normal", box)
 		button.add_theme_stylebox_override("hover", box)
 	_refresh_ascension_button(highest_open)
+	_refresh_best_time_label()
 
 
 func _create_ascension_button() -> Button:
