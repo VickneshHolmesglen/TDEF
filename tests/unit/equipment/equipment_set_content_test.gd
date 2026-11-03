@@ -1,6 +1,6 @@
 extends GdUnitTestSuite
 
-## Content-integrity tests for the nine authored equipment sets (equipment-
+## Content-integrity tests for the ten authored equipment sets (equipment-
 ## set-bonuses spec §3.7/§4, AC-8). EXPECTED is the spec's authoritative table;
 ## editing a set in data must be a deliberate edit here too.
 
@@ -23,12 +23,15 @@ const EXPECTED: Dictionary[StringName, Dictionary] = {
 		"bonuses": {2: {&"physical_attack": 5.0}, 4: {&"max_hp": 80.0, &"armor": 15.0}, 5: {&"additive_bonus_total": 0.05}}},
 	&"set_lurker": {"members": [&"lurker_claw_gauntlets", &"lurker_fang_blade"],
 		"bonuses": {2: {&"crit_chance": 0.05, &"lifesteal": 0.015}}},
+	# 2026-11-04: crafted from Rift Hound / Goblin Drummer drops (maps 9-12).
+	&"set_riftrunner": {"members": [&"riftrunner_hood", &"riftrunner_coat", &"riftrunner_striders", &"drumskin_talisman"],
+		"bonuses": {2: {&"move_speed": 15.0}, 4: {&"cdr": 0.05, &"crit_chance": 0.04}}},
 }
 
 
-func test_exactly_the_nine_expected_sets_exist() -> void:
+func test_exactly_the_ten_expected_sets_exist() -> void:
 	var all: Dictionary = GGameDataRegistry.get_all_equipment_sets()
-	assert_int(all.size()).is_equal(9)
+	assert_int(all.size()).is_equal(10)
 	for set_id: StringName in EXPECTED:
 		assert_bool(all.has(set_id)).override_failure_message("%s missing" % set_id).is_true()
 
@@ -90,6 +93,8 @@ const EXPECTED_EFFECTS: Dictionary[StringName, Dictionary] = {
 		"params": {&"stats": {&"attack_range": 0.20}, &"phases": ["WAVE_ACTIVE"]}},
 	&"set_leather": {"threshold": 3, "name": "Fleet-Footed", "type": &"phase_state",
 		"params": {&"stats": {&"move_speed": 0.30}, &"phases": ["SCOUT", "INTERMISSION"]}},
+	&"set_riftrunner": {"threshold": 4, "name": "Pack Hunt", "type": &"on_kill_stack_buff",
+		"params": {&"stats": {&"move_speed": 0.03, &"physical_attack": 0.03}, &"max_stacks": 8, &"duration": 5.0}},
 }
 
 
@@ -126,6 +131,8 @@ const EXPECTED_TIER_EFFECTS: Dictionary[StringName, Dictionary] = {
 		"params": {&"heal_fraction": 0.01}},
 	&"set_warlord": {"threshold": 2, "name": "Rallying Banner", "type": &"on_skill_cast_buff",
 		"params": {&"stats": {&"physical_attack": 0.1}, &"duration": 4.0}},
+	&"set_riftrunner": {"threshold": 2, "name": "Drumbeat", "type": &"on_wave_start_buff",
+		"params": {&"stats": {&"move_speed": 0.25}, &"duration": 8.0}},
 }
 
 
@@ -147,7 +154,7 @@ func test_second_tier_effects_match_the_spec_table_exactly() -> void:
 
 
 func test_capstones_match_the_spec_table_exactly() -> void:
-	assert_int(EXPECTED_EFFECTS.size()).is_equal(9)
+	assert_int(EXPECTED_EFFECTS.size()).is_equal(10)
 	for set_id: StringName in EXPECTED_EFFECTS:
 		var set_res: EquipmentSetResource = GGameDataRegistry.get_equipment_set(set_id)
 		var expected: Dictionary = EXPECTED_EFFECTS[set_id]

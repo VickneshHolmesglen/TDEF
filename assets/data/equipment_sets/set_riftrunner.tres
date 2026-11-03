@@ -1,0 +1,32 @@
+[gd_resource type="Resource" script_class="EquipmentSetResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/core/equipment/equipment_set_resource.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+set_id = &"set_riftrunner"
+display_name = "Riftrunner"
+member_item_ids = Array[StringName]([&"riftrunner_hood", &"riftrunner_coat", &"riftrunner_striders", &"drumskin_talisman"])
+bonuses = Dictionary[int, Dictionary]({
+2: {&"move_speed": 15.0},
+4: {&"cdr": 0.05, &"crit_chance": 0.04}
+})
+effects = Dictionary[int, Dictionary]({
+2: {
+&"name": "Drumbeat",
+&"type": &"on_wave_start_buff",
+&"params": {
+&"stats": {&"move_speed": 0.25},
+&"duration": 8.0
+}
+},
+4: {
+&"name": "Pack Hunt",
+&"type": &"on_kill_stack_buff",
+&"params": {
+&"stats": {&"move_speed": 0.03, &"physical_attack": 0.03},
+&"max_stacks": 8,
+&"duration": 5.0
+}
+}
+})

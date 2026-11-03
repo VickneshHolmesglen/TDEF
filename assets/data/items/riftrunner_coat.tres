@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ItemDefinitionResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/core/inventory/item_definition_resource.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+item_id = &"riftrunner_coat"
+item_type = &"Equipment"
+display_name = "Riftrunner Coat"
+is_unique_instance = true
+base_stats = {&"max_hp": 110.0, &"armor": 6.0, &"move_speed": 10.0}
+rarity = ""
+equipment_category = "chest"
+icon_path = "res://assets/art/items/riftrunner_coat.png"
+worn_texture_path = "res://assets/art/characters/gear/riftrunner_coat_worn.png"
