@@ -81,6 +81,21 @@ const RESOLVE_WHIFF_COLOR: Color = Color(0.72, 0.72, 0.72)
 ## nameplate Label uses the default font rather than a fabricated one.
 const NAMEPLATE_Y_OFFSET: float = 10.0  ## world units above the sprite's own top edge
 
+## Status pips (2026-11-03, design/quick-specs/status-pips-2026-11-03.md): one
+## small glyph per active status, left to right along the sprite's top-left.
+## Each status has its own SHAPE as well as colour (readable without colour).
+const STATUS_ORDER: Array[StringName] = [&"burn", &"poison", &"bleed", &"slow", &"stun", &"shred"]
+const STATUS_COLORS: Dictionary[StringName, Color] = {
+	&"burn": Color(1.0, 0.55, 0.15),    # flame triangle
+	&"poison": Color(0.45, 0.85, 0.3),  # drop
+	&"bleed": Color(0.85, 0.15, 0.2),   # diamond
+	&"slow": Color(0.4, 0.7, 1.0),      # down chevron
+	&"stun": Color(1.0, 0.9, 0.3),      # star
+	&"shred": Color(0.75, 0.5, 1.0),    # cross
+}
+const STATUS_PIP_SIZE: float = 10.0
+const STATUS_PIP_GAP: float = 3.0
+
 ## Y-height for monster visuals per ADR-0037's layer_height table ("monster
 ## visual anchors = 0" — same reasoning as TowerInstance.TOWER_LAYER_HEIGHT
 ## and GridVisual.TILE_LAYER_HEIGHT: the spike's live-queried AABB data shows
@@ -105,6 +120,7 @@ const HIT_FLASH_DURATION: float = 0.18
 var _hit_flash_material: ShaderMaterial = null
 var _hit_flash_tween: Tween = null
 var _telegraph_active: bool = false
+var _statuses: Array[StringName] = []
 var _telegraph_progress: float = 0.0
 var _telegraph_range_cells: int = 0
 var _telegraph_center_offset: Vector2 = Vector2.ZERO
@@ -405,7 +421,65 @@ func _kill_resolve_tween() -> void:
 	_resolve_tween = null
 
 
+## Shows `statuses` (ids from STATUS_ORDER) as pips; redraws only on change.
+## MonsterManager calls this every visual-sync pass.
+func set_statuses(statuses: Array[StringName]) -> void:
+	if statuses == _statuses:
+		return
+	_statuses = statuses.duplicate()
+	queue_redraw()
+
+
+func get_statuses() -> Array[StringName]:
+	return _statuses
+
+
+## STATUS_ORDER ids for a bitmask (bit i = STATUS_ORDER[i]).
+## Example: statuses_from_bits(0b10001) == [&"burn", &"stun"]
+static func statuses_from_bits(bits: int) -> Array[StringName]:
+	var out: Array[StringName] = []
+	for i: int in range(STATUS_ORDER.size()):
+		if bits & (1 << i):
+			out.append(STATUS_ORDER[i])
+	return out
+
+
+func _draw_status_pips() -> void:
+	var step: float = STATUS_PIP_SIZE + STATUS_PIP_GAP
+	var origin := Vector2(-_sprite_half_size.x + STATUS_PIP_SIZE * 0.5, -_sprite_half_size.y + STATUS_PIP_SIZE * 0.5)
+	for i: int in range(_statuses.size()):
+		_draw_status_glyph(_statuses[i], origin + Vector2(step * i, 0.0))
+
+
+func _draw_status_glyph(status: StringName, c: Vector2) -> void:
+	var r: float = STATUS_PIP_SIZE * 0.5
+	var color: Color = STATUS_COLORS.get(status, Color.WHITE)
+	draw_circle(c, r + 1.5, Color(0, 0, 0, 0.6))  # dark backing for contrast on any sprite
+	match status:
+		&"burn":
+			draw_colored_polygon(PackedVector2Array([c + Vector2(0, -r), c + Vector2(r * 0.8, r * 0.7), c + Vector2(-r * 0.8, r * 0.7)]), color)
+		&"poison":
+			draw_circle(c + Vector2(0, r * 0.25), r * 0.65, color)
+			draw_colored_polygon(PackedVector2Array([c + Vector2(0, -r), c + Vector2(r * 0.55, 0), c + Vector2(-r * 0.55, 0)]), color)
+		&"bleed":
+			draw_colored_polygon(PackedVector2Array([c + Vector2(0, -r), c + Vector2(r * 0.7, 0), c + Vector2(0, r), c + Vector2(-r * 0.7, 0)]), color)
+		&"slow":
+			draw_polyline(PackedVector2Array([c + Vector2(-r * 0.75, -r * 0.35), c + Vector2(0, r * 0.45), c + Vector2(r * 0.75, -r * 0.35)]), color, 2.5)
+		&"stun":
+			var star := PackedVector2Array()
+			for k: int in range(10):
+				var rad: float = r if k % 2 == 0 else r * 0.45
+				var a: float = -PI * 0.5 + k * PI / 5.0
+				star.append(c + Vector2(cos(a), sin(a)) * rad)
+			draw_colored_polygon(star, color)
+		&"shred":
+			draw_line(c + Vector2(-r * 0.7, -r * 0.7), c + Vector2(r * 0.7, r * 0.7), color, 2.5)
+			draw_line(c + Vector2(r * 0.7, -r * 0.7), c + Vector2(-r * 0.7, r * 0.7), color, 2.5)
+
+
 func _draw() -> void:
+	if not _statuses.is_empty():
+		_draw_status_pips()
 	match _tier:
 		1:
 			_draw_elite_badge()

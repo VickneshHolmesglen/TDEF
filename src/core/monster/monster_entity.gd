@@ -154,6 +154,10 @@ var stun_remaining: float = 0.0
 ## and DoT tick on this monster is multiplied by (1 + vulnerability_bonus).
 var vulnerability_remaining: float = 0.0
 var vulnerability_bonus: float = 0.0
+## Status pips (2026-11-03): last bitmask pushed to MonsterInstance.set_statuses()
+## (bit i = MonsterInstance.STATUS_ORDER[i]); compared each frame so the
+## pip list is only rebuilt when a status starts or ends.
+var status_bits: int = 0
 
 ## Archetype behaviours (2026-11-02). Seconds until a healer's next heal pulse.
 var heal_cooldown_remaining: float = 0.0

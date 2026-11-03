@@ -932,6 +932,27 @@ func _advance_entity(entity: MonsterEntity, delta: float) -> void:
 ## story's own flagged Out of Scope gap). Stays 0.0 for a creature whose
 ## CreatureAtlasMappingResource has no "walk" clip — non-fatal, same
 ## "presentation absence is non-fatal" policy as elsewhere in this file.
+## Active statuses as a MonsterInstance.STATUS_ORDER bitmask (burn, poison,
+## bleed, slow, stun, shred). Allocation-free; called per monster per frame.
+static func status_bits_for(entity: MonsterEntity) -> int:
+	var bits: int = 0
+	for effect: ActiveStatusEffect in entity.active_status_effects:
+		match effect.effect_type:
+			"burn":
+				bits |= 1
+			"poison":
+				bits |= 2
+			"bleed":
+				bits |= 4
+	if not entity.active_slow_effects.is_empty():
+		bits |= 8
+	if entity.stun_remaining > 0.0:
+		bits |= 16
+	if entity.vulnerability_remaining > 0.0:
+		bits |= 32
+	return bits
+
+
 func _pass3c_visual_sync(delta: float) -> void:
 	for entity: MonsterEntity in active_monsters:
 		# See _pass1b_status_effects()'s identical guard for the full
@@ -945,6 +966,10 @@ func _pass3c_visual_sync(delta: float) -> void:
 		if entity.monster_instance != null and is_instance_valid(entity.monster_instance):
 			entity.monster_instance.advance_animation(delta,
 					entity.boss_attack_prepare_remaining > 0 or entity.hero_windup_remaining > 0.0)
+			var bits: int = status_bits_for(entity)
+			if bits != entity.status_bits:
+				entity.status_bits = bits
+				entity.monster_instance.set_statuses(MonsterInstance.statuses_from_bits(bits))
 		if entity.swarm_handle != null:
 			entity.hit_flash_remaining_seconds = maxf(0.0, entity.hit_flash_remaining_seconds - delta)
 			if _swarm_renderer != null:

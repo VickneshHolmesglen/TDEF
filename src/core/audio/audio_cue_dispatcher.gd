@@ -58,7 +58,16 @@ const PLAYER_POOL_SIZE: int = 12
 ## A pack of elites can wind up in the same frame; one warning per window keeps it from becoming a
 ## wall of sound (wind-up presentation spec §7).
 const WINDUP_WARNING_MIN_GAP_MSEC: int = 250
+## Hero skill status cue (2026-11-03, design/quick-specs/status-pips-2026-11-03.md):
+## an area skill hits many monsters in one cast, so one cue per window.
+const HERO_STATUS_MIN_GAP_MSEC: int = 150
+## Skill secondary effects that leave a status on the monster (chain/fork/
+## lifesteal_bonus/none don't).
+const HERO_STATUS_EFFECTS: Array[String] = [
+	"slow", "knockback", "armor_shred", "dot_burn", "dot_poison", "dot_bleed", "dot_haemorrhage", "stun",
+]
 var _last_windup_warning_msec: int = -WINDUP_WARNING_MIN_GAP_MSEC
+var _last_hero_status_msec: int = -HERO_STATUS_MIN_GAP_MSEC
 
 ## `tower_placement_blocked` can fire every frame while the cursor hovers a blocked cell; event-driven
 ## `ui_denied` is limited to one per window (UI audio cues spec §3). Button-press denials are not limited.
@@ -185,6 +194,19 @@ func _dispatch_windup_warning() -> void:
 	dispatch_cue(&"monster_windup_warning")
 
 
+## A hero skill hit that applies a status: `hero_status_<effect>` when authored,
+## else the generic `hero_status_applied`; one per HERO_STATUS_MIN_GAP_MSEC.
+func _dispatch_hero_status(skill_id: StringName) -> void:
+	var skill: SkillDefinitionResource = GGameDataRegistry.get_skill_definition(skill_id)
+	if skill == null or skill.effect_data == null or not HERO_STATUS_EFFECTS.has(skill.effect_data.secondary_effect):
+		return
+	var now: int = Time.get_ticks_msec()
+	if now - _last_hero_status_msec < HERO_STATUS_MIN_GAP_MSEC:
+		return
+	_last_hero_status_msec = now
+	_dispatch_with_variant(StringName("hero_status_%s" % skill.effect_data.secondary_effect), &"hero_status_applied")
+
+
 ## Collapses a burst of monster deaths (individual or batched) into one death cue per window.
 func _dispatch_monster_died() -> void:
 	var now: int = Time.get_ticks_msec()
@@ -270,6 +292,7 @@ func _connect_all_events() -> void:
 	_wire(GEventBus.tower_placement_blocked, func(_cells: Array, _cell: Vector2i) -> void: _dispatch_denied_event())
 	_wire(GEventBus.item_pickup_rejected, func(_a: String, _b: String, _c: int, _d: String) -> void: _dispatch_denied_event())
 	_wire(GEventBus.hero_died, func() -> void: dispatch_cue(&"hero_died"))
+	_wire(GEventBus.hero_skill_attacked, func(payload: HeroSkillAttackEvent) -> void: _dispatch_hero_status(payload.skill_id))
 	_wire(GEventBus.constellation_activated, func(_a: String, _b: Vector2i, _c: String, _d: float) -> void: dispatch_cue(&"constellation_activated"))
 	_wire(GEventBus.component_crafted, func(_a: String, _b: String, _c: int) -> void: dispatch_cue(&"component_crafted"))
 	_wire(GEventBus.component_repaired, func(_a: String, _b: String) -> void: dispatch_cue(&"component_repaired"))
