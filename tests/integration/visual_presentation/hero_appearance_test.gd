@@ -173,7 +173,7 @@ func test_hero_appearance_every_shown_slot_item_has_fitted_art() -> void:
 			assert_bool(appearance.is_fitted(slot)).override_failure_message("%s not fitted" % id).is_true()
 			GInventory.unequip_item(slot)
 			checked += 1
-	assert_int(checked).is_equal(42)  # 35 + 7 Steelwrought worn overlays (2026-11-02)
+	assert_int(checked).is_equal(49)  # 35 + 7 Steelwrought (2026-11-02) + 7 Ascendant (2026-11-03) worn overlays
 
 
 func test_hero_appearance_gloves_draw_over_the_weapon_grip() -> void:

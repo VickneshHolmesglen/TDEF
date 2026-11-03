@@ -994,6 +994,55 @@ func discard_slot(slot_index: int) -> bool:
 	return true
 
 
+## Salvage (design/quick-specs/inventory-salvage-2026-11-03.md): turns the
+## stack at `slot_index` into SalvageRules output, one rarity up, at
+## SalvageRules.RATIO inputs per output; the remainder stays in the slot.
+## Returns the number of output items made, 0 (nothing changed) when the slot
+## is empty/locked/unique, its rarity has no output, it holds fewer than one
+## batch, or the output wouldn't fit -- checked before anything is consumed,
+## counting the slot itself as free when the whole stack goes.
+##
+## Usage:
+##   var made: int = inventory.salvage_slot(index)  # 99 hide -> 4 alloy, 19 hide left
+func salvage_slot(slot_index: int) -> int:
+	var plan: Dictionary = salvage_preview(slot_index)
+	if plan.is_empty() or not plan["fits"]:
+		return 0
+	var slot: InventorySlot = _slots[slot_index]
+	var definition: ItemDefinitionResource = GGameDataRegistry.get_item_definition(slot.item_id)
+	var output: ItemDefinitionResource = plan["output"]
+	var made: int = plan["made"]
+	var consumed: int = made * SalvageRules.RATIO
+	slot.quantity -= consumed
+	if slot.quantity <= 0:
+		_slots[slot_index] = null
+	GEventBus.item_removed.emit(String(definition.item_id), String(definition.item_type), consumed)
+	add_stackable(output, made)
+	return made
+
+
+## What salvage_slot(`slot_index`) would do, without doing it:
+## {"made": int, "output": ItemDefinitionResource, "fits": bool}, or {} when
+## the slot can't be salvaged at all (empty, locked, unique, a rarity with no
+## output, or under one batch). "fits" is false when the output has no room.
+func salvage_preview(slot_index: int) -> Dictionary:
+	if slot_index < 0 or slot_index >= _slots.size():
+		return {}
+	var slot: InventorySlot = _slots[slot_index]
+	if slot == null or slot.locked or slot.instance_id != -1:
+		return {}
+	var definition: ItemDefinitionResource = GGameDataRegistry.get_item_definition(slot.item_id)
+	if definition == null:
+		return {}
+	var output: ItemDefinitionResource = GGameDataRegistry.get_item_definition(SalvageRules.output_for(definition.rarity))
+	var made: int = SalvageRules.outputs_for(slot.quantity)
+	if output == null or made <= 0:
+		return {}
+	var whole_stack: bool = made * SalvageRules.RATIO == slot.quantity
+	var room: int = stackable_room(output) + (stack_cap_for(output) if whole_stack else 0)
+	return {"made": made, "output": output, "fits": room >= made}
+
+
 ## Consumes `quantity_to_consume` units from a SINGLE stackable slot matching
 ## `definition.item_id` (Story 006, AC-17). Mutates `InventorySlot.quantity` in
 ## place at the existing array index — never re-indexes/compacts _slots

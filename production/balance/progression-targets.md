@@ -89,5 +89,11 @@ counts convert to hours at roughly 3 missions per hour.
 - [x] Bag clog, part 1 (2026-11-03): discard (right-click / Del / pad X on a
   bag slot, confirm). `design/quick-specs/inventory-discard-2026-11-03.md`.
   The sim's `--discard` models a tidy player using it.
-- [ ] Bag clog, part 2: salvage surplus stacks into something useful.
+- [x] Bag clog, part 2 (2026-11-03): salvage, 20 Common -> 1 Refined Alloy
+  (Uncommon), 20 Uncommon -> 1 Refined Essence (Rare).
+  `design/quick-specs/inventory-salvage-2026-11-03.md`. Sim `--salvage`.
+- [x] Sim bag size corrected (2026-11-03): the hero's 10 equip slots share
+  Inventory's slot array, so the bag is 8 (not 18) rising to 38. With the
+  real size: neither feature 84% loot lost; discard + salvage 14%, Ascendant
+  set by ~mission 135. Endgame report now assumes both (`--salvage --discard`).
 

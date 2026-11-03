@@ -287,11 +287,15 @@ class BagRules:
 def load_bag_rules() -> BagRules:
     inv = (ROOT / "src/core/inventory/inventory.gd").read_text(encoding="utf-8")
     table = (ROOT / "src/core/inventory/slot_expansion_cost_table.gd").read_text(encoding="utf-8")
-    b = BagRules(gd_const(inv, "STARTING_SLOT_COUNT", 18), gd_const(inv, "STACK_CAP_STACKABLE", 99))
+    # The hero's equip slots live in the same slot array (EQUIPMENT_SLOT_INDEX),
+    # so the bag is the slot count minus them: 18 - 10 = 8 at the start.
+    m = re.search(r'EQUIPMENT_SLOT_NAMES[^=]*=\s*\[([^\]]*)\]', inv)
+    equip = len(re.findall(r'"\w+"', m.group(1))) if m else 10
+    b = BagRules(gd_const(inv, "STARTING_SLOT_COUNT", 18) - equip, gd_const(inv, "STACK_CAP_STACKABLE", 99))
     for m in re.finditer(r'(\d+):\s*\{KEY_SLOTS_AFTER:\s*(\d+),\s*KEY_COMMON:\s*(\d+),\s*'
                          r'KEY_UNCOMMON:\s*(\d+),\s*KEY_RARE:\s*(\d+)\}', table):
         cost = {k: float(v) for k, v in zip(RARITIES, m.group(3, 4, 5)) if int(v) > 0}
-        b.expansions.append((int(m.group(2)), cost))
+        b.expansions.append((int(m.group(2)) - equip, cost))
     if not b.expansions:
         print("warning: SlotExpansionCostTable rows not found, bag never grows", file=sys.stderr)
     return b
@@ -344,6 +348,14 @@ class PowerRules:
     max_ascension: int = 10
     asc_hp_growth: float = 1.15
     asc_reward_growth: float = 1.12
+
+
+def load_salvage_rules() -> tuple[int, dict[str, str]]:
+    """(inputs per output, input rarity -> output item) from SalvageRules."""
+    src = (ROOT / "src/core/inventory/salvage_rules.gd").read_text(encoding="utf-8")
+    ratio = gd_const(src, "RATIO", 20)
+    out = dict(re.findall(r'"(\w+)":\s*&"(\w+)"', src[src.find("OUTPUT_BY_RARITY"):]))
+    return ratio, out
 
 
 def load_shard_rules() -> tuple[int, int]:
@@ -597,10 +609,11 @@ def run(args) -> str:
                  f"first clear + {run_per_rank} x rank every win (`--ascend-after`)")
     else:
         L.append("- No Ascension climb (`--ascend-after N` to model the endgame)")
-    L.append(f"- Bag: {bag_rules.start_slots} slots, stacks of {bag_rules.stack_cap}"
+    L.append(f"- Bag: {bag_rules.start_slots} slots (Inventory slots minus the hero's equip slots), stacks of {bag_rules.stack_cap}"
              + (f" ({', '.join(f'{k} {v}' for k, v in sorted(stack_caps.items()))})" if stack_caps else "")
              + "; overflow lost, shards held; equipment assumed worn, crafted goods used"
-             + ("; WHAT-IF unused stacks discarded" if args.discard else "; no discard (as in the game)")
+             + ("; salvages when nearly full" if args.salvage else "")
+             + ("; discards stacks nothing still uses" if args.discard else "; no discard")
              if not args.no_bag else "- Bag: unlimited (`--no-bag`)")
     L.append("")
 
@@ -631,6 +644,8 @@ def run(args) -> str:
     bag = Bag(bag_rules.start_slots, bag_rules.stack_cap, stack_caps)
     lost: dict[str, float] = defaultdict(float)
     discarded: dict[str, float] = defaultdict(float)
+    salvaged: dict[str, float] = defaultdict(float)
+    salvage_ratio, salvage_out = load_salvage_rules()
     lost_at: dict[int, float] = {}
     bag_at: dict[int, tuple[int, int]] = {}
     held_shards = 0.0
@@ -686,6 +701,19 @@ def run(args) -> str:
                 bought_at[p.name] = n
                 if p.category == "bag":
                     bag.slots = bag_rules.expansions[int(p.name.rsplit("_", 1)[1]) - 1][0]
+        if args.salvage and not args.no_bag and bag.used(inv) >= bag.slots - 2:
+            # Bag nearly full: refine Common/Uncommon stacks no remaining recipe names
+            # by id (SalvageRules: RATIO inputs -> 1 output one rarity up).
+            named = {k for p in purchases if p.name not in owned for k in p.cost}
+            for rar in ("Common", "Uncommon"):
+                out = salvage_out.get(rar)
+                for item in [i for i, q in inv.items() if q >= salvage_ratio and rarity.get(i) == rar and i not in named]:
+                    made = math.floor(inv[item] / salvage_ratio)
+                    inv[item] -= made * salvage_ratio
+                    salvaged[item] += made * salvage_ratio
+                    left = bag.add(inv, out, made)
+                    inv[item] += left * salvage_ratio  # didn't fit: not salvaged
+                    salvaged[item] -= left * salvage_ratio
         if args.discard and not args.no_bag:
             # A tidy player throws away stacks no remaining purchase can use.
             wanted = [p.cost for p in purchases if p.name not in owned]
@@ -769,6 +797,9 @@ def run(args) -> str:
         L.append(f"\nLost to a full bag over {args.missions} missions: {fmt(total_lost)} of {fmt(total_earned)} "
                  f"({total_lost / max(total_earned, 1e-9):.0%})"
                  + (": " + ", ".join(f"{k} {fmt(v)}" for v, k in worst) if worst else ""))
+        if args.salvage:
+            L.append(f"Salvaged (`--salvage`, bag nearly full): {fmt(sum(salvaged.values()))} materials "
+                     f"at {salvage_ratio}:1 into {', '.join(sorted(set(salvage_out.values())))}")
         if args.discard:
             L.append(f"Discarded (no remaining purchase uses them; `--discard`): {fmt(sum(discarded.values()))}")
         if held_shards > 0.5:
@@ -825,6 +856,8 @@ def main() -> None:
     ap.add_argument("--ascend-after", type=int, default=0,
                     help="endgame: from mission N+1 climb Ascension one rank per map visit (default off)")
     ap.add_argument("--no-bag", action="store_true", help="WHAT-IF unlimited bag")
+    ap.add_argument("--salvage", action="store_true",
+                    help="player salvages Common/Uncommon stacks no remaining recipe names when the bag is nearly full")
     ap.add_argument("--discard", action="store_true",
                     help="WHAT-IF the player can discard stacks no remaining purchase uses (the game has no discard)")
     ap.add_argument("--out", help="also write the report to this file")

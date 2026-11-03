@@ -257,6 +257,10 @@ var _info_panel: PanelContainer
 ## Delete or gamepad X on a bag slot asks to discard its whole stack/item.
 var _discard_dialog: ConfirmationDialog
 var _pending_discard_index: int = -1
+## Salvage (design/quick-specs/inventory-salvage-2026-11-03.md): a third
+## button on the same dialog; hidden when the stack can't be salvaged.
+var _salvage_button: Button
+const SALVAGE_ACTION: StringName = &"salvage"
 
 ## Assemble Towers tab's own sub-tab strip (2026-09-12, player-requested): the
 ## 7 component/assembled-tower categories no longer render as 7 simultaneous
@@ -1191,6 +1195,10 @@ func _build_discard_dialog() -> void:
 	add_child(_discard_dialog)
 	_discard_dialog.confirmed.connect(_on_discard_confirmed)
 	_discard_dialog.canceled.connect(_on_discard_canceled)
+	_salvage_button = _discard_dialog.add_button(tr("INVENTORY_SALVAGE_OK"), false, String(SALVAGE_ACTION))
+	_salvage_button.name = "SalvageButton"
+	_salvage_button.set_meta(UiAudioBinder.META_KEY, UiAudioBinder.KIND_CONFIRM)
+	_discard_dialog.custom_action.connect(_on_discard_dialog_custom_action)
 
 
 ## Opens the discard confirmation for bag slot `index`. Returns false (and
@@ -1207,7 +1215,18 @@ func request_discard(index: int) -> bool:
 		return false
 	var definition: ItemDefinitionResource = GGameDataRegistry.get_item_definition(StringName(contents["item_id"]))
 	var display: String = definition.display_name if definition != null and definition.display_name != "" else String(contents["item_id"])
-	_discard_dialog.dialog_text = tr("INVENTORY_DISCARD_CONFIRM") % [maxi(1, contents.get("quantity", 1) as int), display]
+	var quantity: int = maxi(1, contents.get("quantity", 1) as int)
+	var text: String = tr("INVENTORY_DISCARD_CONFIRM") % [quantity, display]
+	var plan: Dictionary = inventory.salvage_preview(index)
+	_salvage_button.visible = not plan.is_empty()
+	_salvage_button.disabled = plan.is_empty() or not plan["fits"]
+	if not plan.is_empty():
+		var made: int = plan["made"]
+		var line: String = tr("INVENTORY_SALVAGE_LINE") % [made * SalvageRules.RATIO, made, (plan["output"] as ItemDefinitionResource).display_name]
+		if not plan["fits"]:
+			line += " " + tr("INVENTORY_SALVAGE_NO_ROOM")
+		text += "\n" + line
+	_discard_dialog.dialog_text = text
 	_pending_discard_index = index
 	_discard_dialog.popup_centered()
 	_discard_dialog.get_cancel_button().grab_focus()  # the safe choice is the default
@@ -1223,6 +1242,20 @@ func _on_discard_confirmed() -> void:
 
 func _on_discard_canceled() -> void:
 	_pending_discard_index = -1
+
+
+func _on_discard_dialog_custom_action(action: StringName) -> void:
+	if action != SALVAGE_ACTION:
+		return
+	var index: int = _pending_discard_index
+	_pending_discard_index = -1
+	_discard_dialog.hide()
+	if index >= 0 and inventory != null and inventory.salvage_slot(index) <= 0:
+		_play_denied_cue()  # output wouldn't fit
+
+
+func get_salvage_button() -> Button:
+	return _salvage_button
 
 
 func get_discard_dialog() -> ConfirmationDialog:
