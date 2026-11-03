@@ -3,20 +3,21 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cv32rj5h3f8u1"
-path="res://.godot/imported/rank_rim_silver.png-4b741392fe7e6e6d63e296a34d358469.ctex"
+path.bptc="res://.godot/imported/rank_rim_silver.png-4b741392fe7e6e6d63e296a34d358469.bptc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/art/ui/rank_rim_silver.png"
-dest_files=["res://.godot/imported/rank_rim_silver.png-4b741392fe7e6e6d63e296a34d358469.ctex"]
+dest_files=["res://.godot/imported/rank_rim_silver.png-4b741392fe7e6e6d63e296a34d358469.bptc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

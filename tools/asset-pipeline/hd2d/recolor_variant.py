@@ -10,6 +10,7 @@ the tier-2 shapes in a blued-steel finish until bespoke art exists.
   python tools/asset-pipeline/hd2d/recolor_variant.py SRC DST --tint 96,132,188 --strength 0.55
 """
 import argparse
+import sys
 import pathlib
 
 from PIL import Image
@@ -50,6 +51,10 @@ def copy_import_params(src_png: str, dst_png: str) -> bool:
     src_imp = pathlib.Path(src_png + ".import")
     dst_imp = pathlib.Path(dst_png + ".import")
     if not src_imp.exists() or not dst_imp.exists():
+        # Silent False let 13 variants ship with default (uncompressed, no size
+        # limit) params in Nov 2026. Say so; callers re-run after the editor pass.
+        print(f"copy_import_params: no .import yet for {dst_png if src_imp.exists() else src_png};"
+              " run the editor import pass, then this again", file=sys.stderr)
         return False
     params = src_imp.read_text(encoding="utf-8").split("[params]", 1)[1]
     head = dst_imp.read_text(encoding="utf-8").split("[params]", 1)[0]
