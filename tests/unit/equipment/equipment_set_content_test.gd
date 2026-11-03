@@ -119,6 +119,13 @@ const EXPECTED_TIER_EFFECTS: Dictionary[StringName, Dictionary] = {
 		"params": {&"shield_fraction": 0.05, &"duration": 3.0, &"cooldown": 10.0}},
 	&"set_sentinel": {"threshold": 2, "name": "Last Watch", "type": &"low_hp_state",
 		"params": {&"hp_fraction": 0.35, &"stats": {&"armor": 0.3, &"attack_range": 0.2}}},
+	# 2026-11-04: the remaining sets with room for one (Brute already has its 4-piece).
+	&"set_goblin": {"threshold": 2, "name": "Cutpurse", "type": &"on_kill_stack_buff",
+		"params": {&"stats": {&"move_speed": 0.04}, &"max_stacks": 5, &"duration": 6.0}},
+	&"set_leather": {"threshold": 2, "name": "Second Wind", "type": &"on_kill_heal",
+		"params": {&"heal_fraction": 0.01}},
+	&"set_warlord": {"threshold": 2, "name": "Rallying Banner", "type": &"on_skill_cast_buff",
+		"params": {&"stats": {&"physical_attack": 0.1}, &"duration": 4.0}},
 }
 
 

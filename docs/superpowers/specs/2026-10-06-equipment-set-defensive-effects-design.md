@@ -80,8 +80,13 @@ Scale references: Hero base `max_hp` 500; set HP bonuses bring defensive builds 
 | Troll | 2 | Troll Blood | `on_kill_heal` | `heal_fraction 0.015` | ~8-9 HP per kill at 560 HP; a 15-kill wave returns ~130 HP, about three elite hits |
 | Brute | 4 | Iron Hide | `on_hurt_shield` | `shield_fraction 0.08`, `duration 4.0`, `cooldown 8.0` | ~50-58 shield at 620-720 HP: absorbs most of the next elite hit, roughly every other hit |
 | Reinforced | 2 | Last Stand | `low_hp_state` | `hp_fraction 0.30`, `stats {armor: 0.50, physical_attack: 0.20}` | Below 30% HP: +50% armor, +20% physical attack |
+| Goblin *(2026-11-04)* | 2 | Cutpurse | `on_kill_stack_buff` | `stats {move_speed: 0.04}`, `max_stacks 5`, `duration 6.0` | Up to +20% move speed while kills keep coming; the raider set chases |
+| Leather *(2026-11-04)* | 2 | Second Wind | `on_kill_heal` | `heal_fraction 0.01` | ~5 HP per kill at 500 HP; a starter-set taste of Troll Blood |
+| Warlord *(2026-11-04)* | 2 | Rallying Banner | `on_skill_cast_buff` | `stats {physical_attack: 0.10}`, `duration 4.0` | +10% physical attack for 4 s after each skill; half of Battle Cry's attack, triggered by play |
 
 Why these three sets: Troll's capstone was originally meant to be `on_kill_heal` (2026-09-25 §2.1), so its lower tier restores that identity. Brute's bonuses are HP and armor, and its 4-piece tier is the armor tier. Reinforced is the plate-and-HP set whose capstone (Braced Stance) is not defensive. **Not chosen:** Iron (its identity is skill casting, and Steel Reflex already covers it) and Sentinel (range/CDR/resist, not a damage-taking set). Both were named in the scope question as candidates; this narrowing is flagged for review.
+
+**2026-11-04:** every set with more than one tier now has its one lower-tier effect (Goblin, Leather, Warlord added; Brute already has its 4-piece; Lurker has a single tier). The one-capstone-plus-at-most-one-lower-tier rule (§3.3) holds, and `equipment_set_content_test.gd` locks all eight lower-tier rows. They are not offensive-vs-defensive themed like the first three; each echoes its set's own identity instead.
 
 Brute's 4-piece tier also becomes reachable before its 5-piece capstone, so a 4/5 Brute player now has an effect too.
 

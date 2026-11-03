@@ -12,6 +12,13 @@ bonuses = Dictionary[int, Dictionary]({
 3: {&"luck": 0.03}
 })
 effects = Dictionary[int, Dictionary]({
+2: {
+&"name": "Second Wind",
+&"type": &"on_kill_heal",
+&"params": {
+&"heal_fraction": 0.01
+}
+},
 3: {
 &"name": "Fleet-Footed",
 &"type": &"phase_state",

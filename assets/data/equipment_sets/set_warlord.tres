@@ -13,6 +13,14 @@ bonuses = Dictionary[int, Dictionary]({
 5: {&"additive_bonus_total": 0.05}
 })
 effects = Dictionary[int, Dictionary]({
+2: {
+&"name": "Rallying Banner",
+&"type": &"on_skill_cast_buff",
+&"params": {
+&"stats": {&"physical_attack": 0.1},
+&"duration": 4.0
+}
+},
 5: {
 &"name": "Battle Cry",
 &"type": &"on_wave_start_buff",

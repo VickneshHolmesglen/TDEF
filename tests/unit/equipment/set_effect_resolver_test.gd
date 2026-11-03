@@ -60,9 +60,11 @@ func test_two_sets_yield_two_effects_sorted_by_set_id() -> void:
 		"goblin_fang_circlet", "goblin_claw_gauntlets", "goblin_raider_leggings", "goblin_signet",
 	]
 	var effects: Array[Dictionary] = SetEffectResolver.active_effects(_list(items))
-	assert_int(effects.size()).is_equal(2)
+	# Goblin has a 2-piece and a 4-piece effect (2026-11-04), Lurker one.
+	assert_int(effects.size()).is_equal(3)
 	assert_bool(effects[0][&"set_id"] == &"set_goblin").is_true()
-	assert_bool(effects[1][&"set_id"] == &"set_lurker").is_true()
+	assert_bool(effects[1][&"set_id"] == &"set_goblin").is_true()
+	assert_bool(effects[2][&"set_id"] == &"set_lurker").is_true()
 
 
 func test_effect_key_format() -> void:
