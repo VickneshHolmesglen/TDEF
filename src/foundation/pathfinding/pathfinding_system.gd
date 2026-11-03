@@ -304,10 +304,7 @@ func _build_all_templates() -> void:
 		tmpl.build_from_path(path)
 		_templates[spawn_cell] = tmpl
 
-	# Build Voronoi spawn assignment for all walkable cells.
-	# TODO(post-MVP): Replace with reverse-Dijkstra flood-fill. Chebyshev distance produces
-	# incorrect assignment for cells near walls between SPAWNs — fallback A* masks the
-	# misassignment as performance degradation, not a routing failure. See pathfinding.md Rule 3.
+	# Path-cost spawn assignment for all walkable cells (pathfinding.md Rule 3).
 	_build_spawn_assignment(spawn_cells, walkable_map)
 
 	_templates_built = true
@@ -315,17 +312,50 @@ func _build_all_templates() -> void:
 	_event_bus.templates_ready.emit(spawn_cells.size(), build_ms)
 
 
+## Assigns every walkable cell to the SPAWN whose route is cheapest to reach
+## by walking (reverse-Dijkstra flood fill, 2026-11-04; replaced a Chebyshev
+## Voronoi that ignored walls). Every cell of a route template is seeded at
+## cost 0 for its own SPAWN, so a cell on a route always maps to a template
+## that contains it and find_path() slices instead of falling back to A*.
+## Where lanes share cells, the first SPAWN in get_spawn_cells() order wins;
+## the shared tail is the same either way. Step costs are the A* cell weights
+## (1 path, 10 placeable), small integers, so a bucket queue (Dial) is exact.
 func _build_spawn_assignment(spawn_cells: Array[Vector2i], walkable_map: Dictionary) -> void:
 	_spawn_assignment.clear()
-	for cell: Vector2i in walkable_map:
-		var nearest_spawn: Vector2i = spawn_cells[0]
-		var nearest_dist: int = _chebyshev(cell, spawn_cells[0])
-		for i: int in range(1, spawn_cells.size()):
-			var d: int = _chebyshev(cell, spawn_cells[i])
-			if d < nearest_dist:
-				nearest_dist = d
-				nearest_spawn = spawn_cells[i]
-		_spawn_assignment[cell] = nearest_spawn
+	var dist: Dictionary[Vector2i, int] = {}
+	var buckets: Array[Array] = [[]]
+	for spawn_cell: Vector2i in spawn_cells:
+		var seeds: Array[Vector2i] = [spawn_cell]
+		if _templates.has(spawn_cell):
+			seeds.append_array(_templates[spawn_cell].path)
+		for cell: Vector2i in seeds:
+			if walkable_map.has(cell) and not dist.has(cell):
+				dist[cell] = 0
+				_spawn_assignment[cell] = spawn_cell
+				buckets[0].append(cell)
+
+	var cost: int = 0
+	while cost < buckets.size():
+		var bucket: Array = buckets[cost]
+		var i: int = 0
+		while i < bucket.size():
+			var cell: Vector2i = bucket[i]
+			i += 1
+			if dist[cell] != cost:
+				continue  # a cheaper entry for this cell was already expanded
+			for offset: Vector2i in [Vector2i.RIGHT, Vector2i.LEFT, Vector2i.DOWN, Vector2i.UP]:
+				var next: Vector2i = cell + offset
+				if not walkable_map.has(next):
+					continue
+				var next_cost: int = cost + int(_cell_weight_scale(next))
+				if dist.has(next) and dist[next] <= next_cost:
+					continue
+				dist[next] = next_cost
+				_spawn_assignment[next] = _spawn_assignment[cell]
+				while buckets.size() <= next_cost:
+					buckets.append([])
+				buckets[next_cost].append(next)
+		cost += 1
 
 
 # ---------------------------------------------------------------------------
@@ -397,6 +427,9 @@ func _rebuild_dirty_templates() -> void:
 		var path: Array[Vector2i] = _ids_to_cells(raw_path_ids, super_goal_id, grid_cols)
 		var tmpl: RouteTemplate = _templates[spawn_cell]
 		tmpl.build_from_path(path)
+
+	# Routes and walkable cells changed, so the cost-nearest SPAWN can too.
+	_build_spawn_assignment(_grid.get_spawn_cells(), walkable_map)
 
 	# Emit path_invalidated with deduplicated union of all affected cells.
 	var affected_cells: Array[Vector2i] = []
@@ -510,10 +543,6 @@ func _cells_from_footprint(top_left: Vector2i, size: Vector2i) -> Array[Vector2i
 		for row: int in range(size.y):
 			cells.append(top_left + Vector2i(col, row))
 	return cells
-
-
-func _chebyshev(a: Vector2i, b: Vector2i) -> int:
-	return max(abs(a.x - b.x), abs(a.y - b.y))
 
 
 func _clear_all_state() -> void:
