@@ -12,7 +12,6 @@ requirements = {
 &"tarot": &"bountiful_harvest",
 &"equipment": &"warding_band"
 }
-gold_cost = 108
 material_cost = {
 &"Common": 22
 }

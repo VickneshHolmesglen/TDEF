@@ -9,7 +9,6 @@ structure_type = "watchtower"
 tier = 1
 prerequisite_structure_id = &""
 tech_gate = &"tech_structural_1"
-gold_cost = 70
 material_costs = {
 &"Common": 25
 }

@@ -109,10 +109,7 @@ func test_resolve_tech_unlock_all_steps_observable_synchronously() -> void:
 	assert_bool(result).is_true()
 	assert_bool(_defense_building.is_tech_unlocked(TECH_PRODUCTION_2)).is_true()
 
-	assert_int(_spy.count("resources_changed")).is_equal(1)
-	var gold_args: Array = (_spy.emissions["resources_changed"] as Array)[0] as Array
-	assert_int(gold_args[0] as int).is_equal(-tech_node.gold_cost)
-	assert_that(gold_args[1] as StringName).is_equal(&"tech_unlock")
+	assert_int(_spy.count("resources_changed")).is_equal(0)  # no gold since 2026-11-03
 
 	assert_int(_spy.count("tech_unlocked")).is_equal(1)
 	var event_args: Array = (_spy.emissions["tech_unlocked"] as Array)[0] as Array
@@ -126,10 +123,7 @@ func test_resolve_structure_build_all_steps_observable_synchronously() -> void:
 
 	assert_bool(result).is_true()
 
-	assert_int(_spy.count("resources_changed")).is_equal(1)
-	var gold_args: Array = (_spy.emissions["resources_changed"] as Array)[0] as Array
-	assert_int(gold_args[0] as int).is_equal(-structure.gold_cost)
-	assert_that(gold_args[1] as StringName).is_equal(&"structure_built")
+	assert_int(_spy.count("resources_changed")).is_equal(0)  # no gold since 2026-11-03
 
 	assert_int(_spy.count("sanctuary_structure_built")).is_equal(1)
 	var event_args: Array = (_spy.emissions["sanctuary_structure_built"] as Array)[0] as Array

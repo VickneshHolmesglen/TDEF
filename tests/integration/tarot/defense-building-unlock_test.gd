@@ -12,7 +12,7 @@
 ## currency_dual_gate_test.gd's own resolve_tech_unlock() setup).
 extends GdUnitTestSuite
 
-## Rare rarity, unlock_tech_id = &"tech_production_2", gold_cost=50,
+## Rare rarity, unlock_tech_id = &"tech_production_2",
 ## material_costs={Common: 100} (assets/data/tarot/card_bountiful_harvest.tres,
 ## assets/data/defense_building/tech_nodes/tech_production_2.tres).
 const GATED_CARD: StringName = &"bountiful_harvest"

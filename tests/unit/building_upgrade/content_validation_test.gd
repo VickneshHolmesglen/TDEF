@@ -28,7 +28,6 @@ func _make_upgrade(id: StringName, target_structure_id: StringName, prerequisite
 	upgrade.target_structure_id = target_structure_id
 	upgrade.prerequisite_upgrade_id = prerequisite_upgrade_id
 	upgrade.requirements = {"building": &"some_structure"}
-	upgrade.gold_cost = 100
 	return upgrade
 
 

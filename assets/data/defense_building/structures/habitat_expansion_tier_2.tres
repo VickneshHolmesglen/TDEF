@@ -9,7 +9,6 @@ structure_type = "habitat_expansion"
 tier = 2
 prerequisite_structure_id = &"habitat_expansion_tier_1"
 tech_gate = &"tech_structural_1"
-gold_cost = 120
 material_costs = {
 &"Common": 35,
 &"Uncommon": 12

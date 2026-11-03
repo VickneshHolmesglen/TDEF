@@ -11,7 +11,6 @@ requirements = {
 &"creature": &"duskfang_fox",
 &"tarot": &"steady_hand"
 }
-gold_cost = 60
 material_cost = {
 &"Common": 12
 }

@@ -70,7 +70,6 @@ func _register_shared_requirement_upgrade() -> void:
 	second_upgrade.upgrade_id = SHARED_REQUIREMENT_UPGRADE_ID
 	second_upgrade.target_structure_id = TARGET_STRUCTURE
 	second_upgrade.requirements = {"building": REQUIRED_BUILDING}
-	second_upgrade.gold_cost = 0
 	GGameDataRegistry._building_upgrades[SHARED_REQUIREMENT_UPGRADE_ID] = second_upgrade
 
 

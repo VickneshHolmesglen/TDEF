@@ -20,7 +20,8 @@ extends Resource
 @export var tech_category: String = ""              # "production_tech" | "structural_tech"
 @export var prerequisite_tech_id: StringName = &""   # "" = root node
 @export var branch_tier: int = 1                     # 1-3
-@export var gold_cost: int = 0
+## No gold cost (removed 2026-11-03): gold exists only inside a mission and
+## resets afterwards, so a Sanctuary gold price was shown but never charged.
 @export var material_costs: Dictionary[StringName, int] = {}
 @export var gates: String = ""                       # content-authoring documentation only, NEVER read at runtime
 

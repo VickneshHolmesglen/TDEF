@@ -174,5 +174,3 @@ Hero attack = 25 base + 2/level + best owned gear per slot (physical_attack). En
 | sentinels_aegis | equipment | 36 rift_shard, 26 Uncommon, 8.0 sentinel_core | tech_production_4 | 11 | 40 |
 | sentinels_lance | equipment | 36 rift_shard, 26 Uncommon, 8.0 sentinel_core | tech_production_4 | 11 | 51 |
 | sentinels_striders | equipment | 36 rift_shard, 26 Uncommon, 8.0 sentinel_core | tech_production_4 | 11 | 59 |
-
-Note: 18 purchases list a gold cost (total 1,846), but gold resets every mission (MissionEconomy) and there is no persistent Sanctuary gold, so gold is ignored here.

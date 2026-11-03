@@ -12,7 +12,6 @@ requirements = {
 &"tarot": &"grim_resolve",
 &"equipment": &"iron_helm"
 }
-gold_cost = 108
 material_cost = {
 &"Common": 22
 }

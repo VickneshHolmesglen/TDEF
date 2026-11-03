@@ -67,7 +67,6 @@ const ROMAN_NUMERALS: Array[String] = ["", "I", "II", "III", "IV", "V"]
 const LOCKED_CARD_ALPHA: float = 0.55
 const CARD_MIN_HEIGHT: float = 104.0
 const CONNECTOR_HEIGHT: float = 18.0
-const GOLD_COIN_TEXTURE: Texture2D = preload("res://assets/art/ui/gold_coin.png")
 
 ## Card state, shared by tech and structure cards (see _compose_card()).
 enum CardState { DONE, AVAILABLE, LOCKED }
@@ -166,7 +165,7 @@ func _create_tech_button(node: TechNodeResource) -> Button:
 	var button := Button.new()
 	button.name = "Tech_%s" % String(node.tech_id)
 	button.focus_mode = Control.FOCUS_ALL
-	# The full sentence ("Production II · Available · 90 gold") is the card's
+	# The full sentence ("Production II · Available · Common 220") is the card's
 	# accessible name; the card itself shows the same facts laid out visually.
 	button.accessibility_name = _tech_entry_text(node)
 	var state: CardState
@@ -181,7 +180,7 @@ func _create_tech_button(node: TechNodeResource) -> Button:
 		var prerequisite: TechNodeResource = GGameDataRegistry.get_all_tech_nodes().get(node.prerequisite_tech_id)
 		if prerequisite != null:
 			detail = tr("DEFENSE_CARD_REQUIRES") % _tech_display_name(prerequisite)
-	_compose_card(button, _tech_display_name(node), state, tr("DEFENSE_PILL_RESEARCHED"), detail, node.gold_cost, node.material_costs)
+	_compose_card(button, _tech_display_name(node), state, tr("DEFENSE_PILL_RESEARCHED"), detail, node.material_costs)
 	button.pressed.connect(_on_tech_pressed.bind(node.tech_id))
 	_wire_focus_ring(button)
 	return button
@@ -231,7 +230,7 @@ func _tech_entry_text(node: TechNodeResource) -> String:
 		state_tag = tr("DEFENSE_TECH_STATE_LOCKED")
 	# Localized player-facing tags (2026-10-04 smoke check) -- previously raw
 	# enum-style "LOCKED_PREREQ" / "gold:90" debug text.
-	return tr("DEFENSE_ENTRY_FORMAT") % [_tech_display_name(node), state_tag, node.gold_cost]
+	return tr("DEFENSE_ENTRY_FORMAT") % [_tech_display_name(node), state_tag, _material_cost_text(node.material_costs)]
 
 
 ## GDD: "confirm on a locked/unaffordable target opens a context tooltip
@@ -286,7 +285,7 @@ func _create_structure_button(structure: StructureResource) -> Button:
 	if not gate_open:
 		var gate_node: TechNodeResource = GGameDataRegistry.get_all_tech_nodes().get(structure.tech_gate)
 		detail = tr("DEFENSE_CARD_REQUIRES") % (_tech_display_name(gate_node) if gate_node != null else String(structure.tech_gate))
-	_compose_card(button, _structure_display_name(structure), state, tr("DEFENSE_STRUCTURE_BUILT"), detail, structure.gold_cost, structure.material_costs)
+	_compose_card(button, _structure_display_name(structure), state, tr("DEFENSE_STRUCTURE_BUILT"), detail, structure.material_costs)
 	button.pressed.connect(_on_structure_pressed.bind(structure.structure_id))
 	_wire_focus_ring(button)
 	return button
@@ -309,7 +308,7 @@ func _structure_entry_text(structure: StructureResource) -> String:
 		var gate_node: TechNodeResource = GGameDataRegistry.get_all_tech_nodes().get(structure.tech_gate)
 		var gate_label: String = _tech_display_name(gate_node) if gate_node != null else String(structure.tech_gate)
 		gate_tag = tr("DEFENSE_STRUCTURE_GATE") % gate_label
-	return (tr("DEFENSE_ENTRY_FORMAT") % [_structure_display_name(structure), status_tag, structure.gold_cost]) + gate_tag
+	return (tr("DEFENSE_ENTRY_FORMAT") % [_structure_display_name(structure), status_tag, _material_cost_text(structure.material_costs)]) + gate_tag
 
 
 func _on_structure_pressed(structure_id: StringName) -> void:
@@ -376,11 +375,11 @@ func _make_connector(lit: bool) -> Control:
 ##   [state pill]                  e.g. RESEARCHED / AVAILABLE / LOCKED + padlock
 ##   Title (Cinzel)                e.g. "Structural II"
 ##   detail line                   "Unlocks ..." or "Requires ..."
-##   cost row                      gold coin + materials, hidden once done
+##   cost row                      materials, hidden once done
 ## Done = amber skin frame; available = normal frame, gold title, slow glow
 ## pulse; locked = disabled frame, dimmed. Frame + pill wording are the
 ## non-color state signals.
-func _compose_card(button: Button, title: String, state: CardState, done_label: String, detail: String, gold_cost: int, material_costs: Dictionary) -> void:
+func _compose_card(button: Button, title: String, state: CardState, done_label: String, detail: String, material_costs: Dictionary) -> void:
 	button.set_meta(&"card_state", state)
 	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	button.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -450,7 +449,7 @@ func _compose_card(button: Button, title: String, state: CardState, done_label: 
 		body.add_child(detail_label)
 
 	if state != CardState.DONE:
-		body.add_child(_build_cost_row(gold_cost, material_costs))
+		body.add_child(_build_cost_row(material_costs))
 
 	if state == CardState.AVAILABLE and not ReduceMotion.enabled():
 		var pulse: Tween = button.create_tween().set_loops()
@@ -460,15 +459,13 @@ func _compose_card(button: Button, title: String, state: CardState, done_label: 
 			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 
 
-## Gold coin + amount, then one icon + count per material.
-func _build_cost_row(gold_cost: int, material_costs: Dictionary) -> HBoxContainer:
+## One icon + count per material. No gold: the Sanctuary has none (gold
+## exists only inside a mission), removed 2026-11-03.
+func _build_cost_row(material_costs: Dictionary) -> HBoxContainer:
 	var row := HBoxContainer.new()
 	row.name = &"CostRow"
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_theme_constant_override("separation", 6)
-	if gold_cost > 0:
-		row.add_child(_cost_icon(GOLD_COIN_TEXTURE))
-		row.add_child(_cost_label(str(gold_cost), ShellChromeStyle.UI_ACCENT))
 	for material_id: Variant in material_costs:
 		var definition: ItemDefinitionResource = GGameDataRegistry.get_item_definition(StringName(material_id))
 		if definition != null and definition.icon != null:
@@ -478,6 +475,16 @@ func _build_cost_row(gold_cost: int, material_costs: Dictionary) -> HBoxContaine
 			var material_name: String = definition.display_name if definition != null else String(material_id)
 			row.add_child(_cost_label("%s %d" % [material_name, material_costs[material_id]], ShellChromeStyle.UI_PARCHMENT))
 	return row
+
+
+## Materials as text for the card's accessible name: "Common 220, Uncommon 30".
+static func _material_cost_text(material_costs: Dictionary) -> String:
+	var parts: PackedStringArray = []
+	for material_id: Variant in material_costs:
+		var definition: ItemDefinitionResource = GGameDataRegistry.get_item_definition(StringName(material_id))
+		var material_name: String = definition.display_name if definition != null else String(material_id)
+		parts.append("%s %d" % [material_name, material_costs[material_id]])
+	return ", ".join(parts)
 
 
 static func _cost_icon(texture: Texture2D) -> TextureRect:

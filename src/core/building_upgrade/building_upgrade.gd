@@ -145,14 +145,14 @@ func can_purchase(upgrade_id: StringName) -> bool:
 ## per entry, mirroring DefenseBuilding.resolve_tech_unlock()'s identical fix
 ## and Crafting's own _consume_recipe_inputs() — the same established
 ## project-wide pattern for "spend a rarity-keyed cost," not a
-## Building-Upgrade-local invention. Gold IS also debited (the existing
-## self-debit convention every gold-spending system in this project uses).
+## Building-Upgrade-local invention. No gold is spent (removed 2026-11-03:
+## the Sanctuary has no gold).
 ##
 ## Guarded by `_action_resolving` (mirrors DefenseBuilding's shared-flag
 ## pattern) so a stale double-confirm can never double-spend.
 ##
-## Returns true on a successful resolve (gold debit + structure_upgraded
-## emitted, ledger written). Returns false on any rejection, zero side effects.
+## Returns true on a successful resolve (materials consumed,
+## structure_upgraded emitted, ledger written). Returns false on any rejection, zero side effects.
 func resolve_upgrade(upgrade_id: StringName) -> bool:
 	if _action_resolving:
 		return false
@@ -167,7 +167,6 @@ func resolve_upgrade(upgrade_id: StringName) -> bool:
 	if not GInventory.has_items_by_rarity(upgrade.material_cost):
 		_action_resolving = false
 		return false
-	GEventBus.resources_changed.emit(-upgrade.gold_cost, &"structure_upgrade")
 	for rarity: StringName in upgrade.material_cost:
 		GInventory.consume_by_rarity(String(rarity), upgrade.material_cost[rarity])
 	_purchased_ledger[upgrade_id] = true

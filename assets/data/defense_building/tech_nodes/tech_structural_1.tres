@@ -8,7 +8,6 @@ tech_id = &"tech_structural_1"
 tech_category = "structural_tech"
 prerequisite_tech_id = &""
 branch_tier = 1
-gold_cost = 50
 material_costs = {
 &"Common": 100
 }

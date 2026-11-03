@@ -30,31 +30,28 @@ const WATCHTOWER_TIER_1: StringName = &"watchtower_tier_1"
 # AC-31/32/33: branch_tier=1/2/3 tech node costs. Re-priced 2026-11-03
 # (progression pass): research was ~1/9 of one mission's income and never
 # gated anything; now ~1, ~2 and ~4 missions of income
-# (round(base_qty[rarity] × node_tier_multiplier), round(50 × multiplier))
+# (round(base_qty[rarity] × node_tier_multiplier); no gold since 2026-11-03)
 # ---------------------------------------------------------------------------
 
-func test_branch_tier_1_common_node_costs_100_common_50_gold() -> void:
+func test_branch_tier_1_common_node_costs_100_common() -> void:
 	var node: TechNodeResource = GGameDataRegistry.get_tech_node(TECH_PRODUCTION_2)
 	assert_int(node.branch_tier).is_equal(1)
-	assert_int(node.gold_cost).is_equal(50)
 	assert_int(node.material_costs[&"Common"] as int).is_equal(100)
 	assert_bool(node.material_costs.has(&"Uncommon")).is_false()
 	assert_bool(node.material_costs.has(&"Rare")).is_false()
 
 
-func test_branch_tier_2_node_costs_220_common_30_uncommon_90_gold() -> void:
+func test_branch_tier_2_node_costs_220_common_30_uncommon() -> void:
 	var node: TechNodeResource = GGameDataRegistry.get_tech_node(TECH_PRODUCTION_3)
 	assert_int(node.branch_tier).is_equal(2)
-	assert_int(node.gold_cost).is_equal(90)
 	assert_int(node.material_costs[&"Common"] as int).is_equal(220)
 	assert_int(node.material_costs[&"Uncommon"] as int).is_equal(30)
 	assert_bool(node.material_costs.has(&"Rare")).is_false()
 
 
-func test_branch_tier_3_node_costs_380_common_50_uncommon_32_rare_150_gold() -> void:
+func test_branch_tier_3_node_costs_380_common_50_uncommon_32_rare() -> void:
 	var node: TechNodeResource = GGameDataRegistry.get_tech_node(TECH_PRODUCTION_4)
 	assert_int(node.branch_tier).is_equal(3)
-	assert_int(node.gold_cost).is_equal(150)
 	assert_int(node.material_costs[&"Common"] as int).is_equal(380)
 	assert_int(node.material_costs[&"Uncommon"] as int).is_equal(50)
 	assert_int(node.material_costs[&"Rare"] as int).is_equal(32)
@@ -68,14 +65,12 @@ func test_branch_tier_3_node_costs_380_common_50_uncommon_32_rare_150_gold() -> 
 func test_production_and_structural_branch_tier_1_nodes_cost_identically() -> void:
 	var production_node: TechNodeResource = GGameDataRegistry.get_tech_node(TECH_PRODUCTION_2)
 	var structural_node: TechNodeResource = GGameDataRegistry.get_tech_node(TECH_STRUCTURAL_1)
-	assert_int(production_node.gold_cost).is_equal(structural_node.gold_cost)
 	assert_int(production_node.material_costs[&"Common"] as int).is_equal(structural_node.material_costs[&"Common"] as int)
 
 
 func test_production_and_structural_branch_tier_2_nodes_cost_identically() -> void:
 	var production_node: TechNodeResource = GGameDataRegistry.get_tech_node(TECH_PRODUCTION_3)
 	var structural_node: TechNodeResource = GGameDataRegistry.get_tech_node(TECH_STRUCTURAL_2)
-	assert_int(production_node.gold_cost).is_equal(structural_node.gold_cost)
 	assert_int(production_node.material_costs[&"Common"] as int).is_equal(structural_node.material_costs[&"Common"] as int)
 	assert_int(production_node.material_costs[&"Uncommon"] as int).is_equal(structural_node.material_costs[&"Uncommon"] as int)
 
@@ -85,7 +80,6 @@ func test_production_and_structural_branch_tier_2_nodes_cost_identically() -> vo
 func test_production_and_structural_branch_tier_3_nodes_cost_identically() -> void:
 	var production_node: TechNodeResource = GGameDataRegistry.get_tech_node(TECH_PRODUCTION_4)
 	var structural_node: TechNodeResource = GGameDataRegistry.get_tech_node(TECH_STRUCTURAL_3)
-	assert_int(production_node.gold_cost).is_equal(structural_node.gold_cost)
 	assert_int(production_node.material_costs[&"Common"] as int).is_equal(structural_node.material_costs[&"Common"] as int)
 	assert_int(production_node.material_costs[&"Uncommon"] as int).is_equal(structural_node.material_costs[&"Uncommon"] as int)
 	assert_int(production_node.material_costs[&"Rare"] as int).is_equal(structural_node.material_costs[&"Rare"] as int)
@@ -95,22 +89,19 @@ func test_production_and_structural_branch_tier_3_nodes_cost_identically() -> vo
 # AC-35: Habitat Expansion — hand-tuned table, exact per-tier values.
 # ---------------------------------------------------------------------------
 
-func test_habitat_tier_1_costs_20_common_60_gold() -> void:
+func test_habitat_tier_1_costs_20_common() -> void:
 	var structure: StructureResource = GGameDataRegistry.get_structure(HABITAT_TIER_1)
-	assert_int(structure.gold_cost).is_equal(60)
 	assert_int(structure.material_costs[&"Common"] as int).is_equal(20)
 
 
-func test_habitat_tier_2_costs_35_common_12_uncommon_120_gold() -> void:
+func test_habitat_tier_2_costs_35_common_12_uncommon() -> void:
 	var structure: StructureResource = GGameDataRegistry.get_structure(HABITAT_TIER_2)
-	assert_int(structure.gold_cost).is_equal(120)
 	assert_int(structure.material_costs[&"Common"] as int).is_equal(35)
 	assert_int(structure.material_costs[&"Uncommon"] as int).is_equal(12)
 
 
-func test_habitat_tier_3_costs_55_common_25_uncommon_8_rare_200_gold() -> void:
+func test_habitat_tier_3_costs_55_common_25_uncommon_8_rare() -> void:
 	var structure: StructureResource = GGameDataRegistry.get_structure(HABITAT_TIER_3)
-	assert_int(structure.gold_cost).is_equal(200)
 	assert_int(structure.material_costs[&"Common"] as int).is_equal(55)
 	assert_int(structure.material_costs[&"Uncommon"] as int).is_equal(25)
 	assert_int(structure.material_costs[&"Rare"] as int).is_equal(8)
@@ -119,9 +110,8 @@ func test_habitat_tier_3_costs_55_common_25_uncommon_8_rare_200_gold() -> void:
 ## 2026-08-03: habitat_expansion_tier_4 added, continuing Formula 2's
 ## diminishing-severity hand-tuned curve (see design/quick-specs/
 ## habitat-expansion-tier-4-2026-08-03.md).
-func test_habitat_tier_4_costs_80_common_45_uncommon_15_rare_300_gold() -> void:
+func test_habitat_tier_4_costs_80_common_45_uncommon_15_rare() -> void:
 	var structure: StructureResource = GGameDataRegistry.get_structure(HABITAT_TIER_4)
-	assert_int(structure.gold_cost).is_equal(300)
 	assert_int(structure.material_costs[&"Common"] as int).is_equal(80)
 	assert_int(structure.material_costs[&"Uncommon"] as int).is_equal(45)
 	assert_int(structure.material_costs[&"Rare"] as int).is_equal(15)
@@ -131,7 +121,6 @@ func test_habitat_tier_4_costs_80_common_45_uncommon_15_rare_300_gold() -> void:
 # AC-36: Watchtower — fixed single-tier cost.
 # ---------------------------------------------------------------------------
 
-func test_watchtower_tier_1_costs_25_common_70_gold() -> void:
+func test_watchtower_tier_1_costs_25_common() -> void:
 	var structure: StructureResource = GGameDataRegistry.get_structure(WATCHTOWER_TIER_1)
-	assert_int(structure.gold_cost).is_equal(70)
 	assert_int(structure.material_costs[&"Common"] as int).is_equal(25)

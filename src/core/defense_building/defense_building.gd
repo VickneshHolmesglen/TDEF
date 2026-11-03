@@ -10,7 +10,7 @@ extends Node
 ## can_build_structure() — also a read-only eligibility check only. Story 022
 ## (TR-defbuild-001, currency half) adds resolve_tech_unlock()/
 ## resolve_structure_build() — the dual-gate check (eligibility + materials
-## sufficiency) plus the gold-debit emission only. Story 023 (TR-defbuild-001,
+## sufficiency) plus the gold-debit emission only (gold removed 2026-11-03). Story 023 (TR-defbuild-001,
 ## resolution-ordering half) completes both resolve methods with
 ## tech_unlocked/sanctuary_structure_built event emission, bringing all 6 of
 ## ADR-0024 Rule 9's sub-steps to a single synchronous call (TD-defbuild-002,
@@ -157,17 +157,15 @@ func can_build_structure(structure_id: StringName) -> bool:
 ## a later frame:
 ##   (a) eligibility re-validate (can_unlock_tech())
 ##   (b) materials re-validate (Inventory.has_items_by_rarity())
-##   (c) gold debit (resources_changed, Story 022)
+##   (c) (removed 2026-11-03: gold debit -- the Sanctuary has no gold)
 ##   (d) material consumption (Inventory.consume_by_rarity() per material_costs entry, TD-defbuild-002)
 ##   (e) ledger write (_tech_ledger[tech_id] = true)
 ##   (f) domain event emission (tech_unlocked, Story 023)
 ##
-## Gold sufficiency is deliberately NOT independently re-validated (AC-19/
-## AC-22, out of scope project-wide): gold-balance ownership is a
-## pre-existing, unresolved gap shared with Tower System (ADR-0024 Decision,
-## Core Rule 7) — this method follows the same self-debit convention every
-## other gold-spending system in this project already uses, rather than
-## inventing a Defense-Building-local resolution.
+## Gold (removed 2026-11-03): research and structures used to emit a gold
+## "debit" that nothing in the Sanctuary ever charged -- gold exists only
+## inside a mission and resets afterwards. Decision: Sanctuary purchases cost
+## materials only (design/gdd/defense-building.md, Amendment 2026-11-03).
 ##
 ## TD-defbuild-002 RESOLVED (Sprint 6 S6-06b vocabulary half; 2026-08-25 full
 ## resolution): the rarity-keyed check below uses Inventory.has_items_by_rarity()
@@ -190,8 +188,8 @@ func can_build_structure(structure_id: StringName) -> bool:
 ## resolve must never permanently disable future actions (AC-37's stale-UI
 ## rejection must still allow the next legitimate attempt to succeed).
 ##
-## Returns true on a successful resolve (gold debit + tech_unlocked emitted,
-## ledger written). Returns false on any rejection, with zero side effects.
+## Returns true on a successful resolve (materials consumed, tech_unlocked
+## emitted, ledger written). Returns false on any rejection, with zero side effects.
 func resolve_tech_unlock(tech_id: StringName) -> bool:
 	if is_locked():
 		return false
@@ -208,7 +206,6 @@ func resolve_tech_unlock(tech_id: StringName) -> bool:
 	if not GInventory.has_items_by_rarity(tech_node.material_costs):
 		_action_resolving = false
 		return false
-	GEventBus.resources_changed.emit(-tech_node.gold_cost, &"tech_unlock")
 	for rarity: StringName in tech_node.material_costs:
 		GInventory.consume_by_rarity(String(rarity), tech_node.material_costs[rarity])
 	_tech_ledger[tech_id] = true
@@ -231,9 +228,9 @@ func resolve_tech_unlock(tech_id: StringName) -> bool:
 ## tech-unlock confirm and a structure-build confirm arriving "simultaneously"
 ## can never both read the pre-debit gold balance and double-spend it.
 ##
-## Returns true on a successful resolve (gold debit + sanctuary_structure_built
-## emitted via `resources_changed(-gold_cost, &"structure_built")` /
-## `sanctuary_structure_built(structure_id, structure_type)`, ledger written).
+## Returns true on a successful resolve (materials consumed,
+## `sanctuary_structure_built(structure_id, structure_type)` emitted, ledger
+## written). No gold is spent (removed 2026-11-03).
 ## Returns false on any rejection, with zero side effects.
 func resolve_structure_build(structure_id: StringName) -> bool:
 	if is_locked():
@@ -251,7 +248,6 @@ func resolve_structure_build(structure_id: StringName) -> bool:
 	if not GInventory.has_items_by_rarity(structure.material_costs):
 		_action_resolving = false
 		return false
-	GEventBus.resources_changed.emit(-structure.gold_cost, &"structure_built")
 	for rarity: StringName in structure.material_costs:
 		GInventory.consume_by_rarity(String(rarity), structure.material_costs[rarity])
 	_structure_ledger[structure_id] = true

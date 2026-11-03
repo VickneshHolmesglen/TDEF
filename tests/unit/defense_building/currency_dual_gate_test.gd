@@ -4,10 +4,8 @@
 ##
 ## Exercises the real, authored res://assets/data/defense_building/ content
 ## via the GGameDataRegistry Autoload (no fixture injection) — same rationale
-## as every other defense_building test. Story 025 landed real gold_cost/
-## material_costs values (previously all 0/{}) — AC-20/AC-21's exact-payload
-## assertions read the live authored value dynamically (not a hardcoded 0),
-## so they remain correct either way.
+## as every other defense_building test. Gold costs were removed 2026-11-03
+## (the Sanctuary has no gold); AC-20/AC-21 now assert no gold change.
 ##
 ## TD-defbuild-002 FULLY RESOLVED (vocabulary: Sprint 6 S6-06b; consumption:
 ## 2026-08-25): real material_costs are keyed by RARITY ("Common"/"Uncommon"/
@@ -92,20 +90,15 @@ func after_test() -> void:
 
 
 # ---------------------------------------------------------------------------
-# AC-20: tech node unlock resolves -> resources_changed(-gold_cost, "tech_unlock")
-# fires with the exact negative value and source tag.
+# AC-20 (amended 2026-11-03): the Sanctuary has no gold, so a tech unlock
+# spends materials only and emits no gold change at all.
 # ---------------------------------------------------------------------------
 
-func test_resolve_tech_unlock_emits_resources_changed_with_correct_payload() -> void:
-	var tech_node: TechNodeResource = GGameDataRegistry.get_tech_node(TECH_PRODUCTION_2)
+func test_resolve_tech_unlock_spends_no_gold() -> void:
 	var result: bool = _defense_building.resolve_tech_unlock(TECH_PRODUCTION_2)
 
 	assert_bool(result).is_true()
-	assert_bool(_spy.was_emitted("resources_changed")).is_true()
-	assert_int(_spy.count("resources_changed")).is_equal(1)
-	var args: Array = (_spy.emissions["resources_changed"] as Array)[0] as Array
-	assert_int(args[0] as int).is_equal(-tech_node.gold_cost)
-	assert_that(args[1] as StringName).is_equal(&"tech_unlock")
+	assert_bool(_spy.was_emitted("resources_changed")).is_false()
 	assert_bool(_defense_building.is_tech_unlocked(TECH_PRODUCTION_2)).is_true()
 
 
@@ -122,20 +115,14 @@ func test_resolve_tech_unlock_rejected_by_eligibility_gate_emits_nothing() -> vo
 
 
 # ---------------------------------------------------------------------------
-# AC-21: structure build resolves -> resources_changed(-gold_cost, "structure_built")
-# fires with source tag "structure_built".
+# AC-21 (amended 2026-11-03): a structure build spends no gold either.
 # ---------------------------------------------------------------------------
 
-func test_resolve_structure_build_emits_resources_changed_with_correct_payload() -> void:
-	var structure: StructureResource = GGameDataRegistry.get_structure(HABITAT_TIER_1)
+func test_resolve_structure_build_spends_no_gold() -> void:
 	var result: bool = _defense_building.resolve_structure_build(HABITAT_TIER_1)
 
 	assert_bool(result).is_true()
-	assert_bool(_spy.was_emitted("resources_changed")).is_true()
-	assert_int(_spy.count("resources_changed")).is_equal(1)
-	var args: Array = (_spy.emissions["resources_changed"] as Array)[0] as Array
-	assert_int(args[0] as int).is_equal(-structure.gold_cost)
-	assert_that(args[1] as StringName).is_equal(&"structure_built")
+	assert_bool(_spy.was_emitted("resources_changed")).is_false()
 	assert_bool(_defense_building.can_build_structure(HABITAT_TIER_1)).is_false()  # now BUILT
 
 

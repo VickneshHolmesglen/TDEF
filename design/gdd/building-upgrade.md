@@ -170,3 +170,7 @@ Worked example: `upgrade_tier=1` → `gold_cost = round(60 × 1.0) = 60`, `mater
 | Per-requirement chip accessibility (Rule 2a) — colorblind-safe differentiation between the 4 requirement categories (not just locked-vs-unlocked), gamepad/keyboard focus order across 1-4 chips per row, text-scale behavior at minimum font size with 4 chips + 2 cost fields on one row | UX / UI implementation | Not blocking this GDD | Flagged by design review; Rule 2a specifies the chip's informational content, not its full visual/input spec — same scope split this project's other GDDs already use (mechanical content here, full Visual/Audio/UI Requirements spec as a follow-up pass) |
 | What does an upgrade actually *do* to Habitat Expansion or Watchtower mechanically? | Menagerie (Habitat) / undecided (Watchtower) | Not blocking this GDD (Rule 7 explicitly scaffolds this) | Mirrors `defense-building.md`'s own already-accepted deferral for Watchtower's base effect — deliberately not invented here |
 | Should `requirements` ever support "any N of" rather than "all of" a set (a partial-OR gate)? | Design | Not blocking | Out of scope per the user's own explicit recipe-style ("ALL of specific inputs") scope decision for this first pass; a future extension, not a redesign |
+
+## Amendment 2026-11-03: no gold cost
+
+Upgrades cost materials only; `gold_cost` is removed (the Sanctuary has no gold). See design/gdd/defense-building.md, "Amendment 2026-11-03: no gold in the Sanctuary".

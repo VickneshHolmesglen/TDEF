@@ -21,7 +21,8 @@ extends Resource
 @export var tier: int = 1                                # 1-N within structure_type; 1 for untiered
 @export var prerequisite_structure_id: StringName = &""  # "" = Tier 1 / untiered
 @export var tech_gate: StringName = &""                  # "" = ungated
-@export var gold_cost: int = 0
+## No gold cost (removed 2026-11-03): gold exists only inside a mission and
+## resets afterwards, so a Sanctuary gold price was shown but never charged.
 @export var material_costs: Dictionary[StringName, int] = {}
 
 

@@ -119,7 +119,7 @@ def sub_refs(raw: str | None) -> list[str]:
 # --- Constants pulled from the GDScript -----------------------------------------
 
 def gd_const(src: str, name: str, default):
-    m = re.search(rf'^const {name}\s*(?::[^=]+)?=\s*([^\n#]+)', src, re.M)
+    m = re.search(rf'^const {name}\s*(?::[^=]*)?=\s*([^\n#]+)', src, re.M)  # ":=" (inferred) too
     if not m:
         print(f"warning: const {name} not found, using {default}", file=sys.stderr)
         return default

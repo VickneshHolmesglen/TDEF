@@ -12,7 +12,6 @@ requirements = {
 &"creature": &"glimmer_hare",
 &"tarot": &"iron_resolve"
 }
-gold_cost = 60
 material_cost = {
 &"Common": 12
 }

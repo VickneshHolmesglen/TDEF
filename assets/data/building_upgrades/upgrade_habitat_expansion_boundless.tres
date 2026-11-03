@@ -12,7 +12,6 @@ requirements = {
 &"tarot": &"apex_predator",
 &"equipment": &"brutes_bulwark_plate"
 }
-gold_cost = 60
 material_cost = {
 &"Common": 12
 }

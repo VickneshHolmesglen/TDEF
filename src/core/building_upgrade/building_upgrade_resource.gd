@@ -13,13 +13,13 @@ extends Resource
 ## `structure_id`, an `item_id`, a `card_id`, or a `species_id` respectively.
 ## ALL named entries must be independently satisfied (Rule 2/4); none are
 ## consumed by checking or by a successful purchase (Rule 5) — only
-## `gold_cost`/`material_cost` are spent.
+## `material_cost` is spent (no gold: removed 2026-11-03, the Sanctuary has
+## no gold).
 
 @export var upgrade_id: StringName = &""
 @export var target_structure_id: StringName = &""       # the Defense Building structure_id this upgrades
 @export var prerequisite_upgrade_id: StringName = &""    # "" = first upgrade in this structure's own chain
 @export var requirements: Dictionary[String, StringName] = {}  # 1-4 entries, keys from VALID_REQUIREMENT_TYPES
-@export var gold_cost: int = 0
 @export var material_cost: Dictionary[StringName, int] = {}    # rarity-keyed, matches crafting.md Formula 1's vocabulary
 @export var effect_description: String = ""              # content-authoring only — mechanical effect owned by whichever system consumes structure_upgraded (Rule 6/7)
 

@@ -867,3 +867,12 @@ The Formula 1 tech-node material costs were about one ninth of a single mission'
 | 3 | 380 Common, 50 Uncommon, 32 Rare | 150 |
 
 That is roughly 1, 2 and 4 missions of income. A player who buys research first gets Production IV around mission 5; the simulator's cheapest-first shopper, which buys cheap gear first, gets it much later. Formula 1's base quantities no longer produce these values; the `.tres` files are the source of truth until the formula is re-derived.
+
+## Amendment 2026-11-03: no gold in the Sanctuary
+
+Decision (user, 2026-11-03): research, structures and building upgrades cost **materials only**. Gold exists only inside a mission (MissionEconomy) and resets afterwards, so the authored gold prices (research 50/90/150, Habitat Expansion 60-300, Watchtower 70) were shown on the cards but never charged: the `resources_changed(-gold_cost, ...)` "debit" had no Sanctuary listener. This supersedes the gold half of the dual-currency gate (AC-18 to AC-22) and the gold columns of Formula 1/2 and AC-31 to AC-36.
+
+- `gold_cost` is removed from `TechNodeResource`, `StructureResource` and `BuildingUpgradeResource`, and from their data files.
+- `resolve_tech_unlock()`, `resolve_structure_build()` and `BuildingUpgrade.resolve_upgrade()` emit no `resources_changed`.
+- The Defense Building cards show material costs only (no coin); the accessible name reads "<name> · <state> · <materials>".
+- Considered and rejected: a persistent Sanctuary treasury fed by leftover mission gold (a second meta currency, and it would reward under-building towers to bank gold).
