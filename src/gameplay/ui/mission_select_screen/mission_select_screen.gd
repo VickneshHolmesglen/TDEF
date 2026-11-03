@@ -286,7 +286,10 @@ func _mission_entry_text(entry: MissionEntry) -> String:
 		var prerequisite_name: String = prerequisite_entry.display_name if prerequisite_entry != null else prerequisite
 		return "%s\n%s" % [entry.display_name, tr("MISSION_SELECT_LOCKED") % prerequisite_name]
 	var highest: int = mission_select.get_highest_completed_tier(entry.mission_id)
-	var status: String = tr("MISSION_SELECT_CLEARED") % _tier_display_name(highest) if highest > 0 else tr("MISSION_SELECT_NOT_CLEARED")
+	# Non-breaking spaces inside the tier name: the narrow card wrapped
+	# "Cleared: Ascension 2" with the "2" alone on its own line (live check).
+	var tier_name: String = _tier_display_name(highest).replace(" ", " ")
+	var status: String = tr("MISSION_SELECT_CLEARED") % tier_name if highest > 0 else tr("MISSION_SELECT_NOT_CLEARED")
 	return "%s\n%s" % [entry.display_name, status]
 
 

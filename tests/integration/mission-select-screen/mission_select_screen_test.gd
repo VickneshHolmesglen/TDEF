@@ -79,7 +79,8 @@ func test_mission_card_cleared_card_shows_highest_tier_on_two_lines() -> void:
 	var gap: Button = _screen.call("get_mission_button", MISSION_THE_GAP)
 	var lines: PackedStringArray = gap.text.split("\n")
 	assert_int(lines.size()).is_equal(2)
-	assert_str(lines[1]).is_equal(tr("MISSION_SELECT_CLEARED") % (tr("MISSION_SELECT_TIER_ASCENSION") % 2))
+	# Non-breaking space keeps the rank number with its word on the narrow card.
+	assert_str(lines[1]).is_equal(tr("MISSION_SELECT_CLEARED") % (tr("MISSION_SELECT_TIER_ASCENSION") % 2).replace(" ", " "))
 	var foothills: Button = _screen.call("get_mission_button", "the_foothills")
 	assert_str(foothills.text.split("\n")[1]).is_equal(tr("MISSION_SELECT_NOT_CLEARED"))
 
