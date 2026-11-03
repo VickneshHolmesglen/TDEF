@@ -253,6 +253,11 @@ var _info_panel: PanelContainer
 @onready var _assemble_button: Button = $MainLayout/RightPanel/RightPanelContent/AssembleView/AssembleFooter/AssembleButton
 @onready var _assemble_confirm_dialog: ConfirmationDialog = $AssembleConfirmDialog
 
+## Discard (design/quick-specs/inventory-discard-2026-11-03.md): right-click,
+## Delete or gamepad X on a bag slot asks to discard its whole stack/item.
+var _discard_dialog: ConfirmationDialog
+var _pending_discard_index: int = -1
+
 ## Assemble Towers tab's own sub-tab strip (2026-09-12, player-requested): the
 ## 7 component/assembled-tower categories no longer render as 7 simultaneous
 ## side-by-side columns -- at RightPanel's real ~420px width that squeezed
@@ -370,6 +375,7 @@ func _ready() -> void:
 	_assemble_confirm_dialog.confirmed.connect(_on_assemble_confirmed)
 	_assemble_confirm_dialog.get_cancel_button().set_meta(UiAudioBinder.META_KEY, UiAudioBinder.KIND_CANCEL)
 	_assemble_confirm_dialog.get_ok_button().set_meta(UiAudioBinder.META_KEY, UiAudioBinder.KIND_CONFIRM)
+	_build_discard_dialog()
 	for slot: String in _assemble_slot_tab_buttons:
 		_assemble_slot_tab_buttons[slot].pressed.connect(_on_assemble_slot_tab_pressed.bind(slot))
 		_style_sub_tab(_assemble_slot_tab_buttons[slot])
@@ -585,7 +591,7 @@ func _refresh_bag_summary() -> void:
 		capacity += 1
 		if (contents.get("item_id", "") as String) != "" and (contents.get("quantity", 0) as int) > 0:
 			used += 1
-	_bag_header.text = tr("INVENTORY_BAG_HEADER") % [used, capacity]
+	_bag_header.text = (tr("INVENTORY_BAG_HEADER") % [used, capacity]) + "  ·  " + tr("INVENTORY_DISCARD_HINT")
 	_bag_empty_label.text = tr("INVENTORY_BAG_TAB_EMPTY") % tr(TAB_LABEL_KEYS.get(_active_tab, String(_active_tab)))
 	_bag_empty_label.visible = shown_on_tab == 0
 
@@ -1137,6 +1143,10 @@ func _on_recipe_discovered(_recipe_id: String, _recipe_category: String) -> void
 ## intact-move operations, never equip_item()/unequip_item(), which would
 ## duplicate or destroy the item's rolled stats and runes.
 func _on_slot_gui_input(event: InputEvent, index: int) -> void:
+	if is_discard_input(event):
+		if request_discard(index):
+			get_viewport().set_input_as_handled()
+		return
 	var mb: InputEventMouseButton = event as InputEventMouseButton
 	if mb == null or not mb.double_click or not mb.pressed or mb.button_index != MOUSE_BUTTON_LEFT:
 		return
@@ -1157,6 +1167,66 @@ func toggle_equip_at(index: int) -> bool:
 			return false
 		return true
 	return inventory.equip_from_slot(index)
+
+
+## Right mouse button, Delete, or gamepad X (pressed, not a key repeat).
+static func is_discard_input(event: InputEvent) -> bool:
+	var mb: InputEventMouseButton = event as InputEventMouseButton
+	if mb != null:
+		return mb.pressed and mb.button_index == MOUSE_BUTTON_RIGHT
+	var key: InputEventKey = event as InputEventKey
+	if key != null:
+		return key.pressed and not key.echo and key.keycode == KEY_DELETE
+	var joy: InputEventJoypadButton = event as InputEventJoypadButton
+	return joy != null and joy.pressed and joy.button_index == JOY_BUTTON_X
+
+
+func _build_discard_dialog() -> void:
+	_discard_dialog = ConfirmationDialog.new()
+	_discard_dialog.name = "DiscardConfirmDialog"
+	_discard_dialog.title = tr("INVENTORY_DISCARD_TITLE")
+	_discard_dialog.ok_button_text = tr("INVENTORY_DISCARD_OK")
+	_discard_dialog.get_cancel_button().set_meta(UiAudioBinder.META_KEY, UiAudioBinder.KIND_CANCEL)
+	_discard_dialog.get_ok_button().set_meta(UiAudioBinder.META_KEY, UiAudioBinder.KIND_CONFIRM)
+	add_child(_discard_dialog)
+	_discard_dialog.confirmed.connect(_on_discard_confirmed)
+	_discard_dialog.canceled.connect(_on_discard_canceled)
+
+
+## Opens the discard confirmation for bag slot `index`. Returns false (and
+## plays the denial cue for a locked item) when there is nothing to discard:
+## an empty slot, a Hero equip slot, or an equipped/installed item.
+func request_discard(index: int) -> bool:
+	if inventory == null or inventory.is_equipment_slot_index(index):
+		return false
+	var contents: Dictionary = inventory.get_slot_contents(index)
+	if contents.is_empty() or (contents.get("item_id", "") as String) == "":
+		return false
+	if contents.get("locked", false):
+		_play_denied_cue()
+		return false
+	var definition: ItemDefinitionResource = GGameDataRegistry.get_item_definition(StringName(contents["item_id"]))
+	var display: String = definition.display_name if definition != null and definition.display_name != "" else String(contents["item_id"])
+	_discard_dialog.dialog_text = tr("INVENTORY_DISCARD_CONFIRM") % [maxi(1, contents.get("quantity", 1) as int), display]
+	_pending_discard_index = index
+	_discard_dialog.popup_centered()
+	_discard_dialog.get_cancel_button().grab_focus()  # the safe choice is the default
+	return true
+
+
+func _on_discard_confirmed() -> void:
+	var index: int = _pending_discard_index
+	_pending_discard_index = -1
+	if index >= 0 and inventory != null:
+		inventory.discard_slot(index)
+
+
+func _on_discard_canceled() -> void:
+	_pending_discard_index = -1
+
+
+func get_discard_dialog() -> ConfirmationDialog:
+	return _discard_dialog
 
 
 func _play_denied_cue() -> void:

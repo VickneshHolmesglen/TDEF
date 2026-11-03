@@ -86,6 +86,8 @@ counts convert to hours at roughly 3 missions per hour.
   no discard or sell for materials. (2) With `--discard` (a player who throws
   away stacks no remaining purchase uses) the set is complete ~mission 115,
   about 6 Ascension visits per map, inside the 5-8 replay target; best rank 7.
-- [ ] Bag clog: add a way to clear materials (discard, or salvage into
-  something useful) so the endgame isn't blocked.
+- [x] Bag clog, part 1 (2026-11-03): discard (right-click / Del / pad X on a
+  bag slot, confirm). `design/quick-specs/inventory-discard-2026-11-03.md`.
+  The sim's `--discard` models a tidy player using it.
+- [ ] Bag clog, part 2: salvage surplus stacks into something useful.
 

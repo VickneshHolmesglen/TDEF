@@ -119,7 +119,17 @@ func test_remove_item_is_the_only_removal_entry_point_exposed() -> void:
 		var mn: String = m["name"]
 		if mn.begins_with("remove_") or mn.begins_with("discard"):
 			method_names.append(mn)
-	assert_array(method_names).contains_exactly(["remove_item"])
+	# discard_slot (2026-11-03, player discard) is a wrapper that goes through
+	# remove_item(), so it inherits the lock check -- see the test below.
+	assert_array(method_names).contains_exactly_in_any_order(["remove_item", "discard_slot"])
+
+
+func test_discard_slot_on_locked_slot_rejected() -> void:
+	var idx: int = _inventory.add_unique_item(_make_unique_definition(&"iron_sword"))
+	_inventory.set_slot_locked(idx, true)
+
+	assert_bool(_inventory.discard_slot(idx)).is_false()
+	assert_bool(_inventory.is_slot_empty(idx)).is_false()
 
 
 # ---------------------------------------------------------------------------

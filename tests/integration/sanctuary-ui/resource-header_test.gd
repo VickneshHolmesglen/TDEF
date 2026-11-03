@@ -90,3 +90,15 @@ func test_materials_readout_sits_right_of_the_plaque_not_inside_it() -> void:
 	var materials_row: HBoxContainer = _header.get_node("MaterialsRow")
 	assert_object(_header.get_node_or_null("ResourceRow/MaterialsRow")).is_null()
 	assert_float(materials_row.position.x).is_greater_equal(_header.size.x)
+
+
+## Live check 2026-11-03: 36 delivered shards showed as 72 -- Inventory's
+## item_added resync plus the materials_earned delta counted them twice.
+func test_real_material_earned_matches_inventory_not_double_counted() -> void:
+	GInventory.reset_to_defaults()
+	GEventBus.materials_earned.emit("goblin_hide", 5, "test_source")
+
+	assert_int(_header.get_material_quantity("goblin_hide")).is_equal(GInventory.count_by_material_id(&"goblin_hide"))
+	assert_int(_header.get_material_quantity("goblin_hide")).is_equal(5)
+	GInventory.reset_to_defaults()
+

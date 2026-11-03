@@ -969,6 +969,31 @@ func remove_item(slot_index: int) -> bool:
 	return true
 
 
+## Player discard (design/quick-specs/inventory-discard-2026-11-03.md): removes
+## the whole stack or item at `slot_index` through remove_item() (so the same
+## lock rule applies: equipped/installed slots are refused) and emits
+## item_removed so screens refresh and held rewards (MissionSelect's held
+## Ascendant Shards) can move into the freed space. Returns false, nothing
+## changed, for an empty, locked or out-of-range slot.
+##
+## Usage:
+##   if inventory.discard_slot(index):
+##       print("discarded")
+func discard_slot(slot_index: int) -> bool:
+	if slot_index < 0 or slot_index >= _slots.size():
+		return false
+	var slot: InventorySlot = _slots[slot_index]
+	if slot == null or slot.locked:
+		return false
+	var definition: ItemDefinitionResource = GGameDataRegistry.get_item_definition(slot.item_id)
+	var item_type: String = String(definition.item_type) if definition != null else ""
+	var quantity: int = slot.quantity
+	if not remove_item(slot_index):
+		return false
+	GEventBus.item_removed.emit(String(slot.item_id), item_type, quantity)
+	return true
+
+
 ## Consumes `quantity_to_consume` units from a SINGLE stackable slot matching
 ## `definition.item_id` (Story 006, AC-17). Mutates `InventorySlot.quantity` in
 ## place at the existing array index — never re-indexes/compacts _slots

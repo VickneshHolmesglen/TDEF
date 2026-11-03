@@ -129,13 +129,24 @@ func get_material_quantity(material_type: String) -> int:
 
 
 func _on_materials_earned(material_type: String, quantity: int, _source: String) -> void:
-	_materials[material_type] = int(_materials.get(material_type, 0)) + quantity
-	_refresh_label()
-	_play_scale_pop()
+	_apply_change(material_type, quantity)
 
 
 func _on_materials_spent(material_type: String, quantity: int, _destination: String) -> void:
-	_materials[material_type] = int(_materials.get(material_type, 0)) - quantity
+	_apply_change(material_type, -quantity)
+
+
+## Real items are re-read from Inventory, the ledger of record. Adding the
+## delta on top double-counted (live check 2026-11-03: 36 shards showed as
+## 72) because Inventory's own item_added already resynced the header when it
+## handled the same materials_earned first, and a bag-full rejection would
+## have been counted too. Ids with no item definition never reach Inventory,
+## so only those still accumulate the delta.
+func _apply_change(material_type: String, delta: int) -> void:
+	if GGameDataRegistry.get_item_definition(StringName(material_type)) != null:
+		_seed_from_inventory()
+	else:
+		_materials[material_type] = int(_materials.get(material_type, 0)) + delta
 	_refresh_label()
 	_play_scale_pop()
 
