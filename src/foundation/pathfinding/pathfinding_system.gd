@@ -34,8 +34,9 @@ var _event_bus: Node = null
 var _templates: Dictionary[Vector2i, RouteTemplate] = {}
 var _astar_instances: Dictionary[Vector2i, PathfindingAStar2D] = {}
 
-# Maps every walkable cell to its nearest SPAWN cell (Voronoi, Chebyshev distance).
-# Populated after all templates are built at SCOUT start.
+# Maps every walkable cell to the SPAWN whose route is cheapest to reach by
+# walking (Dial flood fill seeded with every template cell, path/placeable weights).
+# Built after all templates at SCOUT start and rebuilt after dirty rebuilds.
 var _spawn_assignment: Dictionary[Vector2i, Vector2i] = {}
 
 # Dirty-rebuild state.
