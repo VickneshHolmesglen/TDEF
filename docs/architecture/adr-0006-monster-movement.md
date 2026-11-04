@@ -56,6 +56,46 @@ PASS 1b — STATUS EFFECTS PASS (extended)
 
 **Why no new pass for slow (reused Pass 1b rather than a 6th pass)**: slow shares the exact same lifecycle shape as DoT — per-entity, `PowerComponent`-sourced, freed automatically when the entity is (EC-16), read from the same `tower_attacked` event Pass 1b's DoT half already subscribes to. Splitting it into its own pass would mean iterating `active_monsters` a third time per frame for no architectural benefit; Pass 1b's own two internal helper functions (`_tick_dot_instances`/`_decay_slow_instances`) keep the two sub-behaviors readable without a new top-level pass.
 
+## Amendment (2026-11-04) — Free-Flow Movement (Pass 3)
+
+Requested by the user ("swap from grid based to free flow", option A of
+`design/quick-specs/free-flow-options-2026-11-04.md`). Monsters no longer visibly
+walk cell centre to cell centre. The route model is unchanged; only how the
+world position is derived from it changes.
+
+- **Route anchor.** `MonsterEntity.path_anchor` does exactly what
+  `global_position` used to do in Pass 3: walks cell centre to cell centre,
+  advances `path_step_index`, emits `monster_cell_entered`, triggers breach.
+  Knockback moves the anchor. Tower targeting (`path_step_index`), DEAD-priority
+  and every cell-based event keep their meaning.
+- **World position is derived** by `_sync_flow_position()` after each anchor
+  update (Pass 3, spawn, knockback):
+  1. *Corner rounding.* Within `corner_radius_cells` (default 0.5) of a turn,
+     the position follows a quadratic Bezier with control points (entry edge
+     midpoint, corner cell centre, exit edge midpoint). The curve stays inside
+     the corner cell, so it never crosses a BLOCKED or tower cell. Applied as a
+     delta on the anchor so an off-centre anchor (split child) stays continuous.
+  2. *Lane spread.* A fixed per-monster sideways offset
+     (`lane_offset_for(entity_id)`, golden-ratio sequence, bosses 0) times
+     `lane_spread_cells` (default 0.25), perpendicular to the curve tangent.
+     Capped at `corner_radius * 0.7`: the curve's tightest radius is
+     `corner_radius / sqrt(2)`, and an inner offset past it would loop.
+  3. The step before `current_path[0]` is `MonsterEntity.route_origin` (the
+     spawn point; split children inherit it), so a turn at the first route cell
+     is rounded on both halves.
+- **`PATH_ARRIVAL_THRESHOLD` 4.0 -> 0.05**, now a float tolerance on
+  `budget >= dist - threshold`. The old 4-unit snap jumped every monster up to
+  4 px at each cell centre, a visible hitch once corners were smooth.
+- **Unchanged:** co-occupancy (no collision or separation forces, so no
+  per-frame neighbour queries and no allocation), the 4-pass order, route
+  computation, flying routes.
+
+Validation: `tests/unit/monster/free_flow_movement_test.gd` (route-cell
+containment at full spread on a zigzag with a first-cell turn, rounded apex
+distance, continuity, `monster_cell_entered` sequence unchanged, lane offsets).
+Live (Coilmarsh, Twinpass, 24 runners, ~27k samples): 0 positions outside
+walkable cells, max per-frame move 1.23x the speed budget.
+
 ## Date
 2026-05-22
 

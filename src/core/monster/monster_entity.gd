@@ -35,6 +35,22 @@ var current_path: Array[Vector2i] = []
 ## Index of the next target cell within current_path.
 var path_step_index: int = 0
 
+## Free-flow movement (ADR-0006 amendment 2026-11-04): the unsmoothed route
+## position. It walks cell centre to cell centre exactly as Pass 3 always did,
+## and drives path_step_index / monster_cell_entered. global_position is derived
+## from it every frame (rounded corners + lane offset) and is what everything
+## else reads. Write this, not global_position, to move a monster along its route.
+var path_anchor: Vector2 = Vector2.ZERO
+
+## Where the route starts (the spawn cell's world position; current_path does
+## not include it). Used as the point before current_path[0] when rounding a
+## turn at the first route cell. Split children inherit their parent's.
+var route_origin: Vector2 = Vector2.ZERO
+
+## Signed sideways offset from the route centre line, as a fraction of
+## MonsterManager.lane_spread_cells (-1..1). Fixed at spawn; 0 for bosses.
+var lane_offset: float = 0.0
+
 var lifecycle_state: int = State.SPAWNING
 
 ## &"hero" or &"tower" — set from last MonsterDamageTaken.source_type; forwarded in monster_died.

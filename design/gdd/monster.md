@@ -111,8 +111,10 @@ Monsters carry the stakes and the spoils. Their approach is what makes a tower p
 11. Monster movement executes in `_physics_process(delta)`. Each active monster advances along `current_path` based on `scaled_speed` (cells per second):
     - a. Compute target world position: `Grid.cell_to_world(current_path[path_step_index])`.
     - b. Move entity toward target at *effective speed* units/second — `scaled_speed × Π(active slow speed_multiplier instances)` (damage-status.md Formula D6, amended 2026-08-13). `scaled_speed` itself is read here, never mutated — it remains the same immutable-after-spawn value described above regardless of how many slow instances are active or expire. With no active slow instances, effective speed equals `scaled_speed` exactly, so this is a pure extension of the existing rule, not a behavior change for any non-slowed monster.
-    - c. When within `PATH_ARRIVAL_THRESHOLD` world units of the target position, increment `path_step_index` by 1.
+    - c. When this frame's movement covers the remaining distance (within the `PATH_ARRIVAL_THRESHOLD` float tolerance), increment `path_step_index` by 1.
     - d. If `path_step_index >= current_path.size()`: GOAL cell reached — trigger breach resolution (Rule 24).
+
+11a. **Free flow (amended 2026-11-04, ADR-0006).** Steps a-d move the monster's *route anchor* (`path_anchor`), not its visible position. The world position is derived from the anchor each frame: turns are rounded inside the corner cell (quadratic Bezier, `corner_radius_cells`, default 0.5, safe range 0-0.5), and each monster keeps a fixed sideways lane offset (`lane_spread_cells`, default 0.25, safe range 0-0.35, capped at 0.7 x corner radius; bosses 0). The position never leaves the route's cells. `path_step_index`, `monster_cell_entered` and breach timing come from the anchor and are unchanged. Tuning: larger spread = wider, more organic crowds but more spread-out targets for single-target towers near lane edges.
 
 12. If `scaled_speed` causes the monster to overshoot the next cell in a single frame, the arrival check fires for every overshot step within that frame (loop until no further overshoot or GOAL reached).
 
@@ -836,7 +838,7 @@ THEN each entity receives a unique `entity_id` strictly greater than the previou
 ### Area 2: Path Consumption
 
 **AC-8** `[Logic · BLOCKING]`
-GIVEN an ACTIVE monster with `scaled_speed = 2.0` cells/second, a `current_path` of 6 cells (each cell 64 world units wide), and `PATH_ARRIVAL_THRESHOLD = 4.0` world units,
+GIVEN an ACTIVE monster with `scaled_speed = 2.0` cells/second, a `current_path` of 6 cells (each cell 64 world units wide), and `PATH_ARRIVAL_THRESHOLD = 0.05` world units (float tolerance; 4.0 before 2026-11-04),
 WHEN `_physics_process` is called 120 times with `delta = 1/60.0` (2.0 seconds of simulated time),
 THEN `path_step_index == 4` (the monster has advanced through cells 0–3 and is now targeting cell 4); no cells are skipped; `lifecycle_state` remains ACTIVE (cells 4 and 5 remain — GOAL not yet reached).
 

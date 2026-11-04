@@ -129,7 +129,7 @@ func test_armor_shred_makes_hits_and_ticks_hurt_more_then_expires() -> void:
 func test_knockback_pushes_the_monster_back_along_its_path() -> void:
 	var m: MonsterEntity = _spawn(1000.0)
 	m.path_step_index = 3
-	m.global_position = Vector2(3.0 * 64.0, 0.0)
+	m.path_anchor = Vector2(3.0 * 64.0, 0.0)
 	_mm.apply_knockback(m.entity_id, 1.5)
 	assert_float(m.global_position.x).is_equal_approx(1.5 * 64.0, 0.01)
 	# path_step_index is the NEXT cell to walk to: at x=1.5 cells that is path[1] = (2, 0).
@@ -139,9 +139,9 @@ func test_knockback_pushes_the_monster_back_along_its_path() -> void:
 func test_bosses_ignore_knockback() -> void:
 	var boss: MonsterEntity = _spawn(1000.0, 2)
 	boss.path_step_index = 3
-	boss.global_position = Vector2(3.0 * 64.0, 0.0)
+	boss.path_anchor = Vector2(3.0 * 64.0, 0.0)
 	_mm.apply_knockback(boss.entity_id, 1.5)
-	assert_float(boss.global_position.x).is_equal_approx(3.0 * 64.0, 0.01)
+	assert_float(boss.path_anchor.x).is_equal_approx(3.0 * 64.0, 0.01)
 
 
 func test_chain_and_lifesteal_skills_do_nothing_on_the_monster() -> void:

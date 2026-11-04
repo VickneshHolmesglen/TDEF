@@ -36,7 +36,10 @@ extends Node
 # Tuning constants (match GDD Tuning Knobs section)
 # ---------------------------------------------------------------------------
 
-const PATH_ARRIVAL_THRESHOLD := 4.0        ## world units
+## World units. Float-error tolerance only: was 4.0, which snapped the monster up
+## to 4 px forward at every cell centre (a visible hitch once movement went
+## free-flow, ADR-0006 amendment 2026-11-04).
+const PATH_ARRIVAL_THRESHOLD := 0.05
 const MAX_ACTIVE_MONSTERS := 150
 const BOSS_SCAN_INTERVAL_FRAMES := 6
 const BOSS_ATTACK_PREPARE_FRAMES := 4
@@ -47,6 +50,20 @@ const HP_DIFFICULTY_GROWTH_RATE := 0.35
 const SPEED_WAVE_GROWTH_RATE := 0.06
 const CELL_SIZE := 64.0                    ## world units per grid cell
 const DEATH_BATCH_THRESHOLD := 20          ## ADR-0033 / event-bus.md Formula 2's F_per_frame > 20
+
+## Free-flow movement (ADR-0006 amendment 2026-11-04): turns are rounded inside
+## the corner cell, starting this many cells before the corner. Capped at 0.5
+## (half a step) so the rounding zones of two consecutive corners never overlap.
+@export_range(0.0, 0.5) var corner_radius_cells: float = 0.5
+## Free-flow movement: widest sideways spread from the route centre line, in
+## cells. Applied capped at corner_radius_cells * LANE_SPREAD_CORNER_RATIO: the
+## rounded corner's tightest radius is corner_radius / sqrt(2), and an inner-side
+## offset at or past it would make the monster loop. 0.25 keeps bodies inside
+## the path cells on straights and in corners.
+@export_range(0.0, 0.35) var lane_spread_cells: float = 0.25
+const LANE_SPREAD_CORNER_RATIO := 0.7
+## Golden-ratio step: consecutive entity ids land far apart across the lane.
+const LANE_OFFSET_STEP := 0.6180339887
 
 ## damage-status.md Formula D5: tick interval for burn/poison DoT ticks.
 const STATUS_TICK_INTERVAL := 1.0          ## seconds
@@ -418,13 +435,14 @@ func apply_knockback(target_monster_id: int, cells: float) -> void:
 	var budget: float = cells * CELL_SIZE
 	while budget > 0.0 and entity.path_step_index > 0:
 		var back_world: Vector2 = _grid.cell_to_world(entity.current_path[entity.path_step_index - 1])
-		var dist: float = entity.global_position.distance_to(back_world)
+		var dist: float = entity.path_anchor.distance_to(back_world)
 		if budget < dist:
-			entity.global_position = entity.global_position.move_toward(back_world, budget)
-			return
-		entity.global_position = back_world
+			entity.path_anchor = entity.path_anchor.move_toward(back_world, budget)
+			break
+		entity.path_anchor = back_world
 		budget -= dist
 		entity.path_step_index -= 1
+	_sync_flow_position(entity)
 
 
 func _live_entity(target_monster_id: int) -> MonsterEntity:
@@ -838,15 +856,17 @@ func _advance_entity(entity: MonsterEntity, delta: float) -> void:
 	# Convert cells/sec to world-units/sec using CELL_SIZE. Reads effective
 	# speed (scaled_speed x active slow multipliers, Formula D6) fresh every
 	# frame — scaled_speed itself is never mutated (stays immutable per ADR-0006).
+	# The anchor walks the exact cell-centre route; global_position follows it
+	# through _sync_flow_position() once the step loop is done.
 	var budget: float = _effective_speed(entity) * CELL_SIZE * delta
 	while budget > 0.0 and entity.path_step_index < entity.current_path.size():
 		var target_world: Vector2 = _grid.cell_to_world(entity.current_path[entity.path_step_index])
-		var dist: float = entity.global_position.distance_to(target_world)
+		var dist: float = entity.path_anchor.distance_to(target_world)
 		if dist > 0.0:
-			entity.facing_left = entity.global_position.direction_to(target_world).x < 0.0
-		if dist <= PATH_ARRIVAL_THRESHOLD or budget >= dist:
+			entity.facing_left = entity.path_anchor.direction_to(target_world).x < 0.0
+		if budget >= dist - PATH_ARRIVAL_THRESHOLD:
 			# Arrived at this step
-			entity.global_position = target_world
+			entity.path_anchor = target_world
 			GEventBus.monster_cell_entered.emit(entity.entity_id,
 					entity.current_path[entity.path_step_index], entity.path_step_index)
 			entity.path_step_index += 1
@@ -866,9 +886,82 @@ func _advance_entity(entity: MonsterEntity, delta: float) -> void:
 					entity.queue_free()
 				return
 		else:
-			var dir: Vector2 = entity.global_position.direction_to(target_world)
-			entity.global_position += dir * budget
+			var dir: Vector2 = entity.path_anchor.direction_to(target_world)
+			entity.path_anchor += dir * budget
 			budget = 0.0
+	_sync_flow_position(entity)
+
+
+## Free-flow movement (ADR-0006 amendment 2026-11-04): derives the monster's
+## world position from its route anchor. Within corner_radius of a turn the
+## position follows a quadratic Bezier through the corner cell (entry edge
+## midpoint, cell centre, exit edge midpoint), so it never leaves the corner
+## cell; then it is pushed sideways by the monster's lane offset. The rounding
+## is applied as a delta on top of the anchor, so an anchor that sits slightly
+## off the centre line (a split child) still moves continuously.
+##
+## Example: a monster 0.25 cells before a right-angle turn sits at
+## Bezier t = 0.25, a quarter of the way round the curve, not on the sharp corner.
+func _sync_flow_position(entity: MonsterEntity) -> void:
+	var path: Array[Vector2i] = entity.current_path
+	var n: int = path.size()
+	if n == 0 or entity.path_step_index >= n:
+		entity.global_position = entity.path_anchor
+		return
+	var k: int = entity.path_step_index
+	var anchor: Vector2 = entity.path_anchor
+	var next: Vector2 = _grid.cell_to_world(path[k])
+	var d_next: float = anchor.distance_to(next)
+	var prev: Vector2 = _route_point(entity, k - 1)
+	var seg_dir: Vector2
+	if next != prev:
+		seg_dir = prev.direction_to(next)
+	elif d_next > 0.001:
+		seg_dir = anchor.direction_to(next)
+	elif k + 1 < n:
+		seg_dir = next.direction_to(_grid.cell_to_world(path[k + 1]))
+	else:
+		seg_dir = Vector2.ZERO
+	var tangent: Vector2 = seg_dir
+	var rounding := Vector2.ZERO
+	var r: float = corner_radius_cells * CELL_SIZE
+	if r > 0.0 and seg_dir != Vector2.ZERO:
+		if d_next < r and k + 1 < n:
+			var out_dir: Vector2 = next.direction_to(_grid.cell_to_world(path[k + 1]))
+			if seg_dir.dot(out_dir) < 0.999:
+				var t: float = 0.5 * (1.0 - d_next / r)
+				rounding = _corner_point(next, seg_dir, out_dir, r, t) - (next - seg_dir * d_next)
+				tangent = ((1.0 - t) * seg_dir + t * out_dir).normalized()
+		elif k >= 1:
+			var d_prev: float = anchor.distance_to(prev)
+			if d_prev < r:
+				var in_dir: Vector2 = _route_point(entity, k - 2).direction_to(prev)
+				if in_dir != Vector2.ZERO and in_dir.dot(seg_dir) < 0.999:
+					var t: float = 0.5 + 0.5 * d_prev / r
+					rounding = _corner_point(prev, in_dir, seg_dir, r, t) - (prev + seg_dir * d_prev)
+					tangent = ((1.0 - t) * in_dir + t * seg_dir).normalized()
+	var spread: float = minf(lane_spread_cells, corner_radius_cells * LANE_SPREAD_CORNER_RATIO) * CELL_SIZE
+	var side := Vector2(-tangent.y, tangent.x) * entity.lane_offset * spread
+	entity.global_position = anchor + rounding + side
+
+
+## World position of route step `i`; step -1 is the route origin (spawn).
+func _route_point(entity: MonsterEntity, i: int) -> Vector2:
+	return entity.route_origin if i < 0 else _grid.cell_to_world(entity.current_path[i])
+
+
+## Quadratic Bezier round a corner at `vertex`: P0 = vertex - in*r,
+## P1 = vertex, P2 = vertex + out*r, evaluated at t in [0, 1].
+static func _corner_point(vertex: Vector2, in_dir: Vector2, out_dir: Vector2, r: float, t: float) -> Vector2:
+	var u: float = 1.0 - t
+	return vertex + r * (t * t * out_dir - u * u * in_dir)
+
+
+## Deterministic lane offset in [-1, 1) for an entity id. Bosses walk the centre line.
+static func lane_offset_for(entity_id: int, tier: int) -> float:
+	if tier == 2:
+		return 0.0
+	return fposmod(float(entity_id) * LANE_OFFSET_STEP, 1.0) * 2.0 - 1.0
 
 # ---------------------------------------------------------------------------
 # Pass 3c — Visual Companion Sync (Epic 15 Story 004, ADR-0037)
@@ -1112,9 +1205,13 @@ func _spawn_entity(res: MonsterResource, spawn_cell: Vector2i, wave_index: int,
 	entity.lifecycle_state = MonsterEntity.State.SPAWNING
 	entity.spawn_wave_reward_scalar = wave_reward_scalar
 	entity.wave_index = wave_index
-	entity.global_position = _grid.cell_to_world(spawn_cell)
+	entity.path_anchor = _grid.cell_to_world(spawn_cell)
+	entity.route_origin = entity.path_anchor
 	if not split_origin.is_empty():
-		entity.global_position = split_origin["position"] as Vector2
+		entity.path_anchor = split_origin["position"] as Vector2
+		entity.route_origin = split_origin.get("origin", entity.path_anchor) as Vector2
+	entity.global_position = entity.path_anchor
+	entity.lane_offset = lane_offset_for(entity.entity_id, res.tier)
 	if res.is_healer():
 		entity.heal_cooldown_remaining = res.heal_interval_seconds
 	if res.is_dasher():
@@ -1198,6 +1295,7 @@ func _spawn_entity(res: MonsterResource, spawn_cell: Vector2i, wave_index: int,
 
 	entity.current_path = path
 	entity.path_step_index = mini(start_step, path.size() - 1)
+	_sync_flow_position(entity)
 	entity.lifecycle_state = MonsterEntity.State.ACTIVE
 	active_monsters.append(entity)
 	_entity_lookup[entity.entity_id] = entity
@@ -1488,7 +1586,8 @@ func _queue_split(entity: MonsterEntity) -> void:
 	_pending_splits.append({
 		"monster_id": entity.resource.split_into_monster_id,
 		"count": entity.resource.split_count,
-		"position": entity.global_position,
+		"position": entity.path_anchor,  # children re-derive their own lane offsets
+		"origin": entity.route_origin,
 		"path": entity.current_path,
 		"step": entity.path_step_index,
 		"wave_index": entity.wave_index,

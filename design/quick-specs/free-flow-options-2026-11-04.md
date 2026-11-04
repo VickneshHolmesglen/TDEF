@@ -1,6 +1,6 @@
 # Free-flow movement and placement: options (exploration only)
 
-Date: 2026-11-04. Status: **exploration, no decision**. Nothing here is scheduled.
+Date: 2026-11-04. Status: **option A built 2026-11-04** (see ADR-0006 amendment). B and C not scheduled.
 Question from the user: "Can we swap from grid based to free flow based?"
 
 ## What the grid does today
