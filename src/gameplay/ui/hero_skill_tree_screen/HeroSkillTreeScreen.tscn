@@ -32,7 +32,26 @@ layout_mode = 2
 horizontal_alignment = 1
 text = "SKILL_TREE_VISIT_AVAILABLE"
 
-[node name="ChainsRow" type="HBoxContainer" parent="MainLayout"]
+[node name="TreeScroll" type="ScrollContainer" parent="MainLayout"]
 layout_mode = 2
 size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="TreeLayout" type="VBoxContainer" parent="MainLayout/TreeScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 12
+
+[node name="ChainsRow" type="HBoxContainer" parent="MainLayout/TreeScroll/TreeLayout"]
+layout_mode = 2
 theme_override_constants/separation = 16
+
+[node name="BridgesHeader" type="Label" parent="MainLayout/TreeScroll/TreeLayout"]
+layout_mode = 2
+horizontal_alignment = 1
+
+[node name="BridgesGrid" type="GridContainer" parent="MainLayout/TreeScroll/TreeLayout"]
+layout_mode = 2
+theme_override_constants/h_separation = 12
+theme_override_constants/v_separation = 8
+columns = 3

@@ -1,6 +1,8 @@
 # Hero Skill Tree expansion: forks, passives, keystones, bridges (design pass)
 
-Date: 2026-11-04. Status: **design pass, not built**. First-pass numbers, unplaytested.
+Date: 2026-11-04. Status: **built 2026-11-05** (open questions in §9 taken at their defaults). First-pass numbers, unplaytested.
+
+Built as: one catalogue resource (`assets/data/hero_tree/hero_tree_catalog.tres`, 66 sub-resources, `HeroTreeCatalog`/`HeroTreeNodeResource`) loaded by HeroSkillTree itself rather than 66 files through GameDataRegistry; node names and effect names stay in data like set effects (UI chrome strings are in strings.csv). Stats split into `flat_stats` and `additive_stats` so §5.1's zero-base rule is a load-time check. Deviation: Unbroken drops `max_hp` (the set validator forbids max_hp in `low_hp_state`, it would flicker). Tests: `tests/unit/hero-skill-tree/`, `tests/integration/hero-skill-tree-screen/`.
 Amends (when built): `design/gdd/hero-skill-tree.md` (Rules 3b/3c, 6-10, 13, 14), ADR-0041 save shape.
 Request: "do the design pass for the expanded tree" (after "would a hero skill tree be a suitable addition"),
 then "design the bridge nodes too" (§6a).

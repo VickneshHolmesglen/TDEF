@@ -742,6 +742,12 @@ signal skill_tree_overflow_point_earned(source_tower_id: int)
 ## Key subscribers: Mission HUD, Encyclopedia.
 signal skill_tree_node_unlocked(archetype: String, node_index: int)
 
+## A branch node, keystone or bridge was bought or retrained at Sanctuary
+## (hero-skill-tree-expansion spec §7.2). `slot` is fork_1/fork_2/keystone,
+## or "bridge" with an empty `archetype`. Key subscribers: Hero (tree stat
+## bucket), SetEffectController (tree effects), Hero Skill Tree screen.
+signal skill_tree_branch_changed(archetype: String, slot: String)
+
 ## Fires the instant a build_signature's hero-proximity state flips (entered
 ## or exited range) — added 2026-08-13 (Epic 06 Story 013's Audio
 ## Requirement d) to give the enter-range-tick/pause-descending-tone stinger

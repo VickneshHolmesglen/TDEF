@@ -253,7 +253,7 @@ func _display_name(skill_id: String) -> String:
 func test_locked_skill_shows_its_skill_tree_node_and_unmet_requirements() -> void:
 	var text: String = _hover("elem_absolute_zero")
 	assert_str(text).contains("Unlock: Skill Tree, Elemental Choice III")
-	assert_str(text).contains("Requires Elemental Minor first")
+	assert_str(text).contains("Requires Elemental Root first")
 	assert_str(text).contains("Costs 1 Elemental skill point (you have 0), earned by fighting near Elemental towers")
 
 
@@ -275,7 +275,7 @@ func test_requires_line_names_the_first_locked_node_in_the_chain() -> void:
 	_buy_node("elemental", 0)
 	var text: String = _hover("elem_absolute_zero")
 	assert_str(text).contains("Requires Elemental Choice I first")
-	assert_str(text).not_contains("Elemental Minor")
+	assert_str(text).not_contains("Elemental Root")
 
 
 func test_requires_line_is_omitted_once_the_chain_reaches_the_node() -> void:

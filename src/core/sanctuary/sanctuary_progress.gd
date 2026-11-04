@@ -88,12 +88,11 @@ static func blacksmith(tree: SceneTree) -> float:
 
 
 static func training_hall() -> float:
-	var unlocked: int = 0
+	# Expanded tree (2026-11-05): every purchase counts, spine, branches and bridges.
+	var unlocked: int = GHeroSkillTree.get_owned_bridges().size()
 	for archetype: String in HeroSkillTree.ARCHETYPES:
-		for node_index: int in HeroSkillTree.NODES_PER_CHAIN:
-			if bool(GHeroSkillTree.get_node_state(archetype, node_index).get("unlocked", false)):
-				unlocked += 1
-	var all_nodes: int = HeroSkillTree.ARCHETYPES.size() * HeroSkillTree.NODES_PER_CHAIN
+		unlocked += GHeroSkillTree.get_purchase_count(archetype)
+	var all_nodes: int = HeroSkillTree.ARCHETYPES.size() * HeroSkillTree.PURCHASES_PER_ARCHETYPE + HeroSkillTree.MAX_BRIDGES
 	var learned: int = GHeroSkillBuild.get_assignable_skills().size()
 	return 0.6 * _ratio(unlocked, all_nodes) + 0.4 * _ratio(learned, GGameDataRegistry.get_all_skill_definitions().size())
 

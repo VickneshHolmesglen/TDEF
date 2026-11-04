@@ -31,6 +31,21 @@ const ARCHETYPES: Array[String] = ["physical", "ranged", "elemental", "support"]
 const NODES_PER_CHAIN: int = 4
 const RESTORE_ORDER: int = 37
 
+## Expanded tree (hero-skill-tree-expansion spec §3, §6a): branch slots hang off
+## the spine. A slot opens once the spine node in BRANCH_OPENED_BY is bought.
+const BRANCH_SLOTS: Array[String] = ["fork_1", "fork_2", "keystone"]
+const BRANCH_OPENED_BY: Dictionary[String, int] = {"fork_1": 1, "fork_2": 2, "keystone": 3}
+## Nodes per fork side (Minor, Minor, Notable); a keystone slot holds 1.
+const FORK_DEPTH: int = 3
+## Spine 4 + fork 3 + fork 3 + keystone 1 (spec §3). Bridges never count.
+const PURCHASES_PER_ARCHETYPE: int = 11
+## A bridge opens once this spine node is bought in both of its archetypes.
+const BRIDGE_OPENED_BY: int = 2
+## Bridges a hero may own at once (spec §6a decision).
+const MAX_BRIDGES: int = 2
+## get_save_data() schema; v1 saves (no branches/bridges) still restore.
+const SAVE_SCHEMA_VERSION: int = 2
+
 ## node_index -> tier queried from GameDataRegistry's SkillDefinitionResource.tier
 ## for Choice nodes (1, 2, 3). node_index 0 (Minor) has no tier — never queried.
 const TIER_FOR_CHOICE_NODE: Dictionary[int, String] = {1: "opener", 2: "core", 3: "capstone"}
@@ -56,6 +71,17 @@ var visit_spend_count: int = 0
 ## (empty until purchased).
 var _chain_nodes: Dictionary[String, Array] = {}
 
+## archetype -> slot -> {"side": String, "depth": int}. side "" while depth 0;
+## a fork side is "L"/"R" (depth 0-3), the keystone "A"/"B" (depth 0-1).
+var _branches: Dictionary[String, Dictionary] = {}
+
+## Owned bridge node ids, at most MAX_BRIDGES.
+var _owned_bridges: Array[String] = []
+
+## Node data for roots, branches and bridges. Test seam: assign before use;
+## otherwise loaded from HeroTreeCatalog.DEFAULT_PATH on first access.
+var catalog: HeroTreeCatalog = null
+
 
 func _ready() -> void:
 	_reset_chain_nodes()
@@ -80,6 +106,17 @@ func _reset_chain_nodes() -> void:
 		_chain_nodes[archetype] = chain
 	for archetype: String in ARCHETYPES:
 		skill_tree_points[archetype] = 0
+	_reset_branches()
+
+
+func _reset_branches() -> void:
+	_branches.clear()
+	for archetype: String in ARCHETYPES:
+		var slots: Dictionary = {}
+		for slot: String in BRANCH_SLOTS:
+			slots[slot] = {"side": "", "depth": 0}
+		_branches[archetype] = slots
+	_owned_bridges.clear()
 
 
 ## Rule 13: visit_spend_count resets only on mission_launched, not on generic
@@ -97,7 +134,8 @@ func _on_mission_launched(_mission_id: String, _modifiers: PackedStringArray, _d
 ## - Given that archetype's chain is fully unlocked but at least one other
 ##   archetype still has a locked node: credit the shared overflow pool
 ##   instead (Rule 3b) and emit skill_tree_overflow_point_earned.
-## - Given ALL 16 nodes across all 4 archetypes are already unlocked: silent
+## - Given is_fully_complete() (all 44 archetype purchases + MAX_BRIDGES
+##   bridges, expansion spec §4; was 16 nodes): silent
 ##   no-op — no currency of any kind, no event (Rule 3c, revised 2026-08-31
 ##   third pass after the terminal gold-conversion design was reverted).
 func _on_skill_tree_point_earned(archetype: String, source_tower_id: int) -> void:
@@ -112,21 +150,30 @@ func _on_skill_tree_point_earned(archetype: String, source_tower_id: int) -> voi
 	GEventBus.skill_tree_overflow_point_earned.emit(source_tower_id)
 
 
-## True once all NODES_PER_CHAIN nodes in `archetype`'s own chain are unlocked.
+## True once `archetype` has all PURCHASES_PER_ARCHETYPE own purchases (spine,
+## both forks to their Notable, a keystone). Bridges never count (spec §4).
 func is_archetype_fully_unlocked(archetype: String) -> bool:
-	var chain: Array = _chain_nodes.get(archetype, [])
-	for node: Dictionary in chain:
-		if not (node.get("unlocked", false) as bool):
-			return false
-	return chain.size() == NODES_PER_CHAIN
+	return get_purchase_count(archetype) >= PURCHASES_PER_ARCHETYPE
 
 
-## True once all 4 archetypes' chains are fully unlocked (all 16 nodes).
+## Spine nodes bought + fork depths + keystone, for one archetype.
+func get_purchase_count(archetype: String) -> int:
+	var count: int = 0
+	for node: Dictionary in _chain_nodes.get(archetype, []):
+		if node.get("unlocked", false) as bool:
+			count += 1
+	var slots: Dictionary = _branches.get(archetype, {})
+	for slot: String in slots:
+		count += int((slots[slot] as Dictionary)["depth"])
+	return count
+
+
+## Rule 3c terminal state: every archetype purchase done and MAX_BRIDGES owned.
 func is_fully_complete() -> bool:
 	for archetype: String in ARCHETYPES:
 		if not is_archetype_fully_unlocked(archetype):
 			return false
-	return true
+	return _owned_bridges.size() >= MAX_BRIDGES
 
 
 ## Index of the first locked node in `archetype`'s chain, or -1 if the chain
@@ -211,10 +258,7 @@ func purchase_node(archetype: String, node_index: int, player_selected_skill_id:
 		if not candidates.has(player_selected_skill_id):
 			return false
 
-	if skill_tree_points.get(archetype, 0) >= 1:
-		skill_tree_points[archetype] -= 1
-	else:
-		overflow_points -= 1
+	_spend_point(archetype)
 
 	var chain: Array = _chain_nodes[archetype]
 	var node: Dictionary = chain[node_index]
@@ -238,6 +282,225 @@ func get_node_state(archetype: String, node_index: int) -> Dictionary:
 	return (chain[node_index] as Dictionary).duplicate()
 
 
+
+# ---------------------------------------------------------------------------
+# Branches, keystones and bridges (hero-skill-tree-expansion spec §3, §6, §6a)
+# ---------------------------------------------------------------------------
+
+## The loaded node catalogue (lazy; see `catalog`).
+func get_catalog() -> HeroTreeCatalog:
+	if catalog == null:
+		catalog = load(HeroTreeCatalog.DEFAULT_PATH) as HeroTreeCatalog
+		if catalog == null:
+			push_error("[HeroSkillTree] cannot load %s" % HeroTreeCatalog.DEFAULT_PATH)
+			catalog = HeroTreeCatalog.new()
+	return catalog
+
+
+## True once the spine node that opens `slot` is bought.
+func is_branch_open(archetype: String, slot: String) -> bool:
+	if not BRANCH_OPENED_BY.has(slot):
+		return false
+	return _is_spine_unlocked(archetype, BRANCH_OPENED_BY[slot])
+
+
+## {"side": String, "depth": int} copy for `slot` ("" / 0 while nothing is bought).
+func get_branch_state(archetype: String, slot: String) -> Dictionary:
+	var slots: Dictionary = _branches.get(archetype, {})
+	if not slots.has(slot):
+		return {}
+	return (slots[slot] as Dictionary).duplicate()
+
+
+## Nodes `slot` can hold on one side: FORK_DEPTH for forks, 1 for the keystone.
+static func get_slot_depth(slot: String) -> int:
+	return 1 if slot == "keystone" else FORK_DEPTH
+
+
+## Valid sides of `slot`.
+static func get_slot_sides(slot: String) -> Array[String]:
+	return HeroTreeNodeResource.KEYSTONE_SIDES if slot == "keystone" else HeroTreeNodeResource.FORK_SIDES
+
+
+## AC-X1/X2: the visit is unspent, the slot is open, `side` is the slot's
+## chosen side (or nothing is bought yet), the side is not full, and a point
+## (own or overflow) is available.
+func is_branch_purchasable(archetype: String, slot: String, side: String) -> bool:
+	if visit_spend_count != 0 or not is_branch_open(archetype, slot):
+		return false
+	if not get_slot_sides(slot).has(side):
+		return false
+	var state: Dictionary = get_branch_state(archetype, slot)
+	if not (state["side"] == "" or state["side"] == side):
+		return false
+	if int(state["depth"]) >= get_slot_depth(slot):
+		return false
+	return _has_point(archetype)
+
+
+## Buys the next node on `side` of `slot`. The first purchase in a slot locks
+## the other side. Spends 1 own point (overflow if the pool is empty) and the
+## visit. Returns false with no state change when not purchasable.
+func purchase_branch_node(archetype: String, slot: String, side: String) -> bool:
+	if not is_branch_purchasable(archetype, slot, side):
+		return false
+	_spend_point(archetype)
+	var state: Dictionary = _branches[archetype][slot]
+	state["side"] = side
+	state["depth"] = int(state["depth"]) + 1
+	visit_spend_count += 1
+	GEventBus.skill_tree_branch_changed.emit(archetype, slot)
+	return true
+
+
+## True when `slot` has something bought and the visit is unspent.
+func can_retrain(archetype: String, slot: String) -> bool:
+	if visit_spend_count != 0:
+		return false
+	var state: Dictionary = get_branch_state(archetype, slot)
+	return not state.is_empty() and int(state["depth"]) > 0
+
+
+## AC-X3: moves the slot's bought nodes to the other side at the same depth
+## (keystone A <-> B). Costs the visit; refunds and charges no points.
+func retrain(archetype: String, slot: String) -> bool:
+	if not can_retrain(archetype, slot):
+		return false
+	var state: Dictionary = _branches[archetype][slot]
+	var sides: Array[String] = get_slot_sides(slot)
+	state["side"] = sides[1] if state["side"] == sides[0] else sides[0]
+	visit_spend_count += 1
+	GEventBus.skill_tree_branch_changed.emit(archetype, slot)
+	return true
+
+
+## Every bridge node, in catalogue order.
+func get_bridges() -> Array[HeroTreeNodeResource]:
+	return get_catalog().bridges()
+
+
+## Owned bridge ids (copy).
+func get_owned_bridges() -> Array[String]:
+	return _owned_bridges.duplicate()
+
+
+## A bridge is open once both its archetypes own spine node BRIDGE_OPENED_BY (Skill II).
+func is_bridge_open(bridge_id: String) -> bool:
+	var node: HeroTreeNodeResource = get_catalog().get_node_by_id(StringName(bridge_id))
+	if node == null or node.slot != &"bridge":
+		return false
+	for archetype: String in node.bridge_archetypes:
+		if not _is_spine_unlocked(archetype, BRIDGE_OPENED_BY):
+			return false
+	return true
+
+
+## AC-X8/X9: visit unspent, open, not owned, under MAX_BRIDGES, and 1 point
+## from each archetype's pool (overflow standing in for any missing point).
+func is_bridge_purchasable(bridge_id: String) -> bool:
+	if visit_spend_count != 0 or _owned_bridges.has(bridge_id) or _owned_bridges.size() >= MAX_BRIDGES:
+		return false
+	if not is_bridge_open(bridge_id):
+		return false
+	var node: HeroTreeNodeResource = get_catalog().get_node_by_id(StringName(bridge_id))
+	var missing: int = 0
+	for archetype: String in node.bridge_archetypes:
+		if int(skill_tree_points.get(archetype, 0)) < 1:
+			missing += 1
+	return missing <= overflow_points
+
+
+## Buys a bridge atomically: both points (or overflow for either) and the visit.
+func purchase_bridge(bridge_id: String) -> bool:
+	if not is_bridge_purchasable(bridge_id):
+		return false
+	var node: HeroTreeNodeResource = get_catalog().get_node_by_id(StringName(bridge_id))
+	for archetype: String in node.bridge_archetypes:
+		_spend_point(archetype)
+	_owned_bridges.append(bridge_id)
+	visit_spend_count += 1
+	GEventBus.skill_tree_branch_changed.emit("", "bridge")
+	return true
+
+
+## AC-X9: swaps owned `owned_id` for open, unowned `new_id`. Costs the visit;
+## the 2 points move with it (no refund, no new cost).
+func retrain_bridge(owned_id: String, new_id: String) -> bool:
+	if visit_spend_count != 0 or not _owned_bridges.has(owned_id) or _owned_bridges.has(new_id):
+		return false
+	if not is_bridge_open(new_id):
+		return false
+	_owned_bridges[_owned_bridges.find(owned_id)] = new_id
+	visit_spend_count += 1
+	GEventBus.skill_tree_branch_changed.emit("", "bridge")
+	return true
+
+
+## The node at a branch position (null when the catalogue lacks it).
+func get_branch_node(archetype: String, slot: String, side: String, depth: int) -> HeroTreeNodeResource:
+	return get_catalog().find(archetype, StringName(slot), side, depth)
+
+
+## The Root node data (spine node 0's effect, GDD Rule 14).
+func get_root_node(archetype: String) -> HeroTreeNodeResource:
+	return get_catalog().find(archetype, &"root")
+
+
+## Every owned non-spine node whose effect is live: bought Roots, bought fork
+## nodes on the chosen side, the chosen keystone, owned bridges.
+func active_tree_nodes() -> Array[HeroTreeNodeResource]:
+	var out: Array[HeroTreeNodeResource] = []
+	var data: HeroTreeCatalog = get_catalog()
+	for archetype: String in ARCHETYPES:
+		if _is_spine_unlocked(archetype, 0):
+			_append_if(out, data.find(archetype, &"root"))
+		for slot: String in BRANCH_SLOTS:
+			var state: Dictionary = _branches[archetype][slot]
+			for depth: int in int(state["depth"]):
+				_append_if(out, data.find(archetype, StringName(slot), state["side"], depth))
+	for bridge_id: String in _owned_bridges:
+		_append_if(out, data.get_node_by_id(StringName(bridge_id)))
+	return out
+
+
+## Tree effects in SetEffectController's shape ({&"key", &"name", &"type",
+## &"params"}), keyed "tree:<node_id>" so they never collide with set keys.
+func active_tree_effects() -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for node: HeroTreeNodeResource in active_tree_nodes():
+		if node.effect.is_empty():
+			continue
+		out.append({
+			&"key": StringName("tree:%s" % node.id),
+			&"name": node.effect[&"name"],
+			&"type": node.effect[&"type"],
+			&"params": node.effect[&"params"],
+		})
+	return out
+
+
+func _append_if(out: Array[HeroTreeNodeResource], node: HeroTreeNodeResource) -> void:
+	if node != null:
+		out.append(node)
+
+
+func _is_spine_unlocked(archetype: String, node_index: int) -> bool:
+	var chain: Array = _chain_nodes.get(archetype, [])
+	return node_index < chain.size() and ((chain[node_index] as Dictionary).get("unlocked", false) as bool)
+
+
+func _has_point(archetype: String) -> bool:
+	return int(skill_tree_points.get(archetype, 0)) >= 1 or overflow_points >= 1
+
+
+## Own pool first, overflow otherwise. Callers check _has_point first.
+func _spend_point(archetype: String) -> void:
+	if int(skill_tree_points.get(archetype, 0)) >= 1:
+		skill_tree_points[archetype] -= 1
+	else:
+		overflow_points -= 1
+
+
 # ---------------------------------------------------------------------------
 # SaveRestorer interface (ADR-0003, ADR-0041)
 # ---------------------------------------------------------------------------
@@ -252,6 +515,9 @@ func get_save_data() -> Dictionary:
 		"overflow_points": overflow_points,
 		"visit_spend_count": visit_spend_count,
 		"chain_nodes": _chain_nodes.duplicate(true),
+		"schema_version": SAVE_SCHEMA_VERSION,
+		"branches": _branches.duplicate(true),
+		"bridges": _owned_bridges.duplicate(),
 	}
 
 
@@ -312,10 +578,76 @@ func restore_save_data(data: Dictionary) -> bool:
 		if not restored_chains.has(archetype):
 			return false
 
+	# Schema v2 (expansion spec §7.3). A v1 save has neither key: everything
+	# new starts locked and the spine/points restore unchanged (AC-X5).
+	var restored_branches: Dictionary = _restore_branches(data.get("branches", {}), restored_chains)
+	if restored_branches.is_empty():
+		return false
+	var restored_bridges: Array[String] = []
+	if not _restore_bridges(data.get("bridges", []), restored_chains, restored_bridges):
+		return false
+
 	skill_tree_points = restored_points
 	overflow_points = int(overflow_raw)
 	visit_spend_count = int(visit_raw)
 	_chain_nodes = restored_chains
+	_branches.clear()
+	for archetype: String in restored_branches:
+		_branches[archetype] = restored_branches[archetype]
+	_owned_bridges = restored_bridges
+	return true
+
+
+## Validated copy of a saved `branches` value, or {} when malformed. A slot is
+## only valid when the spine node that opens it is unlocked in `chains`.
+func _restore_branches(raw: Variant, chains: Dictionary[String, Array]) -> Dictionary:
+	if not raw is Dictionary:
+		return {}
+	var out: Dictionary = {}
+	for archetype: String in ARCHETYPES:
+		var slots_raw: Variant = (raw as Dictionary).get(archetype, {})
+		if not slots_raw is Dictionary:
+			return {}
+		var slots: Dictionary = {}
+		for slot: String in BRANCH_SLOTS:
+			var state_raw: Variant = (slots_raw as Dictionary).get(slot, {"side": "", "depth": 0})
+			if not state_raw is Dictionary:
+				return {}
+			var side: Variant = (state_raw as Dictionary).get("side", null)
+			var depth: Variant = (state_raw as Dictionary).get("depth", null)
+			if not (side is String and (depth is int or depth is float)):
+				return {}
+			var depth_i: int = int(depth)
+			if depth_i < 0 or depth_i > get_slot_depth(slot):
+				return {}
+			if depth_i == 0 and side != "":
+				return {}
+			if depth_i > 0:
+				if not get_slot_sides(slot).has(side):
+					return {}
+				var chain: Array = chains[archetype]
+				if not ((chain[BRANCH_OPENED_BY[slot]] as Dictionary)["unlocked"] as bool):
+					return {}
+			slots[slot] = {"side": side, "depth": depth_i}
+		out[archetype] = slots
+	return out
+
+
+## Fills `out` from a saved `bridges` value. False when malformed, over
+## MAX_BRIDGES, duplicated, unknown, or not open under `chains`.
+func _restore_bridges(raw: Variant, chains: Dictionary[String, Array], out: Array[String]) -> bool:
+	if not raw is Array or (raw as Array).size() > MAX_BRIDGES:
+		return false
+	for entry: Variant in (raw as Array):
+		if not entry is String or out.has(entry as String):
+			return false
+		var node: HeroTreeNodeResource = get_catalog().get_node_by_id(StringName(entry as String))
+		if node == null or node.slot != &"bridge":
+			return false
+		for archetype: String in node.bridge_archetypes:
+			if not ((chains[archetype][BRIDGE_OPENED_BY] as Dictionary)["unlocked"] as bool):
+				return false
+		out.append(entry as String)
 	return true
 
 

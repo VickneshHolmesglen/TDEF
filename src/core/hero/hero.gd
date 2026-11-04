@@ -357,6 +357,12 @@ var _flat_bonuses: Dictionary[StringName, float] = {}
 ## (e.g. +0.10 means +10% before clamping).
 var _additive_bonuses: Dictionary[StringName, float] = {}
 
+## Hero Skill Tree expansion spec §7.4: permanent bonuses from bought Roots,
+## fork nodes, keystones and bridges. Own bucket so _recompute_equipment_bonuses()
+## (which replaces the equipment buckets wholesale) never touches it.
+var _tree_flat: Dictionary[StringName, float] = {}
+var _tree_additive: Dictionary[StringName, float] = {}
+
 ## Equipment-set-effects spec §3.5: transient stat modifiers set by
 ## SetEffectController (source key -> {stat: additive fraction}). Kept
 ## separate from _additive_bonuses so _recompute_equipment_bonuses() (which
@@ -524,8 +530,8 @@ var _visual_companion: Node3D = null
 ## after the Formula 1 result, per story-001 Tuning Knobs.
 func get_effective_stat(stat_name: StringName) -> float:
 	var base: float = _base_stats.get(stat_name, 0.0)
-	var flat: float = _flat_bonuses.get(stat_name, 0.0) + _timed_flat_total(stat_name)
-	var additive: float = _additive_bonuses.get(stat_name, 0.0) + _effect_additive.get(stat_name, 0.0)
+	var flat: float = _flat_bonuses.get(stat_name, 0.0) + _tree_flat.get(stat_name, 0.0) + _timed_flat_total(stat_name)
+	var additive: float = _additive_bonuses.get(stat_name, 0.0) + _effect_additive.get(stat_name, 0.0) 		+ _tree_additive.get(stat_name, 0.0)
 	var intermediate: float = maxf(0.0, base + flat)
 	var multiplier: float = 1.0 + clampf(additive, ADDITIVE_BONUS_FLOOR, ADDITIVE_BONUS_CAP)
 	var effective: float = maxf(0.0, intermediate * multiplier)
@@ -818,6 +824,9 @@ func _ready() -> void:
 	GEventBus.equipment_slot_changed.connect(_on_equipment_slot_changed)
 	GEventBus.item_rune_imbued.connect(_on_item_rune_imbued)
 	_recompute_equipment_bonuses()
+	GEventBus.skill_tree_node_unlocked.connect(_on_skill_tree_changed)
+	GEventBus.skill_tree_branch_changed.connect(_on_skill_tree_changed)
+	recompute_tree_bonuses()
 
 	# Story-008 (ADR-0003): establish sane starting HP/state before this Hero
 	# is registered with SavePersistence, so a scene that never explicitly
@@ -856,6 +865,8 @@ func _exit_tree() -> void:
 	GEventBus.hero_healed.disconnect(_on_hero_healed)
 	GEventBus.equipment_slot_changed.disconnect(_on_equipment_slot_changed)
 	GEventBus.item_rune_imbued.disconnect(_on_item_rune_imbued)
+	GEventBus.skill_tree_node_unlocked.disconnect(_on_skill_tree_changed)
+	GEventBus.skill_tree_branch_changed.disconnect(_on_skill_tree_changed)
 	GSavePersistence.unregister(self)
 
 
@@ -876,6 +887,23 @@ func _recompute_equipment_bonuses() -> void:
 	var result: Dictionary = EquipmentBonuses.compute_equipped()
 	_flat_bonuses = result["flat"]
 	_additive_bonuses = result["additive"]
+
+
+func _on_skill_tree_changed(_archetype: String, _slot_or_index: Variant) -> void:
+	recompute_tree_bonuses()
+
+
+## Rebuilds the tree bucket from GHeroSkillTree.active_tree_nodes() (full
+## replace, so a retrained side's old bonuses disappear). Example:
+## `hero.recompute_tree_bonuses()` after restoring a save mid-scene.
+func recompute_tree_bonuses() -> void:
+	_tree_flat = {}
+	_tree_additive = {}
+	for node: HeroTreeNodeResource in GHeroSkillTree.active_tree_nodes():
+		for stat: StringName in node.flat_stats:
+			_tree_flat[stat] = _tree_flat.get(stat, 0.0) + node.flat_stats[stat]
+		for stat: StringName in node.additive_stats:
+			_tree_additive[stat] = _tree_additive.get(stat, 0.0) + node.additive_stats[stat]
 
 
 ## Spec §3.3 key-handling rule: `additive_bonus_total` fans out into the

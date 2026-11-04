@@ -161,3 +161,7 @@ N/A — no shipped code exists yet for this chain; this ADR governs first implem
 - ADR-0032 — Presentation Shell Hosting Pattern (`ROOM_HERO_SKILLS` is a new instance, not a new pattern)
 - `design/gdd/reviews/hero-skill-tree-review-log.md` — full 3-round review history this ADR formalizes the outcome of
 - `design/gdd/gdd-cross-review-2026-08-31.md` — the holistic review findings (double-grant, direct-call violation, spend-cap exploit) this ADR's Decision section resolves
+
+## Amendment 2026-11-05: expanded tree
+
+`GHeroSkillTree` still owns every point and node mutation. Added state: `_branches` (archetype -> fork_1/fork_2/keystone -> {side, depth}) and `_owned_bridges` (max 2), persisted as `branches`/`bridges` with `schema_version: 2`; a v1 payload (neither key) restores with everything new locked. Node data lives in `assets/data/hero_tree/hero_tree_catalog.tres` (`HeroTreeCatalog`), loaded lazily by the autoload. New EventBus signal `skill_tree_branch_changed(archetype, slot)` (slot "bridge" with empty archetype for bridges), emitted only by this autoload. Consumers read, never mutate: Hero rebuilds a separate tree stat bucket from `active_tree_nodes()`; SetEffectController appends `active_tree_effects()` (keys `tree:<node_id>`) to set effects. Spec: `design/quick-specs/hero-skill-tree-expansion-2026-11-04.md`.

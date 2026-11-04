@@ -8,7 +8,7 @@ extends PanelContainer
 const STAT_DISPLAY_ORDER: Array[StringName] = [
 	&"max_hp", &"armor", &"physical_attack", &"magic_attack", &"move_speed",
 	&"attack_range", &"crit_chance", &"crit_multiplier", &"luck", &"cdr",
-	&"lifesteal", &"elemental_resist_fire", &"elemental_resist_frost",
+	&"lifesteal", &"elemental_resist_fire", &"elemental_resist_frost", &"tower_affinity",
 ]
 const INTEGER_STATS: Array[StringName] = [&"max_hp", &"armor", &"move_speed", &"attack_range"]
 const PERCENT_STATS: Array[StringName] = [

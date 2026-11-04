@@ -1,0 +1,806 @@
+[gd_resource type="Resource" script_class="HeroTreeCatalog" load_steps=69 format=3]
+
+[ext_resource type="Script" path="res://src/core/hero_skill_tree/hero_tree_catalog.gd" id="1"]
+[ext_resource type="Script" path="res://src/core/hero_skill_tree/hero_tree_node_resource.gd" id="2"]
+
+[sub_resource type="Resource" id="physical_root"]
+script = ExtResource("2")
+id = &"physical_root"
+display_name = "Hardened"
+archetype = "physical"
+slot = &"root"
+side = ""
+depth = 0
+flat_stats = Dictionary[StringName, float]({&"armor": 4.0})
+additive_stats = Dictionary[StringName, float]({})
+effect = {}
+
+[sub_resource type="Resource" id="physical_fork_1_L0"]
+script = ExtResource("2")
+id = &"physical_fork_1_L0"
+display_name = "Bulwark I"
+archetype = "physical"
+slot = &"fork_1"
+side = "L"
+depth = 0
+flat_stats = Dictionary[StringName, float]({})
+additive_stats = Dictionary[StringName, float]({&"max_hp": 0.06})
+effect = {}
+
+[sub_resource type="Resource" id="physical_fork_1_L1"]
+script = ExtResource("2")
+id = &"physical_fork_1_L1"
+display_name = "Bulwark II"
+archetype = "physical"
+slot = &"fork_1"
+side = "L"
+depth = 1
+flat_stats = Dictionary[StringName, float]({})
+additive_stats = Dictionary[StringName, float]({&"max_hp": 0.06})
+effect = {}
+
+[sub_resource type="Resource" id="physical_fork_1_L2"]
+script = ExtResource("2")
+id = &"physical_fork_1_L2"
+display_name = "Iron Resolve"
+archetype = "physical"
+slot = &"fork_1"
+side = "L"
+depth = 2
+flat_stats = Dictionary[StringName, float]({})
+additive_stats = Dictionary[StringName, float]({})
+effect = {&"name": "Iron Resolve", &"type": &"on_hurt_shield", &"params": {&"shield_fraction": 0.06, &"duration": 4.0, &"cooldown": 10.0}}
+
+[sub_resource type="Resource" id="physical_fork_1_R0"]
+script = ExtResource("2")
+id = &"physical_fork_1_R0"
+display_name = "Onslaught I"
+archetype = "physical"
+slot = &"fork_1"
+side = "R"
+depth = 0
+flat_stats = Dictionary[StringName, float]({})
+additive_stats = Dictionary[StringName, float]({&"physical_attack": 0.05})
+effect = {}
+
+[sub_resource type="Resource" id="physical_fork_1_R1"]
+script = ExtResource("2")
+id = &"physical_fork_1_R1"
+display_name = "Onslaught II"
+archetype = "physical"
+slot = &"fork_1"
+side = "R"
+depth = 1
+flat_stats = Dictionary[StringName, float]({})
+additive_stats = Dictionary[StringName, float]({&"physical_attack": 0.05})
+effect = {}
+
+[sub_resource type="Resource" id="physical_fork_1_R2"]
+script = ExtResource("2")
+id = &"physical_fork_1_R2"
+display_name = "Bloodrush"
+archetype = "physical"
+slot = &"fork_1"
+side = "R"
+depth = 2
+flat_stats = Dictionary[StringName, float]({})
+additive_stats = Dictionary[StringName, float]({})
+effect = {&"name": "Bloodrush", &"type": &"on_kill_stack_buff", &"params": {&"stats": {&"physical_attack": 0.02}, &"max_stacks": 8, &"duration": 6.0}}
+
+[sub_resource type="Resource" id="physical_fork_2_L0"]
+script = ExtResource("2")
+id = &"physical_fork_2_L0"
+display_name = "Bastion I"
+archetype = "physical"
+slot = &"fork_2"
+side = "L"
+depth = 0
+flat_stats = Dictionary[StringName, float]({&"armor": 5.0})
+additive_stats = Dictionary[StringName, float]({})
+effect = {}
+
+[sub_resource type="Resource" id="physical_fork_2_L1"]
+script = ExtResource("2")
+id = &"physical_fork_2_L1"
+display_name = "Bastion II"
+archetype = "physical"
+slot = &"fork_2"
+side = "L"
+depth = 1
+flat_stats = Dictionary[StringName, float]({&"armor": 5.0})
+additive_stats = Dictionary[StringName, float]({})
+effect = {}
+
+[sub_resource type="Resource" id="physical_fork_2_L2"]
+script = ExtResource("2")
+id = &"physical_fork_2_L2"
+display_name = "Unbroken"
+archetype = "physical"
+slot = &"fork_2"
+side = "L"
+depth = 2
+flat_stats = Dictionary[StringName, float]({})
+additive_stats = Dictionary[StringName, float]({})
+effect = {&"name": "Unbroken", &"type": &"low_hp_state", &"params": {&"hp_fraction": 0.35, &"stats": {&"armor": 0.4}}}
+
+[sub_resource type="Resource" id="physical_fork_2_R0"]
+script = ExtResource("2")
+id = &"physical_fork_2_R0"
+display_name = "Cleaver I"
+archetype = "physical"
+slot = &"fork_2"
+side = "R"
+depth = 0
+flat_stats = Dictionary[StringName, float]({})
+additive_stats = Dictionary[StringName, float]({&"physical_attack": 0.06})
+effect = {}
+
+[sub_resource type="Resource" id="physical_fork_2_R1"]
+script = ExtResource("2")
+id = &"physical_fork_2_R1"
+display_name = "Cleaver II"
+archetype = "physical"
+slot = &"fork_2"
+side = "R"
+depth = 1
+flat_stats = Dictionary[StringName, float]({})
+additive_stats = Dictionary[StringName, float]({&"physical_attack": 0.06})
+effect = {}
+
+[sub_resource type="Resource" id="physical_fork_2_R2"]
+script = ExtResource("2")
+id = &"physical_fork_2_R2"
+display_name = "Executioner's Rhythm"
+archetype = "physical"
+slot = &"fork_2"
+side = "R"
+depth = 2
+flat_stats = Dictionary[StringName, float]({})
+additive_stats = Dictionary[StringName, float]({})
+effect = {&"name": "Executioner's Rhythm", &"type": &"on_skill_cast_buff", &"params": {&"stats": {&"physical_attack": 0.15}, &"duration": 5.0}}
+
+[sub_resource type="Resource" id="physical_keystone_A"]
+script = ExtResource("2")
+id = &"physical_keystone_A"
+display_name = "Mountain's Oath"
+archetype = "physical"
+slot = &"keystone"
+side = "A"
+depth = 0
+flat_stats = Dictionary[StringName, float]({&"armor": 10.0})
+additive_stats = Dictionary[StringName, float]({&"max_hp": 0.25, &"move_speed": -0.15})
+effect = {}
+
+[sub_resource type="Resource" id="physical_keystone_B"]
+script = ExtResource("2")
+id = &"physical_keystone_B"
+display_name = "Berserker's Pact"
+archetype = "physical"
+slot = &"keystone"
+side = "B"
+depth = 0
+flat_stats = Dictionary[StringName, float]({})
+additive_stats = Dictionary[StringName, float]({&"physical_attack": 0.3, &"max_hp": -0.2})
+effect = {}
+
+[sub_resource type="Resource" id="ranged_root"]
+script = ExtResource("2")
+id = &"ranged_root"
+display_name = "Keen Eye"
+archetype = "ranged"
+slot = &"root"
+side = ""
+depth = 0
+flat_stats = Dictionary[StringName, float]({})
+additive_stats = Dictionary[StringName, float]({&"attack_range": 0.04})
+effect = {}
+
+[sub_resource type="Resource" id="ranged_fork_1_L0"]
+script = ExtResource("2")
+id = &"ranged_fork_1_L0"
+display_name = "Marksman I"
+archetype = "ranged"
+slot = &"fork_1"
+side = "L"
+depth = 0
+flat_stats = Dictionary[StringName, float]({&"crit_chance": 0.02})
+additive_stats = Dictionary[StringName, float]({})
+effect = {}
+
+[sub_resource type="Resource" id="ranged_fork_1_L1"]
+script = ExtResource("2")
+id = &"ranged_fork_1_L1"
+display_name = "Marksman II"
+archetype = "ranged"
+slot = &"fork_1"
+side = "L"
+depth = 1
+flat_stats = Dictionary[StringName, float]({&"crit_chance": 0.02})
+additive_stats = Dictionary[StringName, float]({})
+effect = {}
+
+[sub_resource type="Resource" id="ranged_fork_1_L2"]
+script = ExtResource("2")
+id = &"ranged_fork_1_L2"
+display_name = "Steady Aim"
+archetype = "ranged"
+slot = &"fork_1"
+side = "L"
+depth = 2
+flat_stats = Dictionary[StringName, float]({})
+additive_stats = Dictionary[StringName, float]({})
+effect = {&"name": "Steady Aim", &"type": &"on_wave_start_buff", &"params": {&"stats": {&"attack_range": 0.15, &"crit_chance": 0.5}, &"duration": 12.0}}
+
+[sub_resource type="Resource" id="ranged_fork_1_R0"]
+script = ExtResource("2")
+id = &"ranged_fork_1_R0"
+display_name = "Skirmisher I"
+archetype = "ranged"
+slot = &"fork_1"
+side = "R"
+depth = 0
+flat_stats = Dictionary[StringName, float]({})
+additive_stats = Dictionary[StringName, float]({&"move_speed": 0.05})
+effect = {}
+
+[sub_resource type="Resource" id="ranged_fork_1_R1"]
+script = ExtResource("2")
+id = &"ranged_fork_1_R1"
+display_name = "Skirmisher II"
+archetype = "ranged"
+slot = &"fork_1"
+side = "R"
+depth = 1
+flat_stats = Dictionary[StringName, float]({})
+additive_stats = Dictionary[StringName, float]({&"move_speed": 0.05})
+effect = {}
+
+[sub_resource type="Resource" id="ranged_fork_1_R2"]
+script = ExtResource("2")
+id = &"ranged_fork_1_R2"
+display_name = "Hit and Run"
+archetype = "ranged"
+slot = &"fork_1"
+side = "R"
+depth = 2
+flat_stats = Dictionary[StringName, float]({})
+additive_stats = Dictionary[StringName, float]({})
+effect = {&"name": "Hit and Run", &"type": &"on_kill_stack_buff", &"params": {&"stats": {&"move_speed": 0.03, &"physical_attack": 0.02}, &"max_stacks": 6, &"duration": 5.0}}
+
+[sub_resource type="Resource" id="ranged_fork_2_L0"]
+script = ExtResource("2")
+id = &"ranged_fork_2_L0"
+display_name = "Sniper I"
+archetype = "ranged"
+slot = &"fork_2"
+side = "L"
+depth = 0
+flat_stats = Dictionary[StringName, float]({})
+additive_stats = Dictionary[StringName, float]({&"attack_range": 0.05})
+effect = {}
+
+[sub_resource type="Resource" id="ranged_fork_2_L1"]
+script = ExtResource("2")
+id = &"ranged_fork_2_L1"
+display_name = "Sniper II"
+archetype = "ranged"
+slot = &"fork_2"
+side = "L"
+depth = 1
+flat_stats = Dictionary[StringName, float]({})
+additive_stats = Dictionary[StringName, float]({&"attack_range": 0.05})
+effect = {}
+
+[sub_resource type="Resource" id="ranged_fork_2_L2"]
+script = ExtResource("2")
+id = &"ranged_fork_2_L2"
+display_name = "Long Watch"
+archetype = "ranged"
+slot = &"fork_2"
+side = "L"
+depth = 2
+flat_stats = Dictionary[StringName, float]({})
+additive_stats = Dictionary[StringName, float]({})
+effect = {&"name": "Long Watch", &"type": &"phase_state", &"params": {&"stats": {&"attack_range": 0.1, &"physical_attack": 0.1}, &"phases": ["WAVE_ACTIVE"]}}
+
+[sub_resource type="Resource" id="ranged_fork_2_R0"]
+script = ExtResource("2")
+id = &"ranged_fork_2_R0"
+display_name = "Volley I"
+archetype = "ranged"
+slot = &"fork_2"
+side = "R"
+depth = 0
+flat_stats = Dictionary[StringName, float]({&"crit_multiplier": 0.1})
+additive_stats = Dictionary[StringName, float]({})
+effect = {}
+
+[sub_resource type="Resource" id="ranged_fork_2_R1"]
+script = ExtResource("2")
+id = &"ranged_fork_2_R1"
+display_name = "Volley II"
+archetype = "ranged"
+slot = &"fork_2"
+side = "R"
+depth = 1
+flat_stats = Dictionary[StringName, float]({&"crit_multiplier": 0.1})
+additive_stats = Dictionary[StringName, float]({})
+effect = {}
+
+[sub_resource type="Resource" id="ranged_fork_2_R2"]
+script = ExtResource("2")
+id = &"ranged_fork_2_R2"
+display_name = "Barbed Shots"
+archetype = "ranged"
+slot = &"fork_2"
+side = "R"
+depth = 2
+flat_stats = Dictionary[StringName, float]({})
+additive_stats = Dictionary[StringName, float]({})
+effect = {&"name": "Barbed Shots", &"type": &"on_crit_status", &"params": {&"effect_type": "poison", &"effect_value": 0.05, &"effect_duration": 4.0}}
+
+[sub_resource type="Resource" id="ranged_keystone_A"]
+script = ExtResource("2")
+id = &"ranged_keystone_A"
+display_name = "Eagle's Perch"
+archetype = "ranged"
+slot = &"keystone"
+side = "A"
+depth = 0
+flat_stats = Dictionary[StringName, float]({})
+additive_stats = Dictionary[StringName, float]({&"attack_range": 0.3, &"move_speed": -0.2})
+effect = {}
+
+[sub_resource type="Resource" id="ranged_keystone_B"]
+script = ExtResource("2")
+id = &"ranged_keystone_B"
+display_name = "Wind Runner"
+archetype = "ranged"
+slot = &"keystone"
+side = "B"
+depth = 0
+flat_stats = Dictionary[StringName, float]({})
+additive_stats = Dictionary[StringName, float]({&"move_speed": 0.25, &"physical_attack": 0.1, &"attack_range": -0.15})
+effect = {}
+
+[sub_resource type="Resource" id="elemental_root"]
+script = ExtResource("2")
+id = &"elemental_root"
+display_name = "Attuned"
+archetype = "elemental"
+slot = &"root"
+side = ""
+depth = 0
+flat_stats = Dictionary[StringName, float]({})
+additive_stats = Dictionary[StringName, float]({&"magic_attack": 0.06})
+effect = {}
+
+[sub_resource type="Resource" id="elemental_fork_1_L0"]
+script = ExtResource("2")
+id = &"elemental_fork_1_L0"
+display_name = "Pyromancy I"
+archetype = "elemental"
+slot = &"fork_1"
+side = "L"
+depth = 0
+flat_stats = Dictionary[StringName, float]({})
+additive_stats = Dictionary[StringName, float]({&"magic_attack": 0.06})
+effect = {}
+
+[sub_resource type="Resource" id="elemental_fork_1_L1"]
+script = ExtResource("2")
+id = &"elemental_fork_1_L1"
+display_name = "Pyromancy II"
+archetype = "elemental"
+slot = &"fork_1"
+side = "L"
+depth = 1
+flat_stats = Dictionary[StringName, float]({})
+additive_stats = Dictionary[StringName, float]({&"magic_attack": 0.06})
+effect = {}
+
+[sub_resource type="Resource" id="elemental_fork_1_L2"]
+script = ExtResource("2")
+id = &"elemental_fork_1_L2"
+display_name = "Kindling"
+archetype = "elemental"
+slot = &"fork_1"
+side = "L"
+depth = 2
+flat_stats = Dictionary[StringName, float]({})
+additive_stats = Dictionary[StringName, float]({})
+effect = {&"name": "Kindling", &"type": &"on_crit_status", &"params": {&"effect_type": "burn", &"effect_value": 0.08, &"effect_duration": 3.0}}
+
+[sub_resource type="Resource" id="elemental_fork_1_R0"]
+script = ExtResource("2")
+id = &"elemental_fork_1_R0"
+display_name = "Cryomancy I"
+archetype = "elemental"
+slot = &"fork_1"
+side = "R"
+depth = 0
+flat_stats = Dictionary[StringName, float]({&"elemental_resist_fire": 0.05, &"elemental_resist_frost": 0.05})
+additive_stats = Dictionary[StringName, float]({})
+effect = {}
+
+[sub_resource type="Resource" id="elemental_fork_1_R1"]
+script = ExtResource("2")
+id = &"elemental_fork_1_R1"
+display_name = "Cryomancy II"
+archetype = "elemental"
+slot = &"fork_1"
+side = "R"
+depth = 1
+flat_stats = Dictionary[StringName, float]({&"elemental_resist_fire": 0.05, &"elemental_resist_frost": 0.05})
+additive_stats = Dictionary[StringName, float]({})
+effect = {}
+
+[sub_resource type="Resource" id="elemental_fork_1_R2"]
+script = ExtResource("2")
+id = &"elemental_fork_1_R2"
+display_name = "Glacial Focus"
+archetype = "elemental"
+slot = &"fork_1"
+side = "R"
+depth = 2
+flat_stats = Dictionary[StringName, float]({})
+additive_stats = Dictionary[StringName, float]({})
+effect = {&"name": "Glacial Focus", &"type": &"on_skill_cast_buff", &"params": {&"stats": {&"magic_attack": 0.2}, &"duration": 5.0}}
+
+[sub_resource type="Resource" id="elemental_fork_2_L0"]
+script = ExtResource("2")
+id = &"elemental_fork_2_L0"
+display_name = "Storm I"
+archetype = "elemental"
+slot = &"fork_2"
+side = "L"
+depth = 0
+flat_stats = Dictionary[StringName, float]({&"cdr": 0.03})
+additive_stats = Dictionary[StringName, float]({})
+effect = {}
+
+[sub_resource type="Resource" id="elemental_fork_2_L1"]
+script = ExtResource("2")
+id = &"elemental_fork_2_L1"
+display_name = "Storm II"
+archetype = "elemental"
+slot = &"fork_2"
+side = "L"
+depth = 1
+flat_stats = Dictionary[StringName, float]({&"cdr": 0.03})
+additive_stats = Dictionary[StringName, float]({})
+effect = {}
+
+[sub_resource type="Resource" id="elemental_fork_2_L2"]
+script = ExtResource("2")
+id = &"elemental_fork_2_L2"
+display_name = "Surge"
+archetype = "elemental"
+slot = &"fork_2"
+side = "L"
+depth = 2
+flat_stats = Dictionary[StringName, float]({})
+additive_stats = Dictionary[StringName, float]({})
+effect = {&"name": "Surge", &"type": &"on_kill_stack_buff", &"params": {&"stats": {&"magic_attack": 0.03}, &"max_stacks": 8, &"duration": 6.0}}
+
+[sub_resource type="Resource" id="elemental_fork_2_R0"]
+script = ExtResource("2")
+id = &"elemental_fork_2_R0"
+display_name = "Conduit I"
+archetype = "elemental"
+slot = &"fork_2"
+side = "R"
+depth = 0
+flat_stats = Dictionary[StringName, float]({})
+additive_stats = Dictionary[StringName, float]({&"magic_attack": 0.04})
+effect = {}
+
+[sub_resource type="Resource" id="elemental_fork_2_R1"]
+script = ExtResource("2")
+id = &"elemental_fork_2_R1"
+display_name = "Conduit II"
+archetype = "elemental"
+slot = &"fork_2"
+side = "R"
+depth = 1
+flat_stats = Dictionary[StringName, float]({})
+additive_stats = Dictionary[StringName, float]({&"magic_attack": 0.04})
+effect = {}
+
+[sub_resource type="Resource" id="elemental_fork_2_R2"]
+script = ExtResource("2")
+id = &"elemental_fork_2_R2"
+display_name = "Flux"
+archetype = "elemental"
+slot = &"fork_2"
+side = "R"
+depth = 2
+flat_stats = Dictionary[StringName, float]({})
+additive_stats = Dictionary[StringName, float]({})
+effect = {&"name": "Flux", &"type": &"on_wave_start_buff", &"params": {&"stats": {&"magic_attack": 0.3}, &"duration": 10.0}}
+
+[sub_resource type="Resource" id="elemental_keystone_A"]
+script = ExtResource("2")
+id = &"elemental_keystone_A"
+display_name = "Unbound Power"
+archetype = "elemental"
+slot = &"keystone"
+side = "A"
+depth = 0
+flat_stats = Dictionary[StringName, float]({})
+additive_stats = Dictionary[StringName, float]({&"magic_attack": 0.35, &"max_hp": -0.2})
+effect = {}
+
+[sub_resource type="Resource" id="elemental_keystone_B"]
+script = ExtResource("2")
+id = &"elemental_keystone_B"
+display_name = "Elemental Mastery"
+archetype = "elemental"
+slot = &"keystone"
+side = "B"
+depth = 0
+flat_stats = Dictionary[StringName, float]({&"cdr": 0.08, &"elemental_resist_fire": 0.1, &"elemental_resist_frost": 0.1})
+additive_stats = Dictionary[StringName, float]({&"magic_attack": -0.1})
+effect = {}
+
+[sub_resource type="Resource" id="support_root"]
+script = ExtResource("2")
+id = &"support_root"
+display_name = "Field Kit"
+archetype = "support"
+slot = &"root"
+side = ""
+depth = 0
+flat_stats = Dictionary[StringName, float]({&"lifesteal": 0.02})
+additive_stats = Dictionary[StringName, float]({})
+effect = {}
+
+[sub_resource type="Resource" id="support_fork_1_L0"]
+script = ExtResource("2")
+id = &"support_fork_1_L0"
+display_name = "Medic I"
+archetype = "support"
+slot = &"fork_1"
+side = "L"
+depth = 0
+flat_stats = Dictionary[StringName, float]({&"lifesteal": 0.02})
+additive_stats = Dictionary[StringName, float]({})
+effect = {}
+
+[sub_resource type="Resource" id="support_fork_1_L1"]
+script = ExtResource("2")
+id = &"support_fork_1_L1"
+display_name = "Medic II"
+archetype = "support"
+slot = &"fork_1"
+side = "L"
+depth = 1
+flat_stats = Dictionary[StringName, float]({&"lifesteal": 0.02})
+additive_stats = Dictionary[StringName, float]({})
+effect = {}
+
+[sub_resource type="Resource" id="support_fork_1_L2"]
+script = ExtResource("2")
+id = &"support_fork_1_L2"
+display_name = "Second Breath"
+archetype = "support"
+slot = &"fork_1"
+side = "L"
+depth = 2
+flat_stats = Dictionary[StringName, float]({})
+additive_stats = Dictionary[StringName, float]({})
+effect = {&"name": "Second Breath", &"type": &"on_kill_heal", &"params": {&"heal_fraction": 0.01}}
+
+[sub_resource type="Resource" id="support_fork_1_R0"]
+script = ExtResource("2")
+id = &"support_fork_1_R0"
+display_name = "Tactician I"
+archetype = "support"
+slot = &"fork_1"
+side = "R"
+depth = 0
+flat_stats = Dictionary[StringName, float]({})
+additive_stats = Dictionary[StringName, float]({&"tower_affinity": 0.05})
+effect = {}
+
+[sub_resource type="Resource" id="support_fork_1_R1"]
+script = ExtResource("2")
+id = &"support_fork_1_R1"
+display_name = "Tactician II"
+archetype = "support"
+slot = &"fork_1"
+side = "R"
+depth = 1
+flat_stats = Dictionary[StringName, float]({})
+additive_stats = Dictionary[StringName, float]({&"tower_affinity": 0.05})
+effect = {}
+
+[sub_resource type="Resource" id="support_fork_1_R2"]
+script = ExtResource("2")
+id = &"support_fork_1_R2"
+display_name = "Rally Point"
+archetype = "support"
+slot = &"fork_1"
+side = "R"
+depth = 2
+flat_stats = Dictionary[StringName, float]({})
+additive_stats = Dictionary[StringName, float]({})
+effect = {&"name": "Rally Point", &"type": &"phase_state", &"params": {&"stats": {&"tower_affinity": 0.1}, &"phases": ["WAVE_ACTIVE"]}}
+
+[sub_resource type="Resource" id="support_fork_2_L0"]
+script = ExtResource("2")
+id = &"support_fork_2_L0"
+display_name = "Quartermaster I"
+archetype = "support"
+slot = &"fork_2"
+side = "L"
+depth = 0
+flat_stats = Dictionary[StringName, float]({&"cdr": 0.02})
+additive_stats = Dictionary[StringName, float]({})
+effect = {}
+
+[sub_resource type="Resource" id="support_fork_2_L1"]
+script = ExtResource("2")
+id = &"support_fork_2_L1"
+display_name = "Quartermaster II"
+archetype = "support"
+slot = &"fork_2"
+side = "L"
+depth = 1
+flat_stats = Dictionary[StringName, float]({&"cdr": 0.02})
+additive_stats = Dictionary[StringName, float]({})
+effect = {}
+
+[sub_resource type="Resource" id="support_fork_2_L2"]
+script = ExtResource("2")
+id = &"support_fork_2_L2"
+display_name = "Inspire"
+archetype = "support"
+slot = &"fork_2"
+side = "L"
+depth = 2
+flat_stats = Dictionary[StringName, float]({})
+additive_stats = Dictionary[StringName, float]({})
+effect = {&"name": "Inspire", &"type": &"on_skill_cast_buff", &"params": {&"stats": {&"tower_affinity": 0.15}, &"duration": 6.0}}
+
+[sub_resource type="Resource" id="support_fork_2_R0"]
+script = ExtResource("2")
+id = &"support_fork_2_R0"
+display_name = "Warden's Bond I"
+archetype = "support"
+slot = &"fork_2"
+side = "R"
+depth = 0
+flat_stats = Dictionary[StringName, float]({})
+additive_stats = Dictionary[StringName, float]({&"max_hp": 0.05})
+effect = {}
+
+[sub_resource type="Resource" id="support_fork_2_R1"]
+script = ExtResource("2")
+id = &"support_fork_2_R1"
+display_name = "Warden's Bond II"
+archetype = "support"
+slot = &"fork_2"
+side = "R"
+depth = 1
+flat_stats = Dictionary[StringName, float]({})
+additive_stats = Dictionary[StringName, float]({&"max_hp": 0.05})
+effect = {}
+
+[sub_resource type="Resource" id="support_fork_2_R2"]
+script = ExtResource("2")
+id = &"support_fork_2_R2"
+display_name = "Aegis Link"
+archetype = "support"
+slot = &"fork_2"
+side = "R"
+depth = 2
+flat_stats = Dictionary[StringName, float]({})
+additive_stats = Dictionary[StringName, float]({})
+effect = {&"name": "Aegis Link", &"type": &"on_hurt_shield", &"params": {&"shield_fraction": 0.06, &"duration": 4.0, &"cooldown": 10.0}}
+
+[sub_resource type="Resource" id="support_keystone_A"]
+script = ExtResource("2")
+id = &"support_keystone_A"
+display_name = "Commander's Vow"
+archetype = "support"
+slot = &"keystone"
+side = "A"
+depth = 0
+flat_stats = Dictionary[StringName, float]({})
+additive_stats = Dictionary[StringName, float]({&"tower_affinity": 0.2, &"physical_attack": -0.15, &"magic_attack": -0.15})
+effect = {}
+
+[sub_resource type="Resource" id="support_keystone_B"]
+script = ExtResource("2")
+id = &"support_keystone_B"
+display_name = "Lifebinder"
+archetype = "support"
+slot = &"keystone"
+side = "B"
+depth = 0
+flat_stats = Dictionary[StringName, float]({&"lifesteal": 0.06})
+additive_stats = Dictionary[StringName, float]({&"max_hp": -0.1})
+effect = {}
+
+[sub_resource type="Resource" id="bridge_physical_ranged"]
+script = ExtResource("2")
+id = &"bridge_physical_ranged"
+display_name = "Crossfire Drill"
+archetype = ""
+slot = &"bridge"
+side = ""
+depth = 0
+bridge_archetypes = PackedStringArray("physical", "ranged")
+flat_stats = Dictionary[StringName, float]({})
+additive_stats = Dictionary[StringName, float]({&"physical_attack": 0.04, &"attack_range": 0.04})
+effect = {&"name": "Crossfire Drill", &"type": &"on_kill_stack_buff", &"params": {&"stats": {&"physical_attack": 0.02, &"attack_range": 0.02}, &"max_stacks": 8, &"duration": 6.0}}
+
+[sub_resource type="Resource" id="bridge_physical_elemental"]
+script = ExtResource("2")
+id = &"bridge_physical_elemental"
+display_name = "Flame-Forged Strikes"
+archetype = ""
+slot = &"bridge"
+side = ""
+depth = 0
+bridge_archetypes = PackedStringArray("physical", "elemental")
+flat_stats = Dictionary[StringName, float]({})
+additive_stats = Dictionary[StringName, float]({&"physical_attack": 0.05, &"magic_attack": 0.05})
+effect = {&"name": "Flame-Forged Strikes", &"type": &"on_wave_start_buff", &"params": {&"stats": {&"physical_attack": 0.2, &"magic_attack": 0.2}, &"duration": 10.0}}
+
+[sub_resource type="Resource" id="bridge_physical_support"]
+script = ExtResource("2")
+id = &"bridge_physical_support"
+display_name = "Shieldbearer"
+archetype = ""
+slot = &"bridge"
+side = ""
+depth = 0
+bridge_archetypes = PackedStringArray("physical", "support")
+flat_stats = Dictionary[StringName, float]({&"armor": 4.0})
+additive_stats = Dictionary[StringName, float]({&"tower_affinity": 0.05})
+effect = {&"name": "Shieldbearer", &"type": &"on_hurt_shield", &"params": {&"shield_fraction": 0.08, &"duration": 4.0, &"cooldown": 8.0}}
+
+[sub_resource type="Resource" id="bridge_ranged_elemental"]
+script = ExtResource("2")
+id = &"bridge_ranged_elemental"
+display_name = "Storm Arrows"
+archetype = ""
+slot = &"bridge"
+side = ""
+depth = 0
+bridge_archetypes = PackedStringArray("ranged", "elemental")
+flat_stats = Dictionary[StringName, float]({&"crit_chance": 0.02})
+additive_stats = Dictionary[StringName, float]({})
+effect = {&"name": "Storm Arrows", &"type": &"on_skill_cast_buff", &"params": {&"stats": {&"attack_range": 0.15, &"magic_attack": 0.15}, &"duration": 6.0}}
+
+[sub_resource type="Resource" id="bridge_ranged_support"]
+script = ExtResource("2")
+id = &"bridge_ranged_support"
+display_name = "Spotter"
+archetype = ""
+slot = &"bridge"
+side = ""
+depth = 0
+bridge_archetypes = PackedStringArray("ranged", "support")
+flat_stats = Dictionary[StringName, float]({})
+additive_stats = Dictionary[StringName, float]({&"attack_range": 0.04})
+effect = {&"name": "Spotter", &"type": &"phase_state", &"params": {&"stats": {&"tower_affinity": 0.1, &"attack_range": 0.1}, &"phases": ["WAVE_ACTIVE"]}}
+
+[sub_resource type="Resource" id="bridge_elemental_support"]
+script = ExtResource("2")
+id = &"bridge_elemental_support"
+display_name = "Mana Font"
+archetype = ""
+slot = &"bridge"
+side = ""
+depth = 0
+bridge_archetypes = PackedStringArray("elemental", "support")
+flat_stats = Dictionary[StringName, float]({&"cdr": 0.04})
+additive_stats = Dictionary[StringName, float]({})
+effect = {&"name": "Mana Font", &"type": &"on_kill_heal", &"params": {&"heal_fraction": 0.008}}
+
+[resource]
+script = ExtResource("1")
+nodes = Array[ExtResource("2")]([SubResource("physical_root"), SubResource("physical_fork_1_L0"), SubResource("physical_fork_1_L1"), SubResource("physical_fork_1_L2"), SubResource("physical_fork_1_R0"), SubResource("physical_fork_1_R1"), SubResource("physical_fork_1_R2"), SubResource("physical_fork_2_L0"), SubResource("physical_fork_2_L1"), SubResource("physical_fork_2_L2"), SubResource("physical_fork_2_R0"), SubResource("physical_fork_2_R1"), SubResource("physical_fork_2_R2"), SubResource("physical_keystone_A"), SubResource("physical_keystone_B"), SubResource("ranged_root"), SubResource("ranged_fork_1_L0"), SubResource("ranged_fork_1_L1"), SubResource("ranged_fork_1_L2"), SubResource("ranged_fork_1_R0"), SubResource("ranged_fork_1_R1"), SubResource("ranged_fork_1_R2"), SubResource("ranged_fork_2_L0"), SubResource("ranged_fork_2_L1"), SubResource("ranged_fork_2_L2"), SubResource("ranged_fork_2_R0"), SubResource("ranged_fork_2_R1"), SubResource("ranged_fork_2_R2"), SubResource("ranged_keystone_A"), SubResource("ranged_keystone_B"), SubResource("elemental_root"), SubResource("elemental_fork_1_L0"), SubResource("elemental_fork_1_L1"), SubResource("elemental_fork_1_L2"), SubResource("elemental_fork_1_R0"), SubResource("elemental_fork_1_R1"), SubResource("elemental_fork_1_R2"), SubResource("elemental_fork_2_L0"), SubResource("elemental_fork_2_L1"), SubResource("elemental_fork_2_L2"), SubResource("elemental_fork_2_R0"), SubResource("elemental_fork_2_R1"), SubResource("elemental_fork_2_R2"), SubResource("elemental_keystone_A"), SubResource("elemental_keystone_B"), SubResource("support_root"), SubResource("support_fork_1_L0"), SubResource("support_fork_1_L1"), SubResource("support_fork_1_L2"), SubResource("support_fork_1_R0"), SubResource("support_fork_1_R1"), SubResource("support_fork_1_R2"), SubResource("support_fork_2_L0"), SubResource("support_fork_2_L1"), SubResource("support_fork_2_L2"), SubResource("support_fork_2_R0"), SubResource("support_fork_2_R1"), SubResource("support_fork_2_R2"), SubResource("support_keystone_A"), SubResource("support_keystone_B"), SubResource("bridge_physical_ranged"), SubResource("bridge_physical_elemental"), SubResource("bridge_physical_support"), SubResource("bridge_ranged_elemental"), SubResource("bridge_ranged_support"), SubResource("bridge_elemental_support")])

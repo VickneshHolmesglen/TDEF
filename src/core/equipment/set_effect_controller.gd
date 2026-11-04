@@ -76,6 +76,8 @@ func _subscriptions() -> Array:
 		[GEventBus.hero_skill_attacked, _on_hero_skill_attacked],
 		[GEventBus.hero_damage_taken, _on_hero_damage_taken],
 		[GEventBus.hero_health_changed, _on_hero_health_changed],
+		[GEventBus.skill_tree_node_unlocked, _on_skill_tree_changed],
+		[GEventBus.skill_tree_branch_changed, _on_skill_tree_changed],
 	]
 
 
@@ -107,8 +109,16 @@ func _on_item_rune_imbued(_item_id: String, _rune_id: String, _rune_source: Stri
 	_rebuild()
 
 
+func _on_skill_tree_changed(_archetype: String, _slot_or_index: Variant) -> void:
+	_rebuild()
+
+
+## Set effects plus Hero Skill Tree Notables/bridges (expansion spec §7.5);
+## tree keys are "tree:<node_id>", set keys "<set_id>:<threshold>", so they never collide.
 func _rebuild() -> void:
-	apply_effects(SetEffectResolver.active_effects(EquipmentBonuses.equipped_contents()))
+	var effects: Array[Dictionary] = SetEffectResolver.active_effects(EquipmentBonuses.equipped_contents())
+	effects.append_array(GHeroSkillTree.active_tree_effects())
+	apply_effects(effects)
 
 
 ## Replaces the active effect set. Effects no longer present are dropped

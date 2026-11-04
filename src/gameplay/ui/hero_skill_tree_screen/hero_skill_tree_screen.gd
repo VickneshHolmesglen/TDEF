@@ -49,7 +49,12 @@ const NODE_TIER_LABELS: Dictionary[int, String] = {1: "SKILL_TREE_TIER_OPENER", 
 @onready var _input_mode_tracker: InputModeTracker = $InputModeTracker
 @onready var _pool_row: HBoxContainer = $MainLayout/PoolRow
 @onready var _visit_spend_label: Label = $MainLayout/VisitSpendLabel
-@onready var _chains_row: HBoxContainer = $MainLayout/ChainsRow
+@onready var _chains_row: HBoxContainer = $MainLayout/TreeScroll/TreeLayout/ChainsRow
+@onready var _bridges_header: Label = $MainLayout/TreeScroll/TreeLayout/BridgesHeader
+@onready var _bridges_grid: GridContainer = $MainLayout/TreeScroll/TreeLayout/BridgesGrid
+
+## Shared stat/effect formatting (that script has no class_name, so preload it).
+const _InfoPanel = preload("res://src/gameplay/ui/inventory_screen/equipment_info_panel.gd")
 
 ## archetype -> the 4 VBoxContainer columns, each holding that chain's node buttons.
 var _chain_columns: Dictionary[String, VBoxContainer] = {}
@@ -58,6 +63,14 @@ var _node_buttons: Dictionary[String, Button] = {}
 ## Which Choice node (if any) currently has its candidate-selection panel
 ## expanded. Empty string = none expanded. Format "archetype:node_index".
 var _expanded_choice_key: String = ""
+## "archetype:slot:side:depth" -> branch node Button (tests/inspection).
+var _branch_buttons: Dictionary[String, Button] = {}
+## "archetype:slot" -> Retrain Button.
+var _retrain_buttons: Dictionary[String, Button] = {}
+## bridge id -> its Button.
+var _bridge_buttons: Dictionary[String, Button] = {}
+## Owned bridge being swapped out ("" = not swapping).
+var _bridge_swap_from: String = ""
 
 
 func _ready() -> void:
@@ -68,6 +81,7 @@ func _ready() -> void:
 	GEventBus.skill_tree_overflow_point_earned.connect(_on_state_changed)
 	GEventBus.skill_tree_node_unlocked.connect(_on_state_changed)
 	GEventBus.skill_unlocked.connect(_on_state_changed)
+	GEventBus.skill_tree_branch_changed.connect(_on_state_changed)
 	_rebuild_everything()
 
 
@@ -76,6 +90,7 @@ func disconnect_own_subscriptions() -> void:
 	GEventBus.skill_tree_overflow_point_earned.disconnect(_on_state_changed)
 	GEventBus.skill_tree_node_unlocked.disconnect(_on_state_changed)
 	GEventBus.skill_unlocked.disconnect(_on_state_changed)
+	GEventBus.skill_tree_branch_changed.disconnect(_on_state_changed)
 
 
 func _on_state_changed(_a: Variant = null, _b: Variant = null, _c: Variant = null) -> void:
@@ -86,6 +101,7 @@ func _rebuild_everything() -> void:
 	_rebuild_pool_row()
 	_rebuild_visit_spend_label()
 	_rebuild_chains()
+	_rebuild_bridges()
 
 
 # ---------------------------------------------------------------------------
@@ -129,6 +145,8 @@ func _rebuild_chains() -> void:
 		child.queue_free()
 	_chain_columns.clear()
 	_node_buttons.clear()
+	_branch_buttons.clear()
+	_retrain_buttons.clear()
 
 	if hero_skill_tree == null:
 		return
@@ -147,6 +165,9 @@ func _rebuild_chains() -> void:
 
 		for node_index: int in HeroSkillTree.NODES_PER_CHAIN:
 			column.add_child(_build_node_row(archetype, node_index))
+			for slot: String in HeroSkillTree.BRANCH_SLOTS:
+				if HeroSkillTree.BRANCH_OPENED_BY[slot] == node_index:
+					column.add_child(_build_branch_panel(archetype, slot))
 
 		_chains_row.add_child(column)
 		_chain_columns[archetype] = column
@@ -195,7 +216,12 @@ func _build_node_row(archetype: String, node_index: int) -> Control:
 func _node_button_text(archetype: String, node_index: int, node_state: Dictionary, unlocked: bool, is_choice: bool) -> String:
 	var node_name: String = tr(NODE_LABELS[node_index])
 	if not is_choice:
-		return tr("SKILL_TREE_NODE_STATE") % [node_name, tr("SKILL_TREE_TAG_UNLOCKED") if unlocked else tr("SKILL_TREE_TAG_LOCKED")]
+		# Root (expansion spec: closes GDD Rule 14) shows its name and effect.
+		var root: HeroTreeNodeResource = hero_skill_tree.get_root_node(archetype)
+		if root != null:
+			node_name = tr("SKILL_TREE_NODE_CHOSEN") % [node_name, root.display_name]
+		var text: String = tr("SKILL_TREE_NODE_STATE") % [node_name, tr("SKILL_TREE_TAG_UNLOCKED") if unlocked else tr("SKILL_TREE_TAG_LOCKED")]
+		return text if root == null else "%s\n%s" % [text, describe_tree_node(root)]
 	if unlocked:
 		var chosen: String = node_state.get("chosen_skill_id", "") as String
 		return tr("SKILL_TREE_NODE_CHOSEN") % [node_name, _skill_label(chosen)]
@@ -224,6 +250,8 @@ func _style_node_button(button: Button, unlocked: bool, purchasable: bool) -> vo
 	style.border_width_top = 2
 	style.border_width_bottom = 2
 	button.add_theme_stylebox_override("normal", style)
+	# Owned and unaffordable nodes are disabled; without this they lose the colour.
+	button.add_theme_stylebox_override("disabled", style)
 
 
 ## Minor node: purchase directly. Choice node: toggle the inline candidate
@@ -272,6 +300,209 @@ func _on_candidate_pressed(archetype: String, node_index: int, skill_id: String)
 
 
 # ---------------------------------------------------------------------------
+# Branches (hero-skill-tree-expansion spec §3, §6, §7.6): each slot sits under
+# the spine node that opens it. Two side columns; the unchosen side stays
+# readable but greyed. Retrain swaps the side at the same depth.
+# ---------------------------------------------------------------------------
+
+const SLOT_LABELS: Dictionary[String, String] = {
+	"fork_1": "SKILL_TREE_SLOT_FORK_1", "fork_2": "SKILL_TREE_SLOT_FORK_2", "keystone": "SKILL_TREE_SLOT_KEYSTONE",
+}
+const COLOR_DIM: Color = Color(0.6, 0.6, 0.6)
+
+
+func _build_branch_panel(archetype: String, slot: String) -> Control:
+	var panel := VBoxContainer.new()
+	panel.name = "Branch_%s" % slot
+	var open: bool = hero_skill_tree.is_branch_open(archetype, slot)
+	var header := Label.new()
+	header.text = tr(SLOT_LABELS[slot]) if open else tr("SKILL_TREE_SLOT_OPENS") % [tr(SLOT_LABELS[slot]),
+		tr(NODE_LABELS[HeroSkillTree.BRANCH_OPENED_BY[slot]])]
+	header.add_theme_font_size_override("font_size", 12)
+	panel.add_child(header)
+
+	var state: Dictionary = hero_skill_tree.get_branch_state(archetype, slot)
+	var sides_row := HBoxContainer.new()
+	sides_row.add_theme_constant_override("separation", 4)
+	for side: String in HeroSkillTree.get_slot_sides(slot):
+		var side_column := VBoxContainer.new()
+		side_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		for depth: int in HeroSkillTree.get_slot_depth(slot):
+			side_column.add_child(_build_branch_button(archetype, slot, side, depth, state))
+		sides_row.add_child(side_column)
+	panel.add_child(sides_row)
+
+	if int(state["depth"]) > 0:
+		var retrain := Button.new()
+		retrain.name = "Retrain_%s_%s" % [archetype, slot]
+		retrain.text = tr("SKILL_TREE_RETRAIN")
+		retrain.add_theme_font_size_override("font_size", 11)
+		retrain.disabled = not hero_skill_tree.can_retrain(archetype, slot)
+		retrain.pressed.connect(_on_retrain_pressed.bind(archetype, slot))
+		panel.add_child(retrain)
+		_retrain_buttons["%s:%s" % [archetype, slot]] = retrain
+	return panel
+
+
+func _build_branch_button(archetype: String, slot: String, side: String, depth: int, state: Dictionary) -> Button:
+	var node: HeroTreeNodeResource = hero_skill_tree.get_branch_node(archetype, slot, side, depth)
+	var chosen_side: String = state["side"]
+	var owned: bool = chosen_side == side and depth < int(state["depth"])
+	var other_side: bool = not chosen_side.is_empty() and chosen_side != side
+	var next: bool = (chosen_side.is_empty() or chosen_side == side) and depth == int(state["depth"])
+	var purchasable: bool = next and hero_skill_tree.is_branch_purchasable(archetype, slot, side)
+	var button := _make_tree_button(node, owned, purchasable, tr("SKILL_TREE_TAG_OTHER_SIDE") if other_side else "")
+	button.name = "Branch_%s_%s_%s%d" % [archetype, slot, side, depth]
+	button.pressed.connect(_on_branch_pressed.bind(archetype, slot, side))
+	_branch_buttons["%s:%s:%s:%d" % [archetype, slot, side, depth]] = button
+	return button
+
+
+## A wrapped node button: "<name> [TAG]" then the effect lines. Not owned and
+## not purchasable = disabled but still readable (spec §7.6).
+func _make_tree_button(node: HeroTreeNodeResource, owned: bool, purchasable: bool, extra_tag: String) -> Button:
+	var button := Button.new()
+	button.focus_mode = Control.FOCUS_ALL
+	button.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	button.add_theme_font_size_override("font_size", 11)
+	var tag: String = extra_tag
+	if tag.is_empty():
+		tag = tr("SKILL_TREE_TAG_UNLOCKED") if owned else tr("SKILL_TREE_TAG_LOCKED")
+	var title: String = node.display_name if node != null else "?"
+	button.text = "%s %s\n%s" % [title, tag, describe_tree_node(node)]
+	button.tooltip_text = button.text
+	button.disabled = not purchasable
+	if not extra_tag.is_empty():
+		button.add_theme_color_override("font_disabled_color", COLOR_DIM)
+	_style_node_button(button, owned, purchasable)
+	return button
+
+
+func _on_branch_pressed(archetype: String, slot: String, side: String) -> void:
+	if hero_skill_tree != null and hero_skill_tree.purchase_branch_node(archetype, slot, side):
+		_rebuild_everything()
+
+
+func _on_retrain_pressed(archetype: String, slot: String) -> void:
+	if hero_skill_tree != null and hero_skill_tree.retrain(archetype, slot):
+		_rebuild_everything()
+
+
+## Player-facing effect lines for a tree node: flat stats ("Armor +4"),
+## additive stats ("Max HP +6%", penalties "-20%"), then the effect sentence.
+static func describe_tree_node(node: HeroTreeNodeResource) -> String:
+	if node == null:
+		return ""
+	var parts: Array[String] = []
+	for stat: StringName in _InfoPanel.ordered_stats(node.flat_stats):
+		parts.append("%s %s" % [_InfoPanel.stat_label(stat), _InfoPanel.format_value(stat, node.flat_stats[stat])])
+	for stat: StringName in _InfoPanel.ordered_stats(node.additive_stats):
+		var pct: int = roundi(node.additive_stats[stat] * 100.0)
+		parts.append("%s %s%d%%" % [_InfoPanel.stat_label(stat), "+" if pct >= 0 else "-", absi(pct)])
+	var lines: Array[String] = []
+	if not parts.is_empty():
+		lines.append(", ".join(parts))
+	if not node.effect.is_empty():
+		var effect_text: String = _InfoPanel.describe_effect(node.effect)
+		# Notables share the effect's name; bridges and others prefix it.
+		lines.append(effect_text if node.effect[&"name"] == node.display_name else "%s: %s" % [node.effect[&"name"], effect_text])
+	return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# Bridges strip (spec §6a UI): 6 tiles under the columns.
+# ---------------------------------------------------------------------------
+
+func _rebuild_bridges() -> void:
+	for child: Node in _bridges_grid.get_children():
+		child.queue_free()
+	_bridge_buttons.clear()
+	if hero_skill_tree == null:
+		return
+	_bridges_header.text = tr("SKILL_TREE_BRIDGES") % HeroSkillTree.MAX_BRIDGES
+	var owned_ids: Array[String] = hero_skill_tree.get_owned_bridges()
+	if not owned_ids.has(_bridge_swap_from):
+		_bridge_swap_from = ""
+	for node: HeroTreeNodeResource in hero_skill_tree.get_bridges():
+		_bridges_grid.add_child(_build_bridge_tile(node, owned_ids))
+
+
+func _build_bridge_tile(node: HeroTreeNodeResource, owned_ids: Array[String]) -> Control:
+	var bridge_id: String = String(node.id)
+	var a: String = node.bridge_archetypes[0]
+	var b: String = node.bridge_archetypes[1]
+	var owned: bool = owned_ids.has(bridge_id)
+	var open: bool = hero_skill_tree.is_bridge_open(bridge_id)
+	var tile := VBoxContainer.new()
+	tile.name = "Bridge_%s" % bridge_id
+	tile.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var badges := HBoxContainer.new()
+	badges.add_child(_make_glyph_badge(a, 16))
+	badges.add_child(_make_glyph_badge(b, 16))
+	var status := Label.new()
+	status.add_theme_font_size_override("font_size", 11)
+	if owned:
+		status.text = tr("SKILL_TREE_TAG_UNLOCKED")
+	elif not open:
+		status.text = tr("SKILL_TREE_BRIDGE_NEEDS") % [tr(NODE_LABELS[HeroSkillTree.BRIDGE_OPENED_BY]), _archetype_name(a), _archetype_name(b)]
+	elif owned_ids.size() >= HeroSkillTree.MAX_BRIDGES:
+		status.text = tr("SKILL_TREE_BRIDGE_FULL") % owned_ids.size()
+	else:
+		status.text = tr("SKILL_TREE_BRIDGE_COST") % [_archetype_name(a), _archetype_name(b)]
+	status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	status.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	badges.add_child(status)
+	tile.add_child(badges)
+
+	var swap_target: bool = not _bridge_swap_from.is_empty() and not owned and open \
+		and hero_skill_tree.visit_spend_count == 0
+	var purchasable: bool = hero_skill_tree.is_bridge_purchasable(bridge_id)
+	var button := _make_tree_button(node, owned, purchasable or swap_target, "")
+	button.name = "BridgeButton_%s" % bridge_id
+	button.pressed.connect(_on_bridge_pressed.bind(bridge_id))
+	tile.add_child(button)
+	_bridge_buttons[bridge_id] = button
+
+	if owned and hero_skill_tree.visit_spend_count == 0:
+		var swap := Button.new()
+		swap.name = "BridgeSwap_%s" % bridge_id
+		swap.add_theme_font_size_override("font_size", 11)
+		swap.text = tr("SKILL_TREE_BRIDGE_SWAP_CANCEL") if _bridge_swap_from == bridge_id else tr("SKILL_TREE_BRIDGE_SWAP")
+		swap.pressed.connect(_on_bridge_swap_pressed.bind(bridge_id))
+		tile.add_child(swap)
+	elif swap_target:
+		var hint := Label.new()
+		hint.add_theme_font_size_override("font_size", 11)
+		hint.text = tr("SKILL_TREE_BRIDGE_SWAP_IN") % _bridge_name(_bridge_swap_from)
+		tile.add_child(hint)
+	return tile
+
+
+func _bridge_name(bridge_id: String) -> String:
+	var node: HeroTreeNodeResource = hero_skill_tree.get_catalog().get_node_by_id(StringName(bridge_id))
+	return node.display_name if node != null else bridge_id
+
+
+func _on_bridge_pressed(bridge_id: String) -> void:
+	if hero_skill_tree == null:
+		return
+	if not _bridge_swap_from.is_empty():
+		if hero_skill_tree.retrain_bridge(_bridge_swap_from, bridge_id):
+			_bridge_swap_from = ""
+			_rebuild_everything()
+		return
+	if hero_skill_tree.purchase_bridge(bridge_id):
+		_rebuild_everything()
+
+
+## Toggles swap mode: the next open, unowned tile pressed replaces this bridge.
+func _on_bridge_swap_pressed(bridge_id: String) -> void:
+	_bridge_swap_from = "" if _bridge_swap_from == bridge_id else bridge_id
+	_rebuild_bridges()
+
+
+# ---------------------------------------------------------------------------
 # Shared helpers (letter-glyph badges — see hero_skill_build_screen.gd's own
 # doc comment for the "no bespoke art invented" rationale this mirrors)
 # ---------------------------------------------------------------------------
@@ -316,6 +547,19 @@ func _on_input_mode_changed(_mode: InputModeTracker.InputMode) -> void:
 
 func get_node_button(archetype: String, node_index: int) -> Button:
 	return _node_buttons.get("%s:%d" % [archetype, node_index])
+
+
+## Branch node button at a tree position (null when not built).
+func get_branch_button(archetype: String, slot: String, side: String, depth: int) -> Button:
+	return _branch_buttons.get("%s:%s:%s:%d" % [archetype, slot, side, depth])
+
+
+func get_retrain_button(archetype: String, slot: String) -> Button:
+	return _retrain_buttons.get("%s:%s" % [archetype, slot])
+
+
+func get_bridge_button(bridge_id: String) -> Button:
+	return _bridge_buttons.get(bridge_id)
 
 
 func get_pool_row() -> HBoxContainer:
