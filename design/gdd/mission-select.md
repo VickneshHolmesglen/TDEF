@@ -106,6 +106,8 @@ Mission Select subscribes to `mission_phase_changed` only to know when to clear 
 | Mission HUD (Defeat screen) | Mission HUD → Mission Select | Calls `MissionSelect.retry_current_mission()` | Direct Autoload call (justified exception — Rule 10) |
 | EventBus | Mission Select ← subscribes | `mission_phase_changed` | To track `MISSION_COMPLETE` (clear cached state) vs `DEFEAT` (retain cached state, arm retry) |
 
+**Daily Challenge (added 2026-11-04, `design/quick-specs/daily-challenge-2026-11-04.md`).** A first card in the map grid selects one seeded setup per UTC day (map from the unlocked maps, run modifiers with at least one on, tier = best cleared on that map). The date seeds the procedural layout, so the board is the same all day. Changing tier or a modifier turns it into a normal run. First clear of the day pays 5 + min(streak - 1, 7) Ascendant Shards; the streak and last clear date persist in this system's save data.
+
 ## Formulas
 
 ### Formula 1: Requested Wave Count Delta

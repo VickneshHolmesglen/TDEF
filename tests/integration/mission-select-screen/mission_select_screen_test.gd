@@ -253,3 +253,19 @@ func test_disconnect_own_subscriptions_is_safe_to_call() -> void:
 	@warning_ignore("unsafe_method_access")
 	_screen.call("disconnect_own_subscriptions")
 	assert_bool(true).is_true()
+
+
+# Daily Challenge (design/quick-specs/daily-challenge-2026-11-04.md)
+func test_daily_card_is_first_and_selects_todays_setup() -> void:
+	_rebuild_with_locks([])
+	var daily: Button = _screen.call("get_daily_button")
+	assert_object(daily).is_not_null()
+	assert_int(daily.get_index()).is_equal(0)
+	assert_str(daily.text).contains(tr("MISSION_SELECT_DAILY_TITLE"))
+	assert_str(daily.text).contains("The Gap")
+
+	_screen.call("_on_daily_pressed")
+
+	assert_bool(GMissionSelect.is_daily_selected()).is_true()
+	assert_bool(daily.button_pressed).is_true()
+	assert_bool((_screen.call("get_mission_button", MISSION_THE_GAP) as Button).button_pressed).is_false()

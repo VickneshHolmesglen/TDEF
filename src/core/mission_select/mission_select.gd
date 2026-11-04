@@ -130,6 +130,15 @@ var _runtime_difficulty_tier: int = 0
 var _runtime_modifiers: PackedStringArray = PackedStringArray()
 var _runtime_launch_timestamp: float = 0.0
 
+## Daily Challenge (design/quick-specs/daily-challenge-2026-11-04.md).
+## _daily_date: the date the CURRENT selection was rolled for ("" = a normal
+## selection). _runtime_daily_date: the date of the armed run (survives
+## retries, cleared on completion). Last clear + streak are persisted.
+var _daily_date: String = ""
+var _runtime_daily_date: String = ""
+var _daily_last_cleared: String = ""
+var _daily_streak: int = 0
+
 ## Campaign unlocks (maps in campaign_order, tiers one at a time). Off = every
 ## map and tier open: for tests that are not about unlocking, and as a debug
 ## switch. Not saved.
@@ -186,6 +195,8 @@ func _on_sanctuary_state_restored(_save_slot: int) -> void:
 func _on_mission_phase_changed(_previous_phase: String, new_phase: String, _timestamp: float) -> void:
 	if new_phase == "MISSION_COMPLETE":
 		_record_runtime_completion()
+		_record_daily_clear()
+		_runtime_daily_date = ""
 		_runtime_mission_id = ""
 		_runtime_grid_config = null
 		_runtime_difficulty_tier = 0
@@ -225,6 +236,69 @@ func _award_ascension_shards(tier: int, first_clear: bool) -> void:
 ## Shards earned but not yet in the bag (it was full). Saved; delivered by
 ## deliver_held_shards() as soon as there is room, so a once-only first-clear
 ## bounty is never lost.
+## Today's Daily Challenge setup (DailyChallenge.roll over the launchable
+## maps): {mission_id, modifiers, tier, date}. Tier = the best tier the
+## player has cleared on that map (1 if none): their proven level, which the
+## rolled modifiers then push past.
+func get_daily_setup(now_unix: float = Time.get_unix_time_from_system()) -> Dictionary:
+	var key: String = DailyChallenge.date_key(now_unix)
+	var candidates: Array[String] = []
+	for mission_id: String in GGameDataRegistry.get_all_mission_entries().keys():
+		if is_mission_unlocked(mission_id):
+			candidates.append(mission_id)
+	var setup: Dictionary = DailyChallenge.roll(key, candidates)
+	var mission_id: String = setup["mission_id"]
+	setup["tier"] = maxi(1, get_highest_completed_tier(mission_id)) if not mission_id.is_empty() else 1
+	setup["date"] = key
+	return setup
+
+
+## Selects today's Daily Challenge: the rolled map, tier and modifiers, all
+## through the normal selection path (so the screen and Tarot see the usual
+## mission_selected / run_modifier_selected events). False if no map is open.
+func select_daily(now_unix: float = Time.get_unix_time_from_system()) -> bool:
+	var setup: Dictionary = get_daily_setup(now_unix)
+	if (setup["mission_id"] as String).is_empty():
+		return false
+	select_mission(setup["mission_id"])
+	difficulty_tier = setup["tier"]
+	var modifiers: Dictionary = setup["modifiers"]
+	for modifier_id: StringName in modifiers:
+		set_run_modifier(modifier_id, modifiers[modifier_id])
+	_daily_date = setup["date"]  # last: the setters above clear it
+	return true
+
+
+## True while the current selection is today's daily (for the screen).
+func is_daily_selected() -> bool:
+	return not _daily_date.is_empty()
+
+
+func has_cleared_daily(key: String) -> bool:
+	return _daily_last_cleared == key
+
+
+func get_daily_streak() -> int:
+	return _daily_streak
+
+
+func get_daily_last_cleared() -> String:
+	return _daily_last_cleared
+
+
+## First clear of the armed daily's date: advance the streak and grant shards
+## through the held-shard path (full bag safe). Repeat clears pay nothing.
+func _record_daily_clear() -> void:
+	if _runtime_daily_date.is_empty() or _daily_last_cleared == _runtime_daily_date:
+		return
+	_daily_streak = DailyChallenge.next_streak(_runtime_daily_date, _daily_last_cleared, _daily_streak)
+	_daily_last_cleared = _runtime_daily_date
+	var shards: int = DailyChallenge.clear_shards(_daily_streak)
+	_held_shards += shards
+	deliver_held_shards()
+	GEventBus.ascension_shards_awarded.emit(shards, false)
+
+
 func get_held_shards() -> int:
 	return _held_shards
 
@@ -320,6 +394,7 @@ func is_tier_unlocked(mission_id: String, tier: int) -> bool:
 ## Mission Select's own local state and emits mission_selected.
 func select_mission(mission_id: String) -> void:
 	_current_mission_id = mission_id
+	_daily_date = ""
 	_run_modifiers.clear()
 	var entry: MissionEntry = GGameDataRegistry.get_mission_entry(mission_id)
 	var recommended: int = entry.recommended_difficulty_tier if entry != null else 1
@@ -354,6 +429,7 @@ func get_run_modifier_value(modifier_id: StringName) -> float:
 ## fired once at confirm time by confirm_launch() (AC-5).
 func set_difficulty_tier(tier: int) -> void:
 	difficulty_tier = tier
+	_daily_date = ""  # a changed setup is no longer the daily
 
 
 ## Toggles a run modifier's stepper position and emits run_modifier_selected
@@ -366,6 +442,7 @@ func set_difficulty_tier(tier: int) -> void:
 ## is also cached locally for confirm_launch()'s payload assembly (Rule 7).
 func set_run_modifier(modifier_id: StringName, modifier_value: float) -> void:
 	_run_modifiers[modifier_id] = modifier_value
+	_daily_date = ""  # a changed setup is no longer the daily
 	GEventBus.run_modifier_selected.emit(modifier_id, modifier_value)
 
 
@@ -430,8 +507,12 @@ func confirm_launch() -> void:
 	# instance rather than regenerating, so a retry keeps the map you were
 	# just playing.
 	# A brand-new layout every launch (retry reuses this one), shaped per map.
+	# Daily Challenge: the date seeds the layout, so every attempt that day
+	# plays the same board. Normal runs stay fresh per launch.
+	_runtime_daily_date = _daily_date
+	var map_rng: RandomNumberGenerator = DailyChallenge.rng_for(_daily_date) if not _daily_date.is_empty() else null
 	_runtime_grid_config = MapGenerator.generate(entry.grid_config.cols, entry.grid_config.rows, entry.grid_config.cell_size,
-			null, entry.spawn_count, entry.path_winding) if entry != null else null
+			map_rng, entry.spawn_count, entry.path_winding) if entry != null else null
 	_runtime_difficulty_tier = difficulty_tier
 	_runtime_modifiers = modifiers
 	_runtime_launch_timestamp = Time.get_unix_time_from_system()
@@ -508,7 +589,8 @@ func get_save_data() -> Dictionary:
 				"best_time_seconds": record.best_time_seconds,
 			}
 		ledger_data[mission_id] = tier_data
-	return {"completion_ledger": ledger_data, "held_shards": _held_shards}
+	return {"completion_ledger": ledger_data, "held_shards": _held_shards,
+			"daily": {"last_cleared": _daily_last_cleared, "streak": _daily_streak}}
 
 
 ## Parses one raw {"completed": bool, "best_time_seconds": float} leaf into a
@@ -572,6 +654,15 @@ func restore_save_data(data: Dictionary) -> bool:
 	# Optional (added 2026-11-03): older saves have no held shards.
 	var held_raw: Variant = data.get("held_shards", 0)
 	_held_shards = maxi(0, int(held_raw)) if (held_raw is int or held_raw is float) else 0
+	# Optional (added 2026-11-04): older saves have no daily record.
+	var daily_raw: Variant = data.get("daily", {})
+	_daily_last_cleared = ""
+	_daily_streak = 0
+	if daily_raw is Dictionary:
+		var last_raw: Variant = (daily_raw as Dictionary).get("last_cleared", "")
+		var streak_raw: Variant = (daily_raw as Dictionary).get("streak", 0)
+		_daily_last_cleared = last_raw as String if last_raw is String else ""
+		_daily_streak = maxi(0, int(streak_raw)) if (streak_raw is int or streak_raw is float) else 0
 	return true
 
 
@@ -592,6 +683,10 @@ func restore_save_data(data: Dictionary) -> bool:
 func reset_to_defaults() -> void:
 	_completion_ledger.clear()
 	_held_shards = 0
+	_daily_date = ""
+	_runtime_daily_date = ""
+	_daily_last_cleared = ""
+	_daily_streak = 0
 	state = State.BROWSING
 	_current_mission_id = ""
 	difficulty_tier = 1

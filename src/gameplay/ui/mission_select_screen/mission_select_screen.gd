@@ -64,6 +64,8 @@ const MISSION_CARD_FONT_SIZE: int = 18
 const SECTION_HEADER_ALPHA: float = 0.7
 
 var _mission_buttons: Dictionary[String, Button] = {}
+## Daily Challenge card, first in the mission grid (rebuilt with the list).
+var _daily_button: Button = null
 var _tier_buttons: Dictionary[int, Button] = {}
 var _modifier_buttons: Dictionary[StringName, Button] = {}
 var _launch_armed: bool = false
@@ -178,6 +180,10 @@ func _on_mission_selected(_mission_id: String) -> void:
 func _on_run_modifier_selected(_modifier_id: String, _modifier_value: float) -> void:
 	_disarm_launch()
 	_refresh_modifier_button_labels()
+	# A manual modifier change ends the daily selection (MissionSelect clears
+	# it); refresh so the daily card and title stop claiming it.
+	if mission_select.state == MissionSelect.State.CONFIGURING:
+		_refresh_config_panel()
 
 
 # ---------------------------------------------------------------------------
@@ -195,6 +201,8 @@ func _rebuild_mission_list() -> void:
 	for child: Node in _mission_list.get_children():
 		child.queue_free()
 	_mission_buttons.clear()
+	_daily_button = _create_daily_button()
+	_mission_list.add_child(_daily_button)
 
 	var entries: Dictionary[String, MissionEntry] = GGameDataRegistry.get_all_mission_entries()
 	var mission_ids: Array = entries.keys()
@@ -209,6 +217,66 @@ func _rebuild_mission_list() -> void:
 		var button: Button = _create_mission_button(entry)
 		_mission_list.add_child(button)
 		_mission_buttons[mission_id] = button
+
+
+## Daily Challenge card (design/quick-specs/daily-challenge-2026-11-04.md):
+## first card in the grid, same chrome as a mission card, no medallion art.
+## Shows today's rolled map and tier, the first-clear reward (or that today
+## is already cleared) and the streak. Pressing it selects the daily setup.
+func _create_daily_button() -> Button:
+	var button := Button.new()
+	button.name = "DailyChallenge"
+	button.focus_mode = Control.FOCUS_ALL
+	button.toggle_mode = true
+	button.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	button.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	button.add_theme_font_size_override("font_size", MISSION_CARD_FONT_SIZE)
+	button.add_theme_color_override("font_color", ShellChromeStyle.UI_PARCHMENT)
+	button.add_theme_color_override("font_pressed_color", ShellChromeStyle.UI_PARCHMENT)
+	button.add_theme_color_override("font_hover_pressed_color", ShellChromeStyle.UI_PARCHMENT)
+	var selected_box: StyleBox = _mission_card_stylebox(true)
+	button.add_theme_stylebox_override("normal", _mission_card_stylebox(false))
+	button.add_theme_stylebox_override("hover", ShellChromeStyle.skin_button(&"hover"))
+	button.add_theme_stylebox_override("pressed", selected_box)
+	button.add_theme_stylebox_override("hover_pressed", selected_box)
+	button.add_theme_stylebox_override("focus", ShellChromeStyle.skin_focus())
+	button.pressed.connect(_on_daily_pressed)
+	_wire_focus_ring(button)
+	var setup: Dictionary = mission_select.get_daily_setup()
+	var mission_id: String = setup["mission_id"]
+	button.disabled = mission_id.is_empty()
+	button.text = _daily_card_text(setup)
+	return button
+
+
+func _daily_card_text(setup: Dictionary) -> String:
+	var mission_id: String = setup["mission_id"]
+	if mission_id.is_empty():
+		return tr("MISSION_SELECT_DAILY_TITLE")
+	var entry: MissionEntry = GGameDataRegistry.get_mission_entry(mission_id)
+	var map_name: String = entry.display_name if entry != null else mission_id
+	var lines: Array[String] = [tr("MISSION_SELECT_DAILY_TITLE"),
+			tr("MISSION_SELECT_DAILY_INFO") % [map_name, _tier_display_name(setup["tier"])]]
+	var streak: int = mission_select.get_daily_streak()
+	if mission_select.has_cleared_daily(setup["date"]):
+		lines.append(tr("MISSION_SELECT_DAILY_CLEARED"))
+	else:
+		var next: int = DailyChallenge.next_streak(setup["date"], mission_select.get_daily_last_cleared(), streak)
+		lines.append(tr("MISSION_SELECT_DAILY_REWARD") % DailyChallenge.clear_shards(next))
+	if streak > 0:
+		lines.append(tr("MISSION_SELECT_DAILY_STREAK") % streak)
+	return "\n".join(lines)
+
+
+func _on_daily_pressed() -> void:
+	mission_select.select_daily()
+	_refresh_config_panel()
+
+
+## Test/live-check accessor.
+func get_daily_button() -> Button:
+	return _daily_button
 
 
 func _create_mission_button(entry: MissionEntry) -> Button:
@@ -363,13 +431,18 @@ func _refresh_config_panel() -> void:
 	_browse_hint.visible = not configuring
 	_launch_button.disabled = not configuring
 	var current_id: String = mission_select.get_current_mission_id() if configuring else ""
+	var daily: bool = configuring and mission_select.is_daily_selected()
 	for mission_id: String in _mission_buttons:
-		_mission_buttons[mission_id].set_pressed_no_signal(mission_id == current_id)
-	_refresh_selection_visuals(current_id)
+		_mission_buttons[mission_id].set_pressed_no_signal(mission_id == current_id and not daily)
+	if _daily_button != null:
+		_daily_button.set_pressed_no_signal(daily)
+	_refresh_selection_visuals("" if daily else current_id)
 	if not configuring:
 		return
 	var entry: MissionEntry = GGameDataRegistry.get_mission_entry(current_id)
 	_mission_title_label.text = entry.display_name if entry != null else current_id
+	if daily:
+		_mission_title_label.text = tr("MISSION_SELECT_DAILY_TAG") % _mission_title_label.text
 	_refresh_objective_label()
 	_refresh_intel(entry)
 	_refresh_tier_button_labels()
