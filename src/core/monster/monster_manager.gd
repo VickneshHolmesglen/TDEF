@@ -182,6 +182,7 @@ var _resource_table: Dictionary = {}     # StringName -> MonsterResource
 
 func _ready() -> void:
 	add_to_group(GROUP_NAME)
+	affix_rng.randomize()
 	_grid = GGrid
 	_pathfinding = GPathfindingSystem
 	if _resource_table.is_empty():
@@ -319,6 +320,8 @@ func _emit_death(entity: MonsterEntity, kill_source: StringName) -> void:
 	# "ACTIVE -> DEAD (current_hp <= 0)" as a real transition; this method
 	# just never performed it.
 	entity.lifecycle_state = MonsterEntity.State.DEAD
+	if entity.affix == &"vengeful":
+		_vengeful_burst(entity)
 	if entity.resource.is_splitter():
 		_queue_split(entity)
 	if entity.resource.tier == 2:
@@ -1192,8 +1195,10 @@ func _pass4_death_and_absorbed_flush() -> void:
 
 ## Spawns a monster by id. Returns the entity on success, null on failure.
 ## Tests can call this directly after populating _resource_table and injecting stubs.
+## roll_affix: true only for wave spawns (_on_monster_spawn_requested), so
+## direct calls (tests, QA drivers) get fixed, affix-free stats.
 func spawn_monster(monster_id: StringName, spawn_cell: Vector2i, wave_index: int,
-		difficulty_tier: int, wave_reward_scalar: float = 1.0) -> MonsterEntity:
+		difficulty_tier: int, wave_reward_scalar: float = 1.0, roll_affix: bool = false) -> MonsterEntity:
 	if not _resource_table.has(monster_id):
 		push_error("[MonsterManager] ERROR: Unknown monster_id '%s'. Aborting spawn." % monster_id)
 		return null
@@ -1206,11 +1211,35 @@ func spawn_monster(monster_id: StringName, spawn_cell: Vector2i, wave_index: int
 				MAX_ACTIVE_MONSTERS, monster_id])
 		return null
 	return _spawn_entity(_resource_table[monster_id] as MonsterResource,
-			spawn_cell, wave_index, difficulty_tier, wave_reward_scalar)
+			spawn_cell, wave_index, difficulty_tier, wave_reward_scalar, {}, roll_affix)
+
+
+## Elite affixes (design/quick-specs/elite-affixes-2026-11-04.md): every
+## ELITE spawn (not split children) rolls one. Swift/Fortified scale the
+## spawn stats; Regenerating heals in Pass 2c; Vengeful hastes nearby
+## monsters when it dies.
+const ELITE_AFFIXES: Array[StringName] = [&"swift", &"fortified", &"regenerating", &"vengeful"]
+const AFFIX_SWIFT_SPEED_MULT: float = 1.25
+const AFFIX_FORTIFIED_HP_MULT: float = 1.4
+const AFFIX_REGEN_FRACTION_PER_SECOND: float = 0.015
+const AFFIX_VENGEFUL_RADIUS_CELLS: int = 2
+const AFFIX_VENGEFUL_HASTE_MULT: float = 1.4
+const AFFIX_VENGEFUL_HASTE_SECONDS: float = 4.0
+
+## Affix roll source; seed it in tests for a fixed affix.
+var affix_rng: RandomNumberGenerator = RandomNumberGenerator.new()
+
+
+## Rolls an affix for a fresh ELITE spawn (&"" for other tiers / splits).
+func _roll_affix(res: MonsterResource, is_split: bool) -> StringName:
+	if res.tier != 1 or is_split:
+		return &""
+	return ELITE_AFFIXES[affix_rng.randi_range(0, ELITE_AFFIXES.size() - 1)]
 
 
 func _spawn_entity(res: MonsterResource, spawn_cell: Vector2i, wave_index: int,
-		difficulty_tier: int, wave_reward_scalar: float, split_origin: Dictionary = {}) -> MonsterEntity:
+		difficulty_tier: int, wave_reward_scalar: float, split_origin: Dictionary = {},
+		roll_affix: bool = false) -> MonsterEntity:
 	_current_difficulty_tier = difficulty_tier
 	# HP scaling: base_hp × (1 + rate × (wave-1)) × (1 + diff_rate × (diff-1))
 	var hp_mult := 1.0 + HP_WAVE_GROWTH_RATE * float(wave_index - 1)
@@ -1221,6 +1250,11 @@ func _spawn_entity(res: MonsterResource, spawn_cell: Vector2i, wave_index: int,
 	# Speed scaling: base_speed × (1 + rate × (wave-1)) × tarot_scalar
 	var speed_mult := 1.0 + SPEED_WAVE_GROWTH_RATE * float(wave_index - 1)
 	var scaled_speed := maxf(0.1, res.base_speed * speed_mult * _tarot_speed_scalar)
+	var affix: StringName = _roll_affix(res, not split_origin.is_empty()) if roll_affix else &""
+	if affix == &"swift":
+		scaled_speed *= AFFIX_SWIFT_SPEED_MULT
+	elif affix == &"fortified":
+		scaled_hp *= AFFIX_FORTIFIED_HP_MULT
 
 	_entity_id_counter += 1
 	var entity := MonsterEntity.new()
@@ -1229,6 +1263,7 @@ func _spawn_entity(res: MonsterResource, spawn_cell: Vector2i, wave_index: int,
 	entity.current_hp = scaled_hp
 	entity.scaled_hp = scaled_hp
 	entity.scaled_speed = scaled_speed
+	entity.affix = affix
 	entity.lifecycle_state = MonsterEntity.State.SPAWNING
 	entity.spawn_wave_reward_scalar = wave_reward_scalar
 	entity.wave_index = wave_index
@@ -1271,6 +1306,7 @@ func _spawn_entity(res: MonsterResource, spawn_cell: Vector2i, wave_index: int,
 	# parameter entirely, along with _build_visual_companion()/
 	# sync_visual_companion_position() themselves.
 	instance.configure(res.monster_id, res.tier, res.display_name)
+	instance.set_affix(affix)
 	if res.is_flying():
 		instance.set_flying(true)
 	entity.monster_instance = instance
@@ -1342,7 +1378,7 @@ func _spawn_entity(res: MonsterResource, spawn_cell: Vector2i, wave_index: int,
 
 func _on_monster_spawn_requested(payload: MonsterSpawnRequest) -> void:
 	spawn_monster(payload.monster_id, payload.spawn_cell, payload.wave_index,
-			payload.difficulty_tier, payload.wave_reward_scalar)
+			payload.difficulty_tier, payload.wave_reward_scalar, true)
 
 
 func _on_wave_started(wave_number: int, _total_waves: int, _wave_difficulty: float) -> void:
@@ -1552,6 +1588,8 @@ func _pass2c_archetype_behaviours(delta: float) -> void:
 				_haste_pulse(entity)
 		if entity.haste_remaining > 0.0:
 			entity.haste_remaining = maxf(0.0, entity.haste_remaining - delta)
+		if entity.affix == &"regenerating" and entity.current_hp < entity.scaled_hp:
+			entity.current_hp = minf(entity.scaled_hp, entity.current_hp + entity.scaled_hp * AFFIX_REGEN_FRACTION_PER_SECOND * delta)
 		if res.is_dasher():
 			if entity.stun_remaining > 0.0:
 				entity.dash_remaining = 0.0  # a stun cancels the burst
@@ -1595,6 +1633,20 @@ func _heal_pulse(healer: MonsterEntity) -> void:
 ## Hastes every OTHER live monster within the drummer's radius for
 ## haste_duration_seconds. Refreshes rather than stacks: the timer resets and
 ## the larger multiplier wins, so two drummers do not compound.
+## Vengeful affix: on death, hastes every other live monster nearby (same
+## refresh-not-stack rule as the drummer's pulse).
+func _vengeful_burst(dead: MonsterEntity) -> void:
+	var origin: Vector2 = dead.global_position
+	for other in active_monsters:
+		if other == dead or not is_instance_valid(other) or other.lifecycle_state != MonsterEntity.State.ACTIVE:
+			continue
+		if not WorldRange.within(origin, other.global_position, AFFIX_VENGEFUL_RADIUS_CELLS):
+			continue
+		var current: float = other.haste_multiplier if other.haste_remaining > 0.0 else 1.0
+		other.haste_multiplier = maxf(current, AFFIX_VENGEFUL_HASTE_MULT)
+		other.haste_remaining = maxf(other.haste_remaining, AFFIX_VENGEFUL_HASTE_SECONDS)
+
+
 func _haste_pulse(drummer: MonsterEntity) -> void:
 	var origin: Vector2 = drummer.global_position
 	var res: MonsterResource = drummer.resource

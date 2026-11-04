@@ -59,6 +59,10 @@ var last_hit_source: StringName = &"tower"
 ## through DoT ticks so a tower's burn/poison kill still credits it.
 var last_hit_tower_id: int = -1
 
+## Elite affix (design/quick-specs/elite-affixes-2026-11-04.md): one of
+## MonsterManager.ELITE_AFFIXES rolled at spawn for ELITE tier, else &"".
+var affix: StringName = &""
+
 ## Forwarded from MonsterSpawnRequest into MonsterDiedEvent for Resource Economy.
 var spawn_wave_reward_scalar: float = 1.0
 

@@ -58,6 +58,16 @@ const TARGET_LONG_EDGE_BY_TIER: Dictionary[int, float] = {
 ## at this size without dedicated art); GDD explicitly leaves this open.
 const ELITE_BADGE_SIZE: float = 12.0
 const BOSS_BADGE_SIZE: float = 16.0
+## Elite affix rings: colour plus a distinct stroke per affix, so the cue
+## is not colour-only (swift dashed, fortified thick, regenerating thin,
+## vengeful double).
+const AFFIX_COLORS: Dictionary[StringName, Color] = {
+	&"swift": Color(0.4, 0.85, 1.0),
+	&"fortified": Color(0.75, 0.8, 0.9),
+	&"regenerating": Color(0.45, 0.95, 0.45),
+	&"vengeful": Color(1.0, 0.35, 0.3),
+}
+const AFFIX_RING_Y_SQUASH: float = 0.45
 const ELITE_BADGE_COLOR: Color = Color(0.784, 0.847, 0.909)  ## Silver / cold-white — GDD's own #C8D8E8 provisional value
 const BOSS_BADGE_COLOR: Color = Color(0.9, 0.75, 0.2)  ## gold crown
 
@@ -124,6 +134,8 @@ var _hit_flash_material: ShaderMaterial = null
 var _hit_flash_tween: Tween = null
 var _telegraph_active: bool = false
 var _statuses: Array[StringName] = []
+## Elite affix ring at the feet (elite-affixes-2026-11-04.md). &"" = none.
+var _affix: StringName = &""
 var _telegraph_progress: float = 0.0
 var _telegraph_range_cells: int = 0
 var _telegraph_center_offset: Vector2 = Vector2.ZERO
@@ -201,6 +213,16 @@ func set_flying(flying: bool) -> void:
 
 
 ## Fades the monster while towers cannot see it; full opacity once revealed.
+## Elite affix ring (&"" hides it).
+func set_affix(affix: StringName) -> void:
+	_affix = affix
+	queue_redraw()
+
+
+func get_affix() -> StringName:
+	return _affix
+
+
 func set_stealth_hidden(hidden: bool) -> void:
 	modulate.a = STEALTH_HIDDEN_ALPHA if hidden else 1.0
 
@@ -484,6 +506,8 @@ func _draw_status_glyph(status: StringName, c: Vector2) -> void:
 
 
 func _draw() -> void:
+	if AFFIX_COLORS.has(_affix):
+		_draw_affix_ring()
 	if not _statuses.is_empty():
 		_draw_status_pips()
 	match _tier:
@@ -524,6 +548,28 @@ func _draw_progress_bar() -> void:
 	draw_rect(Rect2(top_left, TELEGRAPH_BAR_SIZE), Color(0.14, 0.12, 0.09), true)
 	draw_rect(Rect2(top_left, Vector2(TELEGRAPH_BAR_SIZE.x * _telegraph_progress, TELEGRAPH_BAR_SIZE.y)), TELEGRAPH_COLOR, true)
 	draw_rect(Rect2(top_left, TELEGRAPH_BAR_SIZE), TELEGRAPH_COLOR, false, 1.0)
+
+
+## Flattened ring under the feet (drawn first, so it sits under the sprite
+## like a ground aura).
+func _draw_affix_ring() -> void:
+	var color: Color = AFFIX_COLORS[_affix]
+	var r: float = _sprite_half_size.x * 0.9
+	var feet := Vector2(0.0, _sprite_half_size.y * 0.75)
+	draw_set_transform(feet, 0.0, Vector2(1.0, AFFIX_RING_Y_SQUASH))
+	match _affix:
+		&"swift":
+			for i: int in 12:
+				var a: float = TAU * float(i) / 12.0
+				draw_arc(Vector2.ZERO, r, a, a + TAU / 24.0, 4, color, 3.0, true)
+		&"fortified":
+			draw_arc(Vector2.ZERO, r, 0.0, TAU, 40, color, 6.0, true)
+		&"regenerating":
+			draw_arc(Vector2.ZERO, r, 0.0, TAU, 40, color, 2.5, true)
+		&"vengeful":
+			draw_arc(Vector2.ZERO, r, 0.0, TAU, 40, color, 2.5, true)
+			draw_arc(Vector2.ZERO, r * 0.75, 0.0, TAU, 40, color, 2.5, true)
+	draw_set_transform(Vector2.ZERO)
 
 
 ## A single downward chevron — GDD's own first-listed option.
