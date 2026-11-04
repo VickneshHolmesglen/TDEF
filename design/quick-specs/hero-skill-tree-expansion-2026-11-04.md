@@ -1,8 +1,9 @@
-# Hero Skill Tree expansion: forks, passives, keystones (design pass)
+# Hero Skill Tree expansion: forks, passives, keystones, bridges (design pass)
 
 Date: 2026-11-04. Status: **design pass, not built**. First-pass numbers, unplaytested.
 Amends (when built): `design/gdd/hero-skill-tree.md` (Rules 3b/3c, 6-10, 13, 14), ADR-0041 save shape.
-Request: "do the design pass for the expanded tree" (after "would a hero skill tree be a suitable addition").
+Request: "do the design pass for the expanded tree" (after "would a hero skill tree be a suitable addition"),
+then "design the bridge nodes too" (§6a).
 
 ## 1. Problem
 
@@ -36,7 +37,7 @@ Each archetype keeps its 4-node **spine** exactly as today (same indices, same s
 - The keystone slot offers 2 keystones; buying one locks the other.
 - Spine and branches are independent once open: each visit the player chooses between advancing the spine (next skill) or deepening a branch. This is the new core decision, alongside "which archetype".
 
-Per archetype: 4 spine + 3 + 3 + 1 = **11 purchases** out of 18 visible nodes. Whole tree: **44 purchases**, 72 visible nodes.
+Per archetype: 4 spine + 3 + 3 + 1 = **11 purchases** out of 18 visible nodes. Four archetype trees: **44 purchases**, 72 visible nodes. Plus **6 bridge nodes** between the trees, of which a hero owns at most 2 (§6a): **46 purchases** in total.
 
 Alternatives rejected:
 - Forks *on* the spine (between skills): delays Skill II to purchase 6 and Skill III to purchase 10 per archetype, which slows the skill roster and Ultimate combos that are already tuned.
@@ -49,10 +50,11 @@ Alternatives rejected:
 | Point sources | Tower Mastery per archetype + 1 per 5 hero levels to primary class | unchanged |
 | Cost per node | 1 point of that archetype (or 1 overflow) | unchanged, branches included |
 | Visit cap | 1 purchase per Sanctuary visit | unchanged; now also covers branch nodes and retrains |
-| Overflow (Rule 3b) | credited when the earning archetype has all 11 purchases done | was: 4 nodes done |
-| Terminal no-op (Rule 3c) | when all 44 purchases are done | was: 16 |
+| Overflow (Rule 3b) | credited when the earning archetype has all 11 own purchases done (bridges never count) | was: 4 nodes done |
+| Bridge cost | 1 point from **each** of its two archetypes (overflow may stand in for either or both) | new, §6a |
+| Terminal no-op (Rule 3c) | when all 44 archetype purchases are done **and** 2 bridges are owned | was: 16 |
 
-Pacing: 44 purchases at 1/visit = tree complete at about visit 44-50 (some visits have no point in the archetype the player wants). That lands inside the mission 45-55 target and before level 50 (~mission 65). If playtests show players run dry of things to buy before then, the tuning knob is the visit cap (keep at 1); if they never finish, raise it to 2 from mission 30 onward. Do not add cost per node: points are plentiful, so cost would only shift who is starved, not pacing.
+Pacing: 46 purchases at 1/visit = tree complete at about visit 46-52 (some visits have no point in the archetype the player wants). That lands inside the mission 45-55 target and before level 50 (~mission 65). If playtests show players run dry of things to buy before then, the tuning knob is the visit cap (keep at 1); if they never finish, raise it to 2 from mission 30 onward. Do not add cost per node: points are plentiful, so cost would only shift who is starved, not pacing.
 
 ## 5. Effects
 
@@ -127,22 +129,60 @@ Scale check against gear: a full Physical L/L build is +12% max_hp, +14 armor, a
 - Spine Choice nodes stay permanent (unchanged LOCKED_OUT rule): skill choices feed the Ultimate combos and the Skill Build loadout, and reversing them is out of scope.
 - Why not a gold cost: the previous gold-conversion design was reverted for interacting badly with `resource-economy.md`. A visit-cost keeps retraining inside the one economy the tree already has.
 
+## 6a. Bridge nodes (cross-archetype)
+
+Purpose: reward building two tower types together, and give the four trees a deliberate link (overflow is the only other one), without merging the per-archetype point pools that tie the tree to Tower Mastery.
+
+### Rules
+
+- **One bridge per archetype pair**: 6 bridges (P+R, P+E, P+S, R+E, R+S, E+S).
+- **Opens** when Skill II (spine node 2) is bought in **both** of its archetypes. Mid-game on purpose: a bridge rewards real investment in two types, not a dabble.
+- **Cost**: 1 point from each of its two archetypes' pools. Overflow may stand in for either point, or both. Paid atomically: if either point is missing, nothing is spent.
+- **Visit cap**: buying a bridge is the visit's one purchase (it costs 2 points but 1 visit).
+- **Cap of 2 bridges per hero** (decision). With all 6 open, a hero would end up owning every bridge and they would stop expressing a build. Two bridges say "this hero is a physical-elemental fighter who leans on support".
+- **Retrain**: swap one owned bridge for another open, unowned one. Costs the visit; the 2 points move with it (no refund, no new cost). Same rule as fork retraining (§6).
+- Owning a bridge never counts toward either archetype's 11 purchases, so it never changes when overflow starts.
+
+### Catalogue (first pass)
+
+Each bridge gives one small stat line plus one effect from the existing 8 types. Themes mix the two archetypes.
+
+| Bridge | Name | Stats | Effect |
+|---|---|---|---|
+| Physical + Ranged | Skirmish Drill | physical_attack +4%, attack_range +4% | `on_kill_stack_buff` {physical_attack 0.02, attack_range 0.02}, max 8, dur 6 |
+| Physical + Elemental | Flame-Forged Strikes | physical_attack +5%, magic_attack +5% | `on_wave_start_buff` {physical_attack 0.20, magic_attack 0.20}, dur 10 |
+| Physical + Support | Shieldbearer | armor +4 (flat), tower_affinity +5% | `on_hurt_shield` shield 0.08, dur 4, cd 8 |
+| Ranged + Elemental | Storm Arrows | crit_chance +0.02 (flat) | `on_skill_cast_buff` {attack_range 0.15, magic_attack 0.15}, dur 6 |
+| Ranged + Support | Spotter | attack_range +4% | `phase_state` WAVE_ACTIVE {tower_affinity 0.10, attack_range 0.10} |
+| Elemental + Support | Mana Font | cdr +0.04 (flat) | `on_kill_heal` heal_fraction 0.008 |
+
+Stacking notes:
+- **No bridge uses `on_crit_status`.** Hero DoTs stack: `MonsterManager._apply_dot_effect` appends a new status per proc, each dealing a fraction of the target's scaled HP. A burn bridge on top of Kindling (burn) or Barbed Shots (poison) would double %-HP damage per crit, which scales too well against bosses.
+- Shieldbearer can be owned alongside Iron Resolve or Aegis Link. SetEffectController keeps one cooldown per effect key, so both shields can fire on the same hit. Watch this in playtest: it is the strongest defensive pairing.
+- Bridges are not Ultimates. The Ultimate combo table (`ultimate_combo_table.tres`) stays keyed on equipped skill categories and is untouched; the bridge names deliberately avoid Ultimate names.
+
+### UI
+
+The four archetype columns stay as in §7.6. A **Bridges strip** runs under them: 6 tiles, each showing its two archetype colours, its state (locked: needs Skill II in X and Y / open / owned / blocked: 2 owned), and its cost "1 X + 1 Y". Retrain is offered on an owned tile when another tile is open.
+
 ## 7. Data and code plan
 
-1. **Data**: `HeroTreeNodeResource` (`id`, `archetype`, `slot` = `root|fork_1|fork_2|keystone`, `side` = `L|R|A|B|""`, `depth` 0-2, `stats: Dictionary`, `effect: Dictionary`). 60 `.tres` files in `assets/data/hero_tree/`, loaded by GameDataRegistry. Root nodes give `Minor_1` its effect (closes GDD Rule 14).
-2. **HeroSkillTree** (`src/core/hero_skill_tree/hero_skill_tree.gd`): spine (`_chain_nodes`) untouched. Add `_branches[archetype] = {fork_1: {side, depth}, fork_2: {side, depth}, keystone: ""}`. New API: `is_branch_purchasable(archetype, slot, side)`, `purchase_branch_node(archetype, slot, side)`, `retrain(archetype, slot)`, `get_branch_state(archetype, slot)`, `active_tree_nodes() -> Array[HeroTreeNodeResource]`. Shared pools, overflow and visit cap. `is_archetype_fully_unlocked` = 11 purchases. New signal `skill_tree_branch_changed(archetype, slot)` (EventBus).
-3. **Save** (ADR-0041 amendment): add `branches` key, schema v2. `restore_save_data` accepts v1 (no `branches`, all branches locked, existing spine kept). No migration of points: v1 saves keep their banked points and simply have new things to buy.
+1. **Data**: `HeroTreeNodeResource` (`id`, `archetype`, `slot` = `root|fork_1|fork_2|keystone|bridge`, `side` = `L|R|A|B|""`, `depth` 0-2, `bridge_archetypes: PackedStringArray` (bridge only, 2 entries), `stats: Dictionary`, `effect: Dictionary`). 66 `.tres` files in `assets/data/hero_tree/`, loaded by GameDataRegistry. Root nodes give `Minor_1` its effect (closes GDD Rule 14).
+2. **HeroSkillTree** (`src/core/hero_skill_tree/hero_skill_tree.gd`): spine (`_chain_nodes`) untouched. Add `_branches[archetype] = {fork_1: {side, depth}, fork_2: {side, depth}, keystone: ""}`. New API: `is_branch_purchasable(archetype, slot, side)`, `purchase_branch_node(archetype, slot, side)`, `retrain(archetype, slot)`, `get_branch_state(archetype, slot)`, `active_tree_nodes() -> Array[HeroTreeNodeResource]`. Bridges: `_owned_bridges: Array[String]` (max 2), `is_bridge_purchasable(bridge_id)`, `purchase_bridge(bridge_id)`, `retrain_bridge(owned_id, new_id)`. Shared pools, overflow and visit cap. `is_archetype_fully_unlocked` = 11 purchases. New signal `skill_tree_branch_changed(archetype, slot)` (EventBus).
+3. **Save** (ADR-0041 amendment): add `branches` and `bridges` keys, schema v2. `restore_save_data` accepts v1 (no `branches`/`bridges`: all locked, existing spine kept) and rejects a v2 payload with more than 2 bridges or a bridge whose archetypes lack Skill II. No migration of points: v1 saves keep their banked points and simply have new things to buy.
 4. **Hero stats**: new bucket `_tree_flat/_tree_additive` in `hero.gd`, rebuilt from `GHeroSkillTree.active_tree_nodes()` on `skill_tree_node_unlocked`, `skill_tree_branch_changed` and restore. Kept apart from the equipment bucket, which `_recompute_equipment_bonuses` replaces wholesale.
 5. **Notables/keystones' effects**: `SetEffectController._rebuild()` concatenates tree effects (keys `tree:<node_id>`) with set effects. No new effect types.
 6. **UI** (`hero_skill_tree_screen.gd`): per archetype column, spine on the left, branches to the right of the skill that opens them; locked-out side greyed with its effect text still readable; Retrain button per fork; tooltip per node. Plain layout, same honesty bound as the current screen (bespoke connector art stays separate art work).
-7. **Strings**: 60 node names + descriptions in `strings.csv` (editor pass after).
+7. **Strings**: 66 node names + descriptions in `strings.csv` (editor pass after).
 
 ## 8. Acceptance criteria
 
 - AC-X1: a fork side cannot be bought until its spine skill is bought; buying L depth 0 makes R unpurchasable.
 - AC-X2: nodes within a side unlock strictly in order; the visit cap blocks a second purchase (spine or branch) in one visit.
 - AC-X3: retrain moves depth to the other side, spends the visit, refunds nothing; Hero stats and active effects update the same visit.
-- AC-X4: overflow credits only when the earning archetype has all 11 purchases; terminal no-op only at 44.
+- AC-X4: overflow credits only when the earning archetype has all 11 own purchases (bridges excluded); terminal no-op only at 44 archetype purchases + 2 bridges.
+- AC-X8: a bridge is unpurchasable until both archetypes own Skill II; buying it takes 1 point from each pool (overflow standing in for a missing one), atomically, and uses the visit.
+- AC-X9: a third bridge is refused; retrain_bridge swaps owned for open without changing any pool, and uses the visit.
 - AC-X5: a v1 save restores with spine intact, branches locked, points unchanged.
 - AC-X6: Hero effective stats include tree bonuses; zero-base stats only get flat values (data validation rejects an additive % on a zero-base stat).
 - AC-X7: tree effects run through SetEffectController alongside set effects without key collisions.
@@ -154,3 +194,5 @@ Scale check against gear: a full Physical L/L build is +12% max_hp, +14 armor, a
 2. Retrain costs the visit (default) vs free vs gold.
 3. Keystones as trade-offs (default) vs pure upgrades.
 4. Whether Notables should show in the Mission HUD effect list (default: yes, same list as set effects).
+5. Bridge cap 2 (default) vs 3 vs unlimited.
+6. Bridge opens at Skill II in both archetypes (default) vs Skill I.
