@@ -149,7 +149,7 @@ Each bridge gives one small stat line plus one effect from the existing 8 types.
 
 | Bridge | Name | Stats | Effect |
 |---|---|---|---|
-| Physical + Ranged | Skirmish Drill | physical_attack +4%, attack_range +4% | `on_kill_stack_buff` {physical_attack 0.02, attack_range 0.02}, max 8, dur 6 |
+| Physical + Ranged | Crossfire Drill | physical_attack +4%, attack_range +4% | `on_kill_stack_buff` {physical_attack 0.02, attack_range 0.02}, max 8, dur 6 |
 | Physical + Elemental | Flame-Forged Strikes | physical_attack +5%, magic_attack +5% | `on_wave_start_buff` {physical_attack 0.20, magic_attack 0.20}, dur 10 |
 | Physical + Support | Shieldbearer | armor +4 (flat), tower_affinity +5% | `on_hurt_shield` shield 0.08, dur 4, cd 8 |
 | Ranged + Elemental | Storm Arrows | crit_chance +0.02 (flat) | `on_skill_cast_buff` {attack_range 0.15, magic_attack 0.15}, dur 6 |
