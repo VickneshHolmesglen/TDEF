@@ -280,6 +280,12 @@ const CHARGE_UP_SCALE_TROUGH: float = 0.94
 ## the GDD's "removed if voluntarily removed and re-placed" requirement is
 ## satisfied structurally: a removed tower's TowerInstance is freed entirely
 ## (play_remove_animation()), and a fresh instance always starts with no badge.
+const RANK_CHEVRON_COLOR: Color = Color(1.0, 0.82, 0.35)
+const RANK_CHEVRON_OUTLINE: Color = Color(0.15, 0.1, 0.05, 0.9)
+const RANK_CHEVRON_HALF_WIDTH: float = 7.0
+const RANK_CHEVRON_WIDTH: float = 2.5
+const RANK_CHEVRON_SPACING: float = 5.0
+const RANK_CHEVRON_BASE_Y: float = TARGET_DISPLAY_HEIGHT * 0.5
 const PERK_BADGE_COLOR: Color = Color(0.784, 0.502, 0.102)  ## Sanctum Amber — this project's established "special status" color
 const PERK_BADGE_RADIUS: float = 7.0  ## world units — ~14px on-screen, within the GDD's 12-16px spec
 
@@ -336,6 +342,11 @@ var _glow_offset_tween: Tween = null
 var _glow_tween: Tween = null
 var _punch_tween: Tween = null
 var _has_perk_badge: bool = false
+## Tower veterancy rank (0-3), drawn as gold chevrons under the tower.
+var _rank: int = 0
+## Child canvas item the chevrons draw on: a Node2D's own _draw() renders
+## under its children, so drawing them in _draw() hid them behind the sprite.
+var _rank_badge: Node2D = null
 ## Set by configure() -- true only when the tower's archetype is
 ## "elemental" and its element has no entry in ELEMENT_TEXTURES (the
 ## generic-fallback-texture case). See ELEMENT_TINT_RING_RADIUS's own doc
@@ -811,6 +822,37 @@ func _set_hit_flash_amount(amount: float) -> void:
 func set_perk_badge(active: bool) -> void:
 	_has_perk_badge = active
 	queue_redraw()
+
+
+## Tower veterancy (design/quick-specs/tower-veterancy-2026-11-04.md): shows
+## `rank` chevrons (0 hides them). A rank-up also plays the attack punch in
+## the chevron colour so the moment reads on a busy field.
+func set_rank(rank: int) -> void:
+	var ranked_up: bool = rank > _rank
+	_rank = clampi(rank, 0, 3)
+	if _rank_badge == null:
+		_rank_badge = Node2D.new()
+		_rank_badge.name = "RankBadge"
+		_rank_badge.z_index = 1
+		_rank_badge.draw.connect(_draw_rank_badge)
+		add_child(_rank_badge)
+	_rank_badge.queue_redraw()
+	if ranked_up:
+		play_attack_punch(RANK_CHEVRON_COLOR)
+
+
+func get_rank() -> int:
+	return _rank
+
+
+## Stacked gold chevrons over the tower's base, one per rank.
+func _draw_rank_badge() -> void:
+	for i: int in _rank:
+		var y: float = RANK_CHEVRON_BASE_Y - float(i) * RANK_CHEVRON_SPACING
+		var w: float = RANK_CHEVRON_HALF_WIDTH
+		var points := PackedVector2Array([Vector2(-w, y - w * 0.6), Vector2(0.0, y), Vector2(w, y - w * 0.6)])
+		_rank_badge.draw_polyline(points, RANK_CHEVRON_OUTLINE, RANK_CHEVRON_WIDTH + 2.0, true)
+		_rank_badge.draw_polyline(points, RANK_CHEVRON_COLOR, RANK_CHEVRON_WIDTH, true)
 
 
 ## Draws the element-tint identity ring, the TARGETING weapon-slot glow, and

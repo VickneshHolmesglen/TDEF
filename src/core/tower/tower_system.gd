@@ -57,6 +57,12 @@ const AURA_BUFF_DURATION: float = 2.0
 ## one effect_id actually implemented so far, "damage_buff").
 const MAX_DAMAGE_BUFF_FRACTION: float = 1.0
 
+## Tower veterancy (design/quick-specs/tower-veterancy-2026-11-04.md): kills
+## needed for ranks 1, 2 and 3, and the damage bonus per rank (multiplies
+## the final hit, like the aura buff). Rank 3 = +24% damage.
+const VETERANCY_KILL_THRESHOLDS: Array[int] = [10, 30, 60]
+const VETERANCY_DAMAGE_PER_RANK: float = 0.08
+
 # ---------------------------------------------------------------------------
 # Public state — readable by tests and other mission-scene systems
 # ---------------------------------------------------------------------------
@@ -126,6 +132,7 @@ func _ready() -> void:
 	GEventBus.monster_spawned.connect(_on_monster_spawned)
 	GEventBus.monster_cell_entered.connect(_on_monster_cell_entered)
 	GEventBus.monster_died.connect(_on_monster_died)
+	GEventBus.monsters_died_batch.connect(_on_monsters_died_batch)
 	GEventBus.monster_breached.connect(_on_monster_breached)
 	GEventBus.wave_started.connect(_on_wave_started)
 	GEventBus.wave_completed.connect(_on_wave_completed)
@@ -140,6 +147,7 @@ func _exit_tree() -> void:
 	GEventBus.monster_spawned.disconnect(_on_monster_spawned)
 	GEventBus.monster_cell_entered.disconnect(_on_monster_cell_entered)
 	GEventBus.monster_died.disconnect(_on_monster_died)
+	GEventBus.monsters_died_batch.disconnect(_on_monsters_died_batch)
 	GEventBus.monster_breached.disconnect(_on_monster_breached)
 	GEventBus.wave_started.disconnect(_on_wave_started)
 	GEventBus.wave_completed.disconnect(_on_wave_completed)
@@ -514,7 +522,8 @@ func _try_attack(state: TowerMissionState) -> void:
 	var vs_tag_mult: float = _resolve_vs_tag_multiplier(state.foundation, entry)
 	var boss_mult: float = state.foundation.tier_boss_dps_multiplier if entry.get("is_boss", false) else 1.0
 	var aura_mult: float = 1.0 + state.damage_buff_fraction  # TD-tower-008 fix
-	var damage: float = base_damage * crit_mult * vs_tag_mult * boss_mult * aura_mult
+	var rank_mult: float = veterancy_multiplier(state.rank)
+	var damage: float = base_damage * crit_mult * vs_tag_mult * boss_mult * aura_mult * rank_mult
 	var resistance: float = _resolve_element_resistance(state.weapon.element, entry)
 	damage *= 1.0 - resistance
 
@@ -989,6 +998,42 @@ func _on_monster_cell_entered(entity_id: int, grid_cell: Vector2i, path_step_ind
 
 func _on_monster_died(payload: MonsterDiedEvent) -> void:
 	_monster_cache.erase(payload.entity_id)
+	_credit_kill(payload.killer_tower_id)
+
+
+## ADR-0033: MonsterManager emits one batch instead of N monster_died on
+## heavy frames. Same handling per entry (cache erase was previously missed
+## here, leaving batched corpses targetable until wave_completed).
+func _on_monsters_died_batch(payloads: Array[MonsterDiedEvent]) -> void:
+	for payload: MonsterDiedEvent in payloads:
+		_on_monster_died(payload)
+
+
+## Tower veterancy damage multiplier for `rank` (1.0 at rank 0).
+static func veterancy_multiplier(rank: int) -> float:
+	return 1.0 + VETERANCY_DAMAGE_PER_RANK * float(rank)
+
+
+## Rank reached with `kills` credited kills (0-3).
+static func veterancy_rank_for_kills(kills: int) -> int:
+	var rank: int = 0
+	for threshold: int in VETERANCY_KILL_THRESHOLDS:
+		if kills >= threshold:
+			rank += 1
+	return rank
+
+
+## Credits one kill to `tower_id` (ignored for -1 or a tower no longer
+## placed) and emits tower_ranked_up when the kill crosses a threshold.
+func _credit_kill(tower_id: int) -> void:
+	var state: TowerMissionState = placed_towers.get(tower_id) as TowerMissionState
+	if state == null:
+		return
+	state.kills += 1
+	var new_rank: int = veterancy_rank_for_kills(state.kills)
+	if new_rank > state.rank:
+		state.rank = new_rank
+		GEventBus.tower_ranked_up.emit(tower_id, new_rank)
 
 
 ## tower.md Edge Cases (Targeting): monster_died is not fired for monsters

@@ -220,6 +220,11 @@ signal hero_leveled_up(new_level: int)
 ## event_payloads/tower_placed_event.gd.
 signal tower_placed(payload: TowerPlacedEvent)
 
+## Tower veterancy (design/quick-specs/tower-veterancy-2026-11-04.md): a
+## placed tower's credited kills crossed a rank threshold (rank 1-3).
+## Key subscribers: MissionScene (rank chevrons on the TowerInstance).
+signal tower_ranked_up(tower_id: int, rank: int)
+
 ## Tower voluntarily removed during SCOUT or INTERMISSION.
 ## Key subscribers: Constellation, Hero (Tower Affinity recalc),
 ##   Pathfinding (dirty-check + deferred rebuild), Mission HUD.

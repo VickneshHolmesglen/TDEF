@@ -498,6 +498,10 @@ Against a 175 HP monster: time-to-kill ≈ 1.56 seconds under continuous fire.
 
 ---
 
+### Formula 1d: Veterancy Rank Multiplier (added 2026-11-04)
+
+`rank_mult = 1 + 0.08 x rank`, rank 0-3 from credited kills (10/30/60). Multiplies the hit damage alongside `aura_mult`. Kill credit = last direct tower hit; mission runtime only. See `design/quick-specs/tower-veterancy-2026-11-04.md`.
+
 ### Formula 1c: Splash Damage Falloff (Phase 2 — Splash, 2026-08-23)
 
 **Gridless (amended 2026-11-04):** every other ground monster within the `WorldRange` circle of `aoe_radius_cells` around the primary's live position takes damage, including monsters in the primary's own cell; `falloff_fraction = world_distance / WorldRange.radius_px(aoe_radius_cells)`. The aura in Rule 5a uses the same circle between tower square centres. The Chebyshev text below is the original rule.

@@ -256,6 +256,8 @@ func _pass1_damage() -> void:
 		var pre_hit_hp: float = entity.current_hp
 		entity.current_hp -= float(dmg.amount) * _vulnerability_multiplier(entity)
 		entity.last_hit_source = &"hero" if dmg.source_type == 1 else &"tower"
+		if dmg.source_type == 0 and dmg.source_tower_id >= 0:
+			entity.last_hit_tower_id = dmg.source_tower_id
 		# Player-reported 2026-08-16: floating damage numbers rendered near the
 		# boss bar instead of on the hit monster (Mission HUD's own KNOWN GAP
 		# comment) -- this is the one place monster_damage_taken's entity_id
@@ -331,6 +333,7 @@ func _emit_death(entity: MonsterEntity, kill_source: StringName) -> void:
 	ev.world_position = entity.global_position
 	ev.kill_source = kill_source
 	ev.wave_reward_scalar = entity.spawn_wave_reward_scalar
+	ev.killer_tower_id = entity.last_hit_tower_id if kill_source == &"tower" else -1
 	_pending_deaths.append(ev)
 	if entity.swarm_handle != null and _swarm_renderer != null:
 		_swarm_renderer.unregister_creature(entity.swarm_handle)

@@ -63,6 +63,11 @@ var damage_buff_remaining: float = 0.0
 ## and emitted once per tower on wave_completed, per active tower.
 var shots_fired: int = 0
 var damage_dealt: float = 0.0
+## Tower veterancy (design/quick-specs/tower-veterancy-2026-11-04.md):
+## kills credited this mission and the rank they earned (0-3). Mission
+## runtime only, never saved; a sold tower's rank is gone.
+var kills: int = 0
+var rank: int = 0
 var idle_ticks: int = 0
 ## Support/AURA only -- number of tower_aura_pulse emissions this wave.
 ## Always 0 for non-Support archetypes (this tower's weapon never takes the

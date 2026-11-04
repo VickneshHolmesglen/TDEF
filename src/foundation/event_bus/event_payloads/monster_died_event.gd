@@ -29,3 +29,6 @@ extends Resource
 @export var world_position: Vector2 = Vector2.ZERO
 @export var kill_source: String = ""
 @export var wave_reward_scalar: float = 1.0
+## Tower veterancy: the tower credited with the kill (the last tower to hit
+## it, DoT ticks included), -1 when the kill was not a tower's.
+@export var killer_tower_id: int = -1

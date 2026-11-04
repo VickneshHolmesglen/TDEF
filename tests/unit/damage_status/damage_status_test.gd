@@ -460,3 +460,15 @@ func test_resolve_target_mitigation_physical_higher_hero_level_reduces_mitigatio
 	var level_two: float = DamageStatus._resolve_target_mitigation("physical", 50.0, 0.0, 2)
 	assert_float(level_one).is_equal_approx(0.5, 0.0001)
 	assert_float(level_two).is_greater(level_one)
+
+
+# ---------------------------------------------------------------------------
+# Tower veterancy: the damage payload names the tower that dealt the hit.
+# ---------------------------------------------------------------------------
+func test_tower_hit_payload_carries_source_tower_id() -> void:
+	_ds._on_tower_attacked(6, 1, 30.0, false, false, "", 0.0, 0.0, 0.0, false)
+	await get_tree().process_frame
+
+	var emissions: Array = _spy.emissions.get("monster_damage_taken", []) as Array
+	assert_int(emissions.size()).is_equal(1)
+	assert_int((emissions[0][0] as MonsterDamageTaken).source_tower_id).is_equal(6)

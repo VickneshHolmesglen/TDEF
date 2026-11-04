@@ -201,6 +201,7 @@ func _ready() -> void:
 	GEventBus.tower_damaged.connect(_on_tower_damaged)
 	GEventBus.tower_aura_pulse.connect(_on_tower_aura_pulse)
 	GEventBus.pre_placement_perk_activated.connect(_on_pre_placement_perk_activated)
+	GEventBus.tower_ranked_up.connect(_on_tower_ranked_up)
 	GEventBus.monster_died.connect(_on_monster_died)
 	GEventBus.monsters_died_batch.connect(_on_monsters_died_batch)
 
@@ -240,6 +241,7 @@ func _exit_tree() -> void:
 	GEventBus.tower_damaged.disconnect(_on_tower_damaged)
 	GEventBus.tower_aura_pulse.disconnect(_on_tower_aura_pulse)
 	GEventBus.pre_placement_perk_activated.disconnect(_on_pre_placement_perk_activated)
+	GEventBus.tower_ranked_up.disconnect(_on_tower_ranked_up)
 	GEventBus.monster_died.disconnect(_on_monster_died)
 	GEventBus.monsters_died_batch.disconnect(_on_monsters_died_batch)
 
@@ -539,6 +541,13 @@ func _on_pre_placement_perk_activated(tower_id: int, _perk_type: String) -> void
 	if tower_vis == null:
 		return
 	tower_vis.set_perk_badge(true)
+
+
+## Tower veterancy: rank chevrons on the ranked tower's visual.
+func _on_tower_ranked_up(tower_id: int, rank: int) -> void:
+	var tower_vis: TowerInstance = _tower_visuals.get(tower_id) as TowerInstance
+	if tower_vis != null:
+		tower_vis.set_rank(rank)
 
 
 ## design/gdd/monster.md "Death VFX — death_vfx_scene Specification":

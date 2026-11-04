@@ -55,6 +55,9 @@ var lifecycle_state: int = State.SPAWNING
 
 ## &"hero" or &"tower" — set from last MonsterDamageTaken.source_type; forwarded in monster_died.
 var last_hit_source: StringName = &"tower"
+## Tower veterancy: last tower whose direct hit landed (-1 = none yet). Kept
+## through DoT ticks so a tower's burn/poison kill still credits it.
+var last_hit_tower_id: int = -1
 
 ## Forwarded from MonsterSpawnRequest into MonsterDiedEvent for Resource Economy.
 var spawn_wave_reward_scalar: float = 1.0

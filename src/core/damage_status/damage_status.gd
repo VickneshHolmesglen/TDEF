@@ -118,7 +118,7 @@ func _exit_tree() -> void:
 ## applied (TowerSystem's own job) — is_crit is only forwarded here so
 ## MonsterDamageTaken carries a real value instead of the previous hardcoded
 ## false, for any VFX/audio/HUD hook that wants to react to a tower crit.
-func _on_tower_attacked(_tower_id: int, target_monster_id: int, damage_amount: float,
+func _on_tower_attacked(tower_id: int, target_monster_id: int, damage_amount: float,
 		_is_siege: bool, is_armored: bool, _effect_type: String, _effect_value: float,
 		_effect_duration: float, armor_penetration: float, is_crit: bool) -> void:
 	var mitigation: float = 1.0
@@ -138,6 +138,7 @@ func _on_tower_attacked(_tower_id: int, target_monster_id: int, damage_amount: f
 	ev.entity_id = target_monster_id
 	ev.amount = final_damage
 	ev.source_type = 0  # 0 = tower (see MonsterDamageTaken source_type values)
+	ev.source_tower_id = tower_id
 	ev.is_crit = is_crit
 	ev.hero_bonus_tier = 0
 	GEventBus.monster_damage_taken.emit(ev)

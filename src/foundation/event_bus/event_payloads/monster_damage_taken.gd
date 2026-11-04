@@ -27,3 +27,6 @@ extends Resource
 @export var source_type: int = 0  ## 0 = tower, 1 = hero, 2 = reserved
 @export var is_crit: bool = false
 @export var hero_bonus_tier: int = 0  ## 0 = STANDARD, 1 = ELITE, 2 = BOSS
+## Tower veterancy (design/quick-specs/tower-veterancy-2026-11-04.md): the
+## tower that dealt this hit, -1 for hero/other sources.
+@export var source_tower_id: int = -1
