@@ -43,9 +43,11 @@ func test_monster_flight_path_without_goal_is_empty() -> void:
 # --- Stealth reveal -------------------------------------------------------------
 
 func test_monster_stealth_revealed_only_within_hero_radius() -> void:
-	assert_bool(MonsterManager.is_revealed(Vector2i(5, 5), Vector2i(7, 7), 3)).is_true()
-	assert_bool(MonsterManager.is_revealed(Vector2i(5, 5), Vector2i(9, 5), 3)).is_false()
-	assert_bool(MonsterManager.is_revealed(Vector2i(5, 5), Vector2i(-1, -1), 3)).is_false()
+	# Radius 3 = WorldRange circle of 253 px.
+	var monster := Vector2(320.0, 320.0)
+	assert_bool(MonsterManager.is_revealed(monster, monster + Vector2(128.0, 128.0), 3)).is_true()  # 181 px
+	assert_bool(MonsterManager.is_revealed(monster, monster + Vector2(256.0, 0.0), 3)).is_false()
+	assert_bool(MonsterManager.is_revealed(monster, Vector2.INF, 3)).is_false()
 
 
 # --- Tower targeting counters ---------------------------------------------------
@@ -65,6 +67,7 @@ func test_tower_stealthed_target_needs_hero_nearby() -> void:
 	var tower_system := TowerSystem.new()
 	var shade: Dictionary = {"cell": Vector2i(3, 3), "stealthed": true, "reveal_radius": 3}
 	var state: TowerMissionState = _tower_state("HOMING")
+	tower_system._grid = GGrid  # cell centres for the cached-cell fallback (no position sources)
 	# Act / Assert
 	assert_bool(tower_system.can_target(state, shade)).is_false()
 	tower_system._on_hero_position_changed(Vector2i(5, 4))

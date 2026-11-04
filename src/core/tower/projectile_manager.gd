@@ -106,7 +106,8 @@ func _update_projectile(p: Projectile, delta: float) -> void:
 
 	if p.elapsed >= p.flight_time:
 		var arrival_cell: Vector2i = _tower_system.world_to_cell(p.global_position)
-		_tower_system.on_projectile_arrived(p.tower_id, p.target_entity_id, arrival_cell, p.damage_payload)
+		_tower_system.on_projectile_arrived(p.tower_id, p.target_entity_id, arrival_cell, p.damage_payload,
+				p.global_position)
 		_release(p)
 
 

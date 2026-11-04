@@ -142,6 +142,10 @@ var _is_wave_active: bool = false
 ## Hero emits only when its cell changes, so clearing it would leave it unrefreshed.
 var _hero_cell: Vector2i = Vector2i(-1, -1)
 var _hero_alive: bool = false
+## Gridless ranges (option C, 2026-11-04): returns the Hero's live world
+## position (Vector2.INF when unknown). Injected by MissionScene; when unset,
+## the Hero is measured from the centre of its cached cell.
+var hero_position_source: Callable = Callable()
 ## ADR-0036: F2's unclamped running multiplicative product across all
 ## equipped tarot_speed_scalar_mult cards -- reset to 1.0 on every mission's
 ## (and retry's) wave 1, since MonsterManager is a static MissionScene child,
@@ -673,8 +677,7 @@ func _pass2_boss_logic(delta: float) -> void:
 
 
 func _boss_execute_scan(entity: MonsterEntity) -> void:
-	var boss_cell: Vector2i = _grid.world_to_cell(entity.global_position)
-	var towers: Array[int] = _grid.get_towers_in_range(boss_cell, entity.resource.boss_attack_range_cells)
+	var towers: Array[int] = _towers_in_reach(entity)
 	var hero_in_range: bool = _hero_in_range(entity)
 	if towers.is_empty() and not hero_in_range:
 		return
@@ -688,20 +691,29 @@ func _boss_execute_scan(entity: MonsterEntity) -> void:
 	# the tower), or when no tower is in range at all. With the Hero out of range this is the
 	# original tower-only behavior, unchanged.
 	if hero_in_range and (towers.is_empty()
-			or _hero_distance(entity) < _closest_tower_distance(boss_cell, entity.resource.boss_attack_range_cells)):
+			or _hero_distance(entity) < entity.global_position.distance_to(_grid.get_tower_center(towers[0]))):
 		_begin_hero_windup(entity)
 		return
 	entity.boss_attack_prepare_remaining = BOSS_ATTACK_PREPARE_FRAMES
 	entity.boss_locked_target_id = towers[0]
 
 
-## Smallest Chebyshev radius (0..max_range) at which any tower is in range of `cell`, found with the
-## existing Grid API only (no tower-cell lookup exists). max_range + 1 when none is in range.
-func _closest_tower_distance(cell: Vector2i, max_range: int) -> int:
-	for radius: int in range(0, max_range + 1):
-		if not _grid.get_towers_in_range(cell, radius).is_empty():
-			return radius
-	return max_range + 1
+## Towers whose square centre lies within the monster's reach circle (WorldRange), closest
+## first. The cell query is only a cheap superset: one extra cell of slack covers the
+## monster's lane offset and an off-grid tower's rounding.
+func _towers_in_reach(entity: MonsterEntity) -> Array[int]:
+	var reach_cells: int = entity.resource.boss_attack_range_cells
+	var slack: int = ceili(WorldRange.radius_px(reach_cells) / CELL_SIZE + 1.0)
+	var pos: Vector2 = entity.global_position
+	var result: Array[int] = []
+	for id: int in _grid.get_towers_in_range(_grid.world_to_cell(pos), slack):
+		if WorldRange.within(pos, _grid.get_tower_center(id), reach_cells):
+			result.append(id)
+	result.sort_custom(func(a: int, b: int) -> bool:
+		var da: float = pos.distance_squared_to(_grid.get_tower_center(a))
+		var db: float = pos.distance_squared_to(_grid.get_tower_center(b))
+		return da < db or (da == db and a < b))
+	return result
 
 # ---------------------------------------------------------------------------
 # Pass 2b — Hero attacks (hero-damage spec §4.2)
@@ -741,14 +753,26 @@ func get_monster_world_position(entity_id: int) -> Vector2:
 	return entity.global_position
 
 
-## Chebyshev distance in grid cells from the monster's current cell to the Hero's cached cell.
-func _hero_distance(entity: MonsterEntity) -> int:
-	var cell: Vector2i = _grid.world_to_cell(entity.global_position)
-	return maxi(absi(cell.x - _hero_cell.x), absi(cell.y - _hero_cell.y))
+## World distance from the monster to the Hero (INF when the Hero is not targetable).
+func _hero_distance(entity: MonsterEntity) -> float:
+	var hero: Vector2 = _hero_world_position()
+	return INF if hero == Vector2.INF else entity.global_position.distance_to(hero)
 
 
 func _hero_in_range(entity: MonsterEntity) -> bool:
-	return _hero_targetable() and _hero_distance(entity) <= entity.resource.boss_attack_range_cells
+	return _hero_distance(entity) <= WorldRange.radius_px(entity.resource.boss_attack_range_cells)
+
+
+## The Hero's world position for range checks, or Vector2.INF when it cannot be targeted.
+## Prefers the injected live position; falls back to the centre of the cached cell.
+func _hero_world_position() -> Vector2:
+	if not _hero_targetable():
+		return Vector2.INF
+	if hero_position_source.is_valid():
+		var live: Vector2 = hero_position_source.call()
+		if live != Vector2.INF:
+			return live
+	return _grid.cell_to_world(_hero_cell)
 
 
 ## Locks the Hero and starts the seconds-based wind-up; announces it for presentation/audio.
@@ -1489,18 +1513,21 @@ static func flight_path(from_cell: Vector2i, goal_cells: Array[Vector2i]) -> Arr
 	return result
 
 
-## Chebyshev (king-move) cell distance, the metric every range check uses.
+## Chebyshev (king-move) cell distance. Only flight_path's goal choice uses it now:
+## gameplay ranges are WorldRange circles (option C, 2026-11-04).
 static func chebyshev(a: Vector2i, b: Vector2i) -> int:
 	return maxi(absi(a.x - b.x), absi(a.y - b.y))
 
 
 ## Shared stealth rule (TowerSystem uses this same function): a stealthed
-## monster is revealed while the Hero stands within `radius` cells. A negative
-## hero cell means no living Hero, so nothing is revealed.
-static func is_revealed(monster_cell: Vector2i, hero_cell: Vector2i, radius: int) -> bool:
-	if hero_cell.x < 0 or hero_cell.y < 0:
+## monster is revealed while the Hero stands within its `radius` cells range
+## circle (WorldRange). Vector2.INF for the Hero means no living Hero, so
+## nothing is revealed.
+## Usage: MonsterManager.is_revealed(monster.global_position, hero_pos, 3)
+static func is_revealed(monster_pos: Vector2, hero_pos: Vector2, radius: int) -> bool:
+	if hero_pos == Vector2.INF:
 		return false
-	return chebyshev(monster_cell, hero_cell) <= radius
+	return WorldRange.within(monster_pos, hero_pos, radius)
 
 
 ## Healing pulses and stealth visibility. Runs after the attack passes and
@@ -1533,9 +1560,8 @@ func _pass2c_archetype_behaviours(delta: float) -> void:
 					entity.dash_cooldown_remaining += res.dash_interval_seconds
 					entity.dash_remaining = res.dash_duration_seconds
 		if res.stealthed:
-			var hero_cell: Vector2i = _hero_cell if _hero_targetable() else Vector2i(-1, -1)
-			var hidden: bool = not is_revealed(_grid.world_to_cell(entity.global_position),
-					hero_cell, res.stealth_reveal_radius_cells)
+			var hidden: bool = not is_revealed(entity.global_position, _hero_world_position(),
+					res.stealth_reveal_radius_cells)
 			if hidden != entity.stealth_hidden:
 				entity.stealth_hidden = hidden
 				if entity.monster_instance != null and is_instance_valid(entity.monster_instance):
@@ -1546,7 +1572,7 @@ func _pass2c_archetype_behaviours(delta: float) -> void:
 ## healer radius (bosses included, capped at their max). A healer never heals
 ## itself: killing it first is the counter.
 func _heal_pulse(healer: MonsterEntity) -> void:
-	var origin: Vector2i = _grid.world_to_cell(healer.global_position)
+	var origin: Vector2 = healer.global_position
 	var radius: int = healer.resource.heal_radius_cells
 	var fraction: float = healer.resource.heal_fraction
 	for other in active_monsters:
@@ -1554,7 +1580,7 @@ func _heal_pulse(healer: MonsterEntity) -> void:
 			continue
 		if other.current_hp >= other.scaled_hp:
 			continue
-		if chebyshev(origin, _grid.world_to_cell(other.global_position)) > radius:
+		if not WorldRange.within(origin, other.global_position, radius):
 			continue
 		other.current_hp = minf(other.scaled_hp, other.current_hp + other.scaled_hp * fraction)
 		if other.monster_instance != null and is_instance_valid(other.monster_instance):
@@ -1567,12 +1593,12 @@ func _heal_pulse(healer: MonsterEntity) -> void:
 ## haste_duration_seconds. Refreshes rather than stacks: the timer resets and
 ## the larger multiplier wins, so two drummers do not compound.
 func _haste_pulse(drummer: MonsterEntity) -> void:
-	var origin: Vector2i = _grid.world_to_cell(drummer.global_position)
+	var origin: Vector2 = drummer.global_position
 	var res: MonsterResource = drummer.resource
 	for other in active_monsters:
 		if other == drummer or not is_instance_valid(other) or other.lifecycle_state != MonsterEntity.State.ACTIVE:
 			continue
-		if chebyshev(origin, _grid.world_to_cell(other.global_position)) > res.haste_radius_cells:
+		if not WorldRange.within(origin, other.global_position, res.haste_radius_cells):
 			continue
 		var current: float = other.haste_multiplier if other.haste_remaining > 0.0 else 1.0
 		other.haste_multiplier = maxf(current, res.haste_speed_multiplier)

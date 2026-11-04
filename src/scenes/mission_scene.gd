@@ -171,6 +171,12 @@ func _ready() -> void:
 	hero_feedback.name = "HeroFeedback"
 	hero_feedback.setup(_hero, _camera, _monster_manager.get_monster_world_position)
 	_gameplay_root.add_child(hero_feedback)
+	# Gridless ranges (option C, ADR-0005 amendment 2026-11-04): range, splash,
+	# aura and reveal checks measure true positions, not cell centres.
+	_tower_system.monster_position_source = _monster_manager.get_monster_world_position
+	_tower_system.hero_position_source = _hero_world_position
+	_monster_manager.hero_position_source = _hero_world_position
+	_hero.monster_position_source = _monster_manager.get_monster_world_position
 	# Fast-forward (1x/2x/3x); the HUD's speed button finds it via GameSpeed.GROUP_NAME.
 	var game_speed := GameSpeed.new()
 	game_speed.name = "GameSpeed"
@@ -468,7 +474,7 @@ func _on_tower_projectile_fired(tower_id: int, target_monster_id: int, is_armore
 		return
 	var projectile: ProjectileVisual = ProjectileVisualScene.instantiate()
 	_dynamic_visuals_root.add_child(projectile)
-	var aoe_radius_world: float = state.weapon.aoe_radius_cells * CELL_SIZE
+	var aoe_radius_world: float = WorldRange.radius_px(state.weapon.aoe_radius_cells) if state.weapon.aoe_radius_cells > 0 else 0.0
 	projectile.configure(state.foundation.archetype, state.weapon.projectile_type,
 			tower_vis.global_position, target, aoe_radius_world, state.weapon.element, is_armored)
 
@@ -519,7 +525,7 @@ func _on_tower_aura_pulse(payload: TowerAuraPulseEvent) -> void:
 	var ring: Node2D = AoeRingVisualScene.instantiate()
 	_dynamic_visuals_root.add_child(ring)
 	ring.global_position = tower_vis.global_position
-	ring.configure(payload.aura_radius_cells * CELL_SIZE, SUPPORT_AURA_COLOR)
+	ring.configure(WorldRange.radius_px(payload.aura_radius_cells), SUPPORT_AURA_COLOR)
 
 
 ## design/gdd/tower.md "Pre-Placement Perk Indicator" — see
@@ -674,6 +680,13 @@ func _attempt_placement_at_world(center: Vector2) -> bool:
 	else:
 		_spawn_placement_reject_flash(center, blueprint_id)
 	return placed
+
+
+## The Hero's live world position for gridless range checks (Vector2.INF if gone).
+func _hero_world_position() -> Vector2:
+	if _hero == null or not is_instance_valid(_hero):
+		return Vector2.INF
+	return _hero.global_position
 
 
 ## Where the selected blueprint's square would go for a pointer at `pointer`

@@ -26,6 +26,10 @@ class _StubGrid extends RefCounted:
 	func get_towers_in_range(_center: Vector2i, _radius: int) -> Array[int]:
 		return towers_in_range
 
+	## Gridless reach (option C): every stub tower sits on the boss's spawn cell.
+	func get_tower_center(_id: int) -> Vector2:
+		return Vector2.ZERO
+
 
 class _StubPathfinding extends RefCounted:
 	func find_path(_from: Vector2i, _tier: int) -> Array[Vector2i]:

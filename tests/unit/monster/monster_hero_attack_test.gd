@@ -26,6 +26,10 @@ class _StubGrid extends RefCounted:
 				out.append(id)
 		return out
 
+	## Gridless reach (option C): the tower's square centre sits `distance` cells along +x.
+	func get_tower_center(id: int) -> Vector2:
+		return Vector2(float(towers_at_distance.get(id, 0)) * 64.0, 0.0)
+
 
 class _StubPathfinding extends RefCounted:
 	func find_path(_from: Vector2i, _tier: int) -> Array[Vector2i]:

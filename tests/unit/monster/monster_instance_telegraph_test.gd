@@ -28,9 +28,10 @@ func test_progress_is_zero_at_start_one_at_end_and_clamped() -> void:
 	assert_float(MonsterInstance.windup_progress(0.5, 0.0)).is_equal(1.0)
 
 
-func test_reach_half_extent_is_a_square_of_2r_plus_1_cells() -> void:
-	assert_float(MonsterInstance.reach_half_extent(2)).is_equal(160.0)  # 5 cells * 64 / 2
-	assert_float(MonsterInstance.reach_half_extent(3)).is_equal(224.0)
+func test_reach_radius_is_the_world_range_circle() -> void:
+	# Equal area to the old (2r+1)-cell square: radius = 160 * 2/sqrt(pi) for r = 2.
+	assert_float(MonsterInstance.reach_radius(2)).is_equal_approx(180.54, 0.01)
+	assert_float(MonsterInstance.reach_radius(3)).is_equal(WorldRange.radius_px(3))
 
 
 func test_pulse_amount_stays_in_range_and_completes_two_cycles_per_second() -> void:

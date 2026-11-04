@@ -1,6 +1,9 @@
 # Free-flow movement and placement: options (exploration only)
 
-Date: 2026-11-04. Status: **options A and B built 2026-11-04** (ADR-0006, ADR-0005, ADR-0008 amendments). C not scheduled.
+Date: 2026-11-04. Status: **options A, B and C (gridless gameplay variant) built 2026-11-04** (ADR-0006, ADR-0005, ADR-0008 amendments).
+C as built: the user chose "gridless gameplay" (mazing kept): all ranges are world-unit circles between true
+positions (WorldRange, equal area to the old squares); routing, mazing, constellation and mastery stay on the
+hidden grid. The navmesh variants were not built.
 B as built: towers block every cell their square overlaps (no clipping) and the ghost outlines those
 cells; range/constellation stay cell-based from the square's rounded block; 0.2-cell snap magnet.
 Question from the user: "Can we swap from grid based to free flow based?"

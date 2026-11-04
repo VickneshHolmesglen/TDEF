@@ -348,9 +348,9 @@ static func windup_progress(remaining: float, total: float) -> float:
 	return clampf(1.0 - remaining / total, 0.0, 1.0)
 
 
-## Half the side of the reach square: reach is Chebyshev distance, so it is a (2r+1)-cell square.
-static func reach_half_extent(range_cells: int) -> float:
-	return (float(range_cells) + 0.5) * CELL_SIZE
+## Radius of the reach circle: the same WorldRange circle the attack check uses (option C).
+static func reach_radius(range_cells: int) -> float:
+	return WorldRange.radius_px(range_cells)
 
 
 ## 0..1 pulse at TELEGRAPH_PULSE_HZ; a steady 0.5 under reduced motion.
@@ -501,23 +501,21 @@ func _draw() -> void:
 			_draw_reach_outline(RESOLVE_WHIFF_COLOR, _resolve_alpha, true)
 
 
-## Outline of the reach square. Dashed while a wind-up is live (the shape is the non-color cue);
+## Outline of the reach circle. Dashed while a wind-up is live (the shape is the non-color cue);
 ## solid for the hit flash.
 func _draw_reach_outline(color: Color, alpha: float, dashed: bool) -> void:
-	var half: float = reach_half_extent(_telegraph_range_cells)
+	var radius: float = reach_radius(_telegraph_range_cells)
 	var c: Vector2 = _telegraph_center_offset
-	var corners := PackedVector2Array([
-		c + Vector2(-half, -half), c + Vector2(half, -half),
-		c + Vector2(half, half), c + Vector2(-half, half),
-	])
 	var draw_color := Color(color.r, color.g, color.b, alpha)
-	for i in range(4):
-		var from: Vector2 = corners[i]
-		var to: Vector2 = corners[(i + 1) % 4]
-		if dashed:
-			draw_dashed_line(from, to, draw_color, TELEGRAPH_OUTLINE_WIDTH, TELEGRAPH_DASH)
-		else:
-			draw_line(from, to, draw_color, TELEGRAPH_OUTLINE_WIDTH)
+	if not dashed:
+		draw_arc(c, radius, 0.0, TAU, 64, draw_color, TELEGRAPH_OUTLINE_WIDTH)
+		return
+	# Dashes of about TELEGRAPH_DASH world units with equal gaps.
+	var dashes: int = maxi(8, int(TAU * radius / (TELEGRAPH_DASH * 2.0)))
+	var step: float = TAU / float(dashes)
+	for i in range(dashes):
+		var a: float = float(i) * step
+		draw_arc(c, radius, a, a + step * 0.5, 4, draw_color, TELEGRAPH_OUTLINE_WIDTH)
 
 
 ## Countdown bar under the sprite (the second non-color cue): dark track, red fill, red border.

@@ -3,6 +3,31 @@
 ## Status
 Accepted
 
+## Amendment (2026-11-04) — Gridless Gameplay Ranges (option C)
+
+Requested by the user (option C of `design/quick-specs/free-flow-options-2026-11-04.md`,
+"gridless gameplay" variant: mazing kept). Every gameplay range is a circle in world
+units between true positions, never a cell distance:
+
+- `WorldRange` (`src/foundation/grid/world_range.gd`): `radius_px(cells) =
+  (cells + 0.5) * 64 * 2/sqrt(pi)` (equal area to the old Chebyshev square) and
+  `within(a, b, cells)`. Authored data keeps its `*_cells` fields.
+- Tower range, splash (falloff = world distance / radius), Support aura (tower square
+  centres), stealth reveal, healer and drummer pulses, ELITE/BOSS reach (towers by
+  square centre via `Grid.get_tower_center`, closest first; the Hero by its
+  `global_position`), and the Hero's own target choice.
+- Live positions are injected callables (`TowerSystem.monster_position_source` /
+  `hero_position_source`, `MonsterManager.hero_position_source`,
+  `Hero.monster_position_source`), wired by MissionScene. Unset, each falls back to
+  the centre of the cached cell, so unit fixtures and the QA scene keep working.
+- The wind-up telegraph and the splash/aura rings draw the same circle.
+- Still cell-based on purpose: routing and mazing (pathfinding over the walkable
+  map), constellation patterns, tower mastery and class proximity (adjacency rules
+  about which towers stand near which), and `monster_cell_entered` / path steps.
+
+Validation: `tests/unit/tower/gridless_ranges_test.gd`, plus updated range tests in
+`tower_combat_test.gd`, `archetype_behaviours_test.gd`, `monster_hero_attack_test.gd`.
+
 ## Amendment (2026-11-04) — Free Tower Placement
 
 Requested by the user (option B of `design/quick-specs/free-flow-options-2026-11-04.md`).

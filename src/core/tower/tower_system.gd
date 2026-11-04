@@ -87,6 +87,16 @@ var _monster_cache: Dictionary = {}
 ## Hero cell for the stealth reveal rule (2026-11-02). (-1, -1) = no living Hero.
 var _hero_cell: Vector2i = Vector2i(-1, -1)
 
+## Gridless ranges (option C, 2026-11-04): every range, splash, aura and
+## reveal check is a WorldRange circle between true positions. These sources
+## give live positions and are injected by MissionScene:
+##   monster_position_source(entity_id) -> Vector2 (Vector2.INF when unknown)
+##   hero_position_source() -> Vector2 (Vector2.INF when unknown)
+## When unset (unit fixtures) a monster or the Hero is measured from the centre
+## of its cached cell.
+var monster_position_source: Callable = Callable()
+var hero_position_source: Callable = Callable()
+
 ## DI seams — untyped so RefCounted stubs work in unit tests.
 var _grid = null
 var _pathfinding = null
@@ -391,19 +401,52 @@ func compute_dps(weapon: WeaponComponent, foundation: FoundationComponent, top: 
 	return (weapon.weapon_damage + top_damage_bonus) * weapon.attack_speed * foundation.tier_dps_multiplier
 
 
-## True when enemy_cell is within the tower's effective range.
+## True when enemy_cell's centre is within the tower's effective range circle
+## measured from tower_cell's centre. Cell-coordinate convenience over
+## is_in_range_at(), which combat uses with true positions.
 ##
 ## Effective range = attack_range_cells + shaft's range_bonus_cells (new
 ## 2026-09-01), + 2 more if cone_half_angle ≤ 30°.
-## Distance metric: Chebyshev (diagonals equal to cardinals).
-## `shaft` defaults to null (treated as +0 bonus) so this stays callable
-## exactly as before wherever a caller has no Shaft to pass (e.g. this
-## project's existing test suite, tower_combat_test.gd).
+## `shaft` defaults to null (treated as +0 bonus).
 func is_in_range(tower_cell: Vector2i, enemy_cell: Vector2i, focus: FocusComponent, shaft: ShaftComponent = null) -> bool:
-	var chebyshev: int = max(
-		abs(tower_cell.x - enemy_cell.x), abs(tower_cell.y - enemy_cell.y)
-	)
-	return chebyshev <= _get_effective_range(focus, shaft)
+	return is_in_range_at(_grid.cell_to_world(tower_cell), _grid.cell_to_world(enemy_cell), focus, shaft)
+
+
+## Gridless range check (option C, 2026-11-04): true when `enemy_pos` lies
+## within the WorldRange circle of the effective range around `tower_pos`.
+## Usage: is_in_range_at(state_center, monster_pos, state.focus, state.shaft)
+func is_in_range_at(tower_pos: Vector2, enemy_pos: Vector2, focus: FocusComponent, shaft: ShaftComponent = null) -> bool:
+	return WorldRange.within(tower_pos, enemy_pos, _get_effective_range(focus, shaft))
+
+
+## World centre a tower measures its ranges from: its true square centre, or
+## its cell's centre for a state built without place_tower_at() (unit fixtures).
+func _tower_center(state: TowerMissionState) -> Vector2:
+	if state.world_position != Vector2.ZERO:
+		return state.world_position
+	return _grid.cell_to_world(state.grid_position)
+
+
+## Live world position of a cached monster: the injected source when it knows
+## the id, else the centre of the monster's cached cell.
+func _monster_position(entity_id: int) -> Vector2:
+	if monster_position_source.is_valid():
+		var live: Vector2 = monster_position_source.call(entity_id)
+		if live != Vector2.INF:
+			return live
+	return _grid.cell_to_world((_monster_cache[entity_id] as Dictionary)["cell"] as Vector2i)
+
+
+## The Hero's world position for the stealth reveal rule; Vector2.INF when
+## there is no living Hero.
+func _hero_position() -> Vector2:
+	if _hero_cell.x < 0 or _hero_cell.y < 0:
+		return Vector2.INF
+	if hero_position_source.is_valid():
+		var live: Vector2 = hero_position_source.call()
+		if live != Vector2.INF:
+			return live
+	return _grid.cell_to_world(_hero_cell)
 
 
 ## Effective range after Shaft's range_bonus_cells and the cone bonus.
@@ -504,9 +547,8 @@ func _try_attack(state: TowerMissionState) -> void:
 		}
 		# Free placement: fire from the tower's true centre. A state built without
 		# place_tower_at() (unit fixtures) has no world_position; use its cell.
-		var origin_world: Vector2 = state.world_position if state.world_position != Vector2.ZERO \
-				else _grid.cell_to_world(state.grid_position)
-		var target_world: Vector2 = _grid.cell_to_world(entry["cell"] as Vector2i)
+		var origin_world: Vector2 = _tower_center(state)
+		var target_world: Vector2 = _monster_position(target_id)
 		var fired: bool = _projectile_manager.fire(state.tower_id, StringName(state.weapon.projectile_type),
 				origin_world, target_id, target_world, payload)
 		if not fired:
@@ -537,27 +579,26 @@ func _record_shot(state: TowerMissionState, target_id: int, damage: float) -> vo
 		state.scatter_target_cycle[target_id] = int(state.scatter_target_cycle.get(target_id, 0)) + 1
 
 
-## Formula 1c (design/gdd/tower.md) — every other monster within
-## weapon.aoe_radius_cells (Chebyshev) of the primary target's cell takes a
-## falloff-scaled fraction of the primary's already-resolved damage. Crit/
+## Formula 1c (design/gdd/tower.md) — every other monster within the
+## weapon.aoe_radius_cells WorldRange circle around the blast centre (the
+## primary target's position) takes a falloff-scaled fraction of the primary's already-resolved damage. Crit/
 ## vs-tag/boss/resistance are NOT re-rolled per splash target — every hit
 ## monster shares the same resolved `damage` number, just scaled down by
 ## distance. Status effects deliberately do not splash (effect_type always
 ## forwarded as "" here) — see Formula 1c's own doc comment for why.
-func _apply_splash_damage(state: TowerMissionState, primary_id: int, primary_cell: Vector2i,
+func _apply_splash_damage(state: TowerMissionState, primary_id: int, blast_center: Vector2,
 		damage: float, is_siege: bool, is_crit: bool) -> void:
-	var radius: int = state.weapon.aoe_radius_cells
+	var radius_px: float = WorldRange.radius_px(state.weapon.aoe_radius_cells)
 	for entity_id: int in _monster_cache:
 		if entity_id == primary_id:
 			continue
 		var entry: Dictionary = _monster_cache[entity_id] as Dictionary
 		if entry.get("is_flying", false):
 			continue  # a ground burst never reaches a flyer (archetype counter, 2026-11-02)
-		var cell: Vector2i = entry["cell"] as Vector2i
-		var distance: int = maxi(absi(cell.x - primary_cell.x), absi(cell.y - primary_cell.y))
-		if distance < 1 or distance > radius:
+		var distance: float = blast_center.distance_to(_monster_position(entity_id))
+		if distance > radius_px:
 			continue
-		var falloff_fraction: float = float(distance) / float(radius)
+		var falloff_fraction: float = distance / radius_px
 		var splash_multiplier: float = lerpf(1.0, MIN_SPLASH_FALLOFF, falloff_fraction)
 		var splash_damage: float = damage * splash_multiplier
 		var is_armored: bool = entry["is_armored"] as bool
@@ -575,8 +616,8 @@ func _apply_splash_damage(state: TowerMissionState, primary_id: int, primary_cel
 ## damage_buff_remaining on every allied tower (including itself; no
 ## self-exclusion is specified anywhere and a Support tower buffing its own
 ## HP-only combat presence is harmless -- it never reaches _try_attack's
-## damage path itself) within aura_radius_cells (Chebyshev, same distance
-## metric as every other range check in this file). Only "damage_buff" is
+## damage path itself) whose centre is within the aura_radius_cells WorldRange
+## circle (same rule as every other range check in this file). Only "damage_buff" is
 ## implemented -- any other aura_effect_type is a no-op here (tower.md's own
 ## schema says "D&S System owns the valid range per effect_id"; this is
 ## this system's owned range for the one effect_id any shipped content
@@ -587,13 +628,10 @@ func _apply_aura_pulse(source_state: TowerMissionState) -> void:
 		return
 	var fraction: float = clampf(source_state.weapon.aura_effect_value, 0.0, MAX_DAMAGE_BUFF_FRACTION)
 	var radius: int = source_state.weapon.aura_radius_cells
+	var origin: Vector2 = _tower_center(source_state)
 	for id: int in placed_towers:
 		var ally: TowerMissionState = placed_towers[id] as TowerMissionState
-		var distance: int = maxi(
-			absi(ally.grid_position.x - source_state.grid_position.x),
-			absi(ally.grid_position.y - source_state.grid_position.y)
-		)
-		if distance > radius:
+		if not WorldRange.within(origin, _tower_center(ally), radius):
 			continue
 		ally.damage_buff_fraction = maxf(ally.damage_buff_fraction, fraction)
 		ally.damage_buff_remaining = AURA_BUFF_DURATION
@@ -710,10 +748,11 @@ func _find_scatter_target(state: TowerMissionState) -> int:
 ## shared by every targeting mode below.
 func _candidates_in_range(state: TowerMissionState) -> Array[int]:
 	var result: Array[int] = []
+	var center: Vector2 = _tower_center(state)
 	for entity_id: int in _monster_cache:
 		var entry: Dictionary = _monster_cache[entity_id] as Dictionary
-		var cell: Vector2i = entry["cell"] as Vector2i
-		if is_in_range(state.grid_position, cell, state.focus, state.shaft) and can_target(state, entry):
+		if is_in_range_at(center, _monster_position(entity_id), state.focus, state.shaft) \
+				and can_target(state, entry, entity_id):
 			result.append(entity_id)
 	return result
 
@@ -723,11 +762,15 @@ func _candidates_in_range(state: TowerMissionState) -> Array[int]:
 ##   * BALLISTIC (lobbed) weapons cannot hit flying monsters; HOMING/BEAM can.
 ##   * A stealthed monster is only targetable while the Hero is within its
 ##     reveal radius (MonsterManager.is_revealed, the same rule the sprite fade uses).
-func can_target(state: TowerMissionState, entry: Dictionary) -> bool:
+## `entity_id` (optional) lets the reveal rule use the monster's live position;
+## without it the cached cell's centre is used.
+func can_target(state: TowerMissionState, entry: Dictionary, entity_id: int = -1) -> bool:
 	if entry.get("is_flying", false) and state.weapon.projectile_type == "BALLISTIC":
 		return false
 	if entry.get("stealthed", false):
-		return MonsterManager.is_revealed(entry["cell"] as Vector2i, _hero_cell, entry.get("reveal_radius", 0) as int)
+		var pos: Vector2 = _monster_position(entity_id) if _monster_cache.has(entity_id) \
+				else _grid.cell_to_world(entry["cell"] as Vector2i)
+		return MonsterManager.is_revealed(pos, _hero_position(), entry.get("reveal_radius", 0) as int)
 	return true
 
 
@@ -795,7 +838,7 @@ func _get_best_target(tower_id: int, targeting_mode: String) -> int:
 func get_cached_monster_world_position(entity_id: int) -> Variant:
 	if not _monster_cache.has(entity_id):
 		return null
-	return _grid.cell_to_world((_monster_cache[entity_id] as Dictionary)["cell"] as Vector2i)
+	return _monster_position(entity_id)
 
 
 ## HOMING re-acquisition (tower.md Rule 19): delegates to _get_best_target(),
@@ -833,8 +876,11 @@ func world_to_cell(world_position: Vector2) -> Vector2i:
 ## fires, but an AoE-tagged BALLISTIC weapon still detonates against the
 ## empty arrival cell (passing primary_id=-1, an id no real entity can ever
 ## match, to _apply_splash_damage() so nothing gets excluded from the blast).
+##
+## `arrival_world` (optional): the projectile's true landing point, the blast
+## centre for an empty-target detonation; defaults to arrival_cell's centre.
 func on_projectile_arrived(tower_id: int, target_entity_id: int, arrival_cell: Vector2i,
-		damage_payload: Dictionary) -> void:
+		damage_payload: Dictionary, arrival_world: Vector2 = Vector2.INF) -> void:
 	if not placed_towers.has(tower_id):
 		return  # tower sold/destroyed mid-flight
 	var state: TowerMissionState = placed_towers[tower_id] as TowerMissionState
@@ -864,9 +910,10 @@ func on_projectile_arrived(tower_id: int, target_entity_id: int, arrival_cell: V
 		GEventBus.tower_attacked.emit.call_deferred(tower_id, target_entity_id, damage, is_siege, is_armored,
 				effect_type, effect_value, effect_duration, armor_penetration, is_crit)
 		if splash_eligible:
-			_apply_splash_damage(state, target_entity_id, entry["cell"] as Vector2i, damage, is_siege, is_crit)
+			_apply_splash_damage(state, target_entity_id, _monster_position(target_entity_id), damage, is_siege, is_crit)
 	elif splash_eligible:
-		_apply_splash_damage(state, -1, arrival_cell, damage, is_siege, is_crit)
+		var blast: Vector2 = arrival_world if arrival_world != Vector2.INF else _grid.cell_to_world(arrival_cell)
+		_apply_splash_damage(state, -1, blast, damage, is_siege, is_crit)
 
 # ---------------------------------------------------------------------------
 # Boss damage receiver

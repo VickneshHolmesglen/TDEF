@@ -247,13 +247,28 @@ func test_continuous_fire_t2_10_seconds_total_damage_1120() -> void:
 	assert_float(total_damage).is_between(1119.0, 1121.0)
 
 # ---------------------------------------------------------------------------
-# AC-13: Range=4, cone=180°, Chebyshev=5 → out of range
+# AC-13 (gridless ranges, option C 2026-11-04): range is a WorldRange circle,
+# radius (4 + 0.5) * 64 * 2/sqrt(pi) = 325 px for range 4. The old square's far
+# corner (4, 4) cells away = 362 px is now out of range.
 # ---------------------------------------------------------------------------
 
-func test_is_in_range_chebyshev5_range4_cone180_returns_false() -> void:
+func test_is_in_range_range4_square_corner_is_outside_the_circle() -> void:
 	var data: TowerBlueprintData = _make_data(35.0, 2.0, 1.0, 4, 180.0)
-	# Tower at (8,6), enemy at (13,6): Chebyshev = |13-8| = 5 > 4
-	assert_bool(_ts.is_in_range(Vector2i(8, 6), Vector2i(13, 6), data.focus)).is_false()
+	assert_bool(_ts.is_in_range(Vector2i(8, 6), Vector2i(12, 10), data.focus)).is_false()
+
+
+func test_is_in_range_range4_reaches_five_cells_along_an_axis() -> void:
+	var data: TowerBlueprintData = _make_data(35.0, 2.0, 1.0, 4, 180.0)
+	# 320 px <= 325 px: the equal-area circle reaches a little past the old square's side.
+	assert_bool(_ts.is_in_range(Vector2i(8, 6), Vector2i(13, 6), data.focus)).is_true()
+
+
+func test_is_in_range_at_measures_true_positions() -> void:
+	var data: TowerBlueprintData = _make_data(35.0, 2.0, 1.0, 1, 180.0)
+	var r: float = WorldRange.radius_px(1)  # 108 px
+	var tower := Vector2(100.0, 100.0)
+	assert_bool(_ts.is_in_range_at(tower, tower + Vector2(r - 0.5, 0.0), data.focus)).is_true()
+	assert_bool(_ts.is_in_range_at(tower, tower + Vector2(r + 0.5, 0.0), data.focus)).is_false()
 
 # ---------------------------------------------------------------------------
 # AC-14: Narrow cone 30° bonus +2: Chebyshev=5 ≤ effective_range=6 → in range
@@ -268,9 +283,9 @@ func test_is_in_range_cone30_grants_plus2_range() -> void:
 # AC-15: Cone=90° (no bonus): Chebyshev=5 > range=4 → out of range
 # ---------------------------------------------------------------------------
 
-func test_is_in_range_cone90_no_bonus_chebyshev5_returns_false() -> void:
+func test_is_in_range_cone90_no_bonus_six_cells_returns_false() -> void:
 	var data: TowerBlueprintData = _make_data(35.0, 2.0, 1.0, 4, 90.0)
-	assert_bool(_ts.is_in_range(Vector2i(8, 6), Vector2i(13, 6), data.focus)).is_false()
+	assert_bool(_ts.is_in_range(Vector2i(8, 6), Vector2i(14, 6), data.focus)).is_false()
 
 # ---------------------------------------------------------------------------
 # AC-16: Chebyshev exactly == attack_range_cells → in range (inclusive)
@@ -285,10 +300,10 @@ func test_is_in_range_chebyshev_equals_range_returns_true() -> void:
 # AC-17: Chebyshev == attack_range_cells + 1 → out of range
 # ---------------------------------------------------------------------------
 
-func test_is_in_range_chebyshev_one_past_range_returns_false() -> void:
+func test_is_in_range_two_cells_past_range_returns_false() -> void:
 	var data: TowerBlueprintData = _make_data(35.0, 2.0, 1.0, 4, 180.0)
-	# Tower (8,6), enemy (13,6): Chebyshev = 5 = 4+1 → false
-	assert_bool(_ts.is_in_range(Vector2i(8, 6), Vector2i(13, 6), data.focus)).is_false()
+	# Tower (8,6), enemy (14,6): 384 px > 325 px → false
+	assert_bool(_ts.is_in_range(Vector2i(8, 6), Vector2i(14, 6), data.focus)).is_false()
 
 # ---------------------------------------------------------------------------
 # AC-18: hp_base=220, tier_multiplier=1.5 → max_hp=330.0
@@ -426,7 +441,8 @@ func _collect_damage_by_target() -> Dictionary:
 	return result
 
 
-func test_splash_damage_falls_off_by_chebyshev_distance() -> void:
+## Gridless ranges (option C): falloff = world distance / WorldRange.radius_px(3) (252.8 px).
+func test_splash_damage_falls_off_by_world_distance() -> void:
 	var data: TowerBlueprintData = _make_data(100.0, 1.0, 1.0)
 	data.weapon.aoe_radius_cells = 3
 	_place(_ts, data, Vector2i(8, 6))
@@ -443,8 +459,9 @@ func test_splash_damage_falls_off_by_chebyshev_distance() -> void:
 	var damage_by_target: Dictionary = _collect_damage_by_target()
 	assert_int(damage_by_target.size()).is_equal(3)  # primary + 2 in-radius splash, id 4 excluded
 	assert_float(damage_by_target[1] as float).is_equal_approx(100.0, 0.001)  # primary: full damage
-	assert_float(damage_by_target[2] as float).is_equal_approx(80.0, 0.001)   # distance 1: lerp(1.0, 0.4, 1/3)
-	assert_float(damage_by_target[3] as float).is_equal_approx(40.0, 0.001)   # distance 3: lerp(1.0, 0.4, 3/3) = MIN_SPLASH_FALLOFF
+	var r: float = WorldRange.radius_px(3)
+	assert_float(damage_by_target[2] as float).is_equal_approx(100.0 * lerpf(1.0, 0.4, 64.0 / r), 0.01)   # 64 px
+	assert_float(damage_by_target[3] as float).is_equal_approx(100.0 * lerpf(1.0, 0.4, 192.0 / r), 0.01)  # 192 px
 	assert_bool(damage_by_target.has(4)).is_false()
 
 

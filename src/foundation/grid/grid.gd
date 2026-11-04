@@ -191,6 +191,15 @@ func get_tower_covered_cells(tower_id: int) -> Array[Vector2i]:
 	return result
 
 
+## World centre of a placed tower's square, or Vector2.INF for an unknown id.
+## Gridless range checks (WorldRange) measure from here.
+## Usage: GGrid.get_tower_center(state.tower_id)
+func get_tower_center(tower_id: int) -> Vector2:
+	if not _tower_rects.has(tower_id):
+		return Vector2.INF
+	return _tower_rects[tower_id].get_center()
+
+
 ## Moves `center` onto the grid-aligned position on each axis where it is
 ## within snap_cells of it, so aligned building stays effortless.
 ##

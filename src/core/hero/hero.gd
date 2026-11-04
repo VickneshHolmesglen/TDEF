@@ -399,6 +399,9 @@ var _input_direction: Vector2 = Vector2.ZERO
 ## "tier" is cached once at spawn from GameDataRegistry (immutable per monster type),
 ## avoiding a registry lookup on every attack.
 var _monster_cache: Dictionary = {}
+## Gridless ranges (option C, 2026-11-04): monster_position_source(entity_id) -> Vector2
+## (Vector2.INF when unknown), injected by MissionScene. Unset = cached cell centres.
+var monster_position_source: Callable = Callable()
 
 ## Story-003 (S4-05): auto-attack cadence timer (ADR-0010 Engine Note — Timer node,
 ## not _physics_process). Built and started in _ready().
@@ -1097,8 +1100,9 @@ func _on_attack_timer_timeout() -> void:
 ##   (1) highest cached path_step (furthest along the route / closest to GOAL)
 ##       among monsters within get_effective_stat(&"attack_range") world units of
 ##       the hero's global_position (attack_range is a world-unit distance, not a
-##       cell count — GGrid.cell_to_world() converts the cached cell for comparison,
-##       mirroring how Tower System's is_in_range() does its own range check);
+##       cell count). The monster's live position comes from monster_position_source
+##       (gridless ranges, option C 2026-11-04); without one, the centre of its
+##       cached cell is used;
 ##   (2) tie -> lower cached hp;
 ##   (3) tie -> first in cache iteration order (Dictionary iteration order in
 ##       GDScript 4.x is insertion order — satisfied naturally by only overwriting
@@ -1111,8 +1115,7 @@ func _select_target() -> int:
 	var best_hp: float = INF
 	for entity_id: int in _monster_cache:
 		var entry: Dictionary = _monster_cache[entity_id] as Dictionary
-		var cell: Vector2i = entry["cell"] as Vector2i
-		var world_pos: Vector2 = GGrid.cell_to_world(cell)
+		var world_pos: Vector2 = _monster_world_position(entity_id, entry["cell"] as Vector2i)
 		if global_position.distance_to(world_pos) > attack_range:
 			continue
 		var step: int = entry["path_step"] as int
@@ -1122,6 +1125,15 @@ func _select_target() -> int:
 			best_hp = hp
 			best_id = entity_id
 	return best_id
+
+
+## Live world position of a monster for targeting, falling back to its cached cell's centre.
+func _monster_world_position(entity_id: int, cell: Vector2i) -> Vector2:
+	if monster_position_source.is_valid():
+		var live: Vector2 = monster_position_source.call(entity_id)
+		if live != Vector2.INF:
+			return live
+	return GGrid.cell_to_world(cell)
 
 
 ## Story-003 (S4-05) monster cache population — same pattern as Tower System's

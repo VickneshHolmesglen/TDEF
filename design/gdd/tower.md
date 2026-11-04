@@ -500,6 +500,8 @@ Against a 175 HP monster: time-to-kill ≈ 1.56 seconds under continuous fire.
 
 ### Formula 1c: Splash Damage Falloff (Phase 2 — Splash, 2026-08-23)
 
+**Gridless (amended 2026-11-04):** every other ground monster within the `WorldRange` circle of `aoe_radius_cells` around the primary's live position takes damage, including monsters in the primary's own cell; `falloff_fraction = world_distance / WorldRange.radius_px(aoe_radius_cells)`. The aura in Rule 5a uses the same circle between tower square centres. The Chebyshev text below is the original rule.
+
 Applies only when `aoe_radius_cells > 0` (BALLISTIC weapons). The primary target (found by `_find_lowest_hp_target()`, distance 0) always takes full Formula 1b damage — this formula covers every *other* monster within `aoe_radius_cells` of the primary target's cell, found via Chebyshev distance (consistent with Formula 2's own range check and Grid's `get_occupied_cells_in_radius()` convention):
 
 ```
@@ -524,6 +526,14 @@ At `distance = 1` (adjacent to primary), a splash target takes close to full dam
 ### Formula 2: Tower Effective Range
 
 Range is a compound boolean check — both conditions must be true for a target to be valid. Range is measured in **grid cells using Chebyshev distance** (consistent with the hero's proximity radius system).
+
+**Gridless ranges (amended 2026-11-04, ADR-0005 option C):** this check is now
+a circle in world units between true positions (the tower's square centre and the
+monster's live flow position), not Chebyshev cell distance. Radius =
+`WorldRange.radius_px(cells) = (cells + 0.5) × 64 × 2/√π`: the circle has the same
+area as the old (2·cells+1)-cell square, so it reaches slightly further along the
+axes and less far into the corners. Authored values stay in cells. The worked
+examples below describe the old metric; the rule in code is `WorldRange.within`.
 
 **Effective range (with cone bonus):**
 
