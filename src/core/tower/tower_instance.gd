@@ -821,7 +821,7 @@ func _set_hit_flash_amount(amount: float) -> void:
 ## "activate" method that could only ever do one thing.
 func set_perk_badge(active: bool) -> void:
 	_has_perk_badge = active
-	queue_redraw()
+	_ensure_badge_overlay().queue_redraw()
 
 
 ## Tower veterancy (design/quick-specs/tower-veterancy-2026-11-04.md): shows
@@ -830,13 +830,7 @@ func set_perk_badge(active: bool) -> void:
 func set_rank(rank: int) -> void:
 	var ranked_up: bool = rank > _rank
 	_rank = clampi(rank, 0, 3)
-	if _rank_badge == null:
-		_rank_badge = Node2D.new()
-		_rank_badge.name = "RankBadge"
-		_rank_badge.z_index = 1
-		_rank_badge.draw.connect(_draw_rank_badge)
-		add_child(_rank_badge)
-	_rank_badge.queue_redraw()
+	_ensure_badge_overlay().queue_redraw()
 	if ranked_up:
 		play_attack_punch(RANK_CHEVRON_COLOR)
 
@@ -845,8 +839,26 @@ func get_rank() -> int:
 	return _rank
 
 
-## Stacked gold chevrons over the tower's base, one per rank.
-func _draw_rank_badge() -> void:
+## Lazily creates the child canvas item that badges draw on (drawn above the
+## tower sprite; see _rank_badge's doc comment).
+func _ensure_badge_overlay() -> Node2D:
+	if _rank_badge == null:
+		_rank_badge = Node2D.new()
+		_rank_badge.name = "BadgeOverlay"
+		_rank_badge.z_index = 1
+		_rank_badge.draw.connect(_draw_badge_overlay)
+		add_child(_rank_badge)
+	return _rank_badge
+
+
+## Perk badge (upper right) and veterancy chevrons (stacked over the base).
+## Both used to draw in _draw(), under the sprite; the perk badge moved here
+## 2026-11-04 when the chevrons showed that layer was hidden.
+func _draw_badge_overlay() -> void:
+	if _has_perk_badge:
+		var badge_pos := Vector2(TARGET_DISPLAY_HEIGHT * 0.35, -TARGET_DISPLAY_HEIGHT * 0.45)
+		_rank_badge.draw_circle(badge_pos, PERK_BADGE_RADIUS, PERK_BADGE_COLOR)
+		_rank_badge.draw_arc(badge_pos, PERK_BADGE_RADIUS, 0.0, TAU, 24, Color(0.95, 0.95, 0.9), 1.5, true)
 	for i: int in _rank:
 		var y: float = RANK_CHEVRON_BASE_Y - float(i) * RANK_CHEVRON_SPACING
 		var w: float = RANK_CHEVRON_HALF_WIDTH
@@ -855,9 +867,9 @@ func _draw_rank_badge() -> void:
 		_rank_badge.draw_polyline(points, RANK_CHEVRON_COLOR, RANK_CHEVRON_WIDTH, true)
 
 
-## Draws the element-tint identity ring, the TARGETING weapon-slot glow, and
-## the perk badge, in that order -- the ring paints first, so it is the
-## bottom-most layer, underneath both the glow dot and the badge. It only
+## Draws the element-tint identity ring and the TARGETING weapon-slot glow, in
+## that order -- the ring paints first, so it is the bottom-most layer. (The
+## perk badge and rank chevrons draw on the BadgeOverlay child instead.) It only
 ## draws when _element_tint_active is set (by configure(), for an
 ## "elemental" archetype tower whose element has no bespoke texture yet; see
 ## ELEMENT_TINT_RING_RADIUS's own doc comment). The ATTACKING punch lives
@@ -872,10 +884,6 @@ func _draw() -> void:
 		var glow_color: Color = _weapon_glow_color
 		glow_color.a = _weapon_glow_alpha
 		draw_circle(_weapon_glow_offset, WEAPON_GLOW_RADIUS, glow_color)
-	if _has_perk_badge:
-		var badge_pos := Vector2(TARGET_DISPLAY_HEIGHT * 0.35, -TARGET_DISPLAY_HEIGHT * 0.45)
-		draw_circle(badge_pos, PERK_BADGE_RADIUS, PERK_BADGE_COLOR)
-		draw_arc(badge_pos, PERK_BADGE_RADIUS, 0.0, TAU, 24, Color(0.95, 0.95, 0.9), 1.5, true)
 
 
 # ---------------------------------------------------------------------------

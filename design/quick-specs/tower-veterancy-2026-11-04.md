@@ -24,6 +24,6 @@ Fixed on the way: TowerSystem did not subscribe to `monsters_died_batch` (ADR-00
 
 `tests/unit/tower/tower_veterancy_test.gd` (thresholds, multiplier, single/batch credit, non-tower kills, batch cache erase), `tests/unit/monster/kill_attribution_test.gd` (last tower credited, hero kill, DoT kill), `damage_status_test.gd` (source_tower_id). Live on the_gap: 14 tower kills attributed, ranks 1 and 2 emitted, chevrons visible on the ranked towers.
 
-## Known gap
+## Also fixed
 
-The pre-placement perk badge is also drawn in the TowerInstance's own `_draw()`, which renders under the tower sprite. It may be partly hidden in the same way the chevrons were; not checked.
+The pre-placement perk badge was drawn in TowerInstance's own `_draw()`, which renders under the tower sprite (a Node2D's own drawing is beneath its children), so it was hidden. It now draws on the same `BadgeOverlay` child as the chevrons. Live-checked: perk dots and chevrons both visible.
