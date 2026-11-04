@@ -33,6 +33,9 @@ extends Resource
 @export var weapon_component_id: String = ""
 @export var focus_component_id: String = ""
 @export var power_component_id: String = ""
+## The blueprint's display_name, for player-facing lists (wave report, 2026-11-05).
+## Empty when a caller builds the payload without one.
+@export var display_name: String = ""
 
 
 ## Convenience factory — lets callers that only care about the pre-existing

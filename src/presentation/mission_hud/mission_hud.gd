@@ -285,6 +285,8 @@ func _ready() -> void:
 	_build_speed_button()
 	# Center-screen wave/boss ceremony; self-subscribing, see WaveCallout's doc comment.
 	add_child(WaveCallout.new())
+	# Post-wave tower breakdown (wave-report spec 2026-11-05); self-subscribing like WaveCallout.
+	add_child(WaveReport.new())
 	# First-mission coaching card; self-subscribing, shows once per install.
 	add_child(FirstMissionHints.new())
 

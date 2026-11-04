@@ -266,6 +266,7 @@ func place_tower_at(blueprint_id: StringName, center: Vector2) -> bool:
 	payload.weapon_component_id = state.weapon.component_id
 	payload.focus_component_id = state.focus.component_id
 	payload.power_component_id = state.power.component_id
+	payload.display_name = data.display_name
 	GEventBus.tower_placed.emit(payload)
 	# Real bug fixed here (2026-08-13, found while implementing the
 	# perk-badge VFX): this previously fired unconditionally for every

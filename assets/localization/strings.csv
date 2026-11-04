@@ -349,6 +349,12 @@ HUD_REJECT_REASON_INVENTORY_FULL,inventory full
 HUD_PHASE_NOT_LAUNCHED,Phase: (not launched)
 HUD_WAVE_IDLE,Wave: -
 HUD_WAVE_CLEARED,Wave %d cleared (%d remaining)
+HUD_WAVE_REPORT_TITLE,Wave %d report
+HUD_WAVE_REPORT_MORE,+%d more towers
+HUD_WAVE_REPORT_DAMAGE,%d dmg (%d%%)
+HUD_WAVE_REPORT_KILLS,%d kills
+HUD_WAVE_REPORT_IDLE,%d%% idle
+HUD_WAVE_REPORT_PULSES,%d aura pulses
 HUD_TIMER,Timer: %.1fs
 HUD_TIMER_IDLE,Timer: --
 GAP_HELP_CONTROLS,SPACE = ready-up | Left-click = place tower
