@@ -3,6 +3,22 @@
 ## Status
 Accepted
 
+## Amendment (2026-11-04) — Free Placement
+
+`TowerSystem.place_tower_at(blueprint_id, center)` and
+`get_placement_preview_at(blueprint_id, center)` take the square's world centre; the
+`top_left` versions are wrappers. Gate 3 = `Grid.is_square_placeable`. **Gate 4 now
+checks every covered cell** (an off-grid 1x1 can cover up to 4), never just the
+footprint block. `TowerMissionState.world_position` and `TowerPlacedEvent.world_position`
+/ `covered_cells` carry the true centre and covered cells; Pathfinding blocks
+`covered_cells` (falls back to the footprint block for payloads built by `make()`).
+Projectiles fire from `world_position`. Mission scene: the tower square follows the
+pointer, snapped per axis within `placement_snap_cells` (export, default 0.2 cells);
+the placement ghost outlines every extra cell an off-grid square would block, so the
+player sees the cells enemies lose. Range, constellation and mastery stay cell-based
+from the logical cells: free placement moves the tower and what it blocks, not its
+range shape (a continuous range would need monster world positions in TowerSystem).
+
 ## Date
 2026-05-19
 

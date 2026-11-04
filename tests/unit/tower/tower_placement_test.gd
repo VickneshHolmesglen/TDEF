@@ -8,7 +8,7 @@ extends GdUnitTestSuite
 # Stubs
 # ---------------------------------------------------------------------------
 
-class _StubGrid extends RefCounted:
+class _StubGrid extends "res://tests/helpers/free_placement_stub_grid.gd":
 	var footprint_placeable: bool = true
 	var place_result: int = OK
 	var towers_placed: Array[int] = []

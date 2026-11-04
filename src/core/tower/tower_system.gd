@@ -163,11 +163,26 @@ func _physics_process(delta: float) -> void:
 # Placement gate (ADR-0008)
 # ---------------------------------------------------------------------------
 
-## Place a tower blueprint at top_left. Returns true on success.
-##
-## 4-gate sequence: Phase → Resource → Footprint → Path.
-## Emits tower_placed (and pre_placement_perk_activated if SCOUT).
+## Place a tower blueprint on the grid-aligned footprint at top_left.
+## Same as place_tower_at() with the footprint's centre. Returns true on success.
 func place_tower(blueprint_id: StringName, top_left: Vector2i) -> bool:
+	var size: Vector2i = Vector2i.ONE
+	if _tower_table.has(blueprint_id):
+		size = (_tower_table[blueprint_id] as TowerBlueprintData).foundation.footprint
+	return place_tower_at(blueprint_id, _grid.footprint_center(top_left, size))
+
+
+## Free placement (ADR-0008 amendment 2026-11-04): place a tower blueprint
+## whose square is centred on `center` (world units, anywhere). Returns true
+## on success.
+##
+## 4-gate sequence: Phase → Resource → Footprint → Path. Gate 3 checks the
+## square (Grid.is_square_placeable); Gate 4 checks every cell the square
+## covers. grid_position is the square's logical top-left cell.
+## Emits tower_placed (and pre_placement_perk_activated if SCOUT).
+##
+## Example: tower_system.place_tower_at(&"archer_basic", Vector2(300.0, 210.0))
+func place_tower_at(blueprint_id: StringName, center: Vector2) -> bool:
 	# Gate 1 — Phase
 	if _current_phase == Phase.WAVE_ACTIVE:
 		return false
@@ -179,16 +194,18 @@ func place_tower(blueprint_id: StringName, top_left: Vector2i) -> bool:
 	if not GMissionEconomy.can_afford(data.placement_cost):
 		return false
 	# Gate 3 — Grid footprint
-	if not _grid.is_footprint_placeable(top_left, data.foundation.footprint):
+	var size: Vector2i = data.foundation.footprint
+	if not _grid.is_square_placeable(center, size):
 		return false
 	# Gate 4 — Path integrity (NEVER skipped on commit)
-	var cells: Array[Vector2i] = _get_footprint_cells(top_left, data.foundation.footprint)
+	var cells: Array[Vector2i] = _grid.covered_cells(_grid.square_rect(center, size))
 	if _pathfinding.would_block_all_paths(cells):
 		return false
 	# Commit
+	var top_left: Vector2i = _grid.logical_top_left(center, size)
 	_tower_id_counter += 1
 	var tower_id: int = _tower_id_counter
-	var err: int = _grid.place_tower(tower_id, top_left, data.foundation.footprint)
+	var err: int = _grid.place_tower_at(tower_id, center, size)
 	if err != OK:
 		_tower_id_counter -= 1
 		return false
@@ -211,6 +228,7 @@ func place_tower(blueprint_id: StringName, top_left: Vector2i) -> bool:
 	state.shaft = data.shaft.duplicate_deep() if data.shaft != null else ShaftComponent.new()
 	state.top = data.top.duplicate_deep() if data.top != null else TopComponent.new()
 	state.grid_position = top_left
+	state.world_position = center
 	state.max_hp = state.foundation.hp_base * state.foundation.tier_multiplier
 	state.current_hp = state.max_hp
 	state.attack_timer_remaining = 0.0  # Fire on first combat frame
@@ -220,6 +238,8 @@ func place_tower(blueprint_id: StringName, top_left: Vector2i) -> bool:
 	var payload := TowerPlacedEvent.new()
 	payload.tower_id = tower_id
 	payload.grid_position = top_left
+	payload.world_position = center
+	payload.covered_cells = cells
 	payload.archetype = String(state.foundation.archetype)
 	payload.footprint = state.foundation.footprint
 	payload.placed_in_scout = placed_in_scout
@@ -281,10 +301,19 @@ func _apply_pre_placement_perk(state: TowerMissionState) -> void:
 			state.weapon.aura_radius_cells = mini(6, state.weapon.aura_radius_cells + roundi(power * 6.0))
 
 
-## Returns a preview result for hover display.
+## Returns a preview result for hover display on a grid-aligned footprint.
+## Same as get_placement_preview_at() with the footprint's centre.
+func get_placement_preview(blueprint_id: StringName, top_left: Vector2i) -> PlacementPreview:
+	var size: Vector2i = Vector2i.ONE
+	if _tower_table.has(blueprint_id):
+		size = (_tower_table[blueprint_id] as TowerBlueprintData).foundation.footprint
+	return get_placement_preview_at(blueprint_id, _grid.footprint_center(top_left, size))
+
+
+## Returns a preview result for hover display of a free-placed square.
 ##
 ## Runs Gates 1–3 only. Gate 4 (path integrity) is NEVER called here — AC-8.
-func get_placement_preview(blueprint_id: StringName, top_left: Vector2i) -> PlacementPreview:
+func get_placement_preview_at(blueprint_id: StringName, center: Vector2) -> PlacementPreview:
 	var preview := PlacementPreview.new()
 	if not _tower_table.has(blueprint_id):
 		preview.valid = false
@@ -302,7 +331,7 @@ func get_placement_preview(blueprint_id: StringName, top_left: Vector2i) -> Plac
 		preview.reason = PlacementPreview.PlacementBlockReason.INSUFFICIENT_RESOURCES
 		return preview
 	# Gate 3
-	if not _grid.is_footprint_placeable(top_left, data.foundation.footprint):
+	if not _grid.is_square_placeable(center, data.foundation.footprint):
 		preview.valid = false
 		preview.reason = PlacementPreview.PlacementBlockReason.FOOTPRINT_BLOCKED
 		return preview
@@ -473,7 +502,10 @@ func _try_attack(state: TowerMissionState) -> void:
 			"is_crit": is_crit,
 			"aoe_radius_cells": state.weapon.aoe_radius_cells,
 		}
-		var origin_world: Vector2 = _grid.cell_to_world(state.grid_position)
+		# Free placement: fire from the tower's true centre. A state built without
+		# place_tower_at() (unit fixtures) has no world_position; use its cell.
+		var origin_world: Vector2 = state.world_position if state.world_position != Vector2.ZERO \
+				else _grid.cell_to_world(state.grid_position)
 		var target_world: Vector2 = _grid.cell_to_world(entry["cell"] as Vector2i)
 		var fired: bool = _projectile_manager.fire(state.tower_id, StringName(state.weapon.projectile_type),
 				origin_world, target_id, target_world, payload)

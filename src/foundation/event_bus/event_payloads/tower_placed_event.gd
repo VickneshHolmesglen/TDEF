@@ -20,6 +20,13 @@ extends Resource
 @export var grid_position: Vector2i = Vector2i.ZERO
 @export var archetype: String = ""
 @export var footprint: Vector2i = Vector2i.ZERO
+## Free placement (2026-11-04): centre of the tower's square in world units.
+## Zero when built by make() (callers predating free placement): consumers
+## fall back to grid_position + footprint.
+@export var world_position: Vector2 = Vector2.ZERO
+## Every cell the square overlaps (non-walkable). Empty when built by make():
+## consumers fall back to the grid_position + footprint block.
+@export var covered_cells: Array[Vector2i] = []
 @export var placed_in_scout: bool = false
 @export var constellation_eligibility_tag: String = ""
 @export var foundation_component_id: String = ""

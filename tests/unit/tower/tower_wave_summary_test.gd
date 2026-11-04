@@ -10,7 +10,7 @@ extends GdUnitTestSuite
 # for why each override exists)
 # ---------------------------------------------------------------------------
 
-class _StubGrid extends RefCounted:
+class _StubGrid extends "res://tests/helpers/free_placement_stub_grid.gd":
 	const CELL_SIZE: float = 64.0
 
 	func is_footprint_placeable(_top_left: Vector2i, _size: Vector2i) -> bool:

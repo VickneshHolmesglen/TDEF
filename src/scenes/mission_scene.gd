@@ -40,6 +40,10 @@ extends Node2D
 ## every mission, always — safe to hardcode here rather than reading it back
 ## off Grid (which has no public getter for it).
 const CELL_SIZE: float = 64.0
+## Free placement (ADR-0008 amendment 2026-11-04): a tower square within this
+## many cells of grid alignment on an axis snaps onto it, so aligned building
+## (and tight packing) stays effortless. 0 = fully free; 0.5 = always snapped.
+@export_range(0.0, 0.5) var placement_snap_cells: float = 0.2
 
 const TowerInstanceScene: PackedScene = preload("res://src/core/tower/TowerInstance.tscn")
 const ProjectileVisualScene: PackedScene = preload("res://src/scenes/ProjectileVisual.tscn")
@@ -365,7 +369,9 @@ func _on_monster_spawned(payload: MonsterSpawnedEvent) -> void:
 func _on_tower_placed(payload: TowerPlacedEvent) -> void:
 	var vis: TowerInstance = TowerInstanceScene.instantiate()
 	_dynamic_visuals_root.add_child(vis)
-	vis.position = GGrid.cell_to_world(payload.grid_position) + Vector2(payload.footprint - Vector2i.ONE) * CELL_SIZE * 0.5
+	# Free placement: the square's true centre. make()-built payloads carry none.
+	vis.position = payload.world_position if payload.world_position != Vector2.ZERO \
+			else GGrid.cell_to_world(payload.grid_position) + Vector2(payload.footprint - Vector2i.ONE) * CELL_SIZE * 0.5
 	# state.weapon is already populated in _tower_system.placed_towers by the
 	# time tower_placed fires (TowerSystem sets it before emitting) -- same
 	# access pattern already used by _on_tower_attacked. Looked up BEFORE
@@ -587,8 +593,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		# NOTE: Picking3D.pick_ray() expects viewport (screen-space) coordinates,
 		# NOT get_global_mouse_position()'s Camera2D-world coordinates — these are
 		# two different coordinate spaces that happen to share a type (Vector2).
-		var cell: Vector2i = _pick_cell_3d(get_viewport().get_mouse_position()) if ENABLE_3D_PRESENTATION_MODE else GGrid.world_to_cell(get_global_mouse_position())
-		_attempt_placement_at(cell)
+		var pointer: Vector2 = GGrid.cell_to_world(_pick_cell_3d(get_viewport().get_mouse_position())) if ENABLE_3D_PRESENTATION_MODE else get_global_mouse_position()
+		var center: Vector2 = _placement_center(pointer)
+		if center != Vector2.INF:
+			_attempt_placement_at_world(center)
 	elif event is InputEventMouseMotion:
 		_update_placement_preview()
 	elif event is InputEventKey and event.pressed and event.keycode == KEY_SPACE:
@@ -640,13 +648,22 @@ func _pick_cell_3d(mouse_pos: Vector2) -> Vector2i:
 	return Picking3D.pick_ground_cell(_camera_3d, mouse_pos, space_state)
 
 
-## Attempts to place the currently-selected blueprint at `cell`. Split out
-## from _unhandled_input so tests can exercise the placement-then-cleanup
-## logic without simulating mouse position (see mission_scene_test.gd's
+## Attempts to place the currently-selected blueprint on the grid-aligned
+## footprint at `cell`. Split out from _unhandled_input so tests can exercise
+## the placement-then-cleanup logic without simulating mouse position (see
+## mission_scene_test.gd's
 ## test_successful_placement_clears_selection_and_returns_to_free_cursor).
 func _attempt_placement_at(cell: Vector2i) -> bool:
+	var data: TowerBlueprintData = GGameDataRegistry.get_all_tower_blueprints().get(_selected_blueprint_id) as TowerBlueprintData
+	var size: Vector2i = data.foundation.footprint if data != null else Vector2i.ONE
+	return _attempt_placement_at_world(GGrid.footprint_center(cell, size))
+
+
+## Free placement: attempts to place the selected blueprint's square centred
+## on `center` (world units).
+func _attempt_placement_at_world(center: Vector2) -> bool:
 	var blueprint_id: StringName = _selected_blueprint_id
-	var placed: bool = _tower_system.place_tower(blueprint_id, cell)
+	var placed: bool = _tower_system.place_tower_at(blueprint_id, center)
 	if placed:
 		# design/ux/interaction-patterns.md line 61: "Confirm action ...
 		# returns cursor to free-cursor mode." Without this, the stale
@@ -655,8 +672,18 @@ func _attempt_placement_at(cell: Vector2i) -> bool:
 		_selected_blueprint_id = &""
 		_update_placement_preview()
 	else:
-		_spawn_placement_reject_flash(cell, blueprint_id)
+		_spawn_placement_reject_flash(center, blueprint_id)
 	return placed
+
+
+## Where the selected blueprint's square would go for a pointer at `pointer`
+## (world units): centred under it, snapped to the grid within
+## placement_snap_cells. Vector2.INF when nothing is selected.
+func _placement_center(pointer: Vector2) -> Vector2:
+	var data: TowerBlueprintData = GGameDataRegistry.get_all_tower_blueprints().get(_selected_blueprint_id) as TowerBlueprintData
+	if data == null:
+		return Vector2.INF
+	return GGrid.snap_center(pointer, data.foundation.footprint, placement_snap_cells)
 
 
 ## design/gdd/tower.md "Placement Rejected" Visual/Audio Requirements:
@@ -664,7 +691,7 @@ func _attempt_placement_at(cell: Vector2i) -> bool:
 ## normal grid state." Fires for every rejection gate (phase/resource/
 ## footprint/path) uniformly — place_tower() collapses all 4 into a single
 ## bool, so this can't (and per the GDD doesn't need to) distinguish why.
-func _spawn_placement_reject_flash(cell: Vector2i, blueprint_id: StringName) -> void:
+func _spawn_placement_reject_flash(center: Vector2, blueprint_id: StringName) -> void:
 	var blueprints: Dictionary = GGameDataRegistry.get_all_tower_blueprints()
 	var data: TowerBlueprintData = blueprints.get(blueprint_id) as TowerBlueprintData
 	if data == null:
@@ -672,7 +699,7 @@ func _spawn_placement_reject_flash(cell: Vector2i, blueprint_id: StringName) -> 
 	var footprint: Vector2i = data.foundation.footprint
 	var flash: Node2D = PlacementRejectFlashScene.instantiate()
 	_dynamic_visuals_root.add_child(flash)
-	flash.global_position = GGrid.cell_to_world(cell) + Vector2(footprint - Vector2i.ONE) * CELL_SIZE * 0.5
+	flash.global_position = center
 	flash.configure(Vector2(footprint) * CELL_SIZE)
 
 
@@ -689,6 +716,8 @@ func _update_placement_preview() -> void:
 	var data: TowerBlueprintData = blueprints.get(_selected_blueprint_id) as TowerBlueprintData
 	if data == null:
 		return
-	var cell: Vector2i = GGrid.world_to_cell(get_global_mouse_position())
-	var preview: PlacementPreview = _tower_system.get_placement_preview(_selected_blueprint_id, cell)
-	GEventBus.tower_placement_preview_updated.emit(cell, data.foundation.footprint, preview.valid)
+	var size: Vector2i = data.foundation.footprint
+	var center: Vector2 = _placement_center(get_global_mouse_position())
+	var preview: PlacementPreview = _tower_system.get_placement_preview_at(_selected_blueprint_id, center)
+	GEventBus.tower_placement_preview_updated.emit(GGrid.logical_top_left(center, size), size, preview.valid,
+			center, GGrid.covered_cells(GGrid.square_rect(center, size)))

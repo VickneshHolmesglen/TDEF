@@ -99,6 +99,15 @@ const TILE_BG_DISABLED: Color = Color(0.13, 0.14, 0.17, 0.7)
 @onready var _placement_cursor: ColorRect = $NonReadyControls/PlacementCursor
 const PLACEMENT_VALID_COLOR: Color = Color(0.2, 0.85, 0.3, 0.35)
 const PLACEMENT_INVALID_COLOR: Color = Color(0.9, 0.2, 0.2, 0.35)
+## Free placement (2026-11-04): tint for cells an off-grid square only partly
+## overlaps. They become non-walkable too, and without this a player sees a
+## gap enemies cannot use (free-flow-options spec, option B risk).
+const PLACEMENT_COVER_COLOR: Color = Color(1.0, 0.8, 0.2, 0.4)
+const PLACEMENT_COVER_BORDER: Color = Color(1.0, 0.85, 0.3, 0.9)
+
+## Holds one ColorRect per cell the placement ghost covers beyond its own
+## square's grid block. Built in _ready(), drawn under the cursor.
+var _cover_cell_host: Control = null
 
 ## Translucent drag-preview of the tower actually being placed (2026-08-10,
 ## player-requested addition) — layered on top of PlacementCursor's own
@@ -210,6 +219,11 @@ func _ready() -> void:
 	_update_sell_button_existence()
 	GEventBus.resources_changed.connect(_on_resources_changed)
 	GEventBus.tower_placement_preview_updated.connect(_on_tower_placement_preview_updated)
+	_cover_cell_host = Control.new()
+	_cover_cell_host.name = "PlacementCoverHost"
+	_cover_cell_host.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_placement_cursor.get_parent().add_child(_cover_cell_host)
+	_placement_cursor.get_parent().move_child(_cover_cell_host, _placement_cursor.get_index())
 	_build_tower_list()
 	# TextureRect's default expand_mode (EXPAND_KEEP_SIZE) makes its minimum
 	# size equal the texture's native resolution, and Control.set_size()
@@ -781,7 +795,9 @@ func _refresh_affordability() -> void:
 ## recolors the single footprint-sized rect to the hovered cell. cell ==
 ## Vector2i(-1, -1) (no blueprint selected, mirrors set_boss_telegraph_cell's
 ## identical sentinel convention) hides the cursor entirely.
-func _on_tower_placement_preview_updated(cell: Vector2i, footprint: Vector2i, valid: bool) -> void:
+func _on_tower_placement_preview_updated(cell: Vector2i, footprint: Vector2i, valid: bool,
+		world_center: Vector2 = Vector2.INF, covered_cells: Array = []) -> void:
+	_show_cover_cells([] if cell == Vector2i(-1, -1) else covered_cells, footprint)
 	if cell == Vector2i(-1, -1):
 		_placement_cursor.visible = false
 		_placement_preview_icon.visible = false
@@ -792,8 +808,36 @@ func _on_tower_placement_preview_updated(cell: Vector2i, footprint: Vector2i, va
 	_placement_cursor.color = PLACEMENT_VALID_COLOR if valid else PLACEMENT_INVALID_COLOR
 	_placement_cursor.size = Vector2(footprint.x, footprint.y) * _screen_cell_size()
 	var world_pos: Vector2 = GGrid.cell_to_world(cell) - Vector2(CELL_SIZE_PX, CELL_SIZE_PX) * 0.5
+	if world_center != Vector2.INF:
+		world_pos = world_center - Vector2(footprint) * CELL_SIZE_PX * 0.5
 	_placement_cursor.position = _world_to_screen(world_pos)
 	_update_placement_preview_icon()
+
+
+## Tints every covered cell when an off-grid ghost covers more cells than its
+## footprint (a grid-aligned ghost covers exactly its footprint: nothing shown).
+func _show_cover_cells(covered_cells: Array, footprint: Vector2i) -> void:
+	if _cover_cell_host == null:
+		return
+	for child: Node in _cover_cell_host.get_children():
+		_cover_cell_host.remove_child(child)
+		child.queue_free()
+	if covered_cells.size() <= footprint.x * footprint.y:
+		return
+	for cell: Vector2i in covered_cells:
+		var marker := ColorRect.new()
+		marker.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		marker.color = PLACEMENT_COVER_COLOR
+		marker.size = _screen_cell_size()
+		marker.position = _world_to_screen(GGrid.cell_to_world(cell) - Vector2(CELL_SIZE_PX, CELL_SIZE_PX) * 0.5)
+		var border := ReferenceRect.new()
+		border.editor_only = false
+		border.border_color = PLACEMENT_COVER_BORDER
+		border.border_width = 1.5
+		border.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		border.set_anchors_preset(Control.PRESET_FULL_RECT)
+		marker.add_child(border)
+		_cover_cell_host.add_child(marker)
 
 
 ## Looks up the selected blueprint's archetype art and sizes/centers it

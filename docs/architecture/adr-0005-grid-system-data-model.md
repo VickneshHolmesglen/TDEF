@@ -3,6 +3,29 @@
 ## Status
 Accepted
 
+## Amendment (2026-11-04) — Free Tower Placement
+
+Requested by the user (option B of `design/quick-specs/free-flow-options-2026-11-04.md`).
+A tower is now a size-cell **square centred anywhere** (`place_tower_at(id, center, size)`);
+the grid-aligned `place_tower(id, top_left, size)` is a wrapper with the footprint centre.
+
+- **Logical cells** (`_occupancy`, unchanged meaning): the square's top-left corner
+  rounded to the nearest cell corner (`logical_top_left`). Single owner. Every
+  cell-based reader (constellation patterns, tower mastery, boss scans, tower range,
+  hero affinity) reads these, so they keep working unchanged. Two squares that do not
+  overlap always round to disjoint blocks, so single ownership holds.
+- **Covered cells** (new): every cell the square overlaps by more than
+  `COVER_EPSILON` (0.5 world units). Non-walkable in `get_walkable_cell_map()`; may be
+  shared by two touching towers (reference-counted in `_cover_count`). For a
+  grid-aligned square covered == logical, so aligned play is exactly as before.
+- **Placement validity** (`is_square_placeable`): every covered cell PLACEABLE, no
+  logical cell occupied, no overlap with another tower's square (touching allowed).
+  `is_placeable` / `is_footprint_placeable` now route through it, so a cell partly
+  covered by an off-grid tower no longer accepts an aligned one.
+- `snap_center(center, size, snap_cells)`: per-axis magnet onto the aligned position.
+
+Validation: `tests/unit/grid/grid_free_placement_test.gd`.
+
 ## Date
 2026-05-16
 

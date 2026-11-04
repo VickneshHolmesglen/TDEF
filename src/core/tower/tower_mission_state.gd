@@ -34,6 +34,9 @@ var power: PowerComponent = null
 var shaft: ShaftComponent = ShaftComponent.new()
 var top: TopComponent = TopComponent.new()
 var grid_position: Vector2i = Vector2i.ZERO
+## Free placement (2026-11-04): centre of the tower's square in world units.
+## grid_position is that square's logical (rounded) top-left cell.
+var world_position: Vector2 = Vector2.ZERO
 var current_hp: float = 0.0
 var max_hp: float = 0.0
 var attack_timer_remaining: float = 0.0 # Seconds until next attack (0 = fire immediately)

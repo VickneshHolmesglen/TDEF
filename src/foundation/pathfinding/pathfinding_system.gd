@@ -244,7 +244,10 @@ func _on_tower_placed(payload: TowerPlacedEvent) -> void:
 		push_error("PathfindingSystem: tower_placed received during WAVE_ACTIVE — Grid lock failure detected. Setting _tower_destroyed_during_wave for INTERMISSION recovery.")
 		_tower_destroyed_during_wave = true
 		return
-	var cells: Array[Vector2i] = _cells_from_footprint(payload.grid_position, payload.footprint)
+	# Free placement (2026-11-04): a square off the grid covers more cells than
+	# its footprint block; the payload lists them. Older payloads (make()) don't.
+	var cells: Array[Vector2i] = payload.covered_cells.duplicate() if not payload.covered_cells.is_empty() \
+			else _cells_from_footprint(payload.grid_position, payload.footprint)
 	_tower_footprint_cache[payload.tower_id] = cells
 	_queue_dirty_rebuild(cells)
 

@@ -255,7 +255,12 @@ signal tower_blueprint_selected(blueprint_id: StringName)
 ## render a footprint ghost without holding a direct TowerSystem reference
 ## (mirrors tower_placement_blocked's identical decoupling).
 ## Key subscribers: Mission HUD (Planning Cluster placement cursor).
-signal tower_placement_preview_updated(cell: Vector2i, footprint: Vector2i, valid: bool)
+## Free placement (2026-11-04): world_center is the square's true centre and
+## covered_cells every cell it overlaps (non-walkable once placed). Both are
+## optional for subscribers: older emitters pass only the first three, and
+## the sentinel (cell == (-1, -1)) never carries them.
+signal tower_placement_preview_updated(cell: Vector2i, footprint: Vector2i, valid: bool,
+		world_center: Vector2, covered_cells: Array)
 
 ## Component swapped in a tower slot.
 ## Key subscribers: Constellation, Mission HUD, Tower Mastery.

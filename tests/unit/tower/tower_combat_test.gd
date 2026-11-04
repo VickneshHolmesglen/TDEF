@@ -8,7 +8,7 @@ extends GdUnitTestSuite
 # Stubs
 # ---------------------------------------------------------------------------
 
-class _StubGrid extends RefCounted:
+class _StubGrid extends "res://tests/helpers/free_placement_stub_grid.gd":
 	## Matches Grid's real default cell size (grid.gd/mission_scene.gd's own
 	## CELL_SIZE convention) — not otherwise configurable on this stub.
 	const CELL_SIZE: float = 64.0

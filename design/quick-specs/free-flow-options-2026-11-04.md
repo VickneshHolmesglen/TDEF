@@ -1,6 +1,8 @@
 # Free-flow movement and placement: options (exploration only)
 
-Date: 2026-11-04. Status: **option A built 2026-11-04** (see ADR-0006 amendment). B and C not scheduled.
+Date: 2026-11-04. Status: **options A and B built 2026-11-04** (ADR-0006, ADR-0005, ADR-0008 amendments). C not scheduled.
+B as built: towers block every cell their square overlaps (no clipping) and the ghost outlines those
+cells; range/constellation stay cell-based from the square's rounded block; 0.2-cell snap magnet.
 Question from the user: "Can we swap from grid based to free flow based?"
 
 ## What the grid does today

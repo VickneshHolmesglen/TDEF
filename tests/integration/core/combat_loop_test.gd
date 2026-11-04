@@ -11,7 +11,7 @@ extends GdUnitTestSuite
 # Stubs
 # ---------------------------------------------------------------------------
 
-class _StubGrid extends RefCounted:
+class _StubGrid extends "res://tests/helpers/free_placement_stub_grid.gd":
 	func get_cell_type(_cell: Vector2i) -> int:
 		return Grid.CellType.SPAWN
 
