@@ -187,6 +187,7 @@ func _ready() -> void:
 	GEventBus.mission_phase_changed.connect(_on_mission_phase_changed)
 	GEventBus.wave_started.connect(_on_wave_started)
 	GEventBus.wave_completed.connect(_on_wave_completed)
+	GEventBus.wave_called_early.connect(_on_wave_called_early)
 
 
 func _exit_tree() -> void:
@@ -195,6 +196,28 @@ func _exit_tree() -> void:
 	GEventBus.mission_phase_changed.disconnect(_on_mission_phase_changed)
 	GEventBus.wave_started.disconnect(_on_wave_started)
 	GEventBus.wave_completed.disconnect(_on_wave_completed)
+	GEventBus.wave_called_early.disconnect(_on_wave_called_early)
+
+
+## Early-call gold (design/quick-specs/early-wave-call-2026-11-04.md,
+## resource-economy.md Rule 10b): gold per second of intermission skipped,
+## scaled like the wave grant. 0.35 x the default 30 s intermission = ~10
+## gold at scalar 1.0, half of BASE_WAVE_GOLD: worth taking, never worth
+## more than surviving the wave.
+const EARLY_CALL_GOLD_PER_SECOND: float = 0.35
+const EARLY_CALL_GRANT_SOURCE: StringName = &"early_call_grant"
+
+
+## Formula 5b: early_call_gold = round(seconds_skipped x rate x scalar).
+## Static so the HUD can preview the same number it will pay.
+static func early_call_gold(seconds_skipped: float, wave_reward_scalar: float) -> int:
+	return int(round(maxf(0.0, seconds_skipped) * EARLY_CALL_GOLD_PER_SECOND * wave_reward_scalar))
+
+
+func _on_wave_called_early(_wave_number: int, seconds_skipped: float, wave_reward_scalar: float) -> void:
+	var gold: int = early_call_gold(seconds_skipped, wave_reward_scalar)
+	if gold > 0:
+		GEventBus.resources_changed.emit(gold, EARLY_CALL_GRANT_SOURCE)
 
 
 func _on_monster_died(payload: MonsterDiedEvent) -> void:

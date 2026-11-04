@@ -196,6 +196,7 @@ HUD_ULTIMATE,Ultimate
 HUD_RETRY,Retry
 HUD_READY,Ready
 HUD_SKIP_COUNTDOWN,Start Now
+HUD_READY_CALL_EARLY,Call Early +%d
 SKILL_TREE_VISIT_AVAILABLE,1 purchase available this visit
 SKILL_TREE_VISIT_SPENT,Spent this visit — more available after your next mission
 SKILL_TREE_NODE_MINOR,Minor

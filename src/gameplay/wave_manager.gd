@@ -109,6 +109,17 @@ var _spawn_cell: Vector2i = Vector2i(-1, -1)
 var _wave_spawn_entries: Array[WaveSpawnEntry] = []
 var _wave_reward_scalar: float = 1.0
 
+## Early-call spec (design/quick-specs/early-wave-call-2026-11-04.md): Ready
+## pressed in INTERMISSION with at least this much time left emits
+## wave_called_early. Below it the skip is too small to be worth a reward.
+const EARLY_CALL_MIN_SECONDS: float = 1.0
+
+
+## Read-only: the most recent wave's reward scalar (1.0 before wave 1). The
+## HUD previews the early-call bonus with it.
+func get_wave_reward_scalar() -> float:
+	return _wave_reward_scalar
+
 ## ADR-0036 (Rule 7/F2/F3): Formula F2's unclamped running multiplicative
 ## product across all equipped tarot_reward_scalar_mult cards. Reset in
 ## _reset_all_state() (fresh mission or retry). Composed into
@@ -1007,6 +1018,10 @@ func _on_player_ready() -> void:
 			# _on_intermission_timer_timeout() above — this is the Ready-button
 			# path for the same INTERMISSION → PRE_WAVE transition, so Rule 22
 			# must gate here too, not just on the timer-driven path.
+			# Early-call spec 2026-11-04: Ready with time left calls the wave early.
+			var seconds_skipped: float = _intermission_timer.time_left
+			if seconds_skipped >= EARLY_CALL_MIN_SECONDS:
+				GEventBus.wave_called_early.emit(_wave_index + 1, seconds_skipped, _wave_reward_scalar)
 			_check_rebuild_gate()
 			_transition_to(Phase.PRE_WAVE)
 		Phase.PRE_WAVE:

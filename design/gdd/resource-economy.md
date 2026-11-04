@@ -126,6 +126,8 @@ a trophy or a grind meter.
     No ordering dependency on Tower or Monster internal state is required — Resource Economy only
     needs the completed wave's index from the `wave_completed` payload.
 
+10b. **Early-call gold (added 2026-11-04, `design/quick-specs/early-wave-call-2026-11-04.md`).** A second, bounded wave-tied faucet: pressing Ready in INTERMISSION with >= 1 s left pays `round(seconds_skipped x 0.35 x wave_reward_scalar)` gold (Formula 5b), source `"early_call_grant"`, once per intermission. Rule 10's "no other gold income path" now reads: Rules 8, 10 and 10b together are the in-mission gold faucet.
+
 ### States and Transitions
 
 None. Resource Economy has no internal state machine — it is a stateless reactive calculator,

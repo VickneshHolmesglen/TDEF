@@ -55,6 +55,13 @@ signal mission_phase_changed(previous_phase: String, new_phase: String, timestam
 ## Key subscribers: Monster, Hero, Tower, Mission HUD.
 signal wave_started(wave_number: int, total_waves: int, wave_difficulty: float)
 
+## Player pressed Ready during INTERMISSION with time still on the clock
+## (early-call spec 2026-11-04). Emitted before the INTERMISSION -> PRE_WAVE
+## transition. wave_number = the wave being called; seconds_skipped = the
+## intermission time given up; wave_reward_scalar = the last wave's scalar.
+## Key subscribers: Resource Economy (early-call gold), Mission HUD.
+signal wave_called_early(wave_number: int, seconds_skipped: float, wave_reward_scalar: float)
+
 ## All wave enemies are dead or boss is killed.
 ## was_boss_breached: true only when the wave-clear cause was a BOSS breach
 ## (Story 003 territory, epic-04-wave-manager) — every clear path this

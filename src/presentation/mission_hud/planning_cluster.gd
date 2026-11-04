@@ -176,6 +176,7 @@ var _input_mode_tracker: InputModeTracker = null
 var _ready_focus_ring: Panel = null
 
 const READY_LABEL: StringName = &"HUD_READY"
+const EARLY_CALL_LABEL: StringName = &"HUD_READY_CALL_EARLY"
 const SKIP_LABEL: StringName = &"HUD_SKIP_COUNTDOWN"  ## AC-42 — exact copy is a UX Spec concern, this is a placeholder
 
 ## Story 010: -1 = no tower currently inspected (sentinel, matches this
@@ -218,6 +219,7 @@ func _ready() -> void:
 	_sell_button.focus_exited.connect(_update_sell_focus_ring)
 	_update_sell_button_existence()
 	GEventBus.resources_changed.connect(_on_resources_changed)
+	GEventBus.phase_timer_tick.connect(_on_phase_timer_tick)
 	GEventBus.tower_placement_preview_updated.connect(_on_tower_placement_preview_updated)
 	_cover_cell_host = Control.new()
 	_cover_cell_host.name = "PlacementCoverHost"
@@ -252,6 +254,8 @@ func _exit_tree() -> void:
 		GEventBus.resources_changed.disconnect(_on_resources_changed)
 	if GEventBus.tower_placement_preview_updated.is_connected(_on_tower_placement_preview_updated):
 		GEventBus.tower_placement_preview_updated.disconnect(_on_tower_placement_preview_updated)
+	if GEventBus.phase_timer_tick.is_connected(_on_phase_timer_tick):
+		GEventBus.phase_timer_tick.disconnect(_on_phase_timer_tick)
 	_exit_tree_fired = true
 
 
@@ -264,6 +268,20 @@ func _exit_tree() -> void:
 ## a stray press in the one-frame lag before this instance's own teardown is
 ## a non-issue by design (Wave Manager already silently ignores player_ready
 ## during WAVE_ACTIVE) — no debounce needed here.
+## Early-call spec (design/quick-specs/early-wave-call-2026-11-04.md): during
+## INTERMISSION the Ready button shows the gold Ready would pay right now
+## ("Call Early +N"). Same formula ResourceEconomy pays with, so the preview
+## and the payout cannot drift. Other phases keep their own label.
+func _on_phase_timer_tick(phase: String, seconds_remaining: float) -> void:
+	if phase != "INTERMISSION":
+		return
+	var gold: int = ResourceEconomy.early_call_gold(seconds_remaining, GWaveManager.get_wave_reward_scalar())
+	if seconds_remaining >= WaveManager.EARLY_CALL_MIN_SECONDS and gold > 0:
+		_ready_button.text = tr(EARLY_CALL_LABEL) % gold
+	else:
+		_ready_button.text = tr(READY_LABEL)
+
+
 func _on_ready_pressed() -> void:
 	GEventBus.player_ready.emit()
 
