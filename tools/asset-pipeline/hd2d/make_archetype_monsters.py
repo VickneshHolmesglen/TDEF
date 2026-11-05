@@ -59,7 +59,6 @@ def write_mapping(mid: str, template_id: str) -> None:
     mapping = (ATLAS / f"{template_id}.tres").read_text(encoding="utf-8")
     mapping = mapping.replace(f"{template_id}_locomotion.png", f"{mid}_locomotion.png")
     mapping = re.sub(r'creature_id = &"\w+"', f'creature_id = &"{mid}"', mapping)
-    mapping = re.sub(r'family_atlas_id = &"\w+"', f'family_atlas_id = &"{mid}_family"', mapping)
     mapping = re.sub(r' uid="uid://[^"]+"', "", mapping)
     (ATLAS / f"{mid}.tres").write_text(mapping, encoding="utf-8", newline="\n")
 

@@ -45,9 +45,7 @@ extends Node
 ## TD-data-001; S5-02 for MissionResource; Story 008 for MissionEntry;
 ## TD-hero-002 for SkillResource/UltimateComboTable; Story 010 for
 ## DropTableResource; S018 for TechNodeResource/StructureResource; Story 022
-## for ItemDefinitionResource), and scans res://assets/data/visual_meshes/
-## for every .tres file, loading each as VisualMeshMappingResource keyed by
-## entity_or_component_id (Epic 15 Story 001, ADR-0037), and scans
+## for ItemDefinitionResource), and scans
 ## res://assets/data/creature_atlases/ for every .tres file, loading each as
 ## CreatureAtlasMappingResource keyed by creature_id (ADR-0038, Data Registry
 ## Story 5) — all directory scans share the same does-not-abort validation
@@ -68,7 +66,6 @@ extends Node
 ##   var tech_node: TechNodeResource = GGameDataRegistry.get_tech_node(&"tech_production_2")
 ##   var structure: StructureResource = GGameDataRegistry.get_structure(&"habitat_expansion_tier_1")
 ##   var item_def: ItemDefinitionResource = GGameDataRegistry.get_item_definition(&"iron_ore")
-##   var mesh_mapping: VisualMeshMappingResource = GGameDataRegistry.get_visual_mesh_mapping(&"tower_round")
 ##   var creature_atlas: CreatureAtlasMappingResource = GGameDataRegistry.get_creature_atlas_mapping(&"goblin_runner")
 
 const DEFAULT_MONSTERS_DIR: String = "res://assets/data/monsters/"
@@ -99,7 +96,6 @@ const DEFAULT_EQUIPMENT_RECIPES_DIR: String = "res://assets/data/equipment_recip
 const DEFAULT_SACRIFICE_RECIPES_DIR: String = "res://assets/data/sacrifice_recipes/"
 const DEFAULT_EQUIPMENT_SETS_DIR: String = "res://assets/data/equipment_sets/"
 const DEFAULT_BUILDING_UPGRADES_DIR: String = "res://assets/data/building_upgrades/"
-const DEFAULT_VISUAL_MESH_MAPPINGS_DIR: String = "res://assets/data/visual_meshes/"
 const DEFAULT_CREATURE_ATLASES_DIR: String = "res://assets/data/creature_atlases/"
 
 # Test injection seam — override via _inject() before add_child() triggers _ready().
@@ -122,7 +118,6 @@ var _recipes_dir: String = DEFAULT_RECIPES_DIR
 var _species_dir: String = DEFAULT_SPECIES_DIR
 var _tarot_cards_dir: String = DEFAULT_TAROT_CARDS_DIR
 var _building_upgrades_dir: String = DEFAULT_BUILDING_UPGRADES_DIR
-var _visual_mesh_mappings_dir: String = DEFAULT_VISUAL_MESH_MAPPINGS_DIR
 var _creature_atlases_dir: String = DEFAULT_CREATURE_ATLASES_DIR
 
 var _monster_resources: Dictionary[StringName, MonsterResource] = {}
@@ -144,7 +139,6 @@ var _recipes: Dictionary[StringName, RecipeResource] = {}
 var _species: Dictionary[StringName, SpeciesResource] = {}
 var _tarot_cards: Dictionary[StringName, TarotCardResource] = {}
 var _building_upgrades: Dictionary[StringName, BuildingUpgradeResource] = {}
-var _visual_mesh_mappings: Dictionary[StringName, VisualMeshMappingResource] = {}
 var _creature_atlas_mappings: Dictionary[StringName, CreatureAtlasMappingResource] = {}
 
 
@@ -168,12 +162,11 @@ func _ready() -> void:
 	_load_sacrifice_recipes()
 	_load_equipment_sets()
 	_load_building_upgrades()  ## must run after _load_structures() — validate() cross-references get_structure()
-	_load_visual_mesh_mappings()
 	_load_creature_atlas_mappings()
 
 
 ## Inject alternate scan paths before add_child() triggers _ready(). Tests only.
-func _inject(monsters_dir: String, perk_registry_path: String, tower_blueprints_dir: String = DEFAULT_TOWER_BLUEPRINTS_DIR, missions_dir: String = DEFAULT_MISSIONS_DIR, skills_dir: String = DEFAULT_SKILLS_DIR, ultimate_combo_table_path: String = DEFAULT_ULTIMATE_COMBO_TABLE_PATH, drop_tables_dir: String = DEFAULT_DROP_TABLES_DIR, tech_nodes_dir: String = DEFAULT_TECH_NODES_DIR, structures_dir: String = DEFAULT_STRUCTURES_DIR, item_definitions_dir: String = DEFAULT_ITEM_DEFINITIONS_DIR, recipes_dir: String = DEFAULT_RECIPES_DIR, species_dir: String = DEFAULT_SPECIES_DIR, tarot_cards_dir: String = DEFAULT_TAROT_CARDS_DIR, mission_entries_dir: String = DEFAULT_MISSION_ENTRIES_DIR, skill_definitions_dir: String = DEFAULT_SKILL_DEFINITIONS_DIR, equipment_recipes_dir: String = DEFAULT_EQUIPMENT_RECIPES_DIR, sacrifice_recipes_dir: String = DEFAULT_SACRIFICE_RECIPES_DIR, building_upgrades_dir: String = DEFAULT_BUILDING_UPGRADES_DIR, visual_mesh_mappings_dir: String = DEFAULT_VISUAL_MESH_MAPPINGS_DIR, creature_atlases_dir: String = DEFAULT_CREATURE_ATLASES_DIR, equipment_sets_dir: String = DEFAULT_EQUIPMENT_SETS_DIR) -> void:
+func _inject(monsters_dir: String, perk_registry_path: String, tower_blueprints_dir: String = DEFAULT_TOWER_BLUEPRINTS_DIR, missions_dir: String = DEFAULT_MISSIONS_DIR, skills_dir: String = DEFAULT_SKILLS_DIR, ultimate_combo_table_path: String = DEFAULT_ULTIMATE_COMBO_TABLE_PATH, drop_tables_dir: String = DEFAULT_DROP_TABLES_DIR, tech_nodes_dir: String = DEFAULT_TECH_NODES_DIR, structures_dir: String = DEFAULT_STRUCTURES_DIR, item_definitions_dir: String = DEFAULT_ITEM_DEFINITIONS_DIR, recipes_dir: String = DEFAULT_RECIPES_DIR, species_dir: String = DEFAULT_SPECIES_DIR, tarot_cards_dir: String = DEFAULT_TAROT_CARDS_DIR, mission_entries_dir: String = DEFAULT_MISSION_ENTRIES_DIR, skill_definitions_dir: String = DEFAULT_SKILL_DEFINITIONS_DIR, equipment_recipes_dir: String = DEFAULT_EQUIPMENT_RECIPES_DIR, sacrifice_recipes_dir: String = DEFAULT_SACRIFICE_RECIPES_DIR, building_upgrades_dir: String = DEFAULT_BUILDING_UPGRADES_DIR, creature_atlases_dir: String = DEFAULT_CREATURE_ATLASES_DIR, equipment_sets_dir: String = DEFAULT_EQUIPMENT_SETS_DIR) -> void:
 	_monsters_dir = monsters_dir
 	_perk_registry_path = perk_registry_path
 	_tower_blueprints_dir = tower_blueprints_dir
@@ -192,7 +185,6 @@ func _inject(monsters_dir: String, perk_registry_path: String, tower_blueprints_
 	_equipment_recipes_dir = equipment_recipes_dir
 	_sacrifice_recipes_dir = sacrifice_recipes_dir
 	_building_upgrades_dir = building_upgrades_dir
-	_visual_mesh_mappings_dir = visual_mesh_mappings_dir
 	_creature_atlases_dir = creature_atlases_dir
 	_equipment_sets_dir = equipment_sets_dir
 
@@ -490,22 +482,6 @@ func get_all_species() -> Dictionary[StringName, SpeciesResource]:
 	return _species.duplicate()
 
 
-## Returns the VisualMeshMappingResource for entity_or_component_id, or null
-## if not found/loaded. O(1) Dictionary lookup. A non-null result is not a
-## validity guarantee — validate() may have logged errors for it at boot
-## without removing it from the cache (same policy as get_monster_resource()).
-## Epic 15 Story 001, ADR-0037.
-func get_visual_mesh_mapping(entity_or_component_id: StringName) -> VisualMeshMappingResource:
-	return _visual_mesh_mappings.get(entity_or_component_id, null)
-
-
-## Returns a shallow copy of the entity_or_component_id -> VisualMeshMappingResource
-## cache. A copy, not the registry's live Dictionary — same isolation rationale
-## as get_all_monster_resources().
-func get_all_visual_mesh_mappings() -> Dictionary[StringName, VisualMeshMappingResource]:
-	return _visual_mesh_mappings.duplicate()
-
-
 ## Returns the CreatureAtlasMappingResource for creature_id, or null if not
 ## found/loaded. O(1) Dictionary lookup. A non-null result is not a validity
 ## guarantee — validate() may have logged errors for it at boot without
@@ -517,7 +493,7 @@ func get_creature_atlas_mapping(creature_id: StringName) -> CreatureAtlasMapping
 
 ## Returns a shallow copy of the creature_id -> CreatureAtlasMappingResource
 ## cache. A copy, not the registry's live Dictionary — same isolation
-## rationale as get_all_visual_mesh_mappings().
+## rationale as get_all_monster_resources().
 func get_all_creature_atlas_mappings() -> Dictionary[StringName, CreatureAtlasMappingResource]:
 	return _creature_atlas_mappings.duplicate()
 
@@ -933,26 +909,6 @@ func _load_equipment_sets() -> void:
 		if _equipment_sets.has(set_res.set_id):
 			push_error("[GameDataRegistry] %s: duplicate set_id '%s' — overwriting previous entry." % [file_name, set_res.set_id])
 		_equipment_sets[set_res.set_id] = set_res
-
-
-func _load_visual_mesh_mappings() -> void:
-	if not DirAccess.dir_exists_absolute(_visual_mesh_mappings_dir):
-		push_error("[GameDataRegistry] Visual mesh mappings directory does not exist: %s" % _visual_mesh_mappings_dir)
-		return
-	for raw_file_name: String in DirAccess.get_files_at(_visual_mesh_mappings_dir):
-		var file_name: String = _strip_export_remap_suffix(raw_file_name)
-		if not file_name.ends_with(".tres"):
-			continue
-		var mapping: VisualMeshMappingResource = ResourceLoader.load(_visual_mesh_mappings_dir + file_name) as VisualMeshMappingResource
-		if mapping == null:
-			push_error("[GameDataRegistry] %s: failed to load as VisualMeshMappingResource." % file_name)
-			continue
-		var errors: Array[String] = mapping.validate()
-		for err: String in errors:
-			push_error("[GameDataRegistry] %s: %s" % [file_name, err])
-		if _visual_mesh_mappings.has(mapping.entity_or_component_id):
-			push_error("[GameDataRegistry] %s: duplicate entity_or_component_id '%s' — overwriting previous entry." % [file_name, mapping.entity_or_component_id])
-		_visual_mesh_mappings[mapping.entity_or_component_id] = mapping
 
 
 func _load_creature_atlas_mappings() -> void:

@@ -79,7 +79,7 @@ static func _apply_combat_variance(damage: float) -> float:
 var _lifesteal_pending: Dictionary[int, float] = {}
 
 ## Injected stat provider for Rule V (exposes get_effective_stat(stat: StringName) -> float).
-## Set by the mission scene at assembly (same DI pattern as MonsterManager.set_swarm_renderer).
+## Set by the mission scene at assembly (dependency injection, not an autoload lookup).
 ## Null means armor and resists are treated as 0.
 var _hero_stats: Object = null
 

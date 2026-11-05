@@ -14,18 +14,12 @@ extends Node
 ##   Pass 3  — movement           (advance ACTIVE entities via effective speed —
 ##                                 scaled_speed x active slow multipliers;
 ##                                 detect breach; filter list)
-##   Pass 3c — visual presentation sync  (Epic 15 Story 004 / ADR-0037 for BOSS
-##                                     tier's legacy 3D mesh companion; Epic 16
-##                                     Story 7 / ADR-0038 for STANDARD/ELITE's
-##                                     MonsterSwarmRenderer3D batch update —
-##                                     syncs each still-ACTIVE entity's
-##                                     presentation to its just-finalized 2D
-##                                     position via VisualMath.map_to_3d() —
-##                                     one line per monster inside THIS existing
+##   Pass 3c — visual presentation sync  (2D sprite animation, status pips and
+##                                     wind-up telegraphs, inside THIS
 ##                                     centralized pass, never a new per-node
 ##                                     _physics_process() override on
 ##                                     MonsterInstance/MonsterEntity; see
-##                                     _pass3c_visual_sync()'s own doc comment)
+##                                     _pass3c_visual_sync())
 ##   Pass 4  — death & absorbed flush  (ADR-0033: monster_died or one monsters_died_batch
 ##                                      depending on frame death count; then monster_hp_absorbed)
 ##
@@ -159,15 +153,6 @@ var _tarot_speed_scalar: float = 1.0
 var _grid = null
 var _pathfinding = null
 
-## ADR-0038, Epic 16 Story 7: injected by the owning scene controller
-## (mission_scene.gd/the_gap.gd) via set_swarm_renderer(), not an autoload —
-## MonsterSwarmRenderer3D is scene-owned (ADR-0038 §"Rendering ownership").
-## Null-safe everywhere it's read: a test that never calls
-## set_swarm_renderer() simply gets no swarm registration, same "presentation
-## absence is non-fatal to simulation" policy monster_instance already
-## established.
-var _swarm_renderer: MonsterSwarmRenderer3D = null
-
 ## Resource lookup. Populated from GGameDataRegistry in production (_ready(),
 ## S5-01) if empty at that point. Tests that add_child() this node before
 ## injecting data will see it briefly self-populate from the real registry;
@@ -199,14 +184,6 @@ func _ready() -> void:
 	GEventBus.hero_died.connect(_on_hero_died)
 	GEventBus.mission_launched.connect(_on_mission_launched)
 	GEventBus.mission_phase_changed.connect(_on_mission_phase_changed)
-
-
-## Called by the owning scene controller (mission_scene.gd/the_gap.gd) once
-## both this node and the renderer are ready — ADR-0038 dependency injection,
-## not a service-locator lookup, per this project's "prefer DI over
-## singletons" standard (src/CLAUDE.md).
-func set_swarm_renderer(renderer: MonsterSwarmRenderer3D) -> void:
-	_swarm_renderer = renderer
 
 
 func _exit_tree() -> void:
@@ -272,20 +249,6 @@ func _pass1_damage() -> void:
 		# closest existing call site to "a monster just took a hit."
 		if entity.monster_instance != null:
 			entity.monster_instance.play_hit_flash()
-		# ADR-0038, Epic 16 Story 8: swarm-registered entities ALSO get a
-		# manager-owned decay timer feeding the swarm's own hit_flash
-		# channel (INSTANCE_CUSTOM.y), decremented in _pass3c_visual_sync().
-		# Deliberately NOT unified with play_hit_flash()'s Tween above —
-		# the 2D sprite (still the actually-visible presentation today,
-		# Camera2D remains current per Epic 15's "no premature cutover"
-		# convention) and the swarm's 3D billboard (currently invisible,
-		# Camera3D not current) are two different rendered elements, not
-		# one duplicated flash on the same pixel; unifying them is a
-		# judgment call for whenever a future story cuts the camera over,
-		# not this one. See MonsterEntity.hit_flash_remaining_seconds's own
-		# doc comment.
-		if entity.swarm_handle != null:
-			entity.hit_flash_remaining_seconds = MonsterInstance.HIT_FLASH_DURATION
 		if entity.current_hp <= 0.0:
 			entity.current_hp = 0.0
 			entity.lifecycle_state = MonsterEntity.State.DEAD
@@ -339,12 +302,6 @@ func _emit_death(entity: MonsterEntity, kill_source: StringName) -> void:
 	ev.killer_tower_id = entity.last_hit_tower_id if kill_source == &"tower" else -1
 	ev.affix = entity.affix
 	_pending_deaths.append(ev)
-	if entity.swarm_handle != null and _swarm_renderer != null:
-		_swarm_renderer.unregister_creature(entity.swarm_handle)
-		entity.swarm_handle = null
-	if entity.boss_presenter_handle != null and _swarm_renderer != null:
-		_swarm_renderer.unregister_boss(entity.boss_presenter_handle)
-		entity.boss_presenter_handle = null
 	entity.queue_free()
 
 
@@ -893,8 +850,6 @@ func _advance_entity(entity: MonsterEntity, delta: float) -> void:
 	while budget > 0.0 and entity.path_step_index < entity.current_path.size():
 		var target_world: Vector2 = _grid.cell_to_world(entity.current_path[entity.path_step_index])
 		var dist: float = entity.path_anchor.distance_to(target_world)
-		if dist > 0.0:
-			entity.facing_left = entity.path_anchor.direction_to(target_world).x < 0.0
 		if budget >= dist - PATH_ARRIVAL_THRESHOLD:
 			# Arrived at this step
 			entity.path_anchor = target_world
@@ -908,12 +863,6 @@ func _advance_entity(entity: MonsterEntity, delta: float) -> void:
 					entity.lifecycle_state = MonsterEntity.State.BREACHED
 					GEventBus.monster_breached.emit(entity.entity_id,
 							entity.resource.monster_id, entity.resource.tier)
-					if entity.swarm_handle != null and _swarm_renderer != null:
-						_swarm_renderer.unregister_creature(entity.swarm_handle)
-						entity.swarm_handle = null
-					if entity.boss_presenter_handle != null and _swarm_renderer != null:
-						_swarm_renderer.unregister_boss(entity.boss_presenter_handle)
-						entity.boss_presenter_handle = null
 					entity.queue_free()
 				return
 		else:
@@ -995,71 +944,15 @@ static func lane_offset_for(entity_id: int, tier: int) -> float:
 	return fposmod(float(entity_id) * LANE_OFFSET_STEP, 1.0) * 2.0 - 1.0
 
 # ---------------------------------------------------------------------------
-# Pass 3c — Visual Companion Sync (Epic 15 Story 004, ADR-0037)
+# Pass 3c — Visual Sync
 # ---------------------------------------------------------------------------
 
-## Syncs each still-ACTIVE monster's visual presentation to its
-## just-finalized 2D simulation position, via VisualMath.map_to_3d(). Runs
-## immediately after Pass 3 (Movement) — chosen over "run after all 4 passes"
-## (ADR-0037's/this story's other documented option) because Pass 3 is the
-## ONLY pass that ever writes entity.global_position; placing the sync
-## directly after it keeps the sync conceptually adjacent to the pass that
-## produces the value it reads, with zero positional difference either way
-## since Pass 4 never touches position.
-##
-## Two presentation paths, per ADR-0038, Epic 16 Story 7: an entity with a
-## swarm_handle (STANDARD/ELITE) updates its MonsterSwarmRenderer3D batch
-## slot; everything else falls back to the legacy ADR-0037 monster_instance
-## 3D-companion sync (currently only BOSS, tier 2, until Story 9 gives it a
-## capped presenter). A monster with neither (no renderer injected AND no
-## legacy companion built, e.g. a unit test with no scene context) is
-## silently skipped — presentation absence is non-fatal to simulation.
-##
-## Iterates active_monsters AFTER Pass 3's own swap-buffer rebuild has
-## already dropped BREACHED/no-longer-ACTIVE entities from it — a monster
-## that breached or was set DEAD earlier this frame is skipped for free.
-## Unlike the legacy companion path (freed for free when its queue_free()'d
-## MonsterEntity leaves the tree), a swarm batch slot has no such automatic
-## cleanup — death/breach explicitly call unregister_creature() elsewhere
-## (_emit_death(), _advance_entity()'s BREACHED branch, _on_wave_completed())
-## before this pass would ever see a resolved entity again.
-##
-## SPAWNING entities are intentionally NOT synced here: a SPAWNING entity has
-## no path yet and its global_position never changes until it transitions to
-## ACTIVE (Pass 3's own contract) — it was already seeded with the correct
-## position at spawn time (MonsterInstance._build_visual_companion() for
-## BOSS, or the swarm register_creature() call in _spawn_entity() for
-## STANDARD/ELITE), so a redundant per-frame sync would be wasted work, not
-## a correctness fix.
-##
-## THIS IS NOT A NEW PER-NODE _physics_process()/_process() OVERRIDE — it is
-## one additional method called from inside MonsterManager's own existing
-## centralized _physics_process(), which is the single most important
-## constraint of this story (ADR-0006's registered forbidden pattern,
-## per_monster_physics_process — see this file's class doc comment above).
-## No MonsterInstance/MonsterEntity scene script gains any new callback.
-## Zero-allocation aside from one MonsterPresentationSnapshot per swarm
-## entity per frame (a small RefCounted, not a heap array) — map_to_3d()
-## itself returns a value-type Vector3, and this loop reuses the existing
-## active_monsters array (no new Array allocated).
-##
-## ADR-0038, Epic 16 Story 8: swarm entities' hit_flash/status_mask/
-## facing_variant channels are now real, not hardcoded 0.0 (Story 7's
-## placeholder). hit_flash decays here (the manager-owned timer
-## _pass1_damage() sets on hit — see MonsterEntity.hit_flash_remaining_
-## seconds's own doc comment for why this is deliberately separate from
-## monster_instance's own Tween). status_mask bit 0 is set whenever the
-## entity has any active DoT or slow effect — a single "has a status"
-## signal, matching the pilot's own documented placeholder bit allocation
-## (ADR-0038: "full bit allocation is a later, versioned decision").
-## facing_variant reads MonsterEntity.facing_left, updated by
-## _advance_entity() during movement. atlas_frame now cycles through the
-## entity's cached MonsterEntity.walk_clip (resolved once at spawn — see
-## its own doc comment), mirroring BossCreaturePresenter3D.update_boss()'s
-## frames_elapsed % frame_count pattern (closed 2026-09-17; this was the
-## story's own flagged Out of Scope gap). Stays 0.0 for a creature whose
-## CreatureAtlasMappingResource has no "walk" clip — non-fatal, same
-## "presentation absence is non-fatal" policy as elsewhere in this file.
+## Drives each still-ACTIVE monster's 2D presentation once per frame from
+## MonsterManager's centralized _physics_process() (ADR-0006: no per-monster
+## _process): wind-up telegraph, sprite animation clip and status pips.
+## Iterates active_monsters after Pass 3 has dropped BREACHED/DEAD entities.
+## (The ADR-0038 3D swarm renderer this pass also used to feed was removed
+## 2026-11-05 when the presentation was locked to HD-2D.)
 ## Active statuses as a MonsterInstance.STATUS_ORDER bitmask (burn, poison,
 ## bleed, slow, stun, shred). Allocation-free; called per monster per frame.
 static func status_bits_for(entity: MonsterEntity) -> int:
@@ -1100,46 +993,6 @@ func _pass3c_visual_sync(delta: float) -> void:
 			if bits != entity.status_bits:
 				entity.status_bits = bits
 				entity.monster_instance.set_statuses(MonsterInstance.statuses_from_bits(bits))
-		if entity.swarm_handle != null:
-			entity.hit_flash_remaining_seconds = maxf(0.0, entity.hit_flash_remaining_seconds - delta)
-			if _swarm_renderer != null:
-				var flash: float = entity.hit_flash_remaining_seconds / MonsterInstance.HIT_FLASH_DURATION
-				var has_status: bool = not entity.active_status_effects.is_empty() or not entity.active_slow_effects.is_empty()
-				# ADR-0038 Epic 16 Story 8 follow-up: real walk-cycle
-				# frame-cycling for the batched swarm path (previously
-				# hardcoded 0.0 -- see this method's own doc comment above).
-				# Mirrors BossCreaturePresenter3D.update_boss()'s identical
-				# frames_elapsed % frame_count pattern.
-				var atlas_frame: float = 0.0
-				if entity.walk_clip != null:
-					entity.walk_anim_elapsed_seconds += delta
-					var frames_elapsed: int = int(entity.walk_anim_elapsed_seconds * entity.walk_clip.fps)
-					var offset_in_clip: int = frames_elapsed % entity.walk_clip.frame_count
-					atlas_frame = float(entity.walk_clip.start_frame + offset_in_clip)
-				var snapshot := MonsterPresentationSnapshot.new(
-						entity.entity_id, entity.resource.monster_id,
-						Transform3D(Basis(), VisualMath.map_to_3d(entity.global_position, MonsterInstance.MONSTER_LAYER_HEIGHT)),
-						atlas_frame, flash, 1.0 if has_status else 0.0, 1.0 if entity.facing_left else 0.0)
-				_swarm_renderer.update_creature(entity.swarm_handle, snapshot)
-			continue
-		if entity.boss_presenter_handle != null:
-			if _swarm_renderer != null:
-				var world_transform := Transform3D(Basis(), VisualMath.map_to_3d(entity.global_position, MonsterInstance.MONSTER_LAYER_HEIGHT))
-				# ADR-0038, Epic 16 Story 9: the overlay layer is visible for
-				# the full attack-telegraph window (boss_attack_prepare_remaining
-				# counting down to 0), matching design/gdd/monster.md's
-				# "attack_prepare... the player's only warning before
-				# boss_tower_attack_attempted emits" — Pass 2 (_pass2_boss_logic())
-				# already owns this countdown; this pass only reads it.
-				# Hero wind-ups also drive the existing prepare/attack overlay (wind-up presentation spec §4.3).
-				_swarm_renderer.update_boss(entity.boss_presenter_handle, world_transform, entity.boss_attack_prepare_remaining > 0 or entity.hero_windup_remaining > 0.0, delta)
-			continue
-		# ADR-0038, Epic 16 Story 10: neither handle set means presentation
-		# registration failed or was never attempted (no renderer injected,
-		# e.g. a unit test with no scene context) — nothing to sync. The
-		# legacy ADR-0037 monster_instance fallback that used to live here
-		# was removed along with _build_visual_companion()/
-		# sync_visual_companion_position() themselves (see monster_instance.gd).
 
 
 ## Wind-up presentation spec §4.1: feeds the monster's 2D visual from the wind-up state each frame
@@ -1308,45 +1161,11 @@ func _spawn_entity(res: MonsterResource, spawn_cell: Vector2i, wave_index: int,
 	# visible sprite is still a fully correct simulation entity.
 	var instance := MONSTER_INSTANCE_SCENE.instantiate() as MonsterInstance
 	entity.add_child(instance)
-	# ADR-0038, Epic 16 Stories 7/9/10: the legacy ADR-0037 3D mesh companion
-	# is fully retired for every tier — BOSS uses BossCreaturePresenter3D,
-	# STANDARD/ELITE use MonsterSwarmRenderer3D, registered below. Story 10
-	# removed configure()'s now-permanently-false build_legacy_3d_companion
-	# parameter entirely, along with _build_visual_companion()/
-	# sync_visual_companion_position() themselves.
 	instance.configure(res.monster_id, res.tier, res.display_name)
 	instance.set_affix(affix)
 	if res.is_flying():
 		instance.set_flying(true)
 	entity.monster_instance = instance
-
-	# ADR-0038, Epic 16 Stories 7 & 9: register with the swarm renderer
-	# (STANDARD/ELITE) or the boss presenter pool (BOSS) at spawn time,
-	# mirroring the legacy companion's own "seed the correct position
-	# immediately, no one-frame lag" contract. Mutually exclusive — an
-	# entity gets AT MOST ONE of swarm_handle/boss_presenter_handle. Both
-	# non-fatal on failure (unmapped creature_id, exceptional-class
-	# monster_id passed to register_creature(), pool at capacity, or no
-	# renderer injected in this context, e.g. a unit test) — the relevant
-	# handle simply stays null, matching monster_instance's own established
-	# "presentation absence is non-fatal to simulation" policy.
-	if _swarm_renderer != null:
-		var initial_transform := Transform3D(Basis(), VisualMath.map_to_3d(entity.global_position, MonsterInstance.MONSTER_LAYER_HEIGHT))
-		if res.tier == 2:
-			entity.boss_presenter_handle = _swarm_renderer.register_boss(entity.entity_id, res.monster_id, initial_transform)
-		else:
-			# Atlas frame/hit-flash/status-mask/facing are all 0.0 at spawn —
-			# real per-instance channel wiring happens in _pass3c_visual_sync()
-			# every frame afterward (Story 8), not at this one-time spawn call.
-			var spawn_snapshot := MonsterPresentationSnapshot.new(
-					entity.entity_id, res.monster_id, initial_transform, 0.0, 0.0, 0.0, 0.0)
-			entity.swarm_handle = _swarm_renderer.register_creature(spawn_snapshot)
-			# Cache the walk clip once here (not per-frame in
-			# _pass3c_visual_sync()) -- see MonsterEntity.walk_clip's own doc
-			# comment for why.
-			var swarm_mapping: CreatureAtlasMappingResource = GGameDataRegistry.get_creature_atlas_mapping(res.monster_id)
-			if swarm_mapping != null:
-				entity.walk_clip = swarm_mapping.get_animation_clip(&"walk")
 
 	var path: Array[Vector2i] = []
 	var start_step: int = 0
@@ -1470,12 +1289,6 @@ func clear_all_entities() -> void:
 
 ## Unregisters an entity's presenter handles and queue_free()s it.
 func _release_entity(entity: MonsterEntity) -> void:
-	if entity.swarm_handle != null and _swarm_renderer != null:
-		_swarm_renderer.unregister_creature(entity.swarm_handle)
-		entity.swarm_handle = null
-	if entity.boss_presenter_handle != null and _swarm_renderer != null:
-		_swarm_renderer.unregister_boss(entity.boss_presenter_handle)
-		entity.boss_presenter_handle = null
 	entity.queue_free()
 
 

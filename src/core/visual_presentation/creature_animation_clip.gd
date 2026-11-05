@@ -1,15 +1,12 @@
 class_name CreatureAnimationClip
 extends Resource
 
-## One named animation clip within a CreatureAtlasMappingResource's atlas
-## (ADR-0038, hybrid-swarm-rendering-implementation-blueprint.md §"Data
-## contracts" → CreatureAtlasMappingResource). Pure data — no runtime state.
+## One named animation clip within a CreatureAtlasMappingResource's sheet.
+## Pure data — no runtime state.
 ##
 ## start_frame/frame_count index into the parent mapping's flat
-## atlas_columns * atlas_rows frame grid (row-major, matching
-## creature_swarm_body.gdshader's own `col = frame % atlas_cols`,
-## `row = frame / atlas_cols` decode, live-verified in
-## prototypes/hybrid-swarm-pilot/).
+## atlas_columns * atlas_rows frame grid (row-major: col = frame % columns,
+## row = frame / columns, as MonsterInstance slices it).
 
 ## Identifies this clip within its parent mapping (e.g. &"idle", &"walk",
 ## &"death"). Empty StringName is invalid.
@@ -33,7 +30,7 @@ extends Resource
 ## Load-time validation for this clip in isolation (fields that don't need
 ## the parent mapping's frame_count for context). Returns [] when valid, one
 ## string per invalid field otherwise. Mirrors the project's established
-## Array[String] validate() idiom (see VisualMeshMappingResource).
+## Array[String] validate() idiom (see CreatureAtlasMappingResource).
 func validate() -> Array[String]:
 	var errors: Array[String] = []
 	if clip_name == &"":

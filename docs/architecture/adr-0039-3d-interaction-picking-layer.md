@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Superseded by ADR-0042 — **implementation removed 2026-11-05.** The user locked the presentation as HD-2D with 2D sprite units, then asked for the dormant 3D mode to be removed. Deleted: `Picking3D`, the picking ground planes and tower picking areas. The text below is kept as history only; nothing in `src/` implements it.
 
 ## Date
 

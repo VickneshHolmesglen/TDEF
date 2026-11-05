@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted — **dormant by decision (2026-11-05).** The user locked the presentation as HD-2D with 2D sprite units (ADR-0042). The cutover this ADR prepares is not planned: `ENABLE_3D_PRESENTATION_MODE` stays `false` in `mission_scene.gd` and `the_gap.gd`. The capability code remains behind the flag; removing it is a separate cleanup decision.
+Superseded by ADR-0042 — **implementation removed 2026-11-05.** The user locked the presentation as HD-2D with 2D sprite units, then asked for the dormant 3D mode to be removed. Deleted: `ENABLE_3D_PRESENTATION_MODE`, both scenes' `Camera3D` nodes, `_apply_presentation_mode()` and the 3D picking branch. `PresentationRoot3D` remains as the parent of the ADR-0042 HD-2D scenery. The text below is kept as history only; nothing in `src/` implements it.
 
 ## Date
 

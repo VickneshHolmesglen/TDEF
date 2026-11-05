@@ -1,4 +1,4 @@
-[gd_scene load_steps=12 format=3 uid="uid://missionscene0real"]
+[gd_scene load_steps=11 format=3 uid="uid://missionscene0real"]
 
 [ext_resource type="Script" path="res://src/scenes/mission_scene.gd" id="1_ctrl"]
 [ext_resource type="PackedScene" uid="uid://missionselectscreen0" path="res://src/gameplay/ui/mission_select_screen/MissionSelectScreen.tscn" id="2_msscreen"]
@@ -12,7 +12,6 @@
 [ext_resource type="Script" path="res://src/ui/input_mode_tracker.gd" id="10_imt"]
 [ext_resource type="Texture2D" path="res://assets/art/ui/gold_coin.png" id="11_gold_icon"]
 [ext_resource type="Script" path="res://src/core/resource_economy/resource_economy.gd" id="12_re"]
-[ext_resource type="PackedScene" path="res://src/core/visual_presentation/monster_swarm_renderer_3d.tscn" id="14_swarm"]
 
 [node name="MissionScene" type="Node2D"]
 script = ExtResource("1_ctrl")
@@ -24,12 +23,6 @@ script = ExtResource("1_ctrl")
 [node name="GameplayRoot" type="Node2D" parent="."]
 
 [node name="PresentationRoot3D" type="Node3D" parent="."]
-
-[node name="Camera3D" type="Camera3D" parent="PresentationRoot3D"]
-transform = Transform3D(1, 0, 0, 0, 0.573576, 0.819152, 0, -0.819152, 0.573576, 512, 650, 840)
-current = false
-
-[node name="MonsterSwarmRenderer3D" parent="PresentationRoot3D" instance=ExtResource("14_swarm")]
 
 [node name="GridVisual" type="Node2D" parent="GameplayRoot"]
 script = ExtResource("3_grid")

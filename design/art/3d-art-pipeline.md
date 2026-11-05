@@ -1,5 +1,7 @@
 # 3D Art Pipeline
 
+> **Retired 2026-11-05.** The presentation is locked as HD-2D with 2D sprite units (ADR-0042) and the 3D mode this pipeline fed (ADR-0037/0038/0039/0040) has been removed from the code, along with the Kenney placeholder pack. Kept as history; OQ-2 is moot (the pack is gone).
+
 Epic 15 Phase 5 deliverable. Defines how real 3D content should eventually be
 produced, imported, and wired into the 3D Visual Presentation Companion Layer
 (ADR-0037), replacing the Kenney placeholder pack currently in use. Companion

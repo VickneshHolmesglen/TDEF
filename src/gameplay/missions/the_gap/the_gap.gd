@@ -77,11 +77,6 @@ const GOAL_CELL: Vector2i = Vector2i(15, 6)
 ## interactions and are never gated by this flag.
 @export var debug_controls_enabled: bool = false
 
-## ADR-0040 (3D Camera Cutover Capability, Epic 15 Phase 4) — see
-## mission_scene.gd's identical const for the full rationale. Dormant by
-## construction; stays false by decision (2026-11-05, HD-2D locked).
-const ENABLE_3D_PRESENTATION_MODE: bool = false
-
 ## Typed as Node2D (the real base type), NOT GridVisual — grid_visual.gd
 ## deliberately declares no class_name (see its own class doc comment: a
 ## fresh class_name failed to resolve in a purely headless run during this
@@ -94,7 +89,6 @@ const ENABLE_3D_PRESENTATION_MODE: bool = false
 ## generic "Nonexistent function" console error.
 @onready var _grid_visual: Node2D = $GridVisual
 @onready var _monster_manager: MonsterManager = $MonsterManager
-@onready var _monster_swarm_renderer: MonsterSwarmRenderer3D = $PresentationRoot3D/MonsterSwarmRenderer3D
 @onready var _tower_system: TowerSystem = $TowerSystem
 @onready var _hero: Hero = $Hero
 @onready var _camera: Camera2D = $Camera2D
@@ -106,8 +100,7 @@ const ENABLE_3D_PRESENTATION_MODE: bool = false
 
 var _monsters_container: Node2D
 
-## ADR-0040 (2D-content-hiding gap, closed 2026-08-26) — see mission_scene.gd's
-## identical field for the full rationale.
+## Container for dynamically spawned 2D visuals (towers, projectiles, VFX).
 var _dynamic_visuals_root: Node2D
 
 const TowerInstanceScene: PackedScene = preload("res://src/core/tower/TowerInstance.tscn")
@@ -138,22 +131,8 @@ var _selected_blueprint_id: StringName = &""
 
 
 func _ready() -> void:
-	# Epic 15 Story 003 (ADR-0037): Godot auto-promotes a lone Camera3D to
-	# current=true on _enter_tree(), overriding the .tscn's stored
-	# current=false, because it has no way to know Camera2D is meant to stay
-	# authoritative during this phased 2D-sim/3D-render migration — confirmed
-	# live via Godot MCP (Camera3D.current reads false right after
-	# instantiate(), but true once added to the tree). Re-asserting here
-	# (after _enter_tree() has already fired for all children, before this
-	# frame renders) is what actually keeps Camera2D the active view; the
-	# .tscn's stored false is necessary documentation of intent but not
-	# sufficient on its own.
-	# ADR-0038, Epic 16 Story 7: dependency-injected, not a service-locator
-	# lookup from inside MonsterManager (src/CLAUDE.md's "prefer DI over
-	# singletons") — mirrors mission_scene.gd's identical injection.
-	_monster_manager.set_swarm_renderer(_monster_swarm_renderer)
 	# Hero-damage spec §4.4: Damage & Status reads the Hero's armor/resists through injection
-	# (same pattern as set_swarm_renderer above; no service-locator lookup).
+	# (dependency injection, no service-locator lookup).
 	($DamageStatus as DamageStatus).set_hero_stats(_hero)
 	# Wind-up presentation spec §3: Hero-side combat feedback (flash, vignette, death sequence).
 	# Hosted at the scene root (mission_scene hosts it under GameplayRoot); harmless because its
@@ -172,14 +151,9 @@ func _ready() -> void:
 	_dynamic_visuals_root = Node2D.new()
 	_dynamic_visuals_root.name = "DynamicVisuals"
 	add_child(_dynamic_visuals_root)
-	# _apply_presentation_mode() reads _monsters_container/_dynamic_visuals_root
-	# (ADR-0040) -- must run after both are created, unlike mission_scene.gd
-	# where the equivalent call already came after its own onready refs.
-	_apply_presentation_mode()
 
 	var config: GridConfig = _build_grid_config()
 	GGrid.initialize(config)
-	_build_picking_ground_plane()
 	# Dynamic dispatch (see _grid_visual's own doc comment for why it is typed
 	# Node2D rather than a GridVisual class_name). has_method() guard closes
 	# the "unchecked dynamic dispatch" gap flagged in code review: a
@@ -360,10 +334,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		if _selected_blueprint_id == &"":
 			return
-		# ADR-0040: ENABLE_3D_PRESENTATION_MODE is false by default — see
-		# mission_scene.gd's identical branch for the full rationale. This
-		# scene's 2D path remains the only reachable one today.
-		var cell: Vector2i = _pick_cell_3d(get_viewport().get_mouse_position()) if ENABLE_3D_PRESENTATION_MODE else GGrid.world_to_cell(get_global_mouse_position())
+		var cell: Vector2i = GGrid.world_to_cell(get_global_mouse_position())
 		_attempt_placement_at(cell)
 	elif event is InputEventMouseMotion:
 		_update_placement_preview()
@@ -375,11 +346,8 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 ## ADR-0042: builds the HD-2D scenery under PresentationRoot3D and hides the
-## flat 2D terrain it replaces. Skipped in the full-3D ADR-0040 mode, which
-## owns the 3D camera itself.
+## flat 2D terrain it replaces.
 func _build_scenery(config: GridConfig) -> void:
-	if ENABLE_3D_PRESENTATION_MODE:
-		return
 	var profile: Hd2dSceneryProfile = load(SCENERY_PROFILE_PATH) as Hd2dSceneryProfile
 	if profile == null:
 		push_warning("[the_gap] no HD-2D scenery profile at %s -- keeping the 2D terrain" % SCENERY_PROFILE_PATH)
@@ -392,49 +360,6 @@ func _build_scenery(config: GridConfig) -> void:
 	_scenery.follow_camera(_camera)
 	_grid_visual.visible = false
 	Hd2dScenery.apply_unit_light(self, profile.unit_tint)
-
-
-## See mission_scene.gd's identical method for the full rationale — this
-## scene knows its grid dimensions as compile-time consts (GRID_COLS/
-## GRID_ROWS/CELL_SIZE) rather than learning them from grid_initialized, so
-## this is called directly from _ready() after GGrid.initialize() instead.
-func _build_picking_ground_plane() -> void:
-	var body := StaticBody3D.new()
-	body.name = "PickingGroundPlane"
-	body.collision_layer = Picking3D.PICKING_LAYER_GROUND
-	body.collision_mask = 0
-	var shape := CollisionShape3D.new()
-	var box := BoxShape3D.new()
-	box.size = Vector3(GRID_COLS * CELL_SIZE, CELL_SIZE, GRID_ROWS * CELL_SIZE)
-	shape.shape = box
-	body.add_child(shape)
-	$PresentationRoot3D.add_child(body)
-	body.position = Vector3(GRID_COLS * CELL_SIZE * 0.5, -CELL_SIZE * 0.5, GRID_ROWS * CELL_SIZE * 0.5)
-
-
-## See mission_scene.gd's identical method for the full rationale. Only ever
-## called from the ENABLE_3D_PRESENTATION_MODE-gated branch above.
-func _pick_cell_3d(mouse_pos: Vector2) -> Vector2i:
-	# See mission_scene.gd's identical fix/doc comment — get_world_3d() is not
-	# a valid Node2D method; this was a load-breaking parse error, live-caught
-	# 2026-08-26 by a headless editor rescan.
-	var space_state: PhysicsDirectSpaceState3D = get_viewport().world_3d.direct_space_state
-	return Picking3D.pick_ground_cell($PresentationRoot3D/Camera3D, mouse_pos, space_state)
-
-
-## ADR-0040 — see mission_scene.gd's identical method for the full rationale,
-## including the 2026-08-26 2D-content-hiding fix (hides _grid_visual/_hero/
-## _monsters_container/_dynamic_visuals_root specifically, not the whole
-## scene root, since this scene's HUD is a sibling CanvasLayer, not nested
-## under a GameplayRoot-equivalent the way mission_scene.gd's is).
-func _apply_presentation_mode() -> void:
-	$PresentationRoot3D/Camera3D.current = ENABLE_3D_PRESENTATION_MODE
-	_camera.enabled = not ENABLE_3D_PRESENTATION_MODE
-	var show_2d_content: bool = not ENABLE_3D_PRESENTATION_MODE
-	_grid_visual.visible = show_2d_content
-	_hero.visible = show_2d_content
-	_monsters_container.visible = show_2d_content
-	_dynamic_visuals_root.visible = show_2d_content
 
 
 ## Attempts to place the currently-selected blueprint at `cell`. Split out

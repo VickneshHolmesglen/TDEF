@@ -1,9 +1,7 @@
 # ADR-0037: 2D-Simulated Gameplay, 3D-Rendered Presentation — Visual Companion Layer
 
 ## Status
-Accepted
-
-> **2026-11-05:** presentation locked as HD-2D with 2D sprite units (ADR-0042, ADR-0040 status). The 3D companion layer's Kenney placeholder meshes are retired and will not be replaced with real 3D art.
+Superseded by ADR-0042 — **implementation removed 2026-11-05.** The user locked the presentation as HD-2D with 2D sprite units, then asked for the dormant 3D mode to be removed. Deleted: the hero/tower/projectile/grid-tile Node3D companions, `VisualMeshMappingResource`, `VisualMath`, `assets/data/visual_meshes/`, the Kenney `assets/Tower Defense Models/` pack, the spatial hit-flash shader and their tests. The text below is kept as history only; nothing in `src/` implements it.
 
 > **Scope amendment — 2026-08-24:** ADR-0038 supersedes this ADR only for
 > monster and creature presentation. Monsters no longer receive per-entity 3D

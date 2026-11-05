@@ -109,11 +109,6 @@ const STATUS_COLORS: Dictionary[StringName, Color] = {
 const STATUS_PIP_SIZE: float = 10.0
 const STATUS_PIP_GAP: float = 3.0
 
-## Y-height for monster visuals per ADR-0037's layer_height table ("monster
-## visual anchors = 0" — same reasoning as TowerInstance.TOWER_LAYER_HEIGHT
-## and GridVisual.TILE_LAYER_HEIGHT: the spike's live-queried AABB data shows
-## these Kenney meshes already have their origin at their own base).
-const MONSTER_LAYER_HEIGHT: float = 0.0
 
 var _tier: int = 0
 ## Half-extent of the actual rendered sprite (texture size x uniform_scale),
@@ -602,13 +597,3 @@ func _draw_boss_badge() -> void:
 			Vector2(spike_x + point_width * 0.5, center.y + half * 0.2),
 		])
 		draw_colored_polygon(points, BOSS_BADGE_COLOR)
-
-# ---------------------------------------------------------------------------
-# ADR-0038, Epic 16 Story 10: the legacy ADR-0037 3D mesh companion
-# (_build_visual_companion()/sync_visual_companion_position(), formerly
-# here) was removed in this cleanup pass — Story 9 retired its last live
-# caller (BOSS; STANDARD/ELITE were already retired in Story 7). Every
-# monster tier now presents via MonsterSwarmRenderer3D (STANDARD/ELITE) or
-# BossCreaturePresenter3D (BOSS) instead. See git history for the removed
-# implementation if ever needed for reference.
-# ---------------------------------------------------------------------------

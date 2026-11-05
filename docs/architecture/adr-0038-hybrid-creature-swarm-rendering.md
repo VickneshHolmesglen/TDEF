@@ -1,7 +1,7 @@
 # ADR-0038: Hybrid Creature Swarm Rendering
 
 ## Status
-Accepted
+Superseded by ADR-0042 — **implementation removed 2026-11-05.** The user locked the presentation as HD-2D with 2D sprite units, then asked for the dormant 3D mode to be removed. Deleted: `MonsterSwarmRenderer3D`, `MonsterSwarmBatch`, `BossCreaturePresenter3D`, `MonsterPresentationHandle`/`Snapshot`, the swarm body/contact-shadow shaders, MonsterManager's registration/sync, the 3D-only `CreatureAtlasMappingResource` fields (batch keys, world size, foot anchor, presenter class, batch capacity, status-mask version) and `prototypes/hybrid-swarm-pilot/`. `CreatureAtlasMappingResource` itself stays: it is the 2D monster animation-sheet data MonsterInstance reads. The text below is kept as history only; nothing in `src/` implements it.
 
 ## Date
 2026-08-24

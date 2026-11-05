@@ -78,68 +78,6 @@ var wave_index: int = -1
 ## per MonsterInstance's own "non-fatal to spawning" doc comment.
 var monster_instance: MonsterInstance = null
 
-## ADR-0038, Epic 16 Story 7: this entity's handle into
-## MonsterSwarmRenderer3D's dense batch, or null if this entity was never
-## registered (BOSS tier — still uses the legacy monster_instance 3D
-## companion until Story 9 — or registration failed, e.g. an unmapped
-## monster_id; either way, presentation absence is non-fatal to simulation,
-## same policy as monster_instance itself). Set by
-## MonsterManager._spawn_entity(), cleared implicitly on death/breach (the
-## entity itself is queue_free()'d, so this field simply goes with it — no
-## separate clear step needed, matching monster_instance's own lifecycle).
-var swarm_handle: MonsterPresentationHandle = null
-
-## ADR-0038, Epic 16 Story 9: this BOSS entity's handle into
-## MonsterSwarmRenderer3D's capped BossCreaturePresenter3D pool. Mutually
-## exclusive with swarm_handle above — a given entity is registered with
-## AT MOST ONE of the two presentation systems (BOSS tier uses this field
-## exclusively; STANDARD/ELITE use swarm_handle exclusively; see
-## MonsterManager._spawn_entity()). Null if unregistered, registration
-## failed (pool at capacity, unmapped monster_id), or this entity isn't
-## BOSS tier.
-var boss_presenter_handle: MonsterPresentationHandle = null
-
-## ADR-0038, Epic 16 Story 8: seconds remaining in this entity's swarm
-## hit-flash decay, counting down from MonsterInstance.HIT_FLASH_DURATION to
-## 0.0 (manager-owned, per-frame decrement in
-## MonsterManager._pass3c_visual_sync() — never a Tween). Feeds
-## MonsterPresentationSnapshot.hit_flash (INSTANCE_CUSTOM.y) for
-## swarm-registered (STANDARD/ELITE) entities only; BOSS's legacy
-## companion keeps its own independent, unchanged
-## MonsterInstance.play_hit_flash() Tween (see monster_manager.gd's
-## _pass1_damage() doc comment for why these two are deliberately NOT
-## unified in this story).
-var hit_flash_remaining_seconds: float = 0.0
-
-## ADR-0038, Epic 16 Story 8: true when this entity's most recent movement
-## step had a negative X direction. Feeds
-## MonsterPresentationSnapshot.facing_variant (INSTANCE_CUSTOM.w) for
-## swarm-registered entities — updated every frame movement actually occurs
-## in MonsterManager._advance_entity(), read (never written) by
-## _pass3c_visual_sync(). Has no effect on the legacy 2D sprite or 3D
-## companion (neither implements a facing flip).
-var facing_left: bool = false
-
-## ADR-0038, Epic 16 Story 8 follow-up: this swarm-registered (STANDARD/
-## ELITE) entity's cached "walk" CreatureAnimationClip, resolved once at
-## spawn time (MonsterManager._spawn_entity()) rather than looked up from
-## GGameDataRegistry every frame in _pass3c_visual_sync() — keeps the
-## per-frame visual-sync pass allocation/lookup-free per
-## .claude/rules/engine-code.md's "ZERO allocations in hot paths" rule.
-## Null if this creature's CreatureAtlasMappingResource has no "walk" clip
-## (non-fatal — atlas_frame simply stays at the clip's absence default,
-## matching monster_instance's own "presentation absence is non-fatal"
-## policy) or this entity has no swarm_handle at all (BOSS tier).
-var walk_clip: CreatureAnimationClip = null
-
-## Seconds accumulated toward walk_clip's frame-cycling since this entity
-## last had a live swarm_handle — mirrors BossCreaturePresenter3D's own
-## _base_elapsed[slot] pattern (src/core/visual_presentation/
-## boss_creature_presenter_3d.gd), just entity-owned instead of slot-array-owned
-## since the swarm path has one MonsterEntity per creature rather than a
-## capped presenter pool.
-var walk_anim_elapsed_seconds: float = 0.0
-
 # ---- BOSS-only runtime fields (safe to leave at defaults for STANDARD/ELITE) ----
 
 ## Frames remaining before next tower scan. Initialized to 0 so BOSS scans on its first frame.

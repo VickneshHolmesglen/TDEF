@@ -75,18 +75,6 @@ const SUPPORT_AURA_COLOR: Color = Color(0.95, 0.75, 0.3)
 const PLACEMENT_CONFIRM_COLOR: Color = Color(0.95, 0.95, 0.9)
 const PLACEMENT_CONFIRM_DURATION: float = 0.3  ## seconds, per the GDD's own "~0.3s" spec
 
-## ADR-0040 (3D Camera Cutover Capability, Epic 15 Phase 4) — consolidates
-## ADR-0039's original separate ENABLE_3D_PICKING into this single toggle, so
-## the camera and the input path it depends on can never independently drift
-## out of sync. Dormant by construction: the Picking3D infrastructure below
-## (ground StaticBody3D, _pick_cell_3d()) and Camera3D itself are both fully
-## built but unreachable/inactive while this is false — the 2D Camera2D/
-## Grid.world_to_cell() path in _unhandled_input() remains the only live
-## tower-placement input path. Stays false by decision (2026-11-05): the
-## presentation is locked as HD-2D with 2D sprite units (ADR-0042), so the
-## cutover is not planned — see ADR-0040's Status.
-const ENABLE_3D_PRESENTATION_MODE: bool = false
-
 ## ADR-0042: per-mission HD-2D scenery profiles, `<mission_id>_scenery.tres`.
 const SCENERY_PROFILE_DIR: String = "res://assets/data/hd2d/"
 var _scenery: Hd2dScenery
@@ -101,8 +89,6 @@ var _scenery: Hd2dScenery
 @onready var _grid_visual: Node2D = $GameplayRoot/GridVisual
 @onready var _hero: Hero = $GameplayRoot/Hero
 @onready var _camera: Camera2D = $GameplayRoot/Camera2D
-@onready var _camera_3d: Camera3D = $PresentationRoot3D/Camera3D
-@onready var _monster_swarm_renderer: MonsterSwarmRenderer3D = $PresentationRoot3D/MonsterSwarmRenderer3D
 @onready var _monsters_container: Node2D = $GameplayRoot/MonstersContainer
 ## Real gap found during /code-review (2026-08-13, closing Epic 10's own
 ## deferred gate): these two were re-resolved via $GameplayRoot/... on
@@ -132,38 +118,15 @@ var _selected_blueprint_id: StringName = &""
 ## has already moved past.
 var _tower_visuals: Dictionary = {}  # tower_id(int) -> TowerInstance
 
-## ADR-0040 (2D-content-hiding gap, closed 2026-08-26): every dynamically
-## spawned 2D visual (TowerInstance, ProjectileVisual, placement VFX) gets
-## added here instead of directly under _gameplay_root, so
-## _apply_presentation_mode() can hide all of them — present AND future,
-## with zero per-call-site checks — through this one node. Live-caught via
-## Godot MCP: Camera2D.enabled=false does NOT stop CanvasItem content from
-## rendering (Godot composites 2D/3D independently); disabling the camera
-## only changes which pan/zoom transform applies. Actually hiding the 2D
-## layer requires hiding the CanvasItem content itself.
+## Container for every dynamically spawned 2D visual (TowerInstance,
+## ProjectileVisual, placement VFX), kept separate from the static scene nodes.
 var _dynamic_visuals_root: Node2D
 
 
 func _ready() -> void:
-	# Epic 15 Story 003 (ADR-0037): Godot auto-promotes a lone Camera3D to
-	# current=true on _enter_tree(), overriding the .tscn's stored
-	# current=false — confirmed live via Godot MCP. Re-asserting here is what
-	# actually keeps Camera2D the active view during this phased migration;
-	# see the_gap.gd's _ready() for the identical fix and full rationale.
-	# Cached as _camera_3d (not a bare $-lookup) matching this file's own
-	# established node-reference convention — see the code-review note on
-	# the @onready block above (a real regression this file was fixed for
-	# once already, during Epic 10).
 	_dynamic_visuals_root = Node2D.new()
 	_dynamic_visuals_root.name = "DynamicVisuals"
 	_gameplay_root.add_child(_dynamic_visuals_root)
-	_apply_presentation_mode()
-	# ADR-0038, Epic 16 Story 7: dependency-injected, not a service-locator
-	# lookup from inside MonsterManager (src/CLAUDE.md's "prefer DI over
-	# singletons"). Safe to inject before gameplay starts — the renderer has
-	# no _process()/_physics_process() and nothing calls into it until a
-	# monster actually spawns.
-	_monster_manager.set_swarm_renderer(_monster_swarm_renderer)
 	# Hero-damage spec §4.4: mirrors the_gap.gd's identical injection.
 	($GameplayRoot/DamageStatus as DamageStatus).set_hero_stats(_hero)
 	# Wind-up presentation spec §3: Hero-side combat feedback (flash, vignette, death sequence).
@@ -206,29 +169,6 @@ func _ready() -> void:
 	GEventBus.monsters_died_batch.connect(_on_monsters_died_batch)
 
 
-## ADR-0040: the single point that decides whether Camera3D or Camera2D is
-## authoritative. Disables (not just deprioritizes) whichever camera loses,
-## so no half-cutover state is reachable where both render simultaneously.
-##
-## Also hides (or shows) the 2D world-content CanvasItems specifically —
-## _grid_visual/_hero/_monsters_container/_dynamic_visuals_root — NOT
-## _gameplay_root itself. (Note: hiding _gameplay_root does NOT hide its HUD
-## CanvasLayer child -- CanvasLayers don't inherit Node2D visibility -- which
-## is why _hud is toggled explicitly alongside it.) This is
-## independent of and composes correctly with _gameplay_root's own
-## mission-launched visibility toggle (multiplicative CanvasItem
-## visibility — a child stays invisible if either it or any ancestor is
-## invisible, regardless of which one this method touches).
-func _apply_presentation_mode() -> void:
-	_camera_3d.current = ENABLE_3D_PRESENTATION_MODE
-	_camera.enabled = not ENABLE_3D_PRESENTATION_MODE
-	var show_2d_content: bool = not ENABLE_3D_PRESENTATION_MODE
-	_grid_visual.visible = show_2d_content
-	_hero.visible = show_2d_content
-	_monsters_container.visible = show_2d_content
-	_dynamic_visuals_root.visible = show_2d_content
-
-
 func _exit_tree() -> void:
 	GEventBus.grid_initialized.disconnect(_on_grid_initialized)
 	GEventBus.mission_launched.disconnect(_on_mission_launched)
@@ -256,7 +196,6 @@ func _exit_tree() -> void:
 ## a camera still at its Node defaults. grid_initialized fires before
 ## mission_launched at every call site, closing the gap structurally.
 func _on_grid_initialized(cols: int, rows: int, cell_size: float) -> void:
-	_build_picking_ground_plane(cols, rows, cell_size)
 	if _grid_visual.has_method(&"configure"):
 		var cells: Dictionary = {}
 		for row: int in range(rows):
@@ -291,8 +230,6 @@ func _on_grid_initialized(cols: int, rows: int, cell_size: float) -> void:
 ## different mission) and kept inactive until mission_launched reveals the
 ## gameplay subtree, so it never renders behind the Mission Select screen.
 func _build_scenery(cols: int, rows: int, cell_size: float) -> void:
-	if ENABLE_3D_PRESENTATION_MODE:
-		return
 	var path: String = SCENERY_PROFILE_DIR + "%s_scenery.tres" % GMissionSelect.get_current_mission_id()
 	var profile: Hd2dSceneryProfile = load(path) as Hd2dSceneryProfile if ResourceLoader.exists(path) else null
 	if profile == null:
@@ -601,14 +538,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		if _selected_blueprint_id == &"":
 			return
-		# ADR-0040: ENABLE_3D_PRESENTATION_MODE is false by default (see its own
-		# doc comment on the const declaration) — this branch is provably
-		# unreachable until a future, live-verified cutover flips it. The 2D
-		# path below remains the only live path today.
-		# NOTE: Picking3D.pick_ray() expects viewport (screen-space) coordinates,
-		# NOT get_global_mouse_position()'s Camera2D-world coordinates — these are
-		# two different coordinate spaces that happen to share a type (Vector2).
-		var pointer: Vector2 = GGrid.cell_to_world(_pick_cell_3d(get_viewport().get_mouse_position())) if ENABLE_3D_PRESENTATION_MODE else get_global_mouse_position()
+		var pointer: Vector2 = get_global_mouse_position()
 		var center: Vector2 = _placement_center(pointer)
 		if center != Vector2.INF:
 			_attempt_placement_at_world(center)
@@ -621,46 +551,6 @@ func _unhandled_input(event: InputEvent) -> void:
 		if game_speed != null:
 			game_speed.cycle()
 			get_viewport().set_input_as_handled()
-
-
-## Builds the invisible, process-free ground StaticBody3D that
-## Picking3D.pick_ground_cell() raycasts against (ADR-0039). Sized to the
-## mission's actual grid bounds — cols/rows/cell_size are only known once
-## GGrid.initialize() fires grid_initialized, so this is called from
-## _on_grid_initialized() rather than _ready(). No visual mesh, no
-## _process()/_physics_process() — a static collision shape has zero
-## per-frame cost while ENABLE_3D_PRESENTATION_MODE is false (nothing ever raycasts
-## against it) and while true (a raycast is only cast on click, not per
-## frame).
-func _build_picking_ground_plane(cols: int, rows: int, cell_size: float) -> void:
-	var body := StaticBody3D.new()
-	body.name = "PickingGroundPlane"
-	body.collision_layer = Picking3D.PICKING_LAYER_GROUND
-	body.collision_mask = 0
-	var shape := CollisionShape3D.new()
-	var box := BoxShape3D.new()
-	# Grid origin is (0,0) in world space (Grid.cell_to_world()'s own
-	# convention) — center the plane on the grid's own extent, one cell_size
-	# thick so a straight-down ray from Camera3D always intersects it.
-	box.size = Vector3(cols * cell_size, cell_size, rows * cell_size)
-	shape.shape = box
-	body.add_child(shape)
-	$PresentationRoot3D.add_child(body)
-	body.position = Vector3(cols * cell_size * 0.5, -cell_size * 0.5, rows * cell_size * 0.5)
-
-
-## Resolves a screen-space mouse position to a grid cell via Picking3D's
-## ground-plane raycast (ADR-0039). Only ever called from the
-## ENABLE_3D_PRESENTATION_MODE-gated branch above — see that branch's own comment.
-func _pick_cell_3d(mouse_pos: Vector2) -> Vector2i:
-	# get_world_3d() is a Viewport/Node3D method, not available on this
-	# Node2D-rooted scene — live-verified 2026-08-26 (this was a load-breaking
-	# parse error, "Function get_world_3d() not found in base self", caught
-	# by a headless editor rescan; ENABLE_3D_PRESENTATION_MODE's dormancy
-	# meant it had never been exercised until this pass). get_viewport() IS
-	# available on any Node; Viewport.world_3d is the correct accessor.
-	var space_state: PhysicsDirectSpaceState3D = get_viewport().world_3d.direct_space_state
-	return Picking3D.pick_ground_cell(_camera_3d, mouse_pos, space_state)
 
 
 ## Attempts to place the currently-selected blueprint on the grid-aligned

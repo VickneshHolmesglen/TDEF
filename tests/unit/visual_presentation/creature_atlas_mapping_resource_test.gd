@@ -1,10 +1,8 @@
 ## Unit tests for CreatureAnimationClip, CreatureAtlasMappingResource, and
 ## GameDataRegistry's boot-time loading/validation of CreatureAtlasMappingResource
-## (ADR-0038, hybrid-swarm-rendering-implementation-blueprint.md Story 5 —
-## "Data registry integration").
+## (the 2D monster animation-sheet data read by MonsterInstance).
 ##
-## Registry-boot tests follow visual_mesh_mapping_resource_test.gd's
-## direct-injection convention: a fresh GameDataRegistry.new() + _inject() +
+## Registry-boot tests use direct injection: a fresh GameDataRegistry.new() + _inject() +
 ## reach-in override of _creature_atlases_dir, fixtures under
 ## tests/fixtures/game_data_registry/creature_atlases_*/.
 ##
@@ -21,7 +19,7 @@ const MISSING_ATLASES_DIR: String = "res://tests/fixtures/game_data_registry/cre
 
 # Existing valid fixtures for the other GameDataRegistry loaders — needed
 # because _inject() takes positional args for every loader, matching
-# visual_mesh_mapping_resource_test.gd's own const-reuse convention.
+# the registry tests' const-reuse convention.
 const VALID_MONSTERS_DIR: String = "res://tests/fixtures/game_data_registry/monsters_valid/"
 const VALID_PERK_REGISTRY_PATH: String = "res://tests/fixtures/game_data_registry/towers/perk_registry_valid.tres"
 const EMPTY_TOWER_BLUEPRINTS_DIR: String = "res://tests/fixtures/game_data_registry/tower_blueprints_empty/"
@@ -83,19 +81,10 @@ func test_clip_validate_passes_for_valid_clip() -> void:
 func _make_minimal_valid_mapping() -> CreatureAtlasMappingResource:
 	var mapping := CreatureAtlasMappingResource.new()
 	mapping.creature_id = &"test_creature"
-	mapping.family_atlas_id = &"test_family"
 	mapping.atlas_texture = PlaceholderTexture2D.new()
 	mapping.atlas_columns = 2
 	mapping.atlas_rows = 1
 	mapping.frame_count = 2
-	mapping.world_width = 1.0
-	mapping.world_height = 1.0
-	mapping.mesh_layout_id = &"quad_billboard"
-	mapping.shader_variant_id = &"creature_swarm_body"
-	mapping.render_mode_id = CreatureAtlasMappingResource.RENDER_MODE_ALPHA_SCISSOR
-	mapping.presentation_class = CreatureAtlasMappingResource.PRESENTATION_CLASS_STANDARD
-	mapping.batch_capacity_requirement = 200
-	mapping.status_mask_schema_version = 1
 	return mapping
 
 
@@ -107,12 +96,6 @@ func test_mapping_validate_fails_when_creature_id_empty() -> void:
 	var mapping := _make_minimal_valid_mapping()
 	mapping.creature_id = &""
 	assert_array(mapping.validate()).contains(["creature_id must not be empty"])
-
-
-func test_mapping_validate_fails_when_family_atlas_id_empty() -> void:
-	var mapping := _make_minimal_valid_mapping()
-	mapping.family_atlas_id = &""
-	assert_array(mapping.validate()).contains(["family_atlas_id must not be empty"])
 
 
 func test_mapping_validate_fails_when_atlas_texture_null() -> void:
@@ -145,82 +128,6 @@ func test_mapping_validate_fails_when_frame_count_exceeds_grid_capacity() -> voi
 	mapping.atlas_rows = 1
 	mapping.frame_count = 3
 	assert_array(mapping.validate()).contains(["frame_count (3) exceeds atlas grid capacity (2 columns x 1 rows = 2 cells)"])
-
-
-func test_mapping_validate_fails_when_world_width_non_positive() -> void:
-	var mapping := _make_minimal_valid_mapping()
-	mapping.world_width = 0.0
-	assert_array(mapping.validate()).contains(["world_width must be positive (got 0.000000)"])
-
-
-func test_mapping_validate_fails_when_world_height_non_positive() -> void:
-	var mapping := _make_minimal_valid_mapping()
-	mapping.world_height = -2.0
-	assert_array(mapping.validate()).contains(["world_height must be positive (got -2.000000)"])
-
-
-func test_mapping_validate_fails_when_mesh_layout_id_empty() -> void:
-	var mapping := _make_minimal_valid_mapping()
-	mapping.mesh_layout_id = &""
-	assert_array(mapping.validate()).contains(["mesh_layout_id must not be empty"])
-
-
-func test_mapping_validate_fails_when_shader_variant_id_empty() -> void:
-	var mapping := _make_minimal_valid_mapping()
-	mapping.shader_variant_id = &""
-	assert_array(mapping.validate()).contains(["shader_variant_id must not be empty"])
-
-
-func test_mapping_validate_fails_when_render_mode_id_unrecognized() -> void:
-	var mapping := _make_minimal_valid_mapping()
-	mapping.render_mode_id = &"alpha_blend"
-	assert_array(mapping.validate()).contains(["render_mode_id must be one of alpha_scissor/alpha_hash (got 'alpha_blend')"])
-
-
-func test_mapping_validate_passes_for_alpha_hash_render_mode() -> void:
-	var mapping := _make_minimal_valid_mapping()
-	mapping.render_mode_id = CreatureAtlasMappingResource.RENDER_MODE_ALPHA_HASH
-	assert_array(mapping.validate()).is_empty()
-
-
-func test_mapping_validate_fails_when_presentation_class_unrecognized() -> void:
-	var mapping := _make_minimal_valid_mapping()
-	mapping.presentation_class = &"unique"
-	assert_array(mapping.validate()).contains(["presentation_class must be one of standard/exceptional (got 'unique')"])
-
-
-func test_mapping_validate_fails_when_exceptional_missing_approved_presenter_class() -> void:
-	var mapping := _make_minimal_valid_mapping()
-	mapping.presentation_class = CreatureAtlasMappingResource.PRESENTATION_CLASS_EXCEPTIONAL
-	mapping.approved_presenter_class = &""
-	assert_array(mapping.validate()).contains(["approved_presenter_class must be set for exceptional presentation_class"])
-
-
-func test_mapping_validate_passes_for_exceptional_with_approved_presenter_class() -> void:
-	var mapping := _make_minimal_valid_mapping()
-	mapping.presentation_class = CreatureAtlasMappingResource.PRESENTATION_CLASS_EXCEPTIONAL
-	mapping.approved_presenter_class = &"BossCreaturePresenter3D"
-	assert_array(mapping.validate()).is_empty()
-
-
-func test_mapping_validate_fails_when_standard_batch_capacity_non_positive() -> void:
-	var mapping := _make_minimal_valid_mapping()
-	mapping.batch_capacity_requirement = 0
-	assert_array(mapping.validate()).contains(["batch_capacity_requirement must be positive for standard presentation_class (got 0)"])
-
-
-func test_mapping_validate_ignores_batch_capacity_for_exceptional() -> void:
-	var mapping := _make_minimal_valid_mapping()
-	mapping.presentation_class = CreatureAtlasMappingResource.PRESENTATION_CLASS_EXCEPTIONAL
-	mapping.approved_presenter_class = &"BossCreaturePresenter3D"
-	mapping.batch_capacity_requirement = 0
-	assert_array(mapping.validate()).is_empty()
-
-
-func test_mapping_validate_fails_when_status_mask_schema_version_non_positive() -> void:
-	var mapping := _make_minimal_valid_mapping()
-	mapping.status_mask_schema_version = 0
-	assert_array(mapping.validate()).contains(["status_mask_schema_version must be positive (got 0)"])
 
 
 # ---------------------------------------------------------------------------
@@ -364,7 +271,7 @@ func test_ready_duplicate_creature_id_logs_push_error_and_keeps_one_entry() -> v
 	# Exactly one entry wins for the shared creature_id — file iteration
 	# order is not documented/guaranteed by DirAccess.get_files_at(), so
 	# this asserts a result exists rather than which of the two files won,
-	# matching visual_mesh_mapping_resource_test.gd's own precedent.
+	# matching the other registry tests' precedent.
 	var result: CreatureAtlasMappingResource = _registry.get_creature_atlas_mapping(&"duplicate_creature")
 	assert_object(result).is_not_null()
 
@@ -387,12 +294,11 @@ func test_live_registry_resolves_goblin_runner_mapping() -> void:
 	assert_object(mapping).is_not_null()
 	assert_array(mapping.validate()).is_empty()
 	assert_object(mapping.atlas_texture).is_not_null()
-	assert_str(String(mapping.presentation_class)).is_equal("standard")
+	assert_object(mapping.get_animation_clip(&"walk")).is_not_null()
 
 
-func test_live_registry_resolves_goblin_warlord_boss_as_exceptional() -> void:
+func test_live_registry_resolves_goblin_warlord_boss_mapping() -> void:
 	var mapping: CreatureAtlasMappingResource = GGameDataRegistry.get_creature_atlas_mapping(&"goblin_warlord_boss")
 	assert_object(mapping).is_not_null()
 	assert_array(mapping.validate()).is_empty()
-	assert_str(String(mapping.presentation_class)).is_equal("exceptional")
-	assert_str(String(mapping.approved_presenter_class)).is_equal("BossCreaturePresenter3D")
+	assert_object(mapping.atlas_texture).is_not_null()
