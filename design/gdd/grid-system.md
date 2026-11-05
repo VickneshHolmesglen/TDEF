@@ -290,6 +290,8 @@ N/A — the Grid System does not own any UI. The placement cursor, cell validity
 **OQ-1: Does the Tower Mastery System use Chebyshev or Euclidean distance for its proximity threshold?**
 > This GDD provides `get_occupied_cells_in_radius` using Chebyshev (Formula 3). If Tower Mastery GDD decides proximity should feel circular (Euclidean), the Grid API will need an additional `get_occupied_cells_in_euclidean_radius(center, radius_world_units)` function. Decision deferred to Tower Mastery GDD.
 
+**OQ-2 — ANSWERED BY DESIGN (`design/quick-specs/map-terrain-2026-11-05.md`, 2026-11-05, not built yet):** map features such as elevated ground are a separate `GridConfig.terrain` layer (cell -> terrain id), not new cell types, so the 5-type model and everything that reads it stay unchanged. Original question kept below.
+
 **OQ-2: Are there mission map cell types beyond PLACEABLE, PATH, SPAWN, GOAL, BLOCKED?**
 > The current 5-type model covers known requirements. Future mission designs may require additional types (e.g., `HERO_ONLY`, `ELEVATED`). Any new cell type is a Grid GDD revision and a breaking change for Constellation, Pathfinding, and Wave Manager GDDs.
 
