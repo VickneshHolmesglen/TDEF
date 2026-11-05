@@ -18,6 +18,10 @@ It reads the game's own data, so it stays in sync with every edit:
   src/core/difficulty_rewards.gd        tier reward multipliers, Ascension growth
   src/core/ascension_rewards.gd         Ascendant Shard income
   src/core/inventory/inventory.gd, slot_expansion_cost_table.gd   bag size
+  src/core/resource_economy/sanctuary_gold.gd, resource_economy.gd,
+  src/gameplay/wave_manager.gd, assets/data/towers/blueprints/
+                                        Sanctuary gold (mission gold in,
+                                        conversion rate, Forge prices)
 
 Endgame (--ascend-after N): from mission N+1 each visit to a map climbs one
 Ascension rank on it, as far as the hero's modelled power supports (the
@@ -32,6 +36,12 @@ Assumptions the game data can't supply are flags (see --help) and are
 printed at the top of every report. What-if flags (--xp-growth,
 --level-cap, --tier-reward ...) override the real values without
 touching the game.
+
+Sanctuary gold: each mission's gold income (scout grant + wave grants,
+optionally early-call gold) minus tower placements is the gold held at the
+end; it banks at the conversion rate (Treasury techs raise it, bought like
+any other purchase), and Forge crafts need that gold as well as materials.
+--no-sanctuary-gold restores the old materials-only shopping.
 
 Usage (repo root):
   python tools/balance/progression_sim.py
@@ -392,6 +402,67 @@ def load_power_rules() -> PowerRules:
     return r
 
 
+@dataclass
+class GoldRules:
+    """Mission gold income and Sanctuary gold, read from the game code."""
+    scout_gold: int = 50
+    base_wave_gold: int = 20
+    early_call_per_second: float = 0.2
+    intermission_seconds: float = 30.0
+    scalar_cap: float = 4.768
+    base_rate: float = 0.25
+    rate_per_tech: float = 0.10
+    treasury_ids: tuple = ()
+    craft_cost_base: int = 30
+    avg_tower_cost: float = 20.0
+
+
+def load_gold_rules() -> GoldRules:
+    re_src = (ROOT / "src/core/resource_economy/resource_economy.gd").read_text(encoding="utf-8")
+    sg = (ROOT / "src/core/resource_economy/sanctuary_gold.gd").read_text(encoding="utf-8")
+    wm = (ROOT / "src/gameplay/wave_manager.gd").read_text(encoding="utf-8")
+    g = GoldRules()
+    g.scout_gold = gd_const(re_src, "SCOUT_STARTING_GOLD", g.scout_gold)
+    g.base_wave_gold = gd_const(re_src, "BASE_WAVE_GOLD", g.base_wave_gold)
+    g.early_call_per_second = gd_const(re_src, "EARLY_CALL_GOLD_PER_SECOND", g.early_call_per_second)
+    m = re.search(r'@export var intermission_duration_sec: float = ([\d.]+)', wm)
+    if m:
+        g.intermission_seconds = float(m.group(1))
+    m = re.search(r'1\.00, ([\d.]+)\)', wm)
+    if m:
+        g.scalar_cap = float(m.group(1))
+    g.base_rate = gd_const(sg, "BASE_CONVERSION_RATE", g.base_rate)
+    g.rate_per_tech = gd_const(sg, "CONVERSION_RATE_PER_TECH", g.rate_per_tech)
+    g.craft_cost_base = gd_const(sg, "CRAFT_COST_BASE", g.craft_cost_base)
+    m = re.search(r'const TREASURY_TECH_IDS[^=]*=\s*\[([^\]]*)\]', sg)
+    g.treasury_ids = tuple(re.findall(r'&"([^"]+)"', m.group(1))) if m else ()
+    costs = []
+    for f in sorted((DATA / "towers/blueprints").glob("*.tres")):
+        r, _ = parse_tres(f)
+        if r.get("placement_cost"):
+            costs.append(n_val(r.get("placement_cost")))
+    if costs:
+        g.avg_tower_cost = sum(costs) / len(costs)
+    return g
+
+
+def craft_gold_cost(quality_tier: int, g: GoldRules) -> int:
+    """SanctuaryGold.craft_cost: base x 2^(tier-1), tier clamped 1-4."""
+    return g.craft_cost_base * (1 << (max(1, min(4, quality_tier)) - 1))
+
+
+def mission_gold_income(m: "Mission", g: GoldRules, early_call_share: float) -> float:
+    """Scout grant + Formula 5 wave grants, + Formula 5b early-call gold for
+    `early_call_share` of each intermission skipped (after every wave but the last)."""
+    total = float(g.scout_gold)
+    for w in range(len(m.waves)):
+        scalar = min(g.scalar_cap, max(1.0, (1.0 + m.growth) ** w))
+        total += round(g.base_wave_gold * scalar)
+        if w < len(m.waves) - 1 and early_call_share > 0.0:
+            total += round(g.intermission_seconds * early_call_share * g.early_call_per_second * scalar)
+    return total
+
+
 TREE_PURCHASES = 46  # 4 archetypes x 11 + 2 bridges (HeroSkillTree terminal state)
 
 
@@ -425,7 +496,7 @@ def load_tree_attack(stat: str = "physical_attack") -> float:
     return total + sum(max(0.0, v) for v in best.values()) + sum(sorted(bridges, reverse=True)[:2])
 
 
-def load_purchases() -> list[Purchase]:
+def load_purchases(gold_rules: "GoldRules | None" = None) -> list[Purchase]:
     out: list[Purchase] = []
     for f in sorted((DATA / "defense_building/tech_nodes").glob("*.tres")):
         r, _ = parse_tres(f)
@@ -443,8 +514,9 @@ def load_purchases() -> list[Purchase]:
                             s_val(r.get("tech_prerequisite"))))
     for f in sorted((DATA / "equipment_recipes").glob("*.tres")):
         r, _ = parse_tres(f)
+        gold = craft_gold_cost(int(n_val(r.get("quality_tier"), 1)), gold_rules) if gold_rules else 0
         out.append(Purchase(s_val(r.get("output_item_id")), "equipment", dict_val(r.get("inputs")),
-                            s_val(r.get("tech_prerequisite"))))
+                            s_val(r.get("tech_prerequisite")), gold=gold))
     for f in sorted((DATA / "building_upgrades").glob("*.tres")):
         r, _ = parse_tres(f)
         req = dict_val(r.get("requirements"))
@@ -602,7 +674,17 @@ def run(args) -> str:
     rarity, item_type = load_items()
     excluded, stack_caps = load_item_flags()
     pools = Pools(rarity, item_type, excluded)
-    purchases = load_purchases()
+    gold_rules = load_gold_rules()
+    if args.craft_gold is not None:
+        gold_rules.craft_cost_base = args.craft_gold
+    if args.gold_rate is not None:
+        gold_rules.base_rate = args.gold_rate
+    use_gold = not args.no_sanctuary_gold
+    purchases = load_purchases(gold_rules if use_gold else None)
+    if not use_gold:
+        for p in purchases:
+            p.gold = 0
+    tower_gold = args.tower_gold if args.tower_gold is not None else args.towers * gold_rules.avg_tower_cost
     bag_rules = load_bag_rules()
     if not args.no_bag:
         prev = ""
@@ -648,6 +730,18 @@ def run(args) -> str:
              + ("; salvages when nearly full" if args.salvage else "")
              + ("; discards stacks nothing still uses" if args.discard else "; no discard")
              if not args.no_bag else "- Bag: unlimited (`--no-bag`)")
+    if use_gold:
+        L.append(f"- Sanctuary gold: mission income = scout {gold_rules.scout_gold} + wave grants "
+                 f"`round({gold_rules.base_wave_gold} x min({gold_rules.scalar_cap:g}, (1+growth)^(w-1)))`"
+                 + (f" + early calls skipping {args.early_call:.0%} of each {gold_rules.intermission_seconds:g} s intermission"
+                    if args.early_call > 0 else "; no early calls (`--early-call`)")
+                 + f"; towers cost {fmt(tower_gold)} a mission (`--tower-gold`; {args.towers} x avg blueprint "
+                 f"{gold_rules.avg_tower_cost:.1f}); held gold banks at {gold_rules.base_rate:.0%} "
+                 f"+ {gold_rules.rate_per_tech:.0%} per Treasury tech owned; crafting costs "
+                 f"{gold_rules.craft_cost_base} x 2^(tier-1) (tier 4+ = {craft_gold_cost(4, gold_rules)}); "
+                 "imbues and rune slots not modelled")
+    else:
+        L.append("- Sanctuary gold: ignored (`--no-sanctuary-gold`)")
     L.append("")
 
     L.append("## One run of each mission\n")
@@ -682,6 +776,10 @@ def run(args) -> str:
     lost_at: dict[int, float] = {}
     bag_at: dict[int, tuple[int, int]] = {}
     held_shards = 0.0
+    sgold = 0.0
+    sgold_spent = 0.0
+    gold_at: dict[int, tuple[float, float, float, float, int]] = {}  # banked, rate, balance, spent, waiting
+    gold_waits: dict[str, int] = {}  # purchase -> missions its materials sat ready while gold was short
     best_rank: dict[str, int] = defaultdict(int)
     rank_at: dict[int, int] = {}
     shards_at: dict[int, float] = {}
@@ -723,21 +821,38 @@ def run(args) -> str:
         else:
             held_shards = bag.add(inv, "ascendant_shard", held_shards)
         lost_at[n] = lost_now
+        banked = 0.0
+        rate = 0.0
+        if use_gold:
+            held_gold = max(0.0, mission_gold_income(missions[mid], gold_rules, args.early_call) - tower_gold)
+            rate = gold_rules.base_rate + gold_rules.rate_per_tech * sum(1 for t in gold_rules.treasury_ids if t in owned)
+            banked = float(math.floor(held_gold * rate))
+            sgold += banked
+            earned["__sanctuary_gold__"] += banked
         rank_at[n] = max(best_rank.values(), default=0)
         shards_at[n] = earned["ascendant_shard"]
         for p in purchases:
-            if p.name not in first_affordable and pools.can_afford(p.cost, earned):
+            if p.name not in first_affordable and pools.can_afford(p.cost, earned) \
+                    and earned["__sanctuary_gold__"] + 1e-9 >= p.gold:
                 first_affordable[p.name] = n
         # Cheapest affordable first, prerequisites respected.
+        waiting_now = 0
         for p in sorted(purchases, key=lambda p: sum(p.cost.values())):
             if p.name in owned or (p.prereq and p.prereq not in owned and any(q.name == p.prereq for q in purchases)):
                 continue
             if pools.can_afford(p.cost, inv):
+                if sgold + 1e-9 < p.gold:
+                    gold_waits[p.name] = gold_waits.get(p.name, 0) + 1
+                    waiting_now += 1
+                    continue
                 pools.spend(p.cost, inv)
+                sgold -= p.gold
+                sgold_spent += p.gold
                 owned.add(p.name)
                 bought_at[p.name] = n
                 if p.category == "bag":
                     bag.slots = bag_rules.expansions[int(p.name.rsplit("_", 1)[1]) - 1][0]
+        gold_at[n] = (banked, rate, sgold, sgold_spent, waiting_now)
         if args.salvage and not args.no_bag and bag.used(inv) >= bag.slots - 2:
             # Bag nearly full: refine Common/Uncommon stacks no remaining recipe names
             # by id (SalvageRules: RATIO inputs -> 1 output one rarity up).
@@ -853,6 +968,28 @@ def run(args) -> str:
             L.append(f"| {lvl} | {fmt(xp_required(lvl, rules))} | {fmt(cum)} | {cum / avg_xp:.1f} |")
         cum += xp_required(lvl, rules)
 
+    if use_gold:
+        L.append("\n## Sanctuary gold\n")
+        L.append("Banked = Sanctuary gold from that mission's held gold. Balance = after that visit's shopping. "
+                 "Waiting = purchases whose materials were ready that visit but the gold was short.\n")
+        L.append("| Missions | Treasury | Rate | Banked | Balance | Spent so far | Waiting on gold |")
+        L.append("|---|---|---|---|---|---|---|")
+        for n in marks:
+            banked_n, rate_n, bal_n, spent_n, wait_n = gold_at[n]
+            owned_t = sum(1 for t in gold_rules.treasury_ids if t in bought_at and bought_at[t] < n)
+            L.append(f"| {n} | {owned_t}/{len(gold_rules.treasury_ids)} | {rate_n:.0%} | {fmt(banked_n)} | "
+                     f"{fmt(bal_n)} | {fmt(spent_n)} | {wait_n} |")
+        treasury_when = ", ".join(f"{t} @ {bought_at.get(t, '-')}" for t in gold_rules.treasury_ids)
+        L.append(f"\nTreasury bought: {treasury_when}. "
+                 f"Gold banked over {args.missions} missions: {fmt(earned['__sanctuary_gold__'])}; "
+                 f"spent {fmt(sgold_spent)}.")
+        slowest = sorted(gold_waits.items(), key=lambda kv: -kv[1])[:8]
+        if slowest:
+            L.append("Longest gold waits (visits with materials ready, gold short): "
+                     + ", ".join(f"{k} {v}" for k, v in slowest))
+        else:
+            L.append("No purchase ever waited on gold.")
+
     L.append("\n## Sanctuary purchases\n")
     L.append("`Affordable` = the first mission whose cumulative income covers this item alone. "
              "`Bought` = when a greedy cheapest-first shopper actually gets it, respecting prerequisites. "
@@ -860,15 +997,10 @@ def run(args) -> str:
     L.append("| Item | Kind | Cost | Needs | Affordable | Bought |")
     L.append("|---|---|---|---|---|---|")
     for p in sorted(purchases, key=lambda p: (first_affordable.get(p.name, 10 ** 6), p.category, p.name)):
-        cost = ", ".join(f"{fmt(v)} {k}" for k, v in p.cost.items())
+        cost = ", ".join(f"{fmt(v)} {k}" for k, v in p.cost.items()) + (f", {p.gold} gold" if p.gold else "")
         needs = " ".join(x for x in (p.prereq, p.also_needs) if x)
         L.append(f"| {p.name} | {p.category} | {cost} | {needs} | {first_affordable.get(p.name, '-')} | "
                  f"{bought_at.get(p.name, '-')} |")
-    gold_items = [p for p in purchases if p.gold]
-    if gold_items:
-        L.append(f"\nNote: {len(gold_items)} purchases list a gold cost (total {sum(p.gold for p in gold_items):,}), "
-                 "but gold resets every mission (MissionEconomy) and there is no persistent Sanctuary gold, "
-                 "so gold is ignored here.")
     return "\n".join(L) + "\n"
 
 
@@ -894,6 +1026,14 @@ def main() -> None:
     ap.add_argument("--ascend-after", type=int, default=0,
                     help="endgame: from mission N+1 climb Ascension one rank per map visit (default off)")
     ap.add_argument("--no-tree", action="store_true", help="WHAT-IF ignore the Hero Skill Tree's attack bonus")
+    ap.add_argument("--no-sanctuary-gold", action="store_true",
+                    help="WHAT-IF ignore Sanctuary gold (materials-only shopping, as before 2026-11-05)")
+    ap.add_argument("--craft-gold", type=int, help="WHAT-IF tier-1 craft price (game: SanctuaryGold.CRAFT_COST_BASE, doubles per tier)")
+    ap.add_argument("--gold-rate", type=float, help="WHAT-IF base conversion rate (game: SanctuaryGold.BASE_CONVERSION_RATE)")
+    ap.add_argument("--early-call", type=float, default=0.0,
+                    help="share of each intermission skipped with an early call (0-1, default 0)")
+    ap.add_argument("--tower-gold", type=float,
+                    help="mission gold spent on towers per mission (default: --towers x avg blueprint placement_cost)")
     ap.add_argument("--no-bag", action="store_true", help="WHAT-IF unlimited bag")
     ap.add_argument("--salvage", action="store_true",
                     help="player salvages Common/Uncommon stacks no remaining recipe names when the bag is nearly full")

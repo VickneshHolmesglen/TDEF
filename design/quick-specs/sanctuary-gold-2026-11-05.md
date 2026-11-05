@@ -22,7 +22,18 @@ Supersedes `sanctuary-header-drop-gold-2026-08-06.md` (that spec removed gold fr
 
 ## Tuning notes
 
-A typical mission ends holding most of its ~250-400 gold (towers cost 10-12), so it banks ~75-100 at the base rate and ~165-220 at 55%. T1 gear at 30 is affordable after one mission; T4 at 240 needs a few. Not yet modelled in `tools/balance/progression_sim.py`. Playtest knobs: `BASE_CONVERSION_RATE`, `CONVERSION_RATE_PER_TECH`, `CRAFT_COST_BASE`, `IMBUE_COST`, `RUNE_SLOT_COST_STEP` in `SanctuaryGold`.
+Modelled in `tools/balance/progression_sim.py` (2026-11-05): mission income = scout + wave grants (+ `--early-call`), minus `--towers` x the average blueprint placement cost (~21), banked at the Treasury-adjusted rate; Forge crafts need gold too (imbues and rune slots not modelled). Knobs: `--craft-gold`, `--gold-rate`, `--tower-gold`, `--no-sanctuary-gold`.
+
+Findings (120 missions, ascend after 65, 6 towers, no early calls): a mission banks ~60-120 at 25% and ~190-260 at 55%. **At the shipped prices gold never delays a purchase** — materials are the bottleneck and 22,362 is banked vs 3,510 spent. What-ifs on the tier-1 price (doubling per tier):
+
+| T1 price | Gear @12 / @30 / @60 | Peak visits waiting on gold | Unspent at 120 |
+|---|---|---|---|
+| 30 (shipped) | 17 / 32 / 41 | 0 | 18,852 |
+| 100 | 12 / 25 / 37 | 10 | 13,244 |
+| 150 | 9 / 21 / 32 | 25 | 5,412 |
+| 200 | 8 / 17 / 30 | 32 | 999 |
+
+So gold is only a real constraint from ~100 up; past level cap the balance piles up whatever the price, because gear saturates (an endgame sink, e.g. rune slots, is the place for that). Not retuned yet: the user's call. Playtest knobs: `BASE_CONVERSION_RATE`, `CONVERSION_RATE_PER_TECH`, `CRAFT_COST_BASE`, `IMBUE_COST`, `RUNE_SLOT_COST_STEP` in `SanctuaryGold`.
 
 ## Verification
 
