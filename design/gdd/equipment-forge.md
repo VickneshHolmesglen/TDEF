@@ -28,7 +28,7 @@ The Equipment Forge System is the sanctuary's convergence layer — the final cr
 
 ### Core Rules
 
-> **Amendment 2026-11-05 — Sanctuary gold costs** (`design/quick-specs/sanctuary-gold-2026-11-05.md`): crafting costs `30 x 2^(quality_tier-1)` Sanctuary gold on top of materials, imbuing costs 40, adding a rune slot costs `100 x (slots already added + 1)` on top of its Ascendant Shards. Each action checks gold with its other costs and spends nothing if any is short. `is_craftable()` includes gold; `has_recipe_materials()` tells the screen materials from gold apart.
+> **Amendment 2026-11-05 — Sanctuary gold costs** (`design/quick-specs/sanctuary-gold-2026-11-05.md`): crafting costs `80 x quality_tier` Sanctuary gold (tier 4+ = 320) on top of materials, imbuing costs 100, adding a rune slot costs `250 x (slots already added + 1)` on top of its Ascendant Shards. Each action checks gold with its other costs and spends nothing if any is short. `is_craftable()` includes gold; `has_recipe_materials()` tells the screen materials from gold apart.
 
 
 > **Reading order note**: this GDD converges seven upstream systems (Hero,

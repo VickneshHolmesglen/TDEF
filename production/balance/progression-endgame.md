@@ -12,7 +12,8 @@ Expected values (no RNG), from the live game data. Re-run after any data or form
 - Menagerie quality bonus x1.0, win rate 100%, no tarot
 - Plan (cycled): the_ashfields -> the_broodwarrens -> the_coilmarsh -> the_duskwood -> the_foothills -> the_gap -> the_hollow -> the_mirefen -> the_narrows -> the_riftgate -> the_shardplain -> the_twinpass
 - Endgame from mission 66: each map visit climbs one Ascension rank, up to the rank the hero's power supports (max 15); shards 10 x rank first clear + 2 x rank every win (`--ascend-after`)
-- Bag: 8 slots (Inventory slots minus the hero's equip slots), stacks of 99 (ascendant_shard 999); overflow lost, shards held; equipment assumed worn, crafted goods used; salvages when nearly full; discards stacks nothing still uses
+- Bag: 8 slots (Inventory slots minus the hero's equip slots), stacks of 99 (ascendant_shard 999); overflow lost, shards held; equipment assumed worn, crafted goods used; no discard
+- Sanctuary gold: mission income = scout 50 + wave grants `round(20 x min(4.768, (1+growth)^(w-1)))`; no early calls (`--early-call`); towers cost 125 a mission (`--tower-gold`; 6 x avg blueprint 20.9); held gold banks at 25% + 10% per Treasury tech owned; crafting costs 80 x tier (tier 4+ = 320); imbues and rune slots not modelled
 
 ## One run of each mission
 
@@ -35,37 +36,37 @@ Expected values (no RNG), from the live game data. Re-run after any data or form
 
 | Missions | Hero level | Skill pts (levels) | Total XP | Purchases owned | Gear owned |
 |---|---|---|---|---|---|
-| 1 | 5 | 1 | 502 | 17/115 | 0/67 |
-| 2 | 9 | 1 | 1,043 | 29/115 | 2/67 |
-| 4 | 15 | 3 | 2,256 | 40/115 | 8/67 |
-| 8 | 22 | 4 | 4,408 | 50/115 | 11/67 |
-| 12 | 27 | 5 | 6,750 | 57/115 | 17/67 |
-| 20 | 33 | 6 | 11,157 | 66/115 | 22/67 |
-| 30 | 39 | 7 | 16,769 | 76/115 | 32/67 |
-| 40 | 43 | 8 | 22,504 | 91/115 | 44/67 |
-| 60 | 49 | 9 | 33,748 | 104/115 | 57/67 |
-| 80 | 50 | 10 | 52,875 | 106/115 | 59/67 |
-| 100 | 50 | 10 | 78,671 | 109/115 | 62/67 |
-| 160 | 50 | 10 | 192,457 | 114/115 | 67/67 |
+| 1 | 5 | 1 | 502 | 17/118 | 0/67 |
+| 2 | 9 | 1 | 1,043 | 28/118 | 1/67 |
+| 4 | 15 | 3 | 2,256 | 39/118 | 5/67 |
+| 8 | 22 | 4 | 4,408 | 51/118 | 10/67 |
+| 12 | 27 | 5 | 6,750 | 58/118 | 13/67 |
+| 20 | 33 | 6 | 11,157 | 68/118 | 21/67 |
+| 30 | 39 | 7 | 16,769 | 79/118 | 30/67 |
+| 40 | 43 | 8 | 22,504 | 89/118 | 39/67 |
+| 60 | 49 | 9 | 33,748 | 95/118 | 45/67 |
+| 80 | 50 | 10 | 52,875 | 95/118 | 45/67 |
+| 100 | 50 | 10 | 78,671 | 95/118 | 45/67 |
+| 160 | 50 | 10 | 192,457 | 95/118 | 45/67 |
 
 ## Hero power vs enemy HP
 
-Hero attack = 25 base + 2/level + best owned gear per slot (physical_attack). Enemy HP: Brutal x1.7, each Ascension rank x1.15 (max 15). `Rank to match` = the Ascension rank whose HP has grown as much as the hero has since mission 1 on Normal, i.e. the rank that should feel like the first mission. Towers, skills and tarot are NOT modelled; they push the real number higher.
+Hero attack = 25 base + 2/level + best owned gear per slot (physical_attack), x (1 + skill tree: +71% at 46 purchases, 1 per mission; permanent stat nodes only, best side per fork). Enemy HP: Brutal x1.7, each Ascension rank x1.15 (max 15). `Rank to match` = the Ascension rank whose HP has grown as much as the hero has since mission 1 on Normal, i.e. the rank that should feel like the first mission. Towers, skills, tree notables and tarot are NOT modelled; they push the real number higher.
 
-| Missions | Hero level | Gear attack | Hero attack | Power vs mission 1 | Rank to match |
-|---|---|---|---|---|---|
-| 1 | 5 | 0.0 | 33 | x1.32 | Brutal or lower |
-| 2 | 9 | 2.5 | 44 | x1.74 | 1 |
-| 4 | 15 | 3.7 | 57 | x2.27 | 3 |
-| 8 | 22 | 3.7 | 71 | x2.83 | 4 |
-| 12 | 27 | 7.9 | 85 | x3.40 | 5 |
-| 20 | 33 | 12 | 101 | x4.04 | 7 |
-| 30 | 39 | 14 | 115 | x4.61 | 8 |
-| 40 | 43 | 26 | 135 | x5.38 | 9 |
-| 60 | 49 | 40 | 161 | x6.44 | 10 |
-| 80 | 50 | 40 | 163 | x6.52 | 10 |
-| 100 | 50 | 42 | 165 | x6.60 | 10 |
-| 160 | 50 | 51 | 174 | x6.96 | 11 |
+| Missions | Hero level | Gear attack | Tree | Hero attack | Power vs mission 1 | Rank to match |
+|---|---|---|---|---|---|---|
+| 1 | 5 | 0.0 | +2% | 34 | x1.32 | Brutal or lower |
+| 2 | 9 | 2.5 | +3% | 45 | x1.77 | 1 |
+| 4 | 15 | 3.7 | +6% | 60 | x2.37 | 3 |
+| 8 | 22 | 3.7 | +12% | 79 | x3.13 | 5 |
+| 12 | 27 | 5.2 | +19% | 97 | x3.84 | 6 |
+| 20 | 33 | 11 | +31% | 131 | x5.14 | 8 |
+| 30 | 39 | 17 | +46% | 172 | x6.78 | 10 |
+| 40 | 43 | 24 | +62% | 214 | x8.45 | 12 |
+| 60 | 49 | 24 | +71% | 247 | x9.74 | 13 |
+| 80 | 50 | 24 | +71% | 251 | x9.88 | 13 |
+| 100 | 50 | 24 | +71% | 251 | x9.88 | 13 |
+| 160 | 50 | 24 | +71% | 251 | x9.88 | 13 |
 
 ## Ascension endgame
 
@@ -75,17 +76,17 @@ Best rank = highest Ascension rank cleared on any map. Shards = total earned so 
 |---|---|---|---|
 | 65 | 0 | 0.0 | 0/9 |
 | 75 | 1 | 120 | 0/9 |
-| 80 | 2 | 216 | 1/9 |
-| 85 | 2 | 336 | 1/9 |
-| 95 | 3 | 648 | 3/9 |
-| 100 | 3 | 828 | 4/9 |
-| 105 | 4 | 1,056 | 5/9 |
-| 115 | 5 | 1,560 | 7/9 |
-| 125 | 5 | 2,160 | 9/9 |
-| 135 | 6 | 2,880 | 9/9 |
-| 145 | 7 | 3,696 | 9/9 |
-| 155 | 8 | 4,608 | 9/9 |
-| 160 | 8 | 5,088 | 9/9 |
+| 80 | 2 | 216 | 0/9 |
+| 85 | 2 | 336 | 0/9 |
+| 95 | 3 | 648 | 0/9 |
+| 100 | 3 | 828 | 0/9 |
+| 105 | 4 | 1,056 | 0/9 |
+| 115 | 5 | 1,560 | 0/9 |
+| 125 | 5 | 2,160 | 0/9 |
+| 135 | 6 | 2,880 | 0/9 |
+| 145 | 7 | 3,696 | 0/9 |
+| 155 | 8 | 4,608 | 0/9 |
+| 160 | 8 | 5,088 | 0/9 |
 
 Ranks reached per map: The Gap 8, The Hollow 8, The Mirefen 8, The Narrows 8, The Rift Gate 8, The Shardplain 8, The Twinpass 8, The Ashfields 8, The Broodwarrens 8, The Coilmarsh 8, The Duskwood 8, The Foothills 7
 
@@ -96,21 +97,20 @@ Slots used at the end of each shopping trip, and income lost because the bag was
 | Missions | Slots used | Lost that mission |
 |---|---|---|
 | 1 | 5/14 | 35 |
-| 2 | 9/26 | 12 |
-| 4 | 12/38 | 0.0 |
+| 2 | 12/26 | 12 |
+| 4 | 14/38 | 0.0 |
 | 8 | 16/38 | 0.0 |
-| 12 | 17/38 | 0.0 |
-| 20 | 26/38 | 0.0 |
-| 30 | 36/38 | 0.0 |
-| 40 | 35/38 | 15 |
-| 60 | 35/38 | 58 |
-| 80 | 37/38 | 324 |
-| 100 | 37/38 | 690 |
-| 160 | 0/38 | 0.0 |
+| 12 | 23/38 | 0.0 |
+| 20 | 25/38 | 0.0 |
+| 30 | 38/38 | 69 |
+| 40 | 37/38 | 50 |
+| 60 | 38/38 | 314 |
+| 80 | 38/38 | 502 |
+| 100 | 38/38 | 806 |
+| 160 | 38/38 | 1,421 |
 
-Lost to a full bag over 160 missions: 35,130 of 102,936 (34%): goblin_hide 5,049, spore_dust 4,661, iron_plating 3,938, goblin_fang 3,356, common_scrap 2,858, troll_hide 2,104, brute_core 1,821, lurker_ichor 1,474
-Salvaged (`--salvage`, bag nearly full): 16,600 materials at 20:1 into refined_alloy, refined_essence
-Discarded (no remaining purchase uses them; `--discard`): 43,721
+Lost to a full bag over 160 missions: 90,224 of 134,412 (67%): goblin_hide 14,878, iron_plating 11,397, spore_dust 11,146, goblin_fang 7,455, iron_ore 6,717, common_scrap 5,390, troll_hide 5,150, brute_core 3,899
+Shards still held for lack of room at the end: 5,088
 
 ## Missions to reach each level
 
@@ -125,6 +125,28 @@ Discarded (no remaining purchase uses them; `--discard`): 43,721
 | 30 | 655 | 8,282 | 14.7 |
 | 40 | 1,254 | 17,209 | 30.6 |
 | 50 | 2,399 | 34,290 | 61.0 |
+
+## Sanctuary gold
+
+Banked = Sanctuary gold from that mission's held gold. Balance = after that visit's shopping. Waiting = purchases whose materials were ready that visit but the gold was short.
+
+| Missions | Treasury | Rate | Banked | Balance | Spent so far | Waiting on gold |
+|---|---|---|---|---|---|---|
+| 1 | 0/3 | 25% | 63 | 63 | 0.0 | 0 |
+| 2 | 0/3 | 25% | 93 | 76 | 80 | 4 |
+| 4 | 1/3 | 35% | 164 | 44 | 400 | 3 |
+| 8 | 1/3 | 35% | 119 | 6.0 | 880 | 2 |
+| 12 | 2/3 | 45% | 168 | 76 | 1,440 | 9 |
+| 20 | 3/3 | 55% | 187 | 47 | 2,880 | 0 |
+| 30 | 3/3 | 55% | 140 | 149 | 4,800 | 8 |
+| 40 | 3/3 | 55% | 257 | 66 | 7,040 | 3 |
+| 60 | 3/3 | 55% | 205 | 2,625 | 8,480 | 0 |
+| 80 | 3/3 | 55% | 187 | 6,632 | 8,480 | 0 |
+| 100 | 3/3 | 55% | 257 | 10,811 | 8,480 | 0 |
+| 160 | 3/3 | 55% | 257 | 22,996 | 8,480 | 0 |
+
+Treasury bought: tech_treasury_1 @ 3, tech_treasury_2 @ 10, tech_treasury_3 @ 16. Gold banked over 160 missions: 31,476; spent 8,480.
+Longest gold waits (visits with materials ready, gold short): steelwrought_longsword 17, riftrunner_coat 16, steelwrought_kite_shield 14, steelwrought_cuirass 14, steelwrought_helm 13, steelwrought_legplates 13, steelwrought_torc 7, steelwrought_gauntlets 7
 
 ## Sanctuary purchases
 
@@ -144,26 +166,14 @@ Discarded (no remaining purchase uses them; `--discard`): 43,721
 | spore_poultice | crafted good | 5.0 spore_dust |  | 1 | 1 |
 | travelers_bedroll | crafted good | 7.0 troll_hide, 3.0 common_scrap |  | 1 | 1 |
 | warlords_field_ration | crafted good | 6.0 warlord_iron, 3.0 iron_plating |  | 1 | 1 |
-| iron_greaves | equipment | 120 Common, 11 Uncommon | tech_production_2 | 1 | 10 |
-| iron_helm | equipment | 65 Material |  | 1 | 3 |
-| iron_sword | equipment | 20 Material |  | 1 | 2 |
-| leather_gloves | equipment | 55 Material |  | 1 | 3 |
-| leather_jerkin | equipment | 30 Material |  | 1 | 2 |
-| leather_leggings | equipment | 75 Material |  | 1 | 3 |
-| lucky_charm_trinket | equipment | 95 Material |  | 1 | 4 |
-| reinforced_boots | equipment | 100 Common, 9.0 Uncommon | tech_production_2 | 1 | 8 |
-| reinforced_gauntlets | equipment | 110 Common, 10 Uncommon | tech_production_2 | 1 | 9 |
-| reinforced_helm | equipment | 90 Common, 8.0 Uncommon | tech_production_2 | 1 | 6 |
-| traveler_boots | equipment | 45 Material |  | 1 | 3 |
-| warding_band | equipment | 100 Common |  | 1 | 7 |
-| wooden_buckler | equipment | 85 Material |  | 1 | 3 |
 | habitat_expansion_tier_1 | structure | 20 Common |  | 1 | 2 |
 | habitat_expansion_tier_2 | structure | 35 Common, 12 Uncommon | habitat_expansion_tier_1 | 1 | 3 |
 | habitat_expansion_tier_3 | structure | 55 Common, 25 Uncommon, 8.0 Rare | habitat_expansion_tier_2 | 1 | 4 |
-| watchtower_tier_1 | structure | 25 Common | tech_structural_1 | 1 | 8 |
-| tech_production_2 | tech | 100 Common |  | 1 | 5 |
-| tech_structural_1 | tech | 100 Common |  | 1 | 7 |
-| advanced_weapon_component | tower component | 2.0 Material | tech_production_2 | 1 | 6 |
+| watchtower_tier_1 | structure | 25 Common | tech_structural_1 | 1 | 6 |
+| tech_production_2 | tech | 100 Common |  | 1 | 4 |
+| tech_structural_1 | tech | 100 Common |  | 1 | 5 |
+| tech_treasury_1 | tech | 80 Common |  | 1 | 3 |
+| advanced_weapon_component | tower component | 2.0 Material | tech_production_2 | 1 | 5 |
 | archer_focus_component | tower component | 3.0 focus_surplus |  | 1 | 2 |
 | archer_foundation_component | tower component | 3.0 foundation_surplus |  | 1 | 1 |
 | archer_power_component | tower component | 3.0 power_surplus |  | 1 | 2 |
@@ -172,12 +182,12 @@ Discarded (no remaining purchase uses them; `--discard`): 43,721
 | basic_shaft_component | tower component | 6.0 Material |  | 1 | 1 |
 | basic_top_component | tower component | 8.0 Material |  | 1 | 1 |
 | iron_foundation_component | tower component | 5.0 Material |  | 1 | 1 |
-| masterwork_power_component | tower component | 19 Common, 10 Uncommon | tech_production_3 | 1 | 19 |
-| masterwork_weapon_component | tower component | 19 Common, 10 Uncommon | tech_production_3 | 1 | 19 |
-| reinforced_focus_component | tower component | 4.0 Material | tech_production_2 | 1 | 6 |
-| reinforced_foundation_component | tower component | 4.0 Material | tech_production_2 | 1 | 6 |
-| reinforced_power_component | tower component | 4.0 Material | tech_production_2 | 1 | 6 |
-| tier4_power_component | tower component | 32 Common, 16 Uncommon, 8.0 Rare | tech_production_4 | 1 | 33 |
+| masterwork_power_component | tower component | 19 Common, 10 Uncommon | tech_production_3 | 1 | 11 |
+| masterwork_weapon_component | tower component | 19 Common, 10 Uncommon | tech_production_3 | 1 | 11 |
+| reinforced_focus_component | tower component | 4.0 Material | tech_production_2 | 1 | 5 |
+| reinforced_foundation_component | tower component | 4.0 Material | tech_production_2 | 1 | 5 |
+| reinforced_power_component | tower component | 4.0 Material | tech_production_2 | 1 | 5 |
+| tier4_power_component | tower component | 32 Common, 16 Uncommon, 8.0 Rare | tech_production_4 | 1 | 27 |
 | upgrade_habitat_expansion_boundless | upgrade | 12 Common | creature:emberwing_moth, tarot:apex_predator, equipment:brutes_bulwark_plate | 1 | 1 |
 | upgrade_habitat_expansion_bountiful | upgrade | 12 Common | equipment:iron_greaves, creature:mossback_toad | 1 | 1 |
 | upgrade_habitat_expansion_flourishing | upgrade | 22 Common | upgrade_habitat_expansion_bountiful creature:aurora_stag, tarot:bountiful_harvest, equipment:warding_band | 1 | 2 |
@@ -185,65 +195,80 @@ Discarded (no remaining purchase uses them; `--discard`): 43,721
 | upgrade_habitat_expansion_thriving | upgrade | 12 Common | creature:duskfang_fox, tarot:steady_hand | 1 | 1 |
 | upgrade_watchtower_reinforced | upgrade | 12 Common | building:habitat_expansion_tier_1, creature:glimmer_hare, tarot:iron_resolve | 1 | 2 |
 | upgrade_watchtower_vigilant | upgrade | 22 Common | upgrade_watchtower_reinforced creature:duskfang_fox, tarot:grim_resolve, equipment:iron_helm | 1 | 2 |
-| bag_expansion_5 | bag | 45 Common, 28 Uncommon, 12 Rare | bag_expansion_4 -> 38 slots | 2 | 4 |
+| bag_expansion_5 | bag | 45 Common, 28 Uncommon, 12 Rare | bag_expansion_4 -> 38 slots | 2 | 3 |
 | bogwater_tonic | crafted good | 6.0 lurker_ichor |  | 2 | 2 |
-| iron_band | equipment | 150 Common, 14 Uncommon | tech_production_2 | 2 | 11 |
-| iron_buckler | equipment | 130 Common, 12 Uncommon | tech_production_2 | 2 | 10 |
-| reinforced_plate | equipment | 140 Common, 13 Uncommon | tech_production_2 | 2 | 11 |
-| silver_pendant | equipment | 160 Common, 15 Uncommon | tech_production_2 | 2 | 12 |
-| steel_greatsword | equipment | 175 Common, 16 Uncommon | tech_production_2 | 2 | 14 |
-| steelwrought_gauntlets | equipment | 220 Common, 21 Uncommon, 12 iron_ore | tech_production_2 | 2 | 22 |
-| steelwrought_helm | equipment | 230 Common, 22 Uncommon, 12 iron_ore | tech_production_2 | 2 | 22 |
-| steelwrought_sabatons | equipment | 190 Common, 18 Uncommon, 10 iron_ore | tech_production_2 | 2 | 15 |
-| steelwrought_signet | equipment | 200 Common, 19 Uncommon | tech_production_2 | 2 | 15 |
-| steelwrought_torc | equipment | 210 Common, 20 Uncommon | tech_production_2 | 2 | 16 |
-| habitat_expansion_tier_4 | structure | 80 Common, 45 Uncommon, 15 Rare | habitat_expansion_tier_3 | 2 | 10 |
-| tech_production_3 | tech | 220 Common, 30 Uncommon | tech_production_2 | 2 | 18 |
-| tech_structural_2 | tech | 220 Common, 30 Uncommon | tech_structural_1 | 2 | 20 |
+| iron_helm | equipment | 65 Material, 80 gold |  | 2 | 4 |
+| iron_sword | equipment | 20 Material, 80 gold |  | 2 | 2 |
+| leather_gloves | equipment | 55 Material, 80 gold |  | 2 | 4 |
+| leather_jerkin | equipment | 30 Material, 80 gold |  | 2 | 3 |
+| leather_leggings | equipment | 75 Material, 80 gold |  | 2 | 5 |
+| lucky_charm_trinket | equipment | 95 Material, 80 gold |  | 2 | 7 |
+| traveler_boots | equipment | 45 Material, 80 gold |  | 2 | 3 |
+| warding_band | equipment | 100 Common, 80 gold |  | 2 | 7 |
+| wooden_buckler | equipment | 85 Material, 80 gold |  | 2 | 6 |
+| habitat_expansion_tier_4 | structure | 80 Common, 45 Uncommon, 15 Rare | habitat_expansion_tier_3 | 2 | 8 |
+| tech_production_3 | tech | 220 Common, 30 Uncommon | tech_production_2 | 2 | 10 |
+| tech_structural_2 | tech | 220 Common, 30 Uncommon | tech_structural_1 | 2 | 13 |
+| tech_treasury_2 | tech | 180 Common, 20 Uncommon | tech_treasury_1 | 2 | 10 |
 | riftglass_ward | crafted good | 8.0 rift_shard |  | 3 | 3 |
-| steelwrought_cuirass | equipment | 265 Common, 26 Uncommon, 16 iron_ore | tech_production_2 | 3 | 27 |
-| steelwrought_kite_shield | equipment | 240 Common, 23 Uncommon, 14 iron_ore | tech_production_2 | 3 | 24 |
-| steelwrought_legplates | equipment | 250 Common, 24 Uncommon, 14 iron_ore | tech_production_2 | 3 | 25 |
-| steelwrought_longsword | equipment | 280 Common, 28 Uncommon, 18 iron_ore | tech_production_2 | 3 | 28 |
-| tech_production_4 | tech | 380 Common, 50 Uncommon, 32 Rare | tech_production_3 | 3 | 32 |
-| tech_structural_3 | tech | 380 Common, 50 Uncommon, 32 Rare | tech_structural_2 | 3 | 34 |
-| goblin_raider_leggings | equipment | 170 goblin_hide, 18 Uncommon | tech_production_3 | 4 | 39 |
-| goblin_signet | equipment | 170 goblin_hide, 18 Uncommon | tech_production_3 | 4 | 42 |
-| sentinel_visor | equipment | 20 rift_shard, 18 Uncommon | tech_production_3 | 4 | 21 |
-| sentinel_ward | equipment | 20 rift_shard, 18 Uncommon | tech_production_3 | 4 | 27 |
-| brute_gauntlets | equipment | 146 iron_plating, 18 Uncommon | tech_production_3 | 5 | 37 |
-| brute_legguards | equipment | 146 iron_plating, 18 Uncommon | tech_production_3 | 5 | 42 |
-| ichor_charm | equipment | 39 lurker_ichor, 18 Uncommon | tech_production_3 | 5 | 20 |
-| lurker_claw_gauntlets | equipment | 39 lurker_ichor, 18 Uncommon | tech_production_3 | 5 | 29 |
-| lurker_fang_blade | equipment | 39 lurker_ichor, 20 iron_ore | tech_production_3 | 5 | 32 |
-| warlords_greaves | equipment | 23 warlord_iron, 18 Uncommon | tech_production_3 | 5 | 23 |
-| troll_hide_mantle | equipment | 84 troll_hide, 18 Uncommon | tech_production_3 | 6 | 31 |
-| trollhide_buckler | equipment | 84 troll_hide, 18 Uncommon | tech_production_3 | 6 | 39 |
-| bogpearl_amulet | equipment | 70 lurker_ichor, 26 Uncommon, 11 bog_pearl | tech_production_4 | 8 | 40 |
-| goblin_claw_gauntlets | equipment | 306 goblin_hide, 26 Uncommon, 49 goblin_fang | tech_production_4 | 8 | 51 |
-| goblin_fang_circlet | equipment | 306 goblin_hide, 26 Uncommon, 49 goblin_fang | tech_production_4 | 8 | 58 |
-| sentinels_aegis | equipment | 36 rift_shard, 26 Uncommon, 8.0 sentinel_core | tech_production_4 | 8 | 40 |
-| sentinels_lance | equipment | 36 rift_shard, 26 Uncommon, 8.0 sentinel_core | tech_production_4 | 8 | 46 |
-| sentinels_striders | equipment | 36 rift_shard, 26 Uncommon, 8.0 sentinel_core | tech_production_4 | 8 | 55 |
-| trollhide_striders | equipment | 151 troll_hide, 26 Uncommon, 17 troll_marrow | tech_production_4 | 8 | 46 |
-| trollmarrow_band | equipment | 151 troll_hide, 26 Uncommon, 17 troll_marrow | tech_production_4 | 8 | 55 |
-| brute_core_band | equipment | 263 iron_plating, 26 Uncommon, 25 brute_core | tech_production_4 | 9 | 48 |
-| brutes_bulwark_plate | equipment | 263 iron_plating, 26 Uncommon, 25 brute_core | tech_production_4 | 9 | 58 |
-| brutes_war_helm | equipment | 263 iron_plating, 26 Uncommon, 25 brute_core | tech_production_4 | 9 | 64 |
-| drumskin_talisman | equipment | 44 drum_hide, 24 rift_fang, 8.0 Rare | tech_production_4 | 10 | 33 |
-| riftrunner_hood | equipment | 34 rift_fang, 22 drum_hide, 18 Uncommon | tech_production_4 | 10 | 33 |
-| riftrunner_striders | equipment | 40 rift_fang, 20 drum_hide, 18 Uncommon | tech_production_4 | 10 | 34 |
-| warlords_battleplate | equipment | 41 warlord_iron, 26 Uncommon, 8.0 warlord_emblem | tech_production_4 | 10 | 36 |
-| warlords_greatblade | equipment | 41 warlord_iron, 26 Uncommon, 8.0 warlord_emblem | tech_production_4 | 10 | 42 |
-| warlords_legguards | equipment | 41 warlord_iron, 26 Uncommon, 8.0 warlord_emblem | tech_production_4 | 10 | 48 |
-| warlords_standard_amulet | equipment | 41 warlord_iron, 26 Uncommon, 8.0 warlord_emblem | tech_production_4 | 10 | 54 |
-| riftrunner_coat | equipment | 48 rift_fang, 30 drum_hide, 24 Uncommon | tech_production_4 | 11 | 34 |
-| ascendant_aegis | equipment | 200 ascendant_shard, 20 Rare, 30 Uncommon | tech_production_4 | 80 | 80 |
-| ascendant_band | equipment | 200 ascendant_shard, 20 Rare, 30 Uncommon | tech_production_4 | 80 | 88 |
-| ascendant_crown | equipment | 200 ascendant_shard, 20 Rare, 30 Uncommon | tech_production_4 | 80 | 94 |
-| ascendant_greaves | equipment | 200 ascendant_shard, 20 Rare, 30 Uncommon | tech_production_4 | 80 | 100 |
-| ascendant_grips | equipment | 200 ascendant_shard, 20 Rare, 30 Uncommon | tech_production_4 | 80 | 104 |
-| ascendant_pendant | equipment | 200 ascendant_shard, 20 Rare, 30 Uncommon | tech_production_4 | 80 | 108 |
-| ascendant_treads | equipment | 200 ascendant_shard, 20 Rare, 30 Uncommon | tech_production_4 | 80 | 113 |
-| ascendant_blade | equipment | 300 ascendant_shard, 20 Rare, 30 Uncommon | tech_production_4 | 84 | 118 |
-| ascendant_cuirass | equipment | 300 ascendant_shard, 20 Rare, 30 Uncommon | tech_production_4 | 84 | 123 |
+| iron_band | equipment | 150 Common, 14 Uncommon, 160 gold | tech_production_2 | 3 | 18 |
+| iron_buckler | equipment | 130 Common, 12 Uncommon, 160 gold | tech_production_2 | 3 | 14 |
+| iron_greaves | equipment | 120 Common, 11 Uncommon, 160 gold | tech_production_2 | 3 | 13 |
+| reinforced_boots | equipment | 100 Common, 9.0 Uncommon, 160 gold | tech_production_2 | 3 | 10 |
+| reinforced_gauntlets | equipment | 110 Common, 10 Uncommon, 160 gold | tech_production_2 | 3 | 11 |
+| reinforced_helm | equipment | 90 Common, 8.0 Uncommon, 160 gold | tech_production_2 | 3 | 8 |
+| reinforced_plate | equipment | 140 Common, 13 Uncommon, 160 gold | tech_production_2 | 3 | 15 |
+| silver_pendant | equipment | 160 Common, 15 Uncommon, 160 gold | tech_production_2 | 3 | 19 |
+| steel_greatsword | equipment | 175 Common, 16 Uncommon, 160 gold | tech_production_2 | 3 | 20 |
+| steelwrought_cuirass | equipment | 265 Common, 26 Uncommon, 16 iron_ore, 160 gold | tech_production_2 | 3 | 41 |
+| steelwrought_gauntlets | equipment | 220 Common, 21 Uncommon, 12 iron_ore, 160 gold | tech_production_2 | 3 | 28 |
+| steelwrought_helm | equipment | 230 Common, 22 Uncommon, 12 iron_ore, 160 gold | tech_production_2 | 3 | 36 |
+| steelwrought_kite_shield | equipment | 240 Common, 23 Uncommon, 14 iron_ore, 160 gold | tech_production_2 | 3 | 37 |
+| steelwrought_legplates | equipment | 250 Common, 24 Uncommon, 14 iron_ore, 160 gold | tech_production_2 | 3 | 38 |
+| steelwrought_longsword | equipment | 280 Common, 28 Uncommon, 18 iron_ore, 160 gold | tech_production_2 | 3 | 48 |
+| steelwrought_sabatons | equipment | 190 Common, 18 Uncommon, 10 iron_ore, 160 gold | tech_production_2 | 3 | 22 |
+| steelwrought_signet | equipment | 200 Common, 19 Uncommon, 160 gold | tech_production_2 | 3 | 24 |
+| steelwrought_torc | equipment | 210 Common, 20 Uncommon, 160 gold | tech_production_2 | 3 | 25 |
+| tech_production_4 | tech | 380 Common, 50 Uncommon, 32 Rare | tech_production_3 | 3 | 26 |
+| tech_structural_3 | tech | 380 Common, 50 Uncommon, 32 Rare | tech_structural_2 | 3 | 31 |
+| tech_treasury_3 | tech | 320 Common, 40 Uncommon, 20 Rare | tech_treasury_2 | 3 | 16 |
+| goblin_raider_leggings | equipment | 170 goblin_hide, 18 Uncommon, 240 gold | tech_production_3 | 4 | 35 |
+| goblin_signet | equipment | 170 goblin_hide, 18 Uncommon, 240 gold | tech_production_3 | 4 | 40 |
+| sentinel_visor | equipment | 20 rift_shard, 18 Uncommon, 240 gold | tech_production_3 | 4 | 16 |
+| sentinel_ward | equipment | 20 rift_shard, 18 Uncommon, 240 gold | tech_production_3 | 4 | 22 |
+| brute_gauntlets | equipment | 146 iron_plating, 18 Uncommon, 240 gold | tech_production_3 | 5 | 23 |
+| brute_legguards | equipment | 146 iron_plating, 18 Uncommon, 240 gold | tech_production_3 | 5 | - |
+| ichor_charm | equipment | 39 lurker_ichor, 18 Uncommon, 240 gold | tech_production_3 | 5 | 19 |
+| lurker_claw_gauntlets | equipment | 39 lurker_ichor, 18 Uncommon, 240 gold | tech_production_3 | 5 | 26 |
+| lurker_fang_blade | equipment | 39 lurker_ichor, 20 iron_ore, 240 gold | tech_production_3 | 5 | 29 |
+| warlords_greaves | equipment | 23 warlord_iron, 18 Uncommon, 240 gold | tech_production_3 | 5 | 12 |
+| troll_hide_mantle | equipment | 84 troll_hide, 18 Uncommon, 240 gold | tech_production_3 | 6 | 44 |
+| trollhide_buckler | equipment | 84 troll_hide, 18 Uncommon, 240 gold | tech_production_3 | 6 | 47 |
+| bogpearl_amulet | equipment | 70 lurker_ichor, 26 Uncommon, 11 bog_pearl, 320 gold | tech_production_4 | 8 | - |
+| goblin_claw_gauntlets | equipment | 306 goblin_hide, 26 Uncommon, 49 goblin_fang, 320 gold | tech_production_4 | 8 | - |
+| goblin_fang_circlet | equipment | 306 goblin_hide, 26 Uncommon, 49 goblin_fang, 320 gold | tech_production_4 | 8 | - |
+| sentinels_aegis | equipment | 36 rift_shard, 26 Uncommon, 8.0 sentinel_core, 320 gold | tech_production_4 | 8 | 31 |
+| sentinels_lance | equipment | 36 rift_shard, 26 Uncommon, 8.0 sentinel_core, 320 gold | tech_production_4 | 8 | 39 |
+| sentinels_striders | equipment | 36 rift_shard, 26 Uncommon, 8.0 sentinel_core, 320 gold | tech_production_4 | 8 | 46 |
+| trollhide_striders | equipment | 151 troll_hide, 26 Uncommon, 17 troll_marrow, 320 gold | tech_production_4 | 8 | - |
+| trollmarrow_band | equipment | 151 troll_hide, 26 Uncommon, 17 troll_marrow, 320 gold | tech_production_4 | 8 | - |
+| brute_core_band | equipment | 263 iron_plating, 26 Uncommon, 25 brute_core, 320 gold | tech_production_4 | 9 | - |
+| brutes_bulwark_plate | equipment | 263 iron_plating, 26 Uncommon, 25 brute_core, 320 gold | tech_production_4 | 9 | - |
+| brutes_war_helm | equipment | 263 iron_plating, 26 Uncommon, 25 brute_core, 320 gold | tech_production_4 | 9 | - |
+| drumskin_talisman | equipment | 44 drum_hide, 24 rift_fang, 8.0 Rare, 320 gold | tech_production_4 | 10 | 33 |
+| riftrunner_hood | equipment | 34 rift_fang, 22 drum_hide, 18 Uncommon, 320 gold | tech_production_4 | 10 | 27 |
+| riftrunner_striders | equipment | 40 rift_fang, 20 drum_hide, 18 Uncommon, 320 gold | tech_production_4 | 10 | 34 |
+| warlords_battleplate | equipment | 41 warlord_iron, 26 Uncommon, 8.0 warlord_emblem, 320 gold | tech_production_4 | 10 | - |
+| warlords_greatblade | equipment | 41 warlord_iron, 26 Uncommon, 8.0 warlord_emblem, 320 gold | tech_production_4 | 10 | - |
+| warlords_legguards | equipment | 41 warlord_iron, 26 Uncommon, 8.0 warlord_emblem, 320 gold | tech_production_4 | 10 | - |
+| warlords_standard_amulet | equipment | 41 warlord_iron, 26 Uncommon, 8.0 warlord_emblem, 320 gold | tech_production_4 | 10 | - |
+| riftrunner_coat | equipment | 48 rift_fang, 30 drum_hide, 24 Uncommon, 320 gold | tech_production_4 | 11 | 43 |
+| ascendant_aegis | equipment | 200 ascendant_shard, 20 Rare, 30 Uncommon, 320 gold | tech_production_4 | 80 | - |
+| ascendant_band | equipment | 200 ascendant_shard, 20 Rare, 30 Uncommon, 320 gold | tech_production_4 | 80 | - |
+| ascendant_crown | equipment | 200 ascendant_shard, 20 Rare, 30 Uncommon, 320 gold | tech_production_4 | 80 | - |
+| ascendant_greaves | equipment | 200 ascendant_shard, 20 Rare, 30 Uncommon, 320 gold | tech_production_4 | 80 | - |
+| ascendant_grips | equipment | 200 ascendant_shard, 20 Rare, 30 Uncommon, 320 gold | tech_production_4 | 80 | - |
+| ascendant_pendant | equipment | 200 ascendant_shard, 20 Rare, 30 Uncommon, 320 gold | tech_production_4 | 80 | - |
+| ascendant_treads | equipment | 200 ascendant_shard, 20 Rare, 30 Uncommon, 320 gold | tech_production_4 | 80 | - |
+| ascendant_blade | equipment | 300 ascendant_shard, 20 Rare, 30 Uncommon, 320 gold | tech_production_4 | 84 | - |
+| ascendant_cuirass | equipment | 300 ascendant_shard, 20 Rare, 30 Uncommon, 320 gold | tech_production_4 | 84 | - |

@@ -413,7 +413,7 @@ class GoldRules:
     base_rate: float = 0.25
     rate_per_tech: float = 0.10
     treasury_ids: tuple = ()
-    craft_cost_base: int = 30
+    craft_cost_base: int = 80
     avg_tower_cost: float = 20.0
 
 
@@ -447,8 +447,8 @@ def load_gold_rules() -> GoldRules:
 
 
 def craft_gold_cost(quality_tier: int, g: GoldRules) -> int:
-    """SanctuaryGold.craft_cost: base x 2^(tier-1), tier clamped 1-4."""
-    return g.craft_cost_base * (1 << (max(1, min(4, quality_tier)) - 1))
+    """SanctuaryGold.craft_cost: base x tier, tier clamped 1-4."""
+    return g.craft_cost_base * max(1, min(4, quality_tier))
 
 
 def mission_gold_income(m: "Mission", g: GoldRules, early_call_share: float) -> float:
@@ -738,7 +738,7 @@ def run(args) -> str:
                  + f"; towers cost {fmt(tower_gold)} a mission (`--tower-gold`; {args.towers} x avg blueprint "
                  f"{gold_rules.avg_tower_cost:.1f}); held gold banks at {gold_rules.base_rate:.0%} "
                  f"+ {gold_rules.rate_per_tech:.0%} per Treasury tech owned; crafting costs "
-                 f"{gold_rules.craft_cost_base} x 2^(tier-1) (tier 4+ = {craft_gold_cost(4, gold_rules)}); "
+                 f"{gold_rules.craft_cost_base} x tier (tier 4+ = {craft_gold_cost(4, gold_rules)}); "
                  "imbues and rune slots not modelled")
     else:
         L.append("- Sanctuary gold: ignored (`--no-sanctuary-gold`)")
@@ -1028,7 +1028,7 @@ def main() -> None:
     ap.add_argument("--no-tree", action="store_true", help="WHAT-IF ignore the Hero Skill Tree's attack bonus")
     ap.add_argument("--no-sanctuary-gold", action="store_true",
                     help="WHAT-IF ignore Sanctuary gold (materials-only shopping, as before 2026-11-05)")
-    ap.add_argument("--craft-gold", type=int, help="WHAT-IF tier-1 craft price (game: SanctuaryGold.CRAFT_COST_BASE, doubles per tier)")
+    ap.add_argument("--craft-gold", type=int, help="WHAT-IF craft price per quality tier (game: SanctuaryGold.CRAFT_COST_BASE)")
     ap.add_argument("--gold-rate", type=float, help="WHAT-IF base conversion rate (game: SanctuaryGold.BASE_CONVERSION_RATE)")
     ap.add_argument("--early-call", type=float, default=0.0,
                     help="share of each intermission skipped with an early call (0-1, default 0)")

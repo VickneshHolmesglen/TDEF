@@ -26,11 +26,16 @@ const BASE_CONVERSION_RATE: float = 0.25
 const CONVERSION_RATE_PER_TECH: float = 0.10
 const TREASURY_TECH_IDS: Array[StringName] = [&"tech_treasury_1", &"tech_treasury_2", &"tech_treasury_3"]
 
-## Forge prices. Crafting doubles per quality tier (T1 30 ... T4 240).
-const CRAFT_COST_BASE: int = 30
-const IMBUE_COST: int = 40
+## Forge prices (tuned with tools/balance/progression_sim.py, 2026-11-05: see the
+## sanctuary-gold spec). Crafting is CRAFT_COST_BASE x quality tier (80/160/240/320;
+## tier 5 pays the tier-4 price): gold is planned around through the campaign
+## without a wall. A doubling curve (T4 640) left tier-4 pieces waiting 20+ visits.
+const CRAFT_COST_BASE: int = 80
+const IMBUE_COST: int = 100
 ## Adding a rune slot: this x (slots already added + 1), on top of its shards.
-const RUNE_SLOT_COST_STEP: int = 100
+## The endgame sink: ~10 worn items x 2 slots = ~7,500 gold, about what banks
+## after the gear catalogue saturates.
+const RUNE_SLOT_COST_STEP: int = 250
 
 const SOURCE_MISSION_BANK: StringName = &"mission_bank"
 
@@ -99,7 +104,7 @@ static func banked_amount(mission_gold: int, rate: float) -> int:
 
 
 static func craft_cost(quality_tier: int) -> int:
-	return CRAFT_COST_BASE * (1 << (clampi(quality_tier, 1, 4) - 1))
+	return CRAFT_COST_BASE * clampi(quality_tier, 1, 4)
 
 
 static func rune_slot_cost(extra_slots_owned: int) -> int:

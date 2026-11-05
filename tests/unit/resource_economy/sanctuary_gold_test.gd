@@ -33,10 +33,11 @@ func test_sanctuary_gold_banked_amount_floors_and_ignores_debt() -> void:
 
 
 func test_sanctuary_gold_forge_prices() -> void:
-	assert_int(SanctuaryGold.craft_cost(1)).is_equal(30)
-	assert_int(SanctuaryGold.craft_cost(4)).is_equal(240)
-	assert_int(SanctuaryGold.rune_slot_cost(0)).is_equal(100)
-	assert_int(SanctuaryGold.rune_slot_cost(2)).is_equal(300)
+	assert_int(SanctuaryGold.craft_cost(1)).is_equal(80)
+	assert_int(SanctuaryGold.craft_cost(4)).is_equal(320)
+	assert_int(SanctuaryGold.craft_cost(5)).is_equal(320)
+	assert_int(SanctuaryGold.rune_slot_cost(0)).is_equal(250)
+	assert_int(SanctuaryGold.rune_slot_cost(2)).is_equal(750)
 
 
 func test_sanctuary_gold_mission_end_banks_held_gold_once() -> void:
