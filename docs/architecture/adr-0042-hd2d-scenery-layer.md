@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted (user-directed, 2026-10-11)
+Accepted (user-directed, 2026-10-11). **2026-11-05: confirmed as the shipped presentation** (user locked "2.5D" = this HD-2D layer with 2D sprite units; the ADR-0040 3D cutover will not happen).
 
 ## Date
 

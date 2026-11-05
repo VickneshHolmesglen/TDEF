@@ -82,9 +82,9 @@ const PLACEMENT_CONFIRM_DURATION: float = 0.3  ## seconds, per the GDD's own "~0
 ## (ground StaticBody3D, _pick_cell_3d()) and Camera3D itself are both fully
 ## built but unreachable/inactive while this is false — the 2D Camera2D/
 ## Grid.world_to_cell() path in _unhandled_input() remains the only live
-## tower-placement input path. Flip only after a live-verified Godot MCP
-## session confirms both the 3D render and 3D picking behave correctly — see
-## ADR-0040's Migration Plan.
+## tower-placement input path. Stays false by decision (2026-11-05): the
+## presentation is locked as HD-2D with 2D sprite units (ADR-0042), so the
+## cutover is not planned — see ADR-0040's Status.
 const ENABLE_3D_PRESENTATION_MODE: bool = false
 
 ## ADR-0042: per-mission HD-2D scenery profiles, `<mission_id>_scenery.tres`.

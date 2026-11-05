@@ -132,7 +132,7 @@ applies here and is not separately re-verified by this doc.
 
 ## 7. Open Questions
 
-- **OQ-1**: Does the shipped game end up 2D-only, hybrid (Hero-only 3D), or
+- ~~**OQ-1**~~ **RESOLVED 2026-11-05**: 2D sprite units in the HD-2D world (ADR-0042). No 3D unit art will be made; this pipeline is dormant and OQ-3 no longer applies. Original question: Does the shipped game end up 2D-only, hybrid (Hero-only 3D), or
   fully 3D? Blocks whether any of §1's placeholder meshes are ever actually
   replaced. Owner: whoever locks `codex-art-overhaul.md` §1's visual
   direction.

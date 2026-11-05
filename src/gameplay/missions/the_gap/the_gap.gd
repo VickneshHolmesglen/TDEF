@@ -79,7 +79,7 @@ const GOAL_CELL: Vector2i = Vector2i(15, 6)
 
 ## ADR-0040 (3D Camera Cutover Capability, Epic 15 Phase 4) — see
 ## mission_scene.gd's identical const for the full rationale. Dormant by
-## construction; flip only after a live-verified Godot MCP session.
+## construction; stays false by decision (2026-11-05, HD-2D locked).
 const ENABLE_3D_PRESENTATION_MODE: bool = false
 
 ## Typed as Node2D (the real base type), NOT GridVisual — grid_visual.gd

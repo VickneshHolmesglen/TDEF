@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Accepted — **dormant by decision (2026-11-05).** The user locked the presentation as HD-2D with 2D sprite units (ADR-0042). The cutover this ADR prepares is not planned: `ENABLE_3D_PRESENTATION_MODE` stays `false` in `mission_scene.gd` and `the_gap.gd`. The capability code remains behind the flag; removing it is a separate cleanup decision.
 
 ## Date
 

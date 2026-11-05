@@ -3,6 +3,8 @@
 ## Status
 Accepted
 
+> **2026-11-05:** presentation locked as HD-2D with 2D sprite units (ADR-0042, ADR-0040 status). The 3D companion layer's Kenney placeholder meshes are retired and will not be replaced with real 3D art.
+
 > **Scope amendment — 2026-08-24:** ADR-0038 supersedes this ADR only for
 > monster and creature presentation. Monsters no longer receive per-entity 3D
 > mesh companions; mission swarms use the centralized illustrated-quad renderer

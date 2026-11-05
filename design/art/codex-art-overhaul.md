@@ -102,6 +102,16 @@ neither duplicates or overwrites the other's in-flight work.
 
 ## 1. Locked visual foundation — 3D world, 2D creatures
 
+> **Presentation direction locked — 2026-11-05 (user decision, "2.5D" = the current HD-2D look).**
+> The hero, towers, monsters and creatures are 2D sprites (pixel-converted
+> painted art). The world is HD-2D per ADR-0042: 2D painted ground with 3D
+> grass, trees and props, lit in 3D, seen through the tilted orthographic
+> camera. There is no 3D unit pass: `ENABLE_3D_PRESENTATION_MODE` stays
+> `false` and the Kenney placeholder meshes are retired (not replaced with
+> real 3D art). Where the text below assigns the hero, towers or buildings to
+> 3D, read "2D sprite grounded in the lit HD-2D world"; terrain props and
+> lighting stay 3D.
+
 The user locked the replacement foundation on 2026-08-23:
 
 > **Sanctuary Defenders presents a tactile, dimensional world built and
