@@ -282,3 +282,16 @@ func test_hero_luck_drop_bonus_flips_guaranteed_failure_to_guaranteed_success_vi
 	GEventBus.monster_died.emit(_make_died_event(&"luck_wiring_regression", 1.0))
 
 	assert_int(_spy.count("materials_earned")).is_equal(1)
+
+
+func test_resource_economy_affixed_elite_drop_quantity_scales_by_affix_multiplier() -> void:
+	# Arrange: base 2 at scalar 1.0 -> 2 plain, round(2 x 1.5) = 3 affixed
+	var table: DropTableResource = _make_drop_table(&"affix_drop", 1.0, 2)
+	_seed_drop_table(table)
+	var payload: MonsterDiedEvent = _make_died_event(&"affix_drop", 1.0)
+	payload.affix = &"regenerating"
+	# Act
+	GEventBus.monster_died.emit(payload)
+	# Assert
+	assert_int(_spy.count("materials_earned")).is_equal(1)
+	assert_int((_spy.emissions["materials_earned"] as Array)[0][1]).is_equal(3)

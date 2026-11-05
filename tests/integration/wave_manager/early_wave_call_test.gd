@@ -1,6 +1,6 @@
 ## Early wave call (design/quick-specs/early-wave-call-2026-11-04.md):
 ## Ready in INTERMISSION with time left emits wave_called_early, and
-## ResourceEconomy pays round(seconds x 0.35 x wave_reward_scalar) gold.
+## ResourceEconomy pays round(seconds x 0.2 x wave_reward_scalar) gold.
 extends GdUnitTestSuite
 
 var _wm: WaveManager
@@ -50,8 +50,8 @@ func _early_call_gold_grants() -> Array:
 
 
 func test_early_call_gold_formula() -> void:
-	assert_int(ResourceEconomy.early_call_gold(30.0, 1.0)).is_equal(11)  # 10.5 rounds up
-	assert_int(ResourceEconomy.early_call_gold(10.0, 2.0)).is_equal(7)
+	assert_int(ResourceEconomy.early_call_gold(30.0, 1.0)).is_equal(6)
+	assert_int(ResourceEconomy.early_call_gold(10.0, 2.0)).is_equal(4)
 	assert_int(ResourceEconomy.early_call_gold(0.0, 3.0)).is_equal(0)
 	assert_int(ResourceEconomy.early_call_gold(-5.0, 1.0)).is_equal(0)
 
@@ -61,13 +61,13 @@ func test_ready_in_intermission_with_time_left_calls_wave_early_and_pays_gold() 
 	_enter_intermission_with(20.0, 1.5)
 	# Act
 	GEventBus.player_ready.emit()
-	# Assert: wave 3 called with ~20 s skipped, gold = round(20 x 0.35 x 1.5) = 11.
+	# Assert: wave 3 called with ~20 s skipped, gold = round(20 x 0.2 x 1.5) = 6.
 	assert_int(_spy.count("wave_called_early")).is_equal(1)
 	var args: Array = (_spy.emissions["wave_called_early"] as Array)[0]
 	assert_int(args[0]).is_equal(3)
 	assert_float(args[1]).is_equal_approx(20.0, 0.1)
 	assert_float(args[2]).is_equal_approx(1.5, 0.0001)
-	assert_array(_early_call_gold_grants()).contains_exactly([11])
+	assert_array(_early_call_gold_grants()).contains_exactly([6])
 	assert_int(_wm._phase).is_equal(WaveManager.Phase.PRE_WAVE)
 
 

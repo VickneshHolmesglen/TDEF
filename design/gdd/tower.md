@@ -500,7 +500,7 @@ Against a 175 HP monster: time-to-kill ≈ 1.56 seconds under continuous fire.
 
 ### Formula 1d: Veterancy Rank Multiplier (added 2026-11-04)
 
-`rank_mult = 1 + 0.08 x rank`, rank 0-3 from credited kills (10/30/60). Multiplies the hit damage alongside `aura_mult`. Kill credit = last direct tower hit; mission runtime only. See `design/quick-specs/tower-veterancy-2026-11-04.md`.
+`rank_mult = 1 + 0.08 x rank`, rank 0-3 from credited kills (5/15/30; was 10/30/60, retuned 2026-11-05). Multiplies the hit damage alongside `aura_mult`. Kill credit = last direct tower hit; mission runtime only. See `design/quick-specs/tower-veterancy-2026-11-04.md`.
 
 ### Formula 1c: Splash Damage Falloff (Phase 2 — Splash, 2026-08-23)
 

@@ -204,7 +204,7 @@ func _exit_tree() -> void:
 ## scaled like the wave grant. 0.35 x the default 30 s intermission = ~10
 ## gold at scalar 1.0, half of BASE_WAVE_GOLD: worth taking, never worth
 ## more than surviving the wave.
-const EARLY_CALL_GOLD_PER_SECOND: float = 0.35
+const EARLY_CALL_GOLD_PER_SECOND: float = 0.2
 const EARLY_CALL_GRANT_SOURCE: StringName = &"early_call_grant"
 
 
@@ -362,7 +362,7 @@ func _process_drops(payload: MonsterDiedEvent) -> void:
 			continue
 		var quantity: int = _compute_drop_quantity(
 			entry.base_quantity,
-			payload.wave_reward_scalar,
+			payload.wave_reward_scalar * MonsterManager.affix_reward_multiplier(payload.affix),
 			_menagerie_quality_bonus,
 			table.guaranteed_min_quantity
 		)

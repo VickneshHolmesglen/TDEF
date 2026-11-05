@@ -60,7 +60,7 @@ const MAX_DAMAGE_BUFF_FRACTION: float = 1.0
 ## Tower veterancy (design/quick-specs/tower-veterancy-2026-11-04.md): kills
 ## needed for ranks 1, 2 and 3, and the damage bonus per rank (multiplies
 ## the final hit, like the aura buff). Rank 3 = +24% damage.
-const VETERANCY_KILL_THRESHOLDS: Array[int] = [10, 30, 60]
+const VETERANCY_KILL_THRESHOLDS: Array[int] = [5, 15, 30]
 const VETERANCY_DAMAGE_PER_RANK: float = 0.08
 
 # ---------------------------------------------------------------------------

@@ -234,7 +234,7 @@ static func _xp_required_for_level(level: int) -> int:
 func _resolve_kill_xp_band(payload: MonsterDiedEvent) -> int:
 	if payload.kill_source == "wave_end":
 		return 0
-	var base_xp: int = KILL_XP_BY_TIER.get(payload.tier, 0)
+	var base_xp: int = roundi(KILL_XP_BY_TIER.get(payload.tier, 0) * MonsterManager.affix_reward_multiplier(payload.affix))
 	if base_xp <= 0:
 		return 0
 	if is_direct_kill(payload):

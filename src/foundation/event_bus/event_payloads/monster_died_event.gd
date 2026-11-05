@@ -32,3 +32,6 @@ extends Resource
 ## Tower veterancy: the tower credited with the kill (the last tower to hit
 ## it, DoT ticks included), -1 when the kill was not a tower's.
 @export var killer_tower_id: int = -1
+## Elite affix the monster carried (&"" for none). Reward consumers scale
+## XP and drop quantity by MonsterManager.affix_reward_multiplier(affix).
+@export var affix: StringName = &""

@@ -16,6 +16,10 @@ Date: 2026-11-04. Status: **built** (overnight autonomy pass). Source idea: rand
 - The ring is a flattened ellipse at the monster's feet, drawn under the sprite like a ground aura. Each affix has its own stroke, so the cue is not colour-only.
 - Not saved; no new events.
 
+## Reward (added 2026-11-05)
+
+An affixed elite is a harder kill, so it pays more: kill XP and every drop quantity x1.5 (`MonsterManager.AFFIX_REWARD_MULT`, applied through `MonsterManager.affix_reward_multiplier(MonsterDiedEvent.affix)` in Hero XP and Resource Economy drops). Drop *chance* is unchanged. Source: `design/balance/balance-check-2026-11-05.md` (affixes added risk with no return; The Hollow has 17 elites per run).
+
 ## Counters (why each is fair)
 
 - Swift: slows and stuns (multiplicative with the affix).

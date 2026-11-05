@@ -392,6 +392,39 @@ def load_power_rules() -> PowerRules:
     return r
 
 
+TREE_PURCHASES = 46  # 4 archetypes x 11 + 2 bridges (HeroSkillTree terminal state)
+
+
+def load_tree_attack(stat: str = "physical_attack") -> float:
+    """Best permanent additive `stat` a completed Hero Skill Tree can give.
+
+    Per archetype: the better fork side of each fork (all 3 depths) and the
+    better keystone; plus the best 2 bridges. Stat nodes only: conditional
+    notables (stack buffs, on-cast, wave-start) are left out, so this is a floor.
+    """
+    raw = (DATA / "hero_tree/hero_tree_catalog.tres").read_text(encoding="utf-8")
+    nodes = []
+    for block in raw.split("[sub_resource")[1:]:
+        g = lambda k: (re.search(rf'^{k} = (.*)$', block, re.M) or [None, ""])[1]
+        add = re.search(rf'&"{stat}":\s*(-?[\d.]+)', g("additive_stats"))
+        nodes.append((g("archetype").strip('&"'), g("slot").strip('&"'), g("side").strip('&"'),
+                      float(add.group(1)) if add else 0.0))
+    total = 0.0
+    sides: dict[tuple[str, str, str], float] = defaultdict(float)
+    bridges = []
+    for arch, slot, side, v in nodes:
+        if slot == "bridge":
+            bridges.append(v)
+        elif slot == "root":
+            total += v
+        else:
+            sides[(arch, slot, side)] += v
+    best: dict[tuple[str, str], float] = {}
+    for (arch, slot, _side), v in sides.items():
+        best[(arch, slot)] = max(best.get((arch, slot), v), v)
+    return total + sum(max(0.0, v) for v in best.values()) + sum(sorted(bridges, reverse=True)[:2])
+
+
 def load_purchases() -> list[Purchase]:
     out: list[Purchase] = []
     for f in sorted((DATA / "defense_building/tech_nodes").glob("*.tres")):
@@ -653,6 +686,10 @@ def run(args) -> str:
     rank_at: dict[int, int] = {}
     shards_at: dict[int, float] = {}
     yield_cache: dict[tuple[str, int], dict] = {}
+    tree_attack = 0.0 if args.no_tree else load_tree_attack()
+    # One tree purchase per Sanctuary visit (= per mission), ramping linearly to
+    # the completed tree's best permanent attack at visit TREE_PURCHASES.
+    tree_mult = lambda n: 1.0 + tree_attack * min(1.0, n / TREE_PURCHASES)
     start_attack = pr.base_attack  # set after mission 1, as the power table defines it
     attack_now = start_attack
     for n in range(1, args.missions + 1):
@@ -732,7 +769,7 @@ def run(args) -> str:
                 cat, atk = gear_stats[name]
                 best[cat] = max(best.get(cat, 0.0), atk)
         gear_attack_at[n] = sum(best.values())
-        attack_now = pr.base_attack + pr.attack_per_level * (lvl - 1) + gear_attack_at[n]
+        attack_now = (pr.base_attack + pr.attack_per_level * (lvl - 1) + gear_attack_at[n]) * tree_mult(n)
         if n == 1:
             start_attack = attack_now
         timeline.append((n, lvl, lvl // rules.skill_point_interval, xp_total, len(owned), gear))
@@ -748,25 +785,26 @@ def run(args) -> str:
 
     # Power vs enemy HP: does enemy HP keep pace with the hero?
     brutal_hp = 1.0 + pr.hp_tier_rate * (pr.brutal_tier - 1)
-    start_attack = pr.base_attack + gear_attack_at.get(1, 0.0)
+    start_attack = (pr.base_attack + gear_attack_at.get(1, 0.0)) * tree_mult(1)
     L.append("\n## Hero power vs enemy HP\n")
     L.append(f"Hero attack = {pr.base_attack:g} base + {pr.attack_per_level:g}/level + best owned gear per slot "
-             f"(physical_attack). Enemy HP: Brutal x{brutal_hp:g}, each Ascension rank x{pr.asc_hp_growth:g} "
+             f"(physical_attack), x (1 + skill tree: +{tree_attack:.0%} at {TREE_PURCHASES} purchases, 1 per mission; "
+             f"permanent stat nodes only, best side per fork). Enemy HP: Brutal x{brutal_hp:g}, each Ascension rank x{pr.asc_hp_growth:g} "
              f"(max {pr.max_ascension}). `Rank to match` = the Ascension rank whose HP has grown as much as "
              "the hero has since mission 1 on Normal, i.e. the rank that should feel like the first mission. "
-             "Towers, skills and tarot are NOT modelled; they push the real number higher.\n")
-    L.append("| Missions | Hero level | Gear attack | Hero attack | Power vs mission 1 | Rank to match |")
-    L.append("|---|---|---|---|---|---|")
+             "Towers, skills, tree notables and tarot are NOT modelled; they push the real number higher.\n")
+    L.append("| Missions | Hero level | Gear attack | Tree | Hero attack | Power vs mission 1 | Rank to match |")
+    L.append("|---|---|---|---|---|---|---|")
     for n, lvl, pts, xp, owned_n, gear_n in timeline:
         if n in marks:
-            attack = pr.base_attack + pr.attack_per_level * (lvl - 1) + gear_attack_at[n]
+            attack = (pr.base_attack + pr.attack_per_level * (lvl - 1) + gear_attack_at[n]) * tree_mult(n)
             ratio = attack / start_attack
             if ratio <= brutal_hp:
                 rank_text = "Brutal or lower"
             else:
                 rank = math.ceil(math.log(ratio / brutal_hp) / math.log(pr.asc_hp_growth))
                 rank_text = f"{rank}" if rank <= pr.max_ascension else f"{rank} (above max {pr.max_ascension})"
-            L.append(f"| {n} | {lvl} | {fmt(gear_attack_at[n])} | {fmt(attack)} | x{ratio:.2f} | {rank_text} |")
+            L.append(f"| {n} | {lvl} | {fmt(gear_attack_at[n])} | +{tree_mult(n) - 1:.0%} | {fmt(attack)} | x{ratio:.2f} | {rank_text} |")
 
     if args.ascend_after:
         L.append("\n## Ascension endgame\n")
@@ -855,6 +893,7 @@ def main() -> None:
     ap.add_argument("--wave-xp", type=int, help="WHAT-IF wave completion XP")
     ap.add_argument("--ascend-after", type=int, default=0,
                     help="endgame: from mission N+1 climb Ascension one rank per map visit (default off)")
+    ap.add_argument("--no-tree", action="store_true", help="WHAT-IF ignore the Hero Skill Tree's attack bonus")
     ap.add_argument("--no-bag", action="store_true", help="WHAT-IF unlimited bag")
     ap.add_argument("--salvage", action="store_true",
                     help="player salvages Common/Uncommon stacks no remaining recipe names when the bag is nearly full")

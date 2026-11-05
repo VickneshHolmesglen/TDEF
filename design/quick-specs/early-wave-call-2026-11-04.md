@@ -7,14 +7,14 @@ Date: 2026-11-04. Status: **built** (overnight autonomy pass). Source idea: King
 Pressing Ready during INTERMISSION with at least `EARLY_CALL_MIN_SECONDS` (1.0 s) left calls the next wave early:
 
 - WaveManager emits `wave_called_early(wave_number, seconds_skipped, wave_reward_scalar)` before the INTERMISSION -> PRE_WAVE transition (`wave_reward_scalar` = the last wave's).
-- ResourceEconomy pays **Formula 5b**: `early_call_gold = round(seconds_skipped x 0.35 x wave_reward_scalar)` as `resources_changed(gold, "early_call_grant")`.
+- ResourceEconomy pays **Formula 5b**: `early_call_gold = round(seconds_skipped x 0.2 x wave_reward_scalar)` (0.35 until the 2026-11-05 balance check) as `resources_changed(gold, "early_call_grant")`.
 - The Ready button shows the live payout during INTERMISSION: "Call Early +N" (`HUD_READY_CALL_EARLY`), computed with the same static `ResourceEconomy.early_call_gold()`, so preview and payout cannot drift.
 
 Ready in SCOUT or PRE_WAVE ("Start Now") is unchanged and pays nothing.
 
 ## Why these numbers
 
-A full 30 s skip at scalar 1.0 pays ~10-11 gold, half of `BASE_WAVE_GOLD` (20). The cost is real: the player loses up to 30 s of building time (PRE_WAVE locks the build controls), and the next wave arrives before towers placed with the bonus can matter. Worth taking when the defence is clearly ahead, never worth more than the wave itself. Bounded: one payout per intermission, so it cannot be farmed.
+A full 30 s skip at scalar 1.0 pays 6 gold, under a third of `BASE_WAVE_GOLD` (20). Retuned from 0.35 on 2026-11-05 (`design/balance/balance-check-2026-11-05.md`): waves never overlap and the build controls lock only after the call, so a player who builds in a few seconds loses almost nothing by calling at once. At 0.35 that was about +35% of a mission's gold for free; at 0.2 it is about +20%. The cost is real: the player loses up to 30 s of building time (PRE_WAVE locks the build controls), and the next wave arrives before towers placed with the bonus can matter. Worth taking when the defence is clearly ahead, never worth more than the wave itself. Bounded: one payout per intermission, so it cannot be farmed.
 
 ## Docs
 
@@ -22,4 +22,4 @@ A full 30 s skip at scalar 1.0 pays ~10-11 gold, half of `BASE_WAVE_GOLD` (20). 
 
 ## Verification
 
-`tests/integration/wave_manager/early_wave_call_test.gd` (formula, payout, < 1 s no-op, SCOUT/PRE_WAVE no-op). Live on the_gap: 26.8 s left, button "Call Early +9", gold 50 -> 59, phase PRE_WAVE.
+`tests/integration/wave_manager/early_wave_call_test.gd` (formula, payout, < 1 s no-op, SCOUT/PRE_WAVE no-op). Live on the_gap (at 0.35): 26.8 s left, button "Call Early +9", gold 50 -> 59, phase PRE_WAVE.

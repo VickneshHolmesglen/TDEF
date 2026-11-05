@@ -138,3 +138,18 @@ func test_elite_affix_vengeful_death_hastes_nearby_monsters_only() -> void:
 	# Assert
 	assert_float(_mm._effective_speed(near)).is_equal_approx(near_base * MonsterManager.AFFIX_VENGEFUL_HASTE_MULT, 0.0001)
 	assert_float(far.haste_remaining).is_equal(0.0)
+
+
+func test_elite_affix_death_event_carries_affix_and_reward_multiplier() -> void:
+	# Arrange
+	_res(&"elite", 1)
+	var elite: MonsterEntity = _spawn(&"elite")
+	elite.affix = &"fortified"
+	elite.lifecycle_state = MonsterEntity.State.ACTIVE
+	# Act
+	_mm._apply_status_damage(elite, 1.0e9, &"tower")
+	# Assert
+	var ev: MonsterDiedEvent = _mm._pending_deaths.back()
+	assert_str(String(ev.affix)).is_equal("fortified")
+	assert_float(MonsterManager.affix_reward_multiplier(ev.affix)).is_equal(MonsterManager.AFFIX_REWARD_MULT)
+	assert_float(MonsterManager.affix_reward_multiplier(&"")).is_equal(1.0)

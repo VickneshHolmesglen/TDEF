@@ -337,6 +337,7 @@ func _emit_death(entity: MonsterEntity, kill_source: StringName) -> void:
 	ev.kill_source = kill_source
 	ev.wave_reward_scalar = entity.spawn_wave_reward_scalar
 	ev.killer_tower_id = entity.last_hit_tower_id if kill_source == &"tower" else -1
+	ev.affix = entity.affix
 	_pending_deaths.append(ev)
 	if entity.swarm_handle != null and _swarm_renderer != null:
 		_swarm_renderer.unregister_creature(entity.swarm_handle)
@@ -1225,9 +1226,17 @@ const AFFIX_REGEN_FRACTION_PER_SECOND: float = 0.015
 const AFFIX_VENGEFUL_RADIUS_CELLS: int = 2
 const AFFIX_VENGEFUL_HASTE_MULT: float = 1.4
 const AFFIX_VENGEFUL_HASTE_SECONDS: float = 4.0
+## An affixed elite is a harder kill, so it pays more: kill XP and drop
+## quantity x this (balance check 2026-11-05).
+const AFFIX_REWARD_MULT: float = 1.5
 
 ## Affix roll source; seed it in tests for a fixed affix.
 var affix_rng: RandomNumberGenerator = RandomNumberGenerator.new()
+
+
+## Reward multiplier for a kill carrying `affix` (1.0 when none).
+static func affix_reward_multiplier(affix: StringName) -> float:
+	return 1.0 if affix == &"" else AFFIX_REWARD_MULT
 
 
 ## Rolls an affix for a fresh ELITE spawn (&"" for other tiers / splits).

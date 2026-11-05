@@ -1,5 +1,5 @@
 ## Tower veterancy (design/quick-specs/tower-veterancy-2026-11-04.md): towers
-## rank up at 10/30/60 credited kills, +8% damage per rank, per mission.
+## rank up at 5/15/30 credited kills, +8% damage per rank, per mission.
 extends GdUnitTestSuite
 
 var _ts: TowerSystem
@@ -34,9 +34,10 @@ func _death(killer_tower_id: int) -> MonsterDiedEvent:
 
 func test_tower_veterancy_rank_for_kills_uses_thresholds() -> void:
 	assert_int(TowerSystem.veterancy_rank_for_kills(0)).is_equal(0)
-	assert_int(TowerSystem.veterancy_rank_for_kills(9)).is_equal(0)
-	assert_int(TowerSystem.veterancy_rank_for_kills(10)).is_equal(1)
-	assert_int(TowerSystem.veterancy_rank_for_kills(30)).is_equal(2)
+	assert_int(TowerSystem.veterancy_rank_for_kills(4)).is_equal(0)
+	assert_int(TowerSystem.veterancy_rank_for_kills(5)).is_equal(1)
+	assert_int(TowerSystem.veterancy_rank_for_kills(15)).is_equal(2)
+	assert_int(TowerSystem.veterancy_rank_for_kills(30)).is_equal(3)
 	assert_int(TowerSystem.veterancy_rank_for_kills(500)).is_equal(3)
 
 
@@ -45,14 +46,14 @@ func test_tower_veterancy_multiplier_is_eight_percent_per_rank() -> void:
 	assert_float(TowerSystem.veterancy_multiplier(3)).is_equal_approx(1.24, 0.0001)
 
 
-func test_tower_veterancy_tenth_kill_ranks_up_once() -> void:
+func test_tower_veterancy_fifth_kill_ranks_up_once() -> void:
 	# Arrange
 	var state: TowerMissionState = _place(4)
 	# Act
-	for i: int in 10:
+	for i: int in 5:
 		_ts._on_monster_died(_death(4))
 	# Assert
-	assert_int(state.kills).is_equal(10)
+	assert_int(state.kills).is_equal(5)
 	assert_int(state.rank).is_equal(1)
 	assert_int(_spy.count("tower_ranked_up")).is_equal(1)
 	assert_array((_spy.emissions["tower_ranked_up"] as Array)[0]).is_equal([4, 1])
@@ -62,11 +63,11 @@ func test_tower_veterancy_batched_deaths_are_credited() -> void:
 	# Arrange
 	var state: TowerMissionState = _place(2)
 	var batch: Array[MonsterDiedEvent] = []
-	for i: int in 30:
+	for i: int in 15:
 		batch.append(_death(2))
 	# Act
 	_ts._on_monsters_died_batch(batch)
-	# Assert: thresholds 10 and 30 both crossed
+	# Assert: thresholds 5 and 15 both crossed
 	assert_int(state.rank).is_equal(2)
 	assert_int(_spy.count("tower_ranked_up")).is_equal(2)
 

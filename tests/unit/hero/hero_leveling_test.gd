@@ -436,3 +436,15 @@ func test_reward_multiplier_scales_xp_grants() -> void:
 	_hero.set_reward_multiplier(1.7)
 	_hero._grant_xp(100)
 	assert_int(_hero._current_xp).is_equal(170)
+
+
+func test_hero_kill_xp_affixed_elite_pays_affix_multiplier() -> void:
+	# Arrange
+	_hero._base_stats[&"attack_range"] = 100.0
+	_hero.global_position = Vector2.ZERO
+	var payload := _make_died_event(1, Vector2(50, 0))
+	payload.affix = &"swift"
+	# Act / Assert: round(15 x 1.5) = 23 (full band), floor(23 x 0.5) = 11 (outer band)
+	assert_int(_hero._resolve_kill_xp_band(payload)).is_equal(23)
+	payload.world_position = Vector2(150, 0)
+	assert_int(_hero._resolve_kill_xp_band(payload)).is_equal(11)
