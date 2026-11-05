@@ -717,6 +717,11 @@ signal resources_changed(gold: int, source: StringName)
 ## "forge_rune_slot"). Key subscribers: Sanctuary resource header, Mission Outcome.
 signal sanctuary_gold_changed(balance: int, delta: int, source: StringName)
 
+## Menagerie Rehoming (design/quick-specs/menagerie-rehoming-2026-11-05.md):
+## old_creature_id was replaced in place by new_creature_id with a fresh
+## temperament. Key subscribers: Menagerie screen.
+signal creature_rehomed(old_creature_id: int, new_creature_id: int, species_id: String, trait_id: String, grade: int)
+
 # =============================================================================
 # Tower Mastery System
 # =============================================================================

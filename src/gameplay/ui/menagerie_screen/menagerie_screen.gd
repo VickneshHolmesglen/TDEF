@@ -95,6 +95,12 @@ var _pending_sacrifice_id: int = -1
 var _lure_count_label: Label
 var _lure_buttons: Dictionary[StringName, Button] = {}
 var _roster_empty_label: Label
+## Menagerie Rehoming (design/quick-specs/menagerie-rehoming-2026-11-05.md):
+## temperament line, Rehome button and its confirmation, built in code.
+var _detail_temperament_label: Label
+var _rehome_button: Button
+var _rehome_confirm_dialog: ConfirmationDialog
+var _pending_rehome_id: int = -1
 
 
 func _ready() -> void:
@@ -111,6 +117,7 @@ func _ready() -> void:
 	_sacrifice_confirm_dialog.get_cancel_button().set_meta(UiAudioBinder.META_KEY, UiAudioBinder.KIND_CANCEL)
 	_sacrifice_confirm_dialog.get_ok_button().set_meta(UiAudioBinder.META_KEY, UiAudioBinder.KIND_CONFIRM)
 	_input_mode_tracker.input_mode_changed.connect(_on_input_mode_changed)
+	_build_rehome_controls()
 	_apply_room_styles()
 
 	GEventBus.creature_acquired.connect(_on_roster_changed)
@@ -119,6 +126,8 @@ func _ready() -> void:
 	GEventBus.creature_sacrificed.connect(_on_roster_changed)
 	GEventBus.creature_moved_to_breeding_pen.connect(_on_roster_changed)
 	GEventBus.creature_returned_from_breeding_pen.connect(_on_roster_changed)
+	GEventBus.creature_rehomed.connect(_on_creature_rehomed)
+	GEventBus.sanctuary_gold_changed.connect(_on_roster_changed)
 
 	_build_lure_panel()
 	_rebuild_roster()
@@ -132,6 +141,8 @@ func disconnect_own_subscriptions() -> void:
 	GEventBus.creature_sacrificed.disconnect(_on_roster_changed)
 	GEventBus.creature_moved_to_breeding_pen.disconnect(_on_roster_changed)
 	GEventBus.creature_returned_from_breeding_pen.disconnect(_on_roster_changed)
+	GEventBus.creature_rehomed.disconnect(_on_creature_rehomed)
+	GEventBus.sanctuary_gold_changed.disconnect(_on_roster_changed)
 
 
 # ---------------------------------------------------------------------------
@@ -252,7 +263,8 @@ func _species_texture(species_id: StringName) -> Texture2D:
 func _roster_entry_text(creature: CreatureInstance) -> String:
 	var state_tag: String = String(CreatureInstance.CreatureState.keys()[creature.state]).capitalize()
 	var selected_tag: String = " [selected]" if _breeding_selection.has(creature.creature_id) else ""
-	return "%s\n%s  ·  H:%d%s" % [_species_display_name(creature.species), state_tag, int(creature.happiness), selected_tag]
+	return "%s\n%s  ·  H:%d%s\n%s" % [_species_display_name(creature.species), state_tag, int(creature.happiness), selected_tag,
+			temperament_text(creature, true)]
 
 
 ## Dimmed outline placeholder for one unused habitat slot; `locked` marks a
@@ -441,6 +453,8 @@ func _refresh_detail_panel() -> void:
 		_detail_happiness_label.text = ""
 		_tend_button.disabled = true
 		_sacrifice_button.disabled = true
+		_detail_temperament_label.text = ""
+		_rehome_button.visible = false
 		return
 
 	_detail_species_label.text = _species_display_name(creature.species)
@@ -449,6 +463,8 @@ func _refresh_detail_panel() -> void:
 	_tend_button.disabled = creature.state != CreatureInstance.CreatureState.HABITAT
 	_sacrifice_button.disabled = creature.state == CreatureInstance.CreatureState.BREEDING_PEN \
 		or creature.state == CreatureInstance.CreatureState.SACRIFICED
+	_detail_temperament_label.text = temperament_text(creature)
+	_refresh_rehome_button(creature)
 
 
 ## GDD: "confirm on a non-actionable target opens explanatory context" rather
@@ -515,6 +531,86 @@ func _on_sacrifice_confirmed() -> void:
 	_pending_sacrifice_id = -1
 	_focused_creature_id = -1
 	_refresh_detail_panel()
+
+
+# ---------------------------------------------------------------------------
+# Temperament and Rehoming
+# ---------------------------------------------------------------------------
+
+## "Scholar ★★★☆☆" (empty for a creature without a temperament). `short` (roster
+## cards) drops the Forager rarity, which the species tier already implies.
+static func temperament_text(creature: CreatureInstance, short: bool = false) -> String:
+	if creature.trait_id == &"":
+		return ""
+	var stars: String = "★".repeat(creature.grade) + "☆".repeat(5 - creature.grade)
+	var key: String = "TEMPERAMENT_" + String(creature.trait_id).to_upper()
+	if short and String(creature.trait_id).begins_with("forager"):
+		key = "TEMPERAMENT_FORAGER"
+	return "%s %s" % [TranslationServer.translate(key), stars]
+
+
+func _build_rehome_controls() -> void:
+	_detail_temperament_label = Label.new()
+	_detail_temperament_label.name = &"TemperamentLabel"
+	_detail_happiness_label.get_parent().add_child(_detail_temperament_label)
+	_detail_happiness_label.get_parent().move_child(_detail_temperament_label, _detail_happiness_label.get_index() + 1)
+	_rehome_button = Button.new()
+	_rehome_button.name = &"RehomeButton"
+	_rehome_button.focus_mode = Control.FOCUS_ALL
+	_rehome_button.visible = false
+	_rehome_button.pressed.connect(_on_rehome_pressed)
+	_sacrifice_button.get_parent().add_child(_rehome_button)
+	_rehome_confirm_dialog = ConfirmationDialog.new()
+	_rehome_confirm_dialog.name = &"RehomeConfirmDialog"
+	_rehome_confirm_dialog.confirmed.connect(_on_rehome_confirmed)
+	_rehome_confirm_dialog.get_cancel_button().set_meta(UiAudioBinder.META_KEY, UiAudioBinder.KIND_CANCEL)
+	_rehome_confirm_dialog.get_ok_button().set_meta(UiAudioBinder.META_KEY, UiAudioBinder.KIND_CONFIRM)
+	add_child(_rehome_confirm_dialog)
+
+
+## Hidden for creatures that can never be rehomed (breeding pen, sacrificed);
+## "unlocks at Ascension 1" before the unlock; otherwise the gold price,
+## disabled while the player is short.
+func _refresh_rehome_button(creature: CreatureInstance) -> void:
+	var cost: int = menagerie.rehome_cost_for(creature.creature_id)
+	_rehome_button.visible = cost >= 0
+	if cost < 0:
+		return
+	if not menagerie.is_rehome_unlocked():
+		_rehome_button.text = tr("MENAGERIE_REHOME_LOCKED") % Menagerie.REHOME_UNLOCK_RANK
+		_rehome_button.disabled = true
+		return
+	_rehome_button.text = tr("MENAGERIE_REHOME") % cost
+	_rehome_button.disabled = not menagerie.can_rehome(creature.creature_id)
+
+
+func _on_rehome_pressed() -> void:
+	var creature: CreatureInstance = menagerie.get_creature(_focused_creature_id) if _focused_creature_id != -1 else null
+	if creature == null:
+		return
+	_pending_rehome_id = creature.creature_id
+	_rehome_confirm_dialog.dialog_text = tr("MENAGERIE_REHOME_CONFIRM") % [
+		_species_display_name(creature.species), temperament_text(creature), menagerie.rehome_cost_for(creature.creature_id)]
+	_rehome_confirm_dialog.popup_centered()
+
+
+func _on_rehome_confirmed() -> void:
+	if _pending_rehome_id == -1:
+		return
+	var new_id: int = menagerie.rehome_creature(_pending_rehome_id)
+	_pending_rehome_id = -1
+	if new_id != -1:
+		_focused_creature_id = new_id
+	_rebuild_roster()
+	_refresh_detail_panel()
+
+
+func _on_creature_rehomed(_old_id: int, _new_id: int, _species: String, _trait: String, _grade: int) -> void:
+	_on_roster_changed()
+
+
+func get_rehome_button() -> Button:
+	return _rehome_button
 
 
 # ---------------------------------------------------------------------------

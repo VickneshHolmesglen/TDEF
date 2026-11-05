@@ -34,8 +34,24 @@ var _breeding_pens: Array[BreedingPen] = [BreedingPen.new(), BreedingPen.new()]
 var _habitat_capacity: int = HABITAT_BASE_CAPACITY
 var _next_creature_id: int = 0
 
+## Menagerie Rehoming (design/quick-specs/menagerie-rehoming-2026-11-05.md).
+## Gold per species tier for one Rehome.
+const REHOME_COST_BASE: int = 200
+## Rehomes in a row below Temperament.HIGH_GRADE before the next is guaranteed one.
+const PITY_THRESHOLD: int = 10
+## Ascension rank whose first clear unlocks Rehoming.
+const REHOME_UNLOCK_RANK: int = 1
+const REHOME_GOLD_SOURCE: StringName = &"menagerie_rehome"
+## Fixed seed for a fresh game; the live state is saved, so reloading replays
+## the same next roll (no save-scumming a Rehome).
+const RNG_SEED: int = 0x5A4E_C7A1
+
+var _rng := RandomNumberGenerator.new()
+var _rehomes_since_high_grade: int = 0
+
 
 func _ready() -> void:
+	_rng.seed = RNG_SEED
 	GEventBus.sanctuary_structure_built.connect(_on_sanctuary_structure_built)
 	GEventBus.mission_launched.connect(_on_mission_launched)
 	GSavePersistence.register(self, RESTORE_ORDER)
@@ -142,6 +158,7 @@ func lure_creature(species_id: StringName) -> int:
 	creature.state = CreatureInstance.CreatureState.RESERVE  # placement below may promote to HABITAT
 	creature.happiness = STARTING_HAPPINESS  # AC-16: exactly 70, no rounding drift
 	creature.missions_since_tended = 0
+	_assign_temperament(creature, species.species_tier)
 	_creatures.append(creature)
 
 	GEventBus.creature_acquired.emit(creature.creature_id, String(species_id))
@@ -355,6 +372,8 @@ func _tick_breeding_pens() -> void:
 			offspring.species = parent.species if parent != null else &""
 			offspring.state = CreatureInstance.CreatureState.RESERVE
 			offspring.happiness = STARTING_HAPPINESS
+			var offspring_species: SpeciesResource = GGameDataRegistry.get_species(offspring.species)
+			_assign_temperament(offspring, offspring_species.species_tier if offspring_species != null else 1)
 			_creatures.append(offspring)
 			GEventBus.creature_bred.emit(offspring.creature_id, String(offspring.species))
 
@@ -469,6 +488,8 @@ func get_save_data() -> Dictionary:
 			"state": creature.state,
 			"happiness": creature.happiness,
 			"missions_since_tended": creature.missions_since_tended,
+			"trait_id": String(creature.trait_id),
+			"grade": creature.grade,
 		})
 	var pens_data: Array = []
 	for pen: BreedingPen in _breeding_pens:
@@ -481,6 +502,8 @@ func get_save_data() -> Dictionary:
 		"breeding_pens": pens_data,
 		"habitat_capacity": _habitat_capacity,
 		"next_creature_id": _next_creature_id,
+		"rehomes_since_high_grade": _rehomes_since_high_grade,
+		"rng_state": _rng.state,
 	}
 
 
@@ -526,6 +549,14 @@ func restore_save_data(data: Dictionary) -> bool:
 		# next decay/tend touches it.
 		creature.happiness = clampf(float(happiness_raw), HAPPINESS_FLOOR, HAPPINESS_CEILING)
 		creature.missions_since_tended = tended_raw as int
+		var trait_raw: Variant = entry.get("trait_id", "")
+		var grade_raw: Variant = entry.get("grade", 0)
+		if trait_raw is String and Temperament.is_valid_trait(StringName(trait_raw as String)) \
+				and grade_raw is int and (grade_raw as int) >= 1 and (grade_raw as int) <= 5:
+			creature.trait_id = StringName(trait_raw as String)
+			creature.grade = grade_raw as int
+		else:
+			_assign_legacy_temperament(creature)
 		restored_creatures.append(creature)
 
 	var pens_array: Array = pens_raw as Array
@@ -556,6 +587,12 @@ func restore_save_data(data: Dictionary) -> bool:
 	_breeding_pens = restored_pens
 	_habitat_capacity = capacity_raw as int
 	_next_creature_id = next_id_raw as int
+	var pity_raw: Variant = data.get("rehomes_since_high_grade", 0)
+	_rehomes_since_high_grade = maxi(0, pity_raw as int) if pity_raw is int else 0
+	var rng_raw: Variant = data.get("rng_state", null)
+	_rng.seed = RNG_SEED
+	if rng_raw is int:
+		_rng.state = rng_raw as int
 	return true
 
 
@@ -567,3 +604,102 @@ func reset_to_defaults() -> void:
 	_breeding_pens = [BreedingPen.new(), BreedingPen.new()]
 	_habitat_capacity = HABITAT_BASE_CAPACITY
 	_next_creature_id = 0
+	_rehomes_since_high_grade = 0
+	_rng.seed = RNG_SEED
+
+
+# ---------------------------------------------------------------------------
+# Temperaments and Rehoming (design/quick-specs/menagerie-rehoming-2026-11-05.md)
+# ---------------------------------------------------------------------------
+
+func _assign_temperament(creature: CreatureInstance, species_tier: int, min_grade: int = 1) -> void:
+	var rolled: Dictionary = Temperament.roll(species_tier, _rng, min_grade)
+	creature.trait_id = rolled[&"trait"]
+	creature.grade = rolled[&"grade"]
+
+
+## Pre-feature saves: a temperament seeded by creature_id (same result on every
+## load), at most 3 stars, so old creatures never turn into free trophies.
+func _assign_legacy_temperament(creature: CreatureInstance) -> void:
+	var species: SpeciesResource = GGameDataRegistry.get_species(creature.species)
+	var seeded := RandomNumberGenerator.new()
+	seeded.seed = RNG_SEED + creature.creature_id * 7919
+	var rolled: Dictionary = Temperament.roll(species.species_tier if species != null else 1, seeded, 1, 3)
+	creature.trait_id = rolled[&"trait"]
+	creature.grade = rolled[&"grade"]
+
+
+## Summed bonus of `trait_id` over HABITAT creatures, capped at
+## Temperament.TRAIT_CAP. 0.0 when none.
+##     var xp_mult: float = 1.0 + GMenagerie.trait_bonus(Temperament.SCHOLAR)
+func trait_bonus(trait_id: StringName) -> float:
+	var total: float = 0.0
+	for creature: CreatureInstance in _creatures:
+		if creature.state == CreatureInstance.CreatureState.HABITAT and creature.trait_id == trait_id:
+			total += Temperament.value(creature.grade)
+	return minf(total, Temperament.TRAIT_CAP)
+
+
+## Forager bonus for a material rarity ("Common"/"Uncommon"/"Rare"); 0.0 otherwise.
+func forager_bonus(rarity: String) -> float:
+	return trait_bonus(Temperament.FORAGER_BY_RARITY[rarity]) if Temperament.FORAGER_BY_RARITY.has(rarity) else 0.0
+
+
+static func rehome_cost(species_tier: int) -> int:
+	return REHOME_COST_BASE * clampi(species_tier, 1, 3)
+
+
+func is_rehome_unlocked() -> bool:
+	return GMissionSelect.get_highest_ascension_rank() >= REHOME_UNLOCK_RANK
+
+
+func get_rehomes_since_high_grade() -> int:
+	return _rehomes_since_high_grade
+
+
+## Gold price to rehome creature_id; -1 when it cannot be rehomed at all
+## (missing, in a breeding pen, sacrificed).
+func rehome_cost_for(creature_id: int) -> int:
+	var creature: CreatureInstance = get_creature(creature_id)
+	if creature == null or not (creature.state == CreatureInstance.CreatureState.HABITAT
+			or creature.state == CreatureInstance.CreatureState.RESERVE):
+		return -1
+	var species: SpeciesResource = GGameDataRegistry.get_species(creature.species)
+	return rehome_cost(species.species_tier if species != null else 1)
+
+
+## True when creature_id can be rehomed right now (unlocked, eligible, affordable).
+func can_rehome(creature_id: int) -> bool:
+	var cost: int = rehome_cost_for(creature_id)
+	return cost >= 0 and is_rehome_unlocked() and GSanctuaryGold.can_afford(cost)
+
+
+## Rehome: spends Sanctuary gold and replaces creature_id, in the same place in
+## the roster and the same state (HABITAT or RESERVE), with a new creature of
+## the same species: new id, happiness 70, freshly rolled temperament (pity
+## after PITY_THRESHOLD sub-HIGH_GRADE rolls). The old creature is gone.
+## Returns the new creature_id, or -1 with nothing changed.
+func rehome_creature(creature_id: int) -> int:
+	if not can_rehome(creature_id):
+		return -1
+	var old: CreatureInstance = get_creature(creature_id)
+	var species: SpeciesResource = GGameDataRegistry.get_species(old.species)
+	var tier: int = species.species_tier if species != null else 1
+	if not GSanctuaryGold.spend(rehome_cost(tier), REHOME_GOLD_SOURCE):
+		return -1
+	var fresh := CreatureInstance.new()
+	fresh.creature_id = _next_creature_id
+	_next_creature_id += 1
+	fresh.species = old.species
+	fresh.state = old.state
+	fresh.happiness = STARTING_HAPPINESS
+	fresh.missions_since_tended = 0
+	var min_grade: int = Temperament.HIGH_GRADE if _rehomes_since_high_grade >= PITY_THRESHOLD else 1
+	_assign_temperament(fresh, tier, min_grade)
+	_rehomes_since_high_grade = 0 if fresh.grade >= Temperament.HIGH_GRADE else _rehomes_since_high_grade + 1
+	_creatures[_creatures.find(old)] = fresh
+	GEventBus.creature_rehomed.emit(creature_id, fresh.creature_id, String(fresh.species), String(fresh.trait_id), fresh.grade)
+	if fresh.state == CreatureInstance.CreatureState.HABITAT:
+		_recompute_and_push_aggregate(fresh.creature_id)
+	return fresh.creature_id
+

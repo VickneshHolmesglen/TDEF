@@ -119,7 +119,9 @@ func _on_mission_phase_changed(_previous_phase: String, new_phase: String, _time
 	if not _bank_pending or (new_phase != "MISSION_COMPLETE" and new_phase != "DEFEAT"):
 		return
 	_bank_pending = false
-	add(banked_amount(GMissionEconomy.get_gold_balance(), conversion_rate()), SOURCE_MISSION_BANK)
+	# Hoarder temperament (menagerie-rehoming spec) raises the effective rate.
+	var rate: float = conversion_rate() * (1.0 + GMenagerie.trait_bonus(Temperament.HOARDER))
+	add(banked_amount(GMissionEconomy.get_gold_balance(), rate), SOURCE_MISSION_BANK)
 
 
 func get_save_key() -> String:

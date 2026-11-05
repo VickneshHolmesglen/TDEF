@@ -232,7 +232,8 @@ func _resolve_kill_xp_band(payload: MonsterDiedEvent) -> int:
 ## outside both bands, or a not-yet-authored zero-XP source, must never
 ## emit a spurious hero_xp_gained(0, ...)).
 func _grant_xp(amount: int) -> void:
-	amount = roundi(float(amount) * _reward_multiplier)
+	# Scholar temperament (menagerie-rehoming spec): HABITAT bonus on every XP source.
+	amount = roundi(float(amount) * _reward_multiplier * (1.0 + GMenagerie.trait_bonus(Temperament.SCHOLAR)))
 	if amount <= 0:
 		return
 	if _current_level >= LEVEL_CAP:

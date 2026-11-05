@@ -1,6 +1,6 @@
 # Menagerie Rehoming (endgame Sanctuary gold sink)
 
-Date: 2026-11-05. Status: **designed, not built**. Origin: the balance sim shows ~200 Sanctuary gold banked per mission once the gear catalogue saturates (~mission 60) and ~14,800 unspent by mission 120 (`sanctuary-gold-2026-11-05.md`); rune slots absorb at most ~7,500 and are shard-gated. User suggestion: replacing animals in the Menagerie.
+Date: 2026-11-05. Status: **built** (2026-11-05). Origin: the balance sim shows ~200 Sanctuary gold banked per mission once the gear catalogue saturates (~mission 60) and ~14,800 unspent by mission 120 (`sanctuary-gold-2026-11-05.md`); rune slots absorb at most ~7,500 and are shard-gated. User suggestion: replacing animals in the Menagerie.
 
 ## Overview
 
@@ -123,6 +123,14 @@ Value check against existing levers: one 5-star Forager (+8% of one rarity) is s
 - AC-8: Saving, rehoming, reloading and rehoming again produces the same temperament both times (RNG state persisted).
 - AC-9: A pre-feature save loads; every creature gets a deterministic temperament of at most 3 stars.
 - AC-10: Balance sim: with Rehome modelled from the unlock, unspent Sanctuary gold at mission 120 drops below 2,000 for a player who rehomes whenever they can afford it.
+
+## Build notes (2026-11-05)
+
+- Code: `Temperament` (`src/core/menagerie/temperament.gd`: pools, weights, values, cap, roll); `CreatureInstance.trait_id/grade`; `Menagerie` rolls on lure/breed, `trait_bonus()`, `forager_bonus()`, `rehome_cost_for()`, `can_rehome()`, `rehome_creature()`, persisted `rng_state` + pity counter, legacy roll. Hooks: `Hero._grant_xp` (Scholar), `ResourceEconomy._forager_bonus` (Forager, by item rarity), `SanctuaryGold` bank (Hoarder), `MissionSelect._award_ascension_shards` (Shardbound; Daily Challenge shards excluded). Menagerie screen: temperament on cards (Forager shown without its rarity, which the species implies) and in the detail panel, Rehome button + confirm dialog. EventBus `creature_rehomed`.
+- Rehome removes the old creature from the roster array (the new one takes its index), so released creatures never accumulate.
+- Tests: `tests/unit/menagerie/menagerie_rehoming_test.gd` (AC-1, AC-3..AC-9), `temperament_effects_test.gd` (all four payouts, AC-2 by sum test).
+- AC-10 (sim): Rehoming from the first Ascension clear (model: mission 66) at tier 2 -> 37 rehomes, 14,800 gold, **10 unspent at mission 120** (was 14,810). Tier 1: 74 rehomes; tier 3: 24 rehomes, 410 unspent. Temperament payoffs are not modelled (capped, economy-only).
+- Live (real save, creatures lured in memory, save restored): locked "Rehome: unlocks at Ascension 1"; after unlock "Rehome (600 gold)", stag rehomed Forager (Rare) 1★ -> Shardbound 4★, gold 1,500 -> 900.
 
 ## Alternatives considered
 

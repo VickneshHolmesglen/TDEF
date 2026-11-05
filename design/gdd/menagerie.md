@@ -26,6 +26,9 @@ The Menagerie System is the sanctuary's living-care layer: it lets the player co
 
 ### Core Rules
 
+> **Amendment 2026-11-05 — Temperaments and Rehoming** (`design/quick-specs/menagerie-rehoming-2026-11-05.md`): every creature rolls a temperament (trait from its species tier's pool + 1-5 stars) at Lure, breeding and Rehome; HABITAT temperaments add capped economy bonuses (Forager drops, Scholar XP, Hoarder banked gold, Shardbound shards). Rehome spends `200 x tier` Sanctuary gold to replace a HABITAT/RESERVE creature in place with a fresh roll (pity at 10, unlocked by the first Ascension clear, RNG state saved). Rule 2's "no RNG" now covers species and cost only; the temperament roll is the one random element.
+
+
 1. **Species roster (Alpha scope, ASSUMPTION — flagged).** Five species exist at
    Alpha, gated into the same three rarity tiers `inventory.md` already
    established for materials (Common/Uncommon/Rare), so a single tier concept

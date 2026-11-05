@@ -228,6 +228,8 @@ func _award_ascension_shards(tier: int, first_clear: bool) -> void:
 	var shards: int = AscensionRewards.shards_for_victory(tier, first_clear)
 	if shards <= 0:
 		return
+	# Shardbound temperament (menagerie-rehoming spec): HABITAT bonus per win.
+	shards = roundi(float(shards) * (1.0 + GMenagerie.trait_bonus(Temperament.SHARDBOUND)))
 	_held_shards += shards
 	deliver_held_shards()
 	GEventBus.ascension_shards_awarded.emit(shards, first_clear)

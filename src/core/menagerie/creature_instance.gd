@@ -12,3 +12,7 @@ var species: StringName = &""
 var state: CreatureState = CreatureState.RESERVE
 var happiness: float = 70.0
 var missions_since_tended: int = 0
+## Temperament (design/quick-specs/menagerie-rehoming-2026-11-05.md): trait from
+## the species tier's pool and a 1-5 star grade, rolled once at creation.
+var trait_id: StringName = &""
+var grade: int = 1

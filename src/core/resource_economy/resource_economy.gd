@@ -362,7 +362,8 @@ func _process_drops(payload: MonsterDiedEvent) -> void:
 			continue
 		var quantity: int = _compute_drop_quantity(
 			entry.base_quantity,
-			payload.wave_reward_scalar * MonsterManager.affix_reward_multiplier(payload.affix),
+			payload.wave_reward_scalar * MonsterManager.affix_reward_multiplier(payload.affix)
+					* (1.0 + _forager_bonus(entry.material_id)),
 			_menagerie_quality_bonus,
 			table.guaranteed_min_quantity
 		)
@@ -377,6 +378,13 @@ func _process_drops(payload: MonsterDiedEvent) -> void:
 			payload.wave_reward_scalar
 		)
 		GEventBus.materials_earned.emit(String(entry.material_id), quantity, payload.kill_source)
+
+
+## Forager temperament (menagerie-rehoming spec): HABITAT bonus to drop
+## quantity of the material's rarity; 0.0 for unknown/unranked materials.
+func _forager_bonus(material_id: StringName) -> float:
+	var definition: ItemDefinitionResource = GGameDataRegistry.get_item_definition(material_id)
+	return GMenagerie.forager_bonus(definition.rarity) if definition != null else 0.0
 
 
 ## Formula 1 — Drop Occurrence Roll (design/gdd/resource-economy.md):

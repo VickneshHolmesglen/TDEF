@@ -13,7 +13,7 @@ Expected values (no RNG), from the live game data. Re-run after any data or form
 - Plan (cycled): the_ashfields -> the_broodwarrens -> the_coilmarsh -> the_duskwood -> the_foothills -> the_gap -> the_hollow -> the_mirefen -> the_narrows -> the_riftgate -> the_shardplain -> the_twinpass
 - Endgame from mission 66: each map visit climbs one Ascension rank, up to the rank the hero's power supports (max 15); shards 10 x rank first clear + 2 x rank every win (`--ascend-after`)
 - Bag: 8 slots (Inventory slots minus the hero's equip slots), stacks of 99 (ascendant_shard 999); overflow lost, shards held; equipment assumed worn, crafted goods used; no discard
-- Sanctuary gold: mission income = scout 50 + wave grants `round(20 x min(4.768, (1+growth)^(w-1)))`; no early calls (`--early-call`); towers cost 125 a mission (`--tower-gold`; 6 x avg blueprint 20.9); held gold banks at 25% + 10% per Treasury tech owned; crafting costs 80 x tier (tier 4+ = 320); imbues and rune slots not modelled
+- Sanctuary gold: mission income = scout 50 + wave grants `round(20 x min(4.768, (1+growth)^(w-1)))`; no early calls (`--early-call`); towers cost 125 a mission (`--tower-gold`; 6 x avg blueprint 20.9); held gold banks at 25% + 10% per Treasury tech owned; crafting costs 80 x tier (tier 4+ = 320); imbues and rune slots not modelled; Menagerie Rehoming from the first Ascension 1 clear spends leftover gold at 200 x tier 2 each (temperament payoffs not modelled; `--no-rehome`)
 
 ## One run of each mission
 
@@ -141,11 +141,12 @@ Banked = Sanctuary gold from that mission's held gold. Balance = after that visi
 | 30 | 3/3 | 55% | 140 | 149 | 4,800 | 8 |
 | 40 | 3/3 | 55% | 257 | 66 | 7,040 | 3 |
 | 60 | 3/3 | 55% | 205 | 2,625 | 8,480 | 0 |
-| 80 | 3/3 | 55% | 187 | 6,632 | 8,480 | 0 |
-| 100 | 3/3 | 55% | 257 | 10,811 | 8,480 | 0 |
-| 160 | 3/3 | 55% | 257 | 22,996 | 8,480 | 0 |
+| 80 | 3/3 | 55% | 187 | 232 | 14,880 | 0 |
+| 100 | 3/3 | 55% | 257 | 11 | 19,280 | 0 |
+| 160 | 3/3 | 55% | 257 | 196 | 31,280 | 0 |
 
-Treasury bought: tech_treasury_1 @ 3, tech_treasury_2 @ 10, tech_treasury_3 @ 16. Gold banked over 160 missions: 31,476; spent 8,480.
+Treasury bought: tech_treasury_1 @ 3, tech_treasury_2 @ 10, tech_treasury_3 @ 16. Gold banked over 160 missions: 31,476; spent 31,280.
+Menagerie Rehoming: unlocked at mission 66; 57 rehomes for 22,800 gold (included in Spent).
 Longest gold waits (visits with materials ready, gold short): steelwrought_longsword 17, riftrunner_coat 16, steelwrought_kite_shield 14, steelwrought_cuirass 14, steelwrought_helm 13, steelwrought_legplates 13, steelwrought_torc 7, steelwrought_gauntlets 7
 
 ## Sanctuary purchases

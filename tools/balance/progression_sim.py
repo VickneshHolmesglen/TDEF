@@ -415,6 +415,8 @@ class GoldRules:
     treasury_ids: tuple = ()
     craft_cost_base: int = 80
     avg_tower_cost: float = 20.0
+    rehome_cost_base: int = 200
+    rehome_unlock_rank: int = 1
 
 
 def load_gold_rules() -> GoldRules:
@@ -434,6 +436,9 @@ def load_gold_rules() -> GoldRules:
     g.base_rate = gd_const(sg, "BASE_CONVERSION_RATE", g.base_rate)
     g.rate_per_tech = gd_const(sg, "CONVERSION_RATE_PER_TECH", g.rate_per_tech)
     g.craft_cost_base = gd_const(sg, "CRAFT_COST_BASE", g.craft_cost_base)
+    mg = (ROOT / "src/core/menagerie/menagerie.gd").read_text(encoding="utf-8")
+    g.rehome_cost_base = gd_const(mg, "REHOME_COST_BASE", g.rehome_cost_base)
+    g.rehome_unlock_rank = gd_const(mg, "REHOME_UNLOCK_RANK", g.rehome_unlock_rank)
     m = re.search(r'const TREASURY_TECH_IDS[^=]*=\s*\[([^\]]*)\]', sg)
     g.treasury_ids = tuple(re.findall(r'&"([^"]+)"', m.group(1))) if m else ()
     costs = []
@@ -739,7 +744,10 @@ def run(args) -> str:
                  f"{gold_rules.avg_tower_cost:.1f}); held gold banks at {gold_rules.base_rate:.0%} "
                  f"+ {gold_rules.rate_per_tech:.0%} per Treasury tech owned; crafting costs "
                  f"{gold_rules.craft_cost_base} x tier (tier 4+ = {craft_gold_cost(4, gold_rules)}); "
-                 "imbues and rune slots not modelled")
+                 "imbues and rune slots not modelled"
+                 + (f"; Menagerie Rehoming from the first Ascension {gold_rules.rehome_unlock_rank} clear spends "
+                    f"leftover gold at {gold_rules.rehome_cost_base} x tier {args.rehome_tier} each "
+                    "(temperament payoffs not modelled; `--no-rehome`)" if not args.no_rehome else "; no Rehoming"))
     else:
         L.append("- Sanctuary gold: ignored (`--no-sanctuary-gold`)")
     L.append("")
@@ -778,6 +786,9 @@ def run(args) -> str:
     held_shards = 0.0
     sgold = 0.0
     sgold_spent = 0.0
+    rehomes = 0
+    rehome_spent = 0.0
+    rehome_from = 0
     gold_at: dict[int, tuple[float, float, float, float, int]] = {}  # banked, rate, balance, spent, waiting
     gold_waits: dict[str, int] = {}  # purchase -> missions its materials sat ready while gold was short
     best_rank: dict[str, int] = defaultdict(int)
@@ -852,6 +863,15 @@ def run(args) -> str:
                 bought_at[p.name] = n
                 if p.category == "bag":
                     bag.slots = bag_rules.expansions[int(p.name.rsplit("_", 1)[1]) - 1][0]
+        if use_gold and not args.no_rehome and rank_at[n] >= gold_rules.rehome_unlock_rank:
+            # Menagerie Rehoming: leftover gold after shopping goes into rehomes.
+            rehome_from = rehome_from or n
+            cost = gold_rules.rehome_cost_base * args.rehome_tier
+            k = int(sgold // cost)
+            rehomes += k
+            rehome_spent += k * cost
+            sgold -= k * cost
+            sgold_spent += k * cost
         gold_at[n] = (banked, rate, sgold, sgold_spent, waiting_now)
         if args.salvage and not args.no_bag and bag.used(inv) >= bag.slots - 2:
             # Bag nearly full: refine Common/Uncommon stacks no remaining recipe names
@@ -983,6 +1003,9 @@ def run(args) -> str:
         L.append(f"\nTreasury bought: {treasury_when}. "
                  f"Gold banked over {args.missions} missions: {fmt(earned['__sanctuary_gold__'])}; "
                  f"spent {fmt(sgold_spent)}.")
+        if not args.no_rehome:
+            L.append(f"Menagerie Rehoming: unlocked at mission {rehome_from or '-'}; {rehomes} rehomes "
+                     f"for {fmt(rehome_spent)} gold (included in Spent).")
         slowest = sorted(gold_waits.items(), key=lambda kv: -kv[1])[:8]
         if slowest:
             L.append("Longest gold waits (visits with materials ready, gold short): "
@@ -1030,6 +1053,9 @@ def main() -> None:
                     help="WHAT-IF ignore Sanctuary gold (materials-only shopping, as before 2026-11-05)")
     ap.add_argument("--craft-gold", type=int, help="WHAT-IF craft price per quality tier (game: SanctuaryGold.CRAFT_COST_BASE)")
     ap.add_argument("--gold-rate", type=float, help="WHAT-IF base conversion rate (game: SanctuaryGold.BASE_CONVERSION_RATE)")
+    ap.add_argument("--no-rehome", action="store_true", help="WHAT-IF never spend gold on Menagerie Rehoming")
+    ap.add_argument("--rehome-tier", type=int, default=2, choices=(1, 2, 3),
+                    help="species tier the modelled player rehomes (cost REHOME_COST_BASE x tier; default 2)")
     ap.add_argument("--early-call", type=float, default=0.0,
                     help="share of each intermission skipped with an early call (0-1, default 0)")
     ap.add_argument("--tower-gold", type=float,

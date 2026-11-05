@@ -13,7 +13,7 @@ Expected values (no RNG), from the live game data. Re-run after any data or form
 - Plan (cycled): the_ashfields -> the_broodwarrens -> the_coilmarsh -> the_duskwood -> the_foothills -> the_gap -> the_hollow -> the_mirefen -> the_narrows -> the_riftgate -> the_shardplain -> the_twinpass
 - No Ascension climb (`--ascend-after N` to model the endgame)
 - Bag: 8 slots (Inventory slots minus the hero's equip slots), stacks of 99 (ascendant_shard 999); overflow lost, shards held; equipment assumed worn, crafted goods used; no discard
-- Sanctuary gold: mission income = scout 50 + wave grants `round(20 x min(4.768, (1+growth)^(w-1)))`; no early calls (`--early-call`); towers cost 125 a mission (`--tower-gold`; 6 x avg blueprint 20.9); held gold banks at 25% + 10% per Treasury tech owned; crafting costs 80 x tier (tier 4+ = 320); imbues and rune slots not modelled
+- Sanctuary gold: mission income = scout 50 + wave grants `round(20 x min(4.768, (1+growth)^(w-1)))`; no early calls (`--early-call`); towers cost 125 a mission (`--tower-gold`; 6 x avg blueprint 20.9); held gold banks at 25% + 10% per Treasury tech owned; crafting costs 80 x tier (tier 4+ = 320); imbues and rune slots not modelled; Menagerie Rehoming from the first Ascension 1 clear spends leftover gold at 200 x tier 2 each (temperament payoffs not modelled; `--no-rehome`)
 
 ## One run of each mission
 
@@ -115,6 +115,7 @@ Banked = Sanctuary gold from that mission's held gold. Balance = after that visi
 | 70 | 3/3 | 55% | 333 | 4,629 | 8,480 | 0 |
 
 Treasury bought: tech_treasury_1 @ 3, tech_treasury_2 @ 10, tech_treasury_3 @ 16. Gold banked over 70 missions: 13,109; spent 8,480.
+Menagerie Rehoming: unlocked at mission -; 0 rehomes for 0.0 gold (included in Spent).
 Longest gold waits (visits with materials ready, gold short): steelwrought_longsword 17, riftrunner_coat 16, steelwrought_kite_shield 14, steelwrought_cuirass 14, steelwrought_helm 13, steelwrought_legplates 13, steelwrought_torc 7, steelwrought_gauntlets 7
 
 ## Sanctuary purchases
