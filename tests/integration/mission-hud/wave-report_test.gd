@@ -129,3 +129,47 @@ func test_wave_report_prefers_blueprint_display_name() -> void:
 	p.display_name = "Arcane Lance"
 	_report._on_tower_placed(p)
 	assert_str(String(_report._towers[9][&"name"])).is_equal("Arcane Lance")
+
+
+func _place_at(tower_id: int, pos: Vector2) -> void:
+	var p := TowerPlacedEvent.new()
+	p.tower_id = tower_id
+	p.weapon_component_id = "weap_arrow"
+	p.archetype = "ranged"
+	p.display_name = "Arrow"
+	p.world_position = pos
+	_report._on_tower_placed(p)
+
+
+func test_wave_report_numbers_rows_and_marks_each_tower_in_world() -> void:
+	# Arrange: two same-named towers, tower 2 out-damages tower 1
+	_place_at(1, Vector2(100.0, 200.0))
+	_place_at(2, Vector2(400.0, 200.0))
+	_report._on_tower_wave_summary(_summary(1, 10.0, 1, 0))
+	_report._on_tower_wave_summary(_summary(2, 90.0, 9, 0))
+	# Act
+	_report.show_report()
+	# Assert: marker "1" sits over tower 2 (top row), "2" over tower 1
+	assert_int(_report._marker_items.size()).is_equal(2)
+	var first: Label = _report._marker_items[0][0]
+	assert_str(first.text).is_equal("1")
+	assert_vector(_report._marker_items[0][1]).is_equal(Vector2(400.0, 200.0))
+	var canvas: Transform2D = _report.get_viewport().get_canvas_transform()
+	var expected: Vector2 = canvas * (Vector2(400.0, 200.0) + WaveReport.MARKER_WORLD_OFFSET) - first.size * 0.5
+	assert_vector(first.position).is_equal_approx(expected, Vector2(0.01, 0.01))
+	assert_bool(_report.is_processing()).is_true()
+	# Hidden with the report
+	_report._on_wave_started(3, 5, 1.0)
+	assert_bool(_report.is_processing()).is_false()
+
+
+func test_wave_report_sold_tower_keeps_row_but_loses_marker() -> void:
+	# Arrange
+	_place_at(5, Vector2(64.0, 64.0))
+	_report._on_tower_wave_summary(_summary(5, 20.0, 2, 0))
+	# Act
+	_report._on_tower_removed(5, Vector2i.ZERO, "ranged", "")
+	_report.show_report()
+	# Assert
+	assert_int(_report._rows.get_child_count()).is_equal(1)
+	assert_bool(_report._marker_items.is_empty()).is_true()

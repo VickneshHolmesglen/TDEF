@@ -5,6 +5,8 @@ extends Control
 ## the "Endless Theorist" feedback surface tower.md Rule 23 assigns to the
 ## Mission HUD. After each wave it lists every tower's damage share, kills and
 ## idle share, so the intermission build decision has evidence behind it.
+## Each row is numbered and the same number floats over that tower in the
+## world while the report is open, so identical tower names can be told apart.
 ##
 ## Pure presentation: subscribes to EventBus itself, emits nothing, never takes
 ## input (MOUSE_FILTER_IGNORE on the whole subtree). Mounted by MissionHud._ready(),
@@ -20,8 +22,12 @@ const BAR_WIDTH: float = 70.0
 const COLOR_IDLE_WARN: Color = Color(1.0, 0.55, 0.35)
 const COLOR_MUTED: Color = Color(0.75, 0.75, 0.75)
 const COLOR_BAR_BG: Color = Color(1, 1, 1, 0.12)
+## World-space offset of a tower's number marker from the tower centre (above
+## the sprite).
+const MARKER_WORLD_OFFSET: Vector2 = Vector2(0.0, -44.0)
 
-## tower_id -> {&"name": String, &"archetype": String, &"rank": int}, from tower_placed / tower_ranked_up.
+## tower_id -> {&"name": String, &"archetype": String, &"rank": int, &"pos": Vector2},
+## from tower_placed / tower_ranked_up; erased on tower_removed / tower_destroyed.
 var _towers: Dictionary[int, Dictionary] = {}
 ## tower_id -> kills credited this wave.
 var _kills: Dictionary[int, int] = {}
@@ -32,6 +38,10 @@ var _wave_number: int = 0
 var _panel: PanelContainer
 var _title: Label
 var _rows: VBoxContainer
+## Holds the in-world number markers (screen space, repositioned each frame).
+var _markers: Control
+## [Label, world position] per marker shown.
+var _marker_items: Array[Array] = []
 
 
 func _ready() -> void:
@@ -41,6 +51,7 @@ func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_build()
 	visible = false
+	set_process(false)
 	for pair: Array in _subscriptions():
 		(pair[0] as Signal).connect(pair[1])
 
@@ -55,6 +66,8 @@ func _subscriptions() -> Array:
 	return [
 		[GEventBus.tower_placed, _on_tower_placed],
 		[GEventBus.tower_ranked_up, _on_tower_ranked_up],
+		[GEventBus.tower_removed, _on_tower_removed],
+		[GEventBus.tower_destroyed, _on_tower_destroyed],
 		[GEventBus.tower_wave_summary, _on_tower_wave_summary],
 		[GEventBus.monster_died, _on_monster_died],
 		[GEventBus.monsters_died_batch, _on_monsters_died_batch],
@@ -65,6 +78,11 @@ func _subscriptions() -> Array:
 
 
 func _build() -> void:
+	_markers = Control.new()
+	_markers.name = &"Markers"
+	_markers.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_markers.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(_markers)
 	_panel = PanelContainer.new()
 	_panel.name = &"Panel"
 	_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -101,12 +119,21 @@ func _on_tower_placed(payload: TowerPlacedEvent) -> void:
 		&"name": payload.display_name if not payload.display_name.is_empty() else weapon_display_name(payload.weapon_component_id),
 		&"archetype": payload.archetype,
 		&"rank": 0,
+		&"pos": payload.world_position,
 	}
 
 
 func _on_tower_ranked_up(tower_id: int, rank: int) -> void:
 	if _towers.has(tower_id):
 		_towers[tower_id][&"rank"] = rank
+
+
+func _on_tower_removed(tower_id: int, _grid_position: Vector2i, _archetype: String, _tag: String) -> void:
+	_towers.erase(tower_id)
+
+
+func _on_tower_destroyed(tower_id: int, _grid_position: Vector2i, _archetype: String, _footprint: Array, _tag: String) -> void:
+	_towers.erase(tower_id)
 
 
 func _on_tower_wave_summary(payload: TowerWaveSummary) -> void:
@@ -132,7 +159,7 @@ func _on_wave_started(wave_number: int, _total_waves: int, _difficulty: float) -
 	_wave_number = wave_number
 	_summaries.clear()
 	_kills.clear()
-	visible = false
+	_set_shown(false)
 
 
 ## TowerSystem emits its summaries from its own wave_completed handler, which
@@ -148,9 +175,9 @@ func _on_mission_phase_changed(_previous_phase: String, new_phase: String, _time
 			_towers.clear()
 			_summaries.clear()
 			_kills.clear()
-			visible = false
+			_set_shown(false)
 		"WAVE_ACTIVE", "MISSION_COMPLETE", "DEFEAT":
-			visible = false
+			_set_shown(false)
 
 
 # ---------------------------------------------------------------------------
@@ -162,25 +189,70 @@ func _on_mission_phase_changed(_previous_phase: String, new_phase: String, _time
 func show_report() -> void:
 	for child: Node in _rows.get_children():
 		child.queue_free()
+	for child: Node in _markers.get_children():
+		child.queue_free()
+	_marker_items.clear()
 	var rows: Array[Dictionary] = build_rows(_summaries, _towers, _kills)
 	if rows.is_empty():
-		visible = false
+		_set_shown(false)
 		return
 	_title.text = tr("HUD_WAVE_REPORT_TITLE") % _wave_number
 	for i: int in mini(rows.size(), MAX_ROWS):
-		_rows.add_child(_make_row(rows[i]))
+		_rows.add_child(_make_row(rows[i], i + 1))
+		var pos: Vector2 = rows[i][&"pos"]
+		if pos != Vector2.ZERO:
+			var marker: Label = _make_marker(i + 1, String(rows[i][&"archetype"]))
+			_markers.add_child(marker)
+			_marker_items.append([marker, pos])
 	if rows.size() > MAX_ROWS:
 		var more := Label.new()
 		more.text = tr("HUD_WAVE_REPORT_MORE") % (rows.size() - MAX_ROWS)
 		more.add_theme_color_override("font_color", COLOR_MUTED)
 		more.add_theme_font_size_override("font_size", 12)
 		_rows.add_child(more)
-	visible = true
+	_set_shown(true)
+
+
+func _set_shown(shown: bool) -> void:
+	visible = shown
+	set_process(shown)
+	if shown:
+		_place_markers()
+
+
+func _process(_delta: float) -> void:
+	_place_markers()
+
+
+## Keeps each number over its tower as the camera pans/zooms.
+func _place_markers() -> void:
+	var canvas: Transform2D = get_viewport().get_canvas_transform()
+	for item: Array in _marker_items:
+		var marker: Label = item[0]
+		marker.position = canvas * ((item[1] as Vector2) + MARKER_WORLD_OFFSET) - marker.size * 0.5
+
+
+func _make_marker(number: int, archetype: String) -> Label:
+	var marker := Label.new()
+	marker.text = str(number)
+	marker.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	marker.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	marker.custom_minimum_size = Vector2(22.0, 22.0)
+	marker.add_theme_font_size_override("font_size", 14)
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.06, 0.06, 0.08, 0.85)
+	style.border_color = ProjectileVisual.ARCHETYPE_COLORS.get(archetype, COLOR_MUTED)
+	style.set_border_width_all(2)
+	style.set_corner_radius_all(11)
+	marker.add_theme_stylebox_override("normal", style)
+	marker.size = marker.get_combined_minimum_size()
+	return marker
 
 
 ## One row per summary, highest damage first: {&"tower_id", &"name",
 ## &"archetype", &"rank", &"damage", &"share", &"kills", &"idle_ratio",
-## &"pulses", &"support"}. `share` is of the wave's total tower damage;
+## &"pulses", &"support", &"pos"}. `pos` is the tower's world centre (zero
+## when unknown). `share` is of the wave's total tower damage;
 ## `support` rows (no damage, some aura pulses) report pulses instead.
 static func build_rows(summaries: Array[TowerWaveSummary], towers: Dictionary, kills: Dictionary) -> Array[Dictionary]:
 	var total: float = 0.0
@@ -195,6 +267,7 @@ static func build_rows(summaries: Array[TowerWaveSummary], towers: Dictionary, k
 			&"name": String(info.get(&"name", "#%d" % summary.tower_id)),
 			&"archetype": String(info.get(&"archetype", "")),
 			&"rank": int(info.get(&"rank", 0)),
+			&"pos": info.get(&"pos", Vector2.ZERO),
 			&"damage": summary.damage_dealt,
 			&"share": summary.damage_dealt / total if total > 0.0 else 0.0,
 			&"kills": int(kills.get(summary.tower_id, 0)),
@@ -218,10 +291,14 @@ static func weapon_display_name(weapon_component_id: String) -> String:
 	return bare.replace("_", " ").capitalize()
 
 
-func _make_row(row: Dictionary) -> Control:
+func _make_row(row: Dictionary, number: int) -> Control:
 	var line := HBoxContainer.new()
 	line.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	line.add_theme_constant_override("separation", 6)
+
+	var number_label := _small_label(str(number), COLOR_MUTED)
+	number_label.custom_minimum_size.x = 14.0
+	line.add_child(number_label)
 
 	var swatch := ColorRect.new()
 	swatch.custom_minimum_size = Vector2(6.0, 18.0)

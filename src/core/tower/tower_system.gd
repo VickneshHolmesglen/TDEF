@@ -133,6 +133,7 @@ func _ready() -> void:
 	GEventBus.monster_cell_entered.connect(_on_monster_cell_entered)
 	GEventBus.monster_died.connect(_on_monster_died)
 	GEventBus.monsters_died_batch.connect(_on_monsters_died_batch)
+	GEventBus.monsters_cleared.connect(_on_monsters_cleared)
 	GEventBus.monster_breached.connect(_on_monster_breached)
 	GEventBus.wave_started.connect(_on_wave_started)
 	GEventBus.wave_completed.connect(_on_wave_completed)
@@ -148,6 +149,7 @@ func _exit_tree() -> void:
 	GEventBus.monster_cell_entered.disconnect(_on_monster_cell_entered)
 	GEventBus.monster_died.disconnect(_on_monster_died)
 	GEventBus.monsters_died_batch.disconnect(_on_monsters_died_batch)
+	GEventBus.monsters_cleared.disconnect(_on_monsters_cleared)
 	GEventBus.monster_breached.disconnect(_on_monster_breached)
 	GEventBus.wave_started.disconnect(_on_wave_started)
 	GEventBus.wave_completed.disconnect(_on_wave_completed)
@@ -1008,6 +1010,12 @@ func _on_monster_died(payload: MonsterDiedEvent) -> void:
 func _on_monsters_died_batch(payloads: Array[MonsterDiedEvent]) -> void:
 	for payload: MonsterDiedEvent in payloads:
 		_on_monster_died(payload)
+
+
+## Monster System dropped every monster without per-entity deaths (launch /
+## Retry): forget them all so no tower keeps firing at a ghost id.
+func _on_monsters_cleared() -> void:
+	_monster_cache.clear()
 
 
 ## Tower veterancy damage multiplier for `rank` (1.0 at rank 0).

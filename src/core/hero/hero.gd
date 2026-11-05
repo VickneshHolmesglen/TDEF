@@ -797,6 +797,7 @@ func _ready() -> void:
 	GEventBus.monster_cell_entered.connect(_on_monster_cell_entered)
 	GEventBus.monster_died.connect(_on_monster_died)
 	GEventBus.monsters_died_batch.connect(_on_monsters_died_batch)
+	GEventBus.monsters_cleared.connect(_on_monsters_cleared)
 	GEventBus.wave_completed.connect(_on_wave_completed)
 
 	GEventBus.tower_placed.connect(_on_tower_placed)
@@ -849,6 +850,7 @@ func _exit_tree() -> void:
 	GEventBus.monster_cell_entered.disconnect(_on_monster_cell_entered)
 	GEventBus.monster_died.disconnect(_on_monster_died)
 	GEventBus.monsters_died_batch.disconnect(_on_monsters_died_batch)
+	GEventBus.monsters_cleared.disconnect(_on_monsters_cleared)
 	GEventBus.wave_completed.disconnect(_on_wave_completed)
 
 	GEventBus.tower_placed.disconnect(_on_tower_placed)
@@ -1205,6 +1207,12 @@ func _on_monster_cell_entered(entity_id: int, grid_cell: Vector2i, path_step_ind
 func _on_monster_died(payload: MonsterDiedEvent) -> void:
 	_grant_xp(_resolve_kill_xp_band(payload))
 	_monster_cache.erase(payload.entity_id)
+
+
+## Monster System dropped every monster without per-entity deaths (launch /
+## Retry): no XP, just forget them so the hero never targets a ghost id.
+func _on_monsters_cleared() -> void:
+	_monster_cache.clear()
 
 
 ## Hero Leveling System (2026-09-19): batched deaths (DEATH_BATCH_THRESHOLD

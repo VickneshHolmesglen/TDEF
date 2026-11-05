@@ -1404,13 +1404,17 @@ func _on_wave_started(wave_number: int, _total_waves: int, _wave_difficulty: flo
 		# stale value instead of restarting from F4's "no card -> 1.0" baseline.
 		_tarot_speed_scalar_raw = 1.0
 		_tarot_speed_scalar = 1.0
-	active_monsters.clear()
-	spawning_entities.clear()
-	_entity_lookup.clear()
 	_pending_absorbed.clear()
 	_pending_damage.clear()
 	_pending_deaths.clear()
 	_pending_splits.clear()
+	# Leftovers only exist when something spawned outside a wave (wave_completed
+	# already force-removed the last wave's monsters with events). Release them
+	# and announce it, rather than dropping the lists silently: entity ids
+	# restart at wave 1, so caches elsewhere would keep them as ghost targets.
+	if not active_monsters.is_empty() or not spawning_entities.is_empty():
+		clear_all_entities()
+	_entity_lookup.clear()
 
 
 ## Story 002 (epic-04-wave-manager): wave_completed gained a third
@@ -1461,6 +1465,7 @@ func clear_all_entities() -> void:
 		_release_entity(entity)
 	spawning_entities.clear()
 	_entity_lookup.clear()
+	GEventBus.monsters_cleared.emit()
 
 
 ## Unregisters an entity's presenter handles and queue_free()s it.

@@ -376,6 +376,12 @@ signal monster_died(payload: MonsterDiedEvent)
 ## Key subscribers: Resource Economy, Wave Manager, Constellation, Mission HUD.
 signal monsters_died_batch(payloads: Array[MonsterDiedEvent])
 
+## Monster System dropped every live monster WITHOUT a monster_died for each
+## (mission launch / Retry, wave start leftovers). Subscribers holding
+## per-entity_id state (Tower System and Hero target caches) must forget all
+## of it: entity ids restart at wave 1, so a stale entry is a ghost target.
+signal monsters_cleared
+
 ## Monster exits the GOAL cell boundary without being killed.
 ## tier == 2 triggers wave-clear in Wave Manager.
 ## Key subscribers: Wave Manager, Mission HUD.
