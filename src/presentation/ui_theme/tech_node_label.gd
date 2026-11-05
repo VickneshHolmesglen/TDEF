@@ -9,6 +9,7 @@ extends RefCounted
 const CATEGORY_LABEL_KEYS: Dictionary[String, String] = {
 	"production_tech": "DEFENSE_CATEGORY_PRODUCTION",
 	"structural_tech": "DEFENSE_CATEGORY_STRUCTURAL",
+	"economy_tech": "DEFENSE_CATEGORY_ECONOMY",
 }
 const ROMAN_NUMERALS: Array[String] = ["", "I", "II", "III", "IV", "V"]
 

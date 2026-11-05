@@ -17,7 +17,7 @@ extends Resource
 ## history, not by Defense Building pushing gate logic outward).
 
 @export var tech_id: StringName = &""
-@export var tech_category: String = ""              # "production_tech" | "structural_tech"
+@export var tech_category: String = ""              # "production_tech" | "structural_tech" | "economy_tech"
 @export var prerequisite_tech_id: StringName = &""   # "" = root node
 @export var branch_tier: int = 1                     # 1-3
 ## No gold cost (removed 2026-11-03): gold exists only inside a mission and
@@ -25,7 +25,7 @@ extends Resource
 @export var material_costs: Dictionary[StringName, int] = {}
 @export var gates: String = ""                       # content-authoring documentation only, NEVER read at runtime
 
-const VALID_CATEGORIES: Array[String] = ["production_tech", "structural_tech"]
+const VALID_CATEGORIES: Array[String] = ["production_tech", "structural_tech", "economy_tech"]
 
 
 ## Load-time validation. Called by GameDataRegistry at boot (ADR-0009).

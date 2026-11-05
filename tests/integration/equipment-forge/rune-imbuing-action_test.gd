@@ -11,7 +11,13 @@ var _forge: EquipmentForge
 var _spy: EventBusSpy
 
 
+## Forge actions cost Sanctuary gold (SanctuaryGold); fund the autoload, restore after.
+var _saved_sanctuary_gold: int = 0
+
+
 func before_test() -> void:
+	_saved_sanctuary_gold = GSanctuaryGold.get_balance()
+	GSanctuaryGold._balance = 100000
 	_forge = EquipmentForge.new()
 	_spy = EventBusSpy.new()
 	_spy.watch(GEventBus.item_rune_imbued)
@@ -20,6 +26,7 @@ func before_test() -> void:
 
 
 func after_test() -> void:
+	GSanctuaryGold._balance = _saved_sanctuary_gold
 	_spy.disconnect_all()
 	_spy = null
 	if _forge != null and is_instance_valid(_forge):

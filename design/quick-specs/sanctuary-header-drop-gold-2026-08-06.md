@@ -1,5 +1,7 @@
 # Quick Design Spec: Drop Gold from Sanctuary's Resource Header
 
+> **Superseded 2026-11-05** by `sanctuary-gold-2026-11-05.md`: gold now has a Sanctuary meaning (mission gold banks into a persistent Sanctuary balance spent at the Forge), so the header shows it again.
+
 **Type**: Tweak
 **System**: Sanctuary UI (`design/gdd/sanctuary-ui.md`)
 **GDD Reference**: `design/gdd/sanctuary-ui.md` Core Rule 3 / AC Group 3, `design/gdd/resource-economy.md` Rule 1, `docs/architecture/adr-0018-mission-economy-gold-balance.md`

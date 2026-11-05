@@ -140,14 +140,15 @@ func test_structure_validate_negative_tier_returns_error() -> void:
 # GameDataRegistry: TechNodeResource loading (AC-3 — real authored content)
 # ---------------------------------------------------------------------------
 
-func test_ready_loads_exactly_six_tech_nodes() -> void:
+func test_ready_loads_exactly_nine_tech_nodes() -> void:
+	# 2026-11-05: +3 Treasury techs (economy_tech) -> 9.
 	# 2026-08-03: tech_structural_3 added alongside habitat_expansion_tier_4
 	# (see design/quick-specs/habitat-expansion-tier-4-2026-08-03.md) --
 	# supersedes the original "exactly five" count.
 	_registry = GameDataRegistry.new()
 	_registry._ready()
 	var all_nodes: Dictionary[StringName, TechNodeResource] = _registry.get_all_tech_nodes()
-	assert_int(all_nodes.size()).is_equal(6)
+	assert_int(all_nodes.size()).is_equal(9)
 
 
 func test_ready_tech_node_category_mapping_matches_gdd_table() -> void:
@@ -191,7 +192,7 @@ func test_get_all_tech_nodes_returns_isolated_copy() -> void:
 	_registry._ready()
 	var all_nodes: Dictionary[StringName, TechNodeResource] = _registry.get_all_tech_nodes()
 	all_nodes[&"injected_after_the_fact"] = TechNodeResource.new()
-	assert_int(_registry.get_all_tech_nodes().size()).is_equal(6)
+	assert_int(_registry.get_all_tech_nodes().size()).is_equal(9)
 
 
 # ---------------------------------------------------------------------------

@@ -27,7 +27,13 @@ var _runner: GdUnitSceneRunner
 var _screen: Control
 
 
+## Forge actions cost Sanctuary gold (SanctuaryGold); fund the autoload, restore after.
+var _saved_sanctuary_gold: int = 0
+
+
 func before_test() -> void:
+	_saved_sanctuary_gold = GSanctuaryGold.get_balance()
+	GSanctuaryGold._balance = 100000
 	_forge = EquipmentForge.new()
 	_building_upgrade = BuildingUpgrade.new()
 	add_child(_building_upgrade)
@@ -43,6 +49,7 @@ func before_test() -> void:
 
 
 func after_test() -> void:
+	GSanctuaryGold._balance = _saved_sanctuary_gold
 	if _forge != null and is_instance_valid(_forge):
 		_forge.free()
 	_forge = null
@@ -428,7 +435,7 @@ func test_forge_full_item_stays_listed_and_offers_a_rune_slot() -> void:
 	_screen.call("_on_item_pressed", sword)
 	var button: Button = _screen.call("get_add_rune_slot_button")
 	assert_bool(button.visible).is_true()
-	assert_str(button.text).is_equal(tr("FORGE_ADD_RUNE_SLOT") % 40)
+	assert_str(button.text).is_equal(tr("FORGE_ADD_RUNE_SLOT") % [40, SanctuaryGold.rune_slot_cost(0)])
 	assert_bool(button.disabled).is_true()  # no shards yet
 
 
@@ -443,7 +450,7 @@ func test_forge_add_rune_slot_confirm_spends_shards_and_relists() -> void:
 	_screen.call("_on_add_rune_slot_confirmed")
 
 	assert_int(GInventory.get_slot_contents_by_instance_id(sword)["rune_slot_count"] as int).is_equal(3)
-	assert_str(button.text).is_equal(tr("FORGE_ADD_RUNE_SLOT") % 120)
+	assert_str(button.text).is_equal(tr("FORGE_ADD_RUNE_SLOT") % [120, SanctuaryGold.rune_slot_cost(1)])
 
 
 func test_forge_add_rune_slot_button_hidden_without_selection() -> void:

@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="TechNodeResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/core/defense_building/tech_node_resource.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+tech_id = &"tech_treasury_3"
+tech_category = "economy_tech"
+prerequisite_tech_id = &"tech_treasury_2"
+branch_tier = 3
+material_costs = {
+&"Common": 320,
+&"Uncommon": 40,
+&"Rare": 20
+}
+gates = "Sanctuary gold: mission gold banked at 55% (SanctuaryGold.conversion_rate)"

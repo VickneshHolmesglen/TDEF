@@ -37,12 +37,13 @@ func after_test() -> void:
 # Tech tree view
 # ---------------------------------------------------------------------------
 
-func test_tech_list_contains_all_6_authored_nodes() -> void:
-	# 2026-08-03: tech_structural_3 added alongside habitat_expansion_tier_4 --
-	# supersedes the original "all 5" count.
+func test_tech_list_contains_all_9_authored_nodes() -> void:
+	# 2026-08-03: tech_structural_3 added (5 -> 6); 2026-11-05: three Treasury
+	# techs (economy_tech, Sanctuary gold conversion rate) added (6 -> 9).
 	@warning_ignore("unsafe_property_access")
 	var tech_buttons: Dictionary = _screen.get("_tech_buttons")
-	assert_int(tech_buttons.size()).is_equal(6)
+	assert_int(tech_buttons.size()).is_equal(9)
+	assert_bool(tech_buttons.has(&"tech_treasury_1")).is_true()
 	assert_bool(tech_buttons.has(&"tech_production_2")).is_true()
 	assert_bool(tech_buttons.has(&"tech_structural_1")).is_true()
 	assert_bool(tech_buttons.has(&"tech_structural_3")).is_true()

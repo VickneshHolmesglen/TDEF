@@ -137,6 +137,7 @@ func _ready() -> void:
 	GEventBus.item_added.connect(_on_forge_state_changed)
 	GEventBus.item_removed.connect(_on_forge_state_changed)
 	GEventBus.item_rune_slot_added.connect(_on_forge_state_changed)
+	GEventBus.sanctuary_gold_changed.connect(_on_forge_state_changed)
 
 	_build_add_rune_slot_controls()
 	_rebuild_recipe_list()
@@ -156,6 +157,7 @@ func disconnect_own_subscriptions() -> void:
 	GEventBus.item_added.disconnect(_on_forge_state_changed)
 	GEventBus.item_removed.disconnect(_on_forge_state_changed)
 	GEventBus.item_rune_slot_added.disconnect(_on_forge_state_changed)
+	GEventBus.sanctuary_gold_changed.disconnect(_on_forge_state_changed)
 
 
 func _on_forge_state_changed(_a: Variant = null, _b: Variant = null, _c: Variant = null) -> void:
@@ -334,10 +336,13 @@ func _create_recipe_button(recipe: EquipmentRecipeResource) -> Button:
 ## Display name from the output item, localized craftable tag (2026-10-04
 ## smoke check -- previously "iron_sword_recipe [MISSING_MATERIALS]").
 func _recipe_entry_text(recipe: EquipmentRecipeResource) -> String:
-	var craftable_tag: String = tr("FORGE_RECIPE_CRAFTABLE") if equipment_forge.is_craftable(recipe.recipe_id) else tr("FORGE_RECIPE_MISSING")
+	var gold_cost: int = equipment_forge.craft_gold_cost(recipe.recipe_id)
+	var craftable_tag: String = tr("FORGE_RECIPE_MISSING")
+	if equipment_forge.has_recipe_materials(recipe.recipe_id):
+		craftable_tag = tr("FORGE_RECIPE_CRAFTABLE") if GSanctuaryGold.can_afford(gold_cost) else tr("FORGE_NOT_ENOUGH_GOLD")
 	if _is_blocked_by_full_bag(recipe.recipe_id):
 		craftable_tag = tr("FORGE_RECIPE_BAG_FULL")
-	return "%s  ·  %s" % [_item_display_name(recipe.output_item_id), craftable_tag]
+	return "%s  ·  %s  ·  %s" % [_item_display_name(recipe.output_item_id), tr("FORGE_GOLD_COST") % gold_cost, craftable_tag]
 
 
 ## Materials ready but resolve_craft() would reject for lack of a free slot
@@ -496,8 +501,9 @@ func _refresh_add_rune_slot_button() -> void:
 		_add_rune_slot_button.text = tr("FORGE_ADD_RUNE_SLOT_MAXED")
 		_add_rune_slot_button.disabled = true
 		return
-	_add_rune_slot_button.text = tr("FORGE_ADD_RUNE_SLOT") % cost
-	_add_rune_slot_button.disabled = GInventory.count_by_material_id(AscensionRewards.SHARD_ITEM_ID) < cost
+	var gold_cost: int = equipment_forge.add_rune_slot_gold_cost(_selected_instance_id)
+	_add_rune_slot_button.text = tr("FORGE_ADD_RUNE_SLOT") % [cost, gold_cost]
+	_add_rune_slot_button.disabled = GInventory.count_by_material_id(AscensionRewards.SHARD_ITEM_ID) < cost 			or not GSanctuaryGold.can_afford(gold_cost)
 
 
 func _on_add_rune_slot_pressed() -> void:
@@ -507,7 +513,7 @@ func _on_add_rune_slot_pressed() -> void:
 	if cost < 0:
 		return
 	var contents: Dictionary = GInventory.get_slot_contents_by_instance_id(_selected_instance_id)
-	_add_rune_slot_dialog.dialog_text = tr("FORGE_ADD_RUNE_SLOT_CONFIRM") % [cost, _item_display_name(StringName(contents.get("item_id", "")))]
+	_add_rune_slot_dialog.dialog_text = tr("FORGE_ADD_RUNE_SLOT_CONFIRM") % [cost, equipment_forge.add_rune_slot_gold_cost(_selected_instance_id), _item_display_name(StringName(contents.get("item_id", "")))]
 	_add_rune_slot_dialog.popup_centered()
 
 
@@ -555,7 +561,9 @@ func _create_rune_button(rune_id: StringName, entry: Dictionary) -> Button:
 	button.name = "Rune_%s" % String(rune_id)
 	button.focus_mode = Control.FOCUS_ALL
 	button.clip_text = true
-	button.text = tr("FORGE_RUNE_ENTRY") % [String(rune_id).capitalize(), String(entry.get("rune_source", "")).capitalize()]
+	button.text = "%s  ·  %s" % [tr("FORGE_RUNE_ENTRY") % [String(rune_id).capitalize(), String(entry.get("rune_source", "")).capitalize()],
+			tr("FORGE_GOLD_COST") % SanctuaryGold.IMBUE_COST]
+	button.disabled = not GSanctuaryGold.can_afford(SanctuaryGold.IMBUE_COST)
 	button.pressed.connect(_on_rune_pressed.bind(rune_id))
 	_wire_focus_ring(button)
 	return button
@@ -570,7 +578,7 @@ func _on_rune_pressed(rune_id: StringName) -> void:
 	if _selected_instance_id == -1:
 		return
 	_pending_imbue_rune_id = rune_id
-	_imbue_confirm_dialog.dialog_text = tr("EQUIPFORGE_IMBUE_CONFIRM_TEXT")
+	_imbue_confirm_dialog.dialog_text = tr("EQUIPFORGE_IMBUE_CONFIRM_TEXT") % SanctuaryGold.IMBUE_COST
 	_imbue_confirm_dialog.popup_centered()
 
 

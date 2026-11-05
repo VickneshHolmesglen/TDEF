@@ -711,6 +711,12 @@ signal materials_spent(material_type: String, quantity: int, destination: String
 ## Key subscribers: Tower System (Gate 2 gold cache), Mission HUD.
 signal resources_changed(gold: int, source: StringName)
 
+## Persistent Sanctuary gold changed (SanctuaryGold, resource-economy.md Rule 11).
+## delta > 0: banked from a finished mission (source "mission_bank");
+## delta < 0: spent in the Equipment Forge ("forge_craft", "forge_imbue",
+## "forge_rune_slot"). Key subscribers: Sanctuary resource header, Mission Outcome.
+signal sanctuary_gold_changed(balance: int, delta: int, source: StringName)
+
 # =============================================================================
 # Tower Mastery System
 # =============================================================================

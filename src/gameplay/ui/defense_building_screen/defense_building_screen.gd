@@ -42,6 +42,7 @@ const FOCUS_RING_COLOR: Color = FocusRingFactory.FOCUS_RING_COLOR  ## HD-2D skin
 const TECH_CATEGORY_LABELS: Dictionary[String, String] = {
 	"production_tech": "DEFENSE_CATEGORY_PRODUCTION",
 	"structural_tech": "DEFENSE_CATEGORY_STRUCTURAL",
+	"economy_tech": "DEFENSE_CATEGORY_ECONOMY",
 }
 const STRUCTURE_TYPE_LABELS: Dictionary[String, String] = {
 	"habitat_expansion": "DEFENSE_STRUCTURE_HABITAT_EXPANSION",
@@ -192,6 +193,10 @@ func _create_tech_button(node: TechNodeResource) -> Button:
 ## deliberately not read here.
 func _tech_unlocks_text(tech_id: StringName) -> String:
 	var parts: PackedStringArray = []
+	# Treasury techs open nothing; they raise the mission-gold bank rate.
+	var treasury_rank: int = SanctuaryGold.TREASURY_TECH_IDS.find(tech_id)
+	if treasury_rank >= 0:
+		return tr("DEFENSE_CARD_GOLD_RATE") % roundi(SanctuaryGold.conversion_rate_for(treasury_rank + 1) * 100.0)
 	for structure: StructureResource in GGameDataRegistry.get_all_structures().values():
 		if structure.tech_gate == tech_id:
 			parts.append(_structure_display_name(structure))

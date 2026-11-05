@@ -1,5 +1,6 @@
 keys,en
 SANCTUARY_TAB_OVERVIEW,Overview
+SANCTUARY_GOLD_TOOLTIP,"Sanctuary gold: banked from mission gold, spent at the Equipment Forge"
 SANCTUARY_BUILDING_PROMPT,"Your sanctuary grows with you. Hover or select a building to see its progress, click to go there."
 SANCTUARY_BUILDING_INFO,%s · Tier %d/5 · %d%% · %s
 SANCTUARY_BUILDING_CASTLE,Castle
@@ -24,7 +25,7 @@ SANCTUARY_TAB_HERO_SKILLS,Skills
 SANCTUARY_TAB_LOADOUT,Loadout
 SANCTUARY_TAB_STRIP_ONBOARDING_TOOLTIP,Press 1-7 to switch rooms
 SANCTUARY_LAUNCH_MISSION_BUTTON,Launch Mission
-EQUIPFORGE_IMBUE_CONFIRM_TEXT,Imbue this rune into the selected item?
+EQUIPFORGE_IMBUE_CONFIRM_TEXT,Imbue this rune into the selected item for %d gold?
 FORGE_TAB_CRAFT,Craft
 FORGE_TAB_IMBUE,Imbue
 FORGE_TAB_ASSEMBLE,Assemble Towers
@@ -257,6 +258,8 @@ DEFENSE_STRUCTURE_UNBUILT,Not built
 DEFENSE_STRUCTURE_GATE,  ·  Requires %s
 FORGE_RECIPE_CRAFTABLE,Ready to craft
 FORGE_RECIPE_MISSING,Missing materials
+FORGE_NOT_ENOUGH_GOLD,Not enough gold
+FORGE_GOLD_COST,%d gold
 FORGE_RECIPE_BAG_FULL,Bag full
 FORGE_RECIPE_BAG_FULL_TOOLTIP,"No free bag slot for this item. Free a slot or expand your Inventory, then craft."
 FORGE_ITEM_SLOTS_FREE,%s (%d/%d rune slots free)
@@ -319,15 +322,16 @@ MISSION_SELECT_DAILY_TAG,Daily Challenge: %s
 OUTCOME_UNLOCKED_MAP,New map unlocked: %s
 OUTCOME_UNLOCKED_TIER,%s unlocked on %s
 OUTCOME_UNLOCKED_TAROT,Tarot card unlocked: %s
+OUTCOME_GOLD_BANKED,+%d Sanctuary gold banked
 OUTCOME_SHARDS,+%d Ascendant Shards
 OUTCOME_SHARDS_FIRST_CLEAR,+%d Ascendant Shards (first-clear bonus included)
 OUTCOME_SHARDS_HELD,"Bag full: %d shards are held and will arrive when you free space"
 TAROT_CARD_WORLDS_WEIGHT,World's Weight
 TAROT_CARD_HUNTERS_PACE,Hunter's Pace
 TAROT_TAG_LOCKED_ASCENSION,(Locked: reach Ascension %d)
-FORGE_ADD_RUNE_SLOT,Add rune slot (%d Ascendant Shards)
+FORGE_ADD_RUNE_SLOT,"Add rune slot (%d Ascendant Shards, %d gold)"
 FORGE_ADD_RUNE_SLOT_MAXED,Rune slots maxed
-FORGE_ADD_RUNE_SLOT_CONFIRM,Spend %d Ascendant Shards to add a rune slot to %s?
+FORGE_ADD_RUNE_SLOT_CONFIRM,Spend %d Ascendant Shards and %d gold to add a rune slot to %s?
 MISSION_SELECT_STEP_OFF,Off
 MISSION_SELECT_STEP_LOW,Low
 MISSION_SELECT_STEP_HIGH,High
@@ -362,6 +366,7 @@ GAP_HELP_DEBUG_KILL, | K = debug-kill hero (QA only)
 FORGE_RUNE_ENTRY,%s (source: %s)
 DEFENSE_CATEGORY_PRODUCTION,Production
 DEFENSE_CATEGORY_STRUCTURAL,Structural
+DEFENSE_CATEGORY_ECONOMY,Treasury
 DEFENSE_STRUCTURE_HABITAT_EXPANSION,Habitat Expansion
 DEFENSE_STRUCTURE_WATCHTOWER,Watchtower
 EQUIP_SLOT_HELMET,Helmet
@@ -389,6 +394,7 @@ HUD_CALLOUT_BOSS,A champion approaches
 MAIN_MENU_RECOVERY_TITLE,Interrupted Mission
 DEFENSE_CARD_REQUIRES,Requires %s
 DEFENSE_CARD_UNLOCKS,Unlocks %s
+DEFENSE_CARD_GOLD_RATE,Banks %d%% of mission gold
 DEFENSE_CARD_RECIPE_COUNT,%d recipes
 DEFENSE_PILL_RESEARCHED,Researched
 DEFENSE_PILL_AVAILABLE,Available

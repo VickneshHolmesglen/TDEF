@@ -42,6 +42,9 @@ A fixed vertical tab strip (left edge of the screen) lists **7 entries** — **O
 - **Real gap this design still leaves open, flagged not hidden**: Connection Badges (this rule) tell the player "something changed in room X," but not specifically *which prior action of yours caused it* — a badge is a notification, not a causal trace. Whether that's a real problem for the Player Fantasy's "a choice... lights up" language, or an acceptable simplification, is tracked as Open Question OQ-7 rather than resolved here; it predates and is independent of this session's Loadout redesign.
 
 **Core Rule 3 — Persistent Resource Header**
+
+> **Amendment 2026-11-05** (`design/quick-specs/sanctuary-gold-2026-11-05.md`): the header shows **Sanctuary gold** again, as its first chip (`GSanctuaryGold`, refreshed on `sanctuary_gold_changed`), followed by the materials. This reverses the 2026-08-06 "drop gold" spec now that gold has a persistent Sanctuary balance.
+
 A read-only materials display renders at the top edge of the screen in every state, including `OVERVIEW`. It is a pure subscriber to `materials_earned`/`materials_spent` — it owns no data, validates nothing, and has no interactive affordance (it is not a 6th navigable region). Gold is explicitly not shown here — gold is mission-scoped ephemeral budget (`resource-economy.md` Rule 1, ADR-0018) with no Sanctuary-context meaning; it remains visible only in Mission HUD, where its lifecycle is actually correct. Each room's own cost-preview logic remains independently authoritative for affordability checks at the point of spend.
 
 **Core Rule 4 — Menagerie's Habitat Renders As Its Own GDD Already Specifies**

@@ -56,6 +56,9 @@ var _fade_tween: Tween = null
 ## lines for a victory, built in code above the buttons. Empty = hidden.
 var _unlock_label: Label
 var _unlock_lines: PackedStringArray = PackedStringArray()
+## Sanctuary gold banked from this attempt's held mission gold (SanctuaryGold), shown on
+## both victory and defeat.
+var _gold_banked: int = 0
 ## Snapshot at mission_launched of what was open, so a recorded win can be
 ## diffed into what it newly opened.
 var _open_maps_at_launch: PackedStringArray = PackedStringArray()
@@ -113,6 +116,7 @@ func _ready() -> void:
 	GEventBus.mission_launched.connect(_on_mission_launched)
 	GEventBus.mission_completion_recorded.connect(_on_mission_completion_recorded)
 	GEventBus.ascension_shards_awarded.connect(_on_ascension_shards_awarded)
+	GEventBus.sanctuary_gold_changed.connect(_on_sanctuary_gold_changed)
 	_build_unlock_label()
 
 
@@ -175,6 +179,19 @@ func _on_mission_completion_recorded(mission_id: String, _tier: int) -> void:
 		_unlock_lines.append(tr("OUTCOME_SHARDS_HELD") % GMissionSelect.get_held_shards())
 
 
+func _on_sanctuary_gold_changed(_balance: int, delta: int, source: StringName) -> void:
+	if source == SanctuaryGold.SOURCE_MISSION_BANK and delta > 0:
+		_gold_banked += delta
+
+
+## Lines under the title: victory unlocks/shards, then banked gold (any outcome).
+func outcome_lines(mode: Mode) -> PackedStringArray:
+	var lines: PackedStringArray = _unlock_lines.duplicate() if mode == Mode.VICTORY else PackedStringArray()
+	if _gold_banked > 0:
+		lines.append(tr("OUTCOME_GOLD_BANKED") % _gold_banked)
+	return lines
+
+
 func _on_ascension_shards_awarded(amount: int, first_clear: bool) -> void:
 	_shards_awarded = amount
 	_shards_first_clear = first_clear
@@ -208,6 +225,8 @@ func _exit_tree() -> void:
 		GEventBus.mission_completion_recorded.disconnect(_on_mission_completion_recorded)
 	if GEventBus.ascension_shards_awarded.is_connected(_on_ascension_shards_awarded):
 		GEventBus.ascension_shards_awarded.disconnect(_on_ascension_shards_awarded)
+	if GEventBus.sanctuary_gold_changed.is_connected(_on_sanctuary_gold_changed):
+		GEventBus.sanctuary_gold_changed.disconnect(_on_sanctuary_gold_changed)
 	_cancel_pending_show()
 	if _fade_tween != null and _fade_tween.is_valid():
 		_fade_tween.kill()
@@ -303,6 +322,7 @@ func _on_mission_launched(id: String, _modifiers: PackedStringArray, _tier: int)
 	_shards_awarded = 0
 	_shards_first_clear = false
 	_unlock_lines = PackedStringArray()
+	_gold_banked = 0
 	_stats.reset()
 	_reset_attempt_state()
 	_live = true
@@ -383,7 +403,7 @@ func _show(mode: Mode) -> void:
 	_slain_value.text = str(_stats.monsters_slain)
 	_breaches_value.text = str(_stats.breaches)
 	_time_value.text = MissionOutcomeStats.format_time(_stats.elapsed_seconds)
-	_unlock_label.text = "\n".join(_unlock_lines) if mode == Mode.VICTORY else ""
+	_unlock_label.text = "\n".join(outcome_lines(mode))
 	_unlock_label.visible = not _unlock_label.text.is_empty()
 	var buttons: Array[StringName] = buttons_for(mode)
 	_retry_button.visible = buttons.has(&"retry") and (not _retry_available.is_valid() or _retry_available.call())

@@ -36,6 +36,7 @@ GHeroSkillTree="*res://src/core/hero_skill_tree/hero_skill_tree.gd"
 GAudioSystem="*res://src/core/audio/audio_system.gd"
 GEncyclopedia="*res://src/core/encyclopedia/encyclopedia.gd"
 GTarot="*res://src/core/tarot/tarot.gd"
+GSanctuaryGold="*res://src/core/resource_economy/sanctuary_gold.gd"
 _mcp_game_helper="*res://addons/godot_ai/runtime/game_helper.gd"
 
 [debug]

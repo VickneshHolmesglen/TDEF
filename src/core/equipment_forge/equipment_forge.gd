@@ -278,9 +278,13 @@ func resolve_imbue(instance_id: int, rune_id: StringName) -> bool:
 	if item_contents.is_empty():
 		_forge_resolving = false
 		return false
+	if not GSanctuaryGold.can_afford(SanctuaryGold.IMBUE_COST):
+		_forge_resolving = false
+		return false
 	if not GInventory.apply_rune_to_item(instance_id, String(rune_id), entry["stat_delta"] as Dictionary):
 		_forge_resolving = false
 		return false
+	GSanctuaryGold.spend(SanctuaryGold.IMBUE_COST, &"forge_imbue")
 	_available_runes.erase(rune_id)
 	GEventBus.item_rune_imbued.emit(item_contents["item_id"] as String, String(rune_id), entry["rune_source"] as String)
 	_forge_resolving = false
@@ -318,10 +322,12 @@ func resolve_add_rune_slot(instance_id: int) -> bool:
 		return false
 	_forge_resolving = true
 	var cost: int = add_rune_slot_cost(instance_id)
-	if cost < 0 or GInventory.count_by_material_id(AscensionRewards.SHARD_ITEM_ID) < cost:
+	var gold_cost: int = add_rune_slot_gold_cost(instance_id)
+	if cost < 0 or GInventory.count_by_material_id(AscensionRewards.SHARD_ITEM_ID) < cost 			or not GSanctuaryGold.can_afford(gold_cost):
 		_forge_resolving = false
 		return false
 	GInventory.consume_by_material_id(AscensionRewards.SHARD_ITEM_ID, cost)
+	GSanctuaryGold.spend(gold_cost, &"forge_rune_slot")
 	GInventory.add_rune_slot(instance_id)
 	var contents: Dictionary = GInventory.get_slot_contents_by_instance_id(instance_id)
 	GEventBus.item_rune_slot_added.emit(contents["item_id"] as String, contents["rune_slot_count"] as int)
@@ -431,7 +437,30 @@ func is_craftable(recipe_id: StringName) -> bool:
 	var recipe: EquipmentRecipeResource = GGameDataRegistry.get_equipment_recipe(recipe_id)
 	if recipe == null:
 		return false
-	return _has_recipe_inputs(recipe.inputs)
+	return _has_recipe_inputs(recipe.inputs) and GSanctuaryGold.can_afford(craft_gold_cost(recipe_id))
+
+
+## True when Inventory holds every material recipe_id needs (gold aside), so
+## the Forge screen can tell "missing materials" from "not enough gold".
+func has_recipe_materials(recipe_id: StringName) -> bool:
+	var recipe: EquipmentRecipeResource = GGameDataRegistry.get_equipment_recipe(recipe_id)
+	return recipe != null and _has_recipe_inputs(recipe.inputs)
+
+
+## Sanctuary gold price of crafting recipe_id (SanctuaryGold.craft_cost by
+## quality tier); 0 for an unknown recipe.
+func craft_gold_cost(recipe_id: StringName) -> int:
+	var recipe: EquipmentRecipeResource = GGameDataRegistry.get_equipment_recipe(recipe_id)
+	return SanctuaryGold.craft_cost(recipe.quality_tier) if recipe != null else 0
+
+
+## Sanctuary gold price of adding the next rune slot to instance_id (on top of
+## its Ascendant Shards); -1 when no slot can be added.
+func add_rune_slot_gold_cost(instance_id: int) -> int:
+	var extra: int = extra_rune_slots(instance_id)
+	if extra < 0 or add_rune_slot_cost(instance_id) < 0:
+		return -1
+	return SanctuaryGold.rune_slot_cost(extra)
 
 
 ## resolve_craft()'s step (b) room gate (AC-9), exposed so the Forge screen
@@ -560,11 +589,17 @@ func resolve_craft(recipe_id: StringName) -> bool:
 		_forge_resolving = false
 		return false
 
+	var gold_cost: int = SanctuaryGold.craft_cost(recipe.quality_tier)
+	if not GSanctuaryGold.can_afford(gold_cost):
+		_forge_resolving = false
+		return false
+
 	if not has_room_for_output(recipe_id):
 		_forge_resolving = false
 		return false
 
 	_consume_recipe_inputs(recipe.inputs)
+	GSanctuaryGold.spend(gold_cost, &"forge_craft")
 
 	var output_definition: ItemDefinitionResource = GGameDataRegistry.get_item_definition(recipe.output_item_id)
 	var placed: bool = false

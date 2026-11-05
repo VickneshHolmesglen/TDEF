@@ -12,18 +12,11 @@ extends Control
 ## top edge of the screen in every state, including OVERVIEW (Story 001's
 ## chrome layer already guarantees this header is always present/rendering).
 ##
-## Gold deliberately NOT shown here (2026-08-06, design/quick-specs/
-## sanctuary-header-drop-gold-2026-08-06.md), closing a real cross-GDD
-## inconsistency found while investigating this class's own previously-
-## flagged "no balance owner" gap: gold is mission-scoped ephemeral budget
-## (resource-economy.md Rule 1, ADR-0018) -- reset to 0 on every
-## mission_launched, no save/restore obligation, no carry-over mechanic to
-## the Sanctuary anywhere in the codebase. A persistent Sanctuary gold
-## display was never correct, regardless of who "owned" the balance; the
-## fix is removing the display, not inventing a new balance-owning system to
-## serve a display that shouldn't exist. Materials remain here since
-## Inventory is their real ledger of record and they genuinely do persist
-## into the Sanctuary.
+## Sanctuary gold is shown first (2026-11-05, design/quick-specs/
+## sanctuary-gold-2026-11-05.md): mission gold banked at mission end into
+## GSanctuaryGold, spent in the Equipment Forge. This reverses the 2026-08-06
+## "drop gold" spec, which was right while gold had no Sanctuary meaning.
+## Materials follow: Inventory is their ledger of record.
 
 var _materials: Dictionary = {}
 
@@ -41,6 +34,7 @@ var title_key: String = "SANCTUARY_HEADER_TITLE"
 @onready var _materials_row: HBoxContainer = HBoxContainer.new()
 
 const CHIP_ICON_SIZE: float = 26.0
+const GOLD_ICON: Texture2D = preload("res://assets/art/ui/gold_coin.png")
 
 
 func _ready() -> void:
@@ -97,6 +91,7 @@ func _ready() -> void:
 	GEventBus.materials_spent.connect(_on_materials_spent)
 	GEventBus.item_added.connect(_on_inventory_changed)
 	GEventBus.item_removed.connect(_on_inventory_changed)
+	GEventBus.sanctuary_gold_changed.connect(_on_sanctuary_gold_changed)
 
 
 ## Gap between the plaque's right edge and the materials readout.
@@ -120,6 +115,8 @@ func _exit_tree() -> void:
 		GEventBus.item_added.disconnect(_on_inventory_changed)
 	if GEventBus.item_removed.is_connected(_on_inventory_changed):
 		GEventBus.item_removed.disconnect(_on_inventory_changed)
+	if GEventBus.sanctuary_gold_changed.is_connected(_on_sanctuary_gold_changed):
+		GEventBus.sanctuary_gold_changed.disconnect(_on_sanctuary_gold_changed)
 
 
 ## Test/inspection accessor -- current locally-accumulated quantity for one
@@ -197,8 +194,47 @@ func _refresh_label() -> void:
 	# being handled, and a detached-but-queued node lingers as an orphan until frame end.
 	for child: Node in _materials_row.get_children():
 		child.free()
+	_materials_row.add_child(_build_gold_chip(GSanctuaryGold.get_balance()))
 	for material_type: String in _materials:
 		_materials_row.add_child(_build_chip(material_type, int(_materials[material_type])))
+
+
+func _on_sanctuary_gold_changed(_balance: int, _delta: int, _source: StringName) -> void:
+	_refresh_label()
+
+
+## The Sanctuary gold chip: same frame as a material chip, coin icon.
+func _build_gold_chip(balance: int) -> PanelContainer:
+	var chip := PanelContainer.new()
+	chip.name = &"Chip_SanctuaryGold"
+	chip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	chip.focus_mode = Control.FOCUS_NONE
+	chip.mouse_filter = Control.MOUSE_FILTER_PASS
+	chip.tooltip_text = tr("SANCTUARY_GOLD_TOOLTIP")
+	var box := ShellChromeStyle.skin_inset()
+	box.content_margin_top = 3
+	box.content_margin_bottom = 3
+	box.content_margin_right = 10
+	chip.add_theme_stylebox_override("panel", box)
+	var row := HBoxContainer.new()
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_theme_constant_override("separation", 6)
+	chip.add_child(row)
+	var icon := TextureRect.new()
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	icon.texture = GOLD_ICON
+	icon.custom_minimum_size = Vector2(CHIP_ICON_SIZE, CHIP_ICON_SIZE)
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	row.add_child(icon)
+	var count := Label.new()
+	count.name = &"Count"
+	count.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	count.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	count.add_theme_color_override("font_color", ShellChromeStyle.UI_PARCHMENT)
+	count.text = str(balance)
+	row.add_child(count)
+	return chip
 
 
 ## One material chip: inset frame, icon, count; the name lives in the tooltip. A
