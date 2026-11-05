@@ -8,6 +8,7 @@ extends GdUnitTestSuite
 var _forge: EquipmentForge
 var _mission_select: MissionSelect
 var _spy: EventBusSpy
+var _saved_gold: int = 0
 
 
 func before_test() -> void:
@@ -16,6 +17,10 @@ func before_test() -> void:
 	_forge = EquipmentForge.new()
 	_mission_select = MissionSelect.new()
 	_mission_select._restore_completed = true
+	# Crafting and rune slots also cost Sanctuary gold; fund it so these
+	# tests exercise the shard/material gates only.
+	_saved_gold = GSanctuaryGold.get_balance()
+	GSanctuaryGold._balance = 100000
 	_spy = EventBusSpy.new()
 	_spy.watch(GEventBus.materials_earned)
 	_spy.watch(GEventBus.ascension_shards_awarded)
@@ -32,6 +37,7 @@ func after_test() -> void:
 	_mission_select = null
 	GInventory.reset_to_defaults()
 	GMissionSelect.reset_to_defaults()
+	GSanctuaryGold._balance = _saved_gold
 
 
 func _shards() -> int:
