@@ -41,6 +41,8 @@ PALETTE = {
     "gold":       ((0.95, 0.72, 0.20), 0.05, 0.0, 0.3, 0.9),
     "iron":       ((0.26, 0.26, 0.28), 0.06, 0.0, 0.45, 0.6),
     "rune":       ((0.45, 0.85, 1.00), 0.03, 0.0, 0.4, 0.0),  # emissive, see EMISSIVE
+    "pennant":    ((0.62, 0.12, 0.10), 0.04, 0.0, 0.8, 0.0),
+    "leaf":       ((0.80, 0.66, 0.22), 0.05, 0.0, 0.4, 0.7),
 }
 
 
@@ -495,6 +497,73 @@ def unstack(root, spacing=1.4):
         piece.parent = None
         piece.location = (i * spacing, 0, 0)
     bpy.data.objects.remove(root, do_unlink=True)
+
+
+# ------------------------------------------------------------ veterancy -----
+# Rank flourishes (spec §5.8): shared by every tower, attached by TowerModel3D
+# to anchor points. Origin = attach point, front faces -Y (glTF +Z).
+
+def build_rank_1(x=0.0):
+    """Pennant: a pole standing on the base's ring beside the shaft."""
+    root = _root("rank_1")
+    cylinder("pole", 0.018, 0.95, (0, 0, 0.475), (0, 0, 0), "wood", root, verts=8, bevel=0)
+    bpy.ops.mesh.primitive_uv_sphere_add(segments=8, ring_count=6, radius=0.03, location=(0, 0, 0.96))
+    _finish(bpy.context.active_object, "gold", 0, root).name = "finial"
+    mesh = bpy.data.meshes.new("pennant")
+    verts = [(0.0, 0.0, 0.92), (0.0, 0.0, 0.70), (0.34, -0.02, 0.81)]
+    mesh.from_pydata(verts, [], [(0, 1, 2)])
+    flag = bpy.data.objects.new("flag", mesh)
+    bpy.context.collection.objects.link(flag)
+    sol = flag.modifiers.new("thick", "SOLIDIFY")
+    sol.thickness = 0.012
+    _finish(flag, "pennant", 0, root)
+    root.location.x = x
+    return root
+
+
+def build_rank_2(x=0.0):
+    """Crest: a brass-rimmed shield mounted on the shaft's front face."""
+    root = _root("rank_2")
+    bpy.ops.mesh.primitive_cylinder_add(vertices=6, radius=0.13, depth=0.03, location=(0, -0.015, 0),
+                                        rotation=(math.pi / 2, 0, 0))
+    rim = bpy.context.active_object
+    rim.scale = (1.0, 1.25, 1.0)  # taller than wide, before the rotation is applied
+    bpy.ops.object.transform_apply(rotation=True, scale=True)
+    _finish(rim, "brass", 0.004, root).name = "rim"
+    bpy.ops.mesh.primitive_cylinder_add(vertices=6, radius=0.105, depth=0.03, location=(0, -0.03, 0),
+                                        rotation=(math.pi / 2, 0, 0))
+    face = bpy.context.active_object
+    face.scale = (1.0, 1.25, 1.0)
+    bpy.ops.object.transform_apply(rotation=True, scale=True)
+    _finish(face, "pennant", 0.003, root).name = "face"
+    box("chevron", (0.12, 0.02, 0.03), (0, -0.05, 0.02), 0.0, "gold", root, bevel=0.003)
+    root.location.x = x
+    return root
+
+
+def build_rank_3(x=0.0):
+    """Laurel: a gold wreath with a glowing ring round the crown's foot."""
+    root = _root("rank_3")
+    bpy.ops.mesh.primitive_torus_add(major_radius=0.56, minor_radius=0.025, major_segments=32, minor_segments=6,
+                                     location=(0, 0, 0.02))
+    _finish(bpy.context.active_object, "gold", 0, root).name = "wreath"
+    bpy.ops.mesh.primitive_torus_add(major_radius=0.6, minor_radius=0.012, major_segments=32, minor_segments=4,
+                                     location=(0, 0, 0.0))
+    _finish(bpy.context.active_object, "rune", 0, root).name = "glow"
+    for i in range(16):
+        a = i * math.tau / 16
+        bpy.ops.mesh.primitive_uv_sphere_add(segments=6, ring_count=4, radius=0.04,
+                                             location=(math.cos(a) * 0.56, math.sin(a) * 0.56, 0.045))
+        leaf = bpy.context.active_object
+        leaf.scale = (1.8, 0.7, 0.5)
+        leaf.rotation_euler.z = a + math.pi / 2
+        bpy.ops.object.transform_apply(rotation=True, scale=True)
+        _finish(leaf, "leaf", 0, root).name = f"leaf{i}"
+    root.location.x = x
+    return root
+
+
+RANK_PIECES = (build_rank_1, build_rank_2, build_rank_3)
 
 
 # ------------------------------------------------------------ engine export --

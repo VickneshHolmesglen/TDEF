@@ -417,3 +417,15 @@ func test_tower_instance_freed_target_returns_crown_to_sweep() -> void:
 	assert_bool(_instance.get_model_3d().is_tracking()).is_false()
 	remove_child(scenery)
 	scenery.free()
+
+
+func test_tower_instance_rank_before_build_applies_after_build() -> void:
+	var scenery := _add_scenery()
+	_instance.set_rank(2)
+	_instance.set_scenery(scenery)
+	_instance.configure("physical", "", "found_arcane_t3", "weap_siege_t4")
+	var r2: Node3D = _instance.get_model_3d().get_node_or_null("Rank2") as Node3D
+	assert_object(r2).is_not_null()
+	assert_bool(r2.visible).is_true()
+	remove_child(scenery)
+	scenery.free()

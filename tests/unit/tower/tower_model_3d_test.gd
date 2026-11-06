@@ -89,3 +89,45 @@ func test_tower_model_aim_at_turns_crown_toward_target() -> void:
 		_model._process(0.1)
 	var crown: Node3D = _named(_model, "Crown")[0] as Node3D
 	assert_float(wrapf(crown.rotation.y, -PI, PI)).is_equal_approx(PI / 2, 0.001)
+
+
+# --- veterancy flourishes (spec §5.8) --------------------------------------
+
+func _visible_ranks(model: TowerModel3D) -> Array[int]:
+	var out: Array[int] = []
+	for r: int in [1, 2, 3]:
+		var node: Node3D = model.get_node_or_null("Rank%d" % r) as Node3D
+		if node != null and node.visible:
+			out.append(r)
+	return out
+
+
+func test_tower_model_set_rank_shows_flourishes_up_to_rank() -> void:
+	_model.build(&"octagon", &"siege", 1, 1.0, 7)
+	_model.set_rank(2, false)
+	assert_array(_visible_ranks(_model)).contains_exactly([1, 2])
+
+
+func test_tower_model_set_rank_lowering_hides_extra_flourishes() -> void:
+	_model.build(&"octagon", &"siege", 1, 1.0, 7)
+	_model.set_rank(3, false)
+	_model.set_rank(0, false)
+	assert_array(_visible_ranks(_model)).is_empty()
+
+
+func test_tower_model_set_rank_twice_does_not_duplicate() -> void:
+	_model.build(&"octagon", &"siege", 1, 1.0, 7)
+	_model.set_rank(2, false)
+	_model.set_rank(2, true)
+	var count: int = 0
+	for child: Node in _model.get_children():
+		if String(child.name).begins_with("Rank2"):
+			count += 1
+	assert_int(count).is_equal(1)
+
+
+func test_tower_model_flourishes_on_render_layer() -> void:
+	_model.build(&"octagon", &"siege", 1, 1.0, 7)
+	_model.set_rank(3, false)
+	for v: Node in _model.get_node("Rank3").find_children("*", "VisualInstance3D", true, false):
+		assert_int((v as VisualInstance3D).layers).is_equal(Hd2dScenery.RENDER_LAYER)

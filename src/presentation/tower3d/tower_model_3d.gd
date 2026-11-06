@@ -20,6 +20,10 @@ const PUNCH_SCALE: float = 1.12
 const PUNCH_DURATION: float = 0.15
 const HIT_FLASH_DURATION: float = 0.18
 const REMOVE_DURATION: float = 0.4
+const RANK_POP_DURATION: float = 0.3
+## Pennant pole stands on the base's top ring, left of the shaft: the right
+## side is where TowerInstance draws the 2D perk badge.
+const RANK_1_SIDE_OFFSET: float = -0.47
 
 var _crown: Node3D = null
 var _spin: Node3D = null
@@ -28,6 +32,10 @@ var _aim: TowerAim = null
 var _flash_overlay: StandardMaterial3D = null
 var _punch_tween: Tween = null
 var _flash_tween: Tween = null
+## Anchor points (kit units, this node's space) found at build time.
+var _base_seat: Vector3 = Vector3.ZERO
+var _shaft_front: Vector3 = Vector3.ZERO
+var _crown_foot: Vector3 = Vector3.ZERO
 
 
 ## True when the base, shaft and crown files for this combination exist.
@@ -63,6 +71,10 @@ func build(shape: StringName, crown_key: StringName, tier: int, z_stretch: float
 	var base: Node3D = _add_piece(_base_path(shape), Vector3.ZERO)
 	var shaft: Node3D = _add_piece(_shaft_path(shape), _seat_offset(base))
 	var crown_root: Node3D = _add_piece(_crown_path(crown_key), shaft.position + _seat_offset(shaft))
+	_base_seat = _seat_offset(base)
+	_crown_foot = crown_root.position
+	var shaft_box: AABB = _local_aabb(shaft)
+	_shaft_front = Vector3(0.0, shaft_box.get_center().y, shaft_box.end.z)
 	_crown = crown_root.find_child("Crown", true, false) as Node3D
 	if _crown == null:
 		_crown = crown_root
@@ -176,15 +188,57 @@ func play_remove(on_done: Callable) -> void:
 	tween.chain().tween_callback(on_done)
 
 
-## On-screen height in 2D pixels under an orthographic camera at pitch_deg.
-func screen_height_px(pitch_deg: float) -> float:
+## Veterancy flourishes (spec §5.8): Rank1 pennant, Rank2 crest, Rank3
+## laurel, shown for every N <= rank. animate pops the newly shown ones.
+func set_rank(rank: int, animate: bool) -> void:
+	for r: int in [1, 2, 3]:
+		var node: Node3D = get_node_or_null("Rank%d" % r) as Node3D
+		if r > rank:
+			if node != null:
+				node.visible = false
+			continue
+		var newly_shown: bool = node == null or not node.visible
+		if node == null:
+			node = _add_flourish(r)
+		node.visible = true
+		if animate and newly_shown:
+			node.scale = Vector3.ONE * 0.01
+			var tween: Tween = node.create_tween()
+			tween.tween_property(node, "scale", Vector3.ONE * 1.15, RANK_POP_DURATION * 0.6) \
+					.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+			tween.tween_property(node, "scale", Vector3.ONE, RANK_POP_DURATION * 0.4)
+
+
+func _add_flourish(rank: int) -> Node3D:
+	var node: Node3D = _add_piece(PIECE_DIR + "rank_%d" % rank + PIECE_EXT, Vector3.ZERO)
+	node.name = "Rank%d" % rank
+	match rank:
+		1:
+			node.position = _base_seat + Vector3(RANK_1_SIDE_OFFSET, 0.0, 0.0)
+			node.rotation.y = PI  # flag flies outward (authored pointing +X)
+		2:
+			node.position = _shaft_front
+		3:
+			node.position = _crown_foot
+	_apply_layers(node)
+	return node
+
+
+## AABB of every visual under `node`, in this node's local space.
+func _local_aabb(node: Node) -> AABB:
 	var box := AABB()
 	var first: bool = true
 	var inv: Transform3D = global_transform.affine_inverse()
-	for node: Node in find_children("*", "VisualInstance3D", true, false):
-		var vis := node as VisualInstance3D
+	for child: Node in node.find_children("*", "VisualInstance3D", true, false):
+		var vis := child as VisualInstance3D
 		var local: AABB = (inv * vis.global_transform) * vis.get_aabb()
 		box = local if first else box.merge(local)
 		first = false
+	return box
+
+
+## On-screen height in 2D pixels under an orthographic camera at pitch_deg.
+func screen_height_px(pitch_deg: float) -> float:
+	var box: AABB = _local_aabb(self)
 	var pitch: float = deg_to_rad(pitch_deg)
 	return (box.size.y * cos(pitch) + box.size.z * sin(pitch)) * PX_PER_UNIT

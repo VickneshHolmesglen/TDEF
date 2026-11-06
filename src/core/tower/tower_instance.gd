@@ -421,6 +421,7 @@ func _try_build_model(archetype: String, foundation_component_id: String, weapon
 	_scenery.add_child(_model)
 	_model.build(shape, crown_key, tier, _scenery.get_z_stretch(), get_instance_id())
 	_model.position = _scenery.to_world(global_position)
+	_model.set_rank(_rank, false)
 	_visual_root.visible = false
 	if _ground_shadow != null:
 		_ground_shadow.visible = false  # the 3D model casts a real shadow
@@ -893,6 +894,8 @@ func set_rank(rank: int) -> void:
 	var ranked_up: bool = rank > _rank
 	_rank = clampi(rank, 0, 3)
 	_ensure_badge_overlay().queue_redraw()
+	if _model != null and is_instance_valid(_model):
+		_model.set_rank(_rank, ranked_up)
 	if ranked_up:
 		play_attack_punch(RANK_CHEVRON_COLOR)
 
