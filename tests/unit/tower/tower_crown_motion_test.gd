@@ -20,3 +20,10 @@ func test_crown_motion_unknown_crowns_get_separate_instances() -> void:
 	var a: TowerCrownMotion = TowerCrownMotion.for_crown(&"no_such_crown")
 	var b: TowerCrownMotion = TowerCrownMotion.for_crown(&"no_such_crown")
 	assert_bool(a == b).is_false()
+
+
+func test_crown_motion_spin_crown_loads_spin_node() -> void:
+	var motion: TowerCrownMotion = TowerCrownMotion.for_crown(&"top_stonemound")
+	assert_int(motion.idle_mode).is_equal(TowerCrownMotion.IdleMode.SPIN)
+	assert_str(String(motion.spin_node)).is_equal("Crystal")
+	assert_bool(motion.aims).is_false()

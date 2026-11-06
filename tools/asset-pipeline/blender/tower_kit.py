@@ -43,11 +43,14 @@ PALETTE = {
     "rune":       ((0.45, 0.85, 1.00), 0.03, 0.0, 0.4, 0.0),  # emissive, see EMISSIVE
     "pennant":    ((0.62, 0.12, 0.10), 0.04, 0.0, 0.8, 0.0),
     "leaf":       ((0.80, 0.66, 0.22), 0.05, 0.0, 0.4, 0.7),
+    "ice":        ((0.70, 0.86, 0.98), 0.04, 0.0, 0.15, 0.1),
+    "amber":      ((0.95, 0.62, 0.18), 0.05, 0.0, 0.2, 0.1),
+    "flame":      ((1.00, 0.85, 0.45), 0.03, 0.0, 0.5, 0.0),
 }
 
 
 # Materials that glow (glTF exports these as emissive): name -> strength.
-EMISSIVE = {"rune": 2.5}
+EMISSIVE = {"rune": 2.5, "ice": 0.6, "amber": 0.8, "flame": 4.0}
 
 
 # ---------------------------------------------------------------- textures --
@@ -712,6 +715,198 @@ FAMILY_BASE_SHAFT_PIECES = tuple(
 ) + (build_octagon_base, build_octagon_shaft)
 
 
+# ------------------------------------------------------------ family tops ---
+# One builder per family top (painted refs: assets/art/towers/tower_top_<f>.png).
+# Each has a `Crown` pivot; crowns that spin a part instead of the whole crown
+# name that part (Star / Emblem / Crystal) for TowerCrownMotion.spin_node.
+
+def _top_tiers(crown, n, r, deck_top):
+    """Shared T2-T4 detail for a top's deck: studs, battlements, gold + runes."""
+    t = tier_groups(crown)
+    corner_n = n if n <= 8 else 8
+    studs_on_corners("t2_stud", corner_n, r * 0.93, deck_top + 0.01, "iron", t[2])
+    ring_band("t2_band", n, r * 1.01, deck_top * 0.4, 0.02, "iron", t[2])
+    merlons("t3_merlon", corner_n, r, deck_top, 0.07, "stone_lite", t[3])
+    ring_band("t4_gold", n, r * 1.03, deck_top - 0.012, 0.012, "gold", t[4])
+    prism("t4_runering", 24, r * 0.45, deck_top + 0.002, 0.012, "rune", t[4], bevel=0)
+    return t
+
+
+def _crossbow(prefix, parent, z, size=1.0, mat="wood"):
+    """Crossbow on a post: stock along the crown's front (-Y), bow across it."""
+    s = size
+    cylinder(f"{prefix}_post", 0.04 * s, 0.14 * s, (0, 0, z + 0.07 * s), (0, 0, 0), mat, parent, verts=8)
+    box(f"{prefix}_stock", (0.07 * s, 0.46 * s, 0.06 * s), (0, -0.05 * s, z + 0.16 * s), 0.0, mat, parent)
+    for side in (-1, 1):
+        bpy.ops.mesh.primitive_cube_add(size=1, location=(side * 0.15 * s, -0.24 * s, z + 0.17 * s))
+        arm = bpy.context.active_object
+        arm.scale = (0.3 * s, 0.045 * s, 0.045 * s)
+        arm.rotation_euler.z = side * math.radians(-22)
+        bpy.ops.object.transform_apply(rotation=True, scale=True)
+        _finish(arm, mat, 0.004, parent).name = f"{prefix}_arm{side}"
+    box(f"{prefix}_string", (0.52 * s, 0.008, 0.008), (0, -0.13 * s, z + 0.17 * s), 0.0, "stone_lite", parent, bevel=0)
+    bpy.ops.mesh.primitive_cone_add(vertices=6, radius1=0.02 * s, radius2=0.0, depth=0.08 * s,
+                                    location=(0, -0.32 * s, z + 0.19 * s), rotation=(math.pi / 2, 0, 0))
+    _finish(bpy.context.active_object, "iron", 0, parent).name = f"{prefix}_bolt"
+
+
+def _crystal(name, parent, loc, height, radius, mat, tilt=(0.0, 0.0)):
+    """Double-ended six-sided crystal."""
+    bpy.ops.mesh.primitive_cone_add(vertices=6, radius1=radius, radius2=0.0, depth=height * 0.65,
+                                    location=(loc[0], loc[1], loc[2] + height * 0.35 + height * 0.325))
+    tip = bpy.context.active_object
+    bpy.ops.mesh.primitive_cone_add(vertices=6, radius1=radius, radius2=radius * 0.7, depth=height * 0.35,
+                                    location=(loc[0], loc[1], loc[2] + height * 0.175))
+    body = bpy.context.active_object
+    for o in (tip, body):
+        o.select_set(True)
+    bpy.context.view_layer.objects.active = body
+    bpy.ops.object.join()
+    body.rotation_euler = (tilt[0], tilt[1], 0.0)
+    bpy.ops.object.transform_apply(rotation=True)
+    body.name = name
+    return _finish(body, mat, 0, parent)
+
+
+def build_top_hexplank(x=0.0):
+    root = _root("top_hexplank")
+    crown = empty("Crown", root)
+    n, r = 6, 0.55
+    prism("deck", n, r, 0.0, 0.08, "wood", crown)
+    prism("rim", n, r * 1.03, 0.08, 0.035, "iron", crown)
+    prism("well", n, r * 0.86, 0.08, 0.036, "wood", crown, bevel=0)
+    for i, (a, rad) in enumerate(corners(n, r * 0.7)):
+        box(f"frame{i}", (0.05, 0.05, 0.22), (math.cos(a) * rad, math.sin(a) * rad, 0.2), a, "wood", crown)
+    box("frame_beam", (0.8, 0.06, 0.05), (0, 0.1, 0.31), 0.0, "wood", crown)
+    _crossbow("bow", crown, 0.12, size=2.0)
+    _top_tiers(crown, n, r, 0.115)
+    root.location.x = x
+    return root
+
+
+def build_top_round(x=0.0):
+    root = _root("top_round")
+    crown = empty("Crown", root)
+    n, r = 24, 0.52
+    prism("step0", n, r, 0.0, 0.05, "wood", crown)
+    prism("step1", n, r * 0.86, 0.05, 0.05, "stone", crown)
+    prism("step2", n, r * 0.7, 0.10, 0.05, "stone_lite", crown)
+    _crossbow("bow", crown, 0.15, size=1.8)
+    _top_tiers(crown, n, r, 0.05)
+    root.location.x = x
+    return root
+
+
+def build_top_scalloped(x=0.0):
+    root = _root("top_scalloped")
+    crown = empty("Crown", root)
+    n, r = 8, 0.42
+    prism("deck", n, r, 0.0, 0.06, "stone", crown)
+    star = empty("Star", crown, (0, 0, 0.16))
+    for i in range(4):
+        a = i * math.pi / 2 + math.pi / 4
+        bpy.ops.mesh.primitive_cone_add(vertices=4, radius1=0.07, radius2=0.0, depth=0.5,
+                                        location=(math.cos(a) * 0.25, math.sin(a) * 0.25, 0.0),
+                                        rotation=(0, math.pi / 2, a))
+        _finish(bpy.context.active_object, "ice", 0, star).name = f"point{i}"
+    _crystal("gem", star, (0, 0, -0.07), 0.16, 0.07, "ice")
+    _top_tiers(crown, n, r, 0.06)
+    root.location.x = x
+    return root
+
+
+def build_top_square(x=0.0):
+    root = _root("top_square")
+    crown = empty("Crown", root)
+    n, r = 4, 0.62
+    prism("deck", n, r, 0.0, 0.1, "stone", crown)
+    prism("well", n, r * 0.78, 0.1, 0.005, "stone_dark", crown, bevel=0)
+    for i, (a, rad) in enumerate(corners(n, r * 0.9)):
+        box(f"tower{i}", (0.14, 0.14, 0.12), (math.cos(a) * rad, math.sin(a) * rad, 0.16), a, "stone_lite", crown)
+        box(f"cap{i}", (0.16, 0.16, 0.025), (math.cos(a) * rad, math.sin(a) * rad, 0.23), a, "brass", crown)
+    emblem = empty("Emblem", crown, (0, 0, 0.105))
+    prism("shield", 6, 0.14, 0.0, 0.05, "brass", emblem)
+    prism("boss", 6, 0.07, 0.05, 0.03, "gold", emblem, top_radius=0.03)
+    _top_tiers(crown, n, r, 0.1)
+    root.location.x = x
+    return root
+
+
+def build_top_stonemound(x=0.0):
+    root = _root("top_stonemound")
+    crown = empty("Crown", root)
+    n, r = 12, 0.5
+    prism("ring", n, r, 0.0, 0.09, "stone_dark", crown)
+    prism("bed", n, r * 0.7, 0.09, 0.02, "stone", crown, bevel=0)
+    cluster = empty("Crystal", crown, (0, 0, 0.1))
+    _crystal("c0", cluster, (0, 0, 0), 0.5, 0.11, "amber")
+    for i, (a, tilt) in enumerate(((0.3, 0.35), (2.2, 0.4), (4.1, 0.3), (5.3, 0.45))):
+        _crystal(f"c{i + 1}", cluster, (math.cos(a) * 0.14, math.sin(a) * 0.14, 0), 0.34, 0.085, "amber",
+                 tilt=(math.sin(a) * -tilt, math.cos(a) * tilt))
+    _top_tiers(crown, n, r, 0.09)
+    root.location.x = x
+    return root
+
+
+def build_top_stump(x=0.0):
+    root = _root("top_stump")
+    crown = empty("Crown", root)
+    n, r = 10, 0.42
+    prism("deck", n, r, 0.0, 0.07, "wood", crown)
+    prism("rim", n, r * 1.04, 0.05, 0.03, "brass", crown)
+    cylinder("pole", 0.03, 0.62, (0, 0.05, 0.38), (0, 0, 0), "wood", crown, verts=8)
+    box("crossbar", (0.36, 0.04, 0.04), (0, 0.05, 0.62), 0.0, "brass", crown)
+    box("banner", (0.3, 0.012, 0.36), (0, 0.0, 0.43), 0.0, "pennant", crown, bevel=0)
+    box("emblem", (0.1, 0.014, 0.1), (0, -0.01, 0.47), math.pi / 4, "gold", crown, bevel=0)
+    for side in (-1, 1):
+        cylinder(f"wingpole{side}", 0.02, 0.32, (side * 0.3, 0.0, 0.22), (0, 0, 0), "wood", crown, verts=6)
+        box(f"wing{side}", (0.16, 0.01, 0.2), (side * 0.3, -0.02, 0.24), side * 0.25, "pennant", crown, bevel=0)
+    _top_tiers(crown, n, r, 0.07)
+    root.location.x = x
+    return root
+
+
+def build_top_tiered(x=0.0):
+    root = _root("top_tiered")
+    crown = empty("Crown", root)
+    n, r = 24, 0.5
+    for k in range(4):
+        prism(f"step{k}", n, r * (1.0 - k * 0.16), k * 0.045, 0.045, "stone" if k % 2 else "stone_lite", crown)
+    cylinder("candle", 0.08, 0.2, (0, 0, 0.28), (0, 0, 0), "stone_lite", crown, verts=10)
+    flame = empty("Flame", crown, (0, 0, 0.38))
+    bpy.ops.mesh.primitive_uv_sphere_add(segments=10, ring_count=8, radius=0.07, location=(0, 0, 0.05))
+    _finish(bpy.context.active_object, "flame", 0, flame).name = "glow"
+    bpy.ops.mesh.primitive_cone_add(vertices=8, radius1=0.06, radius2=0.0, depth=0.18, location=(0, 0, 0.15))
+    _finish(bpy.context.active_object, "flame", 0, flame).name = "tip"
+    _top_tiers(crown, n, r, 0.045)
+    root.location.x = x
+    return root
+
+
+def build_top_triangle(x=0.0):
+    root = _root("top_triangle")
+    crown = empty("Crown", root)
+    n, r = 4, 0.56
+    bpy.ops.mesh.primitive_cone_add(vertices=4, radius1=r, radius2=r * 0.8, depth=0.09, location=(0, 0, 0.045))
+    deck = bpy.context.active_object  # diamond: corner toward the front
+    deck.name = "deck"
+    _finish(deck, "wood", 0.01, crown)
+    for i in range(4):
+        a = i * math.pi / 2
+        p0 = Vector((math.cos(a) * r, math.sin(a) * r, 0.0))
+        p1 = Vector((math.cos(a + math.pi / 2) * r, math.sin(a + math.pi / 2) * r, 0.0))
+        mid = (p0 + p1) / 2
+        box(f"edge{i}", ((p1 - p0).length, 0.03, 0.03), (mid.x, mid.y, 0.09), a + math.pi * 0.75, "iron", crown)
+    _crossbow("bow", crown, 0.09, size=1.9)
+    _top_tiers(crown, 4, r * 0.75, 0.09)
+    root.location.x = x
+    return root
+
+
+TOP_PIECES = (build_top_hexplank, build_top_round, build_top_scalloped, build_top_square,
+              build_top_stonemound, build_top_stump, build_top_tiered, build_top_triangle)
+
+
 # ------------------------------------------------------------ veterancy -----
 # Rank flourishes (spec §5.8): shared by every tower, attached by TowerModel3D
 # to anchor points. Origin = attach point, front faces -Y (glTF +Z).
@@ -860,7 +1055,7 @@ def export_piece(builder):
             c.hide_render = True
     try:
         # weapons turn 3/4 so the barrel reads instead of facing the camera end-on
-        render_piece(root, os.path.join(ART_DIR, "icons", name + ".png"), yaw_deg=-40.0 if name.startswith("weapon_") else 0.0)
+        render_piece(root, os.path.join(ART_DIR, "icons", name + ".png"), yaw_deg=-40.0 if name.startswith(("weapon_", "top_")) else 0.0)
     finally:
         scene.render.resolution_percentage = 100
     return name

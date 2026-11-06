@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="TowerCrownMotion" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/presentation/tower3d/tower_crown_motion.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+idle_mode = 0
+idle_speed_deg = 20.0
+aims = false
+track_speed_deg = 270.0
+spin_node = &""

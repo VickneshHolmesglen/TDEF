@@ -28,8 +28,8 @@ func test_tower_model_has_models_true_for_octagon_siege() -> void:
 	assert_bool(TowerModel3D.has_models(&"octagon", &"siege")).is_true()
 
 
-func test_tower_model_has_models_false_for_unmodelled_family() -> void:
-	assert_bool(TowerModel3D.has_models(&"triangle", &"top_triangle")).is_false()
+func test_tower_model_has_models_false_for_unmodelled_crown() -> void:
+	assert_bool(TowerModel3D.has_models(&"triangle", &"no_such_crown")).is_false()
 
 
 func test_tower_model_has_models_true_for_family_top_crown() -> void:
