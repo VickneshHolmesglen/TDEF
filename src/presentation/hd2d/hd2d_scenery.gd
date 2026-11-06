@@ -134,6 +134,12 @@ func set_active(active: bool) -> void:
 		_camera.current = active
 
 
+## Ground depth stretch (1 / sin(pitch)); 1.0 before build(). 3D towers use it
+## to turn 2D aim directions into the angles the player sees (ADR-0043).
+func get_z_stretch() -> float:
+	return _z_stretch
+
+
 ## 2D map position -> scenery world position (ground stretched, see class doc).
 func to_world(p2d: Vector2, height: float = 0.0) -> Vector3:
 	return Vector3(p2d.x, height, p2d.y * _z_stretch)

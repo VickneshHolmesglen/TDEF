@@ -191,6 +191,10 @@ const ELEMENT_TINT_RING_WIDTH: float = 2.5  ## world units
 ## ahead of that wiring so it isn't rediscovered the hard way later.
 const TARGET_DISPLAY_HEIGHT: float = 64.0
 
+## ADR-0043: seconds a 3D crown keeps tracking after a shot's glow ends
+## before it goes back to its sentry sweep.
+const AIM_HOLD_EXTRA: float = 0.5
+
 ## design/gdd/tower.md IDLE Visual/Audio Requirements: "Elemental towers may
 ## have a low-intensity particle ambient (embers for fire, frost haze for
 ## frost) provided it is visually distinct from TARGETING/ATTACKING
@@ -338,6 +342,20 @@ var _element_tint_color: Color = Color.WHITE
 ## is required since each tower's flash_amount varies independently).
 var _hit_flash_material: ShaderMaterial = null
 var _hit_flash_tween: Tween = null
+## ADR-0043 3D tower path. _scenery is injected by the mission scene; when
+## it is set and every piece of this tower has a model, _model renders the
+## tower in the scenery world and the 2D layer sprites stay hidden.
+var _scenery: Hd2dScenery = null
+var _model: TowerModel3D = null
+var _ground_shadow: GroundShadow = null
+## Monster the crown is tracking between shots, and how long it may keep
+## tracking without a new shot (see play_targeting_orientation()).
+var _aim_target: Node2D = null
+var _aim_hold: float = 0.0
+## True while following _aim_target. A flag, not `_aim_target != null`: a
+## freed monster reference compares equal to null, which would skip the
+## clear_aim() that sends the crown back to its sweep.
+var _aim_active: bool = false
 
 @onready var _visual_root: Node2D = $VisualRoot
 @onready var _layer_root: Node2D = $VisualRoot/LayerRoot
@@ -351,7 +369,8 @@ var _hit_flash_tween: Tween = null
 func _ready() -> void:
 	# ADR-0042 unit pass: every tower is normalised to TARGET_DISPLAY_HEIGHT,
 	# so one fixed contact shadow at the base fits all of them.
-	GroundShadow.attach(self, TARGET_DISPLAY_HEIGHT * 0.8, TARGET_DISPLAY_HEIGHT * 0.42)
+	_ground_shadow = GroundShadow.attach(self, TARGET_DISPLAY_HEIGHT * 0.8, TARGET_DISPLAY_HEIGHT * 0.42)
+	set_process(false)
 	_assign_hit_flash_material(_sprite)
 	_assign_hit_flash_material(_base_sprite)
 	_assign_hit_flash_material(_shaft_sprite)
@@ -363,12 +382,80 @@ func _ready() -> void:
 ## dedicated weapon crown; omitted IDs retain the legacy archetype/element
 ## texture path. Every result is normalized to TARGET_DISPLAY_HEIGHT, with a
 ## safe authored fallback for unknown future component IDs.
+## tier: the Foundation tier (1-4); the 3D model shows more detail per tier.
 func configure(archetype: String, element: String = "", foundation_component_id: String = "",
-		weapon_component_id: String = "") -> void:
+		weapon_component_id: String = "", tier: int = 1) -> void:
 	if foundation_component_id != "" or weapon_component_id != "":
 		_configure_layered(archetype, element, foundation_component_id, weapon_component_id)
+		_try_build_model(archetype, foundation_component_id, weapon_component_id, tier)
 	else:
 		_configure_legacy(archetype, element)
+
+
+## ADR-0043: lets configure() render this tower as a 3D model in `scenery`.
+## Call before configure(). Without it (or for a tower with an unmodelled
+## piece) the tower renders as 2D layered sprites exactly as before.
+func set_scenery(scenery: Hd2dScenery) -> void:
+	_scenery = scenery
+
+
+## The 3D model, or null when this tower renders in 2D.
+func get_model_3d() -> TowerModel3D:
+	return _model
+
+
+func _try_build_model(archetype: String, foundation_component_id: String, weapon_component_id: String, tier: int) -> void:
+	_free_model()
+	if _scenery == null:
+		return
+	var shape: StringName = resolve_shape_for_component(foundation_component_id, archetype)
+	if shape == &"":
+		return
+	var crown_key: StringName = _resolve_weapon_top_key(weapon_component_id)
+	if crown_key == &"":
+		crown_key = StringName("top_" + String(shape))
+	if not TowerModel3D.has_models(shape, crown_key):
+		return
+	_model = TowerModel3D.new()
+	_model.name = "TowerModel3D_%d" % get_instance_id()
+	_scenery.add_child(_model)
+	_model.build(shape, crown_key, tier, _scenery.get_z_stretch(), get_instance_id())
+	_model.position = _scenery.to_world(global_position)
+	_visual_root.visible = false
+	if _ground_shadow != null:
+		_ground_shadow.visible = false  # the 3D model casts a real shadow
+	set_process(true)
+
+
+func _free_model() -> void:
+	if _model != null and is_instance_valid(_model):
+		_model.queue_free()
+	_model = null
+	_visual_root.visible = true
+	if _ground_shadow != null:
+		_ground_shadow.visible = true
+	set_process(false)
+
+
+func _process(delta: float) -> void:
+	if _model == null or not is_instance_valid(_model):
+		return
+	_model.position = _scenery.to_world(global_position)
+	if not _aim_active:
+		return
+	if not is_instance_valid(_aim_target) or _aim_hold <= 0.0:
+		_aim_active = false
+		_aim_target = null
+		_model.clear_aim()
+		return
+	_model.aim_at(_aim_target.global_position - global_position, _aim_hold)
+	_aim_hold -= delta
+
+
+func _exit_tree() -> void:
+	if _model != null and is_instance_valid(_model):
+		_model.queue_free()
+	_model = null
 
 
 ## Resolves a processed silhouette family from stable component identity.
@@ -417,6 +504,11 @@ func resolve_shape_for_component(component_id: String, archetype: String) -> Str
 ## layered sprites. Exposed for deterministic layout verification; gameplay
 ## code does not need it.
 func get_layered_visual_bounds() -> Rect2:
+	if _model != null and is_instance_valid(_model):
+		var pitch: float = _scenery.profile.camera_pitch_deg if _scenery.profile != null else 50.0
+		var h: float = _model.screen_height_px(pitch)
+		var w: float = TARGET_DISPLAY_HEIGHT * 0.75
+		return Rect2(Vector2(-w * 0.5, -h * 0.5), Vector2(w, h))
 	var bounds := Rect2()
 	for sprite: Sprite2D in [_base_sprite, _shaft_sprite, _top_sprite]:
 		var painted: Rect2 = painted_rect(sprite.texture)
@@ -673,6 +765,11 @@ func set_idle_ambient(element: String) -> void:
 ## ambient particles (if any) are children of this node and are freed
 ## along with it automatically, no separate cleanup needed.
 func play_remove_animation() -> void:
+	if _model != null and is_instance_valid(_model):
+		set_process(false)
+		modulate.a = 0.0  # 2D overlays (badges, particles) vanish with the model
+		_model.play_remove(queue_free)
+		return
 	var tween := create_tween()
 	tween.set_parallel(true)
 	tween.tween_property(self, "scale", Vector2.ZERO, REMOVE_DURATION).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
@@ -689,8 +786,16 @@ func play_remove_animation() -> void:
 ## with every other tower VFX this session added).
 ## glow_duration: seconds, caller passes 1.0 / attack_speed (Rule 17's own
 ## timer formula) so the glow fades out exactly as the next shot is due.
-func play_targeting_orientation(target_world_position: Vector2, glow_color: Color, glow_duration: float) -> void:
+## target (optional): the monster node, so a 3D crown keeps following it
+## between shots until glow_duration + AIM_HOLD_EXTRA passes or it is freed.
+func play_targeting_orientation(target_world_position: Vector2, glow_color: Color, glow_duration: float,
+		target: Node2D = null) -> void:
 	var to_target: Vector2 = target_world_position - global_position
+	if _model != null and is_instance_valid(_model):
+		_aim_target = target
+		_aim_active = target != null
+		_aim_hold = glow_duration + AIM_HOLD_EXTRA
+		_model.aim_at(to_target, _aim_hold)
 	if to_target.length_squared() > 0.0:
 		if _glow_offset_tween != null and _glow_offset_tween.is_valid():
 			_glow_offset_tween.kill()
@@ -725,6 +830,9 @@ func _set_weapon_glow_offset(offset: Vector2) -> void:
 ## to both since GDD Rule 17 means TARGETING and ATTACKING happen in the same
 ## instant in this codebase's actual implementation.
 func play_attack_punch(color: Color) -> void:
+	if _model != null and is_instance_valid(_model):
+		_model.play_punch()
+		return
 	if _punch_tween != null and _punch_tween.is_valid():
 		_punch_tween.kill()
 	var active_visual: Node2D = _layer_root if _layer_root.visible else _sprite
@@ -750,6 +858,9 @@ func play_attack_punch(color: Color) -> void:
 ## mid-punch (e.g. by a different monster while it's also firing) shows both
 ## effects at once rather than one overwriting the other.
 func play_hit_flash() -> void:
+	if _model != null and is_instance_valid(_model):
+		_model.play_hit_flash()
+		return
 	if _hit_flash_tween != null and _hit_flash_tween.is_valid():
 		_hit_flash_tween.kill()
 	_set_hit_flash_amount(1.0)

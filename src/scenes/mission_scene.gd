@@ -325,7 +325,11 @@ func _on_tower_placed(payload: TowerPlacedEvent) -> void:
 	# closes (every elemental tower silently rendered as ice art).
 	var state: TowerMissionState = _tower_system.placed_towers.get(payload.tower_id) as TowerMissionState
 	var element: String = state.weapon.element if state != null else ""
-	vis.configure(payload.archetype, element, payload.foundation_component_id, payload.weapon_component_id)
+	# ADR-0043: 3D tower model in the scenery world when this mission has one
+	# (no profile -> flat 2D terrain is showing -> 2D tower sprites).
+	vis.set_scenery(_scenery if _scenery != null and not _grid_visual.visible else null)
+	vis.configure(payload.archetype, element, payload.foundation_component_id, payload.weapon_component_id,
+			state.foundation.tier if state != null else 1)
 	if state != null:
 		vis.element = state.weapon.element
 		vis.set_idle_ambient(state.weapon.element)
@@ -421,7 +425,7 @@ func _on_tower_projectile_fired(tower_id: int, target_monster_id: int, is_armore
 	# this same event; see TowerInstance's own TARGETING consts for why they
 	# can't be triggered any earlier in this codebase's actual state machine.
 	var tower_color: Color = _resolve_tower_color(state.foundation.archetype, state.weapon.element)
-	tower_vis.play_targeting_orientation(target.global_position, tower_color, 1.0 / state.weapon.attack_speed)
+	tower_vis.play_targeting_orientation(target.global_position, tower_color, 1.0 / state.weapon.attack_speed, target)
 	tower_vis.play_attack_punch(tower_color)
 
 

@@ -324,3 +324,96 @@ func test_play_hit_flash_updates_every_layer_material() -> void:
 	for sprite: Sprite2D in sprites:
 		var material: ShaderMaterial = sprite.material as ShaderMaterial
 		assert_float(material.get_shader_parameter("flash_amount")).is_equal_approx(1.0, 0.001)
+
+
+# --- 3D tower path (ADR-0043, spec 2026-11-07-3d-towers-design §5.4) -------
+# found_arcane_* resolves to the octagon family and weap_siege_* to the siege
+# crown: both modelled in assets/art/towers3d/. found_longshot_* resolves to
+# triangle, which has no model yet.
+
+func _add_scenery() -> Hd2dScenery:
+	var scenery := Hd2dScenery.new()
+	add_child(scenery)
+	return scenery
+
+
+func test_tower_instance_without_scenery_uses_2d_layers() -> void:
+	_instance.configure("physical", "", "found_arcane_t3", "weap_siege_t4")
+	assert_object(_instance.get_model_3d()).is_null()
+	assert_bool(_instance._layer_root.visible).is_true()
+
+
+func test_tower_instance_with_scenery_and_models_spawns_model_under_scenery() -> void:
+	var scenery := _add_scenery()
+	_instance.position = Vector2(320, 192)
+	_instance.set_scenery(scenery)
+	_instance.configure("physical", "", "found_arcane_t3", "weap_siege_t4", 2)
+	var model: TowerModel3D = _instance.get_model_3d()
+	assert_object(model).is_not_null()
+	assert_object(model.get_parent()).is_same(scenery)
+	assert_bool(_instance._visual_root.visible).is_false()
+	assert_vector(model.position).is_equal_approx(scenery.to_world(_instance.global_position), Vector3(0.01, 0.01, 0.01))
+	remove_child(scenery)
+	scenery.free()
+
+
+func test_tower_instance_with_scenery_but_unmodelled_piece_falls_back_to_2d() -> void:
+	var scenery := _add_scenery()
+	_instance.set_scenery(scenery)
+	_instance.configure("ranged", "", "found_longshot_t2", "weap_longshot_t2")
+	assert_object(_instance.get_model_3d()).is_null()
+	assert_bool(_instance._layer_root.visible).is_true()
+	remove_child(scenery)
+	scenery.free()
+
+
+func test_tower_instance_freeing_tower_frees_model() -> void:
+	var scenery := _add_scenery()
+	_instance.set_scenery(scenery)
+	_instance.configure("physical", "", "found_arcane_t3", "weap_siege_t4")
+	var model: TowerModel3D = _instance.get_model_3d()
+	remove_child(_instance)
+	_instance.free()
+	_instance = load("res://src/core/tower/TowerInstance.tscn").instantiate() as TowerInstance
+	add_child(_instance)  # keeps after_test() valid
+	await get_tree().process_frame
+	assert_bool(is_instance_valid(model)).is_false()
+	remove_child(scenery)
+	scenery.free()
+
+
+func test_tower_instance_targeting_forwards_to_model_aim() -> void:
+	var scenery := _add_scenery()
+	_instance.position = Vector2(320, 192)
+	_instance.set_scenery(scenery)
+	_instance.configure("physical", "", "found_arcane_t3", "weap_siege_t4")
+	var target := Node2D.new()
+	add_child(target)
+	target.global_position = _instance.global_position + Vector2(100, 0)
+	_instance.play_targeting_orientation(target.global_position, Color.WHITE, 1.0, target)
+	for i: int in 12:  # 1.2 s: inside the 1.0 + AIM_HOLD_EXTRA hold, long enough to arrive
+		_instance._process(0.1)
+		_instance.get_model_3d()._process(0.1)
+	var crown: Node3D = _instance.get_model_3d().find_child("Crown", true, false) as Node3D
+	assert_float(wrapf(crown.rotation.y, -PI, PI)).is_equal_approx(PI / 2, 0.01)
+	remove_child(target)
+	target.free()
+	remove_child(scenery)
+	scenery.free()
+
+
+func test_tower_instance_freed_target_returns_crown_to_sweep() -> void:
+	var scenery := _add_scenery()
+	_instance.set_scenery(scenery)
+	_instance.configure("physical", "", "found_arcane_t3", "weap_siege_t4")
+	var target := Node2D.new()
+	add_child(target)
+	target.global_position = _instance.global_position + Vector2(100, 0)
+	_instance.play_targeting_orientation(target.global_position, Color.WHITE, 5.0, target)
+	_instance._process(0.1)
+	remove_child(target)
+	target.free()
+	_instance._process(0.1)
+	assert_bool(_instance.get_model_3d().is_tracking()).is_false()
+	remove_child(scenery)
+	scenery.free()
