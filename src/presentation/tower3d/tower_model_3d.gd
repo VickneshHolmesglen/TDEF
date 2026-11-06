@@ -64,12 +64,29 @@ static func _crown_path(crown_key: StringName) -> String:
 ## directions match what the player sees. rng_seed: per-tower seed for the
 ## start yaw and idle speed variation.
 func build(shape: StringName, crown_key: StringName, tier: int, z_stretch: float, rng_seed: int) -> void:
+	build_parts(shape, shape, crown_key, tier, z_stretch, rng_seed)
+
+
+## True when a single piece file exists: kind is "base", "shaft" or "crown".
+static func has_piece(kind: String, key: StringName) -> bool:
+	match kind:
+		"base":
+			return ResourceLoader.exists(_base_path(key))
+		"shaft":
+			return ResourceLoader.exists(_shaft_path(key))
+	return ResourceLoader.exists(_crown_path(key))
+
+
+## Like build(), with the base and shaft from different families (the
+## Inventory preview mixes them; any piece seats on any other via `Seat`).
+func build_parts(base_shape: StringName, shaft_shape: StringName, crown_key: StringName, tier: int,
+		z_stretch: float, rng_seed: int) -> void:
 	for child: Node in get_children():
 		remove_child(child)
 		child.queue_free()
 	scale = Vector3.ONE * PX_PER_UNIT
-	var base: Node3D = _add_piece(_base_path(shape), Vector3.ZERO)
-	var shaft: Node3D = _add_piece(_shaft_path(shape), _seat_offset(base))
+	var base: Node3D = _add_piece(_base_path(base_shape), Vector3.ZERO)
+	var shaft: Node3D = _add_piece(_shaft_path(shaft_shape), _seat_offset(base))
 	var crown_root: Node3D = _add_piece(_crown_path(crown_key), shaft.position + _seat_offset(shaft))
 	_base_seat = _seat_offset(base)
 	_crown_foot = crown_root.position
@@ -235,6 +252,11 @@ func _local_aabb(node: Node) -> AABB:
 		box = local if first else box.merge(local)
 		first = false
 	return box
+
+
+## Top of the tower above its base, in this node's parent units (pixels).
+func world_height() -> float:
+	return _local_aabb(self).end.y * PX_PER_UNIT
 
 
 ## On-screen height in 2D pixels under an orthographic camera at pitch_deg.

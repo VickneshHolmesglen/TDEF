@@ -137,6 +137,18 @@ const TOWER_PART_SHAPES: Array[String] = [
 const TOWER_BASE_ART_PATH_FORMAT: String = "res://assets/art/towers/tower_base_matched_%s.png"
 const TOWER_SHAFT_ART_PATH_FORMAT: String = "res://assets/art/towers/tower_shaft_%s.png"
 const TOWER_TOP_ART_PATH_FORMAT: String = "res://assets/art/towers/tower_top_%s.png"
+## ADR-0043: gallery icons are renders of the 3D pieces, indexed by preview
+## layer (0 base, 1 shaft, 2 top). The painted *_ART_PATH_FORMAT art above
+## stays as the 2D preview fallback for any shape without a model.
+const TOWER_ICON_PATH_FORMATS: Array[String] = [
+	"res://assets/art/towers3d/icons/base_%s.png",
+	"res://assets/art/towers3d/icons/shaft_%s.png",
+	"res://assets/art/towers3d/icons/top_%s.png",
+]
+## 3D assembly preview: turntable speed and camera pitch (the mission
+## camera's default pitch, so the preview matches what is placed).
+const PREVIEW_TURN_SPEED_DEG: float = 30.0
+const PREVIEW_PITCH_DEG: float = 50.0
 ## 96.0 -> 76.8 (20% smaller, player-requested 2026-08-21) -> 40.0 -> 24.0
 ## (player-requested 2026-09-12 twice in the same session: first "still
 ## oversized at 76.8," then -- after the name labels below the icon were
@@ -300,6 +312,16 @@ var _active_assemble_slot: String = "foundation"
 ## and the Control that draws them, built by _build_tower_preview_panel().
 var _preview_layers: Array[Texture2D] = [null, null, null]
 var _tower_stack_preview: Control
+## Shape picked per preview layer (0 base, 1 shaft, 2 top); "" = none.
+var _preview_shapes: Array[String] = ["", "", ""]
+## ADR-0043 3D preview: one SubViewport with its own world holding a
+## TowerModel3D on a turntable. Hidden (2D fallback drawn instead) while a
+## picked shape has no model.
+var _preview_viewport_container: SubViewportContainer
+var _preview_viewport: SubViewport
+var _preview_turntable: Node3D
+var _preview_camera: Camera3D
+var _preview_model: TowerModel3D = null
 
 var _slot_buttons: Array[Button] = []
 var _slot_focus_rings: Array[Panel] = []
@@ -663,6 +685,7 @@ func _build_tower_preview_panel() -> void:
 	_tower_stack_preview.draw.connect(_draw_tower_stack_preview)
 	_tower_stack_preview.resized.connect(_tower_stack_preview.queue_redraw)
 	_tower_preview_panel.add_child(_tower_stack_preview)
+	_build_tower_preview_3d()
 
 	var hint := Label.new()
 	hint.name = "PreviewHint"
@@ -681,15 +704,86 @@ func _build_tower_preview_panel() -> void:
 
 
 ## `layer`: 0 base, 1 shaft, 2 top.
-func _set_preview_layer(layer: int, texture: Texture2D) -> void:
+func _set_preview_layer(layer: int, texture: Texture2D, shape: String = "") -> void:
 	_preview_layers[layer] = texture
+	_preview_shapes[layer] = shape
+	_refresh_tower_preview_3d()
 	_tower_stack_preview.queue_redraw()
+
+
+func _build_tower_preview_3d() -> void:
+	_preview_viewport_container = SubViewportContainer.new()
+	_preview_viewport_container.name = "TowerPreview3D"
+	_preview_viewport_container.stretch = true
+	_preview_viewport_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_preview_viewport_container.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_preview_viewport_container.visible = false
+	_tower_stack_preview.add_child(_preview_viewport_container)
+	_preview_viewport = SubViewport.new()
+	_preview_viewport.own_world_3d = true
+	_preview_viewport.transparent_bg = true
+	_preview_viewport.render_target_update_mode = SubViewport.UPDATE_WHEN_VISIBLE
+	_preview_viewport_container.add_child(_preview_viewport)
+	_preview_turntable = Node3D.new()
+	_preview_turntable.name = "Turntable"
+	_preview_viewport.add_child(_preview_turntable)
+	var env := Environment.new()
+	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	env.ambient_light_color = Color(0.85, 0.85, 0.9)
+	env.ambient_light_energy = 0.55
+	_preview_camera = Camera3D.new()
+	_preview_camera.projection = Camera3D.PROJECTION_ORTHOGONAL
+	_preview_camera.cull_mask = Hd2dScenery.RENDER_LAYER
+	_preview_camera.environment = env
+	_preview_camera.rotation_degrees = Vector3(-PREVIEW_PITCH_DEG, 0.0, 0.0)
+	_preview_viewport.add_child(_preview_camera)
+	var sun := DirectionalLight3D.new()
+	sun.layers = Hd2dScenery.RENDER_LAYER  # VERSION.md: a light off the camera's layers is ignored
+	sun.light_cull_mask = Hd2dScenery.RENDER_LAYER
+	sun.rotation_degrees = Vector3(-50.0, -35.0, 0.0)
+	_preview_viewport.add_child(sun)
+
+
+## Rebuilds the 3D preview from the picked shapes, or falls back to the 2D
+## stack while a picked shape has no model yet.
+func _refresh_tower_preview_3d() -> void:
+	if _preview_model != null:
+		_preview_turntable.remove_child(_preview_model)
+		_preview_model.queue_free()
+		_preview_model = null
+	var base: String = _preview_shapes[0]
+	var shaft: String = _preview_shapes[1]
+	var crown := StringName("top_" + _preview_shapes[2])
+	var ready: bool = base != "" and shaft != "" and _preview_shapes[2] != "" \
+			and TowerModel3D.has_piece("base", StringName(base)) and TowerModel3D.has_piece("shaft", StringName(shaft)) \
+			and TowerModel3D.has_piece("crown", crown)
+	_preview_viewport_container.visible = ready
+	set_process(ready)
+	if not ready:
+		return
+	_preview_model = TowerModel3D.new()
+	_preview_turntable.add_child(_preview_model)
+	# Shapes carry no tier here (the galleries list shapes, not owned items),
+	# so the preview shows the T1 body (ledgered ruling, 3D towers plan Task 11).
+	_preview_model.build_parts(StringName(base), StringName(shaft), crown, 1, 1.0, 1)
+	var height: float = _preview_model.world_height()
+	var pitch: float = deg_to_rad(PREVIEW_PITCH_DEG)
+	_preview_camera.size = _preview_model.screen_height_px(PREVIEW_PITCH_DEG) * 1.25
+	_preview_camera.position = Vector3(0.0, height * 0.5, 0.0) + Vector3(0.0, sin(pitch), cos(pitch)) * 1000.0
+	_preview_camera.far = 4000.0
+
+
+func _process(delta: float) -> void:
+	if _preview_turntable != null and _preview_model != null:
+		_preview_turntable.rotation.y = wrapf(_preview_turntable.rotation.y + deg_to_rad(PREVIEW_TURN_SPEED_DEG) * delta, -PI, PI)
 
 
 ## Draws whichever pieces are picked, stacked bottom-up with adaptor caps
 ## between mismatched shapes, fitted into the preview box with the painted
 ## tower bottom-aligned and centred.
 func _draw_tower_stack_preview() -> void:
+	if _preview_model != null:
+		return  # the 3D preview is showing
 	var textures: Array[Texture2D] = []
 	for texture: Texture2D in _preview_layers:
 		if texture != null:
@@ -779,6 +873,8 @@ func _create_tower_part_entry(shape: String, entry_prefix: String, art_path_form
 	entry.tooltip_text = shape.capitalize()
 
 	var texture: Texture2D = load(art_path_format % shape) as Texture2D
+	var icon_path: String = TOWER_ICON_PATH_FORMATS[preview_layer] % shape
+	var icon_texture: Texture2D = load(icon_path) as Texture2D if ResourceLoader.exists(icon_path) else texture
 	var icon := TextureRect.new()
 	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
@@ -791,10 +887,10 @@ func _create_tower_part_entry(shape: String, entry_prefix: String, art_path_form
 	# size until this fix landed). Applying it here proactively rather than
 	# rediscovering the same bug a third time.
 	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	icon.texture = texture
+	icon.texture = icon_texture
 	var icon_width: float = TOWER_PART_DISPLAY_HEIGHT
-	if texture != null:
-		var aspect: float = float(texture.get_width()) / float(texture.get_height())
+	if icon_texture != null:
+		var aspect: float = float(icon_texture.get_width()) / float(icon_texture.get_height())
 		icon_width = TOWER_PART_DISPLAY_HEIGHT * aspect
 		icon.custom_minimum_size = Vector2(icon_width, TOWER_PART_DISPLAY_HEIGHT)
 
@@ -845,7 +941,7 @@ func _create_tower_part_entry(shape: String, entry_prefix: String, art_path_form
 	# simpler and correct regardless of which shape was shown before.
 	entry.toggled.connect(func(is_selected: bool) -> void:
 		if is_selected:
-			_set_preview_layer(preview_layer, texture))
+			_set_preview_layer(preview_layer, texture, shape))
 
 	return entry
 
