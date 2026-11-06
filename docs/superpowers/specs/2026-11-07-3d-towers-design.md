@@ -209,6 +209,36 @@ Behaviour:
   `TowerModel3D` built from the picked pieces, turning slowly as a whole
   (turntable). It replaces `_draw_tower_stack_preview()`. One viewport only.
 
+### 5.8 Intricacy grows with level (added 2026-11-07, user request)
+
+"The towers design should get more and more intricate the higher its level
+gets upgraded." The user chose **both levels, layered**:
+
+- **Tier (Foundation tier 1–4, fixed for the mission) sets base grandeur.**
+  Every piece is modelled once, with additive detail groups exported as child
+  nodes named `Tier2`, `Tier3`, `Tier4`. A tower shows every group up to its
+  tier. One glb per piece, not four.
+  Intended progression (builder tunes the specifics per family):
+  - T1: plain stone/wood, simple trims (the pilot pieces are T1).
+  - T2: metal banding, studs, extra trim courses.
+  - T3: carved panels, buttresses/crenellations, banners or spikes.
+  - T4: gold filigree, ornate cornices, glowing runes or crystals.
+  The bases/shafts generator adds these as parameters; tops/crowns get them
+  modelled per piece.
+- **Veterancy rank (0–3, earned in the mission) adds flourishes on top.**
+  A shared kit that fits every tower, attached to anchor points the pieces
+  already have (`Seat` nodes, crown pivot): rank 1 a pennant, rank 2 a crest
+  on the shaft, rank 3 a laurel/glow ring at the crown. Each appears with a
+  short pop when `set_rank()` raises the rank. The 2D chevrons stay as well,
+  for readability on a busy field (builder's call).
+- **Plumbing:** `configure()` gains the foundation tier (callers already hold
+  `state.foundation.tier`). `TowerModel3D.set_tier(t)` / `set_rank(r)` toggle
+  group visibility.
+- **Menus:** the assembly preview shows the picked foundation's tier detail.
+  Rank flourishes are mission-only.
+- **Rollout:** tier groups are part of each piece's batch; the veterancy kit is
+  its own small batch after the first pieces work.
+
 ## 6. Order of work
 
 1. **Look comparison (throwaway spike).** In The Gap, the pilot tower drawn
