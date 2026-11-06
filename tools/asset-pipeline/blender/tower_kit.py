@@ -907,6 +907,135 @@ TOP_PIECES = (build_top_hexplank, build_top_round, build_top_scalloped, build_to
               build_top_stonemound, build_top_stump, build_top_tiered, build_top_triangle)
 
 
+# ------------------------------------------------------------ more weapons --
+# Weapon crowns (painted refs: assets/art/towers/tower_top_weapon_*.png).
+# Everything that aims faces -Y (glTF +Z) inside the `Crown` pivot.
+
+def _barrel(name, parent, origin, length, radius, mat, pitch_deg=8.0, verts=16):
+    """Cylinder from origin forward (-Y), tilted up by pitch; returns (muzzle, dir)."""
+    pitch = math.radians(pitch_deg)
+    dirv = Vector((0, -math.cos(pitch), math.sin(pitch)))
+    centre = Vector(origin) + dirv * (length / 2)
+    cylinder(name, radius, length, tuple(centre), (math.pi / 2 - pitch, 0, 0), mat, parent, verts=verts)
+    return Vector(origin) + dirv * length, dirv
+
+
+def _weapon_tiers(crown, n, r, deck_top, barrel_tip=None, barrel_dir=None):
+    t = tier_groups(crown)
+    studs_on_corners("t2_stud", min(n, 8), r * 0.93, deck_top + 0.01, "iron", t[2])
+    for i, (a, rad) in enumerate(corners(min(n, 8), r)):
+        bpy.ops.mesh.primitive_cone_add(vertices=6, radius1=0.022, radius2=0.0, depth=0.08,
+                                        location=(math.cos(a) * rad, math.sin(a) * rad, deck_top + 0.04))
+        _finish(bpy.context.active_object, "iron", 0, t[3]).name = f"t3_spike{i}"
+    ring_band("t4_gold", n, r * 1.03, deck_top - 0.012, 0.012, "gold", t[4])
+    prism("t4_runering", 24, r * 0.5, deck_top + 0.002, 0.012, "rune", t[4], bevel=0)
+    if barrel_tip is not None:
+        rot = (math.pi / 2 - math.asin(barrel_dir.z), 0, 0)
+        cylinder("t4_muzzle", 0.07, 0.03, tuple(barrel_tip - barrel_dir * 0.04), rot, "gold", t[4], verts=16)
+    return t
+
+
+def build_weapon_railgun(x=0.0):
+    root = _root("weapon_railgun")
+    crown = empty("Crown", root)
+    prism("mount", 3, 0.56, 0.0, 0.08, "stone", crown)
+    prism("mount_rim", 3, 0.58, 0.015, 0.05, "brass", crown)  # side band, deck top stays visible
+    cylinder("turret", 0.22, 0.16, (0, 0.08, 0.16), (0, 0, 0), "iron", crown, verts=12)
+    for side in (-1, 1):
+        _barrel(f"rail{side}", crown, (side * 0.08, 0.2, 0.28), 0.82, 0.06, "brass", pitch_deg=6)
+    for k in range(3):
+        box(f"brace{k}", (0.2, 0.05, 0.06), (0, -0.1 - k * 0.2, 0.28 + k * 0.02), 0.0, "iron", crown)
+    bpy.ops.mesh.primitive_uv_sphere_add(segments=12, ring_count=8, radius=0.05, location=(0, -0.58, 0.33))
+    _finish(bpy.context.active_object, "rune", 0, crown).name = "focus"
+    _weapon_tiers(crown, 3, 0.56, 0.105)
+    root.location.x = x
+    return root
+
+
+def build_weapon_arcane(x=0.0):
+    root = _root("weapon_arcane")
+    crown = empty("Crown", root)
+    prism("deck", 8, 0.5, 0.0, 0.07, "stone", crown)
+    prism("rim", 8, 0.52, 0.012, 0.046, "brass", crown)  # side band
+    cylinder("cradle", 0.16, 0.18, (0, 0.08, 0.17), (0, math.pi / 2, 0), "brass", crown, verts=12)
+    tip, dirv = _barrel("lance", crown, (0, 0.2, 0.2), 0.62, 0.09, "brass", pitch_deg=10)
+    for k, tt in enumerate((0.15, 0.3, 0.45)):
+        p = Vector((0, 0.2, 0.2)) + dirv * tt
+        cylinder(f"coil{k}", 0.09, 0.03, tuple(p), (math.pi / 2 - math.radians(10), 0, 0), "gold", crown, verts=16)
+    bpy.ops.mesh.primitive_cone_add(vertices=8, radius1=0.08, radius2=0.0, depth=0.2,
+                                    location=tuple(tip + dirv * 0.1), rotation=(math.pi / 2 + math.radians(10) - math.pi, 0, 0))
+    _finish(bpy.context.active_object, "gold", 0, crown).name = "spire"
+    _crystal("gem", crown, (0, 0.22, 0.33), 0.16, 0.05, "rune")
+    _weapon_tiers(crown, 8, 0.5, 0.095, tip, dirv)
+    root.location.x = x
+    return root
+
+
+def build_weapon_storm(x=0.0):
+    root = _root("weapon_storm")
+    crown = empty("Crown", root)
+    prism("deck", 24, 0.52, 0.0, 0.07, "stone", crown)
+    prism("ring", 24, 0.42, 0.07, 0.03, "wood", crown)
+    for i in range(8):
+        a = i * math.tau / 8
+        box(f"spoke{i}", (0.36, 0.035, 0.025), (math.cos(a) * 0.2, math.sin(a) * 0.2, 0.105), a, "iron", crown)
+    cylinder("mast", 0.035, 0.6, (0, 0, 0.4), (0, 0, 0), "wood", crown, verts=8)
+    for side in (-1, 1):
+        mesh = bpy.data.meshes.new(f"fin{side}")
+        mesh.from_pydata([(0, 0, 0.68), (0, 0, 0.2), (side * 0.32, 0.05, 0.25)], [], [(0, 1, 2)])
+        fin = bpy.data.objects.new(f"fin{side}", mesh)
+        bpy.context.collection.objects.link(fin)
+        fin.modifiers.new("thick", "SOLIDIFY").thickness = 0.01
+        _finish(fin, "stone_lite", 0, crown)
+    for i, a in enumerate((0.6, 2.7, 4.8)):
+        cylinder(f"rod{i}", 0.012, 0.22, (math.cos(a) * 0.36, math.sin(a) * 0.36, 0.2), (0, 0, 0), "brass", crown, verts=6)
+        bpy.ops.mesh.primitive_uv_sphere_add(segments=8, ring_count=6, radius=0.03, location=(math.cos(a) * 0.36, math.sin(a) * 0.36, 0.32))
+        _finish(bpy.context.active_object, "rune", 0, crown).name = f"spark{i}"
+    tip, dirv = _barrel("emitter", crown, (0, 0.0, 0.2), 0.32, 0.05, "brass", pitch_deg=12)
+    _weapon_tiers(crown, 24, 0.52, 0.07, tip, dirv)
+    root.location.x = x
+    return root
+
+
+def build_weapon_firestorm(x=0.0):
+    root = _root("weapon_firestorm")
+    crown = empty("Crown", root)
+    prism("deck", 24, 0.5, 0.0, 0.08, "stone_dark", crown)
+    prism("rim", 24, 0.52, 0.015, 0.05, "brass", crown)  # side band
+    prism("housing", 8, 0.2, 0.08, 0.12, "iron", crown, top_radius=0.15)
+    _crystal("core", crown, (0, 0, 0.18), 0.48, 0.09, "flame")
+    for side in (-1, 1):
+        box(f"arm{side}", (0.26, 0.06, 0.05), (side * 0.17, -0.04, 0.2), side * 0.3, "brass", crown)
+        _crystal(f"side{side}", crown, (side * 0.3, -0.1, 0.18), 0.26, 0.05, "flame", tilt=(0.0, side * 0.35))
+    tip, dirv = _barrel("nozzle", crown, (0, -0.1, 0.2), 0.3, 0.055, "iron", pitch_deg=10)
+    _weapon_tiers(crown, 24, 0.5, 0.08, tip, dirv)
+    root.location.x = x
+    return root
+
+
+def build_weapon_frost(x=0.0):
+    root = _root("weapon_frost")
+    crown = empty("Crown", root)
+    prism("deck", 8, 0.5, 0.0, 0.07, "stone", crown)
+    prism("rim", 8, 0.52, 0.012, 0.046, "iron", crown)  # side band
+    box("body", (0.36, 0.3, 0.2), (0, 0.06, 0.2), 0.0, "iron", crown)
+    box("cowl", (0.3, 0.24, 0.06), (0, 0.06, 0.33), 0.0, "ice", crown)
+    tips = []
+    for side in (-1, 1):
+        tip, dirv = _barrel(f"nozzle{side}", crown, (side * 0.12, -0.05, 0.2), 0.32, 0.075, "iron", pitch_deg=4)
+        cylinder(f"bell{side}", 0.095, 0.06, tuple(tip), (math.pi / 2 - math.radians(4), 0, 0), "ice", crown, verts=16)
+        tips.append((tip, dirv))
+    for i, (cx, cy, tilt) in enumerate(((-0.12, 0.18, -0.4), (0.0, 0.2, 0.0), (0.12, 0.18, 0.4))):
+        _crystal(f"ice{i}", crown, (cx, cy, 0.34), 0.22, 0.045, "ice", tilt=(0.0, tilt))
+    _weapon_tiers(crown, 8, 0.5, 0.095, tips[0][0], tips[0][1])
+    root.location.x = x
+    return root
+
+
+WEAPON_PIECES = (build_weapon_siege, build_weapon_railgun, build_weapon_arcane, build_weapon_storm,
+                 build_weapon_firestorm, build_weapon_frost)
+
+
 # ------------------------------------------------------------ veterancy -----
 # Rank flourishes (spec §5.8): shared by every tower, attached by TowerModel3D
 # to anchor points. Origin = attach point, front faces -Y (glTF +Z).
