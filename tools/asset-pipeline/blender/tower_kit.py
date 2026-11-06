@@ -133,9 +133,13 @@ def prism(name, sides, radius, z0, h, mat, parent, bevel=0.012, top_radius=None)
         depth=h, location=(0, 0, z0 + h / 2))
     obj = bpy.context.active_object
     obj.name = name
-    # Cone vertex 0 sits at +X, so face normals start at pi/sides. Rotate so a
-    # face (not a corner) points -Y, matching face_frames()/corners().
-    obj.rotation_euler.z = (-math.pi / 2 - math.pi / sides) % (2 * math.pi / sides)
+    # Rotate so a face (not a corner) points -Y and the corners sit where
+    # corners() puts them. Measured from the mesh rather than assumed: the
+    # primitive's first-vertex angle is not documented, and a wrong guess
+    # only shows on shapes without 90-degree symmetry (triangle, hexagon).
+    v0 = obj.data.vertices[0].co
+    want = -math.pi / 2 + math.pi / sides
+    obj.rotation_euler.z = want - math.atan2(v0.y, v0.x)
     bpy.ops.object.transform_apply(rotation=True)
     return _finish(obj, mat, bevel, parent)
 
@@ -439,27 +443,32 @@ def setup_render_camera(target_height=1.3, ortho=2.0, pitch_deg=SPRITE_PITCH_DEG
 
 
 def render_piece(root, out_path, ortho=None, pitch_deg=SPRITE_PITCH_DEG, yaw_deg=0.0):
-    """Render one root alone, centred, through the game-pitch camera."""
+    """Render one root alone, centred, through the game-pitch camera. Other
+    roots are hidden for the render; hide_render flags inside `root` (e.g.
+    tier groups hidden for icons) are left as the caller set them."""
     scene = bpy.context.scene
-    roots = [o for o in scene.objects if o.parent is None and o.type == "EMPTY"]
-    saved = {o.name: (o.hide_render, tuple(o.location)) for o in roots}
-    for o in roots:
+    others = [o for o in scene.objects if o.parent is None and o.type == "EMPTY" and o is not root]
+    saved = {c.name: c.hide_render for o in others for c in [o] + list(o.children_recursive)}
+    for o in others:
         for c in [o] + list(o.children_recursive):
-            c.hide_render = o is not root
+            c.hide_render = True
     loc, yaw = tuple(root.location), root.rotation_euler.z
     root.location = (0, 0, 0)
     root.rotation_euler.z = math.radians(yaw_deg)
     bpy.context.view_layer.update()  # matrix_world is stale after moving the root
-    pts = [c.matrix_world @ Vector(v) for c in root.children_recursive if c.type == "MESH" for v in c.bound_box]
-    h = max(p.z for p in pts)
+    pts = [c.matrix_world @ Vector(v) for c in root.children_recursive
+           if c.type == "MESH" and not c.hide_render for v in c.bound_box]
+    zmin = min(p.z for p in pts)
+    h = max(p.z for p in pts) - zmin
     w = max(max(abs(p.x) for p in pts), max(abs(p.y) for p in pts)) * 2
     cam = setup_render_camera(h, ortho or max(w, h) * 1.15, pitch_deg)
+    cam.location.z += zmin  # frame pieces that hang below their origin (crest)
     scene.render.filepath = out_path
     bpy.ops.render.render(write_still=True)
     root.location, root.rotation_euler.z = loc, yaw
-    for o in roots:
+    for o in others:
         for c in [o] + list(o.children_recursive):
-            c.hide_render = saved[o.name][0]
+            c.hide_render = saved[c.name]
     return out_path
 
 
@@ -497,6 +506,210 @@ def unstack(root, spacing=1.4):
         piece.parent = None
         piece.location = (i * spacing, 0, 0)
     bpy.data.objects.remove(root, do_unlink=True)
+
+
+# ------------------------------------------------------------ family kit ----
+# Table-driven bases and shafts for the other 8 silhouette families (the
+# octagon keeps its hand-tuned builders above). Shapes follow the painted set
+# in assets/art/towers/tower_base_matched_<f>.png / tower_shaft_<f>.png.
+#
+# sides: footprint polygon; apothem: base half-width (shaft scales it);
+# body/lite/trim: materials; style keys pick the features below.
+
+FAMILY_SPECS = {
+    "hexplank":   dict(sides=6,  apothem=0.47, body="wood",  lite="wood",       trim="iron",  base_style="planks",   shaft_style="planks",  shaft_h=0.55, hollow=True),
+    "round":      dict(sides=24, apothem=0.46, body="stone", lite="stone_lite", trim="wood",  base_style="ring",     shaft_style="slit"),
+    "scalloped":  dict(sides=8,  apothem=0.45, body="stone", lite="stone_lite", trim="iron",  base_style="scallops", shaft_style="pillars"),
+    "square":     dict(sides=4,  apothem=0.45, body="stone", lite="stone_lite", trim="brass", base_style="panels",   shaft_style="brackets"),
+    "stonemound": dict(sides=12, apothem=0.48, body="stone", lite="stone_lite", trim="brass", base_style="mound",    shaft_style="cobble",  taper=0.82),
+    "stump":      dict(sides=10, apothem=0.42, body="wood",  lite="wood",       trim="brass", base_style="roots",    shaft_style="lattice"),
+    "tiered":     dict(sides=24, apothem=0.48, body="stone", lite="stone_lite", trim="stone_dark", base_style="steps", shaft_style="arch"),
+    "triangle":   dict(sides=3,  apothem=0.34, body="stone", lite="stone_lite", trim="brass", base_style="wedge",    shaft_style="pyramid", taper=0.55),
+}
+SHAFT_SCALE = 0.8  # shaft apothem relative to the base's
+
+
+def _radius(sides, apothem):
+    return apothem / math.cos(math.pi / sides)
+
+
+def sloped_edges(prefix, sides, r_bottom, r_top, z0, z1, mat, parent, thickness=0.05):
+    """Trim bars running up each corner of a tapered prism."""
+    for i, ((a, rb), (_, rt)) in enumerate(zip(corners(sides, r_bottom), corners(sides, r_top))):
+        bot = Vector((math.cos(a) * rb, math.sin(a) * rb, z0))
+        top = Vector((math.cos(a) * rt, math.sin(a) * rt, z1))
+        d = top - bot
+        bpy.ops.mesh.primitive_cube_add(size=1, location=tuple((top + bot) / 2))
+        bar = bpy.context.active_object
+        bar.scale = (thickness, thickness, d.length)
+        bar.rotation_mode = "QUATERNION"
+        bar.rotation_quaternion = Vector((0, 0, 1)).rotation_difference(d.normalized())
+        bpy.ops.object.transform_apply(rotation=True, scale=True)
+        _finish(bar, mat, 0.006, parent).name = f"{prefix}{i}"
+
+
+def _jitter_stones(prefix, sides, radius, z0, h, mat, parent, rows=3, per_row=10, seed=1):
+    """Cobble bumps scattered over a round-ish body (stonemound)."""
+    rng = __import__("random").Random(seed)
+    for row in range(rows):
+        z = z0 + h * (row + 0.5) / rows
+        for k in range(per_row):
+            a = (k + 0.5 * (row % 2)) * math.tau / per_row + rng.uniform(-0.08, 0.08)
+            size = (rng.uniform(0.07, 0.11), 0.025, h / rows * rng.uniform(0.6, 0.85))
+            box(f"{prefix}{row}_{k}", size, (math.cos(a) * radius, math.sin(a) * radius, z), a + math.pi / 2,
+                mat if (row + k) % 3 else "stone_lite", parent, bevel=0.006)
+
+
+def build_base_family(family, x=0.0):
+    spec = FAMILY_SPECS[family]
+    n, style = spec["sides"], spec["base_style"]
+    r = _radius(n, spec["apothem"])
+    body, lite, trim = spec["body"], spec["lite"], spec["trim"]
+    taper = spec.get("taper", 1.0)
+    root = _root(f"base_{family}")
+    body_z, body_h = 0.06, BASE_H - 0.10
+    corner_n = n if n <= 8 else 8
+
+    if style == "steps":
+        for k, (rk, z, hk) in enumerate(((1.12, 0.0, 0.08), (1.0, 0.08, 0.09), (0.88, 0.17, 0.09))):
+            prism(f"step{k}", n, r * rk, z, hk, body if k % 2 else lite, root)
+        prism("cap", n, r * 0.84, BASE_H - 0.04, 0.04, lite, root)
+    elif style == "mound":
+        prism("lip", n, r * 1.08, 0.0, 0.05, lite, root)
+        prism("body", n, r, 0.05, BASE_H - 0.09, body, root, top_radius=r * taper)
+        prism("cap", n, r * taper * 1.03, BASE_H - 0.04, 0.04, lite, root)
+        _jitter_stones("cob", n, r * 0.97, 0.06, BASE_H - 0.12, "stone_dark", root)
+        for i, (a, rad) in enumerate(corners(4, r * 0.95)):
+            box(f"strap{i}", (0.05, 0.03, BASE_H - 0.08), (math.cos(a) * rad, math.sin(a) * rad, BASE_H / 2), a + math.pi / 2, trim, root)
+    elif style == "roots":
+        prism("body", n, r, 0.0, BASE_H - 0.03, body, root, top_radius=r * 0.82)
+        prism("cap", n, r * 0.84, BASE_H - 0.03, 0.03, lite, root)
+        for i in range(7):
+            a = i * math.tau / 7 + 0.3
+            bpy.ops.mesh.primitive_cone_add(vertices=6, radius1=0.09, radius2=0.03, depth=0.34,
+                                            location=(math.cos(a) * (r * 0.85), math.sin(a) * (r * 0.85), 0.07),
+                                            rotation=(0, math.radians(115), a))  # tip runs out and down into the ground
+            _finish(bpy.context.active_object, body, 0.004, root).name = f"root{i}"
+        ring_band("band", n, r * 0.9, BASE_H * 0.55, 0.03, trim, root)
+    else:
+        prism("lip", n, r * 1.12, 0.0, 0.06, lite, root)
+        prism("body", n, r, body_z, body_h, body, root, top_radius=r * taper)
+        prism("cap", n, r * taper * 1.04, BASE_H - 0.04, 0.04, lite, root)
+        if spec.get("hollow"):
+            prism("well", n, r * taper * 0.8, BASE_H - 0.005, 0.01, "stone_dark", root, bevel=0)
+        if style in ("panels", "planks"):
+            for i, (a, ap, w) in enumerate(face_frames(n, r)):
+                panel_on_face(f"pan{i}", a, ap, w, body_z + body_h / 2, body_h * 0.7, root,
+                              frame_mat=trim, fill_mat=body if style == "planks" else "stone_dark")
+        if style == "wedge":
+            sloped_edges("corner", n, r * 1.01, r * taper * 1.01, body_z, body_z + body_h, trim, root, thickness=0.06)
+        elif style in ("panels", "planks", "scallops"):
+            for i, (a, rad) in enumerate(corners(n, r)):
+                box(f"corner{i}", (0.06, 0.06, body_h + 0.02), (math.cos(a) * rad, math.sin(a) * rad, body_z + body_h / 2), a, trim, root)
+        if style == "scallops":
+            for i, (a, ap, w) in enumerate(face_frames(n, r)):
+                cylinder(f"scallop{i}", w * 0.22, body_h * 0.9, (math.cos(a) * ap, math.sin(a) * ap, body_z + body_h / 2),
+                         (0, 0, 0), lite, root, verts=12)
+        if style == "ring":
+            ring_band("woodring", n, r * taper * 0.86, BASE_H - 0.004, 0.012, "wood", root)
+            ring_band("band", n, r * 1.01, body_z + body_h * 0.6, 0.035, trim, root)
+    empty("Seat", root, (0, 0, BASE_H))
+    _family_tiers(root, n, corner_n, r, BASE_H, lite, taper=taper)
+    root.location.x = x
+    return root
+
+
+def build_shaft_family(family, x=0.0):
+    spec = FAMILY_SPECS[family]
+    n, style = spec["sides"], spec["shaft_style"]
+    r = _radius(n, spec["apothem"] * SHAFT_SCALE)
+    h = spec.get("shaft_h", SHAFT_H)
+    body, lite, trim = spec["body"], spec["lite"], spec["trim"]
+    taper = spec.get("taper", 1.0)
+    root = _root(f"shaft_{family}")
+    band = 0.06
+    mid = h / 2
+    corner_n = n if n <= 8 else 8
+
+    if style == "lattice":
+        prism("foot", n, r * 1.05, 0.0, band, body, root)
+        prism("collar", n, r * 1.05, h - band, band, body, root)
+        prism("core", n, r * 0.55, band, h - 2 * band, "stone_dark", root)
+        for i, (a, rad) in enumerate(corners(6, r)):
+            box(f"post{i}", (0.06, 0.06, h - 2 * band), (math.cos(a) * rad, math.sin(a) * rad, mid), a, body, root)
+        for i, (a, ap, w) in enumerate(face_frames(6, r)):
+            for k, z in enumerate((h * 0.35, h * 0.65)):
+                box(f"rail{i}_{k}", (w, 0.035, 0.04), (math.cos(a) * ap, math.sin(a) * ap, z), a + math.pi / 2, trim, root)
+    elif style == "pyramid":
+        prism("foot", n, r * 1.12, 0.0, band, lite, root)
+        prism("body", n, r, band, h - 2 * band, body, root, top_radius=r * taper)
+        prism("collar", n, r * taper * 1.12, h - band, band, lite, root)
+        sloped_edges("edge", n, r * 1.01, r * taper * 1.01, band, h - band, trim, root)
+        a, ap, w = face_frames(n, r)[0]
+        box("slit", (0.03, 0.03, h * 0.3), (0, -ap * (1 + taper) / 2 - 0.01, mid), 0.0, "iron", root, bevel=0)
+    else:
+        prism("foot", n, r * 1.08, 0.0, band, lite, root)
+        if style == "arch":
+            prism("step", n, r * 1.16, 0.0, band * 0.6, lite, root)
+        prism("body", n, r, band, h - 2 * band, body, root, top_radius=r * taper)
+        prism("collar", n, r * taper * 1.08, h - band, band, lite, root)
+        if spec.get("hollow"):
+            prism("well", n, r * taper * 0.85, h - 0.005, 0.01, "stone_dark", root, bevel=0)
+        if style == "cobble":
+            _jitter_stones("cob", n, r * 0.94, band, h - 2 * band, "stone_dark", root, rows=5, per_row=12, seed=3)
+        if style in ("planks", "brackets", "pillars"):
+            for i, (a, ap, w) in enumerate(face_frames(n, r)):
+                panel_on_face(f"pan{i}", a, ap, w, mid, (h - 2 * band) * 0.75, root,
+                              frame_mat=trim if style != "pillars" else lite,
+                              fill_mat=body if style == "planks" else "stone_dark", slit=(i == 0 and style != "planks"))
+            for i, (a, rad) in enumerate(corners(n, r)):
+                size = 0.09 if style == "pillars" else 0.06
+                box(f"corner{i}", (size, size, h - 2 * band), (math.cos(a) * rad, math.sin(a) * rad, mid), a,
+                    lite if style == "pillars" else trim, root)
+        if style in ("slit", "arch"):
+            ap = r * math.cos(math.pi / n)
+            box("slit", (0.04, 0.03, h * 0.3), (0, -ap - 0.005, mid), 0.0, "iron", root, bevel=0)
+            ring_band("band", n, r * 1.01, h * 0.72, 0.03, trim, root)
+            if style == "arch":
+                cylinder("archtop", 0.05, 0.03, (0, -ap - 0.008, mid + h * 0.15), (math.pi / 2, 0, 0), "iron", root, verts=12, bevel=0)
+    empty("Seat", root, (0, 0, h))
+    _family_tiers(root, n, corner_n, r, h, lite, shaft=True, taper=taper)
+    root.location.x = x
+    return root
+
+
+def _family_tiers(root, n, corner_n, r, h, lite, shaft=False, taper=1.0):
+    """Shared T2-T4 progression (spec §5.8) for the generated families.
+    taper: top radius / bottom radius, so trims hug sloped bodies."""
+    t = tier_groups(root)
+
+    def rad_at(z):
+        return r * (1.0 - (1.0 - taper) * z / h)
+
+    # T2: iron hoops and studs
+    for k, z in enumerate((h * 0.33, h * 0.66) if shaft else (0.045,)):
+        ring_band(f"t2_hoop{k}", n, rad_at(z) * (1.03 if shaft else 1.13), z, 0.022, "iron", t[2])
+    stud_z = h * (0.85 if shaft else 0.7)
+    studs_on_corners("t2_stud", corner_n, rad_at(stud_z) * 1.03, stud_z, "iron", t[2])
+    # T3: buttresses, and battlements round the base's cap
+    buttresses("t3_butt", corner_n, r * 1.06, h * (0.55 if shaft else 0.92), lite, t[3], depth=0.07 if shaft else 0.08)
+    if not shaft:
+        merlons("t3_merlon", corner_n, rad_at(h), h, 0.06, lite, t[3])
+    # T4: gold cornice and glowing runes
+    cornice_z = h - (0.03 if shaft else 0.045)
+    ring_band("t4_cornice", n, rad_at(cornice_z) * 1.09, cornice_z, 0.014, "gold", t[4])
+    if taper == 1.0:  # flat-faced runes only fit upright faces
+        runes_on_faces("t4_rune", corner_n, r, h * 0.5, h * (0.35 if shaft else 0.4), t[4], skip_front=shaft)
+
+
+def _family_builder(kind, family):
+    fn = build_base_family if kind == "base" else build_shaft_family
+    return lambda x=0.0: fn(family, x)
+
+
+FAMILY_BASE_SHAFT_PIECES = tuple(
+    _family_builder(kind, f) for f in FAMILY_SPECS for kind in ("base", "shaft")
+) + (build_octagon_base, build_octagon_shaft)
 
 
 # ------------------------------------------------------------ veterancy -----
@@ -639,6 +852,12 @@ def export_piece(builder):
     export_gltf_shared(root, os.path.join(ART_DIR, name + ".gltf"))
     scene = bpy.context.scene
     scene.render.resolution_percentage = 50  # 256 px icons
+    # Icons show the T1 silhouette (family identity); tier detail is shown by
+    # the live 3D preview and in missions.
+    tiers = [c for c in root.children_recursive if c.name in ("Tier2", "Tier3", "Tier4")]
+    for g in tiers:
+        for c in [g] + list(g.children_recursive):
+            c.hide_render = True
     try:
         # weapons turn 3/4 so the barrel reads instead of facing the camera end-on
         render_piece(root, os.path.join(ART_DIR, "icons", name + ".png"), yaw_deg=-40.0 if name.startswith("weapon_") else 0.0)
