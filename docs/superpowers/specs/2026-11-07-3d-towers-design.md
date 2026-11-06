@@ -39,7 +39,7 @@ What the user wants a 3D tower to do that a sprite can't:
 | Camera | Keep today's fixed, tilted, orthographic top-down view (Hd2dScenery camera, 50° pitch). No zoom/rotate changes. |
 | End state for units | Hero and monsters become 3D models eventually (project 3). |
 | Terrain | Real 3D terrain eventually (project 2). Not in this project. |
-| Tower look | Undecided between **smooth stylized** (pilot's live model) and **pixelated 3D**. Decided after a side-by-side comparison in The Gap (§6, step 1). |
+| Tower look | **Smooth stylized 3D**, live in the scenery world with real shadows (picked 2026-11-07 after a side-by-side with a pixelated render in The Gap). |
 | Aim behaviour | Crown turns to the target; slow sentry sweep when there is no target. |
 | Idle motion | Every top has one; style per piece, tuned later. |
 | Menus | 3D models, slowly rotating. |
