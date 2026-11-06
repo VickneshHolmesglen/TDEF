@@ -1,5 +1,7 @@
 # 3D Art Pipeline
 
+> **2026-11-07: superseded by ADR-0043.** Towers are now built as 3D models in Blender by `tools/asset-pipeline/blender/tower_kit.py` (glb contract and rollout in `docs/superpowers/specs/2026-11-07-3d-towers-design.md`). The Kenney/placeholder pipeline below stays retired.
+>
 > **Retired 2026-11-05.** The presentation is locked as HD-2D with 2D sprite units (ADR-0042) and the 3D mode this pipeline fed (ADR-0037/0038/0039/0040) has been removed from the code, along with the Kenney placeholder pack. Kept as history; OQ-2 is moot (the pack is gone).
 
 Epic 15 Phase 5 deliverable. Defines how real 3D content should eventually be

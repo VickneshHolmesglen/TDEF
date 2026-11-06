@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted (user-directed, 2026-10-11). **2026-11-05: confirmed as the shipped presentation** (user locked "2.5D" = this HD-2D layer with 2D sprite units; the ADR-0040 3D cutover will not happen). The dormant 3D mode (ADR-0037/0038/0039/0040) was removed the same day; this ADR is now the only 3D rendering in missions.
+Accepted (user-directed, 2026-10-11). **2026-11-05: confirmed as the shipped presentation** (user locked "2.5D" = this HD-2D layer with 2D sprite units; the ADR-0040 3D cutover will not happen). The dormant 3D mode (ADR-0037/0038/0039/0040) was removed the same day; this ADR is now the only 3D rendering in missions. **2026-11-07: the HD-2D lock is lifted for towers by ADR-0043** (live 3D tower models in this scenery world; terrain and units to follow).
 
 ## Date
 

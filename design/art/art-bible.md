@@ -76,6 +76,8 @@ on menus or numbers?
 
 ### Hybrid Rendering Ownership
 
+> **2026-11-07 update (ADR-0043): the game is moving to 3D, towers first.** Towers become live 3D models built in Blender (`tools/asset-pipeline/blender/tower_kit.py`, smooth stylized look); real 3D terrain and 3D hero/monsters follow as later projects. The lock note below still describes the hero, monsters and ground until those projects land.
+>
 > **Presentation direction locked — 2026-11-05 (user decision, "2.5D" = the current HD-2D look).**
 > The hero, towers, monsters and creatures are 2D sprites (pixel-converted
 > painted art). The world is HD-2D per ADR-0042: 2D painted ground with 3D
