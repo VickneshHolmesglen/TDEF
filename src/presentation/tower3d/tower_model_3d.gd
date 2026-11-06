@@ -186,13 +186,20 @@ func play_hit_flash() -> void:
 		_flash_overlay = StandardMaterial3D.new()
 		_flash_overlay.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 		_flash_overlay.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-		for mesh: Node in find_children("*", "GeometryInstance3D", true, false):
-			(mesh as GeometryInstance3D).material_overlay = _flash_overlay
+	# Assigned per flash and removed after: an overlay left on at alpha 0 still
+	# costs a transparent pass per mesh for the rest of the mission.
+	_set_flash_overlay(_flash_overlay)
 	if _flash_tween != null and _flash_tween.is_valid():
 		_flash_tween.kill()
 	_flash_overlay.albedo_color = Color(1, 1, 1, 0.8)
 	_flash_tween = create_tween()
 	_flash_tween.tween_property(_flash_overlay, "albedo_color:a", 0.0, HIT_FLASH_DURATION)
+	_flash_tween.tween_callback(_set_flash_overlay.bind(null))
+
+
+func _set_flash_overlay(overlay: Material) -> void:
+	for mesh: Node in find_children("*", "GeometryInstance3D", true, false):
+		(mesh as GeometryInstance3D).material_overlay = overlay
 
 
 ## Sinks and shrinks the tower, then calls on_done (the owner frees itself).

@@ -418,7 +418,7 @@ func _try_build_model(archetype: String, foundation_component_id: String, weapon
 		return
 	_model = TowerModel3D.new()
 	_model.name = "TowerModel3D_%d" % get_instance_id()
-	_scenery.add_child(_model)
+	_scenery.get_dynamic_root().add_child(_model)
 	_model.build(shape, crown_key, tier, _scenery.get_z_stretch(), get_instance_id())
 	_model.position = _scenery.to_world(global_position)
 	_model.set_rank(_rank, false)

@@ -131,3 +131,14 @@ func test_tower_model_flourishes_on_render_layer() -> void:
 	_model.set_rank(3, false)
 	for v: Node in _model.get_node("Rank3").find_children("*", "VisualInstance3D", true, false):
 		assert_int((v as VisualInstance3D).layers).is_equal(Hd2dScenery.RENDER_LAYER)
+
+
+## Review finding (2026-11-07): the hit-flash overlay stayed on every mesh
+## after the first hit (an extra transparent pass per mesh for the rest of
+## the mission).
+func test_tower_model_hit_flash_overlay_removed_after_flash() -> void:
+	_model.build(&"octagon", &"siege", 1, 1.0, 7)
+	_model.play_hit_flash()
+	await get_tree().create_timer(TowerModel3D.HIT_FLASH_DURATION + 0.15).timeout
+	for mesh: Node in _model.find_children("*", "GeometryInstance3D", true, false):
+		assert_object((mesh as GeometryInstance3D).material_overlay).is_null()

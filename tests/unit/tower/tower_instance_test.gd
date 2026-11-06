@@ -328,8 +328,8 @@ func test_play_hit_flash_updates_every_layer_material() -> void:
 
 # --- 3D tower path (ADR-0043, spec 2026-11-07-3d-towers-design §5.4) -------
 # found_arcane_* resolves to the octagon family and weap_siege_* to the siege
-# crown: both modelled in assets/art/towers3d/. found_longshot_* resolves to
-# triangle, which has no model yet.
+# crown: both modelled in assets/art/towers3d/. An unknown foundation id
+# resolves to no family at all, so it can never have a model.
 
 func _add_scenery() -> Hd2dScenery:
 	var scenery := Hd2dScenery.new()
@@ -350,7 +350,7 @@ func test_tower_instance_with_scenery_and_models_spawns_model_under_scenery() ->
 	_instance.configure("physical", "", "found_arcane_t3", "weap_siege_t4", 2)
 	var model: TowerModel3D = _instance.get_model_3d()
 	assert_object(model).is_not_null()
-	assert_object(model.get_parent()).is_same(scenery)
+	assert_object(model.get_parent()).is_same(scenery.get_dynamic_root())
 	assert_bool(_instance._visual_root.visible).is_false()
 	assert_vector(model.position).is_equal_approx(scenery.to_world(_instance.global_position), Vector3(0.01, 0.01, 0.01))
 	remove_child(scenery)
@@ -360,7 +360,7 @@ func test_tower_instance_with_scenery_and_models_spawns_model_under_scenery() ->
 func test_tower_instance_with_scenery_but_unmodelled_piece_falls_back_to_2d() -> void:
 	var scenery := _add_scenery()
 	_instance.set_scenery(scenery)
-	_instance.configure("ranged", "", "found_longshot_t2", "weap_longshot_t2")
+	_instance.configure("ranged", "", "found_unknown_t2", "weap_unknown_t2")
 	assert_object(_instance.get_model_3d()).is_null()
 	assert_bool(_instance._layer_root.visible).is_true()
 	remove_child(scenery)
@@ -427,5 +427,23 @@ func test_tower_instance_rank_before_build_applies_after_build() -> void:
 	var r2: Node3D = _instance.get_model_3d().get_node_or_null("Rank2") as Node3D
 	assert_object(r2).is_not_null()
 	assert_bool(r2.visible).is_true()
+	remove_child(scenery)
+	scenery.free()
+
+
+## Review finding (2026-11-07): a mission retry rebuilds the scenery, which
+## used to free every child -- including live tower models -- leaving placed
+## towers invisible (2D hidden, 3D gone).
+func test_tower_instance_model_survives_scenery_rebuild() -> void:
+	var scenery := _add_scenery()
+	scenery.profile = load("res://assets/data/hd2d/the_gap_scenery.tres") as Hd2dSceneryProfile
+	scenery.build(4, 4, 64.0, {})
+	_instance.set_scenery(scenery)
+	_instance.configure("physical", "", "found_arcane_t3", "weap_siege_t4")
+	var model: TowerModel3D = _instance.get_model_3d()
+	scenery.build(4, 4, 64.0, {})
+	await get_tree().process_frame
+	assert_bool(is_instance_valid(model)).is_true()
+	assert_bool(model.is_inside_tree()).is_true()
 	remove_child(scenery)
 	scenery.free()

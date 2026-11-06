@@ -42,6 +42,7 @@ var _follow: Camera2D
 ## Fixed 2D rect to frame instead of following a Camera2D (frame_rect()).
 var _frame: Rect2 = Rect2()
 var _z_stretch: float = 1.0
+var _dynamic_root: Node3D = null
 var _cols: int = 0
 var _rows: int = 0
 var _cell: float = 64.0
@@ -63,6 +64,17 @@ var _time: float = 0.0
 
 ## Builds the whole layer for a grid. `cells` is GridConfig.cells
 ## (Vector2i -> Grid.CellType). Call once; calling again rebuilds from scratch.
+## Container for objects other systems place in this world (3D tower models,
+## ADR-0043). build() keeps it: a mission retry rebuilds the scenery while
+## placed towers persist, and freeing their models left them invisible.
+func get_dynamic_root() -> Node3D:
+	if _dynamic_root == null or not is_instance_valid(_dynamic_root):
+		_dynamic_root = Node3D.new()
+		_dynamic_root.name = "Dynamic"
+		add_child(_dynamic_root)
+	return _dynamic_root
+
+
 func build(cols: int, rows: int, cell_size: float, cells: Dictionary) -> void:
 	if profile == null:
 		push_error("[Hd2dScenery] no profile assigned -- scenery not built")
@@ -70,6 +82,8 @@ func build(cols: int, rows: int, cell_size: float, cells: Dictionary) -> void:
 	for err: String in profile.validate():
 		push_error("[Hd2dScenery] profile: " + err)
 	for child: Node in get_children():
+		if child == _dynamic_root:
+			continue
 		# Detach now so the rebuilt nodes keep their plain names ("Ground", ...).
 		remove_child(child)
 		child.queue_free()
