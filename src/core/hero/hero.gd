@@ -1780,6 +1780,9 @@ func restore_save_data(data: Dictionary) -> bool:
 ## story wires a real HeroResource (known, accepted pre-existing gap; see
 ## class doc comment history for Story 001/005/006).
 func reset_to_defaults() -> void:
+	if water_debuff_remaining > 0.0:  # a retry starts dry (ADR-0044)
+		water_debuff_remaining = 0.0
+		GEventBus.hero_water_debuff_changed.emit(false)
 	_current_hp = get_effective_stat(&"max_hp")
 	_max_hp = _current_hp
 	_proximity_time.clear()

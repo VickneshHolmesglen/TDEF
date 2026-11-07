@@ -555,8 +555,19 @@ func _on_tower_blueprint_selected(blueprint_id: StringName) -> void:
 func _process(_delta: float) -> void:
 	if not is_instance_valid(_hero):
 		return
-	var on_terrain: bool = _scenery != null and _scenery.get_terrain() != null and not _grid_visual.visible
-	_hero.set_visual_lift(_scenery.screen_lift(_hero.global_position) if on_terrain else 0.0)
+	_hero.set_visual_lift(_terrain_lift(_hero.global_position))
+
+
+## Screen lift of the terrain at flat-map point `p` (ADR-0044); 0 when no
+## terrain scenery is showing (no profile -> flat 2D GridVisual instead).
+func _terrain_lift(p: Vector2) -> float:
+	if not _terrain_showing():
+		return 0.0
+	return _scenery.screen_lift(p)
+
+
+func _terrain_showing() -> bool:
+	return _scenery != null and _scenery.get_terrain() != null and not (_grid_visual != null and _grid_visual.visible)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -624,7 +635,7 @@ func _placement_center(pointer: Vector2) -> Vector2:
 		return Vector2.INF
 	# Height-aware picking (ADR-0044): the ground point drawn under the pointer,
 	# so clicking a hilltop places on the hilltop, not the flat cell behind it.
-	if _scenery != null and _scenery.get_terrain() != null:
+	if _terrain_showing():
 		pointer = _scenery.screen_to_ground(pointer)
 	return GGrid.snap_center(pointer, data.foundation.footprint, placement_snap_cells)
 
@@ -642,7 +653,7 @@ func _spawn_placement_reject_flash(center: Vector2, blueprint_id: StringName) ->
 	var footprint: Vector2i = data.foundation.footprint
 	var flash: Node2D = PlacementRejectFlashScene.instantiate()
 	_dynamic_visuals_root.add_child(flash)
-	flash.global_position = center
+	flash.global_position = center - Vector2(0.0, _terrain_lift(center))  # on the hilltop clicked
 	flash.configure(Vector2(footprint) * CELL_SIZE)
 
 
@@ -662,6 +673,6 @@ func _update_placement_preview() -> void:
 	var size: Vector2i = data.foundation.footprint
 	var center: Vector2 = _placement_center(get_global_mouse_position())
 	var preview: PlacementPreview = _tower_system.get_placement_preview_at(_selected_blueprint_id, center)
-	var lift: float = _scenery.screen_lift(center) if _scenery != null and not _grid_visual.visible else 0.0
+	var lift: float = _terrain_lift(center)
 	GEventBus.tower_placement_preview_updated.emit(GGrid.logical_top_left(center, size), size, preview.valid,
 			center, GGrid.covered_cells(GGrid.square_rect(center, size)), lift, preview.cost)

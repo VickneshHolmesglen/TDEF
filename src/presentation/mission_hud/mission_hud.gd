@@ -738,8 +738,8 @@ func _on_hero_health_changed(current_health: float, max_health: float) -> void:
 		_hero_hp_bar.value = current_health
 
 
-## Hidden "Wading" line directly under the Hero HP line, shown while the
-## hero's water slow is active.
+## Hidden "Wading" line under the Hero HP line (below the set-effect list,
+## which is inserted after it), shown while the hero's water slow is active.
 func _build_water_debuff_label() -> void:
 	_water_debuff_label = Label.new()
 	_water_debuff_label.name = "WaterDebuffLabel"

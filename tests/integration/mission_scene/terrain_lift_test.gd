@@ -51,3 +51,16 @@ func test_placement_center_uses_screen_to_ground() -> void:
 	var center: Vector2 = scene._placement_center(pointer)
 	assert_int(int(floor(center.y / CELL))).is_equal(7)
 	scene.free()
+
+
+## Review fix: the red placement-reject flash must appear on the hilltop the
+## player clicked, not on the flat-map spot below it.
+func test_reject_flash_point_is_lifted() -> void:
+	var scene: Node2D = MissionSceneScript.new()
+	scene._scenery = _scenery
+	var top := Vector2(5.5, 5.5) * CELL
+	assert_float(scene._terrain_lift(top)).is_equal_approx(_scenery.screen_lift(top), 0.01)
+	assert_float(scene._terrain_lift(top)).is_greater(10.0)
+	scene._scenery = null
+	assert_float(scene._terrain_lift(top)).is_equal(0.0)
+	scene.free()

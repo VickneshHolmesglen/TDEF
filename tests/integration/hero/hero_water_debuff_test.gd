@@ -97,3 +97,13 @@ func test_debuff_signal_fires_on_edges_only() -> void:
 	var calls: Array = _spy.emissions["hero_water_debuff_changed"] as Array
 	assert_bool((calls[0] as Array)[0] as bool).is_true()
 	assert_bool((calls[1] as Array)[0] as bool).is_false()
+
+
+## Review fix: a retry must not start with a leftover water slow.
+func test_reset_to_defaults_clears_water_debuff() -> void:
+	_at(WET, 0.1)
+	_spy = EventBusSpy.new()
+	_spy.watch(GEventBus.hero_water_debuff_changed)
+	_hero.reset_to_defaults()
+	assert_bool(_hero.is_water_debuffed()).is_false()
+	assert_int(_spy.count("hero_water_debuff_changed")).is_equal(1)

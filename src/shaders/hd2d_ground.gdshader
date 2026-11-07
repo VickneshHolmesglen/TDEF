@@ -68,7 +68,7 @@ void fragment() {
 		float t = clamp(world_y / height_max, 0.0, 1.0);
 		col *= texture(height_tint, vec2(t, 0.5)).rgb;
 		// Shade the slopes so every hill reads as a raised shape at a glance.
-		col *= 1.0 - slope_shade * smoothstep(0.995, 0.88, world_up);
+		col *= 1.0 - slope_shade * (1.0 - smoothstep(0.88, 0.995, world_up));
 		// A thin rim where the ground crosses each level's mid-height: the
 		// outline of every hill's buildable top (spec 2026-11-07-3d-terrain §6.1).
 		if (level_height > 0.0) {
