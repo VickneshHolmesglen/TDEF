@@ -108,6 +108,7 @@ OUTCOME_BUTTON_RETRY,Retry
 OUTCOME_BUTTON_SANCTUARY,Return to Sanctuary
 HUD_TOWER_HP,Tower %d: %d/%d
 HUD_HERO_HP,Hero HP: %d/%d
+HUD_HERO_WATER_DEBUFF,Wading: slowed
 HUD_EFFECT_SHIELD,%s: shield %d (%ds)
 HUD_EFFECT_STACKS,%s x%d (%ds)
 HUD_EFFECT_TIMED,%s (%ds)

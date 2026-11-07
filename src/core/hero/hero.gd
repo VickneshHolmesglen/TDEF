@@ -74,6 +74,9 @@ const TOWER_AFFINITY_BONUS_CAP: float = 2.0
 ## Story-006 (ADR-0010 Tower-Synced Class): Chebyshev radius, in grid cells, within
 ## which the hero accumulates per-archetype proximity time toward a class unlock.
 const CLASS_PROXIMITY_RADIUS: int = 3
+## Name of the water slow (spec 2026-11-07-3d-terrain §4.3). Water-crossing
+## equipment cancels it through set_water_immunity().
+const WATER_DEBUFF_KEY: StringName = &"terrain_water"
 
 ## Story-006: cumulative seconds of proximity required to unlock a primary class.
 ## This story implements ONLY the 30s primary unlock (story-006 scope decision).
@@ -348,6 +351,9 @@ var _tree_additive: Dictionary[StringName, float] = {}
 ## separate from _additive_bonuses so _recompute_equipment_bonuses() (which
 ## rebuilds that bucket wholesale) can never wipe a live buff. Never saved.
 var _effect_modifiers: Dictionary[StringName, Dictionary] = {}
+## Seconds left on the water slow (WATER_DEBUFF_KEY); > 0 means active.
+var water_debuff_remaining: float = 0.0
+var _water_immune: bool = false
 
 ## Cached per-stat sum of _effect_modifiers, refolded only on set/clear.
 var _effect_additive: Dictionary[StringName, float] = {}
@@ -498,6 +504,9 @@ var _max_hp: float = 0.0
 ##
 ## Per-stat caps (crit_chance, elemental_resist_fire/frost, lifesteal, cdr) are applied
 ## after the Formula 1 result, per story-001 Tuning Knobs.
+##
+## move_speed: the water debuff multiplies the result after the additive fold
+## (a true ×water_hero_speed_mult, so +30% gear can't cancel it), before the cap.
 func get_effective_stat(stat_name: StringName) -> float:
 	var base: float = _base_stats.get(stat_name, 0.0)
 	var flat: float = _flat_bonuses.get(stat_name, 0.0) + _tree_flat.get(stat_name, 0.0) + _timed_flat_total(stat_name)
@@ -507,7 +516,36 @@ func get_effective_stat(stat_name: StringName) -> float:
 	var effective: float = maxf(0.0, intermediate * multiplier)
 	if stat_name == &"tower_affinity":
 		effective = _apply_tower_affinity_bonus(effective)
+	elif stat_name == &"move_speed" and water_debuff_remaining > 0.0:
+		effective *= TerrainTuning.load_default().water_hero_speed_mult
 	return _apply_stat_cap(stat_name, effective)
+
+
+## True while the water slow is active (in water, or within the linger after).
+func is_water_debuffed() -> bool:
+	return water_debuff_remaining > 0.0
+
+
+## Water-crossing equipment hook: immunity clears the debuff and blocks new ones.
+## Example: hero.set_water_immunity(true)
+func set_water_immunity(immune: bool) -> void:
+	_water_immune = immune
+	if immune and water_debuff_remaining > 0.0:
+		water_debuff_remaining = 0.0
+		GEventBus.hero_water_debuff_changed.emit(false)
+
+
+## In water: top the debuff up to the full linger. Out of water: count down.
+## Emits hero_water_debuff_changed on each on/off edge.
+func _tick_water_debuff(delta: float) -> void:
+	var was_active: bool = water_debuff_remaining > 0.0
+	if not _water_immune and GGrid.is_water(GGrid.world_to_cell(global_position)):
+		water_debuff_remaining = TerrainTuning.load_default().water_hero_linger_seconds
+	else:
+		water_debuff_remaining = maxf(0.0, water_debuff_remaining - delta)
+	var active: bool = water_debuff_remaining > 0.0
+	if active != was_active:
+		GEventBus.hero_water_debuff_changed.emit(active)
 
 
 ## Equipment-set-effects spec §3.5. Replaces any modifier previously set under
@@ -889,6 +927,7 @@ func _process(_delta: float) -> void:
 ## move_and_slide()), grid position tracking, and Tower-Synced Class proximity
 ## accumulation all run once per physics frame, per the control manifest.
 func _physics_process(delta: float) -> void:
+	_tick_water_debuff(delta)
 	_handle_movement()
 	_update_position_tracking()
 	_update_class_proximity(delta)

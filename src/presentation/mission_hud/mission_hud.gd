@@ -200,6 +200,9 @@ const EFFECT_POLL_SECONDS: float = 0.25
 const EFFECT_COLOR_SHIELD: Color = Color(0.55, 0.82, 1.0)
 const EFFECT_COLOR_BUFF: Color = Color(1.0, 0.85, 0.45)
 var _effect_list: VBoxContainer = null
+## Hero water slow indicator (spec 2026-11-07-3d-terrain §4.3), under the HP line.
+var _water_debuff_label: Label = null
+const WATER_DEBUFF_COLOR: Color = Color(0.55, 0.78, 1.0)
 var _effect_poll: Timer = null
 var _effect_signature: String = ""
 
@@ -241,6 +244,7 @@ func _ready() -> void:
 	_ultimate_button.focus_exited.connect(_update_ultimate_focus_ring)
 	_input_mode_tracker.input_mode_changed.connect(_update_ultimate_focus_ring)
 	GEventBus.hero_health_changed.connect(_on_hero_health_changed)
+	GEventBus.hero_water_debuff_changed.connect(_on_hero_water_debuff_changed)
 	GEventBus.hero_skill_cooldown_updated.connect(_on_skill_cooldown_display_updated)
 	GEventBus.boss_hp_changed.connect(_on_boss_hp_changed)
 	GEventBus.monster_damage_number_requested.connect(_on_monster_damage_number_requested)
@@ -280,6 +284,7 @@ func _ready() -> void:
 	# too.
 	_combat_cluster.visible = false
 	GEventBus.mission_launched.connect(_on_mission_launched_show_combat_cluster)
+	_build_water_debuff_label()  # first, so the set-effect list lands directly under HP
 	_build_effect_list()
 	_build_right_column()
 	_build_speed_button()
@@ -306,6 +311,7 @@ func _exit_tree() -> void:
 	GEventBus.wave_completed.disconnect(_on_wave_completed)
 	GEventBus.hero_skill_cooldown_updated.disconnect(_on_hero_skill_cooldown_updated)
 	GEventBus.hero_health_changed.disconnect(_on_hero_health_changed)
+	GEventBus.hero_water_debuff_changed.disconnect(_on_hero_water_debuff_changed)
 	GEventBus.hero_skill_cooldown_updated.disconnect(_on_skill_cooldown_display_updated)
 	GEventBus.boss_hp_changed.disconnect(_on_boss_hp_changed)
 	GEventBus.monster_damage_number_requested.disconnect(_on_monster_damage_number_requested)
@@ -730,6 +736,26 @@ func _on_hero_health_changed(current_health: float, max_health: float) -> void:
 	if _hero_hp_bar != null:
 		_hero_hp_bar.max_value = maxf(max_health, 1.0)
 		_hero_hp_bar.value = current_health
+
+
+## Hidden "Wading" line directly under the Hero HP line, shown while the
+## hero's water slow is active.
+func _build_water_debuff_label() -> void:
+	_water_debuff_label = Label.new()
+	_water_debuff_label.name = "WaterDebuffLabel"
+	_water_debuff_label.text = tr("HUD_HERO_WATER_DEBUFF")
+	_water_debuff_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_water_debuff_label.add_theme_font_size_override("font_size", 12)
+	_water_debuff_label.add_theme_color_override("font_color", WATER_DEBUFF_COLOR)
+	_water_debuff_label.visible = false
+	var chrome: Node = _hero_hp_label.get_parent()
+	chrome.add_child(_water_debuff_label)
+	chrome.move_child(_water_debuff_label, _hero_hp_label.get_index() + 1)
+
+
+func _on_hero_water_debuff_changed(active: bool) -> void:
+	if _water_debuff_label != null:
+		_water_debuff_label.visible = active and not _terminal
 
 
 ## Places the effect list directly under the Hero HP line and starts polling.

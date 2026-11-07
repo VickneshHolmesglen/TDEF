@@ -183,6 +183,10 @@ signal hero_ultimate_activated()
 ## Key subscribers: Tower Mastery, Mission HUD, Audio.
 signal hero_class_unlocked(archetype: StringName, is_deep: bool)
 
+## The hero's water slow (spec 2026-11-07-3d-terrain §4.3) turned on or off.
+## Emitted on each edge only. Key subscribers: Mission HUD.
+signal hero_water_debuff_changed(active: bool)
+
 ## Hero Leveling System (2026-09-19): fired every time Hero gains XP from
 ## any source (kill/wave/mission). new_level includes the resulting level (not
 ## a source label) directly on the signal itself, allowing a HUD to update its

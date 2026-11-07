@@ -493,7 +493,8 @@ func _apply_slow_effect(target_monster_id: int, effect_value: float, effect_dura
 
 
 ## Product of every active slow instance's speed_multiplier (1.0 if none are
-## active) — the multiplicative-stacking combination rule from Formula D6.
+## active) — the multiplicative-stacking combination rule from Formula D6 —
+## times dash/haste and the water multiplier while a ground monster wades.
 ## Never mutates entity.scaled_speed itself.
 func _effective_speed(entity: MonsterEntity) -> float:
 	if entity.stun_remaining > 0.0:
@@ -505,6 +506,10 @@ func _effective_speed(entity: MonsterEntity) -> float:
 		multiplier *= entity.resource.dash_speed_multiplier
 	if entity.haste_remaining > 0.0:
 		multiplier *= entity.haste_multiplier
+	# Wading (spec 2026-11-07-3d-terrain §4.3): positional, only while in water;
+	# flyers pass over. Terrain is read from the GGrid autoload, like TowerSystem.
+	if not entity.resource.is_flying() and GGrid.is_water(GGrid.world_to_cell(entity.path_anchor)):
+		multiplier *= TerrainTuning.load_default().water_monster_speed_mult
 	return entity.scaled_speed * multiplier
 
 
