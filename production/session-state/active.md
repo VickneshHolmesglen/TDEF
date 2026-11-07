@@ -4302,3 +4302,9 @@ Spawned `engine-programmer`, which proposed a clean 2-line guard (`if payload.ki
 - Open after terrain: draw calls ~845-942 on the_foothills (pre-existing HD-2D dressing, budget 200); launching a 2nd mission via confirm_launch inside MissionScene kept a previous tower visual (harness shortcut, unverified in real flow); user choosing a new art style (likes hand-painted + flat vector; 3 blend variants in brainstorm tab, Blender mockup next); next project queued: 3D Sanctuary buildings (7 x 5 tiers).
 - 2026-11-08: ART STYLE B BUILT (ADR-0045, spec docs/superpowers/specs/2026-11-08-painted-vector-style-design.md). User picked "painted vector (balanced)" from 65 styles -> 3 blends, then said "keep going on your own, make decisions for me" (memory feedback_autonomous_decisions). Blender mock at game camera (scratchpad style_b_mock.py). All 12 mission profiles art_style="painted" with per-map palettes; Sanctuary town still hd2d. Twin rivers kept apart (generator). Live-checked the_gap/foothills/mirefen/duskwood, no shader errors.
 - NEXT (autonomous): phase 2 of painted style — repaint tower kit textures and Sanctuary town; then the queued 3D Sanctuary buildings (7 x 5 tiers, bigger/more intricate per tier) in painted style.
+- 2026-11-08: SANCTUARY BUILDINGS BUILT (ADR-0045 phase 2).
+  - 7 buildings × 5 tiers, modelled in Blender (sanctuary_buildings.py) and painted-rendered. compose_sanctuary_buildings.py fits them onto the existing canvases (tier share 55–100 %).
+  - Town profile is painted (debris 10); TownBuildingView shadow 0.8.
+  - Test: test_sanctuary_town_profile_is_painted. Sanctuary-ui suites and painted_style are green.
+  - Live check on slot 0 with tiers forced in memory: no errors. Save restored (entering the Sanctuary deletes the mission checkpoint, so it was copied back).
+  - Open: kit tower texture repaint (towers are already painted-shaded); 2D unit sprites.

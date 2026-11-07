@@ -68,3 +68,10 @@ func test_painted_profile_validates() -> void:
 	assert_array(p.validate()).is_empty()
 	p.art_style = "oil"
 	assert_array(p.validate()).is_not_empty()
+
+
+## ADR-0045 phase 2: the Sanctuary town backdrop matches the painted buildings.
+func test_sanctuary_town_profile_is_painted() -> void:
+	var town: Hd2dSceneryProfile = load("res://assets/data/hd2d/sanctuary_town_scenery.tres") as Hd2dSceneryProfile
+	assert_str(town.art_style).is_equal("painted")
+	assert_array(town.validate()).is_empty()

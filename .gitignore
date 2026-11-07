@@ -159,3 +159,6 @@ $RECYCLE.BIN/
 
 # Personal notes (not project content)
 portfolio-readme-brief.md
+
+# Raw Blender renders of the Sanctuary buildings (regenerate with tools/asset-pipeline/blender/sanctuary_buildings.py)
+assets/source/3d/sanctuary_buildings/

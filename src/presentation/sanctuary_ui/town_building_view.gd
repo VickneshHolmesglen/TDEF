@@ -22,8 +22,9 @@ const POP_SECONDS: float = 0.18
 ## Ground shadow width as a fraction of the visible art's width (ADR-0042):
 ## narrower than the art so eaves and banners don't cast past the walls.
 const SHADOW_WIDTH_FRACTION: float = 0.8
-## Buildings are big solid masses: a darker shadow than the units' to read.
-const SHADOW_DARKNESS: float = 1.9
+## Painted 3D tier art (ADR-0045) stands on its own stone/dirt pad, so the
+## contact shadow only needs to ground the pad: lighter than the old 1.9.
+const SHADOW_DARKNESS: float = 0.8
 
 var building: SanctuaryBuildingResource = null
 var tier: int = 1

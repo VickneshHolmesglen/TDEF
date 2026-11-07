@@ -103,8 +103,9 @@ tunables in `terrain_tuning.tres`) and drawn by `Hd2dScenery` as a heightfield
 **2026-11-08 -- painted-vector style (ADR-0045).** User picked blend B
 (hand-painted + flat vector). Mission scenery profiles set `art_style =
 "painted"` (painted_ground/water/prop shaders, tufts and blob trees, per-map
-`painted_*` palettes); `"hd2d"` remains for the Sanctuary town. Phase 2:
-towers, kit props and 3D Sanctuary buildings in this style.
+`painted_*` palettes); the Sanctuary town is painted too, and its 7 buildings × 5 tiers are
+Blender-rendered (`tools/asset-pipeline/blender/sanctuary_buildings.py` and then
+`compose_sanctuary_buildings.py`, written to `assets/art/sanctuary/town/`).
 
 **Active art overhaul (2026-08-23 onward)**: read
 `design/art/codex-art-overhaul.md` — it's written for Codex but Claude Code is

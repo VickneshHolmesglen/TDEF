@@ -76,7 +76,7 @@ rng_seed = 71
 kit_rocks = Array[PackedScene]([ExtResource("k1_rock_largeA"), ExtResource("k2_rock_largeB"), ExtResource("k3_rock_largeC"), ExtResource("k4_rock_largeD"), ExtResource("k5_rock_largeE"), ExtResource("k6_rock_largeF")])
 kit_pines = Array[PackedScene]([ExtResource("k7_tree_pineTallA_detailed"), ExtResource("k8_tree_pineTallB_detailed"), ExtResource("k9_tree_pineRoundA"), ExtResource("k10_tree_pineRoundC")])
 kit_debris = Array[PackedScene]([ExtResource("k11_stump_old"), ExtResource("k12_stump_roundDetailed"), ExtResource("k13_log"), ExtResource("k14_log_large"), ExtResource("t1_log_stack"), ExtResource("t2_log_stackLarge"), ExtResource("t3_stump_squareDetailed"), ExtResource("t4_mushroom_redTall"), ExtResource("t5_mushroom_redGroup"), ExtResource("t6_mushroom_tanGroup")])
-debris_count = 24
+debris_count = 10
 debris_field_share = 0.65
 kit_rock_texture = ExtResource("k15_kit_rock")
 kit_foliage = ExtResource("k16_kit_foliage")
@@ -85,3 +85,23 @@ cloud_shadow_scale_px = 300.0
 motes_amount = 50
 mote_color = Color(1, 0.93, 0.7, 0.75)
 bloom = 0.3
+
+art_style = "painted"
+
+painted_tier_low = Color(0.4, 0.66, 0.29, 1)
+
+painted_tier_high = Color(0.86, 0.95, 0.6, 1)
+
+painted_lane = Color(0.86, 0.72, 0.5, 1)
+
+painted_leaf_top = Color(0.62, 0.86, 0.42, 1)
+
+painted_leaf_bottom = Color(0.24, 0.55, 0.28, 1)
+
+painted_tuft_top = Color(0.4, 0.7, 0.28, 1)
+
+painted_tuft_bottom = Color(0.2, 0.43, 0.21, 1)
+
+painted_water = Color(0.25, 0.62, 0.85, 0.9)
+
+painted_trunk = Color(0.55, 0.37, 0.23, 1)

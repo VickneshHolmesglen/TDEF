@@ -37,6 +37,13 @@ The spec is `docs/superpowers/specs/2026-11-08-painted-vector-style-design.md`.
 - Draw calls measured live: The Gap 757, The Foothills 617, The Mirefen 577, The Duskwood 853, against 750–942 before. The scenery is still over the 200 budget (a pre-existing problem), and painted mode doesn't add to it.
 - **Towers (added the same day):** in painted maps `TowerModel3D.set_painted_style(true)` re-shades every textured surface with `painted_tower.gdshader`: the tower's own texture, brightened ×1.18 and saturated ×1.2, under the same banded sun, with emission kept for glowing crowns. Flourishes added on rank-up are repainted. The Inventory preview keeps the original materials.
 - 2D unit sprites keep their own look for now. Phase 2 restyles the tower textures and the kit props, and builds the queued 3D Sanctuary buildings in this style.
+- **Sanctuary town (added 2026-11-08, phase 2):**
+  - `sanctuary_town_scenery.tres` is now `"painted"` (debris 24 → 10).
+  - The 7 Overview buildings × 5 tiers are Blender models (`tools/asset-pipeline/blender/sanctuary_buildings.py`), rendered in the painted look (banded light, brush grain, Freestyle outline) through a fixed 3/4 ortho camera. Raw renders live in `assets/source/3d/sanctuary_buildings/`.
+  - `compose_sanctuary_buildings.py` fits them onto the existing tier canvases at a growing share (55 % at tier 1 up to 100 % at tier 5), so `TownBuildingView`, its hit rects and the building data are unchanged.
+  - Each tier adds parts: wings, towers, crenellations, banners, yard props.
+  - The contact shadow is lighter (1.9 → 0.8), because each render brings its own pad.
+  - Decision: the buildings are pre-rendered 3D rather than live meshes. The Overview is a 2D Control diorama with buttons, focus and gamepad navigation, and a fixed view gains nothing from live meshes.
 - MultiMesh instance transforms can't be read back headless, so tuft placement is checked live, not in unit tests.
 
 ## ADR Dependencies
