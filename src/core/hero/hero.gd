@@ -354,6 +354,8 @@ var _effect_modifiers: Dictionary[StringName, Dictionary] = {}
 ## Seconds left on the water slow (WATER_DEBUFF_KEY); > 0 means active.
 var water_debuff_remaining: float = 0.0
 var _water_immune: bool = false
+## Authored y of each visual child lifted by set_visual_lift() (node name -> y).
+var _visual_base_y: Dictionary = {}
 
 ## Cached per-stat sum of _effect_modifiers, refolded only on set/clear.
 var _effect_additive: Dictionary[StringName, float] = {}
@@ -519,6 +521,19 @@ func get_effective_stat(stat_name: StringName) -> float:
 	elif stat_name == &"move_speed" and water_debuff_remaining > 0.0:
 		effective *= TerrainTuning.load_default().water_hero_speed_mult
 	return _apply_stat_cap(stat_name, effective)
+
+
+## Draws the hero higher on screen by `px` (the terrain's screen lift under
+## them, ADR-0044) without moving the gameplay position or collision.
+## Example: hero.set_visual_lift(scenery.screen_lift(hero.global_position))
+func set_visual_lift(px: float) -> void:
+	for node_name: String in ["Sprite2D", "GroundShadow"]:
+		var node := get_node_or_null(NodePath(node_name)) as Node2D
+		if node == null:
+			continue
+		if not _visual_base_y.has(node_name):
+			_visual_base_y[node_name] = node.position.y
+		node.position.y = (_visual_base_y[node_name] as float) - px
 
 
 ## True while the water slow is active (in water, or within the linger after).

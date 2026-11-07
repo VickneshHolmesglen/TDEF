@@ -275,8 +275,11 @@ signal tower_blueprint_selected(blueprint_id: StringName)
 ## covered_cells every cell it overlaps (non-walkable once placed). Both are
 ## optional for subscribers: older emitters pass only the first three, and
 ## the sentinel (cell == (-1, -1)) never carries them.
+## Terrain (ADR-0044): screen_lift is how far up the screen the hovered ground
+## is drawn (the footprint is drawn that much higher), and cost the price at
+## the hovered spot, hill premium included. Both optional, like the two above.
 signal tower_placement_preview_updated(cell: Vector2i, footprint: Vector2i, valid: bool,
-		world_center: Vector2, covered_cells: Array)
+		world_center: Vector2, covered_cells: Array, screen_lift: float, cost: int)
 
 ## Component swapped in a tower slot.
 ## Key subscribers: Constellation, Mission HUD, Tower Mastery.

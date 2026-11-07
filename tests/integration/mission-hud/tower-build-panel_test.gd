@@ -264,3 +264,30 @@ func test_sentinel_cell_hides_the_preview_icon_too() -> void:
 	@warning_ignore("unsafe_property_access")
 	var icon: TextureRect = _cluster().get("_placement_preview_icon")
 	assert_bool(icon.visible).is_false()
+
+
+# ---------------------------------------------------------------------------
+# Terrain (ADR-0044): the cursor rides the hill, the panel shows the hill price
+# ---------------------------------------------------------------------------
+
+func test_preview_cursor_lifted_by_screen_lift() -> void:
+	var c := Vector2(160.0, 160.0)
+	_cluster()._on_tower_placement_preview_updated(Vector2i(2, 2), Vector2i(1, 1), true, c, [], 0.0)
+	@warning_ignore("unsafe_property_access")
+	var cursor: ColorRect = _cluster().get("_placement_cursor")
+	var flat_y: float = cursor.position.y
+	_cluster()._on_tower_placement_preview_updated(Vector2i(2, 2), Vector2i(1, 1), true, c, [], 20.0)
+	assert_float(cursor.position.y).is_less(flat_y)
+
+
+func test_preview_shows_hill_price_in_stats() -> void:
+	var blueprints: Dictionary = GGameDataRegistry.get_all_tower_blueprints()
+	var archer: TowerBlueprintData = blueprints[&"archer"]
+	_cluster()._on_tower_button_pressed(&"archer")
+	var hill_cost: int = TowerSystem.terrain_cost(archer.placement_cost, 1)
+	_cluster()._on_tower_placement_preview_updated(Vector2i(2, 2), Vector2i(1, 1), true, Vector2(160, 160), [], 20.0, hill_cost)
+	@warning_ignore("unsafe_property_access")
+	var label: Label = _cluster().get("_tower_stats_label")
+	assert_str(label.text).contains("Cost: %dg (hill" % hill_cost)
+	_cluster()._on_tower_placement_preview_updated(Vector2i(0, 0), Vector2i(1, 1), true, Vector2(32, 32), [], 0.0, archer.placement_cost)
+	assert_str(label.text).contains("Cost: %dg   " % archer.placement_cost)

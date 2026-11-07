@@ -341,6 +341,7 @@ func _on_tower_placed(payload: TowerPlacedEvent) -> void:
 	# ADR-0043: 3D tower model in the scenery world when this mission has one
 	# (no profile -> flat 2D terrain is showing -> 2D tower sprites).
 	vis.set_scenery(_scenery if _scenery != null and not _grid_visual.visible else null)
+	vis.set_ground_position(vis.position)  # lifts it onto a hill (ADR-0044)
 	vis.configure(payload.archetype, element, payload.foundation_component_id, payload.weapon_component_id,
 			state.foundation.tier if state != null else 1)
 	if state != null:
@@ -549,6 +550,15 @@ func _on_tower_blueprint_selected(blueprint_id: StringName) -> void:
 	_update_placement_preview()
 
 
+## ADR-0044: the hero sprite rides the terrain under them, so they visibly walk
+## up slopes (gameplay position and collision stay on the flat map).
+func _process(_delta: float) -> void:
+	if not is_instance_valid(_hero):
+		return
+	var on_terrain: bool = _scenery != null and _scenery.get_terrain() != null and not _grid_visual.visible
+	_hero.set_visual_lift(_scenery.screen_lift(_hero.global_position) if on_terrain else 0.0)
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	if not _gameplay_root.visible:
 		return
@@ -612,6 +622,10 @@ func _placement_center(pointer: Vector2) -> Vector2:
 	var data: TowerBlueprintData = GGameDataRegistry.get_all_tower_blueprints().get(_selected_blueprint_id) as TowerBlueprintData
 	if data == null:
 		return Vector2.INF
+	# Height-aware picking (ADR-0044): the ground point drawn under the pointer,
+	# so clicking a hilltop places on the hilltop, not the flat cell behind it.
+	if _scenery != null and _scenery.get_terrain() != null:
+		pointer = _scenery.screen_to_ground(pointer)
 	return GGrid.snap_center(pointer, data.foundation.footprint, placement_snap_cells)
 
 
@@ -648,5 +662,6 @@ func _update_placement_preview() -> void:
 	var size: Vector2i = data.foundation.footprint
 	var center: Vector2 = _placement_center(get_global_mouse_position())
 	var preview: PlacementPreview = _tower_system.get_placement_preview_at(_selected_blueprint_id, center)
+	var lift: float = _scenery.screen_lift(center) if _scenery != null and not _grid_visual.visible else 0.0
 	GEventBus.tower_placement_preview_updated.emit(GGrid.logical_top_left(center, size), size, preview.valid,
-			center, GGrid.covered_cells(GGrid.square_rect(center, size)))
+			center, GGrid.covered_cells(GGrid.square_rect(center, size)), lift, preview.cost)

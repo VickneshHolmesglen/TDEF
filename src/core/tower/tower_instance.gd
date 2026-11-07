@@ -347,6 +347,12 @@ var _hit_flash_tween: Tween = null
 ## tower in the scenery world and the 2D layer sprites stay hidden.
 var _scenery: Hd2dScenery = null
 var _model: TowerModel3D = null
+## The tower's gameplay spot on the flat 2D map (its square centre). On a
+## hill the node itself sits higher on screen by the scenery's screen lift,
+## so every 2D child (badges, rings, flashes) and projectile origin rises with
+## it (spec 2026-11-07-3d-terrain §6.4). Vector2.INF = not set: the node's
+## own position is the ground spot.
+var ground_position: Vector2 = Vector2.INF
 var _ground_shadow: GroundShadow = null
 ## Monster the crown is tracking between shots, and how long it may keep
 ## tracking without a new shot (see play_targeting_orientation()).
@@ -397,6 +403,32 @@ func configure(archetype: String, element: String = "", foundation_component_id:
 ## piece) the tower renders as 2D layered sprites exactly as before.
 func set_scenery(scenery: Hd2dScenery) -> void:
 	_scenery = scenery
+	_apply_lift()
+
+
+## Places the tower at its flat-map gameplay spot `p` and lifts the node onto
+## the terrain drawn there (no lift without a terrain scenery).
+## Example: vis.set_ground_position(payload.world_position)
+func set_ground_position(p: Vector2) -> void:
+	ground_position = p
+	_apply_lift()
+
+
+func _apply_lift() -> void:
+	if ground_position == Vector2.INF:
+		return
+	var lift: float = _scenery.screen_lift(ground_position) if _scenery != null else 0.0
+	position = ground_position - Vector2(0.0, lift)
+
+
+## Flat-map spot the 3D model stands on.
+func _ground_spot() -> Vector2:
+	return ground_position if ground_position != Vector2.INF else global_position
+
+
+func _model_world_position() -> Vector3:
+	var g: Vector2 = _ground_spot()
+	return _scenery.to_world(g, _scenery.ground_height(g))
 
 
 ## The 3D model, or null when this tower renders in 2D.
@@ -420,7 +452,7 @@ func _try_build_model(archetype: String, foundation_component_id: String, weapon
 	_model.name = "TowerModel3D_%d" % get_instance_id()
 	_scenery.get_dynamic_root().add_child(_model)
 	_model.build(shape, crown_key, tier, _scenery.get_z_stretch(), get_instance_id())
-	_model.position = _scenery.to_world(global_position)
+	_model.position = _model_world_position()
 	_model.set_rank(_rank, false)
 	_visual_root.visible = false
 	if _ground_shadow != null:
@@ -441,7 +473,7 @@ func _free_model() -> void:
 func _process(delta: float) -> void:
 	if _model == null or not is_instance_valid(_model):
 		return
-	_model.position = _scenery.to_world(global_position)
+	_model.position = _model_world_position()
 	if not _aim_active:
 		return
 	if not is_instance_valid(_aim_target) or _aim_hold <= 0.0:

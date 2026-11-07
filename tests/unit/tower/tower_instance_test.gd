@@ -447,3 +447,56 @@ func test_tower_instance_model_survives_scenery_rebuild() -> void:
 	assert_bool(model.is_inside_tree()).is_true()
 	remove_child(scenery)
 	scenery.free()
+
+
+# --- Terrain (spec 2026-11-07-3d-terrain §6.4) --------------------------------
+
+## A scenery with the terrain_surface_test hill (cells 3..7 x 3..7, level 1),
+## a profile for the camera pitch, and no build() (not needed for lifts).
+func _terrain_scenery() -> Hd2dScenery:
+	var scenery := _add_scenery()
+	scenery.profile = load("res://assets/data/hd2d/the_gap_scenery.tres") as Hd2dSceneryProfile
+	var cfg: GridConfig = load("res://tests/unit/visual_presentation/terrain_surface_test.gd")._config()
+	scenery.set_terrain(TerrainSurface.from_config(cfg, TerrainTuning.load_default()))
+	return scenery
+
+
+func test_tower_on_hill_model_at_surface_height() -> void:
+	var scenery := _terrain_scenery()
+	var top := Vector2(5.5, 5.5) * 64.0
+	_instance.set_scenery(scenery)
+	_instance.set_ground_position(top)
+	_instance.configure("physical", "", "found_arcane_t3", "weap_siege_t4", 1)
+	var model: TowerModel3D = _instance.get_model_3d()
+	assert_object(model).is_not_null()
+	assert_float(model.position.y).is_equal_approx(scenery.ground_height(top), 0.01)
+	assert_float(model.position.y).is_greater(20.0)
+	assert_float(model.position.x).is_equal_approx(top.x, 0.01)
+	remove_child(scenery)
+	scenery.free()
+
+
+func test_tower_on_hill_2d_lifted() -> void:
+	var scenery := _terrain_scenery()
+	var top := Vector2(5.5, 5.5) * 64.0
+	_instance.set_scenery(scenery)
+	_instance.set_ground_position(top)
+	assert_vector(_instance.ground_position).is_equal(top)
+	assert_float(_instance.position.y).is_equal_approx(top.y - scenery.screen_lift(top), 0.01)
+	assert_float(_instance.position.x).is_equal(top.x)
+	remove_child(scenery)
+	scenery.free()
+
+
+func test_no_terrain_zero_lift() -> void:
+	var p := Vector2(320, 192)
+	_instance.set_ground_position(p)
+	assert_vector(_instance.position).is_equal(p)
+	var scenery := _add_scenery()
+	_instance.set_scenery(scenery)
+	_instance.set_ground_position(p)
+	_instance.configure("physical", "", "found_arcane_t3", "weap_siege_t4", 1)
+	assert_vector(_instance.position).is_equal(p)
+	assert_float(_instance.get_model_3d().position.y).is_equal(0.0)
+	remove_child(scenery)
+	scenery.free()

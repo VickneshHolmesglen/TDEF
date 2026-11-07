@@ -121,6 +121,10 @@ var _cover_cell_host: Control = null
 ## set the instant this cluster's own tile is pressed, cleared whenever the
 ## cursor hides (deselected or placement completes).
 var _preview_blueprint_id: StringName = &""
+## Terrain (ADR-0044): screen lift of the hovered spot (cover markers follow
+## it) and the hovered spot's price, -1 = not hovering / base price.
+var _cover_lift: float = 0.0
+var _hover_cost: int = -1
 
 var _build_buttons: Dictionary[StringName, Button] = {}
 var _build_button_group := ButtonGroup.new()
@@ -725,6 +729,7 @@ func _blueprint_entry_text(data: TowerBlueprintData) -> String:
 ## sole consumer of this signal; this cluster never calls TowerSystem itself.
 func _on_tower_button_pressed(blueprint_id: StringName) -> void:
 	_preview_blueprint_id = blueprint_id
+	_hover_cost = -1
 	GEventBus.tower_blueprint_selected.emit(blueprint_id)
 	_show_tower_stats(blueprint_id)
 
@@ -742,7 +747,10 @@ func _show_tower_stats(blueprint_id: StringName) -> void:
 		return
 	var lines: PackedStringArray = []
 	lines.append(data.display_name)
-	lines.append("Cost: %dg   Footprint: %dx%d" % [data.placement_cost, data.foundation.footprint.x, data.foundation.footprint.y])
+	if _hover_cost > data.placement_cost:
+		lines.append("Cost: %dg (hill, base %dg)   Footprint: %dx%d" % [_hover_cost, data.placement_cost, data.foundation.footprint.x, data.foundation.footprint.y])
+	else:
+		lines.append("Cost: %dg   Footprint: %dx%d" % [data.placement_cost, data.foundation.footprint.x, data.foundation.footprint.y])
 	if data.weapon.projectile_type == "AURA":
 		lines.append("Aura: %s +%d%%" % [data.weapon.aura_effect_type, int(data.weapon.aura_effect_value * 100.0)])
 	else:
@@ -814,12 +822,15 @@ func _refresh_affordability() -> void:
 ## Vector2i(-1, -1) (no blueprint selected, mirrors set_boss_telegraph_cell's
 ## identical sentinel convention) hides the cursor entirely.
 func _on_tower_placement_preview_updated(cell: Vector2i, footprint: Vector2i, valid: bool,
-		world_center: Vector2 = Vector2.INF, covered_cells: Array = []) -> void:
+		world_center: Vector2 = Vector2.INF, covered_cells: Array = [], screen_lift: float = 0.0,
+		cost: int = -1) -> void:
+	_cover_lift = screen_lift
 	_show_cover_cells([] if cell == Vector2i(-1, -1) else covered_cells, footprint)
 	if cell == Vector2i(-1, -1):
 		_placement_cursor.visible = false
 		_placement_preview_icon.visible = false
 		_preview_blueprint_id = &""
+		_hover_cost = -1
 		_tower_stats_panel.visible = false
 		return
 	_placement_cursor.visible = true
@@ -828,8 +839,14 @@ func _on_tower_placement_preview_updated(cell: Vector2i, footprint: Vector2i, va
 	var world_pos: Vector2 = GGrid.cell_to_world(cell) - Vector2(CELL_SIZE_PX, CELL_SIZE_PX) * 0.5
 	if world_center != Vector2.INF:
 		world_pos = world_center - Vector2(footprint) * CELL_SIZE_PX * 0.5
+	world_pos.y -= screen_lift  # drawn on the hilltop the player sees
 	_placement_cursor.position = _world_to_screen(world_pos)
 	_update_placement_preview_icon()
+	# Hill price (spec 2026-11-07-3d-terrain §4.2): the stats panel shows the
+	# hovered spot's real cost; only rebuilt when that price changes.
+	if cost != _hover_cost and _preview_blueprint_id != &"":
+		_hover_cost = cost
+		_show_tower_stats(_preview_blueprint_id)
 
 
 ## Tints every covered cell when an off-grid ghost covers more cells than its
@@ -847,7 +864,7 @@ func _show_cover_cells(covered_cells: Array, footprint: Vector2i) -> void:
 		marker.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		marker.color = PLACEMENT_COVER_COLOR
 		marker.size = _screen_cell_size()
-		marker.position = _world_to_screen(GGrid.cell_to_world(cell) - Vector2(CELL_SIZE_PX, CELL_SIZE_PX) * 0.5)
+		marker.position = _world_to_screen(GGrid.cell_to_world(cell) - Vector2(CELL_SIZE_PX * 0.5, CELL_SIZE_PX * 0.5 + _cover_lift))
 		var border := ReferenceRect.new()
 		border.editor_only = false
 		border.border_color = PLACEMENT_COVER_BORDER
