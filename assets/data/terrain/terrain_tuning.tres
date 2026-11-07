@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="TerrainTuning" format=3]
+
+[ext_resource type="Script" path="res://src/foundation/grid/terrain_tuning.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+hill_cost_per_level = 0.25
+hill_range_per_level = 1
+water_monster_speed_mult = 0.6
+water_hero_speed_mult = 0.7
+water_hero_linger_seconds = 3.0
+min_buildable_share = 0.4
+height_per_level_cells = 0.5

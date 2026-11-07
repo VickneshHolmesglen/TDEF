@@ -24,10 +24,26 @@ extends Resource
 ## unaffected — it builds its GridConfig programmatically at runtime, never
 ## round-tripping through a .tres).
 @export var cells: Dictionary[Vector2i, int] = {}  # values are Grid.CellType
+## Terrain height level per cell, 0..MAX_HEIGHT_LEVEL (spec 2026-11-07-3d-terrain
+## §4.1). Absent = 0. Only PLACEABLE (or BLOCKED) cells may be raised.
+@export var heights: Dictionary[Vector2i, int] = {}
+## Water cells (rivers). Absent = dry. A PATH cell with water is a ford.
+@export var water: Dictionary[Vector2i, bool] = {}
+
+const MAX_HEIGHT_LEVEL: int = 2
 
 ## Returns validation errors. Empty array means the config is valid.
 func validate() -> Array[String]:
 	var errors: Array[String] = []
+	for cell: Vector2i in heights:
+		var level: int = heights[cell]
+		if level < 0 or level > MAX_HEIGHT_LEVEL:
+			errors.append("height at %s out of range 0..%d (got %d)" % [cell, MAX_HEIGHT_LEVEL, level])
+		var ct: int = cells.get(cell, Grid.CellType.BLOCKED)
+		if level > 0 and ct != Grid.CellType.PLACEABLE and ct != Grid.CellType.BLOCKED:
+			errors.append("height > 0 on a non-PLACEABLE cell at %s" % cell)
+		if level > 0 and water.get(cell, false):
+			errors.append("water cell at %s has height %d" % [cell, level])
 	if cols <= 0:
 		errors.append("cols must be > 0 (got %d)" % cols)
 	if rows <= 0:

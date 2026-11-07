@@ -34,3 +34,15 @@ func test_cells_survives_a_save_and_fresh_disk_load() -> void:
 	assert_int(reloaded.cells.size()).is_equal(2)
 	assert_int(reloaded.cells[Vector2i(0, 0)]).is_equal(Grid.CellType.SPAWN)
 	assert_int(reloaded.cells[Vector2i(2, 1)]).is_equal(Grid.CellType.GOAL)
+
+
+func test_terrain_fields_round_trip() -> void:
+	var config := GridConfig.new()
+	config.cells[Vector2i(1, 0)] = Grid.CellType.PLACEABLE
+	config.cells[Vector2i(0, 1)] = Grid.CellType.PATH
+	config.heights[Vector2i(1, 0)] = 2
+	config.water[Vector2i(0, 1)] = true
+	assert_int(ResourceSaver.save(config, TEST_TRES_PATH)).is_equal(OK)
+	var reloaded: GridConfig = ResourceLoader.load(TEST_TRES_PATH, "", ResourceLoader.CACHE_MODE_IGNORE)
+	assert_int(reloaded.heights.get(Vector2i(1, 0), 0)).is_equal(2)
+	assert_bool(reloaded.water.get(Vector2i(0, 1), false)).is_true()

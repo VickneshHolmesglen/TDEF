@@ -23,6 +23,10 @@ const GRID_WRITE_REJECTED: int = ERR_UNAVAILABLE
 # Internal state — never expose references to these directly.
 # Dictionary[Vector2i, CellType] would be ideal; int fallback per ADR-0005 risk note.
 var _cell_types: Dictionary[Vector2i, int] = {}
+# Terrain (spec 2026-11-07-3d-terrain §4.1): height level per cell (absent = 0)
+# and water cells (absent = dry). Hills block walking; water blocks building.
+var _heights: Dictionary[Vector2i, int] = {}
+var _water: Dictionary[Vector2i, bool] = {}
 var _occupancy: Dictionary[Vector2i, int] = {}
 # Free placement (ADR-0005 amendment 2026-11-04). _occupancy above holds each
 # tower's LOGICAL cells (its square rounded to the grid: single owner, what
@@ -59,6 +63,8 @@ func initialize(config: GridConfig) -> void:
 	_cell_types.clear()
 	for cell: Vector2i in config.cells:
 		_cell_types[cell] = config.cells[cell]
+	_heights = config.heights.duplicate()
+	_water = config.water.duplicate()
 	_occupancy.clear()
 	_tower_rects.clear()
 	_tower_cover.clear()
@@ -134,7 +140,8 @@ func is_footprint_placeable(top_left: Vector2i, size: Vector2i) -> bool:
 	return is_square_placeable(footprint_center(top_left, size), size)
 
 
-## Free placement check: every cell the square overlaps is PLACEABLE, none of
+## Free placement check: every cell the square overlaps is PLACEABLE, dry and
+## at one height level (no straddling a slope), none of
 ## its logical cells is occupied, and it does not overlap another tower's
 ## square (touching is fine). Covered cells may be shared between towers.
 func is_square_placeable(center: Vector2, size: Vector2i) -> bool:
@@ -142,6 +149,8 @@ func is_square_placeable(center: Vector2, size: Vector2i) -> bool:
 	for cell: Vector2i in covered_cells(rect):
 		if get_cell_type(cell) != CellType.PLACEABLE:
 			return false
+	if square_height_level(center, size) < 0:
+		return false
 	var top_left: Vector2i = logical_top_left(center, size)
 	for col: int in range(size.x):
 		for row: int in range(size.y):
@@ -226,6 +235,33 @@ func get_cell_type(cell: Vector2i) -> CellType:
 	return _cell_types[cell]
 
 
+## Terrain height level of a cell (0 = ground, 1 = hill, 2 = high hill).
+func get_height_level(cell: Vector2i) -> int:
+	return _heights.get(cell, 0)
+
+
+## True if the cell is water (a river; a PATH cell with water is a ford).
+func is_water(cell: Vector2i) -> bool:
+	return _water.get(cell, false)
+
+
+## Height level shared by every cell a size-cell square centred on `center`
+## covers, or -1 when they differ or any covered cell is water.
+##
+## Example: GGrid.square_height_level(center, Vector2i.ONE)
+func square_height_level(center: Vector2, size: Vector2i) -> int:
+	var level: int = -1
+	for cell: Vector2i in covered_cells(square_rect(center, size)):
+		if is_water(cell):
+			return -1
+		var h: int = get_height_level(cell)
+		if level == -1:
+			level = h
+		elif h != level:
+			return -1
+	return level
+
+
 ## Returns the tower entity ID occupying the cell, or -1 if unoccupied.
 func get_occupant(cell: Vector2i) -> int:
 	return _occupancy.get(cell, -1)
@@ -278,7 +314,7 @@ func get_goal_cells() -> Array[Vector2i]:
 
 
 ## Walkability map for Pathfinding. Key present = walkable.
-## Absent key means non-walkable (BLOCKED, or occupied PLACEABLE).
+## Absent key means non-walkable (BLOCKED, occupied PLACEABLE, or a hill).
 ## Returns a copy — callers must not cache across tower_placed/tower_removed events.
 func get_walkable_cell_map() -> Dictionary[Vector2i, bool]:
 	var result: Dictionary[Vector2i, bool] = {}
@@ -288,7 +324,7 @@ func get_walkable_cell_map() -> Dictionary[Vector2i, bool]:
 			CellType.PATH, CellType.SPAWN, CellType.GOAL:
 				result[cell] = true
 			CellType.PLACEABLE:
-				if not _occupancy.has(cell) and not _cover_count.has(cell):
+				if not _occupancy.has(cell) and not _cover_count.has(cell) and _heights.get(cell, 0) == 0:
 					result[cell] = true
 	return result
 
