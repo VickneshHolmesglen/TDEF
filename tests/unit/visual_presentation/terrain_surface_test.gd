@@ -87,3 +87,47 @@ func test_screen_to_ground_front_face_hits_hilltop() -> void:
 	var g: Vector2 = s.screen_to_ground(screen, PITCH)
 	assert_int(int(floor(g.y / CELL))).is_equal(7)
 	assert_float(g.y).is_equal_approx(top.y, 1.0)
+
+
+## With the shipped tuning (0.5 cell per level, sigma 0.45 cell) the steepest
+## slope is about 0.9 px/px, gentler than the 1/cos(50°) ≈ 1.56 a slope needs to
+## hide anything behind it: rolling hills never occlude at this camera.
+func test_shipped_hills_never_occlude() -> void:
+	var s: TerrainSurface = _surface()
+	for y: float in [2.0, 2.4, 2.6, 2.8, 3.0, 3.2]:
+		assert_bool(s.occludes(Vector2(5.5, y) * CELL, PITCH)).is_false()
+
+
+func test_occludes_spot_behind_tall_hill() -> void:
+	var tall := TerrainTuning.new()
+	tall.height_per_level_cells = 2.5
+	var s: TerrainSurface = TerrainSurface.from_config(_config(), tall)
+	# Just behind (north of) the blob's top edge: the steep hill is drawn over it.
+	assert_bool(s.occludes(Vector2(5.5, 2.6) * CELL, PITCH)).is_true()
+	# Open ground far from any hill, and the hilltop itself.
+	assert_bool(s.occludes(Vector2(10.5, 8.5) * CELL, PITCH)).is_false()
+	assert_bool(s.occludes(Vector2(5.5, 5.5) * CELL, PITCH)).is_false()
+
+
+## Guard for spec §6.4 "hidden spots": the x-ray / fade for things behind hills
+## is not built because the shipped hills can't hide anything at the 50°
+## camera. If a tuning or profile change makes them steep enough to, this fails
+## and the readability work (a stencil-masked tower silhouette) is needed.
+func test_shipped_maps_hide_nothing() -> void:
+	var dir := "res://assets/data/missions/entries/"
+	for file: String in DirAccess.get_files_at(dir):
+		if not file.ends_with("_entry.tres"):
+			continue
+		var entry: MissionEntry = load(dir + file)
+		for s: int in 5:
+			var rng := RandomNumberGenerator.new()
+			rng.seed = 900 + s
+			var g: GridConfig = entry.grid_config
+			var cfg: GridConfig = MapGenerator.generate(g.cols, g.rows, g.cell_size, rng, entry.spawn_count,
+					entry.path_winding, entry.terrain_profile)
+			var surface: TerrainSurface = TerrainSurface.from_config(cfg, TerrainTuning.load_default())
+			if surface == null:
+				continue
+			for cell: Vector2i in cfg.cells:
+				var p: Vector2 = (Vector2(cell) + Vector2(0.5, 0.5)) * cfg.cell_size
+				assert_bool(surface.occludes(p, PITCH)).override_failure_message("%s %s" % [entry.mission_id, cell]).is_false()

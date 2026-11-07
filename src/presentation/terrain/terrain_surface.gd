@@ -119,6 +119,22 @@ func screen_to_ground(screen_p: Vector2, pitch_deg: float) -> Vector2:
 	return screen_p
 
 
+## True when terrain in front of `p` (toward the camera, larger y) is drawn
+## over p's ground point: a hill hides that spot (spec §6.4 hidden spots).
+## Example: surface.occludes(tower_spot, 50.0)
+func occludes(p2d: Vector2, pitch_deg: float) -> bool:
+	var c: float = cos(deg_to_rad(pitch_deg))
+	var target: float = p2d.y - height_at(p2d) * c
+	var reach: float = target + _max_h * c
+	var step: float = _cell / SUB
+	var y: float = p2d.y + step
+	while y < reach:
+		if y - height_at(Vector2(p2d.x, y)) * c < target - 0.5:
+			return true
+		y += step
+	return false
+
+
 func _offset(screen_p: Vector2, y: float, c: float) -> float:
 	return y - height_at(Vector2(screen_p.x, y)) * c - screen_p.y
 

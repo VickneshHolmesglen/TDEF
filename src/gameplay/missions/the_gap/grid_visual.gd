@@ -259,10 +259,34 @@ func _build_grid_texture(mission_id: String, rng: RandomNumberGenerator) -> Imag
 			else:
 				var tile: Image = scaled_by_type.get(cell_type, scaled_by_type[4])
 				image.blit_rect(tile, Rect2i(0, 0, cell_px, cell_px), Vector2i(origin_x, origin_y))
+			var tint: Color = cell_color(cell)
+			if tint.a > 0.0:
+				image.blend_rect(_solid_tile(tint, cell_px), Rect2i(0, 0, cell_px, cell_px), Vector2i(origin_x, origin_y))
 			if cell_type == 0 and not scaled_props.is_empty() and rng.randf() < PROP_DENSITY:
 				var prop: Image = scaled_props[rng.randi_range(0, scaled_props.size() - 1)]
 				image.blend_rect(prop, Rect2i(0, 0, prop_px, prop_px), Vector2i(origin_x + prop_offset, origin_y + prop_offset))
 	return ImageTexture.create_from_image(image)
+
+
+## Terrain tint for the flat 2D grid view (spec 2026-11-07-3d-terrain §6.4):
+## transparent for plain ground, lighter per hill level, blue for water.
+## Reads the live Grid, so call after Grid.initialize().
+## Example: GridVisual.cell_color(Vector2i(3, 2))
+static func cell_color(cell: Vector2i) -> Color:
+	if GGrid.is_water(cell):
+		return Color(0.25, 0.55, 0.95, 0.55)
+	match GGrid.get_height_level(cell):
+		1:
+			return Color(1.0, 0.95, 0.75, 0.22)
+		2:
+			return Color(1.0, 0.97, 0.85, 0.42)
+	return Color(0, 0, 0, 0)
+
+
+static func _solid_tile(color: Color, cell_px: int) -> Image:
+	var img := Image.create(cell_px, cell_px, false, Image.FORMAT_RGBA8)
+	img.fill(color)
+	return img
 
 
 ## A copy of square RGBA8 `tile` with a round alpha fade: opaque inside
