@@ -74,7 +74,9 @@ static func _carve_rivers(config: GridConfig, shapes: Array[Dictionary], count: 
 	for i: int in count:
 		var s: Dictionary = shapes[i]
 		var prev: int = -1
-		for y: int in range(1, config.rows - 1):
+		# Interior rows carve the river; the BLOCKED border rows get water too
+		# (looks only: never walkable) so the river visibly runs off the board.
+		for y: int in range(0, config.rows):
 			var c: int = roundi(s.base + s.amp * sin(y * s.freq + s.phase))
 			c = clampi(c, 2, config.cols - 2 - width)
 			var from: int = c if prev < 0 else mini(c, prev)
@@ -82,7 +84,7 @@ static func _carve_rivers(config: GridConfig, shapes: Array[Dictionary], count: 
 			for x: int in range(from, to + 1):
 				var cell := Vector2i(x, y)
 				var ct: int = config.cells.get(cell, Grid.CellType.BLOCKED)
-				if ct == Grid.CellType.PLACEABLE or ct == Grid.CellType.PATH:
+				if ct == Grid.CellType.PLACEABLE or ct == Grid.CellType.PATH or ct == Grid.CellType.BLOCKED:
 					water[cell] = true
 			prev = c
 	return water

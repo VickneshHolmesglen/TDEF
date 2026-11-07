@@ -21,8 +21,11 @@ const SIGMA_CELLS: float = 0.45
 ## flat; closer ones blend toward flat (smoothstep) so the lane reads clearly.
 const LANE_PIN_CELLS: float = 0.3
 const RIVER_BED_CELLS: float = -0.15
-const FORD_BED_CELLS: float = -0.05
-const WATER_LEVEL_CELLS: float = -0.04
+## Water sits high enough in the blurred bed that a 1-cell river shows about
+## one cell wide (live-tuned 2026-11-08: -0.04 spilled ~1.6 cells wide); fords
+## sit just under it so the lane shows a shallow crossing.
+const FORD_BED_CELLS: float = -0.09
+const WATER_LEVEL_CELLS: float = -0.07
 
 var _cell: float = 64.0
 var _nx: int = 0
@@ -30,6 +33,7 @@ var _ny: int = 0
 var _h: PackedFloat32Array = PackedFloat32Array()
 var _max_h: float = 0.0
 var _min_h: float = 0.0
+var _water: Dictionary[Vector2i, bool] = {}
 
 
 ## A surface for `config`, or null when it has no hills and no water (flat
@@ -58,6 +62,23 @@ func height_at(p2d: Vector2) -> float:
 ## Height of the water surface (2D px), just below flat ground.
 func water_level() -> float:
 	return WATER_LEVEL_CELLS * _cell
+
+
+## True if 2D point `p` lies on a water cell (river or ford).
+func is_water(p2d: Vector2) -> bool:
+	return _water.has(Vector2i((p2d / _cell).floor()))
+
+
+## 2D px rect covering every water cell; zero-size when there is no water.
+func water_bounds() -> Rect2:
+	if _water.is_empty():
+		return Rect2()
+	var lo := Vector2i(1 << 30, 1 << 30)
+	var hi := Vector2i(-(1 << 30), -(1 << 30))
+	for c: Vector2i in _water:
+		lo = lo.min(c)
+		hi = hi.max(c)
+	return Rect2(Vector2(lo) * _cell, Vector2(hi - lo + Vector2i.ONE) * _cell)
 
 
 ## Highest smoothed height on the map (2D px).
@@ -104,6 +125,7 @@ func _offset(screen_p: Vector2, y: float, c: float) -> float:
 
 func _build(config: GridConfig, tuning: TerrainTuning) -> void:
 	_cell = config.cell_size
+	_water = config.water.duplicate()
 	_nx = config.cols * SUB + 1
 	_ny = config.rows * SUB + 1
 	var level_h: float = tuning.height_per_level_cells * _cell

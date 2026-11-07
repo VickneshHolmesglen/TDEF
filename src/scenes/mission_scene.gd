@@ -244,9 +244,22 @@ func _build_scenery(cols: int, rows: int, cell_size: float) -> void:
 		$PresentationRoot3D.add_child(_scenery)
 	_scenery.profile = profile
 	var cells: Dictionary = {}
+	# Terrain (ADR-0044): mirror the grid's hills and water into a config for
+	# the smooth surface. A grid without them (e.g. The Gap's direct boot) stays flat.
+	var terrain := GridConfig.new()
+	terrain.cols = cols
+	terrain.rows = rows
+	terrain.cell_size = cell_size
 	for row: int in range(rows):
 		for col: int in range(cols):
-			cells[Vector2i(col, row)] = GGrid.get_cell_type(Vector2i(col, row))
+			var c := Vector2i(col, row)
+			cells[c] = GGrid.get_cell_type(c)
+			terrain.cells[c] = cells[c]
+			if GGrid.get_height_level(c) > 0:
+				terrain.heights[c] = GGrid.get_height_level(c)
+			if GGrid.is_water(c):
+				terrain.water[c] = true
+	_scenery.set_terrain(TerrainSurface.from_config(terrain, TerrainTuning.load_default()))
 	_scenery.build(cols, rows, cell_size, cells)
 	_scenery.follow_camera(_camera)
 	_scenery.set_active(_gameplay_root.visible)

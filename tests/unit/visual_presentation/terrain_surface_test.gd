@@ -60,8 +60,9 @@ func test_water_below_zero() -> void:
 	var s: TerrainSurface = _surface()
 	assert_float(s.height_at(Vector2(10.5, 5.5) * CELL)).is_less(s.water_level())
 	var ford: float = s.height_at(Vector2(8.5, 1.5) * CELL)
-	assert_float(ford).is_equal_approx(-0.05 * CELL, 0.5)
-	assert_float(s.water_level()).is_equal_approx(-0.04 * CELL, 0.001)
+	assert_float(ford).is_equal_approx(-0.09 * CELL, 0.5)
+	assert_float(ford).is_less(s.water_level())
+	assert_float(s.water_level()).is_equal_approx(-0.07 * CELL, 0.001)
 
 
 func test_screen_lift_cos_pitch() -> void:

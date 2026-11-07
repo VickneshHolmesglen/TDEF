@@ -19,6 +19,20 @@ extends Resource
 ## Lane texture repeat factor (> 1 shrinks cobbles/slabs on the road).
 @export var lane_scale: float = 1.0
 
+@export_group("Terrain")
+## Ground tint by surface height, low (offset 0) to the map's highest point
+## (offset 1), multiplied onto the ground colour; white = unchanged. null uses
+## default_height_tint(). Spec 2026-11-07-3d-terrain §6.1: tuned live.
+@export var height_tint: Gradient
+## World-normal y below which slopes show stone (0 = never).
+@export_range(0.0, 1.0) var rock_slope_threshold: float = 0.82
+## Darkening on slopes, so hills read as raised shapes (0 = none).
+@export_range(0.0, 1.0) var slope_shade: float = 0.3
+## Darkening of the rim line drawn at each height level's edge (0 = none).
+@export_range(0.0, 1.0) var contour_strength: float = 0.35
+## River surface colour (alpha = opacity).
+@export var water_color: Color = Color(0.24, 0.47, 0.62, 0.8)
+
 @export_group("Grass")
 @export var grass_cards: Array[Texture2D] = []
 ## Tufts per cell at full patch density (patches follow low-frequency noise).
@@ -143,6 +157,14 @@ extends Resource
 
 
 ## Load-time validation (registry convention: returns error strings).
+## Lowland unchanged, hilltops lighter and warmer (sunlit high ground).
+static func default_height_tint() -> Gradient:
+	var g := Gradient.new()
+	g.set_color(0, Color(0.86, 0.86, 0.84))
+	g.set_color(1, Color(1.55, 1.5, 1.12))
+	return g
+
+
 func validate() -> Array[String]:
 	var errors: Array[String] = []
 	if ground_grass == null or ground_dirt == null or ground_stone == null:

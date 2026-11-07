@@ -25,6 +25,11 @@ extends Node3D
 const RENDER_LAYER: int = 1 << 11
 const GROUND_SHADER: Shader = preload("res://src/shaders/hd2d_ground.gdshader")
 const CARD_SHADER: Shader = preload("res://src/shaders/hd2d_foliage_card.gdshader")
+const WATER_SHADER: Shader = preload("res://src/shaders/hd2d_water.gdshader")
+## Terrain ground mesh resolution: vertices per cell side (spec 2026-11-07-3d-terrain §6.1).
+const TERRAIN_VERTS_PER_CELL: int = 4
+## Flat ground skirt past the margin, in cells: the ortho view never sees an edge.
+const SKIRT_CELLS: int = 12
 ## Lane-mask resolution, px per cell (linear-filtered, so 4 keeps corners round).
 const MASK_RES: int = 4
 ## Off-grid border, in cells, that still gets ground, lanes and dressing.
@@ -60,6 +65,8 @@ var _clouds: Array[Decal] = []
 var _cloud_tile: float = 0.0
 var _fires: Array[OmniLight3D] = []
 var _time: float = 0.0
+## Smooth ground height (ADR-0044); null = flat ground, as before terrain.
+var _terrain: TerrainSurface = null
 
 
 ## Builds the whole layer for a grid. `cells` is GridConfig.cells
@@ -155,8 +162,43 @@ func get_z_stretch() -> float:
 
 
 ## 2D map position -> scenery world position (ground stretched, see class doc).
+## `height` is absolute (2D px above flat ground); see _on_ground() for props.
 func to_world(p2d: Vector2, height: float = 0.0) -> Vector3:
 	return Vector3(p2d.x, height, p2d.y * _z_stretch)
+
+
+## Terrain for the next build() (spec 2026-11-07-3d-terrain §6). null = flat.
+## Example: scenery.set_terrain(TerrainSurface.from_config(config, TerrainTuning.load_default()))
+func set_terrain(surface: TerrainSurface) -> void:
+	_terrain = surface
+
+
+func get_terrain() -> TerrainSurface:
+	return _terrain
+
+
+## Ground height (2D px) under 2D point `p`; 0 without terrain.
+func ground_height(p2d: Vector2) -> float:
+	return _terrain.height_at(p2d) if _terrain != null else 0.0
+
+
+## How far up the screen the ground at `p` is drawn (h × cos(pitch)); 0 without terrain.
+func screen_lift(p2d: Vector2) -> float:
+	if _terrain == null or profile == null:
+		return 0.0
+	return _terrain.screen_lift(p2d, profile.camera_pitch_deg)
+
+
+## The ground point drawn at flat-map point `p` (height-aware picking); `p` itself without terrain.
+func screen_to_ground(p: Vector2) -> Vector2:
+	if _terrain == null or profile == null:
+		return p
+	return _terrain.screen_to_ground(p, profile.camera_pitch_deg)
+
+
+## to_world() for dressing: `height` is above the ground surface at `p`.
+func _on_ground(p2d: Vector2, height: float = 0.0) -> Vector3:
+	return to_world(p2d, height + ground_height(p2d))
 
 
 func _process(delta: float) -> void:
@@ -250,6 +292,8 @@ func _is_open_ground(p: Vector2) -> bool:
 	for lm: Vector2i in _landmarks:
 		if p.distance_to(_cell_center(lm)) < _cell * (profile.landmark_radius_cells + 0.1):
 			return false
+	if _terrain != null and _terrain.is_water(p):
+		return false
 	var local: Vector2 = p - Vector2(c) * _cell
 	var lip: float = _cell * 0.16
 	if (_lane.has(c + Vector2i.RIGHT) and _cell - local.x < lip) or (_lane.has(c + Vector2i.LEFT) and local.x < lip) \
@@ -365,6 +409,9 @@ func _build_ground() -> void:
 	mat.set_shader_parameter(&"lane_shimmer", profile.lane_shimmer)
 	mat.set_shader_parameter(&"lane_scale", profile.lane_scale)
 
+	if _terrain != null:
+		_build_terrain_ground(mat)
+		return
 	var map := Vector2(_cols, _rows) * _cell
 	var plane := PlaneMesh.new()
 	# Generous overscan: the ortho view must never show the plane's edge.
@@ -376,6 +423,88 @@ func _build_ground() -> void:
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_own(mi)
 	mi.position = to_world(map * 0.5)
+
+
+## Heightfield ground (spec 2026-11-07-3d-terrain §6.1): one ArrayMesh over the
+## grid plus MARGIN_CELLS at TERRAIN_VERTS_PER_CELL, ringed by a flat skirt to
+## SKIRT_CELLS so the ortho view never sees an edge. Same ground material, with
+## the height tint and slope rock switched on; a water surface over the rivers.
+func _build_terrain_ground(mat: ShaderMaterial) -> void:
+	var tint := GradientTexture1D.new()
+	tint.use_hdr = true
+	tint.gradient = profile.height_tint if profile.height_tint != null else Hd2dSceneryProfile.default_height_tint()
+	mat.set_shader_parameter(&"height_tint", tint)
+	mat.set_shader_parameter(&"height_max", maxf(_terrain.max_height(), 1.0))
+	mat.set_shader_parameter(&"rock_slope", profile.rock_slope_threshold)
+	mat.set_shader_parameter(&"slope_shade", profile.slope_shade)
+	mat.set_shader_parameter(&"level_height", TerrainTuning.load_default().height_per_level_cells * _cell)
+	mat.set_shader_parameter(&"contour_strength", profile.contour_strength)
+
+	var xs: PackedFloat32Array = _terrain_axis(_cols)
+	var zs: PackedFloat32Array = _terrain_axis(_rows)
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for j: int in zs.size():
+		for i: int in xs.size():
+			var p := Vector2(xs[i], zs[j])
+			var skirt: bool = i == 0 or j == 0 or i == xs.size() - 1 or j == zs.size() - 1
+			st.set_uv(p / _cell)
+			st.add_vertex(to_world(p, 0.0 if skirt else ground_height(p)))
+	var w: int = xs.size()
+	for j: int in zs.size() - 1:
+		for i: int in w - 1:
+			var a: int = j * w + i
+			st.add_index(a)
+			st.add_index(a + 1)
+			st.add_index(a + w)
+			st.add_index(a + 1)
+			st.add_index(a + w + 1)
+			st.add_index(a + w)
+	st.generate_normals()
+	var mi := MeshInstance3D.new()
+	mi.name = "Ground"
+	mi.mesh = st.commit()
+	mi.material_override = mat
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	_own(mi)
+	_build_water()
+
+
+## Vertex coordinates (2D px) along one axis: the skirt edge, then the grid
+## plus margin at TERRAIN_VERTS_PER_CELL, then the far skirt edge.
+func _terrain_axis(cells: int) -> PackedFloat32Array:
+	var out := PackedFloat32Array()
+	out.append(-SKIRT_CELLS * _cell)
+	var steps: int = (cells + MARGIN_CELLS * 2) * TERRAIN_VERTS_PER_CELL
+	for k: int in steps + 1:
+		out.append((float(k) / TERRAIN_VERTS_PER_CELL - MARGIN_CELLS) * _cell)
+	out.append((cells + SKIRT_CELLS) * _cell)
+	return out
+
+
+## One flat water surface at the surface's water level over the rivers'
+## bounding rect (spec §6.2); the ground pokes through it everywhere but the beds.
+func _build_water() -> void:
+	var bounds: Rect2 = _terrain.water_bounds()
+	if bounds.size == Vector2.ZERO:
+		return
+	# Past the grid the surface clamps to the edge rows, so a river touching
+	# the border keeps flowing through the margin: cover that too.
+	bounds = bounds.grow(_cell * MARGIN_CELLS)
+	var plane := PlaneMesh.new()
+	plane.size = Vector2(bounds.size.x, bounds.size.y * _z_stretch)
+	var mat := ShaderMaterial.new()
+	mat.shader = WATER_SHADER
+	mat.set_shader_parameter(&"water_color", profile.water_color)
+	mat.set_shader_parameter(&"z_stretch", _z_stretch)
+	mat.set_shader_parameter(&"texel_world", profile.ground_texel_px)
+	var mi := MeshInstance3D.new()
+	mi.name = "Water"
+	mi.mesh = plane
+	mi.material_override = mat
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_own(mi)
+	mi.position = to_world(bounds.get_center(), _terrain.water_level())
 
 
 # --- Cards ----------------------------------------------------------------
@@ -452,7 +581,7 @@ func _build_grass() -> void:
 		var k: int = _rng.randi() % cards.size()
 		var s: float = _rng.randf_range(0.75, 1.3)
 		var b := Basis(Vector3.UP, _rng.randf() * TAU).scaled(Vector3(s, s * _rng.randf_range(0.85, 1.2), s))
-		per_card[k]["x"].append(Transform3D(b, to_world(p)))
+		per_card[k]["x"].append(Transform3D(b, _on_ground(p)))
 		var v: float = _rng.randf_range(0.66, 0.95)
 		per_card[k]["c"].append(Color(v * profile.grass_tint.r, v * profile.grass_tint.g, v * profile.grass_tint.b))
 	for k in cards.size():
@@ -472,7 +601,7 @@ func _build_flowers() -> void:
 		var p: Vector2 = _random_point(_cell)
 		if not _is_open_ground(p):
 			continue
-		xforms.append(Transform3D(Basis(Vector3.UP, _rng.randf() * TAU), to_world(p)))
+		xforms.append(Transform3D(Basis(Vector3.UP, _rng.randf() * TAU), _on_ground(p)))
 		colors.append(Color.WHITE)
 	_scatter("Flowers", cross_card_mesh(16.0, 12.0), _card_material(profile.flower_card, 1.5), xforms, colors)
 
@@ -495,7 +624,7 @@ func _build_bushes() -> void:
 			continue
 		var s: float = _rng.randf_range(0.8, 1.3)
 		_rng.randf()  # was the card's yaw; still drawn so later scatter keeps its RNG sequence
-		xforms.append(Transform3D(Basis.IDENTITY.scaled(Vector3(s, s, s)), to_world(p)))
+		xforms.append(Transform3D(Basis.IDENTITY.scaled(Vector3(s, s, s)), _on_ground(p)))
 		var v: float = _rng.randf_range(0.8, 1.0)
 		colors.append(Color(v, v, v))
 		placed += 1
@@ -575,7 +704,7 @@ func _build_broadleaf(p2d: Vector2, s: float) -> void:
 	var tree := Node3D.new()
 	tree.name = "Tree"
 	add_child(tree)
-	tree.position = to_world(p2d)
+	tree.position = _on_ground(p2d)
 	var trunk := CylinderMesh.new()
 	trunk.top_radius = 6.0 * s
 	trunk.bottom_radius = 10.0 * s
@@ -613,7 +742,7 @@ func _build_pine(p2d: Vector2, s: float) -> void:
 		# Kenney pines are slender; widen a little to match the reference's
 		# full-bodied conifers.
 		kit.scale = Vector3(k * 1.25, k, k * 1.25)
-		kit.position = to_world(p2d)
+		kit.position = _on_ground(p2d)
 		kit.rotation.y = _kit_rng.randf() * TAU
 		return
 	var q := QuadMesh.new()
@@ -627,7 +756,7 @@ func _build_pine(p2d: Vector2, s: float) -> void:
 	m.billboard_mode = BaseMaterial3D.BILLBOARD_FIXED_Y
 	mi.material_override = m
 	_own(mi)
-	mi.position = to_world(p2d)
+	mi.position = _on_ground(p2d)
 
 
 # --- Fence, ruins, rocks --------------------------------------------------
@@ -654,10 +783,10 @@ func _build_fence() -> void:
 		var c := Vector2i(floori(x / _cell), 0)
 		if not _lane.has(c) and not _landmarks.has(c):
 			var lean: float = _rng.randf_range(-6.0, 6.0)
-			_box(Vector3(9, 46, 9), to_world(Vector2(x, y2d), 23.0), wood, Vector3(lean, 0, lean * 0.5))
+			_box(Vector3(9, 46, 9), _on_ground(Vector2(x, y2d), 23.0), wood, Vector3(lean, 0, lean * 0.5))
 			if x + step < _cols * _cell - _cell * 0.6:
-				_box(Vector3(step, 6, 4), to_world(Vector2(x + step * 0.5, y2d), 34.0), wood, Vector3(0, 0, _rng.randf_range(-3, 3)))
-				_box(Vector3(step, 6, 4), to_world(Vector2(x + step * 0.5, y2d), 18.0), wood, Vector3(0, 0, _rng.randf_range(-3, 3)))
+				_box(Vector3(step, 6, 4), _on_ground(Vector2(x + step * 0.5, y2d), 34.0), wood, Vector3(0, 0, _rng.randf_range(-3, 3)))
+				_box(Vector3(step, 6, 4), _on_ground(Vector2(x + step * 0.5, y2d), 18.0), wood, Vector3(0, 0, _rng.randf_range(-3, 3)))
 		x += step
 
 
@@ -678,28 +807,28 @@ func _build_ruins() -> void:
 			var h: float = _rng.randf_range(60.0, 110.0)
 			var rot := Vector3(0, _rng.randf_range(-10, 10), _rng.randf_range(-3, 3))
 			if profile.kit_columns.is_empty():
-				_box(Vector3(30, h, 30), to_world(at, h * 0.5), brick, rot)
+				_box(Vector3(30, h, 30), _on_ground(at, h * 0.5), brick, rot)
 			else:
 				var col: MeshInstance3D = _kit_instance(_kit_pick(profile.kit_columns), profile.ruin_bricks, profile.ruin_tint)
 				col.name = "Column"
 				var size: Vector3 = col.mesh.get_aabb().size
 				col.scale = Vector3(30.0 / size.x, h / size.y, 30.0 / size.z)
-				col.position = to_world(at)
+				col.position = _on_ground(at)
 				col.rotation_degrees = rot
-			_box(Vector3(42, 8, 42), to_world(at, 4.0), brick)
+			_box(Vector3(42, 8, 42), _on_ground(at, 4.0), brick)
 		for i in 4:
 			var at: Vector2 = centre + Vector2(_rng.randf_range(-1.2, 1.2), _rng.randf_range(-1.2, 1.2)) * _cell
 			if _lane.has(Vector2i(floori(at.x / _cell), floori(at.y / _cell))):
 				continue
 			var rot := Vector3(_rng.randf_range(-15, 15), _rng.randf() * 90.0, _rng.randf_range(-15, 15))
 			if profile.kit_rubble.is_empty():
-				_box(Vector3(20, 12, 16), to_world(at, 5.0), brick, rot)
+				_box(Vector3(20, 12, 16), _on_ground(at, 5.0), brick, rot)
 			else:
 				var tex: Texture2D = profile.kit_rubble_texture if profile.kit_rubble_texture != null else profile.ruin_bricks
 				var block: MeshInstance3D = _kit_instance(_kit_pick(profile.kit_rubble), tex, profile.ruin_tint)
 				block.name = "Rubble"
 				block.scale = Vector3.ONE * 20.0 / block.mesh.get_aabb().size.x
-				block.position = to_world(at, -2.0)
+				block.position = _on_ground(at, -2.0)
 				block.rotation_degrees = rot
 
 
@@ -730,7 +859,7 @@ func _build_rocks() -> void:
 			# height multiplier so taller variety survives.
 			var k: float = r * 2.4 / maxf(size.x, size.z)
 			kit.scale = Vector3(k * stretch.x, k * height_mul, k * stretch.z)
-			kit.position = to_world(p)
+			kit.position = _on_ground(p)
 			kit.rotation_degrees = rot
 			continue
 		var sphere := SphereMesh.new()
@@ -743,7 +872,7 @@ func _build_rocks() -> void:
 		mi.mesh = sphere
 		mi.material_override = mat
 		_own(mi)
-		mi.position = to_world(p, r * 0.25)
+		mi.position = _on_ground(p, r * 0.25)
 		mi.rotation_degrees = rot
 		mi.scale = stretch
 
@@ -789,7 +918,7 @@ func _build_lane_edges() -> void:
 			continue
 		var k: int = _rng.randi() % cards.size()
 		var s: float = _rng.randf_range(0.8, 1.25)
-		per_card[k]["x"].append(Transform3D(Basis(Vector3.UP, _rng.randf() * TAU).scaled(Vector3(s, s, s)), to_world(p)))
+		per_card[k]["x"].append(Transform3D(Basis(Vector3.UP, _rng.randf() * TAU).scaled(Vector3(s, s, s)), _on_ground(p)))
 		var v: float = _rng.randf_range(0.75, 1.0)
 		per_card[k]["c"].append(Color(v, v, v))
 	for k in cards.size():
@@ -859,7 +988,7 @@ func _build_spires() -> void:
 			var size: Vector3 = kit.mesh.get_aabb().size
 			var w: float = r * 2.6 / maxf(size.x, size.z)
 			kit.scale = Vector3(w, h / size.y, w)
-			kit.position = to_world(p)
+			kit.position = _on_ground(p)
 			kit.rotation_degrees = rot
 			continue
 		var cyl := CylinderMesh.new()
@@ -873,10 +1002,10 @@ func _build_spires() -> void:
 		mi.mesh = cyl
 		mi.material_override = mat
 		_own(mi)
-		mi.position = to_world(p, h * 0.5)
+		mi.position = _on_ground(p, h * 0.5)
 		mi.rotation_degrees = rot
 		# Rubble shelf at the foot so a spire never stands on a hard edge.
-		_box(Vector3(r * 1.6, 8, r * 1.4), to_world(p, 4.0), mat, Vector3(0, shelf_yaw, 0))
+		_box(Vector3(r * 1.6, 8, r * 1.4), _on_ground(p, 4.0), mat, Vector3(0, shelf_yaw, 0))
 
 
 ## Glowing crystal clusters (The Hollow): emissive prisms plus one small light
@@ -907,7 +1036,7 @@ func _build_crystals() -> void:
 			mi.mesh = prism
 			mi.material_override = mat
 			_own(mi)
-			mi.position = to_world(p, prism.height * 0.4)
+			mi.position = _on_ground(p, prism.height * 0.4)
 			mi.rotation_degrees = Vector3(_rng.randf_range(-22, 22), _rng.randf() * 360.0, _rng.randf_range(-22, 22))
 		var glow := OmniLight3D.new()
 		glow.name = "CrystalGlow"
@@ -917,7 +1046,7 @@ func _build_crystals() -> void:
 		glow.light_cull_mask = RENDER_LAYER
 		glow.layers = RENDER_LAYER  # see the sun's comment: lights are camera-culled by layers
 		add_child(glow)
-		glow.position = to_world(centre, 30.0)
+		glow.position = _on_ground(centre, 30.0)
 
 
 ## Stumps, logs and mushrooms on the blocked border / off-map (the
@@ -946,7 +1075,7 @@ func _build_debris() -> void:
 		var kit: MeshInstance3D = _kit_instance(scene, null)
 		kit.name = "Debris"
 		kit.scale = Vector3.ONE * k
-		kit.position = to_world(p)
+		kit.position = _on_ground(p)
 		kit.rotation.y = yaw
 
 
@@ -1002,7 +1131,7 @@ func _build_bank_debris() -> void:
 		var kit: MeshInstance3D = _kit_instance(scene, _kit_rock_texture(), profile.kit_rock_tint)
 		kit.name = "BankStone"
 		kit.scale = Vector3.ONE * k
-		kit.position = to_world(p)
+		kit.position = _on_ground(p)
 		kit.rotation.y = yaw
 		placed += 1
 
@@ -1028,7 +1157,7 @@ func _build_campfires() -> void:
 			var kit: MeshInstance3D = _kit_instance(scene, _kit_rock_texture(), profile.kit_rock_tint)
 			kit.name = "Campfire"
 			kit.scale = Vector3.ONE * 70.0
-			kit.position = to_world(p)
+			kit.position = _on_ground(p)
 			kit.rotation.y = yaw
 		var flame := _particles("CampfireFlame", 28, 0.9, 3.0, 2.6)
 		var pm := flame.process_material as ParticleProcessMaterial
@@ -1043,7 +1172,7 @@ func _build_campfires() -> void:
 		pm.scale_max = 2.2
 		pm.scale_curve = _curve_texture([Vector2(0, 1), Vector2(1, 0.2)])
 		pm.color_ramp = _gradient_texture([0.0, 0.35, 1.0], [Color(1, 0.95, 0.6, 1), Color(1, 0.45, 0.12, 0.9), Color(0.6, 0.12, 0.05, 0)])
-		flame.position = to_world(p, 3.0)
+		flame.position = _on_ground(p, 3.0)
 		flame.visibility_aabb = AABB(Vector3(-40, -10, -40), Vector3(80, 80, 80))
 		var light := OmniLight3D.new()
 		light.name = "CampfireLight"
@@ -1053,7 +1182,7 @@ func _build_campfires() -> void:
 		light.light_cull_mask = RENDER_LAYER
 		light.layers = RENDER_LAYER  # lights are camera-culled by layers (see the sun)
 		add_child(light)
-		light.position = to_world(p, 22.0)
+		light.position = _on_ground(p, 22.0)
 		_fires.append(light)
 
 
