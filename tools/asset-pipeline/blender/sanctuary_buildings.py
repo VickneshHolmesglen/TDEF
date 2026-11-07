@@ -28,153 +28,11 @@ YAW_DEG = 40.0        # camera swing toward +X
 TARGET_Z = 1.6
 BUILDINGS = ["armoury", "blacksmith", "castle", "keep", "menagerie", "seers_tower", "training_hall"]
 
-PAL = {
-    "wall": "#f1e4c6", "stone": "#cdbfa3", "stone_dark": "#9e917b", "timber": "#7d5034",
-    "wood": "#b07a43", "dark": "#3b3245", "gold": "#e9bb4c", "dirt": "#cfae80",
-    "cobble": "#c2b69c", "grass": "#86c25b", "iron": "#6f7784", "hay": "#e6c86a",
-    "cloth": "#e9ddc0", "water": "#5ab4e0",
-    "glow": "#ffb44a", "crystal": "#a6e6ff",
-}
 ROOF = {
     "armoury": "#4f70a0", "blacksmith": "#b9573d", "castle": "#3e70bc", "keep": "#3f9088",
     "menagerie": "#709f3d", "seers_tower": "#7c5cc4", "training_hall": "#d78a3a",
 }
-GLOWING = {"glow", "crystal"}
-
-
-# ---------------------------------------------------------------- materials
-def _hex(h):
-    h = h.lstrip("#")
-    return tuple((int(h[i:i + 2], 16) / 255.0) ** 2.2 for i in (0, 2, 4))
-
-
-def _node(nt, kind, **inputs):
-    n = nt.nodes.new(kind)
-    for k, v in inputs.items():
-        n.inputs[k].default_value = v
-    return n
-
-
-def _ramp(nt, stops, interp):
-    r = nt.nodes.new("ShaderNodeValToRGB")
-    cr = r.color_ramp
-    cr.interpolation = interp
-    while len(cr.elements) > 1:
-        cr.elements.remove(cr.elements[-1])
-    cr.elements[0].position = stops[0][0]
-    cr.elements[0].color = (*stops[0][1], 1)
-    for p, c in stops[1:]:
-        cr.elements.new(p).color = (*c, 1)
-    return r
-
-
-def _mix_mul(nt, a, b):
-    m = nt.nodes.new("ShaderNodeMix")
-    m.data_type = "RGBA"
-    m.blend_type = "MULTIPLY"
-    m.inputs["Factor"].default_value = 1.0
-    nt.links.new(a, m.inputs[6])
-    nt.links.new(b, m.inputs[7])
-    return m.outputs[2]
-
-
-_MATS = {}
-
-
-def mat(key):
-    """Painted-vector material for a palette key or a roof hex colour."""
-    if key in _MATS:
-        return _MATS[key]
-    hexcol = PAL.get(key, key)
-    m = bpy.data.materials.new("sb_" + key.lstrip("#"))
-    m.use_nodes = True
-    nt = m.node_tree
-    nt.nodes.clear()
-    out = nt.nodes.new("ShaderNodeOutputMaterial")
-    col = nt.nodes.new("ShaderNodeRGB")
-    col.outputs[0].default_value = (*_hex(hexcol), 1)
-    if key in GLOWING:
-        em = _node(nt, "ShaderNodeEmission", Strength=1.6)
-        nt.links.new(col.outputs[0], em.inputs["Color"])
-        nt.links.new(em.outputs[0], out.inputs["Surface"])
-        _MATS[key] = m
-        return m
-    # brush grain: stretched noise in object space, +-7 %
-    tc = nt.nodes.new("ShaderNodeTexCoord")
-    mp = nt.nodes.new("ShaderNodeMapping")
-    mp.inputs["Scale"].default_value = (2.0, 2.0, 9.0)
-    nt.links.new(tc.outputs["Object"], mp.inputs[0])
-    nz = _node(nt, "ShaderNodeTexNoise", Scale=4.0, Detail=3.0)
-    nt.links.new(mp.outputs[0], nz.inputs[0])
-    mr = nt.nodes.new("ShaderNodeMapRange")
-    mr.inputs["To Min"].default_value = 0.93
-    mr.inputs["To Max"].default_value = 1.07
-    nt.links.new(nz.outputs["Fac"], mr.inputs[0])
-    albedo = _mix_mul(nt, col.outputs[0], mr.outputs[0])
-    # banded light (same 3-4 tones as painted_prop.gdshader)
-    diff = nt.nodes.new("ShaderNodeBsdfDiffuse")
-    nt.links.new(albedo, diff.inputs["Color"])
-    s2r = nt.nodes.new("ShaderNodeShaderToRGB")
-    nt.links.new(diff.outputs[0], s2r.inputs[0])
-    bw = nt.nodes.new("ShaderNodeRGBToBW")
-    nt.links.new(s2r.outputs["Color"], bw.inputs[0])
-    lum = _node(nt, "ShaderNodeMath")
-    lum.operation = "DIVIDE"
-    lum.inputs[1].default_value = max(0.05, sum(_hex(hexcol)) / 3.0)
-    nt.links.new(bw.outputs[0], lum.inputs[0])
-    r = _ramp(nt, [(0.0, (0.55, 0.55, 0.68)), (0.3, (0.74, 0.73, 0.82)),
-                   (0.55, (0.97, 0.96, 0.93)), (0.85, (1.08, 1.05, 0.98))], "CONSTANT")
-    nt.links.new(lum.outputs[0], r.inputs[0])
-    shaded = _mix_mul(nt, albedo, r.outputs[0])
-    em = _node(nt, "ShaderNodeEmission", Strength=1.0)
-    nt.links.new(shaded, em.inputs["Color"])
-    nt.links.new(em.outputs[0], out.inputs["Surface"])
-    _MATS[key] = m
-    return m
-
-
-# ---------------------------------------------------------------- geometry
-_COLL = None
-
-
-def _obj(name, verts, faces, key):
-    me = bpy.data.meshes.new(name)
-    me.from_pydata(verts, [], faces)
-    me.update()
-    o = bpy.data.objects.new(name, me)
-    o.data.materials.append(mat(key))
-    _COLL.objects.link(o)
-    return o
-
-
-def _rot(x, y, a):
-    c, s = math.cos(a), math.sin(a)
-    return x * c - y * s, x * s + y * c
-
-
-def box(x, y, z, w, d, h, key, rot=0.0):
-    """Axis box, base centre at (x, y, z)."""
-    pts = [(-w / 2, -d / 2), (w / 2, -d / 2), (w / 2, d / 2), (-w / 2, d / 2)]
-    pts = [_rot(px, py, rot) for px, py in pts]
-    v = [(x + px, y + py, z) for px, py in pts] + [(x + px, y + py, z + h) for px, py in pts]
-    f = [(0, 3, 2, 1), (4, 5, 6, 7), (0, 1, 5, 4), (1, 2, 6, 5), (2, 3, 7, 6), (3, 0, 4, 7)]
-    return _obj("box", v, f, key)
-
-
-def prism(x, y, z, r0, r1, h, key, n=16, rot=0.0):
-    """n-sided frustum (cylinder when r0 == r1, cone/pyramid when r1 == 0)."""
-    v = []
-    for ring, r in ((0, r0), (1, r1)):
-        for i in range(n):
-            a = rot + math.tau * i / n
-            v.append((r * math.cos(a), r * math.sin(a), h * ring))
-    f = [tuple(range(n - 1, -1, -1)), tuple(range(n, 2 * n))]
-    f += [(i, (i + 1) % n, n + (i + 1) % n, n + i) for i in range(n)]
-    if h < 0:
-        f = [tuple(reversed(face)) for face in f]
-    o = _obj("prism", v, f, key)
-    o.location = (x, y, z)  # local verts: rotations pivot on the base centre
-    return o
+exec(open(r"G:/TDef/tools/asset-pipeline/blender/painted_kit.py").read())
 
 
 def gable(x, y, z, w, d, h, key, along_x=True, over=0.08):
@@ -611,79 +469,14 @@ BUILDERS = {
 
 
 # ---------------------------------------------------------------- scene/render
-def _clear():
-    """Empties the building collection (camera and sun live outside it)."""
-    global _COLL
-    _COLL = bpy.data.collections.get("SanctuaryBuilding")
-    if _COLL is None:
-        _COLL = bpy.data.collections.new("SanctuaryBuilding")
-        bpy.context.scene.collection.children.link(_COLL)
-    for o in list(_COLL.objects):
-        bpy.data.objects.remove(o, do_unlink=True)
-    for me in list(bpy.data.meshes):
-        if me.users == 0:
-            bpy.data.meshes.remove(me)
-
-
 def _setup_scene():
-    sc = bpy.context.scene
-    for eng in ("BLENDER_EEVEE_NEXT", "BLENDER_EEVEE"):
-        try:
-            sc.render.engine = eng
-            break
-        except TypeError:
-            continue
-    sc.view_settings.view_transform = "Standard"
-    sc.render.resolution_x = sc.render.resolution_y = RES
-    sc.render.film_transparent = True
-    sc.render.image_settings.file_format = "PNG"
-    sc.render.image_settings.color_mode = "RGBA"
-    sc.render.use_freestyle = True
-    sc.render.line_thickness_mode = "ABSOLUTE"
-    sc.render.line_thickness = 2.4
-    vl = sc.view_layers[0]
-    vl.use_freestyle = True
-    fs = vl.freestyle_settings
-    if not fs.linesets:
-        fs.linesets.new("outline")
-    ls = fs.linesets[0]
-    ls.select_by_visibility = True
-    ls.select_by_edge_types = True
-    ls.select_silhouette = True
-    ls.select_border = True
-    ls.select_crease = True
-    ls.linestyle.color = (0.16, 0.12, 0.17)
-    ls.linestyle.thickness = 2.4
-    fs.crease_angle = math.radians(120)
-    if sc.world is None:
-        sc.world = bpy.data.worlds.new("World")
-    sc.world.use_nodes = True
-    bg = next(n for n in sc.world.node_tree.nodes if n.type == "BACKGROUND")
-    bg.inputs["Color"].default_value = (0.45, 0.47, 0.55, 1)
-    bg.inputs["Strength"].default_value = 0.6
-    sun = bpy.data.objects.get("sb_sun")
-    if sun is None:
-        sun = bpy.data.objects.new("sb_sun", bpy.data.lights.new("sb_sun", "SUN"))
-        sc.collection.objects.link(sun)
-    sun.data.energy = 3.0
-    sun.data.angle = math.radians(2)
-    sun.rotation_euler = (math.radians(42), math.radians(-14), math.radians(-28))
-    cam = bpy.data.objects.get("sb_cam")
-    if cam is None:
-        cam = bpy.data.objects.new("sb_cam", bpy.data.cameras.new("sb_cam"))
-        sc.collection.objects.link(cam)
-    cam.data.type = "ORTHO"
-    cam.data.ortho_scale = ORTHO
-    p, y = math.radians(PITCH_DEG), math.radians(YAW_DEG)
-    dist = 30.0
-    cam.location = (dist * math.cos(p) * math.sin(y), -dist * math.cos(p) * math.cos(y),
-                    TARGET_Z + dist * math.sin(p))
-    cam.rotation_euler = (math.pi / 2 - p, 0, y)
-    sc.camera = cam
+    setup_render(RES, RES)
+    ortho_camera(PITCH_DEG, YAW_DEG, (0.0, 0.0, TARGET_Z), ORTHO)
 
 
 def build(building_id, tier):
-    _clear()
+    clear_collection("SanctuaryBuilding")
+    solo_collections(["SanctuaryBuilding"])
     BUILDERS[building_id](tier, ROOF[building_id])
 
 
@@ -693,8 +486,5 @@ def render_all(ids=None, tiers=None):
     for bid in ids or BUILDINGS:
         for t in tiers or range(1, 6):
             build(bid, t)
-            path = RAW_DIR + "%s_tier_%d.png" % (bid, t)
-            bpy.context.scene.render.filepath = path
-            bpy.ops.render.render(write_still=True)
-            done.append(path)
+            done.append(render_to(RAW_DIR + "%s_tier_%d.png" % (bid, t)))
     return done

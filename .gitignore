@@ -162,3 +162,6 @@ portfolio-readme-brief.md
 
 # Raw Blender renders of the Sanctuary buildings (regenerate with tools/asset-pipeline/blender/sanctuary_buildings.py)
 assets/source/3d/sanctuary_buildings/
+# Raw unit renders (regenerate with tools/asset-pipeline/blender/unit_kit.py / rigged_monster.py)
+assets/source/3d/units/monsters/
+assets/source/3d/units/hero/
