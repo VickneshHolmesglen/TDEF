@@ -36,6 +36,8 @@ extends Resource
 ## The blueprint's display_name, for player-facing lists (wave report, 2026-11-05).
 ## Empty when a caller builds the payload without one.
 @export var display_name: String = ""
+## Hill level the tower stands on (spec 2026-11-07-3d-terrain §4.2).
+@export var terrain_level: int = 0
 
 
 ## Convenience factory — lets callers that only care about the pre-existing

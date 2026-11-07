@@ -210,11 +210,15 @@ func place_tower_at(blueprint_id: StringName, center: Vector2) -> bool:
 		push_error("[TowerSystem] Unknown blueprint_id '%s'" % blueprint_id)
 		return false
 	var data: TowerBlueprintData = _tower_table[blueprint_id] as TowerBlueprintData
+	var size: Vector2i = data.foundation.footprint
+	# Hill price (spec 2026-11-07-3d-terrain §4.2). A mixed-height square (-1)
+	# is rejected by Gate 3; its base price only matters for the gate order.
+	var level: int = maxi(0, GGrid.square_height_level(center, size))
+	var cost: int = terrain_cost(data.placement_cost, level)
 	# Gate 2 — Resource
-	if not GMissionEconomy.can_afford(data.placement_cost):
+	if not GMissionEconomy.can_afford(cost):
 		return false
 	# Gate 3 — Grid footprint
-	var size: Vector2i = data.foundation.footprint
 	if not _grid.is_square_placeable(center, size):
 		return false
 	# Gate 4 — Path integrity (NEVER skipped on commit)
@@ -231,7 +235,8 @@ func place_tower_at(blueprint_id: StringName, center: Vector2) -> bool:
 		return false
 	var state := TowerMissionState.new()
 	state.tower_id = tower_id
-	state.placement_cost = data.placement_cost
+	state.placement_cost = cost
+	state.terrain_level = level
 	# ADR-0008 Component Deep-Copy Policy: independent mission-instance copies,
 	# isolated from the inventory-owned blueprint — mutations (e.g. `damaged`)
 	# never write back to `data`.
@@ -253,7 +258,7 @@ func place_tower_at(blueprint_id: StringName, center: Vector2) -> bool:
 	state.current_hp = state.max_hp
 	state.attack_timer_remaining = 0.0  # Fire on first combat frame
 	placed_towers[tower_id] = state
-	GEventBus.resources_changed.emit(-data.placement_cost, &"tower_placed")
+	GEventBus.resources_changed.emit(-cost, &"tower_placed")
 	var placed_in_scout: bool = _current_phase == Phase.SCOUT
 	var payload := TowerPlacedEvent.new()
 	payload.tower_id = tower_id
@@ -269,6 +274,7 @@ func place_tower_at(blueprint_id: StringName, center: Vector2) -> bool:
 	payload.focus_component_id = state.focus.component_id
 	payload.power_component_id = state.power.component_id
 	payload.display_name = data.display_name
+	payload.terrain_level = level
 	GEventBus.tower_placed.emit(payload)
 	# Real bug fixed here (2026-08-13, found while implementing the
 	# perk-badge VFX): this previously fired unconditionally for every
@@ -346,8 +352,10 @@ func get_placement_preview_at(blueprint_id: StringName, center: Vector2) -> Plac
 		preview.valid = false
 		preview.reason = PlacementPreview.PlacementBlockReason.WAVE_ACTIVE
 		return preview
+	preview.cost = terrain_cost(data.placement_cost,
+			maxi(0, GGrid.square_height_level(center, data.foundation.footprint)))
 	# Gate 2
-	if not GMissionEconomy.can_afford(data.placement_cost):
+	if not GMissionEconomy.can_afford(preview.cost):
 		preview.valid = false
 		preview.reason = PlacementPreview.PlacementBlockReason.INSUFFICIENT_RESOURCES
 		return preview
@@ -426,8 +434,10 @@ func is_in_range(tower_cell: Vector2i, enemy_cell: Vector2i, focus: FocusCompone
 ## Gridless range check (option C, 2026-11-04): true when `enemy_pos` lies
 ## within the WorldRange circle of the effective range around `tower_pos`.
 ## Usage: is_in_range_at(state_center, monster_pos, state.focus, state.shaft)
-func is_in_range_at(tower_pos: Vector2, enemy_pos: Vector2, focus: FocusComponent, shaft: ShaftComponent = null) -> bool:
-	return WorldRange.within(tower_pos, enemy_pos, _get_effective_range(focus, shaft))
+## terrain_level: the tower's hill level (+terrain_range_bonus cells).
+func is_in_range_at(tower_pos: Vector2, enemy_pos: Vector2, focus: FocusComponent, shaft: ShaftComponent = null,
+		terrain_level: int = 0) -> bool:
+	return WorldRange.within(tower_pos, enemy_pos, _get_effective_range(focus, shaft, terrain_level))
 
 
 ## World centre a tower measures its ranges from: its true square centre, or
@@ -460,12 +470,25 @@ func _hero_position() -> Vector2:
 	return _grid.cell_to_world(_hero_cell)
 
 
-## Effective range after Shaft's range_bonus_cells and the cone bonus.
-func _get_effective_range(focus: FocusComponent, shaft: ShaftComponent = null) -> int:
-	var range_bonus: int = shaft.range_bonus_cells if shaft != null else 0
+## Effective range after Shaft's range_bonus_cells, the cone bonus and the
+## hill bonus (added last, on top of the 8-cell cap: spec 2026-11-07-3d-terrain §4.2).
+func _get_effective_range(focus: FocusComponent, shaft: ShaftComponent = null, terrain_level: int = 0) -> int:
+	var range_bonus: int = (shaft.range_bonus_cells if shaft != null else 0) + terrain_range_bonus(terrain_level)
 	if focus.cone_half_angle <= 30.0:
 		return focus.attack_range_cells + range_bonus + 2
 	return focus.attack_range_cells + range_bonus
+
+
+## Placement price on a hill: base × (1 + hill_cost_per_level × level), rounded.
+## Example: TowerSystem.terrain_cost(100, 1) == 125
+static func terrain_cost(base_cost: int, level: int) -> int:
+	return roundi(base_cost * (1.0 + TerrainTuning.load_default().hill_cost_per_level * level))
+
+
+## Cells a hill of `level` adds to every range of a tower standing on it.
+## Example: TowerSystem.terrain_range_bonus(2) == 2
+static func terrain_range_bonus(level: int) -> int:
+	return TerrainTuning.load_default().hill_range_per_level * maxi(0, level)
 
 # ---------------------------------------------------------------------------
 # Attack resolution
@@ -493,7 +516,7 @@ func _try_attack(state: TowerMissionState) -> void:
 		pulse.tower_id = state.tower_id
 		pulse.aura_effect_type = state.weapon.aura_effect_type
 		pulse.aura_effect_value = state.weapon.aura_effect_value
-		pulse.aura_radius_cells = state.weapon.aura_radius_cells
+		pulse.aura_radius_cells = state.weapon.aura_radius_cells + terrain_range_bonus(state.terrain_level)
 		GEventBus.tower_aura_pulse.emit(pulse)
 		_apply_aura_pulse(state)
 		state.aura_applications_this_wave += 1  # tower.md Rule 23
@@ -639,7 +662,7 @@ func _apply_aura_pulse(source_state: TowerMissionState) -> void:
 	if source_state.weapon.aura_effect_type != "damage_buff":
 		return
 	var fraction: float = clampf(source_state.weapon.aura_effect_value, 0.0, MAX_DAMAGE_BUFF_FRACTION)
-	var radius: int = source_state.weapon.aura_radius_cells
+	var radius: int = source_state.weapon.aura_radius_cells + terrain_range_bonus(source_state.terrain_level)
 	var origin: Vector2 = _tower_center(source_state)
 	for id: int in placed_towers:
 		var ally: TowerMissionState = placed_towers[id] as TowerMissionState
@@ -763,7 +786,7 @@ func _candidates_in_range(state: TowerMissionState) -> Array[int]:
 	var center: Vector2 = _tower_center(state)
 	for entity_id: int in _monster_cache:
 		var entry: Dictionary = _monster_cache[entity_id] as Dictionary
-		if is_in_range_at(center, _monster_position(entity_id), state.focus, state.shaft) \
+		if is_in_range_at(center, _monster_position(entity_id), state.focus, state.shaft, state.terrain_level) \
 				and can_target(state, entry, entity_id):
 			result.append(entity_id)
 	return result

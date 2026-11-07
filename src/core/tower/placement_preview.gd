@@ -15,4 +15,6 @@ enum PlacementBlockReason {
 }
 
 var valid: bool = false
+## Price at the hovered spot, hill premium included (spec 2026-11-07-3d-terrain §4.2).
+var cost: int = 0
 var reason: PlacementBlockReason = PlacementBlockReason.NONE

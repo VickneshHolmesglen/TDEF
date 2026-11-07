@@ -15,7 +15,10 @@ extends RefCounted
 ## mutable-mission-state concept per tower.md's schema.
 
 var tower_id: int = -1
-var placement_cost: int = 0
+var placement_cost: int = 0  ## price actually paid (hill price included)
+## Hill level of the tower's cells (spec 2026-11-07-3d-terrain §4.2); every
+## range read adds TowerSystem.terrain_range_bonus(terrain_level).
+var terrain_level: int = 0
 var foundation: FoundationComponent = null
 var weapon: WeaponComponent = null
 var focus: FocusComponent = null

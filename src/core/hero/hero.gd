@@ -944,7 +944,9 @@ func _update_class_proximity(delta: float) -> void:
 		var entry: Dictionary = _tower_cache[tower_id] as Dictionary
 		var tower_cell: Vector2i = entry["cell"] as Vector2i
 		var dist: int = maxi(abs(hero_cell.x - tower_cell.x), abs(hero_cell.y - tower_cell.y))
-		if dist <= CLASS_PROXIMITY_RADIUS:
+		# A hill tower's reach grows on every range, this radius included
+		# (spec 2026-11-07-3d-terrain §4.2).
+		if dist <= CLASS_PROXIMITY_RADIUS + TowerSystem.terrain_range_bonus(entry.get("terrain_level", 0) as int):
 			var arch: StringName = entry["archetype"] as StringName
 			_proximity_time[arch] = _proximity_time.get(arch, 0.0) + delta
 			if _proximity_time[arch] >= CLASS_UNLOCK_THRESHOLD_S:
@@ -1215,7 +1217,8 @@ func _on_wave_completed(_wave_number: int, _enemies_remaining: int, _was_boss_br
 ## Amendment 2026-07-19 (Epic 06 Story 008): tower_placed promoted to a
 ## TowerPlacedEvent Resource payload.
 func _on_tower_placed(payload: TowerPlacedEvent) -> void:
-	_tower_cache[payload.tower_id] = {"archetype": StringName(payload.archetype), "cell": payload.grid_position}
+	_tower_cache[payload.tower_id] = {"archetype": StringName(payload.archetype), "cell": payload.grid_position,
+			"terrain_level": payload.terrain_level}
 
 
 ## Voluntary removal (SCOUT/INTERMISSION) — erase from cache. grid_position/archetype
