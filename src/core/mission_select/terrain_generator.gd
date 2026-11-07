@@ -61,9 +61,15 @@ static func _river_shape(config: GridConfig, index: int, total: int, rng: Random
 	var hi: int = config.cols - 4
 	var slice: float = float(hi - lo) / total
 	var base: float = lo + slice * index + rng.randf_range(0.3, 0.7) * slice
+	var amp: float = rng.randf_range(0.8, 1.8)
+	if total > 1:
+		# Twin rivers stay centred in their own half with a gentler meander, so
+		# their smoothed beds never merge into one lake (live-found 2026-11-08).
+		base = lo + slice * (index + 0.5)
+		amp = minf(amp, 1.0)
 	return {
 		"base": base,
-		"amp": rng.randf_range(0.8, 1.8),
+		"amp": amp,
 		"freq": rng.randf_range(0.45, 0.75),
 		"phase": rng.randf_range(0.0, TAU),
 	}

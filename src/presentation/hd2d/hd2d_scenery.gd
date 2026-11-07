@@ -26,6 +26,13 @@ const RENDER_LAYER: int = 1 << 11
 const GROUND_SHADER: Shader = preload("res://src/shaders/hd2d_ground.gdshader")
 const CARD_SHADER: Shader = preload("res://src/shaders/hd2d_foliage_card.gdshader")
 const WATER_SHADER: Shader = preload("res://src/shaders/hd2d_water.gdshader")
+## Painted-vector style (spec 2026-11-08-painted-vector-style-design).
+const PAINTED_GROUND_SHADER: Shader = preload("res://src/shaders/painted_ground.gdshader")
+const PAINTED_WATER_SHADER: Shader = preload("res://src/shaders/painted_water.gdshader")
+const PAINTED_PROP_SHADER: Shader = preload("res://src/shaders/painted_prop.gdshader")
+## The painted look wants clarity: lighter haze and a gentler miniature blur.
+const PAINTED_HAZE_SCALE: float = 0.35
+const PAINTED_TILT_SHIFT_SCALE: float = 0.5
 ## Terrain ground mesh resolution: vertices per cell side (spec 2026-11-07-3d-terrain §6.1).
 const TERRAIN_VERTS_PER_CELL: int = 4
 ## Flat ground skirt past the margin, in cells: the ortho view never sees an edge.
@@ -124,8 +131,13 @@ func build(cols: int, rows: int, cell_size: float, cells: Dictionary) -> void:
 	# Atmosphere pass (2026-10-15), after everything that draws from _rng.
 	_build_bank_debris()
 	_build_campfires()
-	_build_clouds()
-	_build_motes()
+	if _painted():
+		# Painted look (spec 2026-11-08): clean fills, so no pixel-stepped cloud
+		# shadows or floating motes; every remaining textured prop is repainted.
+		_paint_props()
+	else:
+		_build_clouds()
+		_build_motes()
 
 
 ## The 2D gameplay layer's light for this mission (ADR-0042 unit pass): a
@@ -342,7 +354,7 @@ func _build_camera_and_light() -> void:
 	if profile.haze_strength > 0.0:
 		env.fog_enabled = true
 		env.fog_mode = Environment.FOG_MODE_DEPTH
-		env.fog_density = profile.haze_strength
+		env.fog_density = profile.haze_strength * (PAINTED_HAZE_SCALE if _painted() else 1.0)
 		env.fog_light_color = profile.haze_color
 		env.fog_light_energy = 1.0
 		env.fog_sky_affect = 0.0
@@ -360,7 +372,7 @@ func _build_camera_and_light() -> void:
 		var attr := CameraAttributesPractical.new()
 		attr.dof_blur_far_enabled = true
 		attr.dof_blur_near_enabled = true
-		attr.dof_blur_amount = profile.tilt_shift
+		attr.dof_blur_amount = profile.tilt_shift * (PAINTED_TILT_SHIFT_SCALE if _painted() else 1.0)
 		_camera.attributes = attr
 	add_child(_camera)
 	_camera.current = true
@@ -397,6 +409,23 @@ func _build_ground() -> void:
 			img.set_pixel(x, y, Color(1.0 if _lane.has(cell) else 0.0, g, 0.0, 1.0))
 
 	var mat := ShaderMaterial.new()
+	if _painted():
+		mat.shader = PAINTED_GROUND_SHADER
+		mat.set_shader_parameter(&"lane_mask", ImageTexture.create_from_image(img))
+		mat.set_shader_parameter(&"mask_origin", -Vector2(MARGIN_CELLS, MARGIN_CELLS) * _cell)
+		mat.set_shader_parameter(&"mask_size", Vector2(_cols + MARGIN_CELLS * 2, _rows + MARGIN_CELLS * 2) * _cell)
+		mat.set_shader_parameter(&"z_stretch", _z_stretch)
+		mat.set_shader_parameter(&"tier_low", profile.painted_tier_low)
+		mat.set_shader_parameter(&"tier_high", profile.painted_tier_high)
+		mat.set_shader_parameter(&"side_shade", profile.painted_side_shade)
+		mat.set_shader_parameter(&"patch_tint", profile.painted_patch_tint)
+		mat.set_shader_parameter(&"lane_color", profile.painted_lane)
+		mat.set_shader_parameter(&"stone_color", profile.painted_stone)
+		mat.set_shader_parameter(&"level_height", TerrainTuning.load_default().height_per_level_cells * _cell)
+		mat.set_shader_parameter(&"max_level", float(GridConfig.MAX_HEIGHT_LEVEL))
+		mat.set_shader_parameter(&"rim_strength", profile.contour_strength)
+		_finish_ground(mat)
+		return
 	mat.shader = GROUND_SHADER
 	mat.set_shader_parameter(&"grass_tex", profile.ground_grass)
 	mat.set_shader_parameter(&"dirt_tex", profile.ground_dirt)
@@ -409,6 +438,12 @@ func _build_ground() -> void:
 	mat.set_shader_parameter(&"lane_shimmer", profile.lane_shimmer)
 	mat.set_shader_parameter(&"lane_scale", profile.lane_scale)
 
+	_finish_ground(mat)
+
+
+## Places the ground with `mat`: the terrain heightfield when there is
+## terrain, else the flat overscanned plane.
+func _finish_ground(mat: ShaderMaterial) -> void:
 	if _terrain != null:
 		_build_terrain_ground(mat)
 		return
@@ -430,16 +465,16 @@ func _build_ground() -> void:
 ## SKIRT_CELLS so the ortho view never sees an edge. Same ground material, with
 ## the height tint and slope rock switched on; a water surface over the rivers.
 func _build_terrain_ground(mat: ShaderMaterial) -> void:
-	var tint := GradientTexture1D.new()
-	tint.use_hdr = true
-	tint.gradient = profile.height_tint if profile.height_tint != null else Hd2dSceneryProfile.default_height_tint()
-	mat.set_shader_parameter(&"height_tint", tint)
-	mat.set_shader_parameter(&"height_max", maxf(_terrain.max_height(), 1.0))
-	mat.set_shader_parameter(&"rock_slope", profile.rock_slope_threshold)
-	mat.set_shader_parameter(&"slope_shade", profile.slope_shade)
-	mat.set_shader_parameter(&"level_height", TerrainTuning.load_default().height_per_level_cells * _cell)
-	mat.set_shader_parameter(&"contour_strength", profile.contour_strength)
-
+	if not _painted():
+		var tint := GradientTexture1D.new()
+		tint.use_hdr = true
+		tint.gradient = profile.height_tint if profile.height_tint != null else Hd2dSceneryProfile.default_height_tint()
+		mat.set_shader_parameter(&"height_tint", tint)
+		mat.set_shader_parameter(&"height_max", maxf(_terrain.max_height(), 1.0))
+		mat.set_shader_parameter(&"rock_slope", profile.rock_slope_threshold)
+		mat.set_shader_parameter(&"slope_shade", profile.slope_shade)
+		mat.set_shader_parameter(&"level_height", TerrainTuning.load_default().height_per_level_cells * _cell)
+		mat.set_shader_parameter(&"contour_strength", profile.contour_strength)
 	var xs: PackedFloat32Array = _terrain_axis(_cols)
 	var zs: PackedFloat32Array = _terrain_axis(_rows)
 	var st := SurfaceTool.new()
@@ -494,8 +529,8 @@ func _build_water() -> void:
 	var plane := PlaneMesh.new()
 	plane.size = Vector2(bounds.size.x, bounds.size.y * _z_stretch)
 	var mat := ShaderMaterial.new()
-	mat.shader = WATER_SHADER
-	mat.set_shader_parameter(&"water_color", profile.water_color)
+	mat.shader = PAINTED_WATER_SHADER if _painted() else WATER_SHADER
+	mat.set_shader_parameter(&"water_color", profile.painted_water if _painted() else profile.water_color)
 	mat.set_shader_parameter(&"z_stretch", _z_stretch)
 	mat.set_shader_parameter(&"texel_world", profile.ground_texel_px)
 	var mi := MeshInstance3D.new()
@@ -588,7 +623,11 @@ func _build_grass() -> void:
 		var tex: Texture2D = cards[k]
 		var h: float = profile.grass_height_px * float(tex.get_height()) / 64.0
 		var w: float = h * float(tex.get_width()) / float(tex.get_height())
-		_scatter("Grass%d" % k, cross_card_mesh(w, h), _card_material(tex, profile.grass_sway_px), per_card[k]["x"], per_card[k]["c"])
+		if _painted():
+			_scatter("Grass%d" % k, tuft_mesh(h * 0.8), _painted_mat("tuft", profile.painted_tuft_top,
+					profile.painted_tuft_bottom, h * 0.8), per_card[k]["x"], per_card[k]["c"])
+		else:
+			_scatter("Grass%d" % k, cross_card_mesh(w, h), _card_material(tex, profile.grass_sway_px), per_card[k]["x"], per_card[k]["c"])
 
 
 func _build_flowers() -> void:
@@ -601,8 +640,24 @@ func _build_flowers() -> void:
 		var p: Vector2 = _random_point(_cell)
 		if not _is_open_ground(p):
 			continue
-		xforms.append(Transform3D(Basis(Vector3.UP, _rng.randf() * TAU), _on_ground(p)))
+		var yaw: float = _rng.randf() * TAU
+		# Painted: a fifth of the blooms, so they accent rather than speckle.
+		if _painted() and i % 5 != 0:
+			continue
+		xforms.append(Transform3D(Basis(Vector3.UP, yaw), _on_ground(p)))
 		colors.append(Color.WHITE)
+	if _painted():
+		# Painted flowers: tiny blooms in a few soft colours.
+		var blooms: Array[Color] = [Color(1.0, 0.72, 0.85), Color(1.0, 0.9, 0.45), Color(0.72, 0.78, 1.0)]
+		for i in colors.size():
+			colors[i] = blooms[i % blooms.size()]
+		var bloom := SphereMesh.new()
+		bloom.radius = 3.0
+		bloom.height = 4.5
+		bloom.radial_segments = 8
+		bloom.rings = 4
+		_scatter("Flowers", bloom, _painted_mat("bloom", Color.WHITE, Color(0.85, 0.85, 0.85), 4.0), xforms, colors)
+		return
 	_scatter("Flowers", cross_card_mesh(16.0, 12.0), _card_material(profile.flower_card, 1.5), xforms, colors)
 
 
@@ -628,6 +683,15 @@ func _build_bushes() -> void:
 		var v: float = _rng.randf_range(0.8, 1.0)
 		colors.append(Color(v, v, v))
 		placed += 1
+	if _painted():
+		var blob := SphereMesh.new()
+		blob.radius = 24.0
+		blob.height = 34.0
+		blob.radial_segments = 14
+		blob.rings = 7
+		_scatter("Bushes", blob, _painted_mat("leaf", profile.painted_leaf_top, profile.painted_leaf_bottom, 34.0, -17.0),
+				xforms, colors)
+		return
 	_scatter("Bushes", facing_card_mesh(64.0, 44.0), _card_material(profile.bush_card, 1.0), xforms, colors)
 
 
@@ -701,6 +765,9 @@ func _billboard_material(tex: Texture2D, shade: float) -> StandardMaterial3D:
 
 
 func _build_broadleaf(p2d: Vector2, s: float) -> void:
+	if _painted():
+		_build_painted_tree(p2d, s)
+		return
 	var tree := Node3D.new()
 	tree.name = "Tree"
 	add_child(tree)
@@ -734,6 +801,9 @@ func _build_broadleaf(p2d: Vector2, s: float) -> void:
 
 func _build_pine(p2d: Vector2, s: float) -> void:
 	var h: float = 150.0 * s
+	if _painted():
+		_build_painted_pine(p2d, h)
+		return
 	if not profile.kit_pines.is_empty():
 		var kit: MeshInstance3D = _kit_instance(_kit_pick(profile.kit_pines), null)
 		kit.name = "Pine"
@@ -757,6 +827,163 @@ func _build_pine(p2d: Vector2, s: float) -> void:
 	mi.material_override = m
 	_own(mi)
 	mi.position = _on_ground(p2d)
+
+
+# --- Painted-vector dressing (spec 2026-11-08-painted-vector-style-design) ----
+
+func _painted() -> bool:
+	return profile != null and profile.art_style == "painted"
+
+
+## Shared painted-prop material per key: a fill from `bottom` to `top` over
+## `grad_height` local units starting at `grad_bottom`, banded light.
+func _painted_mat(key: String, top: Color, bottom: Color, grad_height: float, grad_bottom: float = 0.0) -> ShaderMaterial:
+	var cache_key := "painted:%s" % key
+	if _material_cache.has(cache_key):
+		return _material_cache[cache_key]
+	var m := ShaderMaterial.new()
+	m.shader = PAINTED_PROP_SHADER
+	m.set_shader_parameter(&"top_color", top)
+	m.set_shader_parameter(&"bottom_color", bottom)
+	m.set_shader_parameter(&"grad_height", grad_height)
+	m.set_shader_parameter(&"grad_bottom", grad_bottom)
+	_material_cache[cache_key] = m
+	return m
+
+
+## Repaints every prop still using a textured StandardMaterial3D (kit rocks,
+## ruins, fence, spires, debris): a painted fill from the texture's average
+## colour. Glowing materials (crystals, fires) and tower models are left alone.
+func _paint_props() -> void:
+	for node: Node in find_children("*", "MeshInstance3D", true, false):
+		if _dynamic_root != null and _dynamic_root.is_ancestor_of(node):
+			continue
+		var mi := node as MeshInstance3D
+		if mi.mesh == null:
+			continue
+		if mi.material_override != null:
+			if mi.material_override is StandardMaterial3D and not (mi.material_override as StandardMaterial3D).emission_enabled:
+				mi.material_override = _painted_from(mi.material_override as StandardMaterial3D)
+			continue
+		for i in mi.mesh.get_surface_count():
+			var m: Material = mi.get_active_material(i)
+			if m is StandardMaterial3D and not (m as StandardMaterial3D).emission_enabled:
+				mi.set_surface_override_material(i, _painted_from(m as StandardMaterial3D))
+
+
+func _painted_from(src: StandardMaterial3D) -> ShaderMaterial:
+	var key := "from|%d" % src.get_instance_id()
+	if _material_cache.has(key):
+		return _material_cache[key]
+	var col: Color = src.albedo_color
+	if src.albedo_texture != null:
+		col *= _texture_average(src.albedo_texture)
+	var m: ShaderMaterial = _painted_mat(key, col.lightened(0.12), col.darkened(0.3), 40.0, 0.0)
+	m.set_shader_parameter(&"world_gradient", true)
+	return m
+
+
+func _texture_average(tex: Texture2D) -> Color:
+	var key := "avg|%s" % tex.resource_path
+	if _material_cache.has(key):
+		return _material_cache[key]
+	var img: Image = tex.get_image()
+	var avg := Color(0.6, 0.6, 0.6)
+	if img != null:
+		img = img.duplicate()
+		if img.is_compressed():
+			img.decompress()
+		img.resize(4, 4, Image.INTERPOLATE_BILINEAR)
+		var sum := Color(0, 0, 0, 0)
+		for y in 4:
+			for x in 4:
+				sum += img.get_pixel(x, y)
+		avg = sum / 16.0
+		avg.a = 1.0
+	_material_cache[key] = avg
+	return avg
+
+
+## A painted grass tuft: three thin leaning blades, pivot at the base.
+static func tuft_mesh(h: float) -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for k: int in 3:
+		var a: float = TAU * k / 3.0 + 0.4
+		var lean := Vector3(cos(a), 0.0, sin(a)) * h * 0.35
+		var side := Vector3(-sin(a), 0.0, cos(a)) * h * 0.14
+		var base := Vector3(cos(a), 0.0, sin(a)) * h * 0.06
+		for tri: Array in [[base - side, base + side, lean + Vector3(0, h, 0)]]:
+			for v: Vector3 in tri:
+				st.set_color(Color.WHITE)
+				st.add_vertex(v)
+	st.generate_normals()
+	var mesh := st.commit()
+	return mesh
+
+
+func _build_painted_tree(p2d: Vector2, s: float) -> void:
+	var tree := Node3D.new()
+	tree.name = "Tree"
+	add_child(tree)
+	tree.position = _on_ground(p2d)
+	var trunk := CylinderMesh.new()
+	trunk.top_radius = 6.0 * s
+	trunk.bottom_radius = 9.0 * s
+	trunk.height = 56.0 * s
+	trunk.radial_segments = 8
+	var tm := MeshInstance3D.new()
+	tm.mesh = trunk
+	tm.material_override = _painted_mat("trunk", profile.painted_trunk, profile.painted_trunk.darkened(0.35), 56.0, -28.0)
+	tm.layers = RENDER_LAYER
+	tree.add_child(tm)
+	tm.position = Vector3(0, trunk.height * 0.5, 0)
+	var leaf: ShaderMaterial = _painted_mat("leaf", profile.painted_leaf_top, profile.painted_leaf_bottom, 34.0, -17.0)
+	for blob: Vector4 in [Vector4(0, 74, 0, 38), Vector4(18, 92, 8, 28), Vector4(-16, 88, -6, 26)]:
+		var sm := SphereMesh.new()
+		sm.radius = blob.w * s
+		sm.height = blob.w * s * 1.7
+		sm.radial_segments = 16
+		sm.rings = 8
+		var mi := MeshInstance3D.new()
+		mi.mesh = sm
+		mi.material_override = leaf
+		mi.layers = RENDER_LAYER
+		tree.add_child(mi)
+		mi.position = Vector3(blob.x * s, blob.y * s, blob.z * s)
+		# The gradient spans each blob (local y -17..17 at s = 1).
+		mi.scale = Vector3.ONE
+
+
+func _build_painted_pine(p2d: Vector2, h: float) -> void:
+	var pine := Node3D.new()
+	pine.name = "Pine"
+	add_child(pine)
+	pine.position = _on_ground(p2d)
+	var leaf: ShaderMaterial = _painted_mat("pine", profile.painted_leaf_top.darkened(0.12),
+			profile.painted_leaf_bottom.darkened(0.2), h * 0.36, -h * 0.18)
+	for k: int in 3:
+		var cone := CylinderMesh.new()
+		cone.top_radius = 0.0
+		cone.bottom_radius = h * (0.3 - k * 0.06)
+		cone.height = h * 0.36
+		cone.radial_segments = 10
+		var mi := MeshInstance3D.new()
+		mi.mesh = cone
+		mi.material_override = leaf
+		mi.layers = RENDER_LAYER
+		pine.add_child(mi)
+		mi.position = Vector3(0, h * (0.3 + k * 0.22), 0)
+	var trunk := CylinderMesh.new()
+	trunk.top_radius = h * 0.03
+	trunk.bottom_radius = h * 0.045
+	trunk.height = h * 0.3
+	var tm := MeshInstance3D.new()
+	tm.mesh = trunk
+	tm.material_override = _painted_mat("trunk", profile.painted_trunk, profile.painted_trunk.darkened(0.35), 56.0, -28.0)
+	tm.layers = RENDER_LAYER
+	pine.add_child(tm)
+	tm.position = Vector3(0, h * 0.15, 0)
 
 
 # --- Fence, ruins, rocks --------------------------------------------------
@@ -925,7 +1152,12 @@ func _build_lane_edges() -> void:
 		var tex: Texture2D = cards[k]
 		var h: float = profile.lane_edge_height_px
 		var w: float = h * float(tex.get_width()) / float(tex.get_height())
-		_scatter("LaneEdge%d" % k, cross_card_mesh(w, h), _card_material(tex, profile.grass_sway_px), per_card[k]["x"], per_card[k]["c"])
+		if _painted():
+			# Painted: taller tufts in the tuft palette line the road instead of pixel cards.
+			_scatter("LaneEdge%d" % k, tuft_mesh(h * 0.6), _painted_mat("lane_tuft", profile.painted_tuft_top.lightened(0.1),
+					profile.painted_tuft_bottom, h * 0.6), per_card[k]["x"], per_card[k]["c"])
+		else:
+			_scatter("LaneEdge%d" % k, cross_card_mesh(w, h), _card_material(tex, profile.grass_sway_px), per_card[k]["x"], per_card[k]["c"])
 
 
 ## True when an upright prop `height` tall at `p` would not cover any lane or

@@ -98,8 +98,13 @@ exported as glb to `assets/art/towers3d/`. Terrain and units follow later.
 **2026-11-08 -- 3D terrain (ADR-0044).** Hills and rivers are generated per
 map with the path (`TerrainGenerator`, profiles in `assets/data/terrain/`,
 tunables in `terrain_tuning.tres`) and drawn by `Hd2dScenery` as a heightfield
-(`TerrainSurface`). Art style is being re-chosen (hand-painted + flat vector
-blend under consideration).
+(`TerrainSurface`).
+
+**2026-11-08 -- painted-vector style (ADR-0045).** User picked blend B
+(hand-painted + flat vector). Mission scenery profiles set `art_style =
+"painted"` (painted_ground/water/prop shaders, tufts and blob trees, per-map
+`painted_*` palettes); `"hd2d"` remains for the Sanctuary town. Phase 2:
+towers, kit props and 3D Sanctuary buildings in this style.
 
 **Active art overhaul (2026-08-23 onward)**: read
 `design/art/codex-art-overhaul.md` — it's written for Codex but Claude Code is

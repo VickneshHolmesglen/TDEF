@@ -121,3 +121,20 @@ func test_null_profile_leaves_terrain_empty() -> void:
 	var cfg: GridConfig = MapGenerator.generate(16, 12, 64, _rng(3))
 	assert_bool(cfg.heights.is_empty()).is_true()
 	assert_bool(cfg.water.is_empty()).is_true()
+
+
+## Live-found 2026-11-08: twin rivers meandered to one cell apart and their
+## smoothed beds merged into a lake. They keep at least 2 dry cells between them.
+func test_twin_rivers_stay_apart() -> void:
+	var mire: MissionEntry = load(ENTRY_DIR + "the_mirefen_entry.tres")
+	for s: int in SEEDS:
+		var cfg: GridConfig = _gen(mire, 3000 + s)
+		for y: int in range(1, cfg.rows - 1):
+			var xs: Array[int] = []
+			for x: int in range(1, cfg.cols - 1):
+				if cfg.water.get(Vector2i(x, y), false):
+					xs.append(x)
+			# Split the row's water into runs; neighbouring runs need a 2-cell gap.
+			for i: int in range(1, xs.size()):
+				var gap: int = xs[i] - xs[i - 1] - 1
+				assert_bool(gap == 0 or gap >= 2).override_failure_message("seed %d row %d %s" % [s, y, xs]).is_true()

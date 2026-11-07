@@ -19,6 +19,25 @@ extends Resource
 ## Lane texture repeat factor (> 1 shrinks cobbles/slabs on the road).
 @export var lane_scale: float = 1.0
 
+@export_group("Art style")
+## "hd2d" = pixel textures and cards (ADR-0042); "painted" = the painted-vector
+## look (spec 2026-11-08-painted-vector-style-design): flat colour tiers, banded
+## light, painted tufts/trees, no pixel textures. Per profile, so reversible.
+@export_enum("hd2d", "painted") var art_style: String = "hd2d"
+## Painted palette (used only when art_style == "painted").
+@export var painted_tier_low: Color = Color(0.37, 0.62, 0.27)
+@export var painted_tier_high: Color = Color(0.86, 0.95, 0.6)
+@export var painted_side_shade: Color = Color(0.7, 0.76, 0.86)
+@export var painted_patch_tint: Color = Color(1.0, 1.0, 0.85)
+@export var painted_lane: Color = Color(0.94, 0.81, 0.56)
+@export var painted_stone: Color = Color(0.82, 0.8, 0.74)
+@export var painted_water: Color = Color(0.25, 0.62, 0.85, 0.9)
+@export var painted_leaf_top: Color = Color(0.62, 0.86, 0.42)
+@export var painted_leaf_bottom: Color = Color(0.24, 0.55, 0.28)
+@export var painted_tuft_top: Color = Color(0.36, 0.66, 0.26)
+@export var painted_tuft_bottom: Color = Color(0.18, 0.4, 0.2)
+@export var painted_trunk: Color = Color(0.55, 0.37, 0.23)
+
 @export_group("Terrain")
 ## Ground tint by surface height, low (offset 0) to the map's highest point
 ## (offset 1), multiplied onto the ground colour; white = unchanged. null uses
@@ -173,6 +192,8 @@ func validate() -> Array[String]:
 		errors.append("grass_cards must not be empty")
 	if leaf_cards.is_empty() and broadleaf_count > 0:
 		errors.append("leaf_cards must not be empty when broadleaf_count > 0")
+	if art_style != "hd2d" and art_style != "painted":
+		errors.append("art_style must be \"hd2d\" or \"painted\" (got %s)" % art_style)
 	if ground_texel_px <= 0.0:
 		errors.append("ground_texel_px must be positive")
 	if not kit_pines.is_empty() and kit_foliage == null:
