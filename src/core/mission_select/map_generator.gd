@@ -60,8 +60,10 @@ static func forward_weight(winding: float) -> float:
 ## used if omitted.
 ## spawn_count: 1, or 2 for a second entrance on the top/bottom edge whose lane
 ## merges into the main lane. winding: see forward_weight().
+## terrain: the map's TerrainProfile (spec 2026-11-07-3d-terrain §5); hills and
+## rivers are generated from the same rng after the lanes. null = flat and dry.
 static func generate(cols: int, rows: int, cell_size: float, rng: RandomNumberGenerator = null,
-		spawn_count: int = 1, winding: float = DEFAULT_WINDING) -> GridConfig:
+		spawn_count: int = 1, winding: float = DEFAULT_WINDING, terrain: TerrainProfile = null) -> GridConfig:
 	if rng == null:
 		rng = RandomNumberGenerator.new()
 		rng.randomize()
@@ -107,6 +109,8 @@ static func generate(cols: int, rows: int, cell_size: float, rng: RandomNumberGe
 		_add_merging_lane(cells, path, cols, rows, rng, weight)
 
 	config.cells = cells
+	if terrain != null:
+		TerrainGenerator.apply(config, terrain, rng)
 	return config
 
 

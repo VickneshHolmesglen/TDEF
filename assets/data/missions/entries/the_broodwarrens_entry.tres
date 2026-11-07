@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" path="res://src/core/mission_entry.gd" id="1_entry"]
 [ext_resource type="Script" path="res://src/foundation/grid/grid_config.gd" id="2_grid"]
+[ext_resource type="Resource" path="res://assets/data/terrain/the_broodwarrens_terrain.tres" id="9_terrain"]
 
 [sub_resource type="Resource" id="Resource_grid_broodwarrens"]
 script = ExtResource("2_grid")
@@ -205,6 +206,7 @@ Vector2i(15, 11): 4,
 
 [resource]
 script = ExtResource("1_entry")
+terrain_profile = ExtResource("9_terrain")
 mission_id = "the_broodwarrens"
 display_name = "The Broodwarrens"
 grid_config = SubResource("Resource_grid_broodwarrens")

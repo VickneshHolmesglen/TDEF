@@ -42,6 +42,9 @@ extends Resource
 ## 1 (coils freely), 0.5 = the original generator.
 @export var spawn_count: int = 1
 @export var path_winding: float = MapGenerator.DEFAULT_WINDING
+## Terrain character (spec 2026-11-07-3d-terrain §5.1): hills and rivers
+## generated with the path every launch. null = flat and dry.
+@export var terrain_profile: TerrainProfile = null
 ## design/gdd/mission-select.md "Mission list presentation": "a small flat
 ## environment-motif icon (silhouette-level, not a diorama render)" shown per
 ## card. Optional at load time (null renders as no icon, not an error) since

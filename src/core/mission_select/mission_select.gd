@@ -514,7 +514,7 @@ func confirm_launch() -> void:
 	_runtime_daily_date = _daily_date
 	var map_rng: RandomNumberGenerator = DailyChallenge.rng_for(_daily_date) if not _daily_date.is_empty() else null
 	_runtime_grid_config = MapGenerator.generate(entry.grid_config.cols, entry.grid_config.rows, entry.grid_config.cell_size,
-			map_rng, entry.spawn_count, entry.path_winding) if entry != null else null
+			map_rng, entry.spawn_count, entry.path_winding, entry.terrain_profile) if entry != null else null
 	_runtime_difficulty_tier = difficulty_tier
 	_runtime_modifiers = modifiers
 	_runtime_launch_timestamp = Time.get_unix_time_from_system()
