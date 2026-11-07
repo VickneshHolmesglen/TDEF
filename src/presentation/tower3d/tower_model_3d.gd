@@ -25,6 +25,12 @@ const RANK_POP_DURATION: float = 0.3
 ## side is where TowerInstance draws the 2D perk badge.
 const RANK_1_SIDE_OFFSET: float = -0.47
 
+## Painted-vector style (ADR-0045): textured tower materials re-shaded with
+## banded light. One converted material per source material, shared.
+const PAINTED_TOWER_SHADER: Shader = preload("res://src/shaders/painted_tower.gdshader")
+static var _painted_cache: Dictionary = {}  # source Material instance id -> ShaderMaterial
+var _painted_style: bool = false
+
 var _crown: Node3D = null
 var _spin: Node3D = null
 var _motion: TowerCrownMotion = null
@@ -231,6 +237,44 @@ func set_rank(rank: int, animate: bool) -> void:
 			tween.tween_property(node, "scale", Vector3.ONE * 1.15, RANK_POP_DURATION * 0.6) \
 					.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 			tween.tween_property(node, "scale", Vector3.ONE, RANK_POP_DURATION * 0.4)
+	if _painted_style:
+		_repaint(self)
+
+
+## Re-shades the model for the painted-vector scenery (ADR-0045); flourishes
+## added later (rank-ups) are repainted as they appear.
+## Example: model.set_painted_style(scenery.profile.art_style == "painted")
+func set_painted_style(enabled: bool) -> void:
+	_painted_style = enabled
+	if enabled:
+		_repaint(self)
+
+
+func _repaint(root: Node) -> void:
+	for node: Node in root.find_children("*", "MeshInstance3D", true, false):
+		var mi := node as MeshInstance3D
+		if mi.mesh == null:
+			continue
+		for i in mi.mesh.get_surface_count():
+			var src: Material = mi.get_active_material(i)
+			if src is BaseMaterial3D:
+				mi.set_surface_override_material(i, _painted_for(src as BaseMaterial3D))
+
+
+static func _painted_for(src: BaseMaterial3D) -> ShaderMaterial:
+	var key: int = src.get_instance_id()
+	if _painted_cache.has(key):
+		return _painted_cache[key]
+	var m := ShaderMaterial.new()
+	m.shader = PAINTED_TOWER_SHADER
+	m.set_shader_parameter(&"albedo_tex", src.albedo_texture)
+	m.set_shader_parameter(&"albedo_color", src.albedo_color)
+	if src.emission_enabled:
+		m.set_shader_parameter(&"emission_color", src.emission)
+		m.set_shader_parameter(&"emission_energy", src.emission_energy_multiplier)
+		m.set_shader_parameter(&"emission_tex", src.emission_texture)
+	_painted_cache[key] = m
+	return m
 
 
 func _add_flourish(rank: int) -> Node3D:

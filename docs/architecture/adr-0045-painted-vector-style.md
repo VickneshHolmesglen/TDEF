@@ -35,7 +35,8 @@ The spec is `docs/superpowers/specs/2026-11-08-painted-vector-style-design.md`.
 
 - Terrain, lifts, picking and gameplay are unchanged; this is materials and dressing only.
 - Draw calls measured live: The Gap 757, The Foothills 617, The Mirefen 577, The Duskwood 853, against 750–942 before. The scenery is still over the 200 budget (a pre-existing problem), and painted mode doesn't add to it.
-- Towers and 2D unit sprites keep their own look for now. Phase 2 restyles the tower textures and the kit props, and builds the queued 3D Sanctuary buildings in this style.
+- **Towers (added the same day):** in painted maps `TowerModel3D.set_painted_style(true)` re-shades every textured surface with `painted_tower.gdshader`: the tower's own texture, brightened ×1.18 and saturated ×1.2, under the same banded sun, with emission kept for glowing crowns. Flourishes added on rank-up are repainted. The Inventory preview keeps the original materials.
+- 2D unit sprites keep their own look for now. Phase 2 restyles the tower textures and the kit props, and builds the queued 3D Sanctuary buildings in this style.
 - MultiMesh instance transforms can't be read back headless, so tuft placement is checked live, not in unit tests.
 
 ## ADR Dependencies

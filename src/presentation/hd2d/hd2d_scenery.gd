@@ -878,7 +878,7 @@ func _painted_from(src: StandardMaterial3D) -> ShaderMaterial:
 	var col: Color = src.albedo_color
 	if src.albedo_texture != null:
 		col *= _texture_average(src.albedo_texture)
-	var m: ShaderMaterial = _painted_mat(key, col.lightened(0.12), col.darkened(0.3), 40.0, 0.0)
+	var m: ShaderMaterial = _painted_mat(key, col.lightened(0.28), col.darkened(0.12), 40.0, 0.0)
 	m.set_shader_parameter(&"world_gradient", true)
 	return m
 

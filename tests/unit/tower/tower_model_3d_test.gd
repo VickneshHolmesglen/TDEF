@@ -142,3 +142,42 @@ func test_tower_model_hit_flash_overlay_removed_after_flash() -> void:
 	await get_tree().create_timer(TowerModel3D.HIT_FLASH_DURATION + 0.15).timeout
 	for mesh: Node in _model.find_children("*", "GeometryInstance3D", true, false):
 		assert_object((mesh as GeometryInstance3D).material_overlay).is_null()
+
+
+# --- Painted-vector style (ADR-0045) -------------------------------------------
+
+func _surface_materials() -> Array[Material]:
+	var out: Array[Material] = []
+	for node: Node in _model.find_children("*", "MeshInstance3D", true, false):
+		var mi := node as MeshInstance3D
+		for i in mi.mesh.get_surface_count():
+			out.append(mi.get_active_material(i))
+	return out
+
+
+func test_painted_style_repaints_every_surface_keeping_textures() -> void:
+	_model.build(&"octagon", &"siege", 1, 1.0, 7)
+	_model.set_painted_style(true)
+	_model.set_rank(3, false)  # flourishes added after the switch are painted too
+	var mats: Array[Material] = _surface_materials()
+	assert_int(mats.size()).is_greater(0)
+	for m: Material in mats:
+		assert_object(m).is_instanceof(ShaderMaterial)
+		assert_object((m as ShaderMaterial).shader).is_same(TowerModel3D.PAINTED_TOWER_SHADER)
+
+
+func test_unpainted_model_keeps_imported_materials() -> void:
+	_model.build(&"octagon", &"siege", 1, 1.0, 7)
+	for m: Material in _surface_materials():
+		assert_bool(m is ShaderMaterial and (m as ShaderMaterial).shader == TowerModel3D.PAINTED_TOWER_SHADER).is_false()
+
+
+func test_painted_style_keeps_glow() -> void:
+	_model.build(&"octagon", &"siege", 1, 1.0, 7)
+	var src := StandardMaterial3D.new()
+	src.emission_enabled = true
+	src.emission = Color(1, 0.5, 0)
+	src.emission_energy_multiplier = 2.0
+	var m: ShaderMaterial = TowerModel3D._painted_for(src)
+	assert_float(m.get_shader_parameter(&"emission_energy")).is_equal(2.0)
+	assert_object(m.get_shader_parameter(&"emission_color")).is_equal(Color(1, 0.5, 0))

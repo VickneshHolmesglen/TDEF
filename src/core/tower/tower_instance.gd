@@ -453,6 +453,7 @@ func _try_build_model(archetype: String, foundation_component_id: String, weapon
 	_scenery.get_dynamic_root().add_child(_model)
 	_model.build(shape, crown_key, tier, _scenery.get_z_stretch(), get_instance_id())
 	_model.position = _model_world_position()
+	_model.set_painted_style(_scenery.profile != null and _scenery.profile.art_style == "painted")
 	_model.set_rank(_rank, false)
 	_visual_root.visible = false
 	if _ground_shadow != null:
