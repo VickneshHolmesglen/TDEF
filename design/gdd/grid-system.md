@@ -22,6 +22,8 @@ The Grid System has no player fantasy of its own — it is pure infrastructure. 
 
 ## Detailed Design
 
+> **Terrain (2026-11-08, ADR-0044; spec `docs/superpowers/specs/2026-11-07-3d-terrain-design.md`).** Each cell also carries `height_level` (0 ground, 1 hill, 2 high hill) and `water`, stored in `GridConfig.heights` / `GridConfig.water` and read via `Grid.get_height_level()`, `Grid.is_water()` and `Grid.square_height_level()`. PATH/SPAWN/GOAL and water cells are always level 0; a PATH cell may be water (a ford). Hills are not walkable (excluded from `get_walkable_cell_map()`); a tower square is placeable only if every covered cell is dry and at one height level.
+
 ### Core Rules
 
 1. The Grid is a flat 2D array of cells with default dimensions **16 columns × 12 rows** (configurable per mission via `GridConfig` Resource). Column indices run left to right; row indices run top to bottom. The total default cell count is 192.

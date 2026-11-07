@@ -1,6 +1,6 @@
 # Map Terrain (per-map placement zones and lane conditions)
 
-Date: 2026-11-05. Status: **designed, not built**. Origin: user suggestion: "path generation conditions for each map; on a map with mountainous terrain, placing a tower there would give you +1 range, but it'll cost a little more."
+Date: 2026-11-05. Status: **superseded 2026-11-08 by ADR-0044 / `docs/superpowers/specs/2026-11-07-3d-terrain-design.md`** (built as 3D hills and rivers instead of terrain patches); kept for history. Origin: user suggestion: "path generation conditions for each map; on a map with mountainous terrain, placing a tower there would give you +1 range, but it'll cost a little more."
 
 ## Overview
 

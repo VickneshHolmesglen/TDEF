@@ -31,6 +31,8 @@ The chokepoints that hold, the lanes that funnel correctly, the BOSS that routes
 
 ## Detailed Design
 
+> **Terrain (2026-11-08, ADR-0044).** Hill cells (height level > 0) are absent from `Grid.get_walkable_cell_map()`, so monsters never path over them, including when rerouting around towers; `would_block_all_paths` needs no change. Water cells stay walkable at their normal cost (a ford keeps PATH cost); ground monsters are slowed ×0.6 while in water (`MonsterManager._effective_speed`), flyers ignore terrain.
+
 ### Core Rules
 
 **I. System Identity**
