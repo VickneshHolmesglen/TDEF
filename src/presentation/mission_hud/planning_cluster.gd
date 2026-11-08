@@ -79,7 +79,9 @@ const ROUTE_CHEVRON_EVERY: int = 2
 ## and scrolls instead of running off-screen sideways.
 @onready var _build_list: GridContainer = $NonReadyControls/BuildListScroll/BuildList
 const TILE_SIZE: Vector2 = Vector2(42, 42)  ## 3 columns fit the 160 px side panel (UX overhaul 2026-10-09)
-const TILE_ICON_MARGIN: float = 12.0
+## Icon inset inside a tile: 12 -> 4 (player-requested 2026-11-08, bigger
+## tower icons; the 3D renders are framed tight, see TOWER_ICON_FRAME_MARGIN).
+const TILE_ICON_MARGIN: float = 4.0
 ## Player-reported 2026-08-16: default theme buttons read as too translucent
 ## against the busy rock-textured mission backdrop -- explicit near-opaque
 ## styleboxes per button state make the tile face read clearly regardless
@@ -133,6 +135,9 @@ var _tower_views: Dictionary[StringName, TowerViewport3D] = {}
 ## Render size of each tower picture: big enough for the placement ghost at
 ## the closest mission zoom, so it never upscales.
 const TOWER_ICON_RENDER_PX: int = 192
+## Still pictures sit tight around the tower's outline (a small border so
+## edges never touch the tile).
+const TOWER_ICON_FRAME_MARGIN: float = 1.04
 var _build_button_group := ButtonGroup.new()
 
 ## Art & Animation Pipeline Upgrade, vertical slice (design/art/animation-
@@ -898,7 +903,7 @@ func _update_placement_preview_icon() -> void:
 	var icon_size: Vector2
 	if view != null:
 		icon_size = Vector2.ONE * view.frame_height_px() * map_scale
-		cursor_center.y -= view.ground_offset_px() * map_scale
+		cursor_center -= view.ground_offset_px() * map_scale
 	else:
 		var uniform_scale: float = TowerInstance.TARGET_DISPLAY_HEIGHT / float(texture.get_height()) * map_scale
 		icon_size = Vector2(texture.get_width(), texture.get_height()) * uniform_scale
@@ -925,6 +930,7 @@ func _tower_icon(blueprint_id: StringName, data: TowerBlueprintData) -> Texture2
 	view.name = "TowerIcon_%s" % String(blueprint_id)
 	view.size = Vector2i.ONE * TOWER_ICON_RENDER_PX
 	view.render_target_update_mode = SubViewport.UPDATE_ONCE
+	view.frame_margin = TOWER_ICON_FRAME_MARGIN
 	add_child(view)
 	view.show_tower(keys[0], keys[0], keys[1], data.foundation.tier, true)
 	_tower_views[blueprint_id] = view

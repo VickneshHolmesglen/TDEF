@@ -15,8 +15,6 @@ extends SubViewport
 
 ## The mission camera's default pitch (Hd2dSceneryProfile.camera_pitch_deg).
 const PITCH_DEG: float = 50.0
-## Frame height as a multiple of the tower's on-screen height (margin).
-const FRAME_MARGIN: float = 1.25
 const CAMERA_DISTANCE: float = 1000.0
 
 ## Parent of the model; turn it to spin the tower (the Inventory turntable).
@@ -24,6 +22,12 @@ var turntable: Node3D
 var camera: Camera3D
 ## The tower shown, or null.
 var model: TowerModel3D = null
+## Frame size as a multiple of the tower's on-screen outline. Room to spare
+## for a turntable (the Inventory); a still icon can sit tight.
+var frame_margin: float = 1.25
+## Where the point under the tower's base lands, relative to the picture's
+## centre, in 2D pixels at 1:1 map scale (y down). Set by show_tower().
+var _ground_offset: Vector2 = Vector2.ZERO
 
 
 func _init() -> void:
@@ -60,10 +64,7 @@ func show_tower(base_shape: StringName, shaft_shape: StringName, crown_key: Stri
 	turntable.add_child(model)
 	model.build_parts(base_shape, shaft_shape, crown_key, tier, 1.0, 1)
 	model.set_painted_style(painted)
-	var pitch: float = deg_to_rad(PITCH_DEG)
-	camera.size = model.screen_height_px(PITCH_DEG) * FRAME_MARGIN
-	camera.position = Vector3(0.0, model.world_height() * 0.5, 0.0) \
-			+ Vector3(0.0, sin(pitch), cos(pitch)) * CAMERA_DISTANCE
+	_frame_on_model()
 	return model
 
 
@@ -75,14 +76,35 @@ func clear() -> void:
 		model = null
 
 
-## Distance (2D pixels at 1:1 map scale) from the picture's centre down to the
-## point under the tower's base, which is where the tower stands on the map.
-## The camera looks at half the tower's height above the base, so the base
-## sits that far below centre, foreshortened by the pitch.
-func ground_offset_px() -> float:
-	if model == null:
-		return 0.0
-	return model.world_height() * 0.5 * cos(deg_to_rad(PITCH_DEG))
+## Where the point under the tower's base sits relative to the picture's
+## centre, in 2D pixels at 1:1 map scale (y down). The placement ghost
+## shifts the picture by this so the tower stands where it will be placed.
+func ground_offset_px() -> Vector2:
+	return _ground_offset
+
+
+## Fits the camera to the tower's projected outline (all 8 corners of its
+## bounds seen from the camera), centred, so a still picture wastes no space.
+func _frame_on_model() -> void:
+	var pitch: float = deg_to_rad(PITCH_DEG)
+	var up := Vector3(0.0, cos(pitch), -sin(pitch))  # camera up, tilted by the pitch
+	var back := Vector3(0.0, sin(pitch), cos(pitch))  # toward the camera
+	var box: AABB = model.bounds_px()
+	var u_min: float = INF
+	var u_max: float = -INF
+	var r_min: float = INF
+	var r_max: float = -INF
+	for i: int in 8:
+		var corner: Vector3 = box.get_endpoint(i)
+		u_min = minf(u_min, corner.dot(up))
+		u_max = maxf(u_max, corner.dot(up))
+		r_min = minf(r_min, corner.x)
+		r_max = maxf(r_max, corner.x)
+	var u_mid: float = (u_min + u_max) * 0.5
+	var r_mid: float = (r_min + r_max) * 0.5
+	camera.size = maxf(u_max - u_min, r_max - r_min) * frame_margin
+	camera.position = up * u_mid + Vector3(r_mid, 0.0, 0.0) + back * CAMERA_DISTANCE
+	_ground_offset = Vector2(-r_mid, u_mid)
 
 
 ## Picture height in 2D pixels at 1:1 map scale (the camera's frame height).

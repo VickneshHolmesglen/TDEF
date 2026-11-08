@@ -305,6 +305,13 @@ func _local_aabb(node: Node) -> AABB:
 	return box
 
 
+## The tower's bounds in its parent's units (pixels), base at y = 0.
+## Example: var box := model.bounds_px()  # box.end.y == model.world_height()
+func bounds_px() -> AABB:
+	var box: AABB = _local_aabb(self)
+	return AABB(box.position * PX_PER_UNIT, box.size * PX_PER_UNIT)
+
+
 ## Top of the tower above its base, in this node's parent units (pixels).
 func world_height() -> float:
 	return _local_aabb(self).end.y * PX_PER_UNIT
