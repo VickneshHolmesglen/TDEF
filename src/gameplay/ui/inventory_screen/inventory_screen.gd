@@ -145,10 +145,8 @@ const TOWER_ICON_PATH_FORMATS: Array[String] = [
 	"res://assets/art/towers3d/icons/shaft_%s.png",
 	"res://assets/art/towers3d/icons/top_%s.png",
 ]
-## 3D assembly preview: turntable speed and camera pitch (the mission
-## camera's default pitch, so the preview matches what is placed).
+## 3D assembly preview turntable speed (pitch: TowerViewport3D.PITCH_DEG).
 const PREVIEW_TURN_SPEED_DEG: float = 30.0
-const PREVIEW_PITCH_DEG: float = 50.0
 ## 96.0 -> 76.8 (20% smaller, player-requested 2026-08-21) -> 40.0 -> 24.0
 ## (player-requested 2026-09-12 twice in the same session: first "still
 ## oversized at 76.8," then -- after the name labels below the icon were
@@ -318,9 +316,8 @@ var _preview_shapes: Array[String] = ["", "", ""]
 ## TowerModel3D on a turntable. Hidden (2D fallback drawn instead) while a
 ## picked shape has no model.
 var _preview_viewport_container: SubViewportContainer
-var _preview_viewport: SubViewport
+var _preview_viewport: TowerViewport3D
 var _preview_turntable: Node3D
-var _preview_camera: Camera3D
 var _preview_model: TowerModel3D = null
 
 var _slot_buttons: Array[Button] = []
@@ -719,58 +716,28 @@ func _build_tower_preview_3d() -> void:
 	_preview_viewport_container.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_preview_viewport_container.visible = false
 	_tower_stack_preview.add_child(_preview_viewport_container)
-	_preview_viewport = SubViewport.new()
-	_preview_viewport.own_world_3d = true
-	_preview_viewport.transparent_bg = true
+	_preview_viewport = TowerViewport3D.new()
 	_preview_viewport.render_target_update_mode = SubViewport.UPDATE_WHEN_VISIBLE
 	_preview_viewport_container.add_child(_preview_viewport)
-	_preview_turntable = Node3D.new()
-	_preview_turntable.name = "Turntable"
-	_preview_viewport.add_child(_preview_turntable)
-	var env := Environment.new()
-	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color(0.85, 0.85, 0.9)
-	env.ambient_light_energy = 0.55
-	_preview_camera = Camera3D.new()
-	_preview_camera.projection = Camera3D.PROJECTION_ORTHOGONAL
-	_preview_camera.cull_mask = Hd2dScenery.RENDER_LAYER
-	_preview_camera.environment = env
-	_preview_camera.rotation_degrees = Vector3(-PREVIEW_PITCH_DEG, 0.0, 0.0)
-	_preview_viewport.add_child(_preview_camera)
-	var sun := DirectionalLight3D.new()
-	sun.layers = Hd2dScenery.RENDER_LAYER  # VERSION.md: a light off the camera's layers is ignored
-	sun.light_cull_mask = Hd2dScenery.RENDER_LAYER
-	sun.rotation_degrees = Vector3(-50.0, -35.0, 0.0)
-	_preview_viewport.add_child(sun)
+	_preview_turntable = _preview_viewport.turntable
 
 
 ## Rebuilds the 3D preview from the picked shapes, or falls back to the 2D
 ## stack while a picked shape has no model yet.
 func _refresh_tower_preview_3d() -> void:
-	if _preview_model != null:
-		_preview_turntable.remove_child(_preview_model)
-		_preview_model.queue_free()
-		_preview_model = null
+	_preview_viewport.clear()
+	_preview_model = null
 	var base: String = _preview_shapes[0]
 	var shaft: String = _preview_shapes[1]
 	var crown := StringName("top_" + _preview_shapes[2])
-	var ready: bool = base != "" and shaft != "" and _preview_shapes[2] != "" \
-			and TowerModel3D.has_piece("base", StringName(base)) and TowerModel3D.has_piece("shaft", StringName(shaft)) \
-			and TowerModel3D.has_piece("crown", crown)
+	var ready: bool = base != "" and shaft != "" and _preview_shapes[2] != "" 			and TowerModel3D.has_piece("base", StringName(base)) and TowerModel3D.has_piece("shaft", StringName(shaft)) 			and TowerModel3D.has_piece("crown", crown)
 	_preview_viewport_container.visible = ready
 	set_process(ready)
 	if not ready:
 		return
-	_preview_model = TowerModel3D.new()
-	_preview_turntable.add_child(_preview_model)
 	# Shapes carry no tier here (the galleries list shapes, not owned items),
 	# so the preview shows the T1 body (ledgered ruling, 3D towers plan Task 11).
-	_preview_model.build_parts(StringName(base), StringName(shaft), crown, 1, 1.0, 1)
-	var height: float = _preview_model.world_height()
-	var pitch: float = deg_to_rad(PREVIEW_PITCH_DEG)
-	_preview_camera.size = _preview_model.screen_height_px(PREVIEW_PITCH_DEG) * 1.25
-	_preview_camera.position = Vector3(0.0, height * 0.5, 0.0) + Vector3(0.0, sin(pitch), cos(pitch)) * 1000.0
-	_preview_camera.far = 4000.0
+	_preview_model = _preview_viewport.show_tower(StringName(base), StringName(shaft), crown, 1, false)
 
 
 func _process(delta: float) -> void:

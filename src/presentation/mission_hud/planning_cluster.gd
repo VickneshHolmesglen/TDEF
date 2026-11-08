@@ -127,6 +127,12 @@ var _cover_lift: float = 0.0
 var _hover_cost: int = -1
 
 var _build_buttons: Dictionary[StringName, Button] = {}
+## One still 3D render per modelled blueprint (_tower_icon()), shared by its
+## build tile and the placement ghost.
+var _tower_views: Dictionary[StringName, TowerViewport3D] = {}
+## Render size of each tower picture: big enough for the placement ghost at
+## the closest mission zoom, so it never upscales.
+const TOWER_ICON_RENDER_PX: int = 192
 var _build_button_group := ButtonGroup.new()
 
 ## Art & Animation Pipeline Upgrade, vertical slice (design/art/animation-
@@ -652,12 +658,8 @@ func _build_tower_list() -> void:
 		button.custom_minimum_size = TILE_SIZE
 		button.tooltip_text = _blueprint_entry_text(data)
 		_apply_tile_style(button)
-		# GDD ("archetype icon...") — reuses the same real per-archetype art
-		# tower_instance.gd already displays on the placed tower itself
-		# (assets/art/towers/), added 2026-08-11. This list was originally
-		# shipped text-only on the (incorrect) assumption that no tower art
-		# existed at all in the project yet — it did, just not wired here.
-		var icon: Texture2D = TowerInstance.ARCHETYPE_TEXTURES.get(data.foundation.archetype)
+		# A picture of the tower this blueprint places (_tower_icon()).
+		var icon: Texture2D = _tower_icon(blueprint_id, data)
 		if icon != null:
 			button.icon = icon
 			button.expand_icon = true
@@ -875,23 +877,55 @@ func _show_cover_cells(covered_cells: Array, footprint: Vector2i) -> void:
 		_cover_cell_host.add_child(marker)
 
 
-## Looks up the selected blueprint's archetype art and sizes/centers it
-## within the cursor's footprint box, mirroring TowerInstance.configure()'s
-## uniform-scale-by-height so the preview matches the placed tower's look.
+## Shows the selected blueprint's tower picture (_tower_icon()) over the
+## cursor at map scale. A 3D render is sized from its camera frame and placed
+## so the tower's base stands on the cursor's centre, where the placed model
+## stands; 2D art keeps TowerInstance.configure()'s scale-by-height, centred.
 func _update_placement_preview_icon() -> void:
 	var blueprints: Dictionary = GGameDataRegistry.get_all_tower_blueprints()
 	var data: TowerBlueprintData = blueprints.get(_preview_blueprint_id) as TowerBlueprintData
 	if data == null:
 		_placement_preview_icon.visible = false
 		return
-	var texture: Texture2D = TowerInstance.ARCHETYPE_TEXTURES.get(data.foundation.archetype)
+	var texture: Texture2D = _tower_icon(_preview_blueprint_id, data)
 	if texture == null:
 		_placement_preview_icon.visible = false
 		return
 	_placement_preview_icon.texture = texture
-	var uniform_scale: float = TowerInstance.TARGET_DISPLAY_HEIGHT / float(texture.get_height()) * _screen_cell_size().y / CELL_SIZE_PX
-	var icon_size: Vector2 = Vector2(texture.get_width(), texture.get_height()) * uniform_scale
-	_placement_preview_icon.size = icon_size
+	var map_scale: float = _screen_cell_size().y / CELL_SIZE_PX
 	var cursor_center: Vector2 = _placement_cursor.position + _placement_cursor.size * 0.5
+	var view: TowerViewport3D = _tower_views.get(_preview_blueprint_id) as TowerViewport3D
+	var icon_size: Vector2
+	if view != null:
+		icon_size = Vector2.ONE * view.frame_height_px() * map_scale
+		cursor_center.y -= view.ground_offset_px() * map_scale
+	else:
+		var uniform_scale: float = TowerInstance.TARGET_DISPLAY_HEIGHT / float(texture.get_height()) * map_scale
+		icon_size = Vector2(texture.get_width(), texture.get_height()) * uniform_scale
+	_placement_preview_icon.size = icon_size
 	_placement_preview_icon.position = cursor_center - icon_size * 0.5
 	_placement_preview_icon.visible = true
+
+
+## The picture of the tower a blueprint places. When its pieces are modelled
+## (TowerInstance.model_keys(), the same choice the placed tower makes) it is
+## a one-off render of that TowerModel3D at the blueprint's Foundation tier,
+## painted like the mission scenery (ADR-0043/0045). Otherwise it is the 2D
+## per-archetype art. 3D renders are cached per blueprint in _tower_views.
+func _tower_icon(blueprint_id: StringName, data: TowerBlueprintData) -> Texture2D:
+	var view: TowerViewport3D = _tower_views.get(blueprint_id) as TowerViewport3D
+	if view != null:
+		return view.get_texture()
+	var foundation_id: String = data.foundation.component_id
+	var weapon_id: String = data.weapon.component_id if data.weapon != null else ""
+	var keys: Array[StringName] = TowerInstance.model_keys(data.foundation.archetype, foundation_id, weapon_id)
+	if keys.is_empty():
+		return TowerInstance.ARCHETYPE_TEXTURES.get(data.foundation.archetype)
+	view = TowerViewport3D.new()
+	view.name = "TowerIcon_%s" % String(blueprint_id)
+	view.size = Vector2i.ONE * TOWER_ICON_RENDER_PX
+	view.render_target_update_mode = SubViewport.UPDATE_ONCE
+	add_child(view)
+	view.show_tower(keys[0], keys[0], keys[1], data.foundation.tier, true)
+	_tower_views[blueprint_id] = view
+	return view.get_texture()

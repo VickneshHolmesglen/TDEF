@@ -436,18 +436,33 @@ func get_model_3d() -> TowerModel3D:
 	return _model
 
 
-func _try_build_model(archetype: String, foundation_component_id: String, weapon_component_id: String, tier: int) -> void:
-	_free_model()
-	if _scenery == null:
-		return
+## The 3D pieces a tower with these components is built from: [shape,
+## crown_key] for TowerModel3D.build(), or [] when a piece has no model (the
+## tower then renders in 2D). UI that pictures a blueprint uses this too, so
+## its picture is the model a mission places.
+## Example: var keys := TowerInstance.model_keys("physical", "found_archer_t1", "wpn_bow_t1")
+static func model_keys(archetype: String, foundation_component_id: String,
+		weapon_component_id: String) -> Array[StringName]:
 	var shape: StringName = resolve_shape_for_component(foundation_component_id, archetype)
 	if shape == &"":
-		return
+		return []
 	var crown_key: StringName = _resolve_weapon_top_key(weapon_component_id)
 	if crown_key == &"":
 		crown_key = StringName("top_" + String(shape))
 	if not TowerModel3D.has_models(shape, crown_key):
+		return []
+	return [shape, crown_key]
+
+
+func _try_build_model(archetype: String, foundation_component_id: String, weapon_component_id: String, tier: int) -> void:
+	_free_model()
+	if _scenery == null:
 		return
+	var keys: Array[StringName] = model_keys(archetype, foundation_component_id, weapon_component_id)
+	if keys.is_empty():
+		return
+	var shape: StringName = keys[0]
+	var crown_key: StringName = keys[1]
 	_model = TowerModel3D.new()
 	_model.name = "TowerModel3D_%d" % get_instance_id()
 	_scenery.get_dynamic_root().add_child(_model)
@@ -496,7 +511,7 @@ func _exit_tree() -> void:
 ## Substring matching deliberately ignores tier suffixes, so upgraded copies
 ## keep their construction language. Unknown IDs return an empty StringName
 ## and are rendered through the shared modular fallback by configure().
-func resolve_shape_for_component(component_id: String, archetype: String) -> StringName:
+static func resolve_shape_for_component(component_id: String, archetype: String) -> StringName:
 	var normalized_id: String = component_id.to_lower()
 	if "siege" in normalized_id:
 		return &"hexplank"
@@ -613,7 +628,7 @@ func _resolve_weapon_top(weapon_component_id: String, fallback: Texture2D) -> Te
 	return WEAPON_TOP_TEXTURES.get(weapon_top_key, fallback)
 
 
-func _resolve_weapon_top_key(weapon_component_id: String) -> StringName:
+static func _resolve_weapon_top_key(weapon_component_id: String) -> StringName:
 	var normalized_id: String = weapon_component_id.to_lower()
 	# Longer/specific names must precede their shared element roots.
 	if "firestorm" in normalized_id:

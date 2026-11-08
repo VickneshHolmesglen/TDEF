@@ -84,21 +84,47 @@ func test_tile_is_square_and_icon_only() -> void:
 
 
 # ---------------------------------------------------------------------------
-# Icons (2026-08-11) — reuses tower_instance.gd's real per-archetype art
-# (assets/art/towers/), which already existed but was never wired into this
-# list; it originally shipped text-only on the incorrect assumption that no
-# tower art existed in the project at all.
+# Icons — each tile is a render of the 3D model the blueprint places
+# (ADR-0043). Player-reported 2026-11-08: tiles still showed the old 2D
+# per-archetype art, which matched neither the 3D towers nor each other.
 # ---------------------------------------------------------------------------
 
-func test_each_entry_shows_its_archetype_icon() -> void:
+func _tower_views() -> Dictionary:
+	@warning_ignore("unsafe_property_access")
+	return _cluster().get("_tower_views")
+
+
+func test_build_panel_icon_is_render_of_placed_3d_model() -> void:
+	# Arrange
+	var blueprints: Dictionary = GGameDataRegistry.get_all_tower_blueprints()
 	@warning_ignore("unsafe_property_access")
 	var build_buttons: Dictionary = _cluster().get("_build_buttons")
-	var archer: Button = build_buttons[&"archer"]
-	var frostbolt: Button = build_buttons[&"frostbolt_turret"]
-	assert_object(archer.icon).is_not_null()
-	assert_str(archer.icon.resource_path).contains("tower_physical_base")
-	assert_object(frostbolt.icon).is_not_null()
-	assert_str(frostbolt.icon.resource_path).contains("tower_elem_ice")
+	for blueprint_id: StringName in blueprints:
+		var data: TowerBlueprintData = blueprints[blueprint_id]
+		var keys: Array[StringName] = TowerInstance.model_keys(data.foundation.archetype,
+				data.foundation.component_id, data.weapon.component_id if data.weapon != null else "")
+		if keys.is_empty():
+			continue
+		# Act
+		var view: TowerViewport3D = _tower_views().get(blueprint_id) as TowerViewport3D
+		# Assert: the tile shows this view, whose model is the placed tower's
+		assert_object(view).override_failure_message("no 3D icon for %s" % blueprint_id).is_not_null()
+		assert_object((build_buttons[blueprint_id] as Button).icon).is_equal(view.get_texture())
+		var crown: Node3D = view.model.get_child(2) as Node3D
+		assert_str(crown.scene_file_path).contains(String(keys[1]))
+		assert_str((view.model.get_child(0) as Node3D).scene_file_path).contains("base_" + String(keys[0]))
+
+
+func test_build_panel_icons_differ_between_blueprints_with_same_archetype() -> void:
+	# Arrange: archer and longshot_sniper share the physical archetype art
+	@warning_ignore("unsafe_property_access")
+	var build_buttons: Dictionary = _cluster().get("_build_buttons")
+	# Act
+	var archer: Texture2D = (build_buttons[&"archer"] as Button).icon
+	var longshot: Texture2D = (build_buttons[&"longshot_sniper"] as Button).icon
+	# Assert
+	assert_object(archer).is_not_null()
+	assert_object(archer).is_not_same(longshot)
 
 
 # ---------------------------------------------------------------------------
@@ -225,7 +251,7 @@ func test_cursor_size_scales_with_footprint() -> void:
 # "a translucent image of it should follow my mouse to the point i place it".
 # ---------------------------------------------------------------------------
 
-func test_selecting_a_tile_shows_its_translucent_archetype_icon_at_preview() -> void:
+func test_selecting_a_tile_shows_its_translucent_3d_icon_at_preview() -> void:
 	var blueprints: Dictionary = GGameDataRegistry.get_all_tower_blueprints()
 	var archer: TowerBlueprintData = blueprints[&"archer"]
 	_cluster()._on_tower_button_pressed(&"archer")
@@ -235,15 +261,16 @@ func test_selecting_a_tile_shows_its_translucent_archetype_icon_at_preview() -> 
 	@warning_ignore("unsafe_property_access")
 	var icon: TextureRect = _cluster().get("_placement_preview_icon")
 	assert_bool(icon.visible).is_true()
-	assert_object(icon.texture).is_equal(TowerInstance.ARCHETYPE_TEXTURES[archer.foundation.archetype])
+	assert_object(icon.texture).is_equal((_tower_views()[&"archer"] as TowerViewport3D).get_texture())
 
 
 ## Regression guard: TextureRect's default expand_mode (EXPAND_KEEP_SIZE)
 ## makes its minimum size equal the texture's native resolution, and
 ## Control.set_size() clamps up to minimum size -- found live via Godot MCP
 ## as a 36x64 target preview silently rendering at the tower art's full
-## ~858x1003 native resolution, covering most of the grid.
-func test_preview_icon_is_scaled_down_to_target_display_height_not_native_resolution() -> void:
+## ~858x1003 native resolution, covering most of the grid. The 3D ghost is
+## sized from its camera frame (the tower at map scale), not the render size.
+func test_preview_icon_is_sized_to_map_scale_not_render_resolution() -> void:
 	var blueprints: Dictionary = GGameDataRegistry.get_all_tower_blueprints()
 	var archer: TowerBlueprintData = blueprints[&"archer"]
 	_cluster()._on_tower_button_pressed(&"archer")
@@ -252,7 +279,10 @@ func test_preview_icon_is_scaled_down_to_target_display_height_not_native_resolu
 
 	@warning_ignore("unsafe_property_access")
 	var icon: TextureRect = _cluster().get("_placement_preview_icon")
-	assert_float(icon.size.y).is_equal_approx(TowerInstance.TARGET_DISPLAY_HEIGHT, 0.01)
+	var view: TowerViewport3D = _tower_views()[&"archer"]
+	var map_scale: float = _cluster()._screen_cell_size().y / PlanningCluster.CELL_SIZE_PX
+	assert_float(icon.size.y).is_equal_approx(view.frame_height_px() * map_scale, 0.01)
+	assert_float(icon.size.y).is_less(float(PlanningCluster.TOWER_ICON_RENDER_PX))
 
 
 func test_sentinel_cell_hides_the_preview_icon_too() -> void:
