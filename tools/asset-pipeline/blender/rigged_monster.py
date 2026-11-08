@@ -26,32 +26,141 @@ RAW = r"G:/TDef/assets/source/3d/units/"
 COLL = "Rigged"
 
 
-# ---------------------------------------------------------------- goblin runner
-# bone: (name, parent, head, tail, head_radius, tail_radius)
-GOBLIN_BONES = [
-    ("hips", None, (0.0, 0, 0.5), (0.14, 0, 0.66), 0.15, 0.17),
-    ("spine", "hips", (0.14, 0, 0.66), (0.32, 0, 0.8), 0.17, 0.21),
-    ("chest", "spine", (0.32, 0, 0.8), (0.48, 0, 0.86), 0.21, 0.13),
-    ("neck", "chest", (0.48, 0, 0.86), (0.58, 0, 0.88), 0.09, 0.1),
-    ("head", "neck", (0.58, 0, 0.88), (0.8, 0, 0.94), 0.22, 0.17),
-    ("nose", "head", (0.8, 0, 0.94), (0.94, 0, 0.86), 0.07, 0.03),
-    ("ear.L", "head", (0.6, 0.16, 0.98), (0.38, 0.46, 1.1), 0.07, 0.01),
-    ("ear.R", "head", (0.6, -0.16, 0.98), (0.38, -0.46, 1.1), 0.07, 0.01),
-    ("thigh.L", "hips", (0.0, 0.13, 0.48), (0.17, 0.15, 0.28), 0.09, 0.075),
-    ("shin.L", "thigh.L", (0.17, 0.15, 0.28), (0.04, 0.15, 0.07), 0.075, 0.058),
-    ("foot.L", "shin.L", (0.04, 0.15, 0.07), (0.2, 0.15, 0.03), 0.065, 0.05),
-    ("thigh.R", "hips", (0.0, -0.13, 0.48), (0.17, -0.15, 0.28), 0.09, 0.075),
-    ("shin.R", "thigh.R", (0.17, -0.15, 0.28), (0.04, -0.15, 0.07), 0.075, 0.058),
-    ("foot.R", "shin.R", (0.04, -0.15, 0.07), (0.2, -0.15, 0.03), 0.065, 0.05),
-    ("upper_arm.L", "chest", (0.42, 0.2, 0.84), (0.5, 0.25, 0.6), 0.075, 0.062),
-    ("forearm.L", "upper_arm.L", (0.5, 0.25, 0.6), (0.7, 0.23, 0.45), 0.062, 0.05),
-    ("hand.L", "forearm.L", (0.7, 0.23, 0.45), (0.8, 0.22, 0.42), 0.07, 0.055),
-    ("upper_arm.R", "chest", (0.42, -0.2, 0.84), (0.5, -0.25, 0.6), 0.075, 0.062),
-    ("forearm.R", "upper_arm.R", (0.5, -0.25, 0.6), (0.7, -0.23, 0.45), 0.062, 0.05),
-    ("hand.R", "forearm.R", (0.7, -0.23, 0.45), (0.8, -0.22, 0.42), 0.07, 0.055),
-]
+# ---------------------------------------------------------------- skin graph
+# A body is a graph of shaped nodes, denser than the rig (2026-11-08 rebuild):
+# calves, elbows, a belly, palms with fingers, heel/ball/toes, a skull with
+# brow, snout and jaw. One Skin hull wraps it all, so hands, ears and face
+# are one closed mesh. nodes: name -> (position, radius); radius is a float
+# or (rx, ry). Names ending ".L" are mirrored to ".R" (y negated), and so are
+# edges touching them. The creature faces +X, Y is its left, Z is up.
 
-GOBLIN_SKIN = "#cdb24a"
+def _mirror(nodes, edges):
+    out = dict(nodes)
+    for k, (p, r) in nodes.items():
+        if k.endswith(".L"):
+            out[k[:-2] + ".R"] = ((p[0], -p[1], p[2]), r)
+    e = list(edges)
+    for a, b in edges:
+        if a.endswith(".L") or b.endswith(".L"):
+            e.append((a.replace(".L", ".R"), b.replace(".L", ".R")))
+    return out, e
+
+
+def skin_body(nodes, edges, key, root, levels=2):
+    """The Skin hull over the node graph, subdivided and applied: one smooth
+    closed mesh named "body"."""
+    nodes, edges = _mirror(nodes, edges)
+    names = list(nodes)
+    idx = {k: i for i, k in enumerate(names)}
+    me = bpy.data.meshes.new("body")
+    me.from_pydata([nodes[k][0] for k in names], [(idx[a], idx[b]) for a, b in edges], [])
+    o = bpy.data.objects.new("body", me)
+    _COLL.objects.link(o)
+    sk = o.modifiers.new("skin", "SKIN")
+    sk.use_smooth_shade = True
+    sk.branch_smoothing = 0.5
+    for k in names:
+        r = nodes[k][1]
+        me.skin_vertices[0].data[idx[k]].radius = (r, r) if isinstance(r, (int, float)) else r
+    me.skin_vertices[0].data[idx[root]].use_root = True
+    sub = o.modifiers.new("sub", "SUBSURF")
+    sub.levels = levels
+    with bpy.context.temp_override(object=o, active_object=o, selected_objects=[o]):
+        bpy.ops.object.modifier_apply(modifier="skin")
+        bpy.ops.object.modifier_apply(modifier="sub")
+    for p in o.data.polygons:
+        p.use_smooth = True
+    o.data.materials.append(mat(key))
+    return o
+
+
+# ---------------------------------------------------------------- sculpt brushes
+# Scripted stand-ins for sculpt mode: each moves the body's vertices within
+# `radius` of `center` with a smooth falloff. mask(co, side) limits which
+# vertices a brush may touch; mirror=True repeats it on the right side
+# (side = -1 there, so masks and directions can flip y).
+
+def _falloff(d, radius):
+    t = max(0.0, 1.0 - d / radius)
+    return t * t * (3.0 - 2.0 * t)
+
+
+def _brush(o, center, radius, mask, mirror, move):
+    centers = [(Vector(center), 1.0)]
+    if mirror:
+        centers.append((Vector((center[0], -center[1], center[2])), -1.0))
+    for c, side in centers:
+        for v in o.data.vertices:
+            if mask is not None and not mask(v.co, side):
+                continue
+            w = _falloff((v.co - c).length, radius)
+            if w > 0.0:
+                v.co = move(v.co.copy(), c, w, side)
+
+
+def brush_scale(o, center, radius, scale, mask=None, mirror=False):
+    """Scales around `center` per axis (x, y, z), fading out to `radius`."""
+    s = Vector(scale)
+
+    def move(co, c, w, side):
+        d = co - c
+        return co + Vector((d.x * (s.x - 1.0), d.y * (s.y - 1.0), d.z * (s.z - 1.0))) * w
+    _brush(o, center, radius, mask, mirror, move)
+
+
+def brush_flatten(o, center, radius, normal, keep, mask=None, mirror=False):
+    """Squashes toward the plane through `center` with `normal`, keeping
+    `keep` of the thickness (ears, feet, palms)."""
+    def move(co, c, w, side):
+        n = Vector((normal[0], normal[1] * side, normal[2])).normalized()
+        return co - n * (co - c).dot(n) * (1.0 - keep) * w
+    _brush(o, center, radius, mask, mirror, move)
+
+
+def brush_move(o, center, radius, offset, mask=None, mirror=False):
+    """Pushes by `offset` (a belly forward, a hunch up)."""
+    def move(co, c, w, side):
+        return co + Vector((offset[0], offset[1] * side, offset[2])) * w
+    _brush(o, center, radius, mask, mirror, move)
+
+
+def surface_point(o, origin, direction):
+    """First hit on `o` from `origin` along `direction` (object space)."""
+    hit, loc, normal, _ = o.ray_cast(Vector(origin), Vector(direction).normalized())
+    return (loc, normal) if hit else (Vector(origin), -Vector(direction))
+
+
+# ---------------------------------------------------------------- fitted clothes
+def shell(body, arm, name, keep_face, key, push=0.012, thick=0.018):
+    """A garment cut from the body's own faces (keep_face(center, normal)),
+    pushed out along the normals and given thickness. It copies the body's
+    weights, so it moves with the rig instead of clipping through it."""
+    import bmesh
+    me = body.data.copy()
+    me.name = name
+    o = bpy.data.objects.new(name, me)
+    _COLL.objects.link(o)
+    for g in body.vertex_groups:
+        o.vertex_groups.new(name=g.name)
+    bm = bmesh.new()
+    bm.from_mesh(me)
+    kill = [f for f in bm.faces if not keep_face(f.calc_center_median(), f.normal)]
+    bmesh.ops.delete(bm, geom=kill, context="FACES")
+    bmesh.ops.delete(bm, geom=[v for v in bm.verts if not v.link_faces], context="VERTS")
+    for v in bm.verts:
+        v.co += v.normal * push
+    bm.to_mesh(me)
+    bm.free()
+    me.materials.clear()
+    me.materials.append(mat(key))
+    sol = o.modifiers.new("solid", "SOLIDIFY")
+    sol.thickness = thick
+    sol.offset = 1.0
+    with bpy.context.temp_override(object=o, active_object=o, selected_objects=[o]):
+        bpy.ops.object.modifier_apply(modifier="solid")
+    o.parent = arm
+    o.modifiers.new("rig", "ARMATURE").object = arm
+    return o
 
 
 def on_bone(arm, bone, make):
@@ -70,82 +179,140 @@ def on_bone(arm, bone, make):
             o.matrix_parent_inverse = inv
 
 
-def goblin_props(arm):
-    """Rigid props placed from bone positions, each on one bone."""
-    B = {b.name: (b.head_local.copy(), b.tail_local.copy()) for b in arm.data.bones}
+# ---------------------------------------------------------------- goblin runner
+GOBLIN_SKIN = "#9fb84a"
 
-    def mid(name, t=0.5):
-        h, tl = B[name]
-        return h.lerp(tl, t)
-    c = mid("chest", 0.1)
-    on_bone(arm, "spine", lambda: rot_obj(ellipsoid(c.x - 0.08, 0, c.z - 0.03, 0.24, 0.225, 0.2, "#7a4a26"), ry=1.0))
-    hp = B["hips"][0]
-    on_bone(arm, "hips", lambda: rot_obj(ellipsoid(hp.x + 0.04, 0, hp.z + 0.04, 0.2, 0.19, 0.11, "#5a3a26"), ry=0.5))
-    on_bone(arm, "hips", lambda: box(hp.x + 0.2, -0.13, hp.z + 0.04, 0.06, 0.02, 0.05, "gold"))
-    hd = mid("head", 0.35)
-    on_bone(arm, "head", lambda: rot_obj(ellipsoid(hd.x - 0.09, 0, hd.z + 0.1, 0.17, 0.2, 0.12, "#6a4022"), ry=-0.35))
-    on_bone(arm, "head", lambda: cone_at(hd + Vector((-0.22, 0, 0.1)), 0.1, 0.26, "#6a4022", (-1, 0, 0.35), n=10))
+GOBLIN_NODES = {
+    "pelvis": ((0.0, 0, 0.5), 0.15),
+    "belly": ((0.15, 0, 0.6), 0.19),
+    "chest": ((0.3, 0, 0.76), 0.16),
+    "yoke": ((0.42, 0, 0.85), 0.12),
+    "neck": ((0.53, 0, 0.89), 0.065),
+    "skull": ((0.65, 0, 0.98), 0.17),
+    "brow": ((0.77, 0, 0.99), 0.105),
+    "snout": ((0.83, 0, 0.91), 0.07),
+    "nose": ((0.92, 0, 0.86), 0.048),
+    "jaw": ((0.71, 0, 0.85), 0.095),
+    "chin": ((0.81, 0, 0.8), 0.06),
+    "ear_root.L": ((0.64, 0.14, 1.0), 0.05),
+    "ear_mid.L": ((0.52, 0.3, 1.05), 0.075),
+    "ear_tip.L": ((0.36, 0.48, 1.1), 0.02),
+    "shoulder.L": ((0.42, 0.17, 0.84), 0.075),
+    "bicep.L": ((0.46, 0.22, 0.72), 0.055),
+    "elbow.L": ((0.5, 0.25, 0.61), 0.042),
+    "forearm.L": ((0.6, 0.25, 0.53), 0.052),
+    "wrist.L": ((0.69, 0.24, 0.47), 0.032),
+    "palm.L": ((0.75, 0.24, 0.44), 0.048),
+    "finger1.L": ((0.83, 0.205, 0.41), 0.02), "tip1.L": ((0.88, 0.2, 0.38), 0.012),
+    "finger2.L": ((0.84, 0.24, 0.4), 0.021), "tip2.L": ((0.9, 0.24, 0.37), 0.012),
+    "finger3.L": ((0.83, 0.275, 0.41), 0.02), "tip3.L": ((0.88, 0.28, 0.38), 0.012),
+    "thumb.L": ((0.77, 0.195, 0.48), 0.02), "thumbtip.L": ((0.82, 0.185, 0.49), 0.012),
+    "hip.L": ((0.02, 0.11, 0.46), 0.09),
+    "thigh.L": ((0.1, 0.14, 0.37), 0.085),
+    "knee.L": ((0.17, 0.15, 0.28), 0.05),
+    "calf.L": ((0.12, 0.15, 0.19), 0.062),
+    "ankle.L": ((0.05, 0.15, 0.09), 0.034),
+    "heel.L": ((0.01, 0.15, 0.045), 0.04),
+    "ball.L": ((0.14, 0.15, 0.035), 0.045),
+    "toe1.L": ((0.22, 0.115, 0.03), 0.022),
+    "toe2.L": ((0.24, 0.15, 0.03), 0.024),
+    "toe3.L": ((0.22, 0.185, 0.03), 0.022),
+}
+GOBLIN_EDGES = [
+    ("pelvis", "belly"), ("belly", "chest"), ("chest", "yoke"), ("yoke", "neck"),
+    ("neck", "skull"), ("skull", "brow"), ("brow", "snout"), ("snout", "nose"),
+    ("neck", "jaw"), ("jaw", "chin"),
+    ("skull", "ear_root.L"), ("ear_root.L", "ear_mid.L"), ("ear_mid.L", "ear_tip.L"),
+    ("yoke", "shoulder.L"), ("shoulder.L", "bicep.L"), ("bicep.L", "elbow.L"),
+    ("elbow.L", "forearm.L"), ("forearm.L", "wrist.L"), ("wrist.L", "palm.L"),
+    ("palm.L", "finger1.L"), ("finger1.L", "tip1.L"), ("palm.L", "finger2.L"), ("finger2.L", "tip2.L"),
+    ("palm.L", "finger3.L"), ("finger3.L", "tip3.L"), ("palm.L", "thumb.L"), ("thumb.L", "thumbtip.L"),
+    ("pelvis", "hip.L"), ("hip.L", "thigh.L"), ("thigh.L", "knee.L"), ("knee.L", "calf.L"),
+    ("calf.L", "ankle.L"), ("ankle.L", "heel.L"), ("heel.L", "ball.L"),
+    ("ball.L", "toe1.L"), ("ball.L", "toe2.L"), ("ball.L", "toe3.L"),
+]
+# rig: (name, parent, head, tail); the pose functions below use these names
+GOBLIN_BONES = [
+    ("hips", None, (0.0, 0, 0.5), (0.15, 0, 0.6)),
+    ("spine", "hips", (0.15, 0, 0.6), (0.3, 0, 0.76)),
+    ("chest", "spine", (0.3, 0, 0.76), (0.42, 0, 0.85)),
+    ("neck", "chest", (0.42, 0, 0.85), (0.53, 0, 0.89)),
+    ("head", "neck", (0.53, 0, 0.89), (0.82, 0, 0.95)),
+    ("ear.L", "head", (0.64, 0.14, 1.0), (0.36, 0.48, 1.1)),
+    ("ear.R", "head", (0.64, -0.14, 1.0), (0.36, -0.48, 1.1)),
+    ("thigh.L", "hips", (0.02, 0.11, 0.46), (0.17, 0.15, 0.28)),
+    ("shin.L", "thigh.L", (0.17, 0.15, 0.28), (0.05, 0.15, 0.09)),
+    ("foot.L", "shin.L", (0.05, 0.15, 0.09), (0.24, 0.15, 0.03)),
+    ("thigh.R", "hips", (0.02, -0.11, 0.46), (0.17, -0.15, 0.28)),
+    ("shin.R", "thigh.R", (0.17, -0.15, 0.28), (0.05, -0.15, 0.09)),
+    ("foot.R", "shin.R", (0.05, -0.15, 0.09), (0.24, -0.15, 0.03)),
+    ("upper_arm.L", "chest", (0.42, 0.17, 0.84), (0.5, 0.25, 0.61)),
+    ("forearm.L", "upper_arm.L", (0.5, 0.25, 0.61), (0.69, 0.24, 0.47)),
+    ("hand.L", "forearm.L", (0.69, 0.24, 0.47), (0.9, 0.24, 0.37)),
+    ("upper_arm.R", "chest", (0.42, -0.17, 0.84), (0.5, -0.25, 0.61)),
+    ("forearm.R", "upper_arm.R", (0.5, -0.25, 0.61), (0.69, -0.24, 0.47)),
+    ("hand.R", "forearm.R", (0.69, -0.24, 0.47), (0.9, -0.24, 0.37)),
+]
+
+
+def goblin_sculpt(o):
+    lateral = lambda co, side: co.y * side > 0.12
+    # leaf ears, flattened in a plane tilted between level and upright so
+    # they read broad from the game's high camera and from the side
+    brush_flatten(o, (0.52, 0.3, 1.05), 0.26, (0.35, 0.2, -0.9), 0.3, mask=lateral, mirror=True)
+    # hooked nose: tip pulled down
+    brush_move(o, (0.95, 0, 0.86), 0.06, (0.0, 0.0, -0.02))
+    # wide skull, slightly low brow
+    brush_scale(o, (0.66, 0, 0.97), 0.22, (1.0, 1.15, 0.95))
+    # pot belly, hunched back
+    brush_move(o, (0.17, 0, 0.56), 0.2, (0.035, 0.0, -0.02))
+    brush_move(o, (0.3, 0, 0.86), 0.16, (-0.02, 0.0, 0.03))
+    # flat feet and palms
+    brush_flatten(o, (0.13, 0.15, 0.035), 0.14, (0, 0, 1), 0.55,
+                  mask=lambda co, side: co.z < 0.08 and co.y * side > 0.05, mirror=True)
+    brush_flatten(o, (0.8, 0.24, 0.42), 0.09, (0, 1, 0), 0.6,
+                  mask=lambda co, side: co.x > 0.72 and co.y * side > 0.15, mirror=True)
+
+
+def goblin_dress(body, arm):
+    # ragged leather vest over the back and shoulders, open at the front
+    shell(body, arm, "vest", lambda c, n: c.z > 0.74 and c.x < 0.47 and abs(c.y) < 0.2
+          and not (c.x > 0.2 and n.x > 0.3), "#7a4a26", push=0.012, thick=0.02)
+    # shorts over the pelvis and the tops of the thighs, and a belt
+    shell(body, arm, "shorts", lambda c, n: 0.36 < c.z < 0.57 and c.x < 0.3, "#5a3a26", push=0.01, thick=0.016)
+    shell(body, arm, "belt", lambda c, n: 0.53 < c.z < 0.585 and c.x < 0.34, "#3b3245", push=0.026, thick=0.012)
+
+
+def goblin_props(arm):
+    """Face, buckle and dagger, each rigid on one bone. Placed by casting rays
+    at the finished body so they sit on its surface."""
+    body = bpy.data.objects["body"]
     for s in (-1, 1):
-        e = mid("head", 0.8)
-        on_bone(arm, "head", lambda s=s, e=e: ellipsoid(e.x + 0.03, s * 0.09, e.z + 0.04, 0.04, 0.04, 0.045, "#ffe36a", glow=True))
-    sc = mid("chest", 0.6)
-    on_bone(arm, "chest", lambda: rot_obj(ellipsoid(sc.x, 0, sc.z, 0.12, 0.22, 0.08, "#c0463a"), ry=1.2))
-    # dagger in the far hand (held low, like the old art)
-    h0, h1 = B["hand.L"]
-    on_bone(arm, "hand.L", lambda: limb(h1, h1 + Vector((0.24, 0, 0.02)), 0.028, 0.006, "steel"))
-    on_bone(arm, "hand.L", lambda: box(h1.x, h1.y, h1.z - 0.03, 0.03, 0.09, 0.06, "#5a3a26"))
+        p, _ = surface_point(body, (1.4, s * 0.08, 0.955), (-1, 0, 0))
+        on_bone(arm, "head", lambda p=p: ellipsoid(p.x - 0.02, p.y, p.z, 0.046, 0.048, 0.044, "#ffe36a", glow=True))
+        on_bone(arm, "head", lambda p=p: ellipsoid(p.x + 0.02, p.y, p.z, 0.012, 0.018, 0.024, "eye"))
+        t, _ = surface_point(body, (1.4, s * 0.04, 0.83), (-1, 0, 0))
+        on_bone(arm, "head", lambda t=t: cone_at(t + Vector((-0.012, 0, -0.005)), 0.014, 0.05, "white", (0.35, 0, 1), n=8))
+    m, _ = surface_point(body, (1.4, 0.0, 0.865), (-1, 0, 0))
+    on_bone(arm, "head", lambda: ellipsoid(m.x - 0.004, 0, m.z, 0.012, 0.06, 0.008, "eye"))
+    b, _ = surface_point(body, (1.4, 0.0, 0.557), (-1, 0, 0))
+    on_bone(arm, "hips", lambda: box(b.x + 0.02, 0, b.z - 0.03, 0.02, 0.07, 0.06, "gold"))
+    # loincloth flap hanging from the belt front
+    on_bone(arm, "hips", lambda: poly([(b.x + 0.022, -0.06, b.z - 0.01), (b.x + 0.022, 0.06, b.z - 0.01),
+                                       (b.x + 0.05, 0.045, b.z - 0.2), (b.x + 0.05, -0.045, b.z - 0.2)], "#5a3a26"))
+    # dagger in the far hand, held low
+    h1 = arm.data.bones["hand.L"].tail_local.copy()
+    on_bone(arm, "hand.L", lambda: limb(h1 + Vector((-0.04, 0, 0.0)), h1 + Vector((0.22, 0, 0.0)), 0.026, 0.006, "steel"))
+    on_bone(arm, "hand.L", lambda: box(h1.x - 0.07, h1.y, h1.z - 0.03, 0.04, 0.03, 0.06, "#5a3a26"))
 
 
 SPECS = {
-    "goblin_runner": dict(bones=GOBLIN_BONES, skin=GOBLIN_SKIN, props=goblin_props, size=2.0),
+    "goblin_runner": dict(nodes=GOBLIN_NODES, edges=GOBLIN_EDGES, root="pelvis", bones=GOBLIN_BONES,
+                          skin=GOBLIN_SKIN, sculpt=goblin_sculpt, dress=goblin_dress, props=goblin_props, size=2.0),
 }
 
 
 # ---------------------------------------------------------------- build
-def _skin_mesh(bones, key):
-    pts, radii, index = [], [], {}
-
-    def vid(p, r):
-        k = tuple(round(c, 4) for c in p)
-        if k not in index:
-            index[k] = len(pts)
-            pts.append(p)
-            radii.append(r)
-        return index[k]
-
-    edges = [(vid(h, rh), vid(t, rt)) for _, _, h, t, rh, rt in bones]
-    # The Skin modifier needs one connected graph: a bone whose head doesn't
-    # touch its parent gets a joining edge from the nearer end of the parent.
-    by_name = {b[0]: b for b in bones}
-    for name, parent, h, t, rh, rt in bones:
-        if parent is None:
-            continue
-        _, _, ph, pt, prh, prt = by_name[parent]
-        hv = Vector(h)
-        if min((hv - Vector(ph)).length, (hv - Vector(pt)).length) < 1e-4:
-            continue
-        near, nr = (ph, prh) if (hv - Vector(ph)).length < (hv - Vector(pt)).length else (pt, prt)
-        edges.append((vid(near, nr), vid(h, rh)))
-    me = bpy.data.meshes.new("body")
-    me.from_pydata(pts, edges, [])
-    o = bpy.data.objects.new("body", me)
-    _COLL.objects.link(o)
-    sk = o.modifiers.new("skin", "SKIN")
-    sk.use_smooth_shade = True
-    for i, r in enumerate(radii):
-        me.skin_vertices[0].data[i].radius = (r, r)
-    me.skin_vertices[0].data[0].use_root = True
-    sub = o.modifiers.new("sub", "SUBSURF")
-    sub.levels = 2
-    with bpy.context.temp_override(object=o, active_object=o, selected_objects=[o]):
-        bpy.ops.object.modifier_apply(modifier="skin")
-        bpy.ops.object.modifier_apply(modifier="sub")
-    for p in o.data.polygons:
-        p.use_smooth = True
-    o.data.materials.append(mat(key))
-    return o
-
-
 def _armature(bones):
     ad = bpy.data.armatures.new("rig")
     arm = bpy.data.objects.new("rig", ad)
@@ -155,7 +322,7 @@ def _armature(bones):
         o.select_set(False)
     arm.select_set(True)
     bpy.ops.object.mode_set(mode="EDIT")
-    for name, parent, h, t, _, _ in bones:
+    for name, parent, h, t in bones:
         eb = ad.edit_bones.new(name)
         eb.head, eb.tail = Vector(h), Vector(t)
         eb.roll = 0.0
@@ -167,13 +334,17 @@ def _armature(bones):
 
 
 def build_rigged(mid):
+    """Skin hull -> sculpt brushes -> rig with heat weights -> fitted clothes
+    -> rigid props."""
     spec = SPECS[mid]
     clear_collection(COLL)
     solo_collections([COLL])
     for a in list(bpy.data.armatures):
         if a.users == 0:
             bpy.data.armatures.remove(a)
-    body = _skin_mesh(spec["bones"], spec["skin"])
+    body = skin_body(spec["nodes"], spec["edges"], spec["skin"], spec["root"])
+    spec["sculpt"](body)
+    body.data.update()
     arm = _armature(spec["bones"])
     for o in bpy.context.selected_objects:
         o.select_set(False)
@@ -181,6 +352,7 @@ def build_rigged(mid):
     arm.select_set(True)
     bpy.context.view_layer.objects.active = arm
     bpy.ops.object.parent_set(type="ARMATURE_AUTO")
+    spec["dress"](body, arm)
     spec["props"](arm)
     return arm, body
 
